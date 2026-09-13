@@ -6,6 +6,7 @@ import ctypes as ct
 import threading
 from contextlib import contextmanager
 from pathlib import Path
+from time import perf_counter
 
 import numpy as np
 
@@ -13,10 +14,12 @@ from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_runtime import _PREPARATION_LOCK, _Metrics
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.provenance import file_hash
+from vibeqc_compiler.common.resources import MAX_BYTES, ResourceBudget, plan_resources
 
 from .ao import DOUBLE, SIZE, jet_indices, pointer
 from .ao_cuda import emit_grid_source
-from .features import spin_densities
+from .density_source import DensitySource
+from .features import requested_ingredients, spin_densities
 from .grid import checked_int
 from .plan import plan_tiles
 
@@ -113,6 +116,45 @@ class CudaGrid:
     one plan are serialized; different plans own independent arenas/streams.
     """
 
+    _fixed = frozenset(
+        (
+            "plan",
+            "ingredients",
+            "basis_identity",
+            "basis_generation",
+            "artifact",
+            "resource_plan",
+            "device_id",
+        )
+    )
+
+    def __setattr__(self, name, value):
+        if name in self._fixed and name in self.__dict__:
+            raise AttributeError(
+                "CUDA scientific topology is immutable; prepare a new owner"
+            )
+        super().__setattr__(name, value)
+
+    @property
+    def source_stamp(self):
+        """Read-only identity of the successfully uploaded current source."""
+        return self._source_stamp
+
+    @property
+    def source_kind(self):
+        """Selected native route for the last successful source upload."""
+        return self._source_kind
+
+    @property
+    def fallback_reason(self):
+        """Explicit availability decision; no matrix approximation is implied."""
+        return self._fallback_reason
+
+    @property
+    def source_statistics(self):
+        """Detached identity, packing and upload diagnostics."""
+        return dict(self._source_statistics)
+
     def __init__(
         self,
         basis,
@@ -120,25 +162,48 @@ class CudaGrid:
         *,
         order=1,
         tile_points=256,
-        budget_bytes=256 << 20,
+        budget_bytes=None,
         device_id=0,
         grid=None,
         active_ao_capacity=None,
+        orbital_capacity=None,
+        orbital_tile=32,
+        ingredients=None,
+        resource_budget=None,
+        basis_generation=0,
     ):
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._density_ready = False
         self._borrowed = False
+        self._source_stamp = None
+        self._source_kind = "density_matrix"
+        self._fallback_reason = "missing_orbitals"
+        self._source_statistics = {}
+        self.ingredients = requested_ingredients(ingredients)
+        self.basis_generation = checked_int(basis_generation, "basis generation", low=0)
         checked_int(device_id, "visible device ordinal", low=0)
+        if resource_budget is not None and budget_bytes is not None:
+            raise ValueError("use the shared resource budget or the legacy grid budget")
         self.plan = plan_tiles(
             basis,
             backend="cuda",
             order=order,
             tile_points=tile_points,
-            budget_bytes=budget_bytes,
+            budget_bytes=(
+                MAX_BYTES
+                if resource_budget is not None
+                else (256 << 20 if budget_bytes is None else budget_bytes)
+            ),
             grid=grid,
             active_ao_capacity=active_ao_capacity,
+            orbital_capacity=orbital_capacity,
+            orbital_tile=orbital_tile,
         )
+        self.resource_plan = plan_resources(
+            (self.plan.resource_request(self.ingredients, device_id),),
+            resource_budget or ResourceBudget(),
+        ).require_feasible()
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("CUDA grid binary hash mismatch")
         self.basis_identity = basis.identity
@@ -163,12 +228,30 @@ class CudaGrid:
             ct.c_size_t,
             *lib.grid_cuda_create_v1.argtypes[8:],
         ]
+        lib.grid_cuda_create_v3.argtypes = [
+            *lib.grid_cuda_create_v2.argtypes[:-3],
+            SIZE,
+            ct.c_size_t,
+            ct.c_uint,
+            *lib.grid_cuda_create_v2.argtypes[-3:],
+        ]
         lib.grid_cuda_destroy_v1.argtypes = [ct.c_void_p]
         lib.grid_cuda_destroy_v1.restype = None
         lib.grid_cuda_density_v1.argtypes = [
             ct.c_void_p,
             DOUBLE,
             ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.grid_cuda_source_v1.argtypes = [
+            ct.c_void_p,
+            DOUBLE,
+            ct.c_size_t,
+            DOUBLE,
+            DOUBLE,
+            SIZE,
+            ct.c_int,
             ct.c_char_p,
             ct.c_size_t,
         ]
@@ -220,7 +303,7 @@ class CudaGrid:
         number = int(architecture.removeprefix("sm_"))
         with _PREPARATION_LOCK:
             self._call(
-                "grid_cuda_create_v2",
+                "grid_cuda_create_v3",
                 device_id,
                 number // 10,
                 number % 10,
@@ -230,6 +313,14 @@ class CudaGrid:
                 order,
                 self.plan.allocation_bytes,
                 0 if active_ao_capacity is None else active_ao_capacity,
+                None
+                if self.plan.orbital_capacity is None
+                else (ct.c_size_t * 2)(*self.plan.orbital_capacity),
+                self.plan.orbital_tile,
+                sum(
+                    1 << ("rho", "gradient", "sigma", "tau").index(k)
+                    for k in self.ingredients
+                ),
                 ct.byref(self._handle),
             )
 
@@ -249,7 +340,99 @@ class CudaGrid:
         with self._lock:
             self._check_open()
             d = spin_densities(density, self.plan.nao)
+            self._density_ready = False
+            self._source_stamp = None
+            self._source_kind = "density_matrix"
+            self._fallback_reason = "missing_orbitals"
+            self._source_statistics = {}
             self._call("grid_cuda_density_v1", self._handle, pointer(d), d.size)
+            self._density_ready = True
+
+    def set_source(self, source, *, stamp, route="auto"):
+        """Upload one checked current D/B pair; never reconstruct D on tile replay.
+
+        DensitySource performs external-factor validation before this boundary.
+        The caller carries its current stamp; geometry/basis generations must
+        match this owner. Auto selects an available validated route, with an
+        explicit D fallback when factors or prepared capacity are unavailable.
+        This is an availability policy, not the #168 performance selector.
+        """
+        with self._lock:
+            self._check_open()
+            if not isinstance(source, DensitySource):
+                raise TypeError("expected a validated DensitySource")
+            if stamp != source.stamp or (
+                stamp.basis_identity != self.basis_identity
+                or stamp.basis_generation != self.basis_generation
+                or source.density.shape != (2, self.plan.nao, self.plan.nao)
+            ):
+                raise ValueError("stale density source or CUDA basis generation")
+            if route not in ("auto", "density_matrix", "orbitals"):
+                raise ValueError("unsupported density feature route")
+            counts = (
+                (0, 0)
+                if source.occupations is None
+                else tuple(map(len, source.occupations))
+            )
+            reason = source.fallback_reason
+            available = source.source_kind == "orbitals"
+            if available and (
+                self.plan.orbital_capacity is None
+                or any(
+                    n > cap
+                    for n, cap in zip(counts, self.plan.orbital_capacity, strict=True)
+                )
+            ):
+                available, reason = False, "orbital_capacity_exceeded"
+            if route == "orbitals" and not available:
+                raise ValueError(f"orbital route unavailable: {reason}")
+            use_orbitals = available and route != "density_matrix"
+            before = perf_counter()
+            factors = (
+                tuple(
+                    immutable(c * np.sqrt(f))
+                    for c, f in zip(
+                        source.coefficients, source.occupations, strict=True
+                    )
+                )
+                if use_orbitals
+                else ()
+            )
+            packing_seconds = perf_counter() - before
+            counts = counts if use_orbitals else (0, 0)
+            self._density_ready = False
+            self._source_stamp = None
+            before = perf_counter()
+            self._call(
+                "grid_cuda_source_v1",
+                self._handle,
+                pointer(source.density),
+                source.density.size,
+                pointer(factors[0]) if factors else None,
+                pointer(factors[1]) if factors else None,
+                (ct.c_size_t * 2)(*counts),
+                int(use_orbitals),
+            )
+            self._source_stamp = stamp
+            self._source_kind = "orbitals" if use_orbitals else "density_matrix"
+            self._fallback_reason = (
+                None
+                if use_orbitals
+                else (
+                    "requested_density_matrix" if route == "density_matrix" else reason
+                )
+            )
+            self._source_statistics = {
+                "source_identity": stamp.identity,
+                "factor_identity": source.factor_identity if use_orbitals else None,
+                "source_kind": self.source_kind,
+                "fallback_reason": self.fallback_reason,
+                "occupied_counts": counts,
+                "factor_packing_seconds": packing_seconds,
+                "source_upload_seconds": perf_counter() - before,
+                "source_upload_bytes": source.density.nbytes
+                + sum(f.nbytes for f in factors),
+            }
             self._density_ready = True
 
     def evaluate(
@@ -260,6 +443,7 @@ class CudaGrid:
         download_jets=False,
         ao_ids=None,
         download_features=True,
+        stamp=None,
     ):
         """Return one detached result tile; no downstream CPU arithmetic fallback."""
         raw = np.asarray(points)
@@ -274,10 +458,19 @@ class CudaGrid:
             raise ValueError("request features and/or AO jets")
         with self._lock:
             self._check_open()
-            if features and (self.plan.order < 1 or not self._density_ready):
+            need_first = any(k != "rho" for k in self.ingredients)
+            if features and (
+                (need_first and self.plan.order < 1) or not self._density_ready
+            ):
                 raise ValueError(
-                    "features require first derivatives and supplied density"
+                    "features require the requested derivatives and supplied density"
                 )
+            if (
+                features
+                and self.source_stamp is not None
+                and stamp != self.source_stamp
+            ):
+                raise ValueError("stale or missing current CUDA density source stamp")
             points = immutable(raw)
             active = self.plan.nao
             selected = None
@@ -323,24 +516,26 @@ class CudaGrid:
             )
             result = {}
             if values is not None:
-                # Only views/layout publication occur here. All four invariants
-                # have already been contracted on the GPU, including sigma.
-                result = {
-                    "rho": immutable(values[[0, 5]]),
-                    "gradient": immutable(
-                        values[[1, 2, 3, 6, 7, 8]]
-                        .reshape(2, 3, len(points))
-                        .transpose(0, 2, 1)
-                    ),
-                    "tau": immutable(values[[4, 9]]),
-                    "sigma": immutable(values[10:13]),
-                }
+                # The transfer ABI has thirteen slots, but publication copies
+                # belong only to the features actually requested on the GPU.
+                for key in self.ingredients:
+                    if key == "gradient":
+                        value = (
+                            values[[1, 2, 3, 6, 7, 8]]
+                            .reshape(2, 3, len(points))
+                            .transpose(0, 2, 1)
+                        )
+                    else:
+                        value = values[
+                            {"rho": [0, 5], "tau": [4, 9], "sigma": slice(10, 13)}[key]
+                        ]
+                    result[key] = immutable(value)
             if download_jets:
                 result["ao_jets"] = immutable(jets)
             return result
 
     @contextmanager
-    def task(self, points, ao_ids):
+    def task(self, points, ao_ids, *, stamp=None):
         """Evaluate local features and lend device buffers with no array D2H.
 
         Consumers enqueue on ``lease.view.stream`` and finish while the lease
@@ -351,7 +546,9 @@ class CudaGrid:
             self._check_open()
             if self.plan.active_ao_capacity is None:
                 raise ValueError("device task views require a local CUDA plan")
-            self.evaluate(points, ao_ids=ao_ids, download_features=False)
+            if set(self.ingredients) != {"rho", "gradient", "sigma", "tau"}:
+                raise ValueError("device task ABI v1 requires the full feature layout")
+            self.evaluate(points, ao_ids=ao_ids, download_features=False, stamp=stamp)
             view = GridTaskView()
             self._call("grid_cuda_view_v1", self._handle, ct.byref(view))
             self._borrowed = True

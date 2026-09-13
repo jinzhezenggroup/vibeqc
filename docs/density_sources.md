@@ -1,9 +1,10 @@
-# Current-density CPU feature sources (#235 A)
+# Current-density D/C feature sources (#235 A/B)
 
 `vibeqc_compiler.dft.DensitySource` provides a fixed-input CPU contract for
 choosing between the original density matrix D and compatible occupied or
-fractionally occupied orbitals C/f. This is the A slice of #235, tracked in
-#295. It builds on the [grid feature conventions](dft_grid.md) and supplies
+fractionally occupied orbitals C/f. Slice A (#295) defines source validity;
+slice B (#297) adds bounded native CUDA execution below.
+It builds on the [grid feature conventions](dft_grid.md) and supplies
 the same feature dictionary consumed by XC contractions.
 
 ## Mathematics and spin conventions
@@ -110,11 +111,105 @@ Native `src/scf/density_factor.hpp` already owns the SCF/RI-K factor contract:
 its integer occupations, exact density witness, native reference/orbital IDs
 and restricted-spin convention remain authoritative there. This CPU external
 reference adds fractional-spin mathematical acceptance without changing native
-SCF semantics. A future #235 B/C adapter must reuse that producer provenance
+SCF semantics. A future #235 C adapter must reuse that producer provenance
 and map restricted occupations explicitly, then compose resources under #203.
-Native GPU collocation, prepared/local-task integration, geometric derivatives,
-and candidate selection under #168 remain future slices. This PR supplies no
-new molecular method, solver, force capability or speedup claim.
+Native SCF/spatial-prepared integration, geometric derivatives and candidate
+selection under #168 remain slice C. Neither A nor B supplies a new molecular
+method, solver, force capability or speedup claim.
+
+## Bounded native CUDA execution
+
+`CudaGrid` uses the same AO owner, cuBLAS adapter, stream and generated
+bilinear density formulas for D and C. Prepare `orbital_capacity=(na, nb)`
+and `orbital_tile`, then call `set_source(source, stamp=current, route=...)`.
+Every subsequent feature `evaluate` or `task` requires the current stamp.
+Basis content and basis generation must match the immutable prepared owner.
+Uploads bind D and the validated weighted factors together; a failed transport
+leaves features unavailable until another successful upload. Ordinary
+`set_density` explicitly clears source/orbital state and supports signed D.
+
+The C route packs each selected AO row and each occupied-column tile, computes
+bounded Psi/derivative panels with cuBLAS, and reduces features on the GPU.
+It visits every supplied column, including zero-occupation columns; it does
+not assume local AOs make delocalized orbitals sparse. Sigma is formed after
+all tiles in both spins, retaining cross terms. Empty spins/maps/point tails
+are valid. Local CUDA maps follow the existing sorted-unique device ABI.
+
+`route="auto"` is availability-based: missing/rejected factors or insufficient
+prepared orbital capacity execute the original D. `source_statistics` reports
+the route, factor/source identity, fallback reason, occupied counts, weighted
+factor packing time and upload bytes/time. Explicit `orbitals` rejects an
+unavailable route. This policy is not the #168 cost selector. Response sources
+always retain D; C geometric derivatives are not exposed.
+
+Requested ingredients prune arithmetic and unnecessary GEMMs. Rho-only accepts
+order-zero AO jets; sigma requires gradients internally; tau is optional. The
+transfer ABI retains thirteen slots, while Python publishes only requested
+arrays. Borrowed device task ABI v1 describes the full feature layout and
+rejects pruned requests. Calls sharing an owner serialize; independent owners
+have separate streams and memory.
+
+Pass `resource_budget=ResourceBudget(...)` for composed #203 preflight, or
+the legacy `budget_bytes`, but not both. The planner charges global D, bounded
+AO/work/output tiles, global B, active-AO-by-orbital packing, a Psi capacity
+of `8 * 4 * tile_points * orbital_tile` bytes, host copies and a cuBLAS allowance.
+Psi capacity is independent of the total occupied count. Native arena bytes
+are checked against the plan and provider observations against the allowance.
+This is a conservative numeric capacity bound, not measured process peak RSS
+or total GPU-context residency. Python objects, allocator rounding, CPU BLAS
+internals, CUDA context/module/stack costs beyond the explicit allowance,
+caller-owned source construction/validation and retained output history are
+excluded and require separate accounting. D storage remains necessary.
+
+## Fixed-density XC adapter and evidence
+
+`PreparedXCContractions(..., density_grid=cuda, resource_budget=budget)` borrows
+a dense `CudaGrid` with the matching basis, AO order and required ingredients.
+Call `execute(source, stamp=current, route=...)`. The adapter holds the CUDA
+owner's lock through the entire execution and composes its resource request
+with existing XC workspace and global potential output capacity.
+
+AO and density features execute on GPU. Each tile explicitly downloads AO jets
+and features for the existing generated native **CPU** XC point code and AO
+potential assembly. `collocation_backend="cuda"`, `xc_backend="native_cpu"`,
+device phase metrics, CPU contraction time, source packing/upload costs and
+whole-call timings expose this boundary. Native CPU `energy`, response and
+geometry APIs remain available through their existing adapters; this CUDA
+adapter supports fixed-density energy **plus potential** only. It does not
+claim device-resident XC, native SCF integration or complete forces.
+
+`tests/python/test_density_cuda.py` covers six independent feature fixtures,
+all ingredient subsets, fractional/empty spins, point/orbital tails, local
+cross terms, source invalidation/fallback, owner isolation, and 48 same-grid
+LDA/PBE E/V combinations at 128/256 MiB. Every entry uses the FP64 gates above.
+The positive-definite integration fixtures use test-only Cholesky factors,
+without clipping; factorization and external validation are outside replay.
+
+Reproduce tests and diagnostic endpoint/resource evidence from a clean source
+checkout with a matching Release CPU normalization library. Use fresh cache
+and output paths for the benchmark. PySCF need not be installed.
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VIBEQC_LIBRARY=$PWD/build/cpu/libvibeqc.so VIBEQC_GRID_CUDA_TEST=1 \
+  VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc \
+  .venv/bin/python -m pytest tests/python/test_density_cuda.py tests/python/test_grid_cuda.py -q
+
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc \
+  .venv/bin/python tools/benchmark_density_sources.py \
+  --library build/cpu/libvibeqc.so --cache .artifacts/density-bench-cache \
+  --output .artifacts/benchmarks/density-sources --samples 5
+```
+
+The benchmark records five interleaved D/C pairs per endpoint case, cold
+compilation, owner construction, source/fixture-factor/validation costs and
+full available E/V wall time. Small fixtures and CPU staging do not establish
+a performance winner; larger molecular/throughput endpoints and promotion
+remain with #235 C/#168. Publish reviewed numerical records through the
+[existing evidence envelope](evidence_retention.md).
 
 ## Validation
 

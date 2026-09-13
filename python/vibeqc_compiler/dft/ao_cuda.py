@@ -74,15 +74,19 @@ def emit_grid_policy():
         *(2 * d * work[0] for d in dp),
         sum((d * w / 2 for d, w in zip(dp, work[1:], strict=True)), graph.constant(0)),
     )
-    emitter = CudaEmitter(graph, {})
-    emitter.emit(roots)
     lines.append(
-        "__device__ void add_features(double phi, const double* derivative, const double* work, double* accum) {"
+        "__device__ void add_features(double phi, const double* derivative, const double* work, double* accum, unsigned mask) {"
     )
-    lines.extend(emitter.lines)
-    lines.extend(
-        f"  accum[{i}] += {emitter.reference(r)};" for i, r in enumerate(roots)
-    )
+    # The orbital route supplies phi=Psi, derivative=grad(Psi), work=Psi jets.
+    # The same compiler-owned bilinears then give the occupation-weighted
+    # orbital identities, with no second native scientific formula.
+    for mask, indices in ((1, (0,)), (6, (1, 2, 3)), (8, (4,))):
+        emitter = CudaEmitter(graph, {})
+        emitter.emit(tuple(roots[i] for i in indices))
+        lines.append(f"  if (mask & {mask}) {{")
+        lines.extend(emitter.lines)
+        lines.extend(f"  accum[{i}] += {emitter.reference(roots[i])};" for i in indices)
+        lines.append("  }")
     lines.append("}")
     graph = Graph()
     gradients = [[graph.variable(f"g[{s}][{k}]") for k in range(3)] for s in range(2)]

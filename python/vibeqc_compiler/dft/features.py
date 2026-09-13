@@ -24,8 +24,8 @@ def spin_densities(density, nao):
     return immutable(0.5 * (d + d.swapaxes(1, 2)))
 
 
-def _feature_request(jets, ingredients):
-    """Share the requested jet domain, independently of the contraction route."""
+def requested_ingredients(ingredients=None):
+    """Validate the common CPU/CUDA feature request, preserving output order."""
     requested = (
         ("rho", "gradient", "sigma", "tau")
         if ingredients is None
@@ -37,6 +37,12 @@ def _feature_request(jets, ingredients):
         or any(k not in ("rho", "gradient", "sigma", "tau") for k in requested)
     ):
         raise ValueError("unsupported or duplicate density ingredient")
+    return requested
+
+
+def _feature_request(jets, ingredients):
+    """Share the requested jet domain, independently of the contraction route."""
+    requested = requested_ingredients(ingredients)
     need_gradient = "gradient" in requested or "sigma" in requested
     need_first = need_gradient or "tau" in requested
     jets = np.asarray(jets)

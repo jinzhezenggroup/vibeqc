@@ -156,6 +156,10 @@ wrapper does not claim a fused GPU batch launch.
 
 ## Validation and reproduction
 
+The [current-density source contract](density_sources.md) adds bounded GPU
+D/C routes and an explicit GPU-density/CPU-XC E/V adapter (#235 A/B), including
+source stamps, availability fallback and composed numeric resource budgets.
+
 `tools/generate_grid_references.py` pins PySCF 2.14.0, with exact geometries,
 original coefficients, densities, orbital factors, units and array hashes.
 Six fixtures cover H2, asymmetric water, actual Cartesian/spherical f shells,

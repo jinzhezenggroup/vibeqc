@@ -1,4 +1,4 @@
-"""Bounded native CPU XC endpoints on fixed dense or spatial collocation.
+"""Bounded native CPU XC with CPU or explicit CUDA density collocation.
 
 The shared ResourceBudget owns the cap. NativeAO, generated point code and
 CPU matrix products stream tiles; neither AO^4 data nor a molecular AO table
@@ -7,7 +7,7 @@ is retained. This explicit candidate does not register a complete DFT method.
 
 import json
 import threading
-from contextlib import nullcontext
+from contextlib import ExitStack
 from time import perf_counter
 
 import numpy as np
@@ -24,7 +24,8 @@ from vibeqc_compiler.common.resources import (
     byte_product,
     plan_resources,
 )
-from vibeqc_compiler.dft import ExplicitGrid, MolecularGrid, NativeAO
+from vibeqc_compiler.dft import DensitySource, ExplicitGrid, MolecularGrid, NativeAO
+from vibeqc_compiler.dft.cuda import CudaGrid
 from vibeqc_compiler.dft.features import spin_densities
 from vibeqc_compiler.dft.grid import checked_int
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
@@ -53,6 +54,7 @@ class PreparedXCContractions:
         tile_points=64,
         resource_budget=None,
         spatial=None,
+        density_grid=None,
     ):
         if not isinstance(program, NativeContractionProgram) or not isinstance(
             basis, NativeAO
@@ -67,6 +69,30 @@ class PreparedXCContractions:
         ) != (basis.atoms, basis.charge, basis.multiplicity):
             raise ValueError("stale molecular grid for XC contraction")
         checked_int(tile_points, "XC contraction tile points")
+        if density_grid is not None:
+            if not isinstance(density_grid, CudaGrid):
+                raise TypeError("density_grid must be a CudaGrid owner")
+            if spatial is not None or density_grid.plan.active_ao_capacity is not None:
+                raise ValueError(
+                    "CUDA XC density adapter currently requires dense AO tiles"
+                )
+            if program.contract.request.observable != "potential":
+                raise ValueError("CUDA density adapter supports fixed-density E/V only")
+            required = (
+                {"rho"}
+                if program.contract.ingredients.family == "lda"
+                else {"rho", "gradient", "sigma"}
+            )
+            if (
+                density_grid.basis_identity != basis.identity
+                or density_grid.plan.nao != basis.nao
+                or density_grid.plan.order < program.contract.ao_order
+                or not required.issubset(density_grid.ingredients)
+            ):
+                raise ValueError(
+                    "CUDA density basis or requested ingredients do not match XC"
+                )
+            tile_points = density_grid.plan.tile_points
         if spatial is not None:
             if not isinstance(spatial, PreparedSpatialGrid) or spatial.backend != "cpu":
                 raise TypeError("native CPU XC requires a CPU spatial adapter")
@@ -94,6 +120,8 @@ class PreparedXCContractions:
             spatial,
         )
         self.tile_points, self.npoint = tile_points, npoint
+        self.density_grid = density_grid
+        self._density_signature = self._density_contract()
         self.budget = resource_budget or ResourceBudget()
         self._lock, self._closed = threading.RLock(), False
         self._mask = None if spatial is None else spatial.tasks.identity
@@ -110,6 +138,11 @@ class PreparedXCContractions:
                 "scientific": self._signature,
                 "native": program.artifact.metadata["key"],
                 "tile_points": tile_points,
+                **(
+                    {"density_collocation": self._density_signature}
+                    if density_grid is not None
+                    else {}
+                ),
             }
         )
         # Conservative numeric capacities cover immutable input/output copies,
@@ -173,10 +206,27 @@ class PreparedXCContractions:
             ),
         )
         requests = () if spatial is None else spatial.resource_plan.requests
+        if density_grid is not None:
+            requests += density_grid.resource_plan.requests
         self.resource_plan = plan_resources(
             (*requests, request), self.budget
         ).require_feasible()
         self.statistics = {}
+
+    def _density_contract(self):
+        """Borrow only fixed CUDA topology/code; each call uploads its current D/B."""
+        cuda = self.density_grid
+        return (
+            None
+            if cuda is None
+            else (
+                cuda.basis_identity,
+                cuda.basis_generation,
+                cuda.ingredients,
+                cuda.resource_plan.identity,
+                cuda.artifact.metadata["key"],
+            )
+        )
 
     def _check(self):
         if self._closed:
@@ -192,10 +242,29 @@ class PreparedXCContractions:
             raise ValueError("stale XC contraction or spatial mask identity")
         if self.spatial is not None:
             self.spatial._check()
+        if self._density_contract() != self._density_signature:
+            raise ValueError("stale CUDA density collocation contract")
+        if self.density_grid is not None:
+            self.density_grid._check_open()
 
     def _collocation(self, density):
         order = self.program.contract.ao_order
-        if self.spatial is None:
+        if self.density_grid is not None:
+            for tile in _tiles(self.grid, self.tile_points):
+                # Transfers are explicit: AO/features run on GPU, generated
+                # XC point code and AO potential assembly remain on CPU.
+                values = self.density_grid.evaluate(
+                    tile.points, stamp=self._execution_stamp, download_jets=True
+                )
+                jets = values.pop("ao_jets")
+                yield (
+                    np.arange(tile.begin, tile.begin + len(tile.weights)),
+                    None,
+                    tile.weights,
+                    jets,
+                    values,
+                )
+        elif self.spatial is None:
             for tile in _tiles(self.grid, self.tile_points):
                 jets = self.basis.evaluate(tile.points, order, budget_bytes=MAX_BYTES)
                 yield (
@@ -236,15 +305,31 @@ class PreparedXCContractions:
                     tile.features,
                 )
 
-    def execute(self, density, *, delta_density=None):
-        """Execute one fixed-density request without caching numerical tile data."""
+    def execute(self, density, *, delta_density=None, stamp=None, route="auto"):
+        """Execute fixed-density XC; the optional CUDA owner requires DensitySource.
+
+        Supply the current consumer stamp for CUDA D/C collocation. Entire
+        executions hold the borrowed owner's lock, isolating concurrent source
+        uploads. GPU failures propagate; no CPU collocation retry is implicit.
+        """
         # There is no yield to user code during execution. Hold the borrowed
         # CPU map lock so reconfiguration cannot mix old AO maps with new
         # points between collocation and contraction.
-        with self._lock, nullcontext() if self.spatial is None else self.spatial._lock:
+        with self._lock, ExitStack() as leases:
+            if self.spatial is not None:
+                leases.enter_context(self.spatial._lock)
+            if self.density_grid is not None:
+                leases.enter_context(self.density_grid._lock)
             self._check()
             started = perf_counter()
-            d = spin_densities(density, self.basis.nao)
+            if self.density_grid is not None:
+                if not isinstance(density, DensitySource):
+                    raise TypeError("CUDA XC collocation requires DensitySource")
+                d = density.density
+            else:
+                if stamp is not None or route != "auto":
+                    raise ValueError("density source options require CUDA collocation")
+                d = spin_densities(density, self.basis.nao)
             observable = self.program.contract.request.observable
             if observable != "response" and delta_density is not None:
                 raise ValueError("density direction requires a response request")
@@ -260,6 +345,10 @@ class PreparedXCContractions:
                 raise UnsupportedXC(
                     "unpolarized native XC requires equal spin matrices and directions"
                 )
+            if self.density_grid is not None:
+                before_metrics = self.density_grid.metrics()
+                self.density_grid.set_source(density, stamp=stamp, route=route)
+                self._execution_stamp = stamp
             nspin = 2 if self.program.spec.spin == "polarized" else 1
             result = {"energy": 0.0, "electrons": np.zeros(2)}
             if observable in ("potential", "response"):
@@ -280,6 +369,7 @@ class PreparedXCContractions:
                     ],
                 )
             tiles = evaluated_tiles = 0
+            cpu_contraction_seconds = 0.0
             for ids, active, quadrature, jets, features in self._collocation(d):
                 self._check()
                 if active is not None and len(active) == 0:
@@ -300,6 +390,7 @@ class PreparedXCContractions:
                         ao_atoms=ao_atoms if active is None else ao_atoms[active],
                         natom=self.basis.natom,
                     )
+                contraction_started = perf_counter()
                 values = (
                     self.program.potential_tile(jets, features, quadrature)
                     if observable == "potential" and features is not None
@@ -320,6 +411,7 @@ class PreparedXCContractions:
                     centers += partials.centers
                     points[ids] = partials.points
                     weights[ids] = partials.weights
+                cpu_contraction_seconds += perf_counter() - contraction_started
                 tiles += 1
             self._check()
             if not np.isfinite(result["energy"]):
@@ -371,6 +463,58 @@ class PreparedXCContractions:
                     "matrix_assembly_products",
                 )
             )
+            if self.density_grid is not None:
+                cuda = self.density_grid
+                after_metrics = cuda.metrics()
+                count = (
+                    2
+                    if cuda.source_kind == "density_matrix"
+                    else sum(
+                        (n + cuda.plan.orbital_tile - 1) // cuda.plan.orbital_tile
+                        for n in cuda.source_statistics["occupied_counts"]
+                    )
+                )
+                # GGA's orbital route needs value plus three derivative Psi
+                # products. Its D route needs only Phi*D when tau is omitted.
+                panels = (
+                    (4 if any(k != "rho" for k in cuda.ingredients) else 1)
+                    if cuda.source_kind == "orbitals"
+                    else (4 if "tau" in cuda.ingredients else 1)
+                )
+                self.statistics["density_matrix_products"] = (
+                    0
+                    if cuda.source_kind == "orbitals"
+                    else evaluated_tiles * count * panels
+                )
+                self.statistics["orbital_matrix_products"] = (
+                    evaluated_tiles * count * panels
+                    if cuda.source_kind == "orbitals"
+                    else 0
+                )
+                self.statistics["total_matrix_products"] = (
+                    self.statistics["density_matrix_products"]
+                    + self.statistics["orbital_matrix_products"]
+                    + self.statistics["matrix_assembly_products"]
+                )
+                self.statistics.update(
+                    collocation_backend="cuda",
+                    xc_backend="native_cpu",
+                    cpu_contraction_seconds=cpu_contraction_seconds,
+                    source=dict(cuda.source_statistics),
+                    native_metrics=after_metrics,
+                    device_seconds={
+                        k: (after_metrics[k] - before_metrics[k]) / 1000
+                        for k in (
+                            "kernel_ms",
+                            "library_ms",
+                            "packing_ms",
+                            "input_ms",
+                            "output_ms",
+                        )
+                    },
+                    planned_device_peak_bytes=self.resource_plan.peak_bytes["device"],
+                )
+            self.statistics["seconds"] = perf_counter() - started
             return result
 
     def close(self):
