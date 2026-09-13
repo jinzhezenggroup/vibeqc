@@ -357,3 +357,31 @@ def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
             next(iterator)
         monkeypatch.setattr(spatial._cuda, "_call", native_call)
         assert list(spatial.iter_features(source, stamp=source.stamp))
+
+
+def test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock(
+    artifact, local_case
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    basis, grid, _ = local_case
+    source = factors(basis, (7, 5))
+    with (
+        owner(basis, grid, artifact) as spatial,
+        PreparedXCContractions(
+            program("PBE", "polarized"), basis, grid, spatial=spatial
+        ) as endpoint,
+        ThreadPoolExecutor(1) as pool,
+    ):
+        with spatial.device_tasks(source, stamp=source.stamp) as tasks:
+            next(tasks)
+            future = pool.submit(endpoint.execute, source, stamp=source.stamp)
+            try:
+                with pytest.raises(RuntimeError, match="lease"):
+                    future.result(timeout=3)
+            finally:
+                # Release CUDA before the outer spatial close even on a
+                # timeout, so a regressed implementation fails without hanging
+                # the test runner while it shuts down the competing thread.
+                tasks.close()
+        assert np.isfinite(endpoint.execute(source, stamp=source.stamp)["energy"])

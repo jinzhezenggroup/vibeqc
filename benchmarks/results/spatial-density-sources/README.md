@@ -43,7 +43,12 @@ remains explicit; no allowance was relaxed. Routine logs/builds stay untracked.
 
 This completes the local/prepared fixed-density slice of #235 C. Native SCF
 producer provenance, full forces and automatic selection remain #162/#163/#168.
-The publishing commit adds only evidence/retention metadata to the measured code.
+The evidence commit adds only retention metadata to the measured code. A later
+lease-order fix rejects borrowed spatial tasks before waiting for their CUDA lock;
+it changes no numerical arithmetic. Its source hashes, 154-test GPU replay,
+61 related CPU tests and both sanitizer checks on the two new concurrency nodes
+are retained separately in verification.json. The original timing revision
+remains explicit.
 The compact 1.48 MB envelope retains all 960 full-cost samples, 96 resource plans
 and 444 numerical block gates; its exact bytes have a scientific size-review
 exception in `benchmarks/evidence-policy.json`.

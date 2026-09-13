@@ -551,5 +551,62 @@
     },
     "legacy_production_path_removed": false,
     "retained_duplicate_reason": "none"
+  },
+  "lease_order_followup": {
+    "scope": "Reject an active spatial device-task lease before waiting for its CUDA lock; no numerical kernel or contraction changes.",
+    "source_files": {
+      "python/vibeqc_compiler/xc/prepared.py": "3da93e8b8fbc8575858223e01a12123733aa7dcb749949812271386047cb826c",
+      "tests/python/test_spatial_density_cuda.py": "097ca1b26d2e06d6cf01c3b6af9537d8daf9b96a02f0f82816f206a980ec7107"
+    },
+    "gpu": {
+      "passed": 154,
+      "seconds": 8.77,
+      "log_sha256": "409e87066453e517732159f985e2828eaf7b47788b872278c42fe51b321b4c72",
+      "transient_path": ".artifacts/gpu-lock-fix.log"
+    },
+    "cpu": {
+      "passed": 61,
+      "seconds": 9.31,
+      "log_sha256": "6ba58c2cb5a88fec54b1a6c06a2440425c326502767a221b080411a7a4588775",
+      "transient_path": ".artifacts/cpu-lock-fix.log"
+    },
+    "sanitizers": [
+      {
+        "tool": "memcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[cartesian]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.96,
+        "log_sha256": "2cb21d4ceb101925e1ac6ab5544af515722459e4fa34460fab231ab37587cf62",
+        "transient_path": ".artifacts/memcheck-lock-cartesian.log"
+      },
+      {
+        "tool": "memcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[spherical]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/memcheck-lock-spherical.log"
+      },
+      {
+        "tool": "initcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[cartesian]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/initcheck-lock-cartesian.log"
+      },
+      {
+        "tool": "initcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[spherical]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/initcheck-lock-spherical.log"
+      }
+    ]
   }
 }

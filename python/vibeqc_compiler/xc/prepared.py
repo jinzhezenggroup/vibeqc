@@ -351,6 +351,10 @@ class PreparedXCContractions:
         with self._lock, ExitStack() as leases:
             if self.spatial is not None:
                 leases.enter_context(self.spatial._lock)
+                # A device task holds the CUDA lock while its outer context
+                # needs the spatial lock to close. Reject its lease before
+                # waiting on CUDA, otherwise those two threads can deadlock.
+                self.spatial._check()
             if self.density_grid is not None:
                 leases.enter_context(self.density_grid._lock)
             self._check()
