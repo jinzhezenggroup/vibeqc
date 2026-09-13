@@ -44,11 +44,6 @@ struct Jet {
     out.d[index] = 1.0;
     return out;
   }
-  VIBEQC_XC_HD static Jet variable(double value, unsigned index, double derivative) {
-    Jet out(value);
-    out.d[index] = derivative;
-    return out;
-  }
 };
 VIBEQC_XC_HD inline Jet operator+(const Jet& a, const Jet& b) {
   Jet out(a.v + b.v);
@@ -244,10 +239,6 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
   if (!detail::finite(scale)) out.valid = false;
   if (!out.valid || scale == 0.0) return out;
   using detail::Jet;
-  double gradient_scale = scale;
-  for (unsigned s = 0; s < 2; ++s)
-    for (unsigned k = 0; k < 3; ++k)
-      gradient_scale = ::fmax(gradient_scale, ::fabs(gradient[s][k]));
   const Jet a = Jet::variable(rho[0] / scale, 0), b = Jet::variable(rho[1] / scale, 1);
   // Correlation depends only on the total gradient. Sum before normalizing
   // to retain cancellation between large opposite spin gradients. If a sum
