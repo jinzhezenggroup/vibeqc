@@ -57,7 +57,12 @@ measures differ by more than `1e-4`. It also checks pre-run unavailability,
 nonconverged-run availability, ABI rejection, NULL availability probes and
 stale-record invalidation after a failed backend execution. Python tests
 cover converged zero residuals, unsupported HF diagnostics and older native
-libraries without the new symbol.
+libraries without the new symbol. The C++ wrapper exposes the same named
+measures and preserves its legacy alias. After integrating concurrent author
+changes, all 24 native tests passed again, including the C++ wrapper, and
+all 32 CPU calculator tests passed (3 skipped). A batch consumer compiled
+against the previous `c08927e` C header also passed against the rebuilt
+library; both scalar and batch descriptor layouts remain unchanged.
 
 ## Matching-grid SCF endpoints
 
@@ -77,10 +82,10 @@ density, before any subsequent density proposal is accepted.
 
 All six native and independent endpoints pass the `1e-8 Eh` energy and
 `1e-9` physical-residual gates. The current clean-source run is bound to
-`a205196d99549e456f6991d54a70ed23630ee8cf`, with the complete raw numerical JSON
+`9d43a84a2780c4df9fc63050ea513812b95e00b3`, with the complete raw numerical JSON
 [versioned in the repository](../../../benchmarks/results/uks-pr305-20260914/endpoints.json)
 and SHA-256
-`a611aea24ede52e5a681224eb697e188a5610f06307e1fa6dbf378bbb10f493c`.
+`48184b07922233b841ebf0ea93267d17590aa26ad26fb4343af1df0c5d82ce4f`.
 Validator SHA-256:
 `ab6ef01e05cf4d3a728c3558cb68c7742b7a7b4ef892dff1810652e07dcbeafd`.
 The [accepted record](../../../benchmarks/results/uks-pr305-20260914/README.md)

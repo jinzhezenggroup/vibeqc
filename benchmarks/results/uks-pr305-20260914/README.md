@@ -8,13 +8,13 @@ identity and software provenance. Reproduction does not depend on a local
 workstation file or an expiring artifact. This preserves the validator's
 existing `vibeqc.uks-endpoint-validation` schema without reinterpreting gates.
 
-- Measured clean source: `a205196d99549e456f6991d54a70ed23630ee8cf`.
+- Measured clean source: `9d43a84a2780c4df9fc63050ea513812b95e00b3`.
 - Numerical identity: `semilocal-scaled-v1/pbe-spin-c2-1e-18`; CPU FP64,
   conventional total-density J, energy-only.
 - Validator: `tools/validate_uks_endpoints.py`, SHA-256
   `ab6ef01e05cf4d3a728c3558cb68c7742b7a7b4ef892dff1810652e07dcbeafd`.
 - Record SHA-256:
-  `a611aea24ede52e5a681224eb697e188a5610f06307e1fa6dbf378bbb10f493c`.
+  `48184b07922233b841ebf0ea93267d17590aa26ad26fb4343af1df0c5d82ce4f`.
 - GCC 11.4 Release build; Python 3.13.9, NumPy 2.5.3, PySCF 2.14.0,
   Libxc 7.0.0; one OMP/OpenBLAS thread. Full platform details are in the JSON.
 - The identical GridSpec-v1 grids each have 49,152 points. Atomic inputs and

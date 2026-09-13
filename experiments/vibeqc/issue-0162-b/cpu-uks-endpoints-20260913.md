@@ -2,7 +2,7 @@
 
 Date: 2026-09-13
 
-The latest source is `a205196d99549e456f6991d54a70ed23630ee8cf`, which also
+The latest source is `9d43a84a2780c4df9fc63050ea513812b95e00b3`, which also
 fixes extreme-spin exchange underflow, large-gradient correlation overflow
 and stationary OH occupation cycles. Its clean-source endpoint rerun passes
 all six cases and is recorded in
