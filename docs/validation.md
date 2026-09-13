@@ -45,8 +45,8 @@ agree within the recorded `1e-8 Eh` threshold. The evidence is summarized in
 The PBE endpoint details and remote environment are recorded in
 `experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`. These records
 establish only the small closed-shell endpoint cases. The independent CPU UKS
-record in `experiments/vibeqc/issue-0162-b/cpu-uks-endpoints-20260913.md`
-covers the H2- doublet and fully polarized H2+ with LDA/PBE on the same
+record in `experiments/vibeqc/issue-0162-b/pr305-corrections-20260913.md`
+covers H2-, fully polarized H2+ and the OH doublet with LDA/PBE on the same
 GridSpec-v1 prescription. None of these records establish quadrature
 convergence, gradients, batching or GPU execution.
 

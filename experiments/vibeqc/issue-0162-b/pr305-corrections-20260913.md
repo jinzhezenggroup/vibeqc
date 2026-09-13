@@ -24,6 +24,12 @@ convergence decision.
   and nonzero spin gradients, the smallest positive FP64 minority density,
   and the numerical branch connection are covered.
 - All 23 CPU native CTest cases passed, including the point-fixture case.
+- Linear OH/STO-3G at 1.8 bohr exhausted 200 LDA iterations on `8f24e9a`
+  despite stationary energy/residual, with density RMS fixed at `1/6`.
+  The expanded returned-state regression fails on that library and passes
+  after occupation stabilization. The corrected public LDA endpoint converges
+  in 17 iterations. Both OH LDA/PBE tests rebuild the unshifted energy and
+  residual and verify spin traces plus `DSD=D`; all original gates remain.
 - Related Python validation: **146 passed, 3 skipped, 25 deselected** using
   `test_calculator.py`, `test_xc_integration.py`, `test_grid_cpu.py`, and
   `test_xc_expressions.py`, with `-k 'not cuda and not gpu'`.
@@ -44,18 +50,31 @@ density, before any subsequent density proposal is accepted.
 | H2- doublet | PBE UKS | 1.344e-13 | 8.776e-12 |
 | H2+ fully polarized | LDA UKS | 2.409e-14 | 2.776e-16 |
 | H2+ fully polarized | PBE UKS | 1.058e-9 | 5.551e-17 |
+| OH doublet | LDA UKS | 9.948e-14 | 3.356e-11 |
+| OH doublet | PBE UKS | 2.700e-13 | 3.134e-11 |
 
-All four native and independent endpoints pass the `1e-8 Eh` energy and
+All six native and independent endpoints pass the `1e-8 Eh` energy and
 `1e-9` physical-residual gates. The current clean-source run is bound to
-`f80bda94859d6f51ec7f4928fd17fd8dc2066d06`, with the retained raw JSON at
-`/home/jzzeng/codes/vibeqc-pr305-extreme-spin-endpoints-20260913.json` and SHA-256
-`f2e22f9c5a766ac3c1d6f97c9935a453626c3073142164159f958f1ca630bfca`.
+`cf256aecd528a7f434754f7996468827ce1144d2`, with the retained raw JSON at
+`/home/jzzeng/codes/vibeqc-pr305-final-endpoints-20260914.json` and SHA-256
+`9669839b95612dad3f45ea7cb30a04a32a753e7143e185a774fa6632783fee9f`.
+Validator SHA-256:
+`0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3`.
 The earlier remote run at `d0b5862` remains documented in
 [`cpu-uks-endpoints-20260913.md`](cpu-uks-endpoints-20260913.md) as lineage;
-the newer run additionally validates the extreme-spin exchange correction.
+the newer run additionally validates the extreme-spin and OH corrections.
 The high precision point oracle explicitly
 differentiates the documented spin extension; Libxc uses its own empty-spin
 screening convention.
+
+The OH independent consumer uses PySCF's exact `C2v` molecular/grid subgroup
+with its own `minao` seed to resolve pi orientation; no native density or
+Fock is supplied. Unconstrained PySCF PBE DIIS stalled in the nearly flat pi
+rotation and did not meet the reference residual gate. The accepted symmetry
+run is checked against the **full unrestricted AO commutator**, including
+the omitted rotations: independent residuals are `1.114e-12` (LDA) and
+`4.524e-12` (PBE). Thus no energy or residual gate is loosened to accept the
+reference. The native endpoint has no imposed point-group constraint.
 
 The current matched-grid acceptance run used a GCC 11.4 Release CPU build,
 Python 3.13.9, NumPy 2.5.3, PySCF 2.14.0 and Libxc 7.0.0. The point-fixture
