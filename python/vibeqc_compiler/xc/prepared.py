@@ -57,6 +57,36 @@ class PreparedXCContractions:
         spatial=None,
         density_grid=None,
     ):
+        # Reconfiguration publishes several related fields under this lock.
+        # Keep validation, identity capture and resource composition in one
+        # snapshot so a consumer cannot bind old quadrature to a new owner.
+        with ExitStack() as leases:
+            if spatial is not None:
+                if not isinstance(spatial, PreparedSpatialGrid):
+                    raise TypeError("expected PreparedSpatialGrid")
+                leases.enter_context(spatial._lock)
+            self._initialize(
+                program,
+                basis,
+                grid,
+                tile_points=tile_points,
+                resource_budget=resource_budget,
+                spatial=spatial,
+                density_grid=density_grid,
+            )
+
+    def _initialize(
+        self,
+        program,
+        basis,
+        grid,
+        *,
+        tile_points,
+        resource_budget,
+        spatial,
+        density_grid,
+    ):
+        """Capture the complete borrowed configuration under its spatial lock."""
         if not isinstance(program, NativeContractionProgram) or not isinstance(
             basis, NativeAO
         ):
@@ -71,8 +101,6 @@ class PreparedXCContractions:
             raise ValueError("stale molecular grid for XC contraction")
         checked_int(tile_points, "XC contraction tile points")
         if spatial is not None:
-            if not isinstance(spatial, PreparedSpatialGrid):
-                raise TypeError("expected PreparedSpatialGrid")
             spatial._check()
             if density_grid is not None:
                 raise ValueError("spatial owns its collocation; omit density_grid")
@@ -130,6 +158,9 @@ class PreparedXCContractions:
         self.budget = resource_budget or ResourceBudget()
         self._lock, self._closed = threading.RLock(), False
         self._mask = None if spatial is None else spatial.tasks.identity
+        self._spatial_resources = (
+            None if spatial is None else spatial.resource_plan.identity
+        )
         self._signature = (
             program.contract.identity,
             canonical_hash(program.metadata),
@@ -248,6 +279,8 @@ class PreparedXCContractions:
             raise ValueError("stale XC contraction or spatial mask identity")
         if self.spatial is not None:
             self.spatial._check()
+            if self.spatial.resource_plan.identity != self._spatial_resources:
+                raise ValueError("stale spatial resource contract")
             if self.spatial._cuda is not self.density_grid:
                 raise ValueError("stale spatial CUDA owner; prepare a new XC consumer")
         if self._density_contract() != self._density_signature:

@@ -195,7 +195,7 @@ def test_spatial_source_lifetime_fallback_and_device_leases(
     source = factors(basis, (basis.nao + 3, 5))
     with owner(basis, grid, artifact) as spatial:
         for stamp in (None, replace(source.stamp, density_generation=7)):
-            with pytest.raises(ValueError, match="stamp|stale"):
+            with pytest.raises(ValueError, match=r"stamp|stale"):
                 next(spatial.iter_features(source, stamp=stamp))
         iterator = spatial.iter_features(source, stamp=source.stamp)
         next(iterator)

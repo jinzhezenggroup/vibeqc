@@ -14,16 +14,16 @@
       "sha256": "8ee057ca2456f0da9cf97de10d9ee52d9291d18b7fe0203a11eb5be2ad7e1e31"
     },
     {
-      "bytes": 23403,
+      "bytes": 24421,
       "path": "verification.json",
       "role": "summary",
-      "sha256": "a392bdc3fc14e528795743403e1c6babc7f2757d16c9e3d1e7ec9aca4a381063"
+      "sha256": "24b7453f05430604a622b559c1a02083579980950daf5f1b35c21edbc99907d9"
     },
     {
-      "bytes": 3703,
+      "bytes": 3943,
       "path": "README.md",
       "role": "summary",
-      "sha256": "71a62498ce175f65045cd440aadb348bc8145b6390be326d74339eccd010115d"
+      "sha256": "52a3e4b6c8170981309fc3b28bf6a46f4906fc4dffbfe48e1ff942f59828371a"
     }
   ],
   "reproduction": {

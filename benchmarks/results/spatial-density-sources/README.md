@@ -49,6 +49,9 @@ it changes no numerical arithmetic. Its source hashes, 154-test GPU replay,
 61 related CPU tests and both sanitizer checks on the two new concurrency nodes
 are retained separately in verification.json. The original timing revision
 remains explicit.
+A subsequent review fix takes the entire constructor snapshot under the spatial
+lock and invalidates a consumer when same-mask resource capacities change. Its
+65 CPU and 154 GPU regression results and exact source hashes are also retained.
 The compact 1.48 MB envelope retains all 960 full-cost samples, 96 resource plans
 and 444 numerical block gates; its exact bytes have a scientific size-review
 exception in `benchmarks/evidence-policy.json`.

@@ -608,5 +608,25 @@
         "transient_path": ".artifacts/initcheck-lock-spherical.log"
       }
     ]
+  },
+  "spatial_snapshot_followup": {
+    "scope": "Construct XC under the borrowed spatial lock; bind the captured resource-plan identity so same-mask capacity changes invalidate old consumers. No CUDA/math changes.",
+    "source_files": {
+      "python/vibeqc_compiler/xc/prepared.py": "5b0822069baeef0720b55d9e29d09e62664d973a04e1c017943304274a290849",
+      "tests/python/test_spatial_density_plan.py": "0287c0c464605e3a744d8bd45f10a33162f89847f4faf7baf1eb94de07be04d7",
+      "tests/python/test_spatial_density_cuda.py": "65ced27aff0bd62e5ceb18588f717e2d8c438a32d07ad390e218621cbc82a070"
+    },
+    "cpu": {
+      "passed": 65,
+      "seconds": 9.66,
+      "transient_path": ".artifacts/cpu-snapshot-fix.log",
+      "log_sha256": "fa68a9e1064d9a1b3c92e751632d3cecaddb6196a9e38a5b2787017db6ea26c7"
+    },
+    "gpu": {
+      "passed": 154,
+      "seconds": 8.98,
+      "transient_path": ".artifacts/gpu-snapshot-fix.log",
+      "log_sha256": "22dbc060f741171ca07a736baff98421218304a1656635d2d64ad2c6a568bd24"
+    }
   }
 }
