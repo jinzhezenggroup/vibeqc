@@ -176,15 +176,30 @@ def feature_cases(artifact, errors):
 
 
 @contextmanager
-def endpoint_owner(basis, grid, artifact, native, ingredients, budget, mode):
+def endpoint_owner(
+    basis,
+    grid,
+    artifact,
+    native,
+    ingredients,
+    budget,
+    mode,
+    *,
+    tile_points=7,
+    orbital_tile=3,
+    region_points=11,
+    orbital_capacity=None,
+):
     """Compose either existing dense or fixed-mask spatial CUDA ownership."""
     with ExitStack() as stack:
         settings = {
-            "orbital_capacity": (basis.nao,) * 2,
-            "orbital_tile": 3,
+            "orbital_capacity": (basis.nao,) * 2
+            if orbital_capacity is None
+            else orbital_capacity,
+            "orbital_tile": orbital_tile,
             "ingredients": ingredients,
             "resource_budget": budget,
-            "tile_points": 7,
+            "tile_points": tile_points,
         }
         spatial = None
         if mode == "dense":
@@ -200,7 +215,7 @@ def endpoint_owner(basis, grid, artifact, native, ingredients, budget, mode):
                     backend="cuda",
                     artifact=artifact,
                     policy=SpatialPolicy(
-                        region_points=11,
+                        region_points=region_points,
                         screening=mode,
                         cutoff=0 if mode == "off" else 1e-4,
                     ),
@@ -443,7 +458,14 @@ def main():
         action="store_true",
         help="measure prepared unscreened and screened local D/C XC",
     )
+    parser.add_argument(
+        "--workload-matrix",
+        type=Path,
+        help="hash-checked larger independent SCF-state fixtures",
+    )
     args = parser.parse_args()
+    if args.workload_matrix and args.spatial:
+        raise ValueError("workload matrix already declares its dense/local modes")
     if (
         not os.environ.get("SLURM_JOB_ID")
         or os.environ.get("SLURM_JOB_PARTITION") != "main"
@@ -468,12 +490,23 @@ def main():
     report = new_evidence(
         tier="endpoint",
         subject=(
-            "#235 C1 prepared spatial D/C density and CPU XC E/V"
+            "#235 C3 registered larger D/C workload and replica throughput"
+            if args.workload_matrix
+            else "#235 C1 prepared spatial D/C density and CPU XC E/V"
             if args.spatial
             else "#235 B bounded GPU D/C density and CPU XC E/V"
         ),
         inputs_hash=canonical_hash(
             {
+                **(
+                    {
+                        "workload_matrix": file_hash(
+                            args.workload_matrix / "manifest.json"
+                        )
+                    }
+                    if args.workload_matrix
+                    else {}
+                ),
                 "features": NAMES,
                 "endpoints": CASES,
                 "functionals": FUNCTIONALS,
@@ -520,8 +553,27 @@ def main():
         "samples_per_route": args.samples,
         "collocation_backend": "cuda",
         "xc_backend": "native_cpu",
-        "tile_points": 7,
-        "orbital_tile": 3,
+        "tile_points": 256 if args.workload_matrix else 7,
+        "orbital_tile": 16 if args.workload_matrix else 3,
+        **(
+            {
+                "workload_matrix": {
+                    "manifest_sha256": file_hash(
+                        args.workload_matrix / "manifest.json"
+                    ),
+                    "runner_sha256": file_hash(
+                        ROOT / "tools/density_workload_matrix.py"
+                    ),
+                    "region_points": 512,
+                    "local_cases": ["water4_svp", "water8_svp"],
+                    "screened_cutoff": 1e-4,
+                    "batch_sizes": [1, 4],
+                    "batch_execution": "serial independent replica states through one shared prepared owner",
+                }
+            }
+            if args.workload_matrix
+            else {}
+        ),
         **(
             {
                 "spatial_modes": ("off", "absolute_ao_jet"),
@@ -567,21 +619,37 @@ def main():
     for stage in ("representation", "source", "compilation"):
         report["stages"][stage] = outcome("pass")
     report["feature_cases"] = feature_cases(artifact, report["block_errors"])
-    report["endpoint_cases"] = endpoint_cases(
-        artifact,
-        programs,
-        args.samples,
-        report["block_errors"],
-        report["timings"],
-        spatial=args.spatial,
-    )
-    endpoint_count = 96 if args.spatial else 48
-    if (
-        len(report["endpoint_cases"]) != endpoint_count
-        or len(report["timings"]) != 2 * endpoint_count * args.samples
-        or len(report["block_errors"]) != 60 + 4 * endpoint_count
-    ):
-        raise AssertionError("incomplete acceptance inventory")
+    if args.workload_matrix:
+        from tools.density_workload_matrix import measure_matrix, validate_matrix_errors
+
+        report["endpoint_cases"], report["batch_cases"] = measure_matrix(
+            args.workload_matrix,
+            artifact,
+            programs,
+            args.samples,
+            report["block_errors"],
+            report["timings"],
+        )
+        endpoint_count = 36
+        if len(report["timings"]) != 2 * (endpoint_count + 12) * args.samples:
+            raise AssertionError("incomplete registered workload timing inventory")
+        validate_matrix_errors(report["block_errors"])
+    else:
+        report["endpoint_cases"] = endpoint_cases(
+            artifact,
+            programs,
+            args.samples,
+            report["block_errors"],
+            report["timings"],
+            spatial=args.spatial,
+        )
+        endpoint_count = 96 if args.spatial else 48
+        if (
+            len(report["endpoint_cases"]) != endpoint_count
+            or len(report["timings"]) != 2 * endpoint_count * args.samples
+            or len(report["block_errors"]) != 60 + 4 * endpoint_count
+        ):
+            raise AssertionError("incomplete acceptance inventory")
     if args.spatial and not any(
         0 < n < row["nao"]
         for row in report["endpoint_cases"]
@@ -591,11 +659,12 @@ def main():
     report["stages"]["numerical"] = outcome("pass", independent_feature_fixtures=6)
     report["stages"]["endpoint"] = outcome("pass", identical_grid_cases=endpoint_count)
     report["stages"]["production"] = outcome(
-        "not-run", "#235 C native SCF/forces and #168 selector remain separate"
+        "not-run",
+        "native CPU SCF integration is separately validated in #302; complete forces and #168 selector promotion remain separate",
     )
     report["performance"] = outcome(
         "not-run",
-        "small fixed-density diagnostic samples do not establish an endpoint winner",
+        "fixed-density diagnostic samples do not establish a complete SCF/force endpoint winner",
     )
     report["memory"] = {
         "allocated_bytes": max(
@@ -612,7 +681,7 @@ def main():
             "--gres=gpu:5090:1",
             "--nodes=1",
             "--ntasks=1",
-            "--time=00:10:00",
+            "--time=00:30:00" if args.workload_matrix else "--time=00:10:00",
             "env",
             "OMP_NUM_THREADS=1",
             "OPENBLAS_NUM_THREADS=1",

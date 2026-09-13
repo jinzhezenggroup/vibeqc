@@ -111,12 +111,10 @@ Native `src/scf/density_factor.hpp` already owns the SCF/RI-K factor contract:
 its integer occupations, exact density witness, native reference/orbital IDs
 and restricted-spin convention remain authoritative there. This CPU external
 reference adds fractional-spin mathematical acceptance without changing native
-SCF semantics. A future #235 C adapter must reuse that producer provenance
-and map restricted occupations explicitly, then compose resources under #203.
-Native SCF integration, geometric derivatives and candidate
-selection under #168 remain slice C. Spatial/prepared integration is described
-below. Neither A nor B supplies a new molecular
-method, solver, force capability or speedup claim.
+SCF semantics. The native CPU RKS adapter in #301 reuses that producer contract
+as described below. GPU SCF, geometric derivatives and automatic candidate
+selection under #168 remain staged integrations. Neither A nor B supplies a new
+molecular method, solver, force capability or speedup claim.
 
 ## Bounded native CUDA execution
 
@@ -293,3 +291,117 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
   --library build/cpu/libvibeqc.so --cache .artifacts/spatial-density-bench-cache \
   --output .artifacts/benchmarks/spatial-density-sources --samples 5
 ```
+
+## Native CPU RKS producer and XC consumer (#301)
+
+`ScfOptions::xc_density_route` is an internal explicit candidate override.
+`DensityMatrix` remains the default, including the public LDA/PBE calculation
+API. `OccupiedOrbitals` runs the same native RKS loop, Coulomb provider, DIIS,
+eigensolver and XC/potential assembly. PBE retains the existing
+`pbe-tail-v2-lda-fallback` model; this change does not promote a pure-PBE tail
+or change its domain. Native UKS and GPU SCF are not supplied by this adapter.
+
+A native run receives a unique basis/reference binding and advances both
+orbital and density generations only after an actual unmixed eigensolver
+state. It packs every occupied column, with the existing restricted occupation
+of two, into an immutable `OccupiedDensityFactor`. B already includes the
+square root of that occupation. The consumer uses the shared generated
+bilinears from `dft/feature_policy.py`; there is no extra spin factor. The
+established native D contraction and XC/potential expressions are preserved.
+The first core-Hamiltonian guess is eligible. External guesses (including
+strict, mixed or normalized warm seeds) have no factor on their first XC
+call, so they execute their current D. Subsequent unmixed iterations can use C.
+Both final physical Fock builds receive the current factor. A nonconverged
+return retains a factor matching the returned next density, without claiming
+that its energy is a converged endpoint.
+
+The synchronous `XcDensitySource` view supplies the expected identity separately
+from its borrowed factor. Each call checks basis dimension, all four identity
+fields, restricted spin and an exact O(NAO²) density witness. It never performs
+a full O(NAO²*nocc) reconstruction for validation. Missing, stale, wrong-spin,
+wrong-basis and changed/mixed witnesses execute the original D and expose a
+specific `XcDensityFallback`. An explicit `Response` role also keeps D, even
+for a positive response. Complex or fractional native factors cannot be
+constructed with the canonical native contract; general fractional real spin
+inputs continue to use the independently validated prepared API. Unvalidated
+geometric C consumers must retain D until #163 supplies their complete role.
+
+Native C collocation reduces each occupied orbital immediately at a point,
+using at most four scalar jets; it allocates no point-by-orbital matrix. LDA
+requests AO values and rho only. PBE requests first AO jets and rho/gradient,
+without tau. The AO tile is bounded (default 256 points), and the potential
+remains a full AO matrix for both routes. `XcDensityDiagnostic` reports actual
+point/AO/occupied counts, requested and executed routes, fallback, output mask,
+maximum tile size, owned AO/potential vector capacity, and separately borrowed
+D/factor capacity.
+
+The factor retains B, occupations and an exact D witness. SCF still owns D
+for Coulomb/convergence; its storage is not eliminated. New orbital states
+reuse the witness to construct the next D, avoiding a second reconstruction
+apart from the existing initial-guess construction. The RKS diagnostic counts
+packed coefficient elements and factor/packing and XC capacity peaks. The
+existing CPU resource observer composes those lifetimes with the prepared
+provider, basis/grid, DIIS and solver buffers, charging borrowed D/factor once.
+These are explicit vector-capacity observations, not RSS or library-private
+allocator peaks and not a new independent budget planner.
+
+`tests/native/test_dft_density_source.cpp` exercises fixed-density LDA and both
+PBE policies, full E/V comparisons, orbital-direction energy derivatives,
+empty occupation, response and invalid-source fallbacks, three point-tile
+sizes, and same-loop H2/two-geometry plus water RKS endpoints. It checks final
+physical commutator residuals (separately from the public legacy density-change
+field), cold/warm starts, fresh run identities, and immutable nonconverged
+snapshots. The water endpoint has five occupied orbitals and requires multiple
+SCF iterations. An exploratory stretched H4/core-guess run did not converge
+with the existing default D solver; it is not accepted endpoint evidence.
+This slice makes no performance or complete-force claim.
+
+## Executable registrations for #168 (#303)
+
+The existing `vibeqc.autotune.dft_density_candidates(prepared, source,
+stamp=source.stamp)` entry returns explicit D and C candidates bound to the
+same current density, functional/output contract, grid, AO mask and resource
+plan. Registration does not search schedules or install a profile. The HF
+profile schema and complete energy-plus-force promotion gate are unchanged.
+
+```python
+from vibeqc.autotune import dft_density_candidates
+
+d, c = dft_density_candidates(prepared_xc, current, stamp=current.stamp)
+value, execution = d.execute(stamp=current.stamp)
+if c.available:
+    candidate_value, candidate_execution = c.execute(stamp=current.stamp)
+```
+
+Every replay requires the current consumer stamp. Prepared execution retains
+its existing lock order and stale geometry/mask/capacity checks; returned
+statistics are detached while holding the XC owner's lock. Source uploads or
+GPU failures propagate and cannot be recorded as successful fallback timings.
+The descriptor includes actual route, point count, active-AO distribution,
+all supplied orbital columns, requested ingredients/output, AO order, point
+and orbital tiles, resource identity/capacity and packing/transfer statistics.
+The `g*m*m` and `g*m*nocc` quantities are explanatory feature-cost inputs only;
+AO potential construction and total XC cost remain explicit.
+
+Response registrations additionally require `delta_density=...` in the factory.
+Its normalized spin blocks are copied into immutable storage and hashed into
+the workload. `execute(stamp=...)` reuses that bound direction; changing the
+perturbation requires a new registration and cannot reuse a timing identity.
+
+A missing, stale, invalid or over-capacity factor leaves the registered D
+candidate usable. C is marked unavailable for the current CPU prepared
+consumer, response densities, and geometric/response derivative requests.
+Its D sibling executes the existing analytic derivative consumer on the
+original D. Those geometric results are fixed-D AO-center/point/weight
+partials, not complete stationary nuclear forces. Complete moving-grid DFT
+forces remain #163; the registration makes no unvalidated C derivative claim.
+The internal native CPU RKS candidates described above use the same loop and
+are measured separately from the GPU-feature/fixed-density XC registration.
+
+The larger reference matrix and reproduction commands are in
+[the candidate evidence directory](../benchmarks/results/density-candidates/README.md).
+It retains actual independent RKS/UKS orbital states, compact larger bases,
+extended water-like systems, explicit diffuse shells, and both single-system
+latency and serial four-state throughput. All fixed-grid E/V measurements
+include GPU features, transfers, native CPU XC and potential assembly. No
+universal D/C winner or complete energy-plus-force promotion is inferred.

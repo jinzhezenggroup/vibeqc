@@ -5,6 +5,8 @@
 #include <limits>
 #include <stdexcept>
 
+#include "runtime/resource_usage.hpp"
+
 namespace vibeqc::scf {
 namespace {
 bool valid_identity(DensityFactorIdentity identity) {
@@ -55,6 +57,10 @@ bool OccupiedDensityFactor::matches(DensityFactorIdentity identity, DensityFacto
                                     std::span<const double> density) const noexcept {
   return identity == identity_ && spin == spin_ && density.size() == density_.size() &&
          std::equal(density.begin(), density.end(), density_.begin());
+}
+
+std::size_t OccupiedDensityFactor::numeric_capacity_bytes() const noexcept {
+  return runtime::vector_capacities(values_, occupations_, density_);
 }
 
 std::optional<std::vector<double>> occupied_density_fitting_exchange(

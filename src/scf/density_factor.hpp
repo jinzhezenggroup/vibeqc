@@ -44,6 +44,8 @@ class OccupiedDensityFactor {
   std::span<const double> values() const noexcept { return values_; }
   std::span<const double> occupations() const noexcept { return occupations_; }
   std::span<const double> density() const noexcept { return density_; }
+  /** Owned B, occupations and exact D witness capacities, for composed plans. */
+  std::size_t numeric_capacity_bytes() const noexcept;
   /** Exact witness comparison rejects stale, damped, mixed or external D.
    * Different floating-point construction orders conservatively fall back;
    * dimensions or generation labels alone never establish density equality.

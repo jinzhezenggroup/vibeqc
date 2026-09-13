@@ -1,0 +1,406 @@
+{
+  "schema": "vibeqc.density-workload-reference.v1",
+  "inputs": {
+    "name": "oh_minus_diffuse",
+    "basis_name": "def2-svp",
+    "atomic_numbers": [
+      8,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.1,
+        0.2,
+        1.82
+      ]
+    ],
+    "basis_representation": "real_spherical",
+    "charge": -1,
+    "multiplicity": 1,
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            2266.1767785,
+            -0.0053431809926
+          ],
+          [
+            340.87010191,
+            -0.03989003923
+          ],
+          [
+            77.363135167,
+            -0.17853911985
+          ],
+          [
+            21.47964494,
+            -0.46427684959
+          ],
+          [
+            6.6589433124,
+            -0.44309745172
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.80975975668,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.25530772234,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.02,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            17.721504317,
+            0.043394573193
+          ],
+          [
+            3.863550544,
+            0.23094120765
+          ],
+          [
+            1.0480920883,
+            0.51375311064
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.27641544411,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.02,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.01,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      }
+    ],
+    "grid_spec": {
+      "radial_points": 2,
+      "angular_polar": 16,
+      "angular_azimuth": 32,
+      "element_radii": [],
+      "partition_iterations": 3,
+      "coincident_tolerance": 1e-12,
+      "version": 1,
+      "radial_rule": "rational-legendre",
+      "angular_rule": "legendre-trapezoid",
+      "partition": "becke-equal-radius",
+      "pruning": "none",
+      "units": "Bohr",
+      "ordering": "atom-radial-polar-azimuth"
+    }
+  },
+  "inputs_hash": "a518f18a0979ab03753d7d49aa91301b0c966b996b36f62c8b315495fa6503a1",
+  "grid_identity": "d37cf62d98c3b828b2c76804bb08629e11a5df7ed02142ca024148bf55c010d6",
+  "grid_provenance": {
+    "atoms": [
+      {
+        "atomic_number": 8,
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          0.1,
+          0.2,
+          1.82
+        ]
+      }
+    ],
+    "grid_identity": "17b7cdbc11c3f55a65276ecdb10bbbc9a541fcb89dd37ff824115ca0ef8c4db1",
+    "grid_spec": {
+      "angular_azimuth": 32,
+      "angular_polar": 16,
+      "angular_rule": "legendre-trapezoid",
+      "coincident_tolerance": 1e-12,
+      "element_radii": [],
+      "ordering": "atom-radial-polar-azimuth",
+      "partition": "becke-equal-radius",
+      "partition_iterations": 3,
+      "pruning": "none",
+      "radial_points": 2,
+      "radial_rule": "rational-legendre",
+      "units": "Bohr",
+      "version": 1
+    },
+    "units": "Bohr"
+  },
+  "layout": "total",
+  "reference": {
+    "PySCF": "2.14.0",
+    "Libxc": "7.0.0",
+    "exporter_sha256": "3fae4d0d67df3ded3fd327f9afce6c2251bd888501dd0e258a93c8b887329a30",
+    "basis_adapter_sha256": "88b59d85e891edf86405990179723802682f479fc265a91773b088b1ce1b162e",
+    "numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "angular_momenta": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      0,
+      0,
+      0,
+      1
+    ],
+    "producer": "PySCF PBE RKS",
+    "converged": true,
+    "energy": -75.64648406687118,
+    "gradient_norm": 4.303837308891697e-07,
+    "seconds": 0.13200365914963186,
+    "threads": 2,
+    "conv_tol": 1e-10,
+    "conv_tol_grad": 1e-07,
+    "producer_grid_level": 1,
+    "endpoint_scope": "complete fixed-grid E/V on declared coarse radial quadrature; no filtering, clipping or grid convergence claim"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        2048,
+        3
+      ],
+      "dtype": "float64",
+      "sha256": "e441729cacfa678f7360586e1390d12c3d09732ec495c61f8f969c8459ef09ed"
+    },
+    "weights": {
+      "shape": [
+        2048
+      ],
+      "dtype": "float64",
+      "sha256": "348c0e90e446dfbd69871dbc1a29d17e66eed0ca7e4e61962cc58d83871d81d2"
+    },
+    "owners": {
+      "shape": [
+        2048
+      ],
+      "dtype": "uint32",
+      "sha256": "93a9f2ec35e10ebe1383f9cbf03b2f5e7c91e4ad13e849571bb20343130c2049"
+    },
+    "density_spin": {
+      "shape": [
+        2,
+        24,
+        24
+      ],
+      "dtype": "float64",
+      "sha256": "22eee609a91355c85da88e4fea2e4dac9c66044c381d1741bdc02e3795db592c"
+    },
+    "ao_scale": {
+      "shape": [
+        24
+      ],
+      "dtype": "float64",
+      "sha256": "777177c324f2478c7d8777716397f9e675a4ade0c004b52497f70c78009b402e"
+    },
+    "coefficients_0": {
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "float64",
+      "sha256": "3501517e10ba60ff779c7052a7f6722d5535fb31c4e4b4b5daea6fa188490b5f"
+    },
+    "occupations_0": {
+      "shape": [
+        5
+      ],
+      "dtype": "float64",
+      "sha256": "6e91e92205f42beb0df4ddf13cf0af352b29ffd2de9465348cdb1447a324e828"
+    },
+    "coefficients_1": {
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "float64",
+      "sha256": "3501517e10ba60ff779c7052a7f6722d5535fb31c4e4b4b5daea6fa188490b5f"
+    },
+    "occupations_1": {
+      "shape": [
+        5
+      ],
+      "dtype": "float64",
+      "sha256": "6e91e92205f42beb0df4ddf13cf0af352b29ffd2de9465348cdb1447a324e828"
+    },
+    "sample_ids": {
+      "shape": [
+        64
+      ],
+      "dtype": "uint32",
+      "sha256": "e9f2f90eee103aecf1d8a92522c47da252dc9a16f265ce2eab89157522d6bba3"
+    },
+    "sample_jets": {
+      "shape": [
+        4,
+        64,
+        24
+      ],
+      "dtype": "float64",
+      "sha256": "c086dd3d43d4757e6b03fbcb25b0bcf2da5418b9a55456c07eb3f441e94a94c1"
+    },
+    "sample_rho_gradient": {
+      "shape": [
+        2,
+        4,
+        64
+      ],
+      "dtype": "float64",
+      "sha256": "51ac8f9f9a860649cbd4a6addd1331f5ac34fd038e4b285e987e4721fe7cc486"
+    },
+    "LDA_XC_PW_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "df6c8b5eed066cb59c6ce3d4612d89943924e17b01ba4423fc9cea5675579e02"
+    },
+    "LDA_XC_PW_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "ff7ce1b92c0155e56e10e6f9579072bab54d0cfcab5e4a5d1ea12a5013d1981a"
+    },
+    "LDA_XC_PW_potential": {
+      "shape": [
+        24,
+        24
+      ],
+      "dtype": "float64",
+      "sha256": "be796a3c6cc8d268fa1f9f65764ad0060a89da8ab83c1f1c7883b7760640fa24"
+    },
+    "PBE_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "bc244cacf95892a517ebb4ae54084d2b2be72f306fcef722c421d0890d7c1ba1"
+    },
+    "PBE_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "ff7ce1b92c0155e56e10e6f9579072bab54d0cfcab5e4a5d1ea12a5013d1981a"
+    },
+    "PBE_potential": {
+      "shape": [
+        24,
+        24
+      ],
+      "dtype": "float64",
+      "sha256": "069c875772f0b37f4ca2347db78ab84e9afdf1906017dd63937de40afda314f0"
+    }
+  },
+  "identity": "0b27804b5bd32fa0794fc920b74bb5c0d96f5da48df6a4dfd4ce97631fc7beaf"
+}

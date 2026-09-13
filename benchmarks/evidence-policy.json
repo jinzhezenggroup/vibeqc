@@ -15,6 +15,16 @@
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
       "sha256": "3ed5b08cd734735ce6f7a1ad08758010277b8ce560cbf82721e6fd41f4e9d242"
     },
+    "benchmarks/results/density-candidates/gpu/evidence.json": {
+      "owner": "dft-density-sources-235",
+      "reason": "36 larger fixed-input E/V cases and 12 serial four-state cases retain all 480 timing rows, 392 independent/equal-mask block gates, executed candidate identities and two-budget numeric resource plans. No logs or generated binaries.",
+      "sha256": "d62ec2c500cdaee4a639e2d7e99c322742d373be1c82c4e8a091953af9f4684f"
+    },
+    "benchmarks/results/density-candidates/inputs/water8_svp.npz": {
+      "owner": "density-candidates-303",
+      "reason": "Independent current PBE RKS state, bounded AO feature sample and complete fixed-grid LDA/PBE E/V reference for the 192-AO water octamer. Exact arrays and hashes are required to reproduce larger D/C candidate acceptance; no full grid-by-AO/orbital tensor is retained.",
+      "sha256": "6bbba06f3cde3f2ec68517c7fda3e55dec29290b27cf64ee968be7699227fea0"
+    },
     "benchmarks/results/df-derivatives-rtx5090/performance-source.patch.gz": {
       "owner": "df-derivatives-rtx5090",
       "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
