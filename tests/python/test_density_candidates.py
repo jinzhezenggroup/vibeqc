@@ -35,7 +35,14 @@ def test_cpu_registration_keeps_existing_d_consumer(native_factory, observable):
         with PreparedXCContractions(
             native_factory("PBE", observable), basis, grid, tile_points=7
         ) as endpoint:
-            d, c = dft_density_candidates(endpoint, source, stamp=source.stamp)
+            options = (
+                {"delta_density": 0.01 * source.density}
+                if observable == "response"
+                else {}
+            )
+            d, c = dft_density_candidates(
+                endpoint, source, stamp=source.stamp, **options
+            )
             assert d.available and not c.available
             assert c.reason == (
                 "unvalidated_orbital_derivative"
@@ -49,13 +56,8 @@ def test_cpu_registration_keeps_existing_d_consumer(native_factory, observable):
             )
             assert d.workload.occupied_counts == (basis.nao,) * 2
             assert d.describe()["promotion"]["eligible"] is False
-            options = (
-                {"delta_density": 0.01 * source.density}
-                if observable == "response"
-                else {}
-            )
             expected = endpoint.execute(source.density, **options)
-            value, record = d.execute(stamp=source.stamp, **options)
+            value, record = d.execute(stamp=source.stamp)
             compare(value, expected)
             assert (
                 record["requested_route"]
@@ -66,16 +68,52 @@ def test_cpu_registration_keeps_existing_d_consumer(native_factory, observable):
             endpoint.execute(0.9 * source.density, **options)
             assert record["statistics"]["seconds"] == saved
             with pytest.raises(ValueError, match="unavailable"):
-                c.execute(stamp=source.stamp, **options)
+                c.execute(stamp=source.stamp)
             stale = replace(
                 source.stamp, density_generation=source.stamp.density_generation + 1
             )
             with pytest.raises(ValueError, match="stale"):
-                d.execute(stamp=stale, **options)
+                d.execute(stamp=stale)
             with pytest.raises(ValueError, match="stale"):
-                dft_density_candidates(endpoint, source, stamp=stale)
+                dft_density_candidates(endpoint, source, stamp=stale, **options)
         with pytest.raises(RuntimeError, match="closed"):
-            d.execute(stamp=source.stamp, **options)
+            d.execute(stamp=source.stamp)
+
+
+def test_response_candidate_binds_immutable_direction(native_factory):
+    meta, data, grid = load_integration_fixture("h2")
+    with NativeAO(**basis_arguments(meta)) as basis:
+        source = source_for(basis, data)
+        with PreparedXCContractions(
+            native_factory("PBE", "response"), basis, grid
+        ) as endpoint:
+            direction = 0.01 * source.density
+            with pytest.raises(ValueError, match="requires a density direction"):
+                dft_density_candidates(endpoint, source, stamp=source.stamp)
+            original = dft_density_candidates(
+                endpoint, source, stamp=source.stamp, delta_density=direction
+            )[0]
+            expected = endpoint.execute(source.density, delta_density=direction)
+            direction *= (
+                -2
+            )  # Caller changes cannot rewrite the registered perturbation.
+            changed = dft_density_candidates(
+                endpoint, source, stamp=source.stamp, delta_density=direction
+            )[0]
+            assert original.workload.identity != changed.workload.identity
+            assert (
+                original.workload.density_direction
+                != changed.workload.density_direction
+            )
+            value, execution = original.execute(stamp=source.stamp)
+            compare(value, expected)
+            assert execution["workload"] == original.workload.identity
+            value, _ = changed.execute(stamp=source.stamp)
+            np.testing.assert_allclose(
+                value["response"], -2 * expected["response"], atol=1e-11, rtol=1e-10
+            )
+            with pytest.raises(ValueError):
+                original._delta_density.setflags(write=True)
 
 
 def test_registration_rejects_changed_resources_and_wrong_basis(native_factory):
@@ -85,6 +123,10 @@ def test_registration_rejects_changed_resources_and_wrong_basis(native_factory):
         with PreparedXCContractions(
             native_factory("LDA_XC_PW", "potential"), basis, grid
         ) as endpoint:
+            with pytest.raises(ValueError, match="requires a response request"):
+                dft_density_candidates(
+                    endpoint, source, stamp=source.stamp, delta_density=source.density
+                )
             wrong = DensitySource(source.density, basis_identity="a" * 64)
             with pytest.raises(ValueError, match="AO basis"):
                 dft_density_candidates(endpoint, wrong, stamp=wrong.stamp)

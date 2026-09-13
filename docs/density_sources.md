@@ -383,6 +383,11 @@ and orbital tiles, resource identity/capacity and packing/transfer statistics.
 The `g*m*m` and `g*m*nocc` quantities are explanatory feature-cost inputs only;
 AO potential construction and total XC cost remain explicit.
 
+Response registrations additionally require `delta_density=...` in the factory.
+Its normalized spin blocks are copied into immutable storage and hashed into
+the workload. `execute(stamp=...)` reuses that bound direction; changing the
+perturbation requires a new registration and cannot reuse a timing identity.
+
 A missing, stale, invalid or over-capacity factor leaves the registered D
 candidate usable. C is marked unavailable for the current CPU prepared
 consumer, response densities, and geometric/response derivative requests.

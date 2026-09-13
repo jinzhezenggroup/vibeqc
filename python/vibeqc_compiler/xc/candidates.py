@@ -9,11 +9,13 @@ from __future__ import annotations
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
+from hashlib import sha256
 
 import numpy as np
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.density_source import DensitySource, DensityStamp
+from vibeqc_compiler.dft.features import spin_densities
 
 from .prepared import PreparedXCContractions
 
@@ -35,6 +37,7 @@ class DensityWorkload:
     mask: str | None
     source: str
     factor: str | None
+    density_direction: str | None
     functional: str
     spin: str
     observable: str
@@ -90,6 +93,7 @@ class DensityCandidate:
     reason: str | None
     _prepared: PreparedXCContractions = field(repr=False, compare=False)
     _source: DensitySource = field(repr=False, compare=False)
+    _delta_density: np.ndarray | None = field(repr=False, compare=False)
 
     @property
     def identity(self):
@@ -116,7 +120,7 @@ class DensityCandidate:
             },
         }
 
-    def execute(self, *, stamp: DensityStamp, delta_density=None):
+    def execute(self, *, stamp: DensityStamp):
         """Return (XC outputs, detached execution record), with no timing filter.
 
         The owner's reentrant lock covers execution and statistics capture;
@@ -134,7 +138,7 @@ class DensityCandidate:
                 or owner.resource_plan.identity != self.workload.resources
             ):
                 raise ValueError("stale registered XC/resource identity")
-            options = {"delta_density": delta_density}
+            options = {"delta_density": self._delta_density}
             if owner.density_grid is not None:
                 options.update(stamp=stamp, route=self.route)
                 value = owner.execute(self._source, **options)
@@ -155,13 +159,15 @@ class DensityCandidate:
             }
 
 
-def density_candidates(prepared, source, *, stamp):
+def density_candidates(prepared, source, *, stamp, delta_density=None):
     """Register D and C against identical scientific inputs and resource owners.
 
     Geometry/response C derivatives remain unavailable; their D candidate
     executes the existing native derivative consumer. The generated CUDA
     consumer currently supports E/V. Capability checks do not assert numerical
     validity of arbitrary signed D in an XC functional's physical domain.
+    A response request requires its direction at registration, so different
+    perturbations cannot share a fixed-input identity or mutate on replay.
     """
     if not isinstance(prepared, PreparedXCContractions) or not isinstance(
         source, DensitySource
@@ -196,6 +202,20 @@ def density_candidates(prepared, source, *, stamp):
             else tuple(map(len, source.occupations))
         )
         observable = prepared.program.contract.request.observable
+        if observable == "response":
+            if delta_density is None:
+                raise ValueError("response candidate requires a density direction")
+            direction = spin_densities(delta_density, prepared.basis.nao)
+            if prepared.program.spec.spin == "unpolarized" and not np.array_equal(
+                direction[0], direction[1]
+            ):
+                raise ValueError(
+                    "unpolarized XC candidate requires equal spin directions"
+                )
+        else:
+            if delta_density is not None:
+                raise ValueError("density direction requires a response request")
+            direction = None
         reason = None
         if observable in ("response", "geometry"):
             reason = "unvalidated_orbital_derivative"
@@ -233,6 +253,9 @@ def density_candidates(prepared, source, *, stamp):
             mask=prepared._mask,
             source=source.stamp.identity,
             factor=source.factor_identity,
+            density_direction=None
+            if direction is None
+            else sha256(direction.tobytes()).hexdigest(),
             functional=prepared.program.contract.identity,
             spin=prepared.program.spec.spin,
             observable=observable,
@@ -251,8 +274,16 @@ def density_candidates(prepared, source, *, stamp):
             device_bytes=prepared.resource_plan.peak_bytes["device"],
         )
         return (
-            DensityCandidate("density_matrix", workload, True, None, prepared, source),
             DensityCandidate(
-                "orbitals", workload, reason is None, reason, prepared, source
+                "density_matrix", workload, True, None, prepared, source, direction
+            ),
+            DensityCandidate(
+                "orbitals",
+                workload,
+                reason is None,
+                reason,
+                prepared,
+                source,
+                direction,
             ),
         )
