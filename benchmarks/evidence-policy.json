@@ -285,6 +285,11 @@
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
       "sha256": "f7a7bf25f3a6bacbf74e78b04d575affbb076f7ab4c93dc5641fee7f9abb0a32"
     },
+    "benchmarks/results/spatial-density-sources/evidence.json": {
+      "owner": "dft-density-sources-235",
+      "reason": "Compact complete numerical envelope for 96 identical-grid/mask cases: all 960 interleaved full-endpoint samples, 444 block gates and per-case source/shape/resource plans are required to audit D/C parity and bounded ownership. No routine logs or build products.",
+      "sha256": "8ee057ca2456f0da9cf97de10d9ee52d9291d18b7fe0203a11eb5be2ad7e1e31"
+    },
     "benchmarks/results/xc-contractions/samples.json": {
       "owner": "XC contraction evidence (#236)",
       "reason": "128 complete dense/local LDA/PBE energy, potential, response and geometry cases with five raw samples each, source/compiler identities, shared numeric resource plans and independent three-step derivative projections. This is the selected reproducible evidence, with no logs or transient artifacts.",

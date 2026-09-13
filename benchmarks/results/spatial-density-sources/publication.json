@@ -1,0 +1,59 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "six independent feature fixtures and 96 identical-grid/mask E/V cases pass FP64 gates with bounded native ownership; diagnostic timings make no promotion claim",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 1477626,
+      "path": "evidence.json",
+      "reason": "Compact complete numerical envelope for 96 identical-grid/mask cases: all 960 interleaved full-endpoint samples, 444 block gates and per-case source/shape/resource plans are required to audit D/C parity and bounded ownership. No routine logs or build products.",
+      "role": "evidence",
+      "sha256": "8ee057ca2456f0da9cf97de10d9ee52d9291d18b7fe0203a11eb5be2ad7e1e31"
+    },
+    {
+      "bytes": 20851,
+      "path": "verification.json",
+      "role": "summary",
+      "sha256": "536223a1a3a67eaf9b10cce81424c8b54a11c32a130d4413e11bd4fbe6b499b5"
+    },
+    {
+      "bytes": 3374,
+      "path": "README.md",
+      "role": "summary",
+      "sha256": "6a3d64e4d722e4c7d7bb759024992cfe586f179df96a83e6e9b2515efe1fb1ae"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:10:00",
+      "env",
+      "OMP_NUM_THREADS=1",
+      "OPENBLAS_NUM_THREADS=1",
+      "VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc",
+      "/home/jzzeng/codes/vibeqc-issue-235-local-density/.venv/bin/python",
+      "tools/benchmark_density_sources.py",
+      "--spatial",
+      "--library",
+      "build/cpu/libvibeqc.so",
+      "--cache",
+      ".artifacts/spatial-density-bench-cache",
+      "--output",
+      ".artifacts/benchmarks/spatial-density-sources",
+      "--samples",
+      "5"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "4d23418a8af4d8363c41b10b300ecfc4208919e8"
+  }
+}
