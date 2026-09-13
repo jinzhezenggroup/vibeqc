@@ -10,7 +10,9 @@ import pytest
 from vibeqc import (
     Calculator,
     ObservableTarget,
+    Primitive,
     ResourceBudget,
+    Shell,
     TargetAccuracy,
     _native,
     method_capabilities,
@@ -74,6 +76,40 @@ def test_public_native_hf_to_mp2_components(name, device):
         )
 
 
+@pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
+def test_public_native_df_hf_to_ri_mp2_components(name, device):
+    meta, arrays = load_fixture(name)
+    args = source_arguments(meta)
+    calc = Calculator(
+        method="mp2",
+        basis=args["basis"],
+        auxiliary_basis=args["auxiliary_basis"],
+        basis_representation=args["representation"],
+        density_fitting="cuda" if device == "cuda" else "cpu",
+        device=device,
+    )
+    result = calc.singlepoint(args["atoms"], charge=args["charge"])
+    ref = meta["records"]["df"]
+    no = ref["electron_count"] // 2
+    n = len(arrays["df_eps"])
+    g = arrays["df_mo"][
+        np.ix_(range(no), range(no, n), range(no), range(no, n))
+    ].transpose(0, 2, 1, 3)
+    t = arrays["df_t2"]
+    os_ref = float(np.sum(t * g))
+    ss_ref = float(np.sum(t * (g - g.swapaxes(2, 3))))
+    assert result.forces is None and result.converged
+    assert abs(result.energy - ref["hf_energy"] - ref["correlation_energy"]) <= 1e-9
+    np.testing.assert_allclose(
+        [result.correlation.opposite_spin_energy, result.correlation.same_spin_energy],
+        [os_ref, ss_ref],
+        atol=1e-11,
+        rtol=1e-10,
+    )
+    assert result.correlation.minimum_absolute_denominator > 1e-10
+    assert result.correlation.numeric_capacity_bytes <= 256 << 20
+
+
 def test_public_mp2_rejects_unimplemented_controls():
     target = TargetAccuracy(
         (ObservableTarget("energy", "absolute", "Eh", absolute=1e-6),)
@@ -108,25 +144,25 @@ def test_hf_identity_ignores_mp2_only_controls():
 
 
 @pytest.mark.parametrize("mode", ["cpu", "cpu_reference", "cuda", "auto", True])
-def test_mp2_model_rejects_density_fitting(mode):
-    """Unsupported correlated variants cannot enter model/evidence consumers."""
+def test_mp2_model_resolves_density_fitting(mode):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-    with pytest.raises(NotImplementedError, match="RI/DF MP2"):
-        Calculator(method="mp2", density_fitting=mode).resolved_model(atoms)
+    model = Calculator(method="mp2", density_fitting=mode).resolved_model(atoms)
+    assert model.method == "mp2" and model.approximation == "density_fitting"
+    assert model.auxiliary_basis_hash and model.metric_relative_threshold == 1e-10
 
 
-def test_mp2_model_cannot_be_reconstructed_as_density_fitting():
+def test_mp2_model_can_be_reconstructed_as_density_fitting():
     from dataclasses import replace
 
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator(method="mp2").resolved_model(atoms)
-    with pytest.raises(ValueError, match="MP2 requires a conventional"):
-        replace(
-            model,
-            approximation="density_fitting",
-            auxiliary_basis_hash=model.basis_hash,
-            metric_relative_threshold=1e-10,
-        )
+    fitted = replace(
+        model,
+        approximation="density_fitting",
+        auxiliary_basis_hash=model.basis_hash,
+        metric_relative_threshold=1e-10,
+    )
+    assert fitted.method == "mp2" and fitted.approximation == "density_fitting"
 
 
 def test_public_mp2_identity_includes_correlation_controls():
@@ -144,6 +180,76 @@ def test_public_mp2_identity_includes_correlation_controls():
     assert len(identities) == 3
 
 
+def test_ri_mp2_composes_df_reference_capacity_before_allocation():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    auxiliary = tuple(
+        Shell(index % 2, 0, (Primitive(0.05 + 0.01 * index, 1.0),))
+        for index in range(200)
+    )
+    # Each standalone reference/correlation estimate fits in this window, but
+    # the CPU DF plan remains live alongside the large DIIS/reference state.
+    with pytest.raises(RuntimeError, match="RI-MP2 DF reference state"):
+        Calculator(
+            method="mp2",
+            basis="sto-3g",
+            auxiliary_basis=auxiliary,
+            density_fitting="cpu",
+            diis_history=170_000,
+            correlation_memory_budget_bytes=19_000 << 10,
+        ).singlepoint(atoms)
+    accepted = Calculator(
+        method="mp2",
+        basis="sto-3g",
+        auxiliary_basis=auxiliary,
+        density_fitting="cpu",
+        diis_history=170_000,
+        correlation_memory_budget_bytes=19_240 << 10,
+    ).singlepoint(atoms)
+    assert 19_000 << 10 < accepted.correlation.numeric_capacity_bytes <= 19_240 << 10
+
+
+def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    sto3g = (
+        Primitive(3.42525091, 0.1543289673),
+        Primitive(0.62391373, 0.5353281423),
+        Primitive(0.1688554, 0.4446345422),
+    )
+    auxiliary = (
+        Shell(0, 0, sto3g),
+        Shell(1, 0, sto3g),
+        Shell(0, 4, (Primitive(0.5, 1.0),)),
+    )
+    result = Calculator(
+        method="mp2", density_fitting="cpu", auxiliary_basis=auxiliary
+    ).singlepoint(atoms)
+    assert np.isfinite(result.energy) and result.correlation is not None
+
+
+def test_cuda_calculator_uses_selected_cpu_df_basis_capability():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    auxiliary = (
+        Shell(0, 0, (Primitive(1.0, 1.0),)),
+        Shell(1, 0, (Primitive(1.0, 1.0),)),
+        Shell(0, 4, (Primitive(0.5, 1.0),)),
+    )
+    model = Calculator(
+        method="mp2",
+        device="cuda",
+        density_fitting="cpu",
+        auxiliary_basis=auxiliary,
+    ).resolved_model(atoms)
+    assert model.method == "mp2" and model.approximation == "density_fitting"
+    for mode in ("cuda", "auto"):
+        with pytest.raises(NotImplementedError, match=r"cuda/df_metric.*l<=3"):
+            Calculator(
+                method="mp2",
+                device="cuda",
+                density_fitting=mode,
+                auxiliary_basis=auxiliary,
+            ).resolved_model(atoms)
+
+
 def test_public_unsupported_budget_scf_and_neighbors(device):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device=device)
@@ -154,6 +260,20 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
         Calculator(
             method="mp2", device=device, correlation_memory_budget_bytes=1024
         ).singlepoint(atoms)
+    with pytest.raises(RuntimeError, match="error 7|memory budget"):
+        Calculator(
+            method="mp2",
+            device=device,
+            density_fitting="cuda" if device == "cuda" else "cpu",
+            correlation_memory_budget_bytes=1024,
+        ).singlepoint(atoms)
+    with pytest.raises(RuntimeError, match="RI-MP2 reference and correlation"):
+        Calculator(
+            method="mp2",
+            device=device,
+            density_fitting="cuda" if device == "cuda" else "cpu",
+            correlation_memory_budget_bytes=12 << 20,
+        ).singlepoint(atoms)
     with pytest.raises(RuntimeError, match="converge"):
         Calculator(method="mp2", device=device, max_iterations=1).singlepoint(atoms)
     with pytest.raises(RuntimeError, match="near-zero"):
@@ -162,10 +282,15 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
         ).singlepoint(atoms)
     with pytest.raises(NotImplementedError, match="closed-shell"):
         calc.singlepoint(atoms, multiplicity=3)
-    with pytest.raises(NotImplementedError, match="RI/DF"):
-        Calculator(method="mp2", device=device, density_fitting="cpu").singlepoint(
-            atoms
-        )
+    fitted = Calculator(
+        method="mp2",
+        device=device,
+        density_fitting="cuda" if device == "cuda" else "cpu",
+    ).singlepoint(atoms)
+    assert (
+        fitted.correlation is not None
+        and fitted.correlation.minimum_absolute_denominator > 0
+    )
     first = calc.singlepoint(atoms)
     changed = calc.singlepoint([("H", (0, 0, -0.8)), ("H", (0, 0, 0.8))])
     assert abs(first.energy - changed.energy) > 1e-6

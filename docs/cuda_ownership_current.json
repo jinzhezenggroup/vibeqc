@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10222,
+  "all_handwritten_scientific_lines": 10330,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -484,20 +484,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 24156,
+      "bytes": 30357,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 432
+        "scientific": 540
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 448,
+      "physical_lines": 557,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response; conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned.",
       "regions": [],
       "role": "scientific",
-      "sha256": "519824e7ce9a968d8dd6bf2cfa3b8abb5ae6c84605f81dc08600f01d3d3859e9",
+      "sha256": "2432a7ef383c3a76f7bfa275941816e8a8e157098e47c87fd2bda90eb2f2109e",
       "subsystem": "df_derivatives"
     },
     {
@@ -3172,7 +3172,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 8724,
-    "scientific": 10066
+    "scientific": 10174
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3331,7 +3331,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 87,
-      "scientific": 667
+      "scientific": 775
     },
     "df_values": {
       "fallback": 0,

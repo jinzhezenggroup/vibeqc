@@ -37,10 +37,13 @@ def execute_df_gradient(
     schedule=0,
     maximum_bytes=128 << 20,
     maximum_tile_elements=0,
+    device_id=0,
     charge=0,
     multiplicity=1,
 ):
     """Keep weights fixed while measuring the standalone synchronous bridge."""
+    if type(device_id) is not int or device_id < 0:
+        raise ValueError("device_id must be a nonnegative integer")
     library = orbital._library
     pointer = ctypes.POINTER(ctypes.c_double)
     function = library.vibeqc_system_df_gradient_cuda
@@ -69,7 +72,7 @@ def execute_df_gradient(
     descriptor = _native.ContextDescriptor(
         ctypes.sizeof(_native.ContextDescriptor),
         _native.ABI_VERSION,
-        0,
+        device_id,
         _native.BACKEND_CUDA,
     )
     _native.check(

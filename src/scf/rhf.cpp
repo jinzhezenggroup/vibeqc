@@ -255,13 +255,13 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     // host oracle after the device values and derivatives are downloaded.
     data.raw = integrals::transform_density_fitting_integrals(cartesian, system, auxiliary_system);
   } else {
-    data.one_electron = integrals::build_integrals(system, include_derivatives);
+    data.one_electron = integrals::build_integrals(system, include_derivatives, false);
     data.raw =
         integrals::build_density_fitting_integrals(system, auxiliary_system, include_derivatives);
   }
 #else
   (void)cuda_device_id;
-  data.one_electron = integrals::build_integrals(system, include_derivatives);
+  data.one_electron = integrals::build_integrals(system, include_derivatives, false);
   data.raw =
       integrals::build_density_fitting_integrals(system, auxiliary_system, include_derivatives);
 #endif
@@ -453,6 +453,23 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
   }
   result.energy = electronic_energy(density, data.one_electron.hcore, final_fock) +
                   data.one_electron.nuclear_repulsion;
+  if (options.export_physical_reference) {
+    auto canonical = generalized_eigen(final_fock, orthogonalizer, n);
+    auto reference = std::make_shared<PhysicalReference>();
+    reference->nbf = n;
+    reference->nocc = occupied;
+    reference->overlap = data.one_electron.overlap;
+    reference->hcore = data.one_electron.hcore;
+    reference->fock = final_fock;
+    reference->coefficients = std::move(canonical.vectors);
+    reference->orbital_energies = std::move(canonical.values);
+    reference->density = density;
+    reference->energy = result.energy;
+    reference->numeric_capacity_bytes = posthf::checked_mul(
+        sizeof(double), posthf::checked_add(posthf::checked_mul(5, posthf::checked_mul(n, n)), n));
+    validate_physical_reference(*reference);
+    result.reference = std::move(reference);
+  }
   if (!options.compute_forces) {
     result.density = density;
     return;
@@ -736,16 +753,19 @@ ScfResult run_prepared_fock_strategy(const PreparedFockPlan& plan, const ScfOpti
   result.precision.requested_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
   if (options.export_physical_reference && strategy.spec.spin == FockSpin::Restricted) {
     if (!result.converged) return result;
-    if (strategy.spec.coulomb.approximation != FockApproximation::Exact ||
-        strategy.spec.exchange.approximation != FockApproximation::Exact ||
+    if (strategy.spec.coulomb.approximation != strategy.spec.exchange.approximation ||
         options.screening_tolerance != 0.0)
-      throw std::invalid_argument("physical reference requires unscreened conventional integrals");
+      throw std::invalid_argument(
+          "physical reference requires one consistent unscreened RHF Hamiltonian");
     const auto n = molecule::ao_count(system);
     const auto occupied = static_cast<std::size_t>(system.electron_count / 2);
     if (occupied == 0 || occupied >= n)
       throw std::invalid_argument("physical RHF reference requires a nonempty virtual space");
-    const auto capacity = posthf::rhf_reference_capacity(system, options.diis_history,
-                                                         strategy.backend == FockBackend::Cpu);
+    const bool retains_conventional_eri =
+        strategy.backend == FockBackend::Cpu &&
+        strategy.spec.coulomb.approximation == FockApproximation::Exact;
+    const auto capacity =
+        posthf::rhf_reference_capacity(system, options.diis_history, retains_conventional_eri);
     if (options.reference_memory_budget_bytes != 0 &&
         capacity > options.reference_memory_budget_bytes)
       throw std::length_error("bounded RHF reference exceeds numeric memory budget");
@@ -780,7 +800,9 @@ ScfResult run_cpu_fock_strategy(const core::System& system, const core::System* 
     throw std::invalid_argument("CPU Fock entry requires a CPU strategy");
   if (options.export_physical_reference && strategy.spec.spin == FockSpin::Restricted &&
       options.reference_memory_budget_bytes != 0) {
-    const auto capacity = posthf::rhf_reference_capacity(system, options.diis_history, true);
+    const auto capacity = posthf::rhf_reference_capacity(
+        system, options.diis_history,
+        strategy.spec.coulomb.approximation == FockApproximation::Exact);
     if (capacity > options.reference_memory_budget_bytes)
       throw std::length_error("bounded RHF reference exceeds numeric memory budget");
   }

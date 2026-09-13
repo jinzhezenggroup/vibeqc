@@ -13,4 +13,8 @@ struct Energy {
 Energy conventional_energy(const scf::PhysicalReference& reference, const posthf::RawSource& source,
                            std::size_t budget, double denominator_threshold,
                            unsigned virtual_tile = 8, bool cuda = false, int device = 0);
+Energy density_fitted_energy(const scf::PhysicalReference& reference,
+                             const posthf::RawSource& source, std::size_t budget,
+                             double denominator_threshold, double metric_relative_threshold,
+                             unsigned virtual_tile = 8, bool cuda = false, int device = 0);
 }  // namespace vibeqc::mp2

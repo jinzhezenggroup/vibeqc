@@ -220,6 +220,115 @@ vibeqc_status execute_cuda_df_gradient(int device, const core::System& orbital,
   }
 }
 
+vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbital,
+                                            const core::System& auxiliary, unsigned kind,
+                                            runtime::StridedRange range,
+                                            std::span<const double> weights, unsigned schedule,
+                                            std::size_t maximum_bytes,
+                                            std::vector<double>& gradient, std::string& detail,
+                                            DfGradientResources* resources) {
+  detail.clear();
+  if (resources) *resources = {};
+  const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
+             atoms = orbital.atoms.size();
+  const auto index_limit = static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max());
+  const auto element_limit = std::numeric_limits<std::size_t>::max() / sizeof(double);
+  if (device < 0 || kind > 1 || schedule > 1 || !maximum_bytes || weights.empty() || !n || !a ||
+      !atoms || n > index_limit || a > index_limit || atoms > index_limit / 3 ||
+      atoms != auxiliary.atoms.size() || !range.row_length || !range.row_stride ||
+      !range.column_stride || n > element_limit / n || a > element_limit / a ||
+      n * n > element_limit / a || weights.size() > element_limit)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  for (std::size_t atom = 0; atom < atoms; ++atom)
+    if (orbital.atoms[atom].position != auxiliary.atoms[atom].position) {
+      detail = "DF orbital/auxiliary bases must share physical atom coordinates";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  if (!std::all_of(weights.begin(), weights.end(),
+                   [](double value) { return std::isfinite(value); })) {
+    detail = "DF response weight tile must be finite";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const auto maximum = std::numeric_limits<std::size_t>::max();
+  const auto row = (weights.size() - 1) / range.row_length;
+  const auto column = (weights.size() - 1) % range.row_length;
+  if (row > maximum / range.row_stride || column > maximum / range.column_stride ||
+      range.offset > maximum - row * range.row_stride ||
+      range.offset + row * range.row_stride > maximum - column * range.column_stride) {
+    detail = "DF response weight tile range overflows size_t";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const auto last = range.index(weights.size() - 1);
+  const auto total = kind ? a * a : n * n * a;
+  if (last >= total) {
+    detail = "DF response weight tile exceeds its full tensor";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  long double primitives = 0;
+  for (const auto* system : {&orbital, &auxiliary})
+    for (const auto& shell : system->shells) primitives += shell.primitives.size();
+  constexpr long double per_ao =
+      2 * sizeof(std::int32_t) + sizeof(std::int64_t) + sizeof(std::uint8_t) +
+      molecule::kMaximumAoExpansionTerms * (3 * sizeof(std::uint8_t) + sizeof(double));
+  const long double host_bound = 2 * (per_ao * (n + a) + 2 * sizeof(double) * primitives +
+                                      6 * sizeof(double) * atoms + 2 * sizeof(std::int64_t));
+  if (host_bound > maximum_bytes) {
+    detail = "generated DF tile host staging exceeds maximum_bytes";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  try {
+    const auto host_o = pack(orbital), host_a = pack(auxiliary);
+    std::vector<double> positions(3 * atoms), result(3 * atoms);
+    for (std::size_t atom = 0; atom < atoms; ++atom)
+      std::copy(orbital.atoms[atom].position.begin(), orbital.atoms[atom].position.end(),
+                positions.begin() + 3 * atom);
+    DeviceGuard device_guard;
+    check(cudaSetDevice(device));
+    Arena arena(maximum_bytes);
+    check(cudaStreamCreateWithFlags(&arena.stream, cudaStreamNonBlocking));
+    const auto o = arena.upload(host_o), x = arena.upload(host_a);
+    const auto* r = arena.upload(positions);
+    auto* output = static_cast<double*>(arena.allocate(result.size() * sizeof(double)));
+    arena.stats.host_bytes += result.capacity() * sizeof(double);
+    if (arena.stats.host_bytes > maximum_bytes) throw std::bad_alloc();
+    check(cudaMemsetAsync(output, 0, result.size() * sizeof(double), arena.stream));
+    auto* device_weights = static_cast<double*>(arena.allocate(weights.size() * sizeof(double)));
+    check(cudaMemcpyAsync(device_weights, weights.data(), weights.size() * sizeof(double),
+                          cudaMemcpyHostToDevice, arena.stream));
+    arena.stats.host_to_device_bytes += weights.size() * sizeof(double);
+    arena.stats.response_host_to_device_bytes += weights.size() * sizeof(double);
+    arena.stats.weight_tile_elements = weights.size();
+    arena.stats.uploads += 1;
+    check(launch_df_derivative_tile(o, x, r, kind, range, weights.size(), device_weights, schedule,
+                                    output, arena.stream));
+    arena.stats.tiles = 1;
+    check(cudaMemcpyAsync(result.data(), output, result.size() * sizeof(double),
+                          cudaMemcpyDeviceToHost, arena.stream));
+    arena.stats.device_to_host_bytes = result.size() * sizeof(double);
+    check(cudaStreamSynchronize(arena.stream));
+    arena.completed = true;
+    arena.stats.stream_synchronizations = 1;
+    if (!std::all_of(result.begin(), result.end(),
+                     [](double value) { return std::isfinite(value); })) {
+      detail = "nonfinite generated DF tile gradient";
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    }
+    gradient.swap(result);
+    if (resources) *resources = arena.stats;
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (const CudaFailure& error) {
+    detail = std::string("generated DF tile CUDA failure: ") + cudaGetErrorString(error.status);
+    return error.status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                                     : VIBEQC_STATUS_CUDA_ERROR;
+  } catch (const std::bad_alloc&) {
+    detail = "generated DF tile gradient exceeded its allocation budget";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::invalid_argument& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  }
+}
+
 vibeqc_status execute_cuda_df_hf_gradient(
     int device, void* stream_handle, CudaDensityFittingIntegralSource* source,
     std::size_t source_index, const core::System& orbital, const core::System& auxiliary,

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "runtime/strided_range.hpp"
 #include "scf/df_response_weights.hpp"
 namespace vibeqc::scf {
 struct CudaDensityFittingIntegralSource;
@@ -42,6 +43,21 @@ vibeqc_status execute_cuda_df_gradient(int device, const core::System& orbital,
                                        std::size_t maximum_bytes, std::size_t maximum_tile_elements,
                                        std::vector<double>& gradient, std::string& detail,
                                        DfGradientResources* resources = nullptr);
+/** Contract one caller-owned A/M weight tile into a detached partial gradient.
+ * kind=0 maps
+ * A[mu,nu,P], kind=1 maps M[P,Q]. The strided range addresses the
+ * corresponding full row-major
+ * tensor without padding a molecular weight.
+ * This call owns only bounded metadata/device staging
+ * and one O(Natom) result.
+ */
+vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbital,
+                                            const core::System& auxiliary, unsigned kind,
+                                            runtime::StridedRange range,
+                                            std::span<const double> weights, unsigned schedule,
+                                            std::size_t maximum_bytes,
+                                            std::vector<double>& gradient, std::string& detail,
+                                            DfGradientResources* resources = nullptr);
 /** HF adapter using the same generic derivative consumer on the plan's stream.
  * Values are borrowed from raw_a when resident, or regenerated from source.
  * A source plus device_metric uses only device tensor/response contractions;

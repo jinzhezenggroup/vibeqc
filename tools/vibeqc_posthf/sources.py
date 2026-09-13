@@ -27,6 +27,8 @@ from vibeqc_compiler.integral.shell_signature import (
     checked_index,
 )
 
+from .reference import immutable
+
 # Through-g Hermite/Coulomb recurrences have bounded dimensions. This separate
 # conservative allowance includes their numeric scratch, not Python/C++ object
 # headers or allocator rounding. It is independent of molecular/tile size.
@@ -197,6 +199,58 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_gradient_tile_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_uint,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_weighted_eri_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_uhf_density_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -320,6 +374,235 @@ class NativeSource:
                 out.size,
             )
         return out
+
+    def integral_derivatives(self, *, output_budget_bytes=256 << 20):
+        """Dense small-system derivative oracle with an output-size guard.
+
+        The guard covers the returned NumPy buffer only.  The independent CPU
+        evaluator is intentionally dense and does not provide a bounded-memory
+        production execution path.
+        """
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError(
+                "derivative oracle output budget must be a positive integer"
+            )
+        if self.nbf > 12:
+            raise ValueError("derivative oracle supports at most 12 AOs")
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        n4 = n2**2
+        output_elements = ncoord * (2 * n2 + n4 + 1)
+        output_bytes = output_elements * np.dtype(np.float64).itemsize
+        if output_bytes > output_budget_bytes:
+            raise ValueError("derivative oracle output exceeds its output budget")
+        output = np.empty(output_elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape):
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "eri": take((ncoord, self.nbf, self.nbf, self.nbf, self.nbf)),
+            "nuclear": take((ncoord,)),
+        }
+
+    def df_integral_derivatives(self, *, output_budget_bytes=256 << 20):
+        """Dense small-system DF derivative oracle with an output-size guard."""
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError("DF derivative oracle output budget must be positive")
+        if self.nbf > 12 or not self.naux or self.naux > 32:
+            raise ValueError(
+                "DF derivative oracle supports at most 12 AOs and 32 auxiliaries"
+            )
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        na2 = self.naux**2
+        elements = ncoord * (2 * n2 + n2 * self.naux + na2 + 1)
+        if elements * np.dtype(np.float64).itemsize > output_budget_bytes:
+            raise ValueError("DF derivative oracle output exceeds its output budget")
+        output = np.empty(elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape):
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "three_center": take((ncoord, self.nbf, self.nbf, self.naux)),
+            "metric": take((ncoord, self.naux, self.naux)),
+            "nuclear": take((ncoord,)),
+        }
+
+    def df_gradient_tile_cuda(
+        self,
+        kind,
+        range_descriptor,
+        weights,
+        *,
+        device_id=0,
+        stage_budget_bytes=128 << 20,
+    ):
+        """Contract one strided raw-A or metric weight tile through #143."""
+
+        if type(kind) is not int or kind not in (0, 1):
+            raise ValueError("DF gradient tile kind must be raw A or metric M")
+        descriptor_values = tuple(range_descriptor)
+        maximum_size = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
+        if len(descriptor_values) != 4 or any(
+            type(item) is not int or item < 0 or item > maximum_size
+            for item in descriptor_values
+        ):
+            raise ValueError("DF gradient tile range is invalid")
+        descriptor = np.ascontiguousarray(descriptor_values, dtype=np.uintp)
+        raw_weights = np.asarray(weights)
+        if np.iscomplexobj(raw_weights):
+            raise ValueError("DF gradient tile weights must be real")
+        value = np.ascontiguousarray(raw_weights, dtype=np.float64).reshape(-1)
+        if (
+            descriptor.shape != (4,)
+            or descriptor[1] < 1
+            or descriptor[2] < 1
+            or descriptor[3] < 1
+            or not len(value)
+            or not np.isfinite(value).all()
+        ):
+            raise ValueError("DF gradient tile range/weights are invalid")
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("DF gradient tile requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_gradient_tile_cuda_v1",
+                self._handle,
+                device_id,
+                kind,
+                descriptor.ctypes.data_as(_SIZE),
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def weighted_eri_gradient_cuda(
+        self, weights, *, device_id=0, stage_budget_bytes=128 << 20
+    ):
+        """Stream fixed public-AO weights through the #144 CUDA consumer.
+
+        The stage budget includes numeric candidate, offset, expansion, record,
+        upload and result storage. Caller weights/output, owned system state,
+        object headers, CUDA context and allocator overhead are excluded.
+        """
+
+        value = np.ascontiguousarray(weights, dtype=np.float64)
+        if value.shape != (self.nbf,) * 4 or not np.isfinite(value).all():
+            raise ValueError("weighted ERI gradient requires finite [AO]*4 weights")
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("weighted ERI gradient requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def weighted_eri_shell_gradient_cuda(
+        self,
+        shell_indices,
+        weights,
+        *,
+        device_id=0,
+        stage_budget_bytes=16 << 20,
+    ):
+        """Contract one public shell-quartet weight block through #144.
+
+        Stage accounting includes numeric expansion/record/result storage and
+        excludes caller weights/output, system ownership, object headers, CUDA
+        context and allocator overhead.
+        """
+
+        indices = np.ascontiguousarray(shell_indices, dtype=np.uintp)
+        if indices.shape != (4,) or np.any(indices >= len(self.shells)):
+            raise ValueError("weighted ERI shell gradient requires four shell indices")
+        shape = tuple(self.shell_sizes[int(index)] for index in indices)
+        value = np.ascontiguousarray(weights, dtype=np.float64)
+        if value.shape != shape or not np.isfinite(value).all():
+            raise ValueError(
+                "weighted ERI shell weights have the wrong shape or values"
+            )
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("weighted ERI shell gradient requires valid device/budget")
+        gradient = np.empty((4, 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                indices.ctypes.data_as(_SIZE),
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
 
     def requests(self, kind, *, axis_tile=2, budget_bytes=1 << 20):
         """Yield bounded CG02 requests, including partial shell-component tiles."""

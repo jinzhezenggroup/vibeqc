@@ -2,8 +2,8 @@
 
 VibeQC's long-term mission is to cover **all quantum-chemistry methods** in one
 accelerator-native system. This is a roadmap commitment, not a statement of
-current availability. Today, only RHF and UHF energies and analytic nuclear
-forces are executable.
+current availability. RHF and UHF provide energies and analytic nuclear forces;
+closed-shell MP2 provides energy-only execution.
 
 ## Current method status
 
@@ -14,7 +14,8 @@ forces are executable.
 | Hartree-Fock | ROHF, GHF, spinor HF | Planned |
 | Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU oracle plus CUDA-native batched integral generation, RI-J/K, raw two-electron force-response contractions, and device-resident SCF integration implemented; streamed host tiles and provider-dependent Graph replay are documented acceptance-boundary modes |
 | Density functional theory | LDA, GGA, meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
-| Perturbation theory | MP2 and higher-order variants | Planned |
+| Perturbation theory | Closed-shell MP2 | Conventional and RI energy implemented on CPU/CUDA; analytic forces planned |
+| Perturbation theory | Open-shell, frozen-core, ECP and higher-order variants | Planned |
 | Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
 | Configuration interaction | CIS, selected CI, truncated and full CI | Planned |
 | Multireference | CASCI, CASSCF, internally contracted and selected-space methods | Planned |
@@ -55,6 +56,12 @@ the public API is independent of RHF/UHF dispatch, while each method family
 owns its validation, options, retained state, and batch policy.
 DFT grids and exchange-correlation response, followed by AO-to-MO transforms
 and correlated tensor contractions, open the main DFT and post-HF families.
+The RI-MP2 endpoint uses an RHF reference built with the same thresholded
+density-fitting Hamiltonian as its correlation integrals. The auxiliary Coulomb
+metric uses a square symmetric inverse square root with eigenvalues at or below
+`density_fitting_relative_threshold * lambda_max` removed. The implementation
+forms no four-index AO ERI tensor or T2 amplitude tensor and rejects requests
+whose reference or RI transformation capacity exceeds the configured budget.
 Multireference, excited-state, periodic, embedding, and relativistic methods
 then build on those validated primitives rather than on reserved names alone.
 

@@ -1,10 +1,10 @@
 # Canonical RHF-MP2 energy
 
-The #193 A1 candidate adds public conventional MP2 energy-only preparation.
-Its current validation status and frozen source identity are recorded in the
-handoff; the whole #193 issue also requires RI energies and complete gradients.
-No gradient, RI, frozen-core, open-shell or ECP capability follows from this
-conventional energy implementation. No performance replacement is promoted.
+The #193 energy candidate adds public conventional and resolution-of-identity
+(RI) MP2 energy-only preparation. Its validation status and frozen source
+identity are recorded in the handoff; the whole #193 issue also requires
+complete gradients. No gradient, frozen-core, open-shell or ECP capability
+follows from this implementation. No performance replacement is promoted.
 
 ```python
 from vibeqc import Calculator
@@ -15,6 +15,16 @@ result = calc.singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
 print(result.energy)       # total RHF + MP2 correlation, Hartree
 print(result.correlation)  # OS/SS, reference, denominator, memory and transfers
 assert result.forces is None
+```
+
+RI-MP2 is selected explicitly. The auxiliary basis is part of the Hamiltonian;
+when omitted, the orbital basis is used as the auxiliary basis.
+
+```python
+ri = Calculator(method="mp2", basis="sto-3g", device="cuda",
+                density_fitting="auto",
+                density_fitting_relative_threshold=1e-10)
+result = ri.singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
 ```
 
 `singlepoint(..., properties=("energy", "forces"))` rejects MP2 before
@@ -33,8 +43,10 @@ correlated, occupied spatial columns first, 2/0 occupation, and a nonempty
 virtual space. The existing all-electron Cartesian/real-spherical basis
 support through f is used. Input geometries are Bohr; energies and orbital
 energies are Hartree. Conventional reference and correlation use unscreened
-exact Coulomb integrals. MP2's default screening is explicitly zero; a
-nonzero request fails rather than changing its Hamiltonian.
+exact Coulomb integrals. RI reference and correlation use the same auxiliary
+basis, metric cutoff and fitted Coulomb Hamiltonian. MP2's default screening
+is explicitly zero; a nonzero request fails rather than changing its
+Hamiltonian.
 
 For all **ordered** spatial indices i,j occupied and a,b virtual:
 
@@ -53,6 +65,13 @@ formula. The independent spin-orbital oracle uses `1/4 |<IJ||AB>|²/D` and split
 occupied spin labels explicitly. Restricted amplitudes have simultaneous
 `ijab↔jiba` symmetry, not independent occupied/virtual antisymmetry.
 
+For RI-MP2, raw three-center integrals `A[mu,nu,P] = (mu nu|P)` and the
+auxiliary Coulomb metric `M[P,Q] = (P|Q)` define
+`B[mu,nu,Q] = sum_P A[mu,nu,P] M^(-1/2)[P,Q]`. Eigenvalues at or below
+`density_fitting_relative_threshold * lambda_max(M)` are removed. The fitted
+integral used in the same ordered MP2 equation is
+`(ia|jb)_RI = sum_Q B[i,a,Q] B[j,b,Q]`.
+
 Direct MO slots `(i,a,j,b)` and exchange slots `(i,b,j,a)` are separate provider
 requests. Exchange is reordered into the same local ijab coordinates. Each
 occupied axis has extent one; virtual extents use 1/2/4/8. Final virtual tiles
@@ -67,7 +86,8 @@ ERIs with a checked capacity; CUDA RHF uses the bounded matrix-direct route.
 C / C++ / Python public prepare
   -> method registry -> Mp2Prepared
   -> existing RHF driver, requested owned physical reference
-  -> CG10 RawSource + native adapter of cyclic staged MO transforms
+  -> conventional: CG10 RawSource + cyclic staged MO transforms
+  -> RI: shared DF source + metric factor + occupied/virtual three-center transform
   -> CG08 energy equation -> generated native CPU or CG09 CUDA tile program
   -> native compensated scalar fold -> energy + correlation diagnostics
 ```
@@ -90,15 +110,26 @@ commutator residual and canonical density drift. GPU computation of Fock,
 orbitals and reference energy remains on device; its reference validation and
 matrix snapshots are disclosed host staging.
 
-Correlation AO tiles come from the existing **CPU values-only source**.
-CUDA mode uploads those tiles, performs all four cyclic transforms with CG10
-cuBLAS, downloads bounded MO tiles, reorders exchange on host, and uploads them
-through CG09's host-input ABI. Each entire tile equation executes natively on
-GPU. The molecular loop and scalar fold are native C++, not Python callbacks.
-This is a bounded mixed-placement path, not an entirely device-resident claim.
-There is no external quantum-chemistry production backend or silent CPU energy
-fallback. Generated plan symbols are uniquely prefixed to coexist in one
-native library; all mathematical coefficients come from the same TensorIR.
+Conventional correlation AO tiles come from the existing **CPU values-only
+source**. CUDA mode uploads those tiles, performs all four cyclic transforms
+with CG10 cuBLAS, downloads bounded MO tiles, reorders exchange on host, and
+uploads them through CG09's host-input ABI.
+
+RI mode builds the RHF reference and correlation integrals from the same
+orbital/auxiliary systems and metric threshold. `density_fitting="cpu"` selects
+CPU DF even when the calculator device is CUDA. `density_fitting="cuda"`
+requires a CUDA context; `"auto"` follows the calculator device. CPU supports
+auxiliary shells through g, while CUDA supports through f. The whitened
+occupied-virtual three-center tensor replaces the four-center AO/MO transform
+and is contracted into bounded energy tiles.
+
+Each entire tile equation executes natively on the selected correlation
+backend. The molecular loop and scalar fold are native C++, not Python
+callbacks. CUDA execution includes disclosed host staging and is not an
+entirely device-resident claim. There is no external quantum-chemistry
+production backend or silent energy fallback. Generated plan symbols are
+uniquely prefixed to coexist in one native library; all mathematical
+coefficients come from the same TensorIR.
 
 ## Budgets, lifetimes and failures
 
@@ -111,6 +142,10 @@ arena, validation arithmetic, scalar outputs, library workspaces and retained
 provider allowances are charged. Existing CG10 Python and native block plans
 share `plan_spec.py` arithmetic; native code does not maintain a divergent
 budget formula. Each CUDA transform is destroyed before the next is created.
+RI admission also composes retained RHF/DIIS state with raw metric and
+three-center owners, Cartesian-to-public transforms, metric factorization,
+whitening and the occupied-virtual transformed tensor. Requests fail before a
+phase whose declared numeric capacity exceeds the correlation budget.
 
 CUDA HF uses the existing arena planner; provider handles receive explicit
 retained allowances and actual queried solver host/device workspaces are
@@ -132,11 +167,12 @@ and cannot reuse an old reference or MO tile.
 ## Validation and remaining issue scope
 
 Separate tests cover fixed identical-C/ERI OS and SS, explicit spin sums,
-permutations and rectangular tiles; native eight-loop AO→MO checks; new
-VibeQC HF→public MP2 for H2/H2O/LiH/f-shell fixtures; a 14-AO independent PySCF
-2.14.0 system exercising an eight-plus-four virtual tail; bad states,
-nonconvergence, nonfinite arithmetic, denominator and budget boundaries; C/Python
-force rejection and invalidation. Preserve the existing `1e-9 Eh` energy and
+permutations and rectangular tiles; native eight-loop AO→MO and independent RI
+factor checks; VibeQC HF→public conventional/RI MP2 for H2/H2O/LiH/f-shell
+fixtures; a 14-AO independent PySCF 2.14.0 conventional system exercising an
+eight-plus-four virtual tail; bad states, nonconvergence, nonfinite arithmetic,
+metric rank, mixed backend, denominator and budget boundaries; C/Python force
+rejection and invalidation. Preserve the existing `1e-9 Eh` energy and
 `atol=1e-11, rtol=1e-10` controlled component gates. PySCF is a test-only oracle.
 
 Full CPU/real-GPU, sanitizer, source/library identity and device records must
@@ -144,7 +180,6 @@ be read from the candidate's evidence, not inferred from test definitions.
 Compile success or an optional skip is not GPU acceptance. Fast-compile builds
 are explicitly marked and have no performance-promotion claim.
 
-RI energy requires a separately declared Hamiltonian/auxiliary basis/metric
-contract. Complete conventional gradients depend on the actual #151/#179/
-#141/#144 interfaces; RI gradients additionally need #143. Those missing
-derivatives remain unsupported and never return HF or placeholder forces.
+Complete conventional gradients depend on the actual #151/#179/#141/#144
+interfaces; RI gradients additionally need #143. Those missing derivatives
+remain unsupported and never return HF or placeholder forces.

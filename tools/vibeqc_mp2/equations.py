@@ -14,7 +14,7 @@ from tools.vibeqc_tensor import (
 )
 
 
-def energy_program(shape):
+def energy_program(shape, *, differentiable=False):
     """Consume g[i,j,a,b]=(ia|jb), x[i,j,a,b]=(ib|ja), no spin compression.
 
     Inputs are rectangular tiles, so x is a separately requested/reordered
@@ -34,7 +34,13 @@ def energy_program(shape):
 
     def tensor(name, indices):
         return input_tensor(
-            name, TensorSpec(indices, representation="restricted_spatial", role="input")
+            name,
+            TensorSpec(
+                indices,
+                representation="restricted_spatial",
+                role="input",
+                differentiable=differentiable,
+            ),
         )
 
     g, x = tensor("g", axes), tensor("x", axes)

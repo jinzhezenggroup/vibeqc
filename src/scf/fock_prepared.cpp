@@ -124,7 +124,7 @@ struct PreparedFockPlan::Impl {
       fitted.emplace();
     }
     if (strategy.backend == FockBackend::Cpu) {
-      auto ints = integrals::build_integrals(system, derivatives);
+      auto ints = integrals::build_integrals(system, derivatives, has_exact);
       if (has_df) {
         fitted->one_electron = std::move(ints);
         fitted->raw = integrals::build_density_fitting_integrals(system, *auxiliary, derivatives);
