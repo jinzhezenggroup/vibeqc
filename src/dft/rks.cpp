@@ -307,6 +307,18 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   return result;
 }
 
+/** A virtual-space level shift stabilizes an integer-occupation proposal in
+ * a stationary spin-flip cycle. In the AO metric the virtual projector is
+ * S-SDS for a unit-occupation spin density. Only the proposal is shifted;
+ * energies and commutators always use the unshifted physical operator. */
+EigenResult stabilized_uks_orbitals(Matrix fock, const Matrix& density, const Matrix& overlap,
+                                    const Matrix& orthogonalizer, std::size_t n) {
+  const Matrix occupied = reference::multiply(reference::multiply(overlap, density, n), overlap, n);
+  constexpr double shift = 0.1;  // Hartree; numerical occupation stabilization.
+  for (std::size_t i = 0; i < fock.size(); ++i) fock[i] += shift * (overlap[i] - occupied[i]);
+  return generalized_eigen(fock, orthogonalizer, n);
+}
+
 ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                   const dft::MolecularGrid& grid, const ScfOptions& options,
                   const std::vector<double>* initial_density, UksXcEvaluator evaluate_xc,
@@ -347,6 +359,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
   double previous_energy = std::numeric_limits<double>::infinity();
+  bool stabilize_occupations = false;
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
     ++result.fock_builds;
     auto physical =
@@ -360,8 +373,14 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     const Matrix effective_joined = diis.update(physical_fock, physical_residual);
     std::tie(physical.alpha_fock, physical.beta_fock) =
         split_spin_matrices(effective_joined, n * n);
-    alpha_orbitals = generalized_eigen(physical.alpha_fock, orthogonalizer, n);
-    beta_orbitals = generalized_eigen(physical.beta_fock, orthogonalizer, n);
+    alpha_orbitals = stabilize_occupations
+                         ? stabilized_uks_orbitals(physical.alpha_fock, alpha_density, ints.overlap,
+                                                   orthogonalizer, n)
+                         : generalized_eigen(physical.alpha_fock, orthogonalizer, n);
+    beta_orbitals = stabilize_occupations
+                        ? stabilized_uks_orbitals(physical.beta_fock, beta_density, ints.overlap,
+                                                  orthogonalizer, n)
+                        : generalized_eigen(physical.beta_fock, orthogonalizer, n);
     Matrix next_alpha = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
     Matrix next_beta = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
 
@@ -380,6 +399,16 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     result.density_rms =
         density_rms(concatenate(next_alpha, next_beta), concatenate(alpha_density, beta_density));
     result.physical_residual_rms = residual_rms(physical_residual);
+    // Symmetry-related determinants can alternate with identical energy and
+    // tiny physical residual while their density difference stays finite.
+    // Preserve the density gate: enable a standard virtual-space shift for
+    // subsequent proposals and require another evaluated iteration to pass.
+    // This also handles small finite frontier splittings, not just arbitrary
+    // eigenvector rotations inside an exactly degenerate subspace.
+    if (iteration > 1 && result.energy_change < options.energy_tolerance &&
+        result.physical_residual_rms < options.density_tolerance &&
+        result.density_rms >= options.density_tolerance)
+      stabilize_occupations = true;
     if (iteration > 1 && result.energy_change < options.energy_tolerance &&
         result.density_rms < options.density_tolerance &&
         result.physical_residual_rms < options.density_tolerance) {

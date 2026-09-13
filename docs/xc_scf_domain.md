@@ -140,3 +140,15 @@ run and an exhausted iteration budget. A converged UKS run returns the
 state that passed all three gates, without subsequent untested density
 updates. Full prepared CUDA, resource and replay evidence remains part of
 the complete #162 milestone, independently of this CPU correction.
+
+If UKS energy and the unshifted physical commutator pass their gates while
+the proposed density still changes, subsequent orbital updates use a
+`0.1 Eh` virtual-space level shift. For each unit-occupation spin density,
+the proposal operator gains `0.1 (S-SDS)`. This stabilizes the alternating
+symmetry-related pi occupations in linear OH, whose physical frontier
+splitting is small but nonzero. Energy, residual and returned density still
+come from the unshifted operator; convergence requires a later iteration to
+pass the original density-change gate as well. No fractional occupations or
+relaxed tolerances are used. This is a convergence aid, not an SCF stability
+analysis or a guarantee of the global minimum. The OH returned-state tests
+also reconstruct spin traces and verify `DSD=D`.

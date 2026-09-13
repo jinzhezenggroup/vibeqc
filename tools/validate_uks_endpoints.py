@@ -40,6 +40,16 @@ CASES = (
         "charge": 1,
         "multiplicity": 2,
     },
+    {
+        # LDA can cycle between symmetry-related pi occupations even though
+        # its physical energy and residual are stationary. Exercise the public
+        # convergence result as well as an independent endpoint for this case.
+        "name": "oh_doublet",
+        "atoms": (("O", (0.0, 0.0, 0.0)), ("H", (0.0, 0.0, 1.8))),
+        "charge": 0,
+        "multiplicity": 2,
+        "reference_symmetry": "C2v",
+    },
 )
 
 METHODS = (
@@ -91,7 +101,9 @@ def physical_residual_rms(
     return float(np.sqrt(np.mean(joined * joined)))
 
 
-def independent_uks(inputs: dict, grid, xc_code: str) -> dict:
+def independent_uks(
+    inputs: dict, grid, xc_code: str, symmetry: str | None = None
+) -> dict:
     import pyscf
     from pyscf import dft
 
@@ -102,6 +114,12 @@ def independent_uks(inputs: dict, grid, xc_code: str) -> dict:
         raise RuntimeError("UKS endpoint validation requires Libxc 7.0.0")
 
     mol, _, angular_momenta = pyscf_molecule(inputs)
+    if symmetry is not None:
+        # Resolve OH's pi orientation in an exact molecular/grid subgroup.
+        # The final gate still measures the full unrestricted AO commutator,
+        # including rotations excluded by the symmetry-adapted iteration.
+        mol.symmetry = symmetry
+        mol.build()
     mf = dft.UKS(mol)
     mf.xc = xc_code
     mf.grids.coords = np.asarray(grid.points)
@@ -131,6 +149,8 @@ def independent_uks(inputs: dict, grid, xc_code: str) -> dict:
     return {
         "energy_hartree": energy,
         "converged": bool(mf.converged),
+        "initial_guess": mf.init_guess,
+        "symmetry": symmetry,
         "iterations": len(history),
         "history": history,
         "physical_residual_rms": residual,
@@ -180,7 +200,9 @@ def validate() -> dict:
         ).explicit()
         for method, xc_code in METHODS:
             native = native_uks(case, method)
-            independent = independent_uks(inputs, grid, xc_code)
+            independent = independent_uks(
+                inputs, grid, xc_code, case.get("reference_symmetry")
+            )
             difference = abs(native["energy_hartree"] - independent["energy_hartree"])
             passed = (
                 native["converged"]
@@ -254,7 +276,7 @@ def validate() -> dict:
         "rows": rows,
         "passed": all(row["passed"] for row in rows),
         "limitations": [
-            "small STO-3G H2 endpoints only",
+            "small STO-3G H2 and OH endpoints only",
             "fixed GridSpec-v1 quadrature; no grid-convergence claim",
             "CPU conventional-J energy only",
             "no gradients, density fitting, prepared batches, CUDA or performance claim",
