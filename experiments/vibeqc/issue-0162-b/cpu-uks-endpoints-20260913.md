@@ -2,9 +2,10 @@
 
 Date: 2026-09-13
 
-The latest source is `cf256aecd528a7f434754f7996468827ce1144d2`, which also
-fixes extreme-minority-spin exchange underflow and stationary OH occupation
-cycles. Its clean-source endpoint rerun passes all six cases and is recorded in
+The latest source is `138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a`, which also
+fixes extreme-spin exchange underflow, large-gradient correlation overflow
+and stationary OH occupation cycles. Its clean-source endpoint rerun passes
+all six cases and is recorded in
 [`pr305-corrections-20260913.md`](pr305-corrections-20260913.md), including the
 raw result path and checksum. The remote `d0b5862` run below is retained as
 the preceding correction's reproducible evidence.

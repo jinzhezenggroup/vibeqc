@@ -1,19 +1,19 @@
 # CPU UKS acceptance record for PR #305
 
-The complete 15,455-byte [numerical record](endpoints.json) is retained in Git,
+The complete compact [numerical record](endpoints.json) is retained in Git,
 including all six native/reference endpoint values, full physical residuals,
 gate decisions, independent SCF iteration measurements, grid hashes, source
 identity and software provenance. Reproduction does not depend on a local
 workstation file or an expiring artifact. This preserves the validator's
 existing `vibeqc.uks-endpoint-validation` schema without reinterpreting gates.
 
-- Measured clean source: `cf256aecd528a7f434754f7996468827ce1144d2`.
+- Measured clean source: `138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a`.
 - Numerical identity: `semilocal-scaled-v1/pbe-spin-c2-1e-18`; CPU FP64,
   conventional total-density J, energy-only.
 - Validator: `tools/validate_uks_endpoints.py`, SHA-256
   `0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3`.
 - Record SHA-256:
-  `9669839b95612dad3f45ea7cb30a04a32a753e7143e185a774fa6632783fee9f`.
+  `920c95d39d5e92bade5f935b9f99b82b47d96a4697d119d834c872df5ab282d1`.
 - GCC 11.4 Release build; Python 3.13.9, NumPy 2.5.3, PySCF 2.14.0,
   Libxc 7.0.0; one OMP/OpenBLAS thread. Full platform details are in the JSON.
 - The identical GridSpec-v1 grids each have 49,152 points. Atomic inputs and
@@ -22,11 +22,11 @@ existing `vibeqc.uks-endpoint-validation` schema without reinterpreting gates.
 | Case | Method | Absolute energy error (Eh) | Native residual RMS | Independent residual RMS | Decision |
 | --- | --- | ---: | ---: | ---: | --- |
 | H2- doublet | LDA UKS | 1.034e-13 | 1.334e-11 | 8.330e-17 | pass |
-| H2- doublet | PBE UKS | 1.344e-13 | 8.776e-12 | 6.495e-17 | pass |
+| H2- doublet | PBE UKS | 1.344e-13 | 8.775e-12 | 6.495e-17 | pass |
 | H2+ fully polarized | LDA UKS | 2.409e-14 | 2.776e-16 | 6.799e-17 | pass |
-| H2+ fully polarized | PBE UKS | 1.058e-9 | 5.551e-17 | 8.777e-17 | pass |
+| H2+ fully polarized | PBE UKS | 1.058e-9 | 9.615e-17 | 8.777e-17 | pass |
 | OH doublet | LDA UKS | 9.948e-14 | 3.356e-11 | 1.114e-12 | pass |
-| OH doublet | PBE UKS | 2.700e-13 | 3.134e-11 | 4.524e-12 | pass |
+| OH doublet | PBE UKS | 3.268e-13 | 3.134e-11 | 4.524e-12 | pass |
 
 All native and independent solves converged. Gates are `1e-8 Eh` absolute
 energy error and `1e-9` for both physical residuals. OH's independent PySCF

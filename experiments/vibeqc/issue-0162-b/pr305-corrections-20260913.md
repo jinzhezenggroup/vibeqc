@@ -24,6 +24,12 @@ convergence decision.
   and nonzero spin gradients, the smallest positive FP64 minority density,
   and the numerical branch connection are covered.
 - All 23 CPU native CTest cases passed, including the point-fixture case.
+- Finite large gradients exposed correlation overflow on `eefecc6`: the
+  expanded fixture fails with `valid SCF domain input was rejected`. Separate
+  total-gradient scaling and a directly evaluated reciprocal avoid both
+  overflowing intermediates and cancellation of opposite spin gradients.
+  References cover gradients up to `1e308`, tiny densities, underflowing
+  gradient squares, high densities and both sides of the numerical connection.
 - Linear OH/STO-3G at 1.8 bohr exhausted 200 LDA iterations on `8f24e9a`
   despite stationary energy/residual, with density RMS fixed at `1/6`.
   The expanded returned-state regression fails on that library and passes
@@ -33,9 +39,9 @@ convergence decision.
 - Related Python validation: **146 passed, 3 skipped, 25 deselected** using
   `test_calculator.py`, `test_xc_integration.py`, `test_grid_cpu.py`, and
   `test_xc_expressions.py`, with `-k 'not cuda and not gpu'`.
-- All 87 point energy/derivative records passed after regenerating the
+- All 97 point energy/derivative records passed after regenerating the
   independent Libxc 7 / 450-digit mpmath fixtures. Fixture SHA-256:
-  `d143ea506a7dbc2648327a86d790e32f2684b89f065bc49a8fba5601e6dc919f`.
+  `dadf48af21e8aa309312b7c7da7b388f878beff2973a33c7bdefa4cbaaf40000`.
 
 ## Matching-grid SCF endpoints
 
@@ -47,18 +53,18 @@ density, before any subsequent density proposal is accepted.
 | Case | Method | Absolute energy error (Eh) | Native physical residual RMS |
 | --- | --- | ---: | ---: |
 | H2- doublet | LDA UKS | 1.034e-13 | 1.334e-11 |
-| H2- doublet | PBE UKS | 1.344e-13 | 8.776e-12 |
+| H2- doublet | PBE UKS | 1.344e-13 | 8.775e-12 |
 | H2+ fully polarized | LDA UKS | 2.409e-14 | 2.776e-16 |
-| H2+ fully polarized | PBE UKS | 1.058e-9 | 5.551e-17 |
+| H2+ fully polarized | PBE UKS | 1.058e-9 | 9.615e-17 |
 | OH doublet | LDA UKS | 9.948e-14 | 3.356e-11 |
-| OH doublet | PBE UKS | 2.700e-13 | 3.134e-11 |
+| OH doublet | PBE UKS | 3.268e-13 | 3.134e-11 |
 
 All six native and independent endpoints pass the `1e-8 Eh` energy and
 `1e-9` physical-residual gates. The current clean-source run is bound to
-`cf256aecd528a7f434754f7996468827ce1144d2`, with the complete raw numerical JSON
+`138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a`, with the complete raw numerical JSON
 [versioned in the repository](../../../benchmarks/results/uks-pr305-20260914/endpoints.json)
 and SHA-256
-`9669839b95612dad3f45ea7cb30a04a32a753e7143e185a774fa6632783fee9f`.
+`920c95d39d5e92bade5f935b9f99b82b47d96a4697d119d834c872df5ab282d1`.
 Validator SHA-256:
 `0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3`.
 The [accepted record](../../../benchmarks/results/uks-pr305-20260914/README.md)
@@ -66,7 +72,7 @@ retains all final gate values and provenance, including independent residuals
 for every case; it requires no workstation-local file or artifact service.
 The earlier remote run at `d0b5862` remains documented in
 [`cpu-uks-endpoints-20260913.md`](cpu-uks-endpoints-20260913.md) as lineage;
-the newer run additionally validates the extreme-spin and OH corrections.
+the newer run additionally validates the extreme-spin, large-gradient and OH corrections.
 The high precision point oracle explicitly
 differentiates the documented spin extension; Libxc uses its own empty-spin
 screening convention.
@@ -83,6 +89,6 @@ reference. The native endpoint has no imposed point-group constraint.
 The current matched-grid acceptance run used a GCC 11.4 Release CPU build,
 Python 3.13.9, NumPy 2.5.3, PySCF 2.14.0 and Libxc 7.0.0. The point-fixture
 regeneration used Python 3.13.9, NumPy 2.5.3 and mpmath 1.4.1. These
-corrections add no CUDA execution, gradient, density-fitting, batch,
+corrections add no CUDA SCF execution, gradient, density-fitting, batch,
 grid-convergence or performance claim. Issue #162's remaining prepared CUDA
 and batch scope remains open.
