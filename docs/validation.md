@@ -9,9 +9,9 @@ LDA RKS has a public CPU energy-only vertical slice whose H2 and He matched-grid
 SCF references pass the `1e-8 Eh` endpoint gate. PBE RKS is exposed as a
 limited CPU energy-only slice, and its H2 matched-grid endpoint has an
 independent PySCF/Libxc record. LDA/PBE UKS are exposed as CPU energy-only
-slices with spin-resolved native regressions; their independent matched-grid
-SCF endpoint gate is still pending. This does not establish broader PBE or DFT
-coverage.
+slices with spin-resolved native regressions. Their H2- doublet and fully
+polarized H2+ matched-grid endpoints pass the `1e-8 Eh` energy and `1e-9`
+physical-residual gates. This does not establish broader PBE or DFT coverage.
 PySCF/libcint is used only by saved reference-generation
 scripts. Ordinary tests consume committed data and require neither PySCF nor a
 CUDA toolchain.
@@ -44,9 +44,11 @@ agree within the recorded `1e-8 Eh` threshold. The evidence is summarized in
 `f4f85324ef505576e7231c4ead2056f775a4fefc464e7765a0dcc5d92cc93cf9`.
 The PBE endpoint details and remote environment are recorded in
 `experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`. These records
-establish only the small closed-shell endpoint cases; they do not establish
-quadrature convergence, gradients, batching, independent UKS endpoint accuracy
-or GPU execution.
+establish only the small closed-shell endpoint cases. The independent CPU UKS
+record in `experiments/vibeqc/issue-0162-b/cpu-uks-endpoints-20260913.md`
+covers the H2- doublet and fully polarized H2+ with LDA/PBE on the same
+GridSpec-v1 prescription. None of these records establish quadrature
+convergence, gradients, batching or GPU execution.
 
 Every existing native and Python test is retained, including its tolerances.
 The new small-fixture tolerances do not supersede stricter existing tests.

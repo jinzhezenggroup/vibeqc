@@ -192,10 +192,12 @@ the low-density/high-gradient tail. Native tests cover both contracts and the
 tail-v2 finite-difference variational response.
 
 The public PBE slices reuse the same CPU SCF/J/DIIS path with their respective
-tail-v2 policies. RKS has an independent matched-grid H2 endpoint. UKS remains
-provisional until the Slice B matched-grid PySCF/Libxc endpoints are recorded.
-All four methods are energy-only, conventional-J and CPU-only; they do not
-claim prepared batch, forces, density fitting or CUDA execution.
+tail policies. RKS has an independent matched-grid H2 endpoint. LDA/PBE UKS
+pass matched-grid H2- doublet and fully polarized H2+ energy/residual gates;
+the detailed record and raw-result checksum are in
+`experiments/vibeqc/issue-0162-b/cpu-uks-endpoints-20260913.md`. All four
+methods are energy-only, conventional-J and CPU-only; they do not claim
+prepared batch, forces, density fitting or CUDA execution.
 
 ## Fixed-density domain and remaining dependencies
 
@@ -207,8 +209,8 @@ clips density or skips zero-weight points. An empty explicit grid returns the
 zero integral, not a converged quadrature. The small reference grids are fixed
 controlled inputs, so agreement does not establish quadrature convergence.
 
-Remaining #162 work after the CPU UKS implementation includes its independent
-matched-grid endpoint evidence and prepared CUDA execution/batching.
+Remaining #162 work after the accepted CPU UKS endpoints is prepared CUDA
+execution/batching and its real numerical evidence.
 The independent closed-shell PBE H2 endpoint is recorded in
 `experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`; this does not
 establish broader PBE coverage. #203 owns composed resource planning, and #163

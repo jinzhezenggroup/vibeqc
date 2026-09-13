@@ -2,14 +2,14 @@
 
 ## Executable method boundary
 
-RHF and UHF expose CPU/CUDA energies and analytic nuclear forces. `LDA_RKS`
-and `PBE_RKS` expose CPU, energy-only, closed-shell, conventional-Coulomb
-vertical slices. LDA uses `GridSpec v1`/`lda-tail-v1`; PBE uses exact interior
-PBE plus the versioned `pbe-tail-v2-lda-fallback` production tail. LDA's
-independent matched-grid SCF reference passes the recorded `1e-8 Eh` endpoint
-gate for H2 and He. PBE's independent endpoint reference remains required
-before treating its provisional tail as scientifically accepted. `WB97M_V`,
-`LDA_UKS`, `PBE_UKS`, and `RCCSD_T` retain stable identifiers for capability
+RHF and UHF expose CPU/CUDA energies and analytic nuclear forces. `LDA_RKS`,
+`PBE_RKS`, `LDA_UKS`, and `PBE_UKS` expose CPU, energy-only,
+conventional-Coulomb vertical slices. RKS is closed-shell; UKS uses independent
+alpha/beta densities with total-density J and validated integer spin
+occupations. LDA uses `GridSpec v1` and versioned unpolarized/polarized tails;
+PBE uses exact interior expressions plus explicit versioned production-tail
+policies. Small RKS and UKS matched-grid references pass the recorded `1e-8 Eh`
+energy gates. `WB97M_V` and `RCCSD_T` retain stable identifiers for capability
 discovery but return `VIBEQC_STATUS_NOT_IMPLEMENTED`.
 
 ## Method execution boundary
@@ -25,18 +25,19 @@ C / C++ / Python API
   -> scientific implementation and backend plan
 ```
 
-RHF and UHF are implemented by the Hartree-Fock adapter. LDA and PBE RKS share
-the DFT adapter: it validates closed-shell systems, resolves an absent-K CPU
-Fock plan and retains its AO/grid state; the SCF loop selects the versioned XC
-evaluator. System validation, SCF option translation, backend selection and
-retained execution state remain private to each adapter. Adding another DFT or
-correlated method therefore adds a registry definition and its own prepared-plan
-implementation instead of adding branches to the C ABI.
+RHF and UHF are implemented by the Hartree-Fock adapter. LDA/PBE RKS and UKS
+share the DFT adapter: it validates restricted or unrestricted spin
+populations, resolves an absent-K CPU Fock plan and retains its AO/grid state;
+the SCF loop selects the versioned spin-aware XC evaluator. System validation,
+SCF option translation, backend selection and retained execution state remain
+private to each adapter. Adding another DFT or correlated method therefore adds
+a registry definition and its own prepared-plan implementation instead of
+adding branches to the C ABI.
 
 The registry reports method family, executable properties, and batch support.
 Unimplemented DFT and coupled-cluster identifiers remain discoverable with zero
-executable properties. LDA and PBE RKS advertise energy only and no prepared
-batch.
+executable properties. LDA/PBE RKS and UKS advertise energy only and no
+prepared batch.
 Result publication is method-neutral internally; the
 ABI-0 `density_rms` field currently carries the adapter's residual diagnostic.
 Force buffers may be omitted for energy-only execution. The output selection
@@ -44,7 +45,7 @@ is propagated through the prepared method plan, so HF backends skip derivative
 evaluation instead of merely discarding an already computed force array. The
 Python equivalent is ``singlepoint(..., properties=("energy",))``. Default
 properties come from capability discovery: HF requests energy and forces,
-whereas LDA and PBE RKS request energy only.
+whereas LDA/PBE RKS and UKS request energy only.
 
 SCF options and retained densities live under `scf/`, not `core/`. The core
 types describe only systems and runtime state. The HF compatibility umbrella
