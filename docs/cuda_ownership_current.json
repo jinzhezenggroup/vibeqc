@@ -3170,20 +3170,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 7980,
+      "bytes": 8064,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 160,
+        "runtime": 159,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 190,
+      "physical_lines": 191,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "4396dfbb9c55f5f323805c4fccd3bf6a4e6d111e241781ed51d76d6cf2261861",
+      "sha256": "c2b94683d21b74cb4ee4011fe19c9423845b3690c315bfffa9a99c3b7182577f",
       "subsystem": "runtime"
     }
   ],
@@ -3312,7 +3312,7 @@
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
-    "runtime": 9169,
+    "runtime": 9168,
     "scientific": 10714
   },
   "migration_ledger": {
@@ -3549,7 +3549,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4219,
+      "runtime": 4218,
       "scientific": 5
     },
     "scf_tensor": {
