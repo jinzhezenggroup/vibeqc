@@ -6,6 +6,10 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Keep the exhaustive water Cartesian MP2-gradient finite difference off the
+  # ordinary feedback path while still exercising it regularly.
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -231,10 +235,18 @@ jobs:
       - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
-        run: >-
-          .venv/bin/python -m pytest tests/python -q
-          -n 4 --dist=loadfile --durations=25
-          --cov --cov-report=xml:coverage-python.xml
+        run: |
+          extra_args=()
+          if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            extra_args+=(
+              --deselect
+              'tests/python/test_mp2_gradient.py::test_dense_complete_gradient_matches_fully_resolved_finite_differences[water]'
+            )
+          fi
+          .venv/bin/python -m pytest tests/python -q \
+            -n 4 --dist=loadfile --durations=25 \
+            --cov --cov-report=xml:coverage-python.xml \
+            "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
