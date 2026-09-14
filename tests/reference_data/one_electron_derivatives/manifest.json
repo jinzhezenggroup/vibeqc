@@ -1,0 +1,5983 @@
+{
+  "fixture_count": 83,
+  "fixtures": [
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "a923713d111280aa36d792cab9e6b3d672841cb4a62d08d1461171ce81c07ac2",
+        "reference": "41c006e8dc58ffca88ce7b9840b7b8567b41f6dad9177f2975981e2099130373",
+        "spherical_reference": "23abeacad68713c1198331a022f0d7d881376d8868a8440fc39af179df3d2978",
+        "weights": "960b2e9d3b93038bb8626f692470a9a7e1f5ba8ee7ec6cb1d5d8b82bb95cffcb"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f000"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "90bb7c95785c2e796871e0dca76fb8228ae15e7f64871d6cf27c2bd360c8b978",
+        "reference": "7822eb96bff3716a65c0b7fdbb95c7d960ad88ef2f67acae7e5e2bd8d47c31a2",
+        "spherical_reference": "7822eb96bff3716a65c0b7fdbb95c7d960ad88ef2f67acae7e5e2bd8d47c31a2",
+        "weights": "960b2e9d3b93038bb8626f692470a9a7e1f5ba8ee7ec6cb1d5d8b82bb95cffcb"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f001"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "537870fd300148fa71baddd82a3bd29f4d4db88a9f8e0a594ec67caae399773c",
+        "reference": "2c952284e93fe79753ec6dcd3d315f1fae356974b4c1df525cf5109ce8d325f0",
+        "spherical_reference": "9b7debaf3905bf33b51724782736cebc03116d70ada503ca17a175f15bdf1083",
+        "weights": "960b2e9d3b93038bb8626f692470a9a7e1f5ba8ee7ec6cb1d5d8b82bb95cffcb"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f002"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "1906e9fb51b7a742785b6e6a6c71ba33e9060ce3e5126e67d45fa147007006df",
+        "reference": "88fae6f7b805fe026c2c7bfede80781def31032101025b1ab05eb2432737b31a",
+        "spherical_reference": "efa99ee188dcecdc77b7a7c9ab0f4e35098e08abf9311904f1e0fcc51a0b590b",
+        "weights": "960b2e9d3b93038bb8626f692470a9a7e1f5ba8ee7ec6cb1d5d8b82bb95cffcb"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f003"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "92135942affa38638984a43933948c639e26cf075d9ec6f22a2451a746255b46",
+        "reference": "777d7d312388d5640db71fb0af14b16094b33d6f311481ec63ebeb6087b9aac0",
+        "spherical_reference": "64d2950ffd453ba2b8b343841f4d1785358d0ac6984f2008f7bfd9764b62ed7d",
+        "weights": "960b2e9d3b93038bb8626f692470a9a7e1f5ba8ee7ec6cb1d5d8b82bb95cffcb"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f004"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "f43f1bed0a171e849a7e88c474dada4a814bbf4b982909dd5c75416291681c4b",
+        "reference": "2a9e8bf21df1614ca9e3c99e80aa38a5b3ad63e1776b995b489425f5a71b84dc",
+        "spherical_reference": "25ddb3e17124e2b01ccbc77ba0cf2fae2f71bcc6f602a9b32a48578b7220d361",
+        "weights": "78d0c1efa6adc350b1a33f7324cfc6d2070e05067ad2e67467d512abb7cfc3c8"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sp/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f005"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "b90effaf33c77bc566ad39c212cda11197d8767cd0ee8bbd097f3dc98402a8ab",
+        "reference": "93ed326d7cd0d932d40db4b703b1f982d2286b2cbfbed4aedb5cb1dede093017",
+        "spherical_reference": "224ca58cb52320d1f134245c0d6c6641912c0c8cd0d5e1396dfc547a76a10ace",
+        "weights": "78d0c1efa6adc350b1a33f7324cfc6d2070e05067ad2e67467d512abb7cfc3c8"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sp/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f006"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "de148b3497a30cbdad6f1cb1b9e6d4abc7fc91c26f75b6ba73bc468b2d23bb4a",
+        "reference": "bfca69d1c2331ddc23bdc39f3a0cab63113c4e4cd46349014a3858a5e4fa5099",
+        "spherical_reference": "b67ec8c9f36ae451dc10eb3c5b064ec79b9349a0bd18379d69204335c4ea94d6",
+        "weights": "78d0c1efa6adc350b1a33f7324cfc6d2070e05067ad2e67467d512abb7cfc3c8"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sp/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f007"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "44e1d35c2bdc7f8307e248ea78027602800d28123cab0be5c2a3b032d76aa770",
+        "reference": "579ac4ef17f73c8ae0678fd460061b930a3f6b50b32f331598f04f494ed97a88",
+        "spherical_reference": "a441e45d90d79c5db624b4091088ad0ceaedcbf93af624b2844da0815b35c5c1",
+        "weights": "78d0c1efa6adc350b1a33f7324cfc6d2070e05067ad2e67467d512abb7cfc3c8"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sp/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f008"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "5f7859e9e52ad98ec165dd41bf91b09a0e428d767b1de9529867f0206adcf23a",
+        "reference": "52cb0e4752a342fe439a2e140784d5f80e944a4dd9b31dd9965b05646b655b2e",
+        "spherical_reference": "b3c0f920d7d6d1729232bbfb309451eb3e546a9304771b171f0018e5018a88f3",
+        "weights": "78d0c1efa6adc350b1a33f7324cfc6d2070e05067ad2e67467d512abb7cfc3c8"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sp/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f009"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "565a9091fab183e3a29e5c229b749904f76d797d6b3b975e4487f47fd4a16bdb",
+        "reference": "8a459043693a7a0724cfeaaa0dea6a1e50d28f60e0de2ccf5a4573561dd16010",
+        "spherical_reference": "eae3ae0d59700490426d4f7cbacdbed7ce3da2cd8aca75f307e04d6a19d2187b",
+        "weights": "d5b3a069ad0ecf9e4f52b2298ff73b7b5e6158b99666118ee79d50c62ea92783"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sd/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f010"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "45ccb561aa0940d21e104753bbe1b94d6b1b649ed459d133848712df64eb991c",
+        "reference": "1e4edd348be23522c39edb458d213230d26f148974f49275fed76ba2ae1f052c",
+        "spherical_reference": "b9958f23553c32ea57ba19360cc15164a9f3827640ae036c45361b36c59a6884",
+        "weights": "d5b3a069ad0ecf9e4f52b2298ff73b7b5e6158b99666118ee79d50c62ea92783"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sd/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f011"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "a911fd3395ea8afc1468ce495087b0b11e730e0594cee15cccd089e11dda0654",
+        "reference": "7b396c36752733b4a9a2a19f19d72f191248a020fbdb659a3ec0c0301f867d5a",
+        "spherical_reference": "5cfe4582d96b4da7080db72d43681ca56c0ff1ce8316ac469c2733e02f57832d",
+        "weights": "d5b3a069ad0ecf9e4f52b2298ff73b7b5e6158b99666118ee79d50c62ea92783"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sd/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f012"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "8a944c72e1e597a272808192452a7d73340d7717451b5b3f31a2c0e6bb61a7a5",
+        "reference": "1547cb15e60a56cc9aae1bdd241a044d2bab56821f6afda230ac3df0bfeef830",
+        "spherical_reference": "9981f29f5b8f4959263e8b2f691a40e7f2f077f9fa81d045cee924ea418fbbae",
+        "weights": "d5b3a069ad0ecf9e4f52b2298ff73b7b5e6158b99666118ee79d50c62ea92783"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sd/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f013"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "3120a0d325207f6c55e5b65e514d4a3de588330b3faac997b83dfcccbdcf1cab",
+        "reference": "660b44f5a12cb261e5be4583445aa470060224c099a0229736ae2644f95528dc",
+        "spherical_reference": "32c061a57bedc3ee615e5373f098b3aacced2967da02bea4a01af86203209747",
+        "weights": "d5b3a069ad0ecf9e4f52b2298ff73b7b5e6158b99666118ee79d50c62ea92783"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sd/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f014"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "92517773e8521d004951404b61e5c00d25ac0742ee4cb155930590291d90f5bc",
+        "reference": "2732568ddc9479c32b5875d99b03bbcf53cd08901465a44389e451b04aaca83a",
+        "spherical_reference": "f7c56cae508b9904f6e4fa4f78a1ac911988d589fa5bec3656b66c2136105ce7",
+        "weights": "82712962f4ab258338e5e3d6f512657f42d70d2207b70264dfeac9cc56a9825d"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sf/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f015"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "fce1c7ed26ff3554712ac3c3c80f557fb3d0cecf768f4839c456c200a94ca65e",
+        "reference": "c1cc391d8f63e25616f3ab6c937946f8e78e101273aba11d979586c2fc4e2e1c",
+        "spherical_reference": "677b576e64704a0356c97826a9249b48c1ba6beba9d9875bef4e229427039a44",
+        "weights": "82712962f4ab258338e5e3d6f512657f42d70d2207b70264dfeac9cc56a9825d"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sf/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f016"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "4f22d837c288023345cd327fb17832be750dfefcb6e3fcb970069ea5ccfc0a22",
+        "reference": "357fd17ba22f5ed464070c527570ccf260e5fc66a0b989f01eba522767866da7",
+        "spherical_reference": "090938eab37e8353aaa3ae1316b16629cf061d366bfbc4c67fa6d7ef38d05da5",
+        "weights": "82712962f4ab258338e5e3d6f512657f42d70d2207b70264dfeac9cc56a9825d"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sf/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f017"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "96c68dae89ce62e3fd1fd037807d21e70227e043e1f60af70ea6a86ceee6a15e",
+        "reference": "3df65f9dac03e91e1d5947709b0c6d41c6fab73f59aa3090ccd6f8619d906a24",
+        "spherical_reference": "b6f15b0abdc89a0e19635e91c3a9340881a5a4ea20238fd94599d66284dda957",
+        "weights": "82712962f4ab258338e5e3d6f512657f42d70d2207b70264dfeac9cc56a9825d"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sf/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f018"
+    },
+    {
+      "arrays": {
+        "projection_a": "9e2b4b2515e6793488a7c51f50d99725aaf0424cfd01cbe667ca144a95f775d5",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "02d105c115c2628b6490e69c86a159c4b4367ae5038739d9997bb1e79a1dc768",
+        "reference": "a976c57712ca79a76d1edcd6931f4ad302571dffcf5cf6d30c04eb01316c78b3",
+        "spherical_reference": "d42620f72cff95213049740f23a7be366559ad5bf0f49a0741ec6b48eec153f6",
+        "weights": "82712962f4ab258338e5e3d6f512657f42d70d2207b70264dfeac9cc56a9825d"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/sf/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f019"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "b2e7a57efaf3d042efa78ab23af8a5542afb068f813d8c69b1c4fdb42c113947",
+        "reference": "325e93812a9839b69afa31a7948831a3f1f782026f830840cf71263f05a4bc28",
+        "spherical_reference": "28c4157992b7edaed4927623c94933a1f20ea51cfef8bddd552e375aceaaf612",
+        "weights": "27ddd218cb40e060e62752efc6750bc9246227ebeb3465637a524d467153ab88"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ps/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f020"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "ec8dc16e3aa107c4983cbd85094dfe68d907fd4fdd2091d913b51e862a38ee00",
+        "reference": "c2cc557922577bdfe719340aae70cdb1101d0c14f7625a7639253d3d757a5f69",
+        "spherical_reference": "f248ccb2e1cd5e00fd840543be8ffe8c7d5086cdb19fe7bdfb96e0e0707d987a",
+        "weights": "27ddd218cb40e060e62752efc6750bc9246227ebeb3465637a524d467153ab88"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ps/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f021"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "32c6dfc67714bbbba123c7927fdfd1857c30249b37354b88c7aa87983e44fdda",
+        "reference": "b8ae15620b83bcc5b4415a05ed1444354b18b269c9c72b3d67e8976c2624ad40",
+        "spherical_reference": "a386d7794d65f780107938771ad2dc522a3acf458acd638fe105a001e6eb01b6",
+        "weights": "27ddd218cb40e060e62752efc6750bc9246227ebeb3465637a524d467153ab88"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ps/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f022"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "6a4c5c8661690cc0c846351762ac57151995eb73c3ef61d95bf5d7db28c1a382",
+        "reference": "06b1e8f2d09327537b24b60934e61acbdaa9cf65cba79a34d0327a112656319c",
+        "spherical_reference": "97b40b22fd8eaebe0832639c1783a0242fdb91e48b461fc0f6c12c70bdcaf184",
+        "weights": "27ddd218cb40e060e62752efc6750bc9246227ebeb3465637a524d467153ab88"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ps/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f023"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "8c87d504b1668fa87238bc16af3e55c0b9200d40eaa964443d6b9c5f0794cc48",
+        "reference": "6d88b312b25750b5bdd141b4edd153bded5712184a7a95ea20277645ea71e175",
+        "spherical_reference": "d0ba0c272a20aa45f7175ff917aaa76d925b09c1cd4f26b665a69fbcff18727d",
+        "weights": "27ddd218cb40e060e62752efc6750bc9246227ebeb3465637a524d467153ab88"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ps/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f024"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "c97ee8c95400c037289aa9fe04faf45bf193d4c0c1e2c86d3152903a11f9740c",
+        "reference": "b416c0ccc26862a552696455a42f2089ed32c7b4482016bbf09c07b5d5feba2a",
+        "spherical_reference": "18fc4015fea787cf37b9c7b5d011ffb19f427773db1e6db1a49d82559ed802f4",
+        "weights": "cb0ebed4511a6aa2c4f57f0300592edb996843b72bf9181721d870b067918731"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pp/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f025"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "40677fc134be88018a283e3d2cc97395fb248bf1a08b6861710a4c6405360634",
+        "reference": "b50095cc9bcba1e04929ebdc5242225d5c4ed32dfaf8ac691278704199ab2845",
+        "spherical_reference": "b50095cc9bcba1e04929ebdc5242225d5c4ed32dfaf8ac691278704199ab2845",
+        "weights": "cb0ebed4511a6aa2c4f57f0300592edb996843b72bf9181721d870b067918731"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pp/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f026"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "5f898863a0711c38b714812e5365d088141cbf14ea6ce1e99da82fbd532c2bc4",
+        "reference": "44047edcd44ef700646abe0f1c9ae6d511669b020085d8bf009b8fadcf95b577",
+        "spherical_reference": "941bd69a53214e16b43fb7bf94866d6768edf28dfadca88201aca1022678a767",
+        "weights": "cb0ebed4511a6aa2c4f57f0300592edb996843b72bf9181721d870b067918731"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pp/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f027"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "ce8b6fffaf1b692a3050b6a8c220ae19b8d7dd3b03f21404840167ada25462de",
+        "reference": "08d6650646b94389fbefb60fca4ae2a372333e92d8bcf27f777c0c13b5a5fde4",
+        "spherical_reference": "e4014eb58f78e516fe0f53c9a237dd21f9d8e2836317e82d4a5f27760fa42e5e",
+        "weights": "cb0ebed4511a6aa2c4f57f0300592edb996843b72bf9181721d870b067918731"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pp/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f028"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "63ca81501506730a32ca938b8a71f4f743d0c709aa2e362443842803cd4b16fd",
+        "reference": "7c9a44226e3d742d509599ac9b21cbeca9039c3dc8b9b5d93e5b5d70585be539",
+        "spherical_reference": "c4b57b81d167200fdc9e8e51256c7a6653f7680efe0600ed33cff3289d3a6f3b",
+        "weights": "cb0ebed4511a6aa2c4f57f0300592edb996843b72bf9181721d870b067918731"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pp/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f029"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "9a1e992d0562f1525da62631ea0a006e75c4813cd221a8baaf8ba26230a1bbed",
+        "reference": "65baef24d56a9bad3e17654dcbf43c1f4567035a483d65f699da4bcfb05f663f",
+        "spherical_reference": "5ee7fafb7eb096ce661c2c2bcc5db6cd3466ff84466ef200e3c6ffdafb1fffe3",
+        "weights": "eb21606791e312c583918b91572b503630e766da5754d0dff7e6ee942d3782a0"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f030"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "7998424f69de52f5d92260e30a3ad7f54cd23f8961311a509fc3df8dc46cf4c6",
+        "reference": "9fa008af86aaecf99f0a1ce62e74965b05a4c15885325bbefe02a5c87e69e98e",
+        "spherical_reference": "6fc132efeea6a507e0846e372597a494f143452d61d55545e6d037b4ee92f3c0",
+        "weights": "eb21606791e312c583918b91572b503630e766da5754d0dff7e6ee942d3782a0"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f031"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "19e071e03c5a1789d5648e5c5c61423d6464c53127f7932226d4bb31fc3a8cee",
+        "reference": "8ef49d1de2068838decd3a4069f9d6c14056e5e943ddffea2ef8547a4694a3b4",
+        "spherical_reference": "d4b9c2d6a219d2ee94cb2b1f4047bf5eec53a2a60f67b3a8d3bf7915750af5cc",
+        "weights": "eb21606791e312c583918b91572b503630e766da5754d0dff7e6ee942d3782a0"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f032"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "f0e1f639028ac69ecee85451855106e2504e3a54fd6d58c714b0f0ec26b10a1e",
+        "reference": "4c5310929df11e03d7e4ccdd7a1e90a0ae12abbef7e0392c661409064f668309",
+        "spherical_reference": "2c2e1c13227db6ea8ac99bcd8fd20f39b443b1d2501db65860240149dba33958",
+        "weights": "eb21606791e312c583918b91572b503630e766da5754d0dff7e6ee942d3782a0"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f033"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "92e8672fd0f2934a9b0f9547c2974a79a10182d177518a59151613cd13751b90",
+        "reference": "200dc585d25fe78817fd5a6c02b9ac94dab4bae3bd8f1a662f9cf1d1c924f7d3",
+        "spherical_reference": "bf649133ce25f4af2bff03bd26a31994120ab47ec6bc4f4499f0310e95f06667",
+        "weights": "eb21606791e312c583918b91572b503630e766da5754d0dff7e6ee942d3782a0"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f034"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "c3ff5db6e93b23fcbe8970ba91e6165d7ca21708629aae459212661709c1604b",
+        "reference": "11e1781d4c551f1ef9bc3151555e987a704fae3282f59919f4c149931a60c005",
+        "spherical_reference": "a1e49ca0e397cf14d538d404b8b790f4b320920a4de546738aab2a9cdd5571aa",
+        "weights": "9e291219f67784faf8a9324e3cf3097ee21604c597cb181ac0803cfa158c74c5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pf/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f035"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "3e4aef673f9fd8e98b73f9891b6be8e459f33476d719a6d75f96794c1159ec1b",
+        "reference": "000a373a2e9ae45c08ae2a57889478b9c90ebbc6e07b3b15fc76747bc4a71405",
+        "spherical_reference": "7c7436111d018c32a134bd847e8198cd4b08ab0009f92199e917b23c66edc8b5",
+        "weights": "9e291219f67784faf8a9324e3cf3097ee21604c597cb181ac0803cfa158c74c5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pf/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f036"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "22a9ac9dbe4368873e7654a596ad58ebccff93ede7a60dfb9d29cbfd4d9107f8",
+        "reference": "59c704f48ece9b5878589008ad57813911bb2cfcdba105e2b9a1fc175dd561b9",
+        "spherical_reference": "dd8c73f6e53ad2aac9d79cc93b4cac4043222b0d063738c4209ee6b3cdda41cb",
+        "weights": "9e291219f67784faf8a9324e3cf3097ee21604c597cb181ac0803cfa158c74c5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pf/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f037"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "6e67b83ebe61f17aa085c887a29ea993e12c12057b6fab101371b230b0e65b2a",
+        "reference": "09ee27d1a034b1694b8a4f70b48fea9227c7487fc9ca6b5606c9985128ec95a3",
+        "spherical_reference": "4695ccfb8b08f8d80cca6a040450f45d5982e958c032eeb02d9d03db7dc1c553",
+        "weights": "9e291219f67784faf8a9324e3cf3097ee21604c597cb181ac0803cfa158c74c5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pf/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f038"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "b9e44b56cfdeea37d233f4c50967d43e4c9f3035d14d9f996e369c6b9efe637f",
+        "reference": "2e0d163fbc436644f6baade7594b21733573b955037e8d28759aabdce71485c2",
+        "spherical_reference": "b788d45671b78a177d7c8ae09d57a38d6928529707baf52470ea88493fa5b567",
+        "weights": "9e291219f67784faf8a9324e3cf3097ee21604c597cb181ac0803cfa158c74c5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pf/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f039"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "cb994872426909b47a172149f8dc1d4e96ffde6aa76cbded2291c884808f4d43",
+        "reference": "d7098a91751f1cda82b79a56ec29444e2fdd4eb2d6761875829665c5e3e6e5e8",
+        "spherical_reference": "cd5edb01333e77623850d42bb191670313682fa0ca083fd8cbb218da332c48d5",
+        "weights": "fc004afe0eeb6eb1363b3e455e1d04c1ac601feebfd964bdbba5a3ed792ecd57"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ds/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f040"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "57076cfa9730ab38acd7b81271fc6f96eb091f8e7044dc4cdf589b900e7115fe",
+        "reference": "a822809f764e09d8b4a46877733bd52faeb00135591cab8d135a6f7f377bce7b",
+        "spherical_reference": "a7735da573b5cee0c599da3da29131e154097d7d76406d5628e985f23f5a4ac2",
+        "weights": "fc004afe0eeb6eb1363b3e455e1d04c1ac601feebfd964bdbba5a3ed792ecd57"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ds/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f041"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "0d8f66e2dbd12b72b8a1889148e06dac5232a97a7a1807bead9d8a3eea6b935d",
+        "reference": "389ef055bd45e0f363f374d9415e2d76873fd0d76d819d8ed99b1f4e903a3fbc",
+        "spherical_reference": "421c8a68822fd855bb78f522c4c111f706a7cc97ee49b66af7344b0b808cd458",
+        "weights": "fc004afe0eeb6eb1363b3e455e1d04c1ac601feebfd964bdbba5a3ed792ecd57"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ds/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f042"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "4b069182ebca3521e5ab6700b1febdcd48536ef3a3cbe07c70b0cf6501d84f8d",
+        "reference": "e5550112c114ebaea6a0d0124ee52af464424da5376a94fc67c414b855f8b571",
+        "spherical_reference": "b4b1b17f1bfa2bb22f2e308602e8c9dd615e340fcb7708fa6d8a04c7bfdd640a",
+        "weights": "fc004afe0eeb6eb1363b3e455e1d04c1ac601feebfd964bdbba5a3ed792ecd57"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ds/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f043"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "cdc54c23f188db0945744dcb70c0ce9b0e4b37c5c530eb40cc60ee0722024707",
+        "reference": "fc7045ffc145a5c118927044a18959d12d0f96b2713bd61c2f01828f1df3c190",
+        "spherical_reference": "e6f0ad17e45d1a8021d13446df0cba6aadbd3e2e9fc69f99bebd89fb9df65739",
+        "weights": "fc004afe0eeb6eb1363b3e455e1d04c1ac601feebfd964bdbba5a3ed792ecd57"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ds/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f044"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "17ce0d2680056f5c2ee4b06580739bb76f56d3e1aa31f1a3ab3e479852d07690",
+        "reference": "b2ed1d4605f87944db8d98901f8f057ae88a03fdaf0be48ef940cd7cc2893aff",
+        "spherical_reference": "1cbe80bc2fd43efad73b06772b7ddb7d95c702307d3d11ae36c1c352c9d83881",
+        "weights": "e84f47ab7137f46cb02f9f0f9a80bdb1ba14643d75478bca7be2d00b4ee84dc5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dp/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f045"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "ce01853ca01bacf93c9f52b502961ad25c2c288d67248e2206884ea8f29f2a18",
+        "reference": "c1424b09c51dd5ce7dd715a87593c105e8c4f0f0d32ead879ebd44fa7c4cd92c",
+        "spherical_reference": "f93f99102815fc7389caf578890c31885df75d045d35506a88cce11b0da04717",
+        "weights": "e84f47ab7137f46cb02f9f0f9a80bdb1ba14643d75478bca7be2d00b4ee84dc5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dp/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f046"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "b18b9b316e120fd55b06d5b78678d7e50d5f2eb1cd54ea000bac42e2f5022063",
+        "reference": "a864155bb5d9de1210a243358dde621580eb263f20381a19368038e7c7485e15",
+        "spherical_reference": "9380a47c27c008aa7b646b9972b640330384e62656c505f7542d48b06a1b9b0c",
+        "weights": "e84f47ab7137f46cb02f9f0f9a80bdb1ba14643d75478bca7be2d00b4ee84dc5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dp/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f047"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "9bc6c8da449d401c78c4402317eef3950509d13ad11aefc2fbe5660b1cab31fd",
+        "reference": "0e589a53b3bc6e15512d6b732a67e5ecf232e77562289317556a3bb3987092fc",
+        "spherical_reference": "95fcadb13ab0e272a683844e643d2837f36856af6860c5c1cba8e655914d45c6",
+        "weights": "e84f47ab7137f46cb02f9f0f9a80bdb1ba14643d75478bca7be2d00b4ee84dc5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dp/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f048"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "faf3132ec4f9af0b4fae7adecbd41c6e9cc335239e4775fa6320461ff576c988",
+        "reference": "8506432ea434a418564f6a4f42160cd663d6d64802baa059e88834219786dd85",
+        "spherical_reference": "724d3d2b261648f89b6d3a2c9018872f331d97c381ea8a6344fb7dae895536cc",
+        "weights": "e84f47ab7137f46cb02f9f0f9a80bdb1ba14643d75478bca7be2d00b4ee84dc5"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dp/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f049"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "5e18d3a736ddaca016ebab108fb3875f08e94bfeca6ad4189bc7119b22cbf767",
+        "reference": "8d6f602b92a1fda9ac612d185a37ab22f2eb249cec8f4b76bb06b33c63ead47e",
+        "spherical_reference": "a19f7a1f203c704eb183b5a7eeca0be4abe8bc27c17a804d43381377fe6df424",
+        "weights": "169907a5c8884204c093e08b24bd4b24f36776b7e335e73b4b13ef220634f4e2"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dd/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f050"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "96698ed682f6d1855c236aa1899f6c4b955f01d21dd302eb377975e46aed7d38",
+        "reference": "8fa1141364c865902f7b884147fc7fc7fc8b775e67b5ebfad852673dd93fa8bd",
+        "spherical_reference": "a50b1d0f5cc17fd6461404d4af12242052213d82f5847c4919f9f5954d105063",
+        "weights": "169907a5c8884204c093e08b24bd4b24f36776b7e335e73b4b13ef220634f4e2"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dd/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f051"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "994fa28aa9c124305c9be3f7f3cb1a31b7b83f04a98138f1022e151466b62a16",
+        "reference": "709407cad3d6c18b504d60723e72e11752d276ee89ba936820d30bd85da92162",
+        "spherical_reference": "54071bbf7079a08563ab855ce46f40117b8dd5fa40d756c095c9716aeb9e5665",
+        "weights": "169907a5c8884204c093e08b24bd4b24f36776b7e335e73b4b13ef220634f4e2"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dd/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f052"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "8911e56211d3650ff63848043c24c3dc3d6b5007e668ef19ec50cb3e6958f05b",
+        "reference": "52898a69ef28cc7eb8b905b61140c662dca3af736b4446f1f605df156986d91b",
+        "spherical_reference": "88863ac02c11fc6da37c7f872a17888c02a9e59891cc885cedc849ac44ee0042",
+        "weights": "169907a5c8884204c093e08b24bd4b24f36776b7e335e73b4b13ef220634f4e2"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dd/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f053"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "5eb44999c0099df7601c2a3d7ad06d869ef0f8d6547e43bbd07ed47aff4d0664",
+        "reference": "70a1841ddd9b42748d26ac2d894742e4f0f986cab9c5f8e7fb907874a4dea0e2",
+        "spherical_reference": "e847900f01ec2f1909b07d8c3b500031e83678096edac9a874713e5c8c1303a7",
+        "weights": "169907a5c8884204c093e08b24bd4b24f36776b7e335e73b4b13ef220634f4e2"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/dd/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f054"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "af6265b9b4872a2d76c8f648c85b89eb60e6dbfc8d068d07815a7e63008ab406",
+        "reference": "d3d73250b6be6307c7815e4a203eb45005d3a6c43408a7e8b44dab3f97aa3d98",
+        "spherical_reference": "f2c18e1d4b2fbb465fa8b674cfcffea78a82c0317e2270a98fa595a12deb3130",
+        "weights": "cc64ce58a13dea26589d82666a5144a1c315f5bf73830e12e5ae55578c9e37f3"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/df/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f055"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "473ad43e0a0fc6f7853105f7f43e1d9ed3dde77baa3ce9fdcdfc442fbcd8317e",
+        "reference": "3d13b6a98051587198e0156a4877852c3132e4090763cdd492ca696d524e97d4",
+        "spherical_reference": "5dd0b622ae2cc8377df9c1b5a08d52f0fe60030816f18227b3a4499ee896a818",
+        "weights": "cc64ce58a13dea26589d82666a5144a1c315f5bf73830e12e5ae55578c9e37f3"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/df/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f056"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "f57fca24b5dd51b8569863288092f08ae6b6079f9a577e99a6f86e46901acb50",
+        "reference": "b89ff62f30a594b2095e331f7c5ac1519e604015c91f12ad8acde0c5e382a318",
+        "spherical_reference": "5e4557258e91d73321f7fb7bd0321df6e2f614b89a5ce41e97416d8f53b41db7",
+        "weights": "cc64ce58a13dea26589d82666a5144a1c315f5bf73830e12e5ae55578c9e37f3"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/df/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f057"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "b0b8f7053199e286e34649798a554b9f90ceba9f6249770dbaf969fdfec182b0",
+        "reference": "81f10e24e4a69ccebc4e418eb50a4ee6fe015ec2640132c95afa0c5d82f3ebb5",
+        "spherical_reference": "01135c242e07cef451341bc9d968d8f73e593e66881f33bc22640b86f0a10348",
+        "weights": "cc64ce58a13dea26589d82666a5144a1c315f5bf73830e12e5ae55578c9e37f3"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/df/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f058"
+    },
+    {
+      "arrays": {
+        "projection_a": "fb7ab9e96d2d1d4168fbc9a98c99c9792c025167a5bef8338b1e8c6b6af900e0",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "010d49c0f81a99f0f6364677c73fd1d7210710ce95834d35b51d4109de97b92e",
+        "reference": "98edf771989f88f88415c2164ce60528810aa816138f2b21ebb07eecb6dc7347",
+        "spherical_reference": "8c0953881133a3d8096d9b915a3e9352c9c22477ca0a886ac45f60632b81d862",
+        "weights": "cc64ce58a13dea26589d82666a5144a1c315f5bf73830e12e5ae55578c9e37f3"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/df/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 2,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f059"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "687eabd5f30a268334d6614c02c6befa1adb09f097dd1111c17334a12ba4c20b",
+        "reference": "c9e551689c77fcd4df036e8b3622453a5cf7a39b434c423513a1527f99b197e8",
+        "spherical_reference": "31ec308f5a9e66c52f163d6974adb0e3cf2e2ce4e4674c71bcbf85231a611391",
+        "weights": "60b9127bf7d3158772a298d20cf7a77fc74335d05ab48a6ab698fdf38c6704ca"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fs/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f060"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "11ce879f68f88e0bc380e095ee07b7ba68cdf5ca90496c2c7083d245f9d25e76",
+        "reference": "ee37f3f0d2d51cb977151b64e5408d186200dc2fae9b12bc21f8e2b47c5d8cc4",
+        "spherical_reference": "4595ddbac478ce0b5898fa2f5c93f2bde38b2d32b4b7dbda2edc0ce5c67485a0",
+        "weights": "60b9127bf7d3158772a298d20cf7a77fc74335d05ab48a6ab698fdf38c6704ca"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fs/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f061"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "98847fb68289195e34b7b5f1f7da4b8f1e38988f02ffeaf99c8b998b5e1e5569",
+        "reference": "65b2350fb5a81df28941dd2b4277c53f38aec896e63cfd3b3badbdb4435587b2",
+        "spherical_reference": "3b7629e0f89d147b4854131397286c140833fee85439c64fbf5c896383c0a48f",
+        "weights": "60b9127bf7d3158772a298d20cf7a77fc74335d05ab48a6ab698fdf38c6704ca"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fs/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f062"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "6d41fea8af4d069e6c9eb86e7b75d79df0bb82f73d3ff1741765b8ee577236df",
+        "reference": "e6d4a6c7a753313d263e37bec288de9344ba4aa9501313bde8845be467dbd4d0",
+        "spherical_reference": "434ce76d31d784fcc19c2fe1572e65711d2f2f3e8cf05f68dcc7e87f9fb7ecf4",
+        "weights": "60b9127bf7d3158772a298d20cf7a77fc74335d05ab48a6ab698fdf38c6704ca"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fs/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f063"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "693a4f7dac5c6b805e5c38dae9276a7fbd73a61a81ac41ad225ee7209b9c6105",
+        "reference": "0aa634290bd722f9ab2366a60ad8ee6d5d3c4e358d943b7bc00f769fbefd8c2e",
+        "spherical_reference": "d5d5684bdca815fefd86e5851b35f4afbf24b49da06fc3197a835dc2e6984124",
+        "weights": "60b9127bf7d3158772a298d20cf7a77fc74335d05ab48a6ab698fdf38c6704ca"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fs/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f064"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "7175cb2d476f91576bf82dfbc1f65c45c766d1e1c5aa625c1964a32ccb742383",
+        "reference": "0e5603fe77e32f81b0967b72ab444e8fa4b75dd37a2fcb46234ff9b5c80c1057",
+        "spherical_reference": "e5bc710c64bf9b71c7a6030585e903d9d4589a07863cc328f6d303f0452721ac",
+        "weights": "20955892c4926a016517280588086f8e3bc06a77a48bb6c7e1f683d1a46d9e69"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fp/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f065"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "2a6b1610c631d273cd49f9f84988c04e90eda8753f37f5248a7c90bc6226f0b3",
+        "reference": "f5976abf8946d2aa5c38a181cdb56b1dd3ac05b25deba0144566162b3a5946ee",
+        "spherical_reference": "0e953be002fb752c34c56e723344f885b05e5894a4cf2eff9d7dd92eb91d6264",
+        "weights": "20955892c4926a016517280588086f8e3bc06a77a48bb6c7e1f683d1a46d9e69"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fp/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f066"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "3bd8f7a145f79688b9d85f6c3777ef822a99a67a17732bf2588c61d00c25dd77",
+        "reference": "2df1f1b7aa7b6e716ba846f67022166303b5a87165a83778f1b0f7e4daf839d9",
+        "spherical_reference": "93848f8f552ed73fa60f52d0a6937da7997730638ba404cc286d4f8ecad3312e",
+        "weights": "20955892c4926a016517280588086f8e3bc06a77a48bb6c7e1f683d1a46d9e69"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fp/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f067"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "4762cdc57ff91e6d8e71b47303a84e2dd2aa34ac104120bd4471b15c4e166b03",
+        "reference": "54f8439bac13b84b23ac725619bfd7e09559dd45162280f970c47ca71125542f",
+        "spherical_reference": "0eff121e4a1a378a65a0f2fc644b5f21a3567f512ed53817ed83b560859ef7c4",
+        "weights": "20955892c4926a016517280588086f8e3bc06a77a48bb6c7e1f683d1a46d9e69"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fp/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f068"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "d713d1a0f661521a7b13aed28c1a98febfa5323dffc779ea1192335416c0967a",
+        "records": "394f6a5a9753f9bb1824acef1a098ce1af300c51d503814ec85e10b64fb83e69",
+        "reference": "8a0df27cfa069bf71f9111ac7cbe7ef11f8b903ce848349d7cf59ee976045797",
+        "spherical_reference": "283b69d4a71f70a528627e4f1108833b2814a50253bb04eda615f63794aa1ca5",
+        "weights": "20955892c4926a016517280588086f8e3bc06a77a48bb6c7e1f683d1a46d9e69"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fp/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 1,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f069"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "d0c4fd15a40d81e6d45364e5fb8d7217abd3be1ce7469694ade00cf02945cbc1",
+        "reference": "37c2129c38b263b7b139173b81f8a6cb8b5164dbcf13e69d70557a1c242c5a40",
+        "spherical_reference": "2ba0c5a6ffb7370b20166b0340f0fb9051bcff1cf1a48aa8541ded4659a0aea0",
+        "weights": "e71c610a395f63fcfcbe27791dcf4efebba7630159f7d933b5cb07eba1680911"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fd/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f070"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "aa552933434e08cc35318b092ff42baad185a0da0cb49c2a37d196bb124d70bc",
+        "reference": "be7484c1da06578ae3c1787738de9e9c7ca772e09ac428d8d007183d97bd6fc9",
+        "spherical_reference": "849889505d14e6d722a60aa103eaf7a6935a9233a3b7daf63dc65bfb8a38f412",
+        "weights": "e71c610a395f63fcfcbe27791dcf4efebba7630159f7d933b5cb07eba1680911"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fd/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f071"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "9ea2d7b01890660af46cc88a18bb6929972d42bbcc7c30383d3a8a1c05b33364",
+        "reference": "1dd9fe1b9af7b45022f26b7824b31a1ef2fe7982fce14d865c8d30958be3fe29",
+        "spherical_reference": "9fb200aa0f44b9497d9d33bc087f79bfb3d42b34996da17b011479e2a98d9663",
+        "weights": "e71c610a395f63fcfcbe27791dcf4efebba7630159f7d933b5cb07eba1680911"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fd/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f072"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "29a5ef6bf872cc97cfad9bc3693fd09c714cafda3b79eafba6d2623cfbdde860",
+        "reference": "4940af70d0c84da48cf1e52ab542215d467e66803899f520c21e991b35b08396",
+        "spherical_reference": "ebafbc3793408add3b403c9798cabb663188da983c5d12b7053644bcd8df8c88",
+        "weights": "e71c610a395f63fcfcbe27791dcf4efebba7630159f7d933b5cb07eba1680911"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fd/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f073"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "7dbabc9c84b2f1873f3c3fcc6b0740bccdbcee7289a97cf08cba3e6269d6c03f",
+        "records": "ddba21fa2051134d443c61fff6681a7ff3ef6484c8ed820b3dec8e3c890cd04a",
+        "reference": "68dfb521dbc2e65ce458f2142fab7eafb4975cfb919cc5074b63fa27c8570ae8",
+        "spherical_reference": "b6a0008e82162b3644f1b81112762efa1644ace7edad9287b4a6bdd0e3fbeda7",
+        "weights": "e71c610a395f63fcfcbe27791dcf4efebba7630159f7d933b5cb07eba1680911"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/fd/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f074"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "fec4fc167d08c5f1852a54cf2aec2446f0e12c4629064d2930ce2d7bf16d0275",
+        "reference": "4e59f228e9ff350903047e1be1fbde646f8321bdeb415c3b25c3c5459455aa17",
+        "spherical_reference": "0de26a009112cc29ae596008e49c67828767c8d7325d52a68b1061643a8d3d11",
+        "weights": "ebb147e083310962db9da90b44b780abe11b31ff69addf524635570b78012cd1"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f075"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "357010052344d9bc75e6b9763bbd56bc9c330e66128e16597fc390f5ec152cf9",
+        "reference": "2cd948ba283467735a1a4c96645e245fb4bae5649acc0a1e36dad6bfe3e91570",
+        "spherical_reference": "6172a27b2113e487b2ff7226651466723a99e83f194750d2d5ada8e55d0b50fd",
+        "weights": "ebb147e083310962db9da90b44b780abe11b31ff69addf524635570b78012cd1"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.2,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/coincident",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.1
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f076"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "ae4219e104aaa37ce8d9cbdcbd703e8973eae8dd62751fcb703a1f7a43d5ed24",
+        "reference": "ae334de604556a25f144d145eac3871e052b5da04c9f2e9f6e6026128821ac2b",
+        "spherical_reference": "991a0b8dbb5432b78d31d877c6591868c16fa3877e5d923aa99f8d78ba5e4e0c",
+        "weights": "ebb147e083310962db9da90b44b780abe11b31ff69addf524635570b78012cd1"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            0.20000000010000002,
+            -0.3,
+            0.1
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/near",
+        "operator_center": [
+          0.2,
+          -0.3,
+          0.100000001
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f077"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "38b9453c4109973f6dc83308695333ad073dfa6267ae7f37cc328e95ef41753e",
+        "reference": "22fc5caab2c156c401f82c435288a5951d9b9d440104512b527fa47eea26eaed",
+        "spherical_reference": "40dd5af9e85fc575deeb62de1f1941f07fcb3f176302043c034ac67ca804f97c",
+        "weights": "ebb147e083310962db9da90b44b780abe11b31ff69addf524635570b78012cd1"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/intermediate",
+        "operator_center": [
+          2.1,
+          -1.3,
+          0.7
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f078"
+    },
+    {
+      "arrays": {
+        "projection_a": "e6b656fc111f8e3d05001b9f7b788ae02e8a1f120588b0eb6e8e0a26494a38a6",
+        "projection_b": "8855e8982c1bc2bc9dea286b55cd925ae45ad62ba0db1ede3792fe298d1bbac3",
+        "records": "a5f4cf605f0a8f64ae9cfd213e8236007e1f39574e032a0e446cf5836c940976",
+        "reference": "57dacb8961db58bc98fb48a880c3cacebe701e98f7bcfbfae666ac74d7cf7ca8",
+        "spherical_reference": "26d35e12eff8d61b5eaf7249640f5c7c308bf15df9bdb86cb40de8fd7d261a09",
+        "weights": "ebb147e083310962db9da90b44b780abe11b31ff69addf524635570b78012cd1"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/distant",
+        "operator_center": [
+          50.0,
+          30.0,
+          -40.0
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f079"
+    },
+    {
+      "arrays": {
+        "projection_a": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "projection_b": "ab4375614c2afa49b8bc9e7420dca28da4752c57478519d20025a5bdf36b1d9e",
+        "records": "b2673982a676d7bd27d4ea3d91f50a788d89507d91e43cb7ab726f174b34174b",
+        "reference": "76c12dc227044fecc40e09c87d4de43416f859ef0b745a00bc66b1f39709e949",
+        "spherical_reference": "76c12dc227044fecc40e09c87d4de43416f859ef0b745a00bc66b1f39709e949",
+        "weights": "f9e5ee60538ad3b1696eff4de2f31a425793e6fa5557ad32b32d283d917561c7"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ss/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 0,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ],
+              [
+                1.6099999999999999,
+                -0.1
+              ],
+              [
+                2.24,
+                -0.06666666666666667
+              ],
+              [
+                2.87,
+                -0.05
+              ],
+              [
+                3.5,
+                -0.04
+              ],
+              [
+                4.13,
+                -0.03333333333333333
+              ],
+              [
+                4.76,
+                -0.028571428571428574
+              ],
+              [
+                5.39,
+                -0.025
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 0,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ],
+              [
+                1.4300000000000002,
+                -0.2
+              ],
+              [
+                2.06,
+                -0.1
+              ],
+              [
+                2.6900000000000004,
+                -0.06666666666666667
+              ],
+              [
+                3.3200000000000003,
+                -0.05
+              ],
+              [
+                3.95,
+                -0.04
+              ],
+              [
+                4.58,
+                -0.03333333333333333
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f080"
+    },
+    {
+      "arrays": {
+        "projection_a": "2aa42e15242c892b3382a7fccf2c1481577e5f293012f0f8f88a521c932f911a",
+        "projection_b": "c0188be0d9db731e55c560fb101e921d02400d256fa267cf20e56b333d69add9",
+        "records": "049aad989dfcdd8aec032b3d6f53dd455d2ee6409db00b6e78cd4d243f30ef3a",
+        "reference": "9f7fca8a9a9ee6c9e2cfb515a540ae88ffe4fc24d33c35c35bd140fe0b9bfede",
+        "spherical_reference": "9ffdec8cd2863b43d8b247c91635b7165f03dd07ac710dadf998b0ca0c1dc98a",
+        "weights": "ae6092b2fc59717585827c9b37eb57248b272f0a627cfafce43d932a021828ba"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/pd/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 1,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ],
+              [
+                1.6099999999999999,
+                -0.1
+              ],
+              [
+                2.24,
+                -0.06666666666666667
+              ],
+              [
+                2.87,
+                -0.05
+              ],
+              [
+                3.5,
+                -0.04
+              ],
+              [
+                4.13,
+                -0.03333333333333333
+              ],
+              [
+                4.76,
+                -0.028571428571428574
+              ],
+              [
+                5.39,
+                -0.025
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 2,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ],
+              [
+                1.4300000000000002,
+                -0.2
+              ],
+              [
+                2.06,
+                -0.1
+              ],
+              [
+                2.6900000000000004,
+                -0.06666666666666667
+              ],
+              [
+                3.3200000000000003,
+                -0.05
+              ],
+              [
+                3.95,
+                -0.04
+              ],
+              [
+                4.58,
+                -0.03333333333333333
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f081"
+    },
+    {
+      "arrays": {
+        "projection_a": "815ed6e3718f8e8c0b8a7990169f905d6c4033917a7486a7d6d7f83ca42a3ccb",
+        "projection_b": "cbf026cee1aca84e3a0492d0efcb569d3b3cb3a02ceb725dfc52c139b7d429ee",
+        "records": "933f2952f3f155b9ab9985bc74a7ef569f89de97130486284954148bcdaa30e9",
+        "reference": "3afe2a076315cc479281e3905b8f6f79cb71045727653c9bcabc8fe10a2c62e2",
+        "spherical_reference": "90be4a537f22567f935e195d3a4e8ec19f830e2055dd24392b0c454a71a895c7",
+        "weights": "60b9c1f2c2ef979e8c7edd96011a2ca4e893890bfd52184d77f7625498ef7fb7"
+      },
+      "inputs": {
+        "atomic_numbers": [
+          1,
+          1
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "coordinates": [
+          [
+            0.2,
+            -0.3,
+            0.1
+          ],
+          [
+            -0.4,
+            0.15,
+            0.5
+          ]
+        ],
+        "multiplicity": 1,
+        "name": "one_electron/ff/asymmetric",
+        "operator_center": [
+          0.17,
+          -0.11,
+          -0.4
+        ],
+        "operator_charge": 2.3,
+        "reference_version": 1,
+        "shells": [
+          {
+            "angular_momentum": 3,
+            "atom_index": 0,
+            "primitives": [
+              [
+                0.35,
+                1.0
+              ],
+              [
+                0.98,
+                -0.2
+              ],
+              [
+                1.6099999999999999,
+                -0.1
+              ],
+              [
+                2.24,
+                -0.06666666666666667
+              ],
+              [
+                2.87,
+                -0.05
+              ],
+              [
+                3.5,
+                -0.04
+              ],
+              [
+                4.13,
+                -0.03333333333333333
+              ],
+              [
+                4.76,
+                -0.028571428571428574
+              ],
+              [
+                5.39,
+                -0.025
+              ]
+            ]
+          },
+          {
+            "angular_momentum": 3,
+            "atom_index": 1,
+            "primitives": [
+              [
+                0.8,
+                1.0
+              ],
+              [
+                1.4300000000000002,
+                -0.2
+              ],
+              [
+                2.06,
+                -0.1
+              ],
+              [
+                2.6900000000000004,
+                -0.06666666666666667
+              ],
+              [
+                3.3200000000000003,
+                -0.05
+              ],
+              [
+                3.95,
+                -0.04
+              ],
+              [
+                4.58,
+                -0.03333333333333333
+              ]
+            ]
+          }
+        ],
+        "units": {
+          "coordinates": "bohr",
+          "integrals": "atomic_units"
+        }
+      },
+      "key": "f082"
+    }
+  ],
+  "provenance": {
+    "derivative_fixture_source_sha256": "1d8e341d659e553024067762092ce845333e6f0cd8cc4b1d80d97ef341403561",
+    "generator_sha256": "b8d533a672adb0e2daf9598ffc3a7ec34e1f35d7155e6942e7114a5d787edd55",
+    "numpy": "2.4.6",
+    "purpose": "independent PySCF/libcint reference generation only",
+    "pyscf": "2.14.0",
+    "python": "3.11.14",
+    "scipy": "1.17.1",
+    "value_fixture_source_sha256": "164f38780d220eb374ac4ef0498f57b45da24bbbc669b48e8379e314aec0e20d"
+  },
+  "schema": "vibeqc.one-electron-derivative-reference",
+  "schema_version": 1
+}
