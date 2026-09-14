@@ -135,7 +135,7 @@ def _emit_gradient_helpers(attraction):
                 + "};",
                 "    }",
             ]
-        lines += ["  }", '  return {nan(""),nan("")};', "}"]
+        lines += ["  }", "  return {NAN,NAN};", "}"]
     external = (
         ", double c_x, double c_y, double c_z, const double* boys" if attraction else ""
     )
@@ -144,7 +144,7 @@ def _emit_gradient_helpers(attraction):
         "    const PairGeometry& pair, unsigned first, unsigned second"
         + external
         + ") {",
-        '  if (first >= 20 || second >= 20) return {nan(""),nan("")};',
+        "  if (first >= 20 || second >= 20) return {NAN,NAN};",
         "  const unsigned a = first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : 3;",
         "  const unsigned b = second < 1 ? 0 : second < 4 ? 1 : second < 10 ? 2 : 3;",
         "  const unsigned offsets[] = {0,1,4,10}, counts[] = {1,3,6,10};",
@@ -156,7 +156,7 @@ def _emit_gradient_helpers(attraction):
         lines.append(f"    case {a * 4 + b}U: return {name}_x_{a}{b}({args});")
     lines += [
         "  }",
-        '  return {nan(""),nan("")};',
+        "  return {NAN,NAN};",
         "}",
         f"__device__ __forceinline__ GradientPair {name}(",
         "    const PairGeometry& pair, unsigned first, unsigned second"
@@ -213,7 +213,7 @@ def emit_one_electron_derivatives_cuda():
             prefix,
             "struct GradientPair { double first[3], second[3]; };",
             "struct GradientAxis { double first, second; };",
-            '__device__ __forceinline__ GradientPair invalid_gradient() { const double n = nan(""); return {{n,n,n},{n,n,n}}; }',
+            "__device__ __forceinline__ GradientPair invalid_gradient() { const double n = NAN; return {{n,n,n},{n,n,n}}; }",
             _emit_pair_geometry(),
             _emit_component_index(),
             _emit_axis_permutations(),
