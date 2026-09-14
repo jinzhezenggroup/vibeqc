@@ -3,13 +3,18 @@
 Slice A of issue #150.  These tests never import PySCF: the nonzero-molecule
 ground truth below is hard-coded from the pinned PySCF 2.14.0
 ``ccsd_t_slow.kernel`` run over ``tests/reference_data/cc/endpoints/*`` (see
-``docs/rccsd_t.md``).  ``tools.generate_cc_triples_references.py`` is the only
-PySCF-dependent consumer and is expected to be skipped here.
+``docs/rccsd_t.md``). The independently generated production-reference JSON
+is also checked against the committed inputs without importing PySCF.
 """
+
+import json
+from pathlib import Path
 
 import numpy as np
 import pytest
 from vibeqc_compiler.tensor import Program, dot_test, execute, jvp
+
+INPUT_NAMES = ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
 
 
 def _random_case(nocc, nvir, seed):
@@ -27,6 +32,66 @@ def _random_case(nocc, nvir, seed):
 
 
 # --------------------------- core engine agreement ---------------------------
+
+
+@pytest.mark.parametrize("term", ["w1", "w2", "v1", "v2"])
+def test_numerator_inventory_matches_pinned_source_and_execution(term):
+    """Audit each term against explicit source-index loops, before spin sums.
+
+    Unequal occupied/virtual sizes expose contracted-axis swaps, and isolated
+    terms prevent cancellation from hiding an incorrect coefficient. The
+    inventory operands refer to the transposed views used by the slow source.
+    """
+    from tools.vibeqc_cc.triples import V_TERMS, W_TERMS, _v, _views, _w
+
+    o, v = 2, 3
+    ovvv, ovoo, ovov, fov, t1, t2, _, _ = _random_case(o, v, 17)
+    if term != "w1":
+        ovvv.fill(0)
+    if term != "w2":
+        ovoo.fill(0)
+    if term != "v1":
+        ovov.fill(0)
+    if term != "v2":
+        fov.fill(0)
+    a, b, c = 2, 1, 0
+    expected = np.zeros((o, o, o))
+    for i in range(o):
+        for j in range(o):
+            for k in range(o):
+                expected[i, j, k] = (
+                    sum(ovvv[i, a, f, b] * t2[k, j, c, f] for f in range(v))
+                    - sum(ovoo[i, a, j, m] * t2[m, k, b, c] for m in range(o))
+                    + ovov[i, a, j, b] * t1[k, c]
+                    + t2[i, j, a, b] * fov[k, c]
+                )
+
+    views = _views(ovvv, ovoo, ovov, fov, t1, t2)
+    t1T, t2T, vvov, vooo, vvoo, fvo = views
+    # These are the literal coefficient/subscript/operand contracts in the
+    # pinned PySCF 2.14.0 get_w/get_v functions (no PySCF import at test time).
+    assert W_TERMS == (
+        (1, "if,fkj->ijk", ("vvov", "t2T")),
+        (-1, "ijm,mk->ijk", ("vooo", "t2T")),
+    )
+    assert V_TERMS == (
+        (1, "ij,k->ijk", ("vvoo", "t1T")),
+        (1, "ij,k->ijk", ("t2T", "fvo")),
+    )
+    operands = (
+        (vvov[a, b], t2T[c]),
+        (vooo[a], t2T[b, c]),
+        (vvoo[a, b], t1T[c]),
+        (t2T[a, b], fvo[c]),
+    )
+    audited = sum(
+        coefficient * np.einsum(subscripts, *args)
+        for (coefficient, subscripts, _), args in zip(W_TERMS + V_TERMS, operands)
+    )
+    np.testing.assert_allclose(audited, expected, atol=1e-13, rtol=1e-13)
+    np.testing.assert_allclose(
+        _w(views, a, b, c) + _v(views, a, b, c), expected, atol=1e-13, rtol=1e-13
+    )
 
 
 @pytest.mark.parametrize(
@@ -276,6 +341,21 @@ def test_tensorir_program_is_differentiable():
 # --------------------------- input validation paths --------------------------
 
 
+@pytest.mark.parametrize(
+    "engine", ["triples_energy", "triples_fullsum", "triples_energy_tensorir"]
+)
+@pytest.mark.parametrize("name", INPUT_NAMES)
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_nonfinite_inputs_fail_closed(engine, name, value):
+    """Invalid amplitudes, integrals or energies must not yield a (T) result."""
+    from tools import vibeqc_cc
+
+    arrays = _random_case(2, 3, 32)
+    arrays[INPUT_NAMES.index(name)].flat[0] = value
+    with pytest.raises(ValueError, match=f"{name}.*finite"):
+        getattr(vibeqc_cc, engine)(2, 3, *arrays)
+
+
 def test_invalid_inputs_rejected():
     from tools.vibeqc_cc import build_triples_program, triples_energy
 
@@ -360,10 +440,7 @@ GROUND_TRUTH = {
     "ch4": (5, 4, -1.555665872715297e-04),
 }
 
-ENDPOINTS = (
-    __import__("pathlib").Path(__file__).resolve().parents[1]
-    / "reference_data/cc/endpoints"
-)
+ENDPOINTS = Path(__file__).resolve().parents[1] / "reference_data/cc/endpoints"
 
 
 def _endpoint_feeds(name):
@@ -412,6 +489,31 @@ def test_pinned_ground_truth_regression(name):
         np.testing.assert_allclose(fullsum, expected, atol=1e-9, rtol=0)
 
 
-def test_python_pyscf_reference_generator_skipped_locally():
-    """The PySCF-dependent generator cannot run in a NumPy-only local venv."""
-    pytest.importorskip("pyscf", reason="pinned PySCF 2.14.0 required; run on qz")
+def test_committed_production_reference_provenance():
+    """Keep the independent reference tied to its source and endpoint arrays."""
+    from tools.cc_endpoint_fixtures import array_hash
+    from tools.vibeqc_validation.schema import canonical_hash
+
+    root = Path(__file__).resolve().parents[2]
+    data = json.loads((ENDPOINTS.parent / "rccsd-t.json").read_text())
+    assert data["schema"] == "vibeqc.rccsd-t.reference"
+    assert data["version"] == 1
+    assert data["pyscf"] == "2.14.0"
+    assert data["upstream"] == json.loads(
+        (root / "tools/vibeqc_cc/source_manifest.json").read_text()
+    )
+    assert data["molecules_hash"] == canonical_hash(data["molecules"])
+    assert [row["name"] for row in data["molecules"]] == list(GROUND_TRUTH)
+    for row in data["molecules"]:
+        nocc, nvir, *arrays = _endpoint_feeds(row["name"])
+        assert (row["nocc"], row["nvir"]) == (nocc, nvir)
+        assert row["inputs_hash"] == array_hash(dict(zip(INPUT_NAMES, arrays)))
+        assert row["et_ground_truth"] == GROUND_TRUTH[row["name"]][2]
+        np.testing.assert_allclose(
+            [row["et_numpy"], row["et_pyscf_ccsd_t"]],
+            row["et_ground_truth"],
+            atol=1e-9,
+            rtol=0,
+        )
+        assert row["et_agreement"] == abs(row["et_numpy"] - row["et_pyscf_ccsd_t"])
+        assert row["et_agreement"] <= 1e-9

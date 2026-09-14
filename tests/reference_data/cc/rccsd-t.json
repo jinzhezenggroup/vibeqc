@@ -1,11 +1,11 @@
 {
-  "generator_sha256": "aca45a259168cceec0cf66153a8d08b6450f4c149e1642d71482107e6b4998d7",
+  "generator_sha256": "be96cabffecf3001aa9af918c7eec241963bc294c88b66febfa4c78c66e358f4",
   "molecules": [
     {
-      "et_agreement": 5.594681142716847e-49,
+      "et_agreement": 6.021435976710517e-49,
       "et_ground_truth": 8.392021714075268e-49,
       "et_numpy": 0.0,
-      "et_pyscf_ccsd_t": -5.594681142716847e-49,
+      "et_pyscf_ccsd_t": 6.021435976710517e-49,
       "inputs_hash": "156bd9f172c0058afa5950763fb1755f60a67ea8757695ed3f6461b400afc4f3",
       "name": "h2",
       "nocc": 1,
@@ -22,40 +22,40 @@
       "nvir": 1
     },
     {
-      "et_agreement": 3.9302328752599536e-19,
+      "et_agreement": 7.860465750519907e-19,
       "et_ground_truth": -6.731393342463869e-05,
       "et_numpy": -6.731393342463874e-05,
-      "et_pyscf_ccsd_t": -6.731393342463913e-05,
+      "et_pyscf_ccsd_t": -6.731393342463796e-05,
       "inputs_hash": "ef216dfd13866924f6692753313e5491e6ccc9fb0abe06b591146a34d9c8b61a",
       "name": "h2o",
       "nocc": 5,
       "nvir": 2
     },
     {
-      "et_agreement": 1.870248747537495e-18,
+      "et_agreement": 3.821812658011403e-18,
       "et_ground_truth": -0.0001122922812723691,
       "et_numpy": -0.00011229228127236913,
-      "et_pyscf_ccsd_t": -0.000112292281272371,
+      "et_pyscf_ccsd_t": -0.00011229228127237295,
       "inputs_hash": "489056f8cf2b373c0c1f93d9e6797334f7366a9192de22fd172b632643cdc9c0",
       "name": "nh3",
       "nocc": 5,
       "nvir": 3
     },
     {
-      "et_agreement": 4.336808689942018e-19,
+      "et_agreement": 2.9815559743351372e-18,
       "et_ground_truth": -0.0001555665872715297,
       "et_numpy": -0.00015556658727152996,
-      "et_pyscf_ccsd_t": -0.0001555665872715304,
+      "et_pyscf_ccsd_t": -0.00015556658727153294,
       "inputs_hash": "94f75550ec07599b39735a941479727bef124c0d8cdaf97b4653435269467d21",
       "name": "ch4",
       "nocc": 5,
       "nvir": 4
     }
   ],
-  "molecules_hash": "4f28bb51583bd002c89cc3dd0dfb85e92b7982739c8d21f9c096323a13223e0b",
+  "molecules_hash": "e9a7e534b6059646911dd86e1abe4b1737abf37181a3777e1753c1812583c9fe",
   "numpy": "2.2.6",
   "pyscf": "2.14.0",
-  "python": "3.11.16",
+  "python": "3.11.14",
   "schema": "vibeqc.rccsd-t.reference",
   "upstream": {
     "files": [

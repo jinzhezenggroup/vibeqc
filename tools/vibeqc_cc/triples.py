@@ -87,20 +87,23 @@ from vibeqc_compiler.tensor import (
 from tools.vibeqc_validation.schema import canonical_hash
 
 # ---------------------------------------------------------------------------
-# Auditable rational inventory (single source of truth; doubles.DEFINITIONS
-# style: (factor, einsum, operands) with fixed virtual indices a,b,c).
+# Auditable rational inventory in doubles.DEFINITIONS style:
+# (factor, einsum, operands), with fixed virtual indices a,b,c. Operand names
+# refer to the transposed views in _views, exactly as in the pinned slow code.
+# Tests compare each inventory term with explicit source-index loops and the
+# numerical seeds so its provenance hash cannot silently certify a typo.
 # ---------------------------------------------------------------------------
 
 # W = W1 + W2  (exact rational coefficients, no implicit sign absorption)
 W_TERMS = (
-    (1, "if,kjf->ijk", ("ovvv", "t2")),  # + sum_f ovvv[i,a,b,f] t2[k,j,c,f]
-    (-1, "ijm,mk->ijk", ("ovoo", "t2")),  # - sum_m ovoo[i,a,j,m] t2[m,k,b,c]
+    (1, "if,fkj->ijk", ("vvov", "t2T")),  # + sum_f vvov[a,b,i,f] t2T[c,f,k,j]
+    (-1, "ijm,mk->ijk", ("vooo", "t2T")),  # - sum_m vooo[a,i,j,m] t2T[b,c,m,k]
 )
 
 # V = V1 + V2 ; the r3 argument is W + (1/2) V
 V_TERMS = (
-    (1, "ij,k->ijk", ("ovov", "t1")),  # + ovov[i,a,j,b] t1[k,c]
-    (1, "ij,k->ijk", ("t2", "fov")),  # + t2[i,j,a,b] fov[k,c]
+    (1, "ij,k->ijk", ("vvoo", "t1T")),  # + vvoo[a,b,i,j] t1T[c,k]
+    (1, "ij,k->ijk", ("t2T", "fvo")),  # + t2T[a,b,i,j] fvo[c,k]
 )
 
 # r3(w) = sum_k coeff[k] * w.transpose(perm[k]); coefficients (4,1,1,-2,-2,-2)
@@ -244,6 +247,10 @@ def _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v):
     for name, value in arrays.items():
         if not isinstance(value, np.ndarray) or value.dtype != np.float64:
             raise ValueError(f"{name} must be a float64 numpy array")
+        # NaN comparisons bypass the denominator guard; infinities can hide
+        # invalid reference data behind an apparently finite zero correction.
+        if not np.all(np.isfinite(value)):
+            raise ValueError(f"{name} must contain only finite values")
     if any(type(n) is not int or n < 1 for n in (nocc, nvir)):
         raise ValueError("triples require nonempty occupied and virtual spaces")
     expected = {

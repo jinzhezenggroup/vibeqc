@@ -20,6 +20,12 @@ fov[i,a]      = Fock[o,v];  fvo = fov.T      (= F[v,o])
 t1[i,a], t2[i,j,a,b] (pair-symmetric), eps_o[i], eps_v[a]
 ```
 
+All three energy entry points reject non-finite values in every input array,
+nonnegative denominators, and denominators whose magnitude is at or below
+`denominator_threshold` (default `1e-10` Hartree). Canonical RHF orbitals are a
+caller precondition: occupied/virtual energy ordering alone cannot establish
+that the full Fock matrix is diagonal.
+
 With `t2T = t2.transpose(2,3,0,1)`, `eris_vvov = ovvv.transpose(1,3,0,2)`,
 `eris_vooo = ovoo.transpose(1,0,2,3)`, `eris_vvoo = ovov.transpose(1,3,0,2)`
 and `fvo = fov.T`, the label seeds for one virtual triple (a,b,c) are:
@@ -83,7 +89,7 @@ RCCSD attribution; `LICENSE.pyscf` is the shared license text.
 
 ## Ground truth
 
-`tests/reference_data/cc/rccsd-t.json` (generated on qz) records, per
+`tests/reference_data/cc/rccsd-t.json` (generated from committed endpoints) records, per
 molecule, both this repository's `triples_energy` and pinned PySCF
 `ccsd_t.kernel`, plus an inputs hash and the ground-truth value below:
 
@@ -124,5 +130,8 @@ python -m tools.generate_cc_triples_references \
 
 The generator verifies the installed upstream bytes against the manifest
 hashes before producing the committed JSON and re-running with `--compare`
-to assert two-generation stability. Ordinary tests consume the committed
-data and never import PySCF.
+to assert two-generation stability. Ordinary tests check the committed JSON's
+source identity, molecule hash and endpoint-input hashes without importing
+PySCF. Each audited numerator term is also checked against explicit
+source-index loops and the executed NumPy seed on unequal occupied/virtual
+dimensions, so a wrong subscript cannot silently change the inventory hash.

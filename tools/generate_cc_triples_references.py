@@ -104,7 +104,7 @@ def _solve_rhf(mol):
 
 
 def _inputs_hash(name):
-    nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = _triples_feeds(name)
+    _nocc, _nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = _triples_feeds(name)
     return array_hash(
         {
             "ovvv": ovvv,
