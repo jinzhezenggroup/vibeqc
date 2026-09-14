@@ -7,7 +7,6 @@ import shutil
 import subprocess
 from functools import cache
 from itertools import product
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -138,16 +137,15 @@ def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shell
 
 def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
     """Exercise emitted CSE/geometry/Boys boundaries against independent blocks."""
-    pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.one_electron_derivatives_cuda import (
         emit_one_electron_derivatives_cuda,
     )
 
-    from tools.vibeqc_validation.one_electron_derivatives import (
-        one_electron_derivative_matrix,
-    )
     from tools.vibeqc_validation.one_electron_derivatives_cuda import (
         derivative_evaluation_body,
+    )
+    from tools.vibeqc_validation.one_electron_reference_loader import (
+        committed_one_electron_derivative_matrix,
     )
 
     compiler = shutil.which("c++")
@@ -185,19 +183,17 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
     pointer = np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS")
     library.evaluate.argtypes = [pointer, pointer, ctypes.c_uint]
     library.evaluate.restype = None
-    fixtures = one_electron_derivative_matrix()
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        # Bootstrap the exact live oracle already used by this test. The
-        # uploaded artifact is reviewed and then committed as a hash-checked
-        # fixture; this capture path is removed before the final PR is merged.
-        from tools.vibeqc_validation.one_electron_reference_io import (
-            write_derivative_references,
+
+    if os.environ.get("GITHUB_EVENT_NAME") in {"schedule", "workflow_dispatch"}:
+        pytest.importorskip("pyscf")
+        from tools.vibeqc_validation.one_electron_derivatives import (
+            one_electron_derivative_matrix,
         )
 
-        write_derivative_references(
-            fixtures,
-            Path(".artifacts/one-electron-derivative-reference"),
-        )
+        fixtures = one_electron_derivative_matrix()
+    else:
+        fixtures = committed_one_electron_derivative_matrix()
+
     for fixture in fixtures:
         values = np.zeros((len(fixture.records), 27))
         library.evaluate(fixture.records, values, len(values))
