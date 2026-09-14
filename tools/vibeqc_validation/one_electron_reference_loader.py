@@ -3,22 +3,47 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
-from .one_electron_derivatives import OneElectronDerivativeFixture
 from .one_electron_reference_io import _ARRAY_FIELDS, _SCHEMA_VERSION, _array_hash
-from .schema import file_hash
+from .schema import canonical_hash, file_hash
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_REFERENCE_DIRECTORY = _ROOT / "tests/reference_data/one_electron_derivatives"
 
 
+@dataclass
+class CommittedOneElectronDerivativeFixture:
+    """Serialized one-electron fixture without importing live reference builders."""
+
+    inputs: dict
+    records: np.ndarray
+    weights: np.ndarray
+    reference: np.ndarray
+    spherical_reference: np.ndarray
+    projections: tuple[np.ndarray, np.ndarray]
+
+    @property
+    def input_hash(self):
+        return canonical_hash(self.inputs)
+
+    def contract(self, values):
+        blocks = values.reshape(*self.weights.shape, 3, 3, 3)
+        result = (blocks * self.weights[:, :, None, None, None]).sum(axis=1)
+        return result.transpose(1, 2, 3, 0).reshape(self.reference.shape)
+
+    def spherical(self, values):
+        a, b = self.projections
+        return np.einsum("ia,ocxij,jb->ocxab", a, values, b)
+
+
 def committed_one_electron_derivative_matrix(
     directory: Path = _DEFAULT_REFERENCE_DIRECTORY,
 ):
-    """Return audited fixtures without evaluating PySCF/libcint at test time."""
+    """Return audited fixtures without importing or evaluating PySCF/libcint."""
     manifest_path = directory / "manifest.json"
     payload_path = directory / "one_electron_derivatives.npz"
     manifest = json.loads(manifest_path.read_text())
@@ -64,7 +89,7 @@ def committed_one_electron_derivative_matrix(
                     )
                 values[field] = value
             fixtures.append(
-                OneElectronDerivativeFixture(
+                CommittedOneElectronDerivativeFixture(
                     row["inputs"],
                     values["records"],
                     values["weights"],
