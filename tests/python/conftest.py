@@ -6,7 +6,7 @@ import os
 import shutil
 from pathlib import Path
 
-_WRAPPER = r'''#!/usr/bin/env python3
+_WRAPPER = r"""#!/usr/bin/env python3
 from __future__ import annotations
 
 import hashlib
@@ -89,7 +89,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-'''
+"""
 
 
 def _install_generated_cpp_wrapper() -> None:
