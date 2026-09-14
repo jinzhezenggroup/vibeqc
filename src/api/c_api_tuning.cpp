@@ -50,7 +50,13 @@ vibeqc_status vibeqc_cuda_tuning_device(int32_t device_id,
   output->shared_memory_per_block = properties.sharedMemPerBlock;
   output->shared_memory_per_block_optin = properties.sharedMemPerBlockOptin;
   output->shared_memory_per_sm = properties.sharedMemPerMultiprocessor;
+#ifdef CUDART_VERSION
   output->toolkit_version = CUDART_VERSION;
+#else
+  // CUDA-compatible providers may not publish NVIDIA's compile-time version
+  // macro. Preserve a usable provenance value from the runtime they expose.
+  output->toolkit_version = output->runtime_version;
+#endif
   output->release_build = VIBEQC_TUNING_RELEASE_BUILD;
   output->fast_compile = VIBEQC_CUDA_FAST_COMPILE;
   return VIBEQC_STATUS_SUCCESS;
