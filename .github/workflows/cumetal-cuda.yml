@@ -21,7 +21,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     env:
-      CUMETAL_COMMIT: 041890f6f6f6e70b2f2ac1330987dd56a4f94b3c
+      CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
       CUMETAL_PREFIX: /tmp/cumetal-install
       CUMETAL_CCACHE_DIR: /tmp/cumetal-ccache
@@ -54,23 +54,23 @@ jobs:
       - name: Install CuMetal build prerequisites and ccache
         run: brew install llvm z3 ninja ccache
 
-      - name: Cache patched CuMetal toolchain
+      - name: Cache CuMetal toolchain
         id: cache-cumetal
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             /tmp/cuda-metal
             /tmp/cumetal-install
-          key: cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('.github/scripts/patch_cumetal_*.py') }}
+          key: cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}
 
       - name: Restore CuMetal ccache
         if: steps.cache-cumetal.outputs.cache-hit != 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CUMETAL_CCACHE_DIR }}
-          key: ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('.github/scripts/patch_cumetal_*.py') }}
+          key: ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}
           restore-keys: |
-            ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
+            ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Restore VibeQC ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -90,14 +90,6 @@ jobs:
           git clone --recurse-submodules https://github.com/Lulzx/cuda-metal.git "$CUMETAL_SOURCE"
           git -C "$CUMETAL_SOURCE" checkout "$CUMETAL_COMMIT"
           git -C "$CUMETAL_SOURCE" submodule update --init --recursive
-          CUMETAL_SOURCE="$CUMETAL_SOURCE" \
-            .venv/bin/python .github/scripts/patch_cumetal_for_vibeqc.py
-          CUMETAL_SOURCE="$CUMETAL_SOURCE" \
-            .venv/bin/python .github/scripts/patch_cumetal_graph_for_vibeqc.py
-          CUMETAL_SOURCE="$CUMETAL_SOURCE" \
-            .venv/bin/python .github/scripts/patch_cumetal_cub_for_vibeqc.py
-          CUMETAL_SOURCE="$CUMETAL_SOURCE" \
-            .venv/bin/python .github/scripts/patch_cumetal_cublas_for_vibeqc.py
           cmake -S "$CUMETAL_SOURCE" -B "$CUMETAL_SOURCE/build" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$CUMETAL_PREFIX" \
