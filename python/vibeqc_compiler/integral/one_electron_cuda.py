@@ -153,7 +153,7 @@ def _emit_operator_helpers(attraction):
                     "{" + ", ".join(emitter.reference(root) for root in roots) + "}"
                 )
             lines += emitter.lines + [f"      return {result};", "    }"]
-        invalid = 'nan("")' if attraction else 'ST{nan(""), nan("")}'
+        invalid = "NAN" if attraction else "ST{NAN, NAN}"
         lines += ["  }", f"  return {invalid};", "}"]
     lines += [
         f"__device__ __forceinline__ {return_type} {name}(",
