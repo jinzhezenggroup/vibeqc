@@ -30,6 +30,11 @@
       "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
       "sha256": "ac5300c5d51f89e3ca850e4b1f03fecb3c9fbb6c878aa925c0bd5d9021b6725f"
     },
+    "benchmarks/results/issue206-device-diis-baseline/evidence.zip": {
+      "owner": "issue206-device-diis-baseline",
+      "reason": "Clean 96/192-AO energy/full-force batch-1/4 samples, actual external factor ranks, exact basis stack, unmatched branches and separately traced host-response bottleneck.",
+      "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
+    },
     "benchmarks/results/issue282-streamed-panels/raw-evidence.zip": {
       "owner": "issue282-streamed-panels",
       "reason": "Compressed exact fixed-density J/K and E2-gradient arrays, successful endpoint matrix, failed experiments and reconstruction patches. Every raw member is hash-verified and byte-restored; the fixed numerical arrays are needed to reproduce bounded/resident parity.",

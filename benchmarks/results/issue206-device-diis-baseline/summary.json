@@ -1,0 +1,2534 @@
+{
+  "scope": "Initial clean energy/full-force matrix with five interleaved repeats per engine and independent actual-rank qualification. All SCF branches differ; no iteration-matched parity claim. 192-AO performance acceptance remains unmet. Separate intrusive profiles identify host response-weight cost.",
+  "source_head": "f3dc1bdcfcd2fb397fc8a7082fab8d79de45aa92",
+  "library_sha256": "44c140b4d46b69ea7846d8aa2d9aa8cc3bec8c198908fd9e830e9981f78d4bc7",
+  "slurm_jobs": {
+    "clean": "9565",
+    "profile": "9566"
+  },
+  "versions": {
+    "gpu4pyscf-cuda12x": "1.8.1",
+    "cupy-cuda12x": "14.2.0",
+    "cutensor-cu12": "2.3.1",
+    "pyscf": "2.14.0",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "rows": [
+    {
+      "file": "192ao-b1-energy.json",
+      "vibeqc_warm_median_seconds": 0.06596499215811491,
+      "gpu4pyscf_warm_median_seconds": 0.0806903368793428,
+      "vibeqc_cold_seconds": 2.6175118449609727,
+      "gpu4pyscf_cold_seconds": 1.3405493551399559,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.8175079533594355,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 1.5347723092418164e-11,
+      "maximum_force_error": null,
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "file": "192ao-b1-forces.json",
+      "vibeqc_warm_median_seconds": 3.2554688218515366,
+      "gpu4pyscf_warm_median_seconds": 0.3527787299826741,
+      "vibeqc_cold_seconds": 6.743516789982095,
+      "gpu4pyscf_cold_seconds": 1.5578359300270677,
+      "unmatched_vibeqc_over_gpu4pyscf": 9.22807568928949,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 1.5347723092418164e-11,
+      "maximum_force_error": 7.244516445070737e-11,
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "file": "192ao-b4-energy.json",
+      "vibeqc_warm_median_seconds": 0.23755298205651343,
+      "gpu4pyscf_warm_median_seconds": 0.32246499694883823,
+      "vibeqc_cold_seconds": 9.574323524953797,
+      "gpu4pyscf_cold_seconds": 3.364930670009926,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.7366783505318042,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 7.617018127348274e-12,
+      "maximum_force_error": null,
+      "vibeqc_iterations": [
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "file": "192ao-b4-forces.json",
+      "vibeqc_warm_median_seconds": 13.03361049015075,
+      "gpu4pyscf_warm_median_seconds": 1.3995576230809093,
+      "vibeqc_cold_seconds": 25.50215753307566,
+      "gpu4pyscf_cold_seconds": 4.203675881959498,
+      "unmatched_vibeqc_over_gpu4pyscf": 9.3126644271061,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 7.617018127348274e-12,
+      "maximum_force_error": 8.395608340483474e-11,
+      "vibeqc_iterations": [
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          2,
+          3
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "file": "96ao-b1-energy.json",
+      "vibeqc_warm_median_seconds": 0.012070226948708296,
+      "gpu4pyscf_warm_median_seconds": 0.06894086301326752,
+      "vibeqc_cold_seconds": 0.38043669098988175,
+      "gpu4pyscf_cold_seconds": 1.3157977908849716,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.17508087977351555,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 2.7284841053187847e-12,
+      "maximum_force_error": null,
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "file": "96ao-b1-forces.json",
+      "vibeqc_warm_median_seconds": 0.26100510195828974,
+      "gpu4pyscf_warm_median_seconds": 0.2649432709440589,
+      "vibeqc_cold_seconds": 0.8889985259156674,
+      "gpu4pyscf_cold_seconds": 1.3568867249414325,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.9851358029523208,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 2.5011104298755527e-12,
+      "maximum_force_error": 2.7926978438119754e-11,
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "file": "96ao-b4-energy.json",
+      "vibeqc_warm_median_seconds": 0.03486052597872913,
+      "gpu4pyscf_warm_median_seconds": 0.274948321050033,
+      "vibeqc_cold_seconds": 0.7853952508885413,
+      "gpu4pyscf_cold_seconds": 2.811940588057041,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.12678937571102855,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 5.343281372915953e-12,
+      "maximum_force_error": null,
+      "vibeqc_iterations": [
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "file": "96ao-b4-forces.json",
+      "vibeqc_warm_median_seconds": 1.0333846700377762,
+      "gpu4pyscf_warm_median_seconds": 1.0606212799903005,
+      "vibeqc_cold_seconds": 2.1636958229355514,
+      "gpu4pyscf_cold_seconds": 3.3911404348909855,
+      "unmatched_vibeqc_over_gpu4pyscf": 0.9743201362575212,
+      "shared_iteration_branch": false,
+      "maximum_energy_error": 5.4001247917767614e-12,
+      "maximum_force_error": 3.72677756710349e-11,
+      "vibeqc_iterations": [
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          2,
+          2
+        ]
+      ],
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    }
+  ],
+  "force_profile": [
+    {
+      "aos": 96,
+      "budget": 0,
+      "stage": "cold",
+      "seconds": 0.9170933088753372,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 916.062269,
+          "exclusive_ms": 0.12831500000004326
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 915.933954,
+          "exclusive_ms": 118.30202299999996
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 289.100144,
+          "exclusive_ms": 38.851562
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 250.248582,
+          "exclusive_ms": 1.015593999999993
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 36,
+          "inclusive_ms": 246.23037400000004,
+          "exclusive_ms": 246.23037400000004
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 36,
+          "inclusive_ms": 3.0026140000000003,
+          "exclusive_ms": 3.0026140000000003
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.074412,
+          "exclusive_ms": 0.074412
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 100.431284,
+          "exclusive_ms": 19.206192
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 81.225092,
+          "exclusive_ms": 81.225092
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 10.420357,
+          "exclusive_ms": 0.9506060000000005
+        },
+        "stream:production_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 14.270581999999997,
+          "exclusive_ms": 0.20373899999999878
+        },
+        "host:production_eigensystem": {
+          "calls": 3,
+          "inclusive_ms": 14.066843,
+          "exclusive_ms": 0.25540800000000097
+        },
+        "stream:workspace_setup": {
+          "calls": 3,
+          "inclusive_ms": 0.190504,
+          "exclusive_ms": 0.190504
+        },
+        "stream:host_to_device": {
+          "calls": 3,
+          "inclusive_ms": 0.158193,
+          "exclusive_ms": 0.158193
+        },
+        "host:device_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 10.155561,
+          "exclusive_ms": 0.06557600000000008
+        },
+        "stream:device_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 10.089985,
+          "exclusive_ms": 10.089985
+        },
+        "stream:device_to_host": {
+          "calls": 3,
+          "inclusive_ms": 0.178962,
+          "exclusive_ms": 0.178962
+        },
+        "host:eigenframe_validation": {
+          "calls": 3,
+          "inclusive_ms": 2.7809220000000003,
+          "exclusive_ms": 2.7809220000000003
+        },
+        "stream:generalized_transform": {
+          "calls": 2,
+          "inclusive_ms": 0.224499,
+          "exclusive_ms": 0.224499
+        },
+        "stream:coefficient_backtransform": {
+          "calls": 2,
+          "inclusive_ms": 0.12279399999999999,
+          "exclusive_ms": 0.12279399999999999
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 110.991247,
+          "exclusive_ms": 0.027372999999997205
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 110.963874,
+          "exclusive_ms": 87.04431
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 21.913073,
+          "exclusive_ms": 0.06315100000000129
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 21.849922,
+          "exclusive_ms": 21.849922
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.45517,
+          "exclusive_ms": 0.32807700000000006
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.12709299999999998,
+          "exclusive_ms": 0.12709299999999998
+        },
+        "host:compact_diis_update": {
+          "calls": 1,
+          "inclusive_ms": 0.181697,
+          "exclusive_ms": 0.181697
+        },
+        "graph_capture:compact_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 0.969632,
+          "exclusive_ms": 0.969632
+        },
+        "host:compact_iteration_readback": {
+          "calls": 16,
+          "inclusive_ms": 0.399992,
+          "exclusive_ms": 0.399992
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 286.614487,
+          "exclusive_ms": 0.28349100000002636
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.229248,
+          "exclusive_ms": 0.088619
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.140629,
+          "exclusive_ms": 0.140629
+        },
+        "host:final_state_fock_build": {
+          "calls": 2,
+          "inclusive_ms": 1.807253,
+          "exclusive_ms": 0.3621829999999999
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 0.347333,
+          "exclusive_ms": 0.129888
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.217445,
+          "exclusive_ms": 0.217445
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 1.097737,
+          "exclusive_ms": 0.2342490000000001
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.863488,
+          "exclusive_ms": 0.863488
+        },
+        "host:final_state_validation": {
+          "calls": 2,
+          "inclusive_ms": 5.211035,
+          "exclusive_ms": 5.211035
+        },
+        "host:strict_final_correction": {
+          "calls": 1,
+          "inclusive_ms": 5.954675,
+          "exclusive_ms": 1.1538440000000003
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 0.154194,
+          "exclusive_ms": 0.154194
+        },
+        "host:final_state_corrected": {
+          "calls": 1,
+          "inclusive_ms": 0.015831,
+          "exclusive_ms": 0.015831
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 272.95876,
+          "exclusive_ms": 15.052205999999956
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 257.906554,
+          "exclusive_ms": 0.15543700000000626
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.161168,
+          "exclusive_ms": 0.161168
+        },
+        "stream:host_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 257.533471,
+          "exclusive_ms": 150.54390300000003
+        },
+        "stream:host_raw_three_center_gather": {
+          "calls": 288,
+          "inclusive_ms": 18.088562000000007,
+          "exclusive_ms": 18.088562000000007
+        },
+        "stream:host_response_uploads_and_synchronization": {
+          "calls": 2,
+          "inclusive_ms": 88.901006,
+          "exclusive_ms": 0.6502339999999919
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 14,
+          "inclusive_ms": 87.49889599999999,
+          "exclusive_ms": 87.49889599999999
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 0.751876,
+          "exclusive_ms": 0.751876
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.056478,
+          "exclusive_ms": 0.056478
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "budget": 0,
+      "stage": "warm",
+      "seconds": 0.27891610004007816,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 278.39215,
+          "exclusive_ms": 0.11537100000003875
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 278.276779,
+          "exclusive_ms": 0.10822699999994256
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.053141,
+          "exclusive_ms": 0.053141
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 0.058081,
+          "exclusive_ms": 0.058081
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 8.634245,
+          "exclusive_ms": 0.024466999999999572
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 8.609778,
+          "exclusive_ms": 8.55859
+        },
+        "host:compact_iteration_readback": {
+          "calls": 2,
+          "inclusive_ms": 0.051188,
+          "exclusive_ms": 0.051188
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 269.423085,
+          "exclusive_ms": 0.1684020000000146
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.207947,
+          "exclusive_ms": 0.06603599999999998
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.141911,
+          "exclusive_ms": 0.141911
+        },
+        "host:final_state_fock_build": {
+          "calls": 1,
+          "inclusive_ms": 0.923064,
+          "exclusive_ms": 0.14345400000000008
+        },
+        "stream:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.215883,
+          "exclusive_ms": 0.06385199999999999
+        },
+        "stream:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.152031,
+          "exclusive_ms": 0.152031
+        },
+        "stream:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.563727,
+          "exclusive_ms": 0.12174299999999999
+        },
+        "stream:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.441984,
+          "exclusive_ms": 0.441984
+        },
+        "host:final_state_validation": {
+          "calls": 1,
+          "inclusive_ms": 2.624584,
+          "exclusive_ms": 2.624584
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 0.148033,
+          "exclusive_ms": 0.148033
+        },
+        "host:final_state_reuse": {
+          "calls": 1,
+          "inclusive_ms": 0.015519,
+          "exclusive_ms": 0.015519
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 265.335536,
+          "exclusive_ms": 15.171472999999992
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 250.164063,
+          "exclusive_ms": 0.16705999999999221
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.175345,
+          "exclusive_ms": 0.175345
+        },
+        "stream:host_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 249.764589,
+          "exclusive_ms": 146.045491
+        },
+        "stream:host_raw_three_center_gather": {
+          "calls": 288,
+          "inclusive_ms": 17.797853999999994,
+          "exclusive_ms": 17.797853999999994
+        },
+        "stream:host_response_uploads_and_synchronization": {
+          "calls": 2,
+          "inclusive_ms": 85.921244,
+          "exclusive_ms": 0.6133629999999962
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 14,
+          "inclusive_ms": 84.551096,
+          "exclusive_ms": 84.551096
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 0.756785,
+          "exclusive_ms": 0.756785
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.057069,
+          "exclusive_ms": 0.057069
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "budget": 536870912,
+      "stage": "cold",
+      "seconds": 0.7787238759920001,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 778.307761,
+          "exclusive_ms": 0.12666200000001027
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 778.181099,
+          "exclusive_ms": 2.3384469999999737
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 256.250051,
+          "exclusive_ms": 7.714377999999982
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 248.535673,
+          "exclusive_ms": 0.9899609999999939
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 36,
+          "inclusive_ms": 244.68996599999997,
+          "exclusive_ms": 244.68996599999997
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 36,
+          "inclusive_ms": 2.855745999999999,
+          "exclusive_ms": 2.855745999999999
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.035899,
+          "exclusive_ms": 0.035899
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 2.100512,
+          "exclusive_ms": 2.100512
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 87.090498,
+          "exclusive_ms": 0.8773059999999901
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 3.445813,
+          "exclusive_ms": 3.445813
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 82.767379,
+          "exclusive_ms": 0.12580000000001235
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 97,
+          "inclusive_ms": 283.64405999999985,
+          "exclusive_ms": 283.64405999999985
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 0.267551,
+          "exclusive_ms": 0.267551
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 10.109984,
+          "exclusive_ms": 0.9484610000000018
+        },
+        "stream:production_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 13.888953999999998,
+          "exclusive_ms": 0.17563700000000004
+        },
+        "host:production_eigensystem": {
+          "calls": 3,
+          "inclusive_ms": 13.713317,
+          "exclusive_ms": 0.24961699999999976
+        },
+        "stream:workspace_setup": {
+          "calls": 3,
+          "inclusive_ms": 0.152531,
+          "exclusive_ms": 0.152531
+        },
+        "stream:host_to_device": {
+          "calls": 3,
+          "inclusive_ms": 0.147351,
+          "exclusive_ms": 0.147351
+        },
+        "host:device_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 9.949027000000001,
+          "exclusive_ms": 0.06761899999999965
+        },
+        "stream:device_eigensolve": {
+          "calls": 3,
+          "inclusive_ms": 9.881408,
+          "exclusive_ms": 9.881408
+        },
+        "stream:device_to_host": {
+          "calls": 3,
+          "inclusive_ms": 0.18669600000000003,
+          "exclusive_ms": 0.18669600000000003
+        },
+        "host:eigenframe_validation": {
+          "calls": 3,
+          "inclusive_ms": 2.737499,
+          "exclusive_ms": 2.737499
+        },
+        "stream:generalized_transform": {
+          "calls": 2,
+          "inclusive_ms": 0.173993,
+          "exclusive_ms": 0.173993
+        },
+        "stream:coefficient_backtransform": {
+          "calls": 2,
+          "inclusive_ms": 0.116603,
+          "exclusive_ms": 0.116603
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 79.122336,
+          "exclusive_ms": 0.02961700000000178
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 79.092719,
+          "exclusive_ms": 78.120258
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.121813,
+          "exclusive_ms": 0.05699900000000001
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.064814,
+          "exclusive_ms": 0.064814
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.124428,
+          "exclusive_ms": 0.080734
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.043694,
+          "exclusive_ms": 0.043694
+        },
+        "host:compact_diis_update": {
+          "calls": 1,
+          "inclusive_ms": 0.034967,
+          "exclusive_ms": 0.034967
+        },
+        "graph_capture:compact_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 0.280817,
+          "exclusive_ms": 0.280817
+        },
+        "host:compact_iteration_readback": {
+          "calls": 16,
+          "inclusive_ms": 0.41043599999999997,
+          "exclusive_ms": 0.41043599999999997
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 341.133372,
+          "exclusive_ms": 0.2265120000000138
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.203349,
+          "exclusive_ms": 0.06525500000000001
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.138094,
+          "exclusive_ms": 0.138094
+        },
+        "host:final_state_fock_build": {
+          "calls": 2,
+          "inclusive_ms": 1.691692,
+          "exclusive_ms": 0.29952199999999995
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 0.32642400000000005,
+          "exclusive_ms": 0.127775
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.198649,
+          "exclusive_ms": 0.198649
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 1.0657459999999999,
+          "exclusive_ms": 0.217157
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.848589,
+          "exclusive_ms": 0.848589
+        },
+        "host:final_state_validation": {
+          "calls": 2,
+          "inclusive_ms": 5.074775,
+          "exclusive_ms": 5.074775
+        },
+        "host:strict_final_correction": {
+          "calls": 1,
+          "inclusive_ms": 5.865115,
+          "exclusive_ms": 1.1376840000000001
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 0.156589,
+          "exclusive_ms": 0.156589
+        },
+        "host:final_state_corrected": {
+          "calls": 1,
+          "inclusive_ms": 0.015259,
+          "exclusive_ms": 0.015259
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 327.900081,
+          "exclusive_ms": 1.2417619999999943
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 326.658319,
+          "exclusive_ms": 0.2053030000000149
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.262982,
+          "exclusive_ms": 0.262982
+        },
+        "stream:response_weights": {
+          "calls": 1,
+          "inclusive_ms": 326.132364,
+          "exclusive_ms": 2.3541159999999763
+        },
+        "stream:metric_inverse": {
+          "calls": 1,
+          "inclusive_ms": 0.187198,
+          "exclusive_ms": 0.187198
+        },
+        "stream:coulomb_response": {
+          "calls": 1,
+          "inclusive_ms": 204.672827,
+          "exclusive_ms": 3.4027949999999976
+        },
+        "stream:coulomb_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 0.044465,
+          "exclusive_ms": 0.044465
+        },
+        "stream:exchange_response_matrix_products": {
+          "calls": 96,
+          "inclusive_ms": 4.7506400000000015,
+          "exclusive_ms": 4.7506400000000015
+        },
+        "stream:exchange_response_weights_and_metric": {
+          "calls": 96,
+          "inclusive_ms": 50.13819100000001,
+          "exclusive_ms": 50.13819100000001
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 63.124162,
+          "exclusive_ms": 63.124162
+        },
+        "stream:metric_frechet_response": {
+          "calls": 1,
+          "inclusive_ms": 0.107355,
+          "exclusive_ms": 0.107355
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 0.75341,
+          "exclusive_ms": 0.75341
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.05767,
+          "exclusive_ms": 0.05767
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "budget": 536870912,
+      "stage": "warm",
+      "seconds": 0.598876188043505,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 598.409557,
+          "exclusive_ms": 0.15538699999990513
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 598.25417,
+          "exclusive_ms": 2.364238000000114
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 255.350554,
+          "exclusive_ms": 7.4645109999999875
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 247.886043,
+          "exclusive_ms": 0.9308149999999955
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 36,
+          "inclusive_ms": 244.08752700000002,
+          "exclusive_ms": 244.08752700000002
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 36,
+          "inclusive_ms": 2.8677010000000003,
+          "exclusive_ms": 2.8677010000000003
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.059393,
+          "exclusive_ms": 0.059393
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 0.056197,
+          "exclusive_ms": 0.056197
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 8.65305,
+          "exclusive_ms": 0.025047000000000708
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 8.628003,
+          "exclusive_ms": 8.565343
+        },
+        "host:compact_iteration_readback": {
+          "calls": 2,
+          "inclusive_ms": 0.06266,
+          "exclusive_ms": 0.06266
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 331.770738,
+          "exclusive_ms": 0.1665179999999964
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.196716,
+          "exclusive_ms": 0.059564000000000006
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.137152,
+          "exclusive_ms": 0.137152
+        },
+        "host:final_state_fock_build": {
+          "calls": 1,
+          "inclusive_ms": 0.916501,
+          "exclusive_ms": 0.139015
+        },
+        "stream:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.213759,
+          "exclusive_ms": 0.068522
+        },
+        "stream:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.145237,
+          "exclusive_ms": 0.145237
+        },
+        "stream:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.563727,
+          "exclusive_ms": 0.12009899999999996
+        },
+        "stream:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.443628,
+          "exclusive_ms": 0.443628
+        },
+        "host:final_state_validation": {
+          "calls": 1,
+          "inclusive_ms": 2.610557,
+          "exclusive_ms": 2.610557
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 0.152962,
+          "exclusive_ms": 0.152962
+        },
+        "host:final_state_reuse": {
+          "calls": 1,
+          "inclusive_ms": 0.01579,
+          "exclusive_ms": 0.01579
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 327.711694,
+          "exclusive_ms": 1.254557000000034
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 326.457137,
+          "exclusive_ms": 0.23977800000000116
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.385216,
+          "exclusive_ms": 0.385216
+        },
+        "stream:response_weights": {
+          "calls": 1,
+          "inclusive_ms": 325.770064,
+          "exclusive_ms": 2.3028059999999755
+        },
+        "stream:metric_inverse": {
+          "calls": 1,
+          "inclusive_ms": 0.038133,
+          "exclusive_ms": 0.038133
+        },
+        "stream:coulomb_response": {
+          "calls": 1,
+          "inclusive_ms": 205.19731,
+          "exclusive_ms": 3.368189000000001
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 96,
+          "inclusive_ms": 201.82912100000001,
+          "exclusive_ms": 201.82912100000001
+        },
+        "stream:coulomb_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 0.028614,
+          "exclusive_ms": 0.028614
+        },
+        "stream:exchange_response_matrix_products": {
+          "calls": 96,
+          "inclusive_ms": 4.615637,
+          "exclusive_ms": 4.615637
+        },
+        "stream:exchange_response_weights_and_metric": {
+          "calls": 96,
+          "inclusive_ms": 49.709571,
+          "exclusive_ms": 49.709571
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 63.066242,
+          "exclusive_ms": 63.066242
+        },
+        "stream:metric_frechet_response": {
+          "calls": 1,
+          "inclusive_ms": 0.071507,
+          "exclusive_ms": 0.071507
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 0.740244,
+          "exclusive_ms": 0.740244
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.062079,
+          "exclusive_ms": 0.062079
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "budget": 0,
+      "stage": "cold",
+      "seconds": 6.64610965596512,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 6645.633957,
+          "exclusive_ms": 0.15617800000018178
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 6645.477779,
+          "exclusive_ms": 1992.6407279999994
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 921.614075,
+          "exclusive_ms": 30.660643999999934
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 890.953431,
+          "exclusive_ms": 1.9171160000000782
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 72,
+          "inclusive_ms": 875.8494060000003,
+          "exclusive_ms": 875.8494060000003
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 72,
+          "inclusive_ms": 13.186908999999996,
+          "exclusive_ms": 13.186908999999996
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.085924,
+          "exclusive_ms": 0.085924
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 23.448657,
+          "exclusive_ms": 11.341708
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 12.106949,
+          "exclusive_ms": 12.106949
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 31.297882,
+          "exclusive_ms": 7.574730000000002
+        },
+        "stream:production_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 74.57756599999999,
+          "exclusive_ms": 0.41813900000000004
+        },
+        "host:production_eigensystem": {
+          "calls": 6,
+          "inclusive_ms": 74.159427,
+          "exclusive_ms": 1.3008290000000038
+        },
+        "stream:workspace_setup": {
+          "calls": 6,
+          "inclusive_ms": 0.252822,
+          "exclusive_ms": 0.252822
+        },
+        "stream:host_to_device": {
+          "calls": 6,
+          "inclusive_ms": 0.453697,
+          "exclusive_ms": 0.453697
+        },
+        "host:device_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 28.213148000000004,
+          "exclusive_ms": 0.1342750000000006
+        },
+        "stream:device_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 28.078872999999998,
+          "exclusive_ms": 28.078872999999998
+        },
+        "stream:device_to_host": {
+          "calls": 6,
+          "inclusive_ms": 0.516356,
+          "exclusive_ms": 0.516356
+        },
+        "host:eigenframe_validation": {
+          "calls": 6,
+          "inclusive_ms": 42.386415,
+          "exclusive_ms": 42.386415
+        },
+        "stream:generalized_transform": {
+          "calls": 5,
+          "inclusive_ms": 0.647496,
+          "exclusive_ms": 0.647496
+        },
+        "stream:coefficient_backtransform": {
+          "calls": 5,
+          "inclusive_ms": 0.388664,
+          "exclusive_ms": 0.388664
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 247.034312,
+          "exclusive_ms": 0.028735000000011723
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 247.005577,
+          "exclusive_ms": 246.091309
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.135519,
+          "exclusive_ms": 0.05777
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.077749,
+          "exclusive_ms": 0.077749
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.149897,
+          "exclusive_ms": 0.08449200000000001
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.06540499999999999,
+          "exclusive_ms": 0.06540499999999999
+        },
+        "host:compact_diis_update": {
+          "calls": 1,
+          "inclusive_ms": 0.035959,
+          "exclusive_ms": 0.035959
+        },
+        "graph_capture:compact_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 0.173873,
+          "exclusive_ms": 0.173873
+        },
+        "host:compact_iteration_readback": {
+          "calls": 16,
+          "inclusive_ms": 0.41902,
+          "exclusive_ms": 0.41902
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 3429.356201,
+          "exclusive_ms": 0.993380999999772
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.31953,
+          "exclusive_ms": 0.08111499999999999
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.238415,
+          "exclusive_ms": 0.238415
+        },
+        "host:final_state_fock_build": {
+          "calls": 5,
+          "inclusive_ms": 21.340489,
+          "exclusive_ms": 1.2811589999999997
+        },
+        "stream:ri_j": {
+          "calls": 5,
+          "inclusive_ms": 1.084752,
+          "exclusive_ms": 0.321313
+        },
+        "stream:ri_j_gemm": {
+          "calls": 10,
+          "inclusive_ms": 0.763439,
+          "exclusive_ms": 0.763439
+        },
+        "stream:ri_k": {
+          "calls": 5,
+          "inclusive_ms": 18.974578,
+          "exclusive_ms": 0.6371869999999995
+        },
+        "stream:ri_k_gemm": {
+          "calls": 10,
+          "inclusive_ms": 18.337391,
+          "exclusive_ms": 18.337391
+        },
+        "host:final_state_validation": {
+          "calls": 5,
+          "inclusive_ms": 51.594908,
+          "exclusive_ms": 51.594908
+        },
+        "host:strict_final_correction": {
+          "calls": 4,
+          "inclusive_ms": 85.014704,
+          "exclusive_ms": 34.16029
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 1.161028,
+          "exclusive_ms": 1.161028
+        },
+        "host:final_state_corrected": {
+          "calls": 1,
+          "inclusive_ms": 0.01573,
+          "exclusive_ms": 0.01573
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 3268.916431,
+          "exclusive_ms": 155.7735660000003
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 3113.142865,
+          "exclusive_ms": 0.16862300000002506
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.15694,
+          "exclusive_ms": 0.15694
+        },
+        "stream:host_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 3112.760414,
+          "exclusive_ms": 2363.1852949999998
+        },
+        "stream:host_raw_three_center_gather": {
+          "calls": 576,
+          "inclusive_ms": 145.46408399999999,
+          "exclusive_ms": 145.46408399999999
+        },
+        "stream:host_response_uploads_and_synchronization": {
+          "calls": 2,
+          "inclusive_ms": 604.111035,
+          "exclusive_ms": 4.70263999999994
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 108,
+          "inclusive_ms": 597.7058620000004,
+          "exclusive_ms": 597.7058620000004
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 1.702533,
+          "exclusive_ms": 1.702533
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.056888,
+          "exclusive_ms": 0.056888
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "budget": 0,
+      "stage": "warm",
+      "seconds": 3.3222753540612757,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 3321.763266,
+          "exclusive_ms": 0.16951399999970818
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 3321.593752,
+          "exclusive_ms": 0.18436100000008082
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.162451,
+          "exclusive_ms": 0.162451
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 0.190084,
+          "exclusive_ms": 0.190084
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 38.514931,
+          "exclusive_ms": 0.02645099999999445
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 38.48848,
+          "exclusive_ms": 38.404719
+        },
+        "host:compact_iteration_readback": {
+          "calls": 3,
+          "inclusive_ms": 0.083761,
+          "exclusive_ms": 0.083761
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 3282.541925,
+          "exclusive_ms": 0.4867100000001301
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.348065,
+          "exclusive_ms": 0.09998100000000001
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.248084,
+          "exclusive_ms": 0.248084
+        },
+        "host:final_state_fock_build": {
+          "calls": 1,
+          "inclusive_ms": 4.549141,
+          "exclusive_ms": 0.29755799999999955
+        },
+        "stream:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.270056,
+          "exclusive_ms": 0.06889200000000001
+        },
+        "stream:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.201164,
+          "exclusive_ms": 0.201164
+        },
+        "stream:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 3.981527,
+          "exclusive_ms": 0.13584999999999958
+        },
+        "stream:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 3.8456770000000002,
+          "exclusive_ms": 3.8456770000000002
+        },
+        "host:final_state_validation": {
+          "calls": 1,
+          "inclusive_ms": 21.69131,
+          "exclusive_ms": 21.69131
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 1.134417,
+          "exclusive_ms": 1.134417
+        },
+        "host:final_state_reuse": {
+          "calls": 1,
+          "inclusive_ms": 0.016181,
+          "exclusive_ms": 0.016181
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 3254.316101,
+          "exclusive_ms": 153.9240649999997
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 3100.392036,
+          "exclusive_ms": 0.1666680000002998
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.174663,
+          "exclusive_ms": 0.174663
+        },
+        "stream:host_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 3099.992844,
+          "exclusive_ms": 2361.129893
+        },
+        "stream:host_raw_three_center_gather": {
+          "calls": 576,
+          "inclusive_ms": 145.47884600000015,
+          "exclusive_ms": 145.47884600000015
+        },
+        "stream:host_response_uploads_and_synchronization": {
+          "calls": 2,
+          "inclusive_ms": 593.384105,
+          "exclusive_ms": 4.751989999999959
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 108,
+          "inclusive_ms": 586.976391,
+          "exclusive_ms": 586.976391
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 1.655724,
+          "exclusive_ms": 1.655724
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.057861,
+          "exclusive_ms": 0.057861
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "budget": 536870912,
+      "stage": "cold",
+      "seconds": 4.355968854157254,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 4355.505218,
+          "exclusive_ms": 0.19664499999998952
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 4355.308573,
+          "exclusive_ms": 30.507142000000385
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 914.079983,
+          "exclusive_ms": 29.111877999999933
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 884.968105,
+          "exclusive_ms": 1.9237410000000637
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 72,
+          "inclusive_ms": 869.8570369999998,
+          "exclusive_ms": 869.8570369999998
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 72,
+          "inclusive_ms": 13.187327000000002,
+          "exclusive_ms": 13.187327000000002
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.076296,
+          "exclusive_ms": 0.076296
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 3.961689,
+          "exclusive_ms": 3.961689
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 752.479171,
+          "exclusive_ms": 1.107234999999946
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 4.31813,
+          "exclusive_ms": 4.31813
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 747.053806,
+          "exclusive_ms": 0.18107599999996182
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 194,
+          "inclusive_ms": 1855.4459500000005,
+          "exclusive_ms": 1855.4459500000005
+        },
+        "stream:resident_metric_transform": {
+          "calls": 2,
+          "inclusive_ms": 1.770553,
+          "exclusive_ms": 1.770553
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 30.188545,
+          "exclusive_ms": 7.615831
+        },
+        "stream:production_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 74.43626900000001,
+          "exclusive_ms": 0.39151600000000286
+        },
+        "host:production_eigensystem": {
+          "calls": 6,
+          "inclusive_ms": 74.044753,
+          "exclusive_ms": 1.282653999999999
+        },
+        "stream:workspace_setup": {
+          "calls": 6,
+          "inclusive_ms": 0.255559,
+          "exclusive_ms": 0.255559
+        },
+        "stream:host_to_device": {
+          "calls": 6,
+          "inclusive_ms": 0.456992,
+          "exclusive_ms": 0.456992
+        },
+        "host:device_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 27.54381,
+          "exclusive_ms": 0.13635799999999954
+        },
+        "stream:device_eigensolve": {
+          "calls": 6,
+          "inclusive_ms": 27.407452000000003,
+          "exclusive_ms": 27.407452000000003
+        },
+        "stream:device_to_host": {
+          "calls": 6,
+          "inclusive_ms": 0.527938,
+          "exclusive_ms": 0.527938
+        },
+        "host:eigenframe_validation": {
+          "calls": 6,
+          "inclusive_ms": 42.958853,
+          "exclusive_ms": 42.958853
+        },
+        "stream:generalized_transform": {
+          "calls": 5,
+          "inclusive_ms": 0.6301140000000001,
+          "exclusive_ms": 0.6301140000000001
+        },
+        "stream:coefficient_backtransform": {
+          "calls": 5,
+          "inclusive_ms": 0.388833,
+          "exclusive_ms": 0.388833
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 229.264679,
+          "exclusive_ms": 0.026441000000005488
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 229.238238,
+          "exclusive_ms": 228.263216
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.114168,
+          "exclusive_ms": 0.051066
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.063102,
+          "exclusive_ms": 0.063102
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.223858,
+          "exclusive_ms": 0.09220700000000001
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.131651,
+          "exclusive_ms": 0.131651
+        },
+        "host:compact_diis_update": {
+          "calls": 1,
+          "inclusive_ms": 0.035167,
+          "exclusive_ms": 0.035167
+        },
+        "graph_capture:compact_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 0.17779,
+          "exclusive_ms": 0.17779
+        },
+        "host:compact_iteration_readback": {
+          "calls": 16,
+          "inclusive_ms": 0.424039,
+          "exclusive_ms": 0.424039
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 2394.751068,
+          "exclusive_ms": 0.9778100000003178
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.354237,
+          "exclusive_ms": 0.076706
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.277531,
+          "exclusive_ms": 0.277531
+        },
+        "host:final_state_fock_build": {
+          "calls": 5,
+          "inclusive_ms": 22.228257,
+          "exclusive_ms": 1.327033000000002
+        },
+        "stream:ri_j": {
+          "calls": 5,
+          "inclusive_ms": 1.062892,
+          "exclusive_ms": 0.325993
+        },
+        "stream:ri_j_gemm": {
+          "calls": 10,
+          "inclusive_ms": 0.736899,
+          "exclusive_ms": 0.736899
+        },
+        "stream:ri_k": {
+          "calls": 5,
+          "inclusive_ms": 19.838332,
+          "exclusive_ms": 0.6323979999999998
+        },
+        "stream:ri_k_gemm": {
+          "calls": 20,
+          "inclusive_ms": 19.205934000000003,
+          "exclusive_ms": 19.205934000000003
+        },
+        "host:final_state_validation": {
+          "calls": 5,
+          "inclusive_ms": 51.927927000000004,
+          "exclusive_ms": 51.927927000000004
+        },
+        "host:strict_final_correction": {
+          "calls": 4,
+          "inclusive_ms": 86.44709599999999,
+          "exclusive_ms": 34.583541
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 1.132543,
+          "exclusive_ms": 1.132543
+        },
+        "host:final_state_corrected": {
+          "calls": 1,
+          "inclusive_ms": 0.01556,
+          "exclusive_ms": 0.01556
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 2231.667638,
+          "exclusive_ms": 4.422768999999789
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 2227.244869,
+          "exclusive_ms": 0.2969069999999192
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.326774,
+          "exclusive_ms": 0.326774
+        },
+        "stream:response_weights": {
+          "calls": 1,
+          "inclusive_ms": 2226.562766,
+          "exclusive_ms": 4.583423000000039
+        },
+        "stream:metric_inverse": {
+          "calls": 1,
+          "inclusive_ms": 0.055245,
+          "exclusive_ms": 0.055245
+        },
+        "stream:coulomb_response": {
+          "calls": 1,
+          "inclusive_ms": 1117.708346,
+          "exclusive_ms": 7.364572999999837
+        },
+        "stream:coulomb_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 0.053993,
+          "exclusive_ms": 0.053993
+        },
+        "stream:exchange_response_matrix_products": {
+          "calls": 192,
+          "inclusive_ms": 14.254483,
+          "exclusive_ms": 14.254483
+        },
+        "stream:exchange_response_weights_and_metric": {
+          "calls": 192,
+          "inclusive_ms": 665.3525220000002,
+          "exclusive_ms": 665.3525220000002
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 422.900804,
+          "exclusive_ms": 422.900804
+        },
+        "stream:metric_frechet_response": {
+          "calls": 1,
+          "inclusive_ms": 0.118807,
+          "exclusive_ms": 0.118807
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 1.535143,
+          "exclusive_ms": 1.535143
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.058422,
+          "exclusive_ms": 0.058422
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "budget": 536870912,
+      "stage": "warm",
+      "seconds": 3.230568858096376,
+      "phases": {
+        "host:batch_execute": {
+          "calls": 1,
+          "inclusive_ms": 3230.047672,
+          "exclusive_ms": 0.19626400000015565
+        },
+        "host:run_rhf_density_fitting_cuda_bucket_impl": {
+          "calls": 1,
+          "inclusive_ms": 3229.851408,
+          "exclusive_ms": 30.891169999999875
+        },
+        "host:one_electron_batch": {
+          "calls": 1,
+          "inclusive_ms": 915.11176,
+          "exclusive_ms": 28.568629999999985
+        },
+        "stream:one_electron_derivative_export": {
+          "calls": 1,
+          "inclusive_ms": 886.54313,
+          "exclusive_ms": 1.9776150000000143
+        },
+        "stream:one_electron_and_nuclear_derivative_generation": {
+          "calls": 72,
+          "inclusive_ms": 871.3791300000001,
+          "exclusive_ms": 871.3791300000001
+        },
+        "stream:one_electron_derivative_output_and_synchronization": {
+          "calls": 72,
+          "inclusive_ms": 13.186384999999998,
+          "exclusive_ms": 13.186384999999998
+        },
+        "host:prepare_item": {
+          "calls": 1,
+          "inclusive_ms": 0.221373,
+          "exclusive_ms": 0.221373
+        },
+        "host:prepare_initial_frame": {
+          "calls": 1,
+          "inclusive_ms": 0.183811,
+          "exclusive_ms": 0.183811
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 34.214096,
+          "exclusive_ms": 0.0259889999999956
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 34.188107,
+          "exclusive_ms": 34.110408
+        },
+        "host:compact_iteration_readback": {
+          "calls": 3,
+          "inclusive_ms": 0.077699,
+          "exclusive_ms": 0.077699
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 2249.229198,
+          "exclusive_ms": 0.477621999999883
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 0.338607,
+          "exclusive_ms": 0.087096
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 0.251511,
+          "exclusive_ms": 0.251511
+        },
+        "host:final_state_fock_build": {
+          "calls": 1,
+          "inclusive_ms": 4.180767,
+          "exclusive_ms": 0.30499100000000023
+        },
+        "stream:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 0.255208,
+          "exclusive_ms": 0.069633
+        },
+        "stream:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.185575,
+          "exclusive_ms": 0.185575
+        },
+        "stream:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 3.620568,
+          "exclusive_ms": 0.1398769999999998
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 3.4806909999999993,
+          "exclusive_ms": 3.4806909999999993
+        },
+        "host:final_state_validation": {
+          "calls": 1,
+          "inclusive_ms": 21.703866,
+          "exclusive_ms": 21.703866
+        },
+        "host:final_state_weighted_density": {
+          "calls": 1,
+          "inclusive_ms": 1.135229,
+          "exclusive_ms": 1.135229
+        },
+        "host:final_state_reuse": {
+          "calls": 1,
+          "inclusive_ms": 0.015289,
+          "exclusive_ms": 0.015289
+        },
+        "host:force_response": {
+          "calls": 1,
+          "inclusive_ms": 2221.377818,
+          "exclusive_ms": 4.427999999999884
+        },
+        "stream:force_response": {
+          "calls": 1,
+          "inclusive_ms": 2216.949818,
+          "exclusive_ms": 0.3062039999999797
+        },
+        "stream:response_allocation_and_uploads": {
+          "calls": 1,
+          "inclusive_ms": 0.459719,
+          "exclusive_ms": 0.459719
+        },
+        "stream:response_weights": {
+          "calls": 1,
+          "inclusive_ms": 2216.124812,
+          "exclusive_ms": 4.56670800000029
+        },
+        "stream:metric_inverse": {
+          "calls": 1,
+          "inclusive_ms": 0.053392,
+          "exclusive_ms": 0.053392
+        },
+        "stream:coulomb_response": {
+          "calls": 1,
+          "inclusive_ms": 1107.463237,
+          "exclusive_ms": 7.358545000000049
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 192,
+          "inclusive_ms": 1100.1046920000001,
+          "exclusive_ms": 1100.1046920000001
+        },
+        "stream:coulomb_response_weights": {
+          "calls": 1,
+          "inclusive_ms": 0.053372,
+          "exclusive_ms": 0.053372
+        },
+        "stream:exchange_response_matrix_products": {
+          "calls": 192,
+          "inclusive_ms": 14.203005999999997,
+          "exclusive_ms": 14.203005999999997
+        },
+        "stream:exchange_response_weights_and_metric": {
+          "calls": 192,
+          "inclusive_ms": 665.2695000000001,
+          "exclusive_ms": 665.2695000000001
+        },
+        "stream:three_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 422.859824,
+          "exclusive_ms": 422.859824
+        },
+        "stream:metric_frechet_response": {
+          "calls": 1,
+          "inclusive_ms": 0.114919,
+          "exclusive_ms": 0.114919
+        },
+        "stream:metric_center_derivative_contraction": {
+          "calls": 1,
+          "inclusive_ms": 1.540854,
+          "exclusive_ms": 1.540854
+        },
+        "stream:response_output_and_synchronization": {
+          "calls": 1,
+          "inclusive_ms": 0.059083,
+          "exclusive_ms": 0.059083
+        }
+      }
+    }
+  ],
+  "acceptance": {
+    "all_repeat_energy_at_1e_9_and_forces_at_1e_8": true,
+    "iteration_matched_comparison": false,
+    "issue206_performance_gate": "unmet; 192-AO unmatched force ratios exceed nine, and no shared iteration branch was demonstrated",
+    "direct_regression_gate": "not rerun by this artifact",
+    "changed_geometry_and_384_ao": "remaining integration work"
+  },
+  "archive": {
+    "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4",
+    "bytes": 759957,
+    "restoration": "Every member restored and compared byte-for-byte."
+  },
+  "files": [
+    {
+      "path": "force-profile/192ao-b1-budget0-cold.cuda.jsonl",
+      "sha256": "9245bc7c0e5132894445e7b63d436be984c548a25831df762411e970ed8cdfc4",
+      "bytes": 94974
+    },
+    {
+      "path": "force-profile/192ao-b1-budget0-cold.host.jsonl",
+      "sha256": "2a86351840153a67067d76da4b0e2c80cab81edfba49ff6cb70c6fa4a83b4740",
+      "bytes": 7794
+    },
+    {
+      "path": "force-profile/192ao-b1-budget0-cold.progress.jsonl",
+      "sha256": "bffebc83f682f08ec944319e76f74e24e5ba7285fb3237932bf3ef0cd91d39a0",
+      "bytes": 1127550
+    },
+    {
+      "path": "force-profile/192ao-b1-budget0-warm.cuda.jsonl",
+      "sha256": "6d047a611bafd8170c502433ff7b846bc5d39ef57563b91c338c42095a804d0d",
+      "bytes": 65954
+    },
+    {
+      "path": "force-profile/192ao-b1-budget0-warm.host.jsonl",
+      "sha256": "b83e4b6d11fc831611f186e09c0c223a1c823f62e8e090e4d4d3ad6ae053ec73",
+      "bytes": 2460
+    },
+    {
+      "path": "force-profile/192ao-b1-budget0-warm.progress.jsonl",
+      "sha256": "8d0bda566ce4975a85b94eab2e1d4c513d72fbb7a2f6610afe195e9847e18ef9",
+      "bytes": 847560
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-cold.cuda.jsonl",
+      "sha256": "0278aa90ba216e42364a4a4519a04b05cc24abd7658c204f69ef8bc15ba1b0ce",
+      "bytes": 118518
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-cold.host.jsonl",
+      "sha256": "1b45b47d2aa2c5360bd98dd4d41517785cff62637d59f63c29460412c48258ae",
+      "bytes": 7744
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-cold.progress.jsonl",
+      "sha256": "5188336b939d1f73bc72a9de36ae24c311d5a2f6d2318e74ecf15ab99439912e",
+      "bytes": 1065286
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-warm.cuda.jsonl",
+      "sha256": "98410fbc4eb1df8779455355804ddb7ebabbad4f859e79d01185cb631a9e219a",
+      "bytes": 103585
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-warm.host.jsonl",
+      "sha256": "c691949714f906d679e94dc611f39ae383128501eb8047459b718e46c9e52628",
+      "bytes": 2474
+    },
+    {
+      "path": "force-profile/192ao-b1-budget536870912-warm.progress.jsonl",
+      "sha256": "05872c24372c1e57c60d80f87362b4465fcd4c24ed62a7ea452ffbe384e729e8",
+      "bytes": 917803
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-cold.cuda.jsonl",
+      "sha256": "6f9d8715db2fde253cd7be9a285459ed5db25c451f0dde65522b4142894db118",
+      "bytes": 45160
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-cold.host.jsonl",
+      "sha256": "948dbb3c91901c50159daf336dabb5385284c5c7e322d2c7d340518e6997f4e5",
+      "bytes": 4695
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-cold.progress.jsonl",
+      "sha256": "8c099b0911fd1223328b358e5cdfee86e078bcc90ec38bfaaa890dbecb2b4bdd",
+      "bytes": 543951
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-warm.cuda.jsonl",
+      "sha256": "6587c10e55b278cb22b6e232f855cc20956f15b0909b008eb2063bb01ea1b71b",
+      "bytes": 30770
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-warm.host.jsonl",
+      "sha256": "b5325079f3ee6e3f08123bbe8c875da7cabc3268443315c9d981072245fb3468",
+      "bytes": 2467
+    },
+    {
+      "path": "force-profile/96ao-b1-budget0-warm.progress.jsonl",
+      "sha256": "108847f3f99a355077e7d880572a7f971e3edd8c046ce1294784485e92ab317c",
+      "bytes": 397033
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-cold.cuda.jsonl",
+      "sha256": "ae257e866c895030e8469b652f4e8b951f406e6bf35ad5f8da2e96fab18fe290",
+      "bytes": 60689
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-cold.host.jsonl",
+      "sha256": "3e35f6a06ccac24c41cb035b7b3c236a1f28de72118f2748f8624b9542ef71a5",
+      "bytes": 4704
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-cold.progress.jsonl",
+      "sha256": "af1ecd4bcdb26b14bdd6805a92d2698c737c086b886e1ef3c55ce669e38cb0db",
+      "bytes": 552672
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-warm.cuda.jsonl",
+      "sha256": "9f2df5eaf187c72b217db7b3226e6ff4533777c04a4c114d547e67b8878a085d",
+      "bytes": 53719
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-warm.host.jsonl",
+      "sha256": "e0440459beb4e73f09bcf3e706ea3c121c120c8ff7d2e02ec82d0e2b1b969a1c",
+      "bytes": 2495
+    },
+    {
+      "path": "force-profile/96ao-b1-budget536870912-warm.progress.jsonl",
+      "sha256": "9041201e4b4f76dc73c4f64258d1ef3b783f4f20c7bf01ea140595a1965fdeed",
+      "bytes": 477402
+    },
+    {
+      "path": "force-profile/summary.json",
+      "sha256": "8c63b262dafcbad2482cd1f289bafeb186779bf30838e87059ca3a5d882af6b3",
+      "bytes": 6412263
+    },
+    {
+      "path": "initial-clean/192ao-b1-energy.json",
+      "sha256": "a018023305322cfce4407472a5b8f4e9f42c0cc415873bc381cea4ac0e23d9f8",
+      "bytes": 61544
+    },
+    {
+      "path": "initial-clean/192ao-b1-energy.log",
+      "sha256": "ff619917feb9cdd27fe47cd03c1c1678c4a52e9c1561678b09d1a8564152ea71",
+      "bytes": 893
+    },
+    {
+      "path": "initial-clean/192ao-b1-forces.json",
+      "sha256": "2c6cce345e223d54488452e0a2eb60114b4af90e854e45e17c98987374fe7a62",
+      "bytes": 103798
+    },
+    {
+      "path": "initial-clean/192ao-b1-forces.log",
+      "sha256": "6d8368fb87a1867282328fb8d712811a28e1d546920f4686c92e098f5f841e51",
+      "bytes": 948
+    },
+    {
+      "path": "initial-clean/192ao-b4-energy.json",
+      "sha256": "3bf8b69862ffe4515ea7566542f62f7a426c17a9b6c8dee9d879e6b6642daeab",
+      "bytes": 214879
+    },
+    {
+      "path": "initial-clean/192ao-b4-energy.log",
+      "sha256": "1db3c273928ecfc09de05d01dc4f6d7563234abcd08dbc7a15c7a151bbd9f3cc",
+      "bytes": 957
+    },
+    {
+      "path": "initial-clean/192ao-b4-forces.json",
+      "sha256": "975b069d905dcb012c8fdef83bb532cf32d7ae83e8780fb64b4e3cc4e8e895e7",
+      "bytes": 382969
+    },
+    {
+      "path": "initial-clean/192ao-b4-forces.log",
+      "sha256": "216579e30f4aca8d4e9fc438083a768822af2d43cc94f5acf609a82bdeac516b",
+      "bytes": 1013
+    },
+    {
+      "path": "initial-clean/96ao-b1-energy.json",
+      "sha256": "88c07cd41b0c056ade79aff152e07e0eef44d5b6607db5e654c0387265adc0f4",
+      "bytes": 48296
+    },
+    {
+      "path": "initial-clean/96ao-b1-energy.log",
+      "sha256": "3109ca633e17fdf9cc39706f69d9dbbd733e99e32560a7b3421fbcaacaa1ca26",
+      "bytes": 887
+    },
+    {
+      "path": "initial-clean/96ao-b1-forces.json",
+      "sha256": "3ce7d04c2e63f28e59dd364f33625a4db4c7540eae3ad51f18f83f1d3b1e8d53",
+      "bytes": 69703
+    },
+    {
+      "path": "initial-clean/96ao-b1-forces.log",
+      "sha256": "530548a01702c62389e71a72bb91bbb963abe476e0247757fe39e95cd1cffdea",
+      "bytes": 940
+    },
+    {
+      "path": "initial-clean/96ao-b4-energy.json",
+      "sha256": "b85444fb8b2a8f31c1112c6c05f897b94124814b237a1c75b913fa281d9a28c7",
+      "bytes": 161768
+    },
+    {
+      "path": "initial-clean/96ao-b4-energy.log",
+      "sha256": "82c173c41f466ae66da1cbc82026c884bb003defad406f3e79db673c60ba6117",
+      "bytes": 949
+    },
+    {
+      "path": "initial-clean/96ao-b4-forces.json",
+      "sha256": "e39d89b30ecce00fa125477643b0fa8fd621eb74088e99524ab9de2948586cb6",
+      "bytes": 246441
+    },
+    {
+      "path": "initial-clean/96ao-b4-forces.log",
+      "sha256": "963c27fa34ddac234a5247ea113b14e5f831ff4b5400bf78c32c526a5c736dcb",
+      "bytes": 1005
+    },
+    {
+      "path": "initial-clean/input-qualification.json",
+      "sha256": "f9a57dc44fed1890c143b2f711cbf0348123cc6f07b075cc79cbeea2b0154d6c",
+      "bytes": 74131
+    },
+    {
+      "path": "initial-clean/manifest.json",
+      "sha256": "fcaa636e8952bc3290598a9f8f0332a9c821ccac1523f5d11f1e6a50eed8e9ff",
+      "bytes": 10644
+    },
+    {
+      "path": "reproduction/force-profile.log",
+      "sha256": "94135791b0d6aea9a988a37ffb902fc0b42bea3bc2b90013717785f59c4df95f",
+      "bytes": 352
+    },
+    {
+      "path": "reproduction/matrix.log",
+      "sha256": "71f0680d9b4005ee33f937b5b6565c6fc5ae42b6ee8bee93ed845e92e6b0a105",
+      "bytes": 265
+    },
+    {
+      "path": "reproduction/profile-force.py",
+      "sha256": "5f1f57e8bb6ca140209e793b2b4a0f920025c440cf0716cf5418e58f6771a307",
+      "bytes": 2707
+    },
+    {
+      "path": "reproduction/qualify-inputs.py",
+      "sha256": "02fea2e41d068df442f8e40548d700b24b7a9f117222bc9fe9db1fe7a10bd53b",
+      "bytes": 2946
+    },
+    {
+      "path": "reproduction/retain-baseline.py",
+      "sha256": "14ec05b4a968ccb9d8ce132606d849e38004d506274a59f45a62d22fa8059eab",
+      "bytes": 4062
+    },
+    {
+      "path": "reproduction/run-matrix.py",
+      "sha256": "073c8eed9e15b52619d6d4762125e1d23409d5db1410540808da70ce28fd7d2d",
+      "bytes": 5464
+    }
+  ]
+}
