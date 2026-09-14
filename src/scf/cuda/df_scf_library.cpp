@@ -7,6 +7,7 @@
 #include <limits>
 #include <new>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -17,6 +18,77 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 
 namespace vibeqc::scf::cuda_df {
+namespace {
+
+template <class>
+inline constexpr bool always_false_v = false;
+
+// NVIDIA's public cusolverDnXsyevBatched API stores the batch contiguously and
+// therefore has no explicit strides. Some CUDA-compatible providers expose the
+// same operation with strideA/strideW arguments instead. Select between the two
+// signatures at compile time so the production NVIDIA call surface remains
+// unchanged and provider source trees never need to be patched.
+template <class Fn>
+cusolverStatus_t xsyev_batched_buffer_size(
+    Fn function, cusolverDnHandle_t handle, cusolverDnParams_t parameters,
+    cusolverEigMode_t jobz, cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a,
+    const void* a, std::int64_t lda, cudaDataType data_type_w, const void* w,
+    cudaDataType compute_type, std::size_t* device_bytes, std::size_t* host_bytes,
+    std::int64_t batch_size) {
+  using Official = std::bool_constant<std::is_invocable_r_v<
+      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
+      cublasFillMode_t, std::int64_t, cudaDataType, const void*, std::int64_t, cudaDataType,
+      const void*, cudaDataType, std::size_t*, std::size_t*, std::int64_t>>;
+  using Strided = std::bool_constant<std::is_invocable_r_v<
+      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
+      cublasFillMode_t, std::int64_t, cudaDataType, const void*, std::int64_t, std::int64_t,
+      cudaDataType, const void*, std::int64_t, cudaDataType, std::int64_t, std::size_t*,
+      std::size_t*>>;
+  if constexpr (Official::value) {
+    return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, data_type_w, w,
+                    compute_type, device_bytes, host_bytes, batch_size);
+  } else if constexpr (Strided::value) {
+    const std::int64_t stride_a = lda * n;
+    const std::int64_t stride_w = n;
+    return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, stride_a, data_type_w,
+                    w, stride_w, compute_type, batch_size, device_bytes, host_bytes);
+  } else {
+    static_assert(always_false_v<Fn>, "unsupported cusolverDnXsyevBatched_bufferSize signature");
+  }
+}
+
+template <class Fn>
+cusolverStatus_t xsyev_batched(
+    Fn function, cusolverDnHandle_t handle, cusolverDnParams_t parameters,
+    cusolverEigMode_t jobz, cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a,
+    void* a, std::int64_t lda, cudaDataType data_type_w, void* w, cudaDataType compute_type,
+    void* device_workspace, std::size_t device_bytes, void* host_workspace, std::size_t host_bytes,
+    int* info, std::int64_t batch_size) {
+  using Official = std::bool_constant<std::is_invocable_r_v<
+      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
+      cublasFillMode_t, std::int64_t, cudaDataType, void*, std::int64_t, cudaDataType, void*,
+      cudaDataType, void*, std::size_t, void*, std::size_t, int*, std::int64_t>>;
+  using Strided = std::bool_constant<std::is_invocable_r_v<
+      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
+      cublasFillMode_t, std::int64_t, cudaDataType, void*, std::int64_t, std::int64_t,
+      cudaDataType, void*, std::int64_t, cudaDataType, std::int64_t, void*, std::size_t, void*,
+      std::size_t, int*>>;
+  if constexpr (Official::value) {
+    return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, data_type_w, w,
+                    compute_type, device_workspace, device_bytes, host_workspace, host_bytes, info,
+                    batch_size);
+  } else if constexpr (Strided::value) {
+    const std::int64_t stride_a = lda * n;
+    const std::int64_t stride_w = n;
+    return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, stride_a, data_type_w,
+                    w, stride_w, compute_type, batch_size, device_workspace, device_bytes,
+                    host_workspace, host_bytes, info);
+  } else {
+    static_assert(always_false_v<Fn>, "unsupported cusolverDnXsyevBatched signature");
+  }
+}
+
+}  // namespace
 
 vibeqc_status recover_scf_capture(cudaStream_t stream, cudaError_t capture_error,
                                   vibeqc_status iteration_status, bool& capture_rejected,
@@ -119,10 +191,11 @@ vibeqc_status setup_device_solver(CudaDensityFittingJkPlan& plan, std::size_t nb
   }
   std::size_t device_bytes = 0;
   std::size_t host_bytes = 0;
-  status = cusolverDnXsyevBatched_bufferSize(
-      solver.handle, solver.parameters, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
-      static_cast<int>(nbf), CUDA_R_64F, eigensystem, static_cast<int>(nbf), CUDA_R_64F,
-      eigenvalues, CUDA_R_64F, &device_bytes, &host_bytes, static_cast<int>(batch_size));
+  status = xsyev_batched_buffer_size(
+      &cusolverDnXsyevBatched_bufferSize, solver.handle, solver.parameters,
+      CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, static_cast<std::int64_t>(nbf), CUDA_R_64F,
+      eigensystem, static_cast<std::int64_t>(nbf), CUDA_R_64F, eigenvalues, CUDA_R_64F,
+      &device_bytes, &host_bytes, static_cast<std::int64_t>(batch_size));
   if (status != CUSOLVER_STATUS_SUCCESS || device_bytes == 0) {
     return solver_failure(
         status == CUSOLVER_STATUS_SUCCESS ? CUSOLVER_STATUS_INTERNAL_ERROR : status,
@@ -169,11 +242,12 @@ vibeqc_status solve_device_batch(CudaDensityFittingJkPlan& plan, DeviceSolver& s
         eigensystem, static_cast<int>(nbf), eigenvalues, solver.workspace, solver.lwork, info,
         solver.jacobi, static_cast<int>(batch_size));
   } else {
-    status = cusolverDnXsyevBatched(
-        solver.handle, solver.parameters, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
-        static_cast<int>(nbf), CUDA_R_64F, eigensystem, static_cast<int>(nbf), CUDA_R_64F,
-        eigenvalues, CUDA_R_64F, solver.workspace, solver.workspace_bytes, solver.host_workspace,
-        solver.host_workspace_bytes, info, static_cast<int>(batch_size));
+    status = xsyev_batched(
+        &cusolverDnXsyevBatched, solver.handle, solver.parameters, CUSOLVER_EIG_MODE_VECTOR,
+        CUBLAS_FILL_MODE_LOWER, static_cast<std::int64_t>(nbf), CUDA_R_64F, eigensystem,
+        static_cast<std::int64_t>(nbf), CUDA_R_64F, eigenvalues, CUDA_R_64F, solver.workspace,
+        solver.workspace_bytes, solver.host_workspace, solver.host_workspace_bytes, info,
+        static_cast<std::int64_t>(batch_size));
   }
   return status == CUSOLVER_STATUS_SUCCESS
              ? VIBEQC_STATUS_SUCCESS
