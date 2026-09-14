@@ -42,10 +42,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     const CudaDfMetricView metric{
         plan->inverse_square_roots + offset, plan->metric_eigenvectors + offset,
         plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold};
-    return execute_cuda_df_hf_gradient(
-        plan->device_id, reinterpret_cast<void*>(plan->stream), plan->integral_source, system,
-        orbital, auxiliary, raw_a, {}, {}, terms, plan->metric_relative_threshold, schedule,
-        maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric);
+    return execute_cuda_df_hf_gradient(plan->device_id, reinterpret_cast<void*>(plan->stream),
+                                       plan->integral_source, system, orbital, auxiliary, raw_a, {},
+                                       {}, terms, plan->metric_relative_threshold, schedule,
+                                       maximum_bytes, maximum_auxiliary_tile, derivative, detail,
+                                       resources, &metric, reinterpret_cast<void*>(plan->blas));
   }
   // Copies isolate one system's spectral reverse map from the packed batch.
   // Charge them while the bounded HF/derivative bridge is also alive.

@@ -4,6 +4,9 @@ project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGenerated.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
+
 # Leaf lowering/tuning modules are scientific generator inputs too. Track
 # nested files for regeneration; facade timestamps alone cannot invalidate them.
 file(GLOB_RECURSE VIBEQC_SCIENTIFIC_COMPILER_INPUTS CONFIGURE_DEPENDS
@@ -76,15 +79,6 @@ endif()
 if(NOT Python3_Interpreter_FOUND)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
 endif()
-set(VIBEQC_XC_CPU_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/xc_cpu_generated.hpp")
-add_custom_command(
-  OUTPUT "${VIBEQC_XC_CPU_HEADER}"
-  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
-          --output "${VIBEQC_XC_CPU_HEADER}"
-  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
-          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
-  VERBATIM)
-add_custom_target(vibeqc_xc_cpu_codegen DEPENDS "${VIBEQC_XC_CPU_HEADER}")
 
 if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS MATCHES "^[0-9]+$")
   message(FATAL_ERROR
@@ -197,7 +191,14 @@ add_library(vibeqc SHARED
   src/scf/initial_guess/density.cpp
   src/scf/cuda/rhf_policy.cpp
 )
-add_dependencies(vibeqc vibeqc_xc_cpu_codegen)
+set(VIBEQC_XC_CPU_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/xc_cpu_generated.hpp")
+vibeqc_register_generated_sources(
+  NAME vibeqc_xc_cpu_codegen
+  TARGET vibeqc
+  GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
+  OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
+  DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+  ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
@@ -208,7 +209,9 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "python/vibeqc_compiler/*.json" "python/vibeqc/*.py"
      "tools/vibeqc_tensor/*.py" "tools/vibeqc_mp2/*.py"
      "tools/vibeqc_posthf/plan_spec.py")
-list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
+list(APPEND _vibeqc_identity_inputs "CMakeLists.txt"
+     "cmake/VibeQCGenerated.cmake" "cmake/VibeQCTests.cmake"
+     "tools/generate_shell_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
      "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
      "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py")
@@ -751,276 +754,7 @@ set_target_properties(vibeqc PROPERTIES
 )
 
 if(VIBEQC_BUILD_TESTS)
-  enable_testing()
-  if(VIBEQC_ENABLE_CUDA)
-    # Only these owners contain fault injection; keep unrelated CUDA translation
-    # units and generated integral bundles free of test hooks.
-    set_property(SOURCE "${VIBEQC_GRID_SOURCE}" src/dft/cuda_ks.cpp src/dft/cuda_xc.cpp
-                 APPEND PROPERTY
-                 COMPILE_DEFINITIONS VIBEQC_TEST_HOOKS=1)
-    # Manual numerical/performance tier: invoked through the Slurm validator,
-    # never registered as an unallocated login-node GPU test.
-    add_executable(vibeqc_weighted_eri_probe tests/native/weighted_eri_probe.cpp)
-    target_link_libraries(vibeqc_weighted_eri_probe PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_weighted_eri_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    add_executable(vibeqc_df_value_probe tests/native/df_value_probe.cpp)
-    target_link_libraries(vibeqc_df_value_probe PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  endif()
-  add_executable(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
-  target_link_libraries(vibeqc_fock_build_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_fock_build_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_fock_build_tests COMMAND vibeqc_fock_build_tests)
-  add_executable(vibeqc_fock_provider_tests tests/native/test_fock_provider.cpp)
-  target_link_libraries(vibeqc_fock_provider_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_fock_provider_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_fock_provider_tests COMMAND vibeqc_fock_provider_tests)
-  add_executable(vibeqc_fock_api_tests tests/native/test_fock_api.cpp)
-  target_link_libraries(vibeqc_fock_api_tests PRIVATE vibeqc)
-  # CPU by default; invoke the explicit CUDA argument only inside a GPU job.
-  add_test(NAME vibeqc_fock_api_tests COMMAND vibeqc_fock_api_tests)
-
-  add_executable(vibeqc_native_tests tests/native/test_rhf.cpp)
-  target_link_libraries(vibeqc_native_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_native_tests COMMAND vibeqc_native_tests)
-
-  # The Windows shared-library ABI intentionally exports only the public C
-  # surface; this internal contract target requires private C++ symbols.
-  if(NOT WIN32)
-    add_executable(vibeqc_final_state_tests tests/native/test_final_state.cpp)
-    target_link_libraries(vibeqc_final_state_tests PRIVATE vibeqc)
-    target_include_directories(vibeqc_final_state_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_final_state_tests COMMAND vibeqc_final_state_tests)
-
-    add_executable(vibeqc_eigen_frame_tests tests/native/test_eigen_frame.cpp)
-    target_link_libraries(vibeqc_eigen_frame_tests PRIVATE vibeqc)
-    target_include_directories(vibeqc_eigen_frame_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_eigen_frame_tests COMMAND vibeqc_eigen_frame_tests)
-
-    add_executable(vibeqc_initial_density_tests tests/native/test_initial_density.cpp)
-    target_link_libraries(vibeqc_initial_density_tests PRIVATE vibeqc)
-    target_include_directories(vibeqc_initial_density_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_initial_density_tests COMMAND vibeqc_initial_density_tests)
-
-    add_executable(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
-    target_link_libraries(vibeqc_mp2_contract_tests PRIVATE vibeqc)
-    target_include_directories(vibeqc_mp2_contract_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_mp2_contract_tests COMMAND vibeqc_mp2_contract_tests)
-  endif()
-
-  if(VIBEQC_ENABLE_CUDA AND NOT WIN32)
-    # Runtime calls are mocked: exercise asynchronous staging failure without a GPU.
-    add_executable(vibeqc_cuda_reference_export_tests tests/native/test_cuda_reference_export.cpp)
-    target_link_libraries(vibeqc_cuda_reference_export_tests PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_cuda_reference_export_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_cuda_reference_export_tests COMMAND vibeqc_cuda_reference_export_tests)
-
-    add_executable(vibeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu)
-    target_link_libraries(vibeqc_mp2_cuda_status_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas)
-    target_include_directories(vibeqc_mp2_cuda_status_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_mp2_cuda_status_tests COMMAND vibeqc_mp2_cuda_status_tests)
-    set_tests_properties(vibeqc_mp2_cuda_status_tests PROPERTIES SKIP_RETURN_CODE 77)
-  endif()
-
-  add_executable(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
-  target_link_libraries(vibeqc_scf_proposal_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_scf_proposal_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_scf_proposal_tests COMMAND vibeqc_scf_proposal_tests)
-
-  add_executable(vibeqc_batch_tests tests/native/test_batch.cpp)
-  target_link_libraries(vibeqc_batch_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_batch_tests COMMAND vibeqc_batch_tests)
-
-  add_executable(vibeqc_cpp_api_tests tests/native/test_cpp_batch.cpp)
-  target_link_libraries(vibeqc_cpp_api_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_cpp_api_tests COMMAND vibeqc_cpp_api_tests)
-
-  add_executable(vibeqc_cartesian_integral_tests
-    tests/native/test_cartesian_integrals.cpp)
-  target_link_libraries(vibeqc_cartesian_integral_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_cartesian_integral_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_cartesian_integral_tests
-    COMMAND vibeqc_cartesian_integral_tests)
-
-  add_executable(vibeqc_density_fitting_tests
-    tests/native/test_density_fitting.cpp)
-  target_link_libraries(vibeqc_density_fitting_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_density_fitting_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_density_fitting_tests
-    COMMAND vibeqc_density_fitting_tests)
-
-  add_executable(vibeqc_density_factor_tests tests/native/test_density_factor.cpp)
-  target_link_libraries(vibeqc_density_factor_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_density_factor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_density_factor_tests COMMAND vibeqc_density_factor_tests)
-  if(VIBEQC_ENABLE_CUDA)
-    add_executable(vibeqc_df_occupied_probe benchmarks/df_occupied_probe.cpp)
-    target_link_libraries(vibeqc_df_occupied_probe PRIVATE vibeqc)
-    target_include_directories(vibeqc_df_occupied_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  endif()
-
-  add_executable(vibeqc_cuda_eigensolver_policy_tests
-    tests/native/test_cuda_eigensolver_policy.cpp)
-  target_link_libraries(vibeqc_cuda_eigensolver_policy_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_cuda_eigensolver_policy_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_cuda_eigensolver_policy_tests
-    COMMAND vibeqc_cuda_eigensolver_policy_tests)
-
-  add_executable(vibeqc_uhf_tests tests/native/test_uhf.cpp)
-  target_link_libraries(vibeqc_uhf_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_uhf_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_uhf_tests COMMAND vibeqc_uhf_tests)
-
-  add_executable(vibeqc_spherical_tests tests/native/test_spherical.cpp)
-  target_link_libraries(vibeqc_spherical_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_spherical_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_spherical_tests COMMAND vibeqc_spherical_tests)
-
-  add_executable(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
-  target_include_directories(vibeqc_basis_contract_tests PRIVATE src)
-  target_link_libraries(vibeqc_basis_contract_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_basis_contract_tests COMMAND vibeqc_basis_contract_tests)
-
-  add_executable(vibeqc_grid_tests tests/native/test_grid.cpp)
-  target_link_libraries(vibeqc_grid_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_grid_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_grid_tests COMMAND vibeqc_grid_tests)
-
-  add_executable(vibeqc_dft_tests
-    tests/native/test_dft.cpp
-    src/scf/density_factor.cpp
-    src/dft/ao_grid.cpp
-    src/dft/grid.cpp
-    src/dft/xc.cpp
-    src/molecule/basis.cpp)
-  add_dependencies(vibeqc_dft_tests vibeqc_xc_cpu_codegen)
-  target_include_directories(vibeqc_dft_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_BINARY_DIR}/generated)
-  add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
-
-  add_executable(vibeqc_xc_point_tests tests/native/test_xc_point.cpp)
-  target_include_directories(vibeqc_xc_point_tests PRIVATE src)
-  target_compile_definitions(vibeqc_xc_point_tests PRIVATE
-    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  add_test(NAME vibeqc_xc_point_tests COMMAND vibeqc_xc_point_tests)
-
-  add_executable(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
-  target_include_directories(vibeqc_uks_state_tests PRIVATE src)
-  target_link_libraries(vibeqc_uks_state_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_uks_state_tests COMMAND vibeqc_uks_state_tests)
-
-  if(VIBEQC_ENABLE_CUDA)
-    add_executable(vibeqc_xc_point_cuda_tests tests/native/test_xc_point_cuda.cu)
-    target_include_directories(vibeqc_xc_point_cuda_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_compile_definitions(vibeqc_xc_point_cuda_tests PRIVATE VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-    set_target_properties(vibeqc_xc_point_cuda_tests PROPERTIES CUDA_STANDARD 20)
-    add_test(NAME vibeqc_xc_point_cuda_tests COMMAND vibeqc_xc_point_cuda_tests)
-    set_tests_properties(vibeqc_xc_point_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
-
-    add_executable(vibeqc_dft_cuda_tests tests/native/test_dft_cuda.cu
-      src/dft/cuda_xc.cpp "${VIBEQC_GRID_SOURCE}" src/dft/ao_grid.cpp
-      src/dft/grid.cpp src/dft/xc.cpp src/scf/density_factor.cpp src/molecule/basis.cpp)
-    add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen)
-    target_include_directories(vibeqc_dft_cuda_tests PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/dft ${CMAKE_CURRENT_BINARY_DIR}/generated)
-    target_link_libraries(vibeqc_dft_cuda_tests PRIVATE CUDA::cudart CUDA::cublas)
-    set_target_properties(vibeqc_dft_cuda_tests PROPERTIES CUDA_STANDARD 20)
-    add_test(NAME vibeqc_dft_cuda_tests COMMAND vibeqc_dft_cuda_tests)
-    set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
-    add_executable(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp)
-    target_include_directories(vibeqc_ks_cuda_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(vibeqc_ks_cuda_tests PRIVATE vibeqc CUDA::cudart)
-    add_test(NAME vibeqc_ks_cuda_tests COMMAND vibeqc_ks_cuda_tests)
-    set_tests_properties(vibeqc_ks_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
-  endif()
-
-  add_executable(vibeqc_dft_api_tests tests/native/test_dft_api.cpp)
-  target_link_libraries(vibeqc_dft_api_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_dft_api_tests COMMAND vibeqc_dft_api_tests)
-
-  add_executable(vibeqc_scf_diagnostic_tests tests/native/test_scf_diagnostic.cpp)
-  target_include_directories(vibeqc_scf_diagnostic_tests PRIVATE src)
-  target_link_libraries(vibeqc_scf_diagnostic_tests PRIVATE vibeqc)
-  add_test(NAME vibeqc_scf_diagnostic_tests COMMAND vibeqc_scf_diagnostic_tests)
-
-  add_executable(vibeqc_dft_density_source_tests tests/native/test_dft_density_source.cpp)
-  target_link_libraries(vibeqc_dft_density_source_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_dft_density_source_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_dft_density_source_tests COMMAND vibeqc_dft_density_source_tests)
-
-  add_executable(vibeqc_uks_tests tests/native/test_uks.cpp)
-  target_link_libraries(vibeqc_uks_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_uks_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_uks_tests COMMAND vibeqc_uks_tests)
-
-  add_executable(vibeqc_mixed_precision_tests
-    tests/native/test_mixed_precision.cpp)
-  target_link_libraries(vibeqc_mixed_precision_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_mixed_precision_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_mixed_precision_tests
-    COMMAND vibeqc_mixed_precision_tests)
-
-  # Pure host policy controller and CPU provenance; no CUDA device required.
-  add_executable(vibeqc_precision_policy_tests
-    tests/native/test_precision_policy.cpp)
-  target_link_libraries(vibeqc_precision_policy_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_precision_policy_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_precision_policy_tests
-    COMMAND vibeqc_precision_policy_tests)
-
-  # This test requires a tuned registry and deliberately rejects the portable
-  # stub used when AOT shells are disabled. Other CUDA tests use either build.
-  if(VIBEQC_ENABLE_CUDA)
-    add_executable(vibeqc_cuda_runtime_tests tests/native/test_cuda_runtime.cu)
-    target_link_libraries(vibeqc_cuda_runtime_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas)
-    target_include_directories(vibeqc_cuda_runtime_tests
-      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_cuda_runtime_tests COMMAND vibeqc_cuda_runtime_tests)
-
-    add_executable(vibeqc_df_eigensystem_tests tests/native/test_df_eigensystem.cpp)
-    add_executable(vibeqc_df_capture_recovery_tests tests/native/test_df_capture_recovery.cpp)
-    target_link_libraries(vibeqc_df_capture_recovery_tests PRIVATE vibeqc CUDA::cudart CUDA::cusolver)
-    target_include_directories(vibeqc_df_capture_recovery_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_df_capture_recovery_tests COMMAND vibeqc_df_capture_recovery_tests)
-    add_executable(vibeqc_df_final_snapshot_tests tests/native/test_df_final_snapshot.cpp)
-    target_link_libraries(vibeqc_df_final_snapshot_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas CUDA::cusolver)
-    target_include_directories(vibeqc_df_final_snapshot_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_df_final_snapshot_tests COMMAND vibeqc_df_final_snapshot_tests)
-    target_link_libraries(vibeqc_df_eigensystem_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas CUDA::cusolver)
-    target_include_directories(vibeqc_df_eigensystem_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_df_eigensystem_tests COMMAND vibeqc_df_eigensystem_tests)
-    add_executable(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp)
-    target_link_libraries(vibeqc_cuda_fock_provider_tests PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_cuda_fock_provider_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_cuda_fock_provider_tests COMMAND vibeqc_cuda_fock_provider_tests)
-    add_executable(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp)
-    target_link_libraries(vibeqc_ecp_cuda_error_tests PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_ecp_cuda_error_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_ecp_cuda_error_tests COMMAND vibeqc_ecp_cuda_error_tests)
-    set_tests_properties(vibeqc_ecp_cuda_error_tests PROPERTIES SKIP_RETURN_CODE 77)
-    add_executable(vibeqc_cuda_fock_composition_tests tests/native/test_cuda_fock_composition.cpp)
-    target_link_libraries(vibeqc_cuda_fock_composition_tests PRIVATE vibeqc)
-    target_include_directories(vibeqc_cuda_fock_composition_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_cuda_fock_composition_tests COMMAND vibeqc_cuda_fock_composition_tests)
-  endif()
-
-  if(VIBEQC_ENABLE_CUDA AND VIBEQC_ENABLE_AOT_SHELLS)
-    add_executable(vibeqc_aot_profile_tests tests/native/test_aot_profile.cpp)
-    target_link_libraries(vibeqc_aot_profile_tests PRIVATE vibeqc CUDA::cudart)
-    target_include_directories(vibeqc_aot_profile_tests
-      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    add_test(NAME vibeqc_aot_profile_tests COMMAND vibeqc_aot_profile_tests)
-  endif()
+  vibeqc_add_native_tests()
 endif()
 
 if(Python3_Interpreter_FOUND)

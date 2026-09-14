@@ -1,0 +1,87 @@
+{
+  "generator_sha256": "c9c1cb9efaf01627cddb733a5306830b3b614d51f30eb4ee5ef29165241884b5",
+  "molecules": [
+    {
+      "et_agreement": 6.021435976710517e-49,
+      "et_ground_truth": 8.392021714075268e-49,
+      "et_numpy": 0.0,
+      "et_pyscf_ccsd_t": 6.021435976710517e-49,
+      "inputs_hash": "156bd9f172c0058afa5950763fb1755f60a67ea8757695ed3f6461b400afc4f3",
+      "name": "h2",
+      "nocc": 1,
+      "nvir": 1
+    },
+    {
+      "et_agreement": 5.3464035764777294e-20,
+      "et_ground_truth": 0.0,
+      "et_numpy": 5.3464035764777294e-20,
+      "et_pyscf_ccsd_t": 0.0,
+      "inputs_hash": "cf4a16f5c62583562667dde2a0927d42e7ecefa8e82eebf0e477d5f1d20ba4ca",
+      "name": "he",
+      "nocc": 1,
+      "nvir": 1
+    },
+    {
+      "et_agreement": 7.860465750519907e-19,
+      "et_ground_truth": -6.731393342463869e-05,
+      "et_numpy": -6.731393342463874e-05,
+      "et_pyscf_ccsd_t": -6.731393342463796e-05,
+      "inputs_hash": "ef216dfd13866924f6692753313e5491e6ccc9fb0abe06b591146a34d9c8b61a",
+      "name": "h2o",
+      "nocc": 5,
+      "nvir": 2
+    },
+    {
+      "et_agreement": 3.821812658011403e-18,
+      "et_ground_truth": -0.0001122922812723691,
+      "et_numpy": -0.00011229228127236913,
+      "et_pyscf_ccsd_t": -0.00011229228127237295,
+      "inputs_hash": "489056f8cf2b373c0c1f93d9e6797334f7366a9192de22fd172b632643cdc9c0",
+      "name": "nh3",
+      "nocc": 5,
+      "nvir": 3
+    },
+    {
+      "et_agreement": 2.9815559743351372e-18,
+      "et_ground_truth": -0.0001555665872715297,
+      "et_numpy": -0.00015556658727152996,
+      "et_pyscf_ccsd_t": -0.00015556658727153294,
+      "inputs_hash": "94f75550ec07599b39735a941479727bef124c0d8cdaf97b4653435269467d21",
+      "name": "ch4",
+      "nocc": 5,
+      "nvir": 4
+    }
+  ],
+  "molecules_hash": "e9a7e534b6059646911dd86e1abe4b1737abf37181a3777e1753c1812583c9fe",
+  "numpy": "2.2.6",
+  "pyscf": "2.14.0",
+  "python": "3.11.14",
+  "schema": "vibeqc.rccsd-t.reference",
+  "upstream": {
+    "files": [
+      {
+        "path": "pyscf/cc/rccsd.py",
+        "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+        "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+      },
+      {
+        "path": "pyscf/cc/rintermediates.py",
+        "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+        "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+      },
+      {
+        "path": "pyscf/cc/ccsd_t_slow.py",
+        "sha256": "4fd3638e0176639781ecb138575a226912c99301a1923b60d20351eec36ac960",
+        "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/ccsd_t_slow.py"
+      },
+      {
+        "path": "pyscf/cc/ccsd_t.py",
+        "sha256": "a498d415289f46350f301a9405b2ff1061870dd22619b7cb2200dd9bf9fc8f34",
+        "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/ccsd_t.py"
+      }
+    ],
+    "license": "Apache-2.0",
+    "version": "2.14.0"
+  },
+  "version": 1
+}

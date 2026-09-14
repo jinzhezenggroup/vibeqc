@@ -12,7 +12,8 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .retention import RESULT_ROOT, classify, digest, safe_relative
+from .record import decode_record
+from .retention import MAX_TRACKED_BYTES, RESULT_ROOT, classify, digest, safe_relative
 from .schema import validate_evidence
 
 SCHEMA = "vibeqc.benchmark-publication.v1"
@@ -50,9 +51,9 @@ def _passing_error_record(row: dict) -> bool:
 def validate_publication(manifest: dict, files: dict[str, bytes]) -> None:
     """Verify a self-contained selected bundle and its scientific decision.
 
-    Large files require a per-file rationale in addition to the repository's
-    size review. Remote archives are optional debugging material: permanent
-    test or reproduction inputs must be in the selected bundle or source tree.
+    Every file must fit the repository's hard size cap, including files with
+    historical review reasons. Remote archives are optional debugging material;
+    permanent test/reproduction inputs belong in the bundle or source tree.
     """
     if manifest.get("schema") != SCHEMA:
         raise ValueError("unsupported publication manifest")
@@ -81,12 +82,19 @@ def validate_publication(manifest: dict, files: dict[str, bytes]) -> None:
             raise ValueError(f"publish a summary instead of run debris: {path}")
         if digest(files[path]) != entry["sha256"] or len(files[path]) != entry["bytes"]:
             raise ValueError(f"publication checksum/size mismatch: {path}")
-        if len(files[path]) > 1 << 20 and not entry.get("reason"):
-            raise ValueError(f"large file requires a review justification: {path}")
+        if len(files[path]) > MAX_TRACKED_BYTES:
+            raise ValueError(f"file exceeds hard 1 MiB limit: {path}")
     evidence_paths = [e["path"] for e in entries if e["role"] == "evidence"]
     if len(evidence_paths) != 1:
         raise ValueError("publication requires exactly one validation envelope")
-    evidence = json.loads(files[evidence_paths[0]])
+    evidence_path = evidence_paths[0]
+    prefix = str(Path(evidence_path).parent)
+    relative_files = {
+        str(Path(name).relative_to(prefix)): raw
+        for name, raw in files.items()
+        if Path(name).is_relative_to(prefix)
+    }
+    evidence = decode_record(files[evidence_path], relative_files)
     validate_evidence(evidence)
     for attachment in evidence["attachments"]:
         path = safe_relative(attachment["path"])

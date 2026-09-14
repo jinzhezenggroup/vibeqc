@@ -120,8 +120,10 @@ point compilation total. Complete program construction, basis/spatial/prepared
 construction and execution times remain separate in the samples.
 
 `samples.json`, `summary.json`, `evidence.json` and `publication.json` form the
-shared-policy publication. The approximately 2.2 MiB sample file has a hash-pinned
-review-size exception because it retains the full quantitative inventory.
+shared-policy publication. The sample case list is grouped by fixture under
+`samples-cases/`; `tools.vibeqc_validation.record.load_record` checks the part
+hashes and reconstructs all 128 cases and 640 samples without changing values.
+Every file fits the hard 1 MiB limit.
 Transient compiler output and benchmark logs remain under `.artifacts/`.
 
 The supplemental `sanitizer.json` retains 16 CPU ASan/UBSan ABI harness results

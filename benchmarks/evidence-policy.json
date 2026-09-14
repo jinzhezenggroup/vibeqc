@@ -15,16 +15,6 @@
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
       "sha256": "3ed5b08cd734735ce6f7a1ad08758010277b8ce560cbf82721e6fd41f4e9d242"
     },
-    "benchmarks/results/density-candidates/gpu/evidence.json": {
-      "owner": "dft-density-sources-235",
-      "reason": "36 larger fixed-input E/V cases and 12 serial four-state cases retain all 480 timing rows, 392 independent/equal-mask block gates, executed candidate identities and two-budget numeric resource plans. No logs or generated binaries.",
-      "sha256": "d62ec2c500cdaee4a639e2d7e99c322742d373be1c82c4e8a091953af9f4684f"
-    },
-    "benchmarks/results/density-candidates/inputs/water8_svp.npz": {
-      "owner": "density-candidates-303",
-      "reason": "Independent current PBE RKS state, bounded AO feature sample and complete fixed-grid LDA/PBE E/V reference for the 192-AO water octamer. Exact arrays and hashes are required to reproduce larger D/C candidate acceptance; no full grid-by-AO/orbital tensor is retained.",
-      "sha256": "6bbba06f3cde3f2ec68517c7fda3e55dec29290b27cf64ee968be7699227fea0"
-    },
     "benchmarks/results/df-derivatives-rtx5090/performance-source.patch.gz": {
       "owner": "df-derivatives-rtx5090",
       "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
@@ -35,70 +25,20 @@
       "reason": "Clean 96/192-AO energy/full-force batch-1/4 samples, actual external factor ranks, exact basis stack, unmatched branches and separately traced host-response bottleneck.",
       "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
     },
-    "benchmarks/results/issue206-device-response/evidence.zip": {
-      "owner": "issue206-device-response",
-      "reason": "Repeated device/host response-placement ablations and GPU4PySCF RHF/UHF 96/192/384-AO matrices, complete raw results/ranks/traces, direct gate, validation/failures, reconstruction and measured identities.",
-      "sha256": "2440dafc718bc58f2981dddb4dd2262dfc2ffa59b3b7389e3d36ee4898c388e3"
-    },
-    "benchmarks/results/issue282-streamed-panels/raw-evidence.zip": {
-      "owner": "issue282-streamed-panels",
-      "reason": "Compressed exact fixed-density J/K and E2-gradient arrays, successful endpoint matrix, failed experiments and reconstruction patches. Every raw member is hash-verified and byte-restored; the fixed numerical arrays are needed to reproduce bounded/resident parity.",
-      "sha256": "3bd9b6b21a03ba846c87fa9c947815abbcf01265539b7367a5c2b7a382dd7055"
-    },
-    "benchmarks/results/issue283-response-panels/raw-evidence.zip": {
-      "owner": "issue283-response-panels",
-      "reason": "Exact compressed resident/streamed J/K and E2-gradient parity arrays, ABBA endpoints, component traces and full matrix; all members independently hash-verified and byte-restored.",
-      "sha256": "94e8a23b5f7176151a26c3e1d2ee0bbbe1f6340e2632719843c5e45b7a1806ef"
-    },
-    "benchmarks/results/issue284-occupied-exchange/raw-evidence.zip": {
-      "owner": "issue284-occupied-exchange",
-      "reason": "Exact fixed-D/K arrays, complete same-D and cross-engine matrices, executed factor provenance, source/library identities and retained failed experiments. Every member is hash-verified and byte-restored.",
-      "sha256": "e578bc6fa798189ef84b9286c427befefc5cebb1dde5fc44f58ca9c366a57f90"
-    },
-    "benchmarks/results/issue308-device-diis/evidence.zip": {
-      "owner": "issue308-device-diis",
-      "reason": "Same-binary 768-AO cold DIIS/fixed-point control, complete actual W/forces, physical checks, stage journals, memory/provenance, reconstruction, sanitizer and retained failed attempts.",
-      "sha256": "40f3096eb83b9f21065bc572ed12f2f042a73531ecab6c448fc758a7e65b391c"
-    },
-    "benchmarks/results/issue308-force-state/evidence.zip": {
-      "owner": "issue308-force-state",
-      "reason": "Complete native 768-AO actual W and all force components, independent checks, stage journals, source/build/input identities, memory samples and reconstruction of the first passing full-force endpoint.",
-      "sha256": "959fbdf95582b0582c7242720f25217f6e03272cb0ac009018b20aa58a54b2ac"
-    },
-    "benchmarks/results/issue308-large-diagnostics/reference.zip": {
-      "owner": "issue308-large-diagnostics",
-      "reason": "Byte-verified compressed independent 96-atom PySCF checkpoint and physical density/overlap/force arrays, with exact input scripts and logs, retained to reproduce strict physical comparisons without repeating the expensive SCF oracle.",
-      "sha256": "c369a5128ed36987073f6364290d4be455213e00f54e9cea04873def6d1f8c07"
-    },
     "benchmarks/results/issue308-property-budgets/evidence.zip": {
       "owner": "issue308-property-budgets",
       "reason": "Bounded native preparation outputs, exact accepted/initial-rejected native source reconstruction, input identity and reproduction commands; excludes binaries, routine logs and full transient matrices. Every member byte-restored.",
       "sha256": "08880e8b611d21dd4e111152cb084a34819684a6b0c1f93aa0bf809e8e4cbf37"
-    },
-    "benchmarks/results/issue308-retained-b/evidence.zip": {
-      "owner": "issue308-retained-b",
-      "reason": "Exact 768-AO actual-source-budget setup/J/K journals, independent errors, sampled matrix rows, memory/provenance, sanitizer logs and reconstruction patch for retained B with bounded K panels.",
-      "sha256": "6f2176ad60b1dd746d7509da4ba10cfa66889091d7c925feac1857b782761be9"
     },
     "benchmarks/results/issue308-stage-ledger/historical-followup.zip": {
       "owner": "issue308-stage-ledger",
       "reason": "Reviewed compact original 9531/9535/9536/9537 numerical measurements, reproduction source/input and first-24-pair scientific sample. Excludes logs, binaries and bulk exploratory rows; original identities and restoration audit are in historical-followup.json. Not performance promotion.",
       "sha256": "e987a878948774de9a552b28bef1d45eb95084c34ea1b7a5f33037b1cc7ebe1e"
     },
-    "benchmarks/results/issue308-stage-ledger/scf-evidence.zip": {
-      "owner": "issue308-stage-ledger",
-      "reason": "Exact completed cold/seeded phase journals, full-array physical validation errors, bounded first-24-row state samples, all orbital energies, and reproduction input/code from job 9540. Full transient exports remain outside Git; every retained member byte-restored. No routine logs or binaries.",
-      "sha256": "999b99a8c326cdfd2b79f72c9a4e97c2ccd1ac93449ba52f280baefc7e6d6e9c"
-    },
     "benchmarks/results/issue308-stage-ledger/stage-evidence.zip": {
       "owner": "issue308-stage-ledger",
       "reason": "Exact accepted/rejected/timeout phase measurements, source/input identities and complete event journals from 9538/9539. The interrupted journal is the scientific evidence locating incomplete K work; no routine build/test logs or executable products.",
       "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f"
-    },
-    "benchmarks/results/issue308-streamed-k/evidence.zip": {
-      "owner": "issue308-streamed-k",
-      "reason": "Exact completed/interrupted work journals, independent component error checks, sampled matrix rows, and reconstruction/input identities from the bounded 192/384/768-AO experiment. Partial evidence remains a timeout, never a passing full K.",
-      "sha256": "41d6408c261ba42fa3b7e44e81d3a3f74fa343206859705e8f537b4d7b5b35f0"
     },
     "benchmarks/results/local-spaces-182/states.npz": {
       "owner": "local-spaces-182",
@@ -349,16 +289,6 @@
       "owner": "scf-proposals-186",
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
       "sha256": "f7a7bf25f3a6bacbf74e78b04d575affbb076f7ab4c93dc5641fee7f9abb0a32"
-    },
-    "benchmarks/results/spatial-density-sources/evidence.json": {
-      "owner": "dft-density-sources-235",
-      "reason": "Compact complete numerical envelope for 96 identical-grid/mask cases: all 960 interleaved full-endpoint samples, 444 block gates and per-case source/shape/resource plans are required to audit D/C parity and bounded ownership. No routine logs or build products.",
-      "sha256": "8ee057ca2456f0da9cf97de10d9ee52d9291d18b7fe0203a11eb5be2ad7e1e31"
-    },
-    "benchmarks/results/xc-contractions/samples.json": {
-      "owner": "XC contraction evidence (#236)",
-      "reason": "128 complete dense/local LDA/PBE energy, potential, response and geometry cases with five raw samples each, source/compiler identities, shared numeric resource plans and independent three-step derivative projections. This is the selected reproducible evidence, with no logs or transient artifacts.",
-      "sha256": "80e43ed2f01b5a29fa2b8f420847898791f85c098968b09f78ebec293538ed6a"
     },
     "benchmarks/results/xc-integration-162/raw-evidence.zip": {
       "owner": "xc-integration-162",

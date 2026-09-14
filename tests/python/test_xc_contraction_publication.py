@@ -8,13 +8,14 @@ import pytest
 
 from tools.publish_xc_contractions import summarize, validate_run
 from tools.vibeqc_validation.publication import validate_publication
+from tools.vibeqc_validation.record import load_record
 
 ROOT = Path(__file__).resolve().parents[2] / "benchmarks/results/xc-contractions"
 
 
 @pytest.fixture(scope="module")
 def run():
-    return json.loads((ROOT / "samples.json").read_text())
+    return load_record(ROOT / "samples.json")
 
 
 def test_retained_xc_publication_is_complete_and_reconstructs(run):

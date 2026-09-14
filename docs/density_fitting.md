@@ -222,6 +222,14 @@ uploads with `tensor_host_to_device_bytes` and `response_host_to_device_bytes`.
 Transfer, regeneration, derivative contraction and synchronization costs remain
 part of the complete force endpoint.
 
+The exchange metric contraction uses the plan's existing cuBLAS handle to dot
+the bounded raw panel against each density response. Its output stride updates
+the existing metric response, preserving Coulomb and both spin contributions.
+`VIBEQC_DF_SERIAL_RESPONSE_DOT=1` restores the original per-output serial dot
+kernel for an independent arithmetic ablation under the same scratch bound.
+Both paths retain FP64 and the complete spectral response. Provider failures
+propagate through stream cleanup; they do not select the serial calculation.
+
 ### Compact DIIS and numerical recovery
 
 Production CUDA DF SCF honors the requested DIIS history inside the compact

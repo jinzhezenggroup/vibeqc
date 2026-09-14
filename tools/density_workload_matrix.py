@@ -85,7 +85,6 @@ def load_workloads(directory):
             or identity != entry["identity"]
             or canonical_hash(meta) != identity
             or canonical_hash(meta["inputs"]) != meta["inputs_hash"]
-            or file_hash(directory / f"{name}.npz") != entry["archive_sha256"]
         ):
             raise ValueError("density workload identity mismatch")
         for key, filename in (
@@ -94,8 +93,26 @@ def load_workloads(directory):
         ):
             if meta["reference"][key] != file_hash(root / "tools" / filename):
                 raise ValueError("density workload exporter mismatch")
-        with np.load(directory / f"{name}.npz", allow_pickle=False) as archive:
-            arrays = dict(archive)
+        if "array_files" in entry:
+            # Large reference bundles retain their original NPY member bytes
+            # separately. The existing numeric hashes still bind every value.
+            from tools.vibeqc_validation.retention import safe_relative
+
+            arrays = {}
+            for key, record in entry["array_files"].items():
+                path = directory / safe_relative(record["path"])
+                if (
+                    not path.resolve().is_relative_to(directory.resolve())
+                    or path.stat().st_size != record["bytes"]
+                    or file_hash(path) != record["sha256"]
+                ):
+                    raise ValueError("density workload array file mismatch")
+                arrays[key] = np.load(path, allow_pickle=False)
+        else:
+            if file_hash(directory / f"{name}.npz") != entry["archive_sha256"]:
+                raise ValueError("density workload archive identity mismatch")
+            with np.load(directory / f"{name}.npz", allow_pickle=False) as archive:
+                arrays = dict(archive)
         if arrays.keys() != meta["arrays"].keys():
             raise ValueError("density workload block mismatch")
         for key, value in arrays.items():

@@ -8,9 +8,10 @@ namespace {
 constexpr unsigned threads = 128;
 unsigned blocks(std::size_t size) { return static_cast<unsigned>((size + threads - 1) / threads); }
 
-/** All small contractions keep a fixed summation order per output element.
- * They intentionally avoid atomics and unbounded GEMM workspace. Integral
- * generation and the derivative consumer remain the existing #142/#143 paths.
+/** Scalar kernels preserve their original per-output summation order. The
+ * exchange metric dot uses the plan's cuBLAS GEMV below, with this scalar
+ * kernel retained for ablation. Both routes use the same bounded raw panel;
+ * integral generation and the derivative consumer are unchanged.
  */
 __global__ void inverse_kernel(std::size_t a, const double* x, double* inverse) {
   const auto ij = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
@@ -140,7 +141,8 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
 cudaError_t contract_cuda_df_response_weights(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
-    cudaStream_t stream, const std::function<void(std::size_t, double*)>& read_values,
+    cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot,
+    const std::function<void(std::size_t, double*)>& read_values,
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
         consume) {
   const auto matrix = n * n, aa = a * a;
@@ -221,8 +223,24 @@ cudaError_t contract_cuda_df_response_weights(
                                                       stream);
         exchange_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
             matrix, a, begin, count, q, coefficient, inverse, response, weights);
-        exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
-            matrix, a, begin, count, q, coefficient, raw, response, bar_inverse);
+        runtime::cuda_trace::TraceRegion metric_dot("exchange_response_metric_dot", stream);
+        if (serial_metric_dot) {
+          runtime::cuda_trace::trace_counter("response_metric_serial_dots", count);
+          exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
+              matrix, a, begin, count, q, coefficient, raw, response, bar_inverse);
+        } else {
+          // raw[P,ij] is also column-major [ij,P]. Its transpose contracts
+          // every retained P against R_Q without a serial AO-pair loop per P.
+          // The output stride writes bar_inverse[P,Q] in its existing layout;
+          // beta=1 preserves Coulomb and previous spin contributions.
+          const double alpha = -coefficient, beta = 1.0;
+          const auto status =
+              cublasDgemv(blas, CUBLAS_OP_T, static_cast<int>(matrix), static_cast<int>(count),
+                          &alpha, raw, static_cast<int>(matrix), response, 1, &beta,
+                          bar_inverse + begin * a + q, static_cast<int>(a));
+          if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+          runtime::cuda_trace::trace_counter("response_metric_blas_dots", count);
+        }
       }
     }
     error = cudaGetLastError();

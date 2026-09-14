@@ -35,7 +35,14 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_references(path):
     """Fail closed on changed values, reference version or upstream identity."""
     data = json.loads(Path(path).read_text())
-    upstream = json.loads((ROOT / "tools/vibeqc_cc/source_manifest.json").read_text())
+    manifest = json.loads((ROOT / "tools/vibeqc_cc/source_manifest.json").read_text())
+    # The RCCSD A/B reference identity covers only the RCCSD upstream files;
+    # the (T) entries added for issue #150 are checked by the triples generator.
+    upstream = {
+        "files": [f for f in manifest["files"] if f["path"].startswith("pyscf/cc/r")],
+        "license": manifest["license"],
+        "version": manifest["version"],
+    }
     if (
         data["schema"] != "vibeqc.rccsd.fixed-amplitude-reference"
         or data["version"] != 1

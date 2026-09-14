@@ -83,13 +83,44 @@ files are checked exactly as they will be committed. Use `--revision SHA` on
 
 Pre-commit and CI reject tracked `attempts/`, routine logs/XML, checkpoint
 suffixes, compressed profiler databases and generated binary/object products.
-There is no global XML/JSON ban. Tracked files above **1 MiB** require explicit
-size review, including references/source. Exceptions in
-`benchmarks/evidence-policy.json` name exact paths/SHA-256, responsible
-subsystems and scientific/storage reasons. Changed bytes or missing files make
-exceptions stale. Useful large references may remain; large logs need summaries
-and archives. Do not hide logs in ZIPs or rename suffixes to bypass review.
-Existing compact replay archives have explicit, hash-pinned justifications.
+There is no global XML/JSON ban. The original
+`check-added-large-files --maxkb=1024 --enforce-all` hook enforces a **hard 1 MiB
+limit on every file it checks**, in both local pre-commit and all-file CI. The
+index retention checker independently enforces the same cap. Entries in
+`benchmarks/evidence-policy.json` can justify classification of small scientific
+fixtures, but cannot waive or raise this size limit.
+
+Keep compact summaries, raw comparison samples and reproduction commands in
+Git. Group large JSON lists by workload or observable into readable companion
+files; `tools.vibeqc_validation.record.load_record` reconstructs the original
+record after checking each part's SHA-256 and size. No numerical values or
+sample ordering are changed. Permanent array inputs can be stored as named NPY
+files, preserving the original array bytes and numeric identity checks.
+
+Full logs, retries and profiler traces belong in `.artifacts/` or external
+storage. Do not compress them, rename them or split binary archives into chunks
+to bypass the limit. New benchmark archive paths are also ignored by default.
+
+## Restoring historical oversized archives
+
+The [size-limit migration](../benchmarks/results/retention-size-limit/migration.json)
+records the path, original revision, bytes and SHA-256 of removed archives. The
+current tree is smaller; existing Git history has **not** been rewritten and a
+full clone still contains those historical objects. Restoring one for inspection
+does not download or execute anything:
+
+```bash
+python tools/restore_retained_evidence.py \
+  benchmarks/results/issue284-occupied-exchange/raw-evidence.zip
+```
+
+The default output is `.artifacts/retention-restore/` followed by the original
+path. It must not already exist. A shallow clone may need to fetch the revision
+recorded in the manifest. For a bundle with `raw-evidence.manifest.json`, pass
+that restored archive to `tools/unpack_evidence.py --archive PATH --output NEW_DIR`.
+Small test-consumed archives remain in the current tree. Historical numerical
+claims retain their original identities and limitations; the migration itself
+is not a new scientific qualification.
 
 ## External artifacts and expiry
 

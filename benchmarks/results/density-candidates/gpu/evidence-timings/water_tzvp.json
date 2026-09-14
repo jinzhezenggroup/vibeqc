@@ -1,0 +1,2722 @@
+[
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "1c7d6c28597eec9419640e2781cfd2cd52e9cb1b803dad9a58d54abcf2341cad",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.0049828882329165936,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022633600048720836,
+          "kernel_ms": 0.00021177600137889385,
+          "library_ms": 0.00047439999878406524,
+          "output_ms": 0.00043596800416707994,
+          "packing_ms": 0.00026681599766016005
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.7704319981858134,
+          "kernel_ms": 0.6726720072329044,
+          "library_ms": 1.676608007401228,
+          "observed_device_delta": 75497472,
+          "output_ms": 1.373439995571971,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 0.8637119901832193,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014025833923369646,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.103678166866302e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.868310108780861e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 0,
+    "seconds": 0.014852373860776424,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "a2a4745b3caa39454bd7a6a983045b2b4dbc4a5d2f4689476e4570981e120884",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00500394101254642,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023350400011986494,
+          "kernel_ms": 0.00021052799746394156,
+          "library_ms": 0.0005445439983159303,
+          "output_ms": 0.00043462400883436205,
+          "packing_ms": 0.0002804159994702786
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.0039359983056784,
+          "kernel_ms": 0.883200004696846,
+          "library_ms": 2.2211520057171583,
+          "observed_device_delta": 75497472,
+          "output_ms": 1.808064004406333,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.144127989653498,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014253169065341353,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.706213854253292e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.054489105939865e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 0,
+    "seconds": 0.015091241104528308,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "a2a4745b3caa39454bd7a6a983045b2b4dbc4a5d2f4689476e4570981e120884",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.005022875033318996,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023200000077486037,
+          "kernel_ms": 0.00020880000106990337,
+          "library_ms": 0.0005416639987379313,
+          "output_ms": 0.0004379200078547001,
+          "packing_ms": 0.00026783999986946584
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.2359359990805387,
+          "kernel_ms": 1.0920000057667494,
+          "library_ms": 2.7628160044550896,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.245984012261033,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.4119679895229638,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014198223128914833,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6801135390996933e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.081497460603714e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 1,
+    "seconds": 0.015025445027276874,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "1c7d6c28597eec9419640e2781cfd2cd52e9cb1b803dad9a58d54abcf2341cad",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00499570369720459,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022160000447183847,
+          "kernel_ms": 0.00021356800198554993,
+          "library_ms": 0.00048003199324011804,
+          "output_ms": 0.0004366080015897751,
+          "packing_ms": 0.00026470400020480155
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.4575360035523772,
+          "kernel_ms": 1.3055680077522993,
+          "library_ms": 3.2428479976952076,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.682592013850808,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.6766719897277653,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013943776022642851,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.010545909404755e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.799112841486931e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 1,
+    "seconds": 0.014773042174056172,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "1c7d6c28597eec9419640e2781cfd2cd52e9cb1b803dad9a58d54abcf2341cad",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004973952192813158,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.0002247679987922311,
+          "kernel_ms": 0.00020876799896359444,
+          "library_ms": 0.00046991999074816706,
+          "output_ms": 0.0004325119964778423,
+          "packing_ms": 0.0002626879997551441
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.6823040023446083,
+          "kernel_ms": 1.5143360067158937,
+          "library_ms": 3.7127679884433746,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.1151040103286505,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.9393599894829094,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013784591807052493,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 8.009374141693115e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7009048759937286e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 2,
+    "seconds": 0.01461171405389905,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "a2a4745b3caa39454bd7a6a983045b2b4dbc4a5d2f4689476e4570981e120884",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004986245185136795,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00022278399951756,
+          "kernel_ms": 0.00020947200059890747,
+          "library_ms": 0.0005388799998909235,
+          "output_ms": 0.00043452800065279005,
+          "packing_ms": 0.0002548799994401634
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.9050880018621683,
+          "kernel_ms": 1.7238080073148012,
+          "library_ms": 4.251647988334298,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.5496320109814405,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.194239988923073,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014151653973385692,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.7071917429566383e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.534399628639221e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 2,
+    "seconds": 0.01497441716492176,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "a2a4745b3caa39454bd7a6a983045b2b4dbc4a5d2f4689476e4570981e120884",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004968570778146386,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023555200081318617,
+          "kernel_ms": 0.00020825600251555442,
+          "library_ms": 0.0005367680005729198,
+          "output_ms": 0.00043612800166010856,
+          "packing_ms": 0.00026003199932165443
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.1406400026753545,
+          "kernel_ms": 1.9320640098303556,
+          "library_ms": 4.788415988907218,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.985760012641549,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.4542719882447273,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014121746877208352,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6761088520288467e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.003382779657841e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 3,
+    "seconds": 0.014941334025934339,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "1c7d6c28597eec9419640e2781cfd2cd52e9cb1b803dad9a58d54abcf2341cad",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004979083780199289,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022464000061154366,
+          "kernel_ms": 0.00021020800061523915,
+          "library_ms": 0.00047148799896240236,
+          "output_ms": 0.0004320000000298023,
+          "packing_ms": 0.0002587520033121109
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.365280003286898,
+          "kernel_ms": 2.142272010445595,
+          "library_ms": 5.25990398786962,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.417760012671351,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.713023991556838,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.01394526893272996,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.010545909404755e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7259807363152504e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 3,
+    "seconds": 0.014766380190849304,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "1c7d6c28597eec9419640e2781cfd2cd52e9cb1b803dad9a58d54abcf2341cad",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00497526372782886,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022153599932789802,
+          "kernel_ms": 0.0002097599972039461,
+          "library_ms": 0.00047750399261713025,
+          "output_ms": 0.00043584000691771505,
+          "packing_ms": 0.0002622400037944317
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.586816002614796,
+          "kernel_ms": 2.352032007649541,
+          "library_ms": 5.737407980486751,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.8536000195890665,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.97526399535127,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013822323875501752,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 8.009374141693115e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.735899321734905e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 4,
+    "seconds": 0.014647613046690822,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "a2a4745b3caa39454bd7a6a983045b2b4dbc4a5d2f4689476e4570981e120884",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00498471106402576,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00022764799743890763,
+          "kernel_ms": 0.0002105919998139143,
+          "library_ms": 0.0005345279965549707,
+          "output_ms": 0.0004428480006754398,
+          "packing_ms": 0.00026422399934381246
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.814464000053704,
+          "kernel_ms": 2.562624007463455,
+          "library_ms": 6.271935977041721,
+          "observed_device_delta": 75497472,
+          "output_ms": 5.296448020264506,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 3.2394879946950823,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014182352926582098,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.7072150260210037e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.059494964778423e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de"
+    },
+    "inputs_hash": "3f133fcf9aaec53596a2c9afb6c4ecf8081ae68117f71823c6ccaeefbc2f63de",
+    "repeat": 4,
+    "seconds": 0.015011028153821826,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "43b8f920eafc9accb19e434cea16345a8735e8a4a4e427433ca6e2d9f55e86e5",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004964825231581926,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022275199741125107,
+          "kernel_ms": 0.00021315199881792067,
+          "library_ms": 0.0004795839935541153,
+          "output_ms": 0.0004384640045464039,
+          "packing_ms": 0.00026758399792015553
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.7594239977188408,
+          "kernel_ms": 0.6781120002269745,
+          "library_ms": 1.5990079902112484,
+          "observed_device_delta": 75497472,
+          "output_ms": 1.397408014163375,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 0.861695998115465,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013756047934293747,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.0011717677116394e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.829194560647011e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 0,
+    "seconds": 0.014573059976100922,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "ac4d5af0bf01330105a729913ac60722314a79642e657df17632297395730ce1",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004984773695468903,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00022735999803990127,
+          "kernel_ms": 0.00021302399970591067,
+          "library_ms": 0.0005410559996962547,
+          "output_ms": 0.0004350399971008301,
+          "packing_ms": 0.0002935999983455986
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.9867839957587421,
+          "kernel_ms": 0.8911359999328852,
+          "library_ms": 2.140063989907503,
+          "observed_device_delta": 75497472,
+          "output_ms": 1.832448011264205,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.1552959964610636,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014509799191728234,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6721972972154617e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.043383084237576e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 0,
+    "seconds": 0.01533159101381898,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "ac4d5af0bf01330105a729913ac60722314a79642e657df17632297395730ce1",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00499827996827662,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.000226176000200212,
+          "kernel_ms": 0.00021305600181221963,
+          "library_ms": 0.000549855999648571,
+          "output_ms": 0.0004362880028784275,
+          "packing_ms": 0.00027846399997361005
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.212959995958954,
+          "kernel_ms": 1.1041920017451048,
+          "library_ms": 2.689919989556074,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.2687360141426325,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.4337599964346737,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014239161042496562,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.674083225429058e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.004407234489918e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 1,
+    "seconds": 0.015059120021760464,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "43b8f920eafc9accb19e434cea16345a8735e8a4a4e427433ca6e2d9f55e86e5",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004987146705389023,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.000219136000610888,
+          "kernel_ms": 0.00021008000336587428,
+          "library_ms": 0.0004814719893038273,
+          "output_ms": 0.0004349759966135025,
+          "packing_ms": 0.00026320000179111955
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.432095996569842,
+          "kernel_ms": 1.314272005110979,
+          "library_ms": 3.1713919788599014,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.703712010756135,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.6969599982257932,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013783600879833102,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.0081566870212555e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7270051911473274e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 1,
+    "seconds": 0.014617144130170345,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "43b8f920eafc9accb19e434cea16345a8735e8a4a4e427433ca6e2d9f55e86e5",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00498549547046423,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022716800216585398,
+          "kernel_ms": 0.0002121920008212328,
+          "library_ms": 0.0004868479929864407,
+          "output_ms": 0.00044224000349640845,
+          "packing_ms": 0.0002616959996521473
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.659263998735696,
+          "kernel_ms": 1.5264640059322119,
+          "library_ms": 3.658239971846342,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.1459520142525434,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 1.9586559978779405,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013783229980617762,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.103678166866302e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 6.398209370672703e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 2,
+    "seconds": 0.014602125156670809,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "ac4d5af0bf01330105a729913ac60722314a79642e657df17632297395730ce1",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004997005220502615,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002306240014731884,
+          "kernel_ms": 0.00020851200073957444,
+          "library_ms": 0.0005415039993822574,
+          "output_ms": 0.0004355520009994507,
+          "packing_ms": 0.00026736000180244444
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.8898880002088845,
+          "kernel_ms": 1.7349760066717863,
+          "library_ms": 4.1997439712285995,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.581504015251994,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.226015999680385,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.01429455797187984,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.804398536682129e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.578404620289803e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 2,
+    "seconds": 0.015195901039987803,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "ac4d5af0bf01330105a729913ac60722314a79642e657df17632297395730ce1",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004950756905600429,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002254719967022538,
+          "kernel_ms": 0.00021155200153589248,
+          "library_ms": 0.0005360960010439157,
+          "output_ms": 0.0004326079972088337,
+          "packing_ms": 0.0002681599990464747
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.1153599969111383,
+          "kernel_ms": 1.9465280082076788,
+          "library_ms": 4.735839972272515,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.014112012460828,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.4941759987268597,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.014131155097857118,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.685096114873886e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.00938981026411e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 3,
+    "seconds": 0.014964238042011857,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "43b8f920eafc9accb19e434cea16345a8735e8a4a4e427433ca6e2d9f55e86e5",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00499140820465982,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.0002217599991708994,
+          "kernel_ms": 0.00021366400085389613,
+          "library_ms": 0.000487615991383791,
+          "output_ms": 0.0004378879964351654,
+          "packing_ms": 0.00026198399998247625
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.3371199960820377,
+          "kernel_ms": 2.160192009061575,
+          "library_ms": 5.223455963656306,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.452000008895993,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 2.756159998709336,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013782938942313194,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.988434612751007e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.721999332308769e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 3,
+    "seconds": 0.014607065124437213,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "43b8f920eafc9accb19e434cea16345a8735e8a4a4e427433ca6e2d9f55e86e5",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004969903500750661,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022102399915456772,
+          "kernel_ms": 0.0002133440002799034,
+          "library_ms": 0.0004838079884648323,
+          "output_ms": 0.0004391999989748001,
+          "packing_ms": 0.00026374399662017824
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.5581439952366054,
+          "kernel_ms": 2.3735360093414783,
+          "library_ms": 5.707263952121139,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.891200007870793,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 3.019903995329514,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.013922194950282574,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.4016404747962952e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.763000808656216e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 4,
+    "seconds": 0.01475316402502358,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/LDA_XC_PW/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "ac4d5af0bf01330105a729913ac60722314a79642e657df17632297395730ce1",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.004964150954037905,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002271040016785264,
+          "kernel_ms": 0.0002145600002259016,
+          "library_ms": 0.0005452800001949072,
+          "output_ms": 0.0004408639967441559,
+          "packing_ms": 0.00027056000009179114
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 12,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.785247996915132,
+          "kernel_ms": 2.58809600956738,
+          "library_ms": 6.252543952316046,
+          "observed_device_delta": 75497472,
+          "output_ms": 5.332064004614949,
+          "owned_device_bytes": 5101824,
+          "packing_ms": 3.2904639954213053,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 24,
+        "planned_device_peak_bytes": 105765120,
+        "planned_host_peak_bytes": 14817072,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.01418568892404437,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6760855689644814e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 6.982404738664627e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 36,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05"
+    },
+    "inputs_hash": "0313424c929c26b8cf34a1f9399f897eff066f82e5e7536ca2763b704dc66e05",
+    "repeat": 4,
+    "seconds": 0.015015004901215434,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "99b3e5b0d5d68d3b6cfebd0a9a2d9ae37843f81a5d0ff26f8a1d2bacb13ea7de",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007988045224919915,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00023548800125718116,
+          "kernel_ms": 0.0003645120020955801,
+          "library_ms": 0.00047305599600076673,
+          "output_ms": 0.0007842880040407181,
+          "packing_ms": 0.00048643200099468233
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.765920000616461,
+          "kernel_ms": 1.133695999160409,
+          "library_ms": 3.7807999961078167,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.429728005081415,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 1.4327999977394938,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018293936038389802,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.010545909404755e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7930825278162956e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 0,
+    "seconds": 0.019130506087094545,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "03c5af8155bb1666c83580d9c32f56cd55a7a79ff0ad9a708f2b82d54182efc8",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.008033462800085545,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00025167999882251026,
+          "kernel_ms": 0.00035900799557566645,
+          "library_ms": 0.0025485760122537613,
+          "output_ms": 0.0008000000119209289,
+          "packing_ms": 0.00039548800000920893
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.0175999994389713,
+          "kernel_ms": 1.4927039947360754,
+          "library_ms": 6.329376008361578,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.229728017002344,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 1.8282879977487028,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020743981935083866,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.706097438931465e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.110601291060448e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 0,
+    "seconds": 0.02158430893905461,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "03c5af8155bb1666c83580d9c32f56cd55a7a79ff0ad9a708f2b82d54182efc8",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00798383797518909,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023596799932420253,
+          "kernel_ms": 0.00037599999085068705,
+          "library_ms": 0.002544160008430481,
+          "output_ms": 0.000790240004658699,
+          "packing_ms": 0.00038099199812859297
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.2535679987631738,
+          "kernel_ms": 1.8687039855867624,
+          "library_ms": 8.873536016792059,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.019968021661043,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 2.2092799958772957,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.02083287201821804,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.7050962671637535e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.097609341144562e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 1,
+    "seconds": 0.021671995986253023,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "99b3e5b0d5d68d3b6cfebd0a9a2d9ae37843f81a5d0ff26f8a1d2bacb13ea7de",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007972697028890252,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022969600185751915,
+          "kernel_ms": 0.0003703039940446615,
+          "library_ms": 0.0004743039943277836,
+          "output_ms": 0.0007954240068793297,
+          "packing_ms": 0.0004831999950110912
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.483264000620693,
+          "kernel_ms": 2.239007979631424,
+          "library_ms": 9.347840011119843,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.815392028540373,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 2.692479990888387,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018309806007891893,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.103678166866302e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.787098780274391e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 1,
+    "seconds": 0.019147068029269576,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "99b3e5b0d5d68d3b6cfebd0a9a2d9ae37843f81a5d0ff26f8a1d2bacb13ea7de",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007961747236549854,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.000230752001516521,
+          "kernel_ms": 0.00036831999383866786,
+          "library_ms": 0.0004737599976360798,
+          "output_ms": 0.0007856959849596024,
+          "packing_ms": 0.00048585598915815354
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.714016002137214,
+          "kernel_ms": 2.607327973470092,
+          "library_ms": 9.821600008755922,
+          "observed_device_delta": 75497472,
+          "output_ms": 5.601088013499975,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.1783359800465405,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018220514990389347,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.1012889444828033e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7819997891783714e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 2,
+    "seconds": 0.01905350899323821,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "03c5af8155bb1666c83580d9c32f56cd55a7a79ff0ad9a708f2b82d54182efc8",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.008009306155145168,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002351679978892207,
+          "kernel_ms": 0.00037299199774861336,
+          "library_ms": 0.002538656011223793,
+          "output_ms": 0.0007886080071330071,
+          "packing_ms": 0.0003823360004462302
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.9491840000264347,
+          "kernel_ms": 2.980319971218705,
+          "library_ms": 12.360256019979715,
+          "observed_device_delta": 75497472,
+          "output_ms": 6.389696020632982,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.5606719804927707,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020848642103374004,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.664094790816307e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.051508873701096e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 2,
+    "seconds": 0.021677556913346052,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "03c5af8155bb1666c83580d9c32f56cd55a7a79ff0ad9a708f2b82d54182efc8",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007971556158736348,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002344959992915392,
+          "kernel_ms": 0.00036124799586832523,
+          "library_ms": 0.00254924800246954,
+          "output_ms": 0.0007947199940681458,
+          "packing_ms": 0.00037529599806293844
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.183679999317974,
+          "kernel_ms": 3.3415679670870304,
+          "library_ms": 14.909504022449255,
+          "observed_device_delta": 75497472,
+          "output_ms": 7.184416014701128,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.935967978555709,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020637938054278493,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6620924472808838e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 6.982311606407166e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 3,
+    "seconds": 0.021467355079948902,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "99b3e5b0d5d68d3b6cfebd0a9a2d9ae37843f81a5d0ff26f8a1d2bacb13ea7de",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007970301201567054,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.0002336959997192025,
+          "kernel_ms": 0.0003638399988412857,
+          "library_ms": 0.000474592000246048,
+          "output_ms": 0.0007963840067386627,
+          "packing_ms": 0.00048284801095724105
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.4173759990371764,
+          "kernel_ms": 3.705407965928316,
+          "library_ms": 15.384096022695303,
+          "observed_device_delta": 75497472,
+          "output_ms": 7.980800021439791,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 4.41881598951295,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018289797939360142,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.010545909404755e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.73289580643177e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 3,
+    "seconds": 0.019133221125230193,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "99b3e5b0d5d68d3b6cfebd0a9a2d9ae37843f81a5d0ff26f8a1d2bacb13ea7de",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.008020548149943352,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022710399888455868,
+          "kernel_ms": 0.00036255999468266965,
+          "library_ms": 0.0004750719927251339,
+          "output_ms": 0.0007936640083789825,
+          "packing_ms": 0.00048169600218534467
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.644479997921735,
+          "kernel_ms": 4.067967960610986,
+          "library_ms": 15.859168015420437,
+          "observed_device_delta": 75497472,
+          "output_ms": 8.774464029818773,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 4.900511991698295,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018302912823855877,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.103678166866302e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.686911754310131e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 4,
+    "seconds": 0.0191313570830971,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/134217728",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "03c5af8155bb1666c83580d9c32f56cd55a7a79ff0ad9a708f2b82d54182efc8",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007972626946866512,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00022844799794256688,
+          "kernel_ms": 0.0003681599982082844,
+          "library_ms": 0.0025469119921326636,
+          "output_ms": 0.0007891519963741302,
+          "packing_ms": 0.0003649919992312789
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.872927995864302,
+          "kernel_ms": 4.43612795881927,
+          "library_ms": 18.4060800075531,
+          "observed_device_delta": 75497472,
+          "output_ms": 9.563616026192904,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 5.265503990929574,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.02080208295956254,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6620924472808838e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.006409578025341e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb"
+    },
+    "inputs_hash": "39539c58022a2659cc5b6fedb803835febd8cb6758d227d84c501d5e771bb7fb",
+    "repeat": 4,
+    "seconds": 0.021637029014527798,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "fbb4dfee9509e318d094155021c960556dd3e0a36211de7e6dd66baff04460c6",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00795968179591,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00023020800016820432,
+          "kernel_ms": 0.0003679039981216192,
+          "library_ms": 0.0004754239916801453,
+          "output_ms": 0.0007855999991297722,
+          "packing_ms": 0.00048451200872659685
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.7503359946422279,
+          "kernel_ms": 1.1398079954087734,
+          "library_ms": 3.767967998981476,
+          "observed_device_delta": 75497472,
+          "output_ms": 2.4368639923632145,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 1.406912013888359,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018242447171360254,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.0104849934577942e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.680904723703861e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 0,
+    "seconds": 0.019068998051807284,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "3030bb8c85531ffb11e6cc0ab0ff8d1c28b3adf972ab960f7d80c8cba86b1693",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.00794631615281105,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.0002298560021445155,
+          "kernel_ms": 0.0003637439981102943,
+          "library_ms": 0.002544223994016647,
+          "output_ms": 0.0007903359904885292,
+          "packing_ms": 0.0003747839988209307
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 0.9801919967867434,
+          "kernel_ms": 1.5035519935190678,
+          "library_ms": 6.312191992998123,
+          "observed_device_delta": 75497472,
+          "output_ms": 3.2271999828517437,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 1.7816960127092898,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.02059551700949669,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6549911126494408e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.58850947022438e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 0,
+    "seconds": 0.021421007113531232,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "3030bb8c85531ffb11e6cc0ab0ff8d1c28b3adf972ab960f7d80c8cba86b1693",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.008004348492249846,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023398400004953147,
+          "kernel_ms": 0.00036844799667596815,
+          "library_ms": 0.002555743992328644,
+          "output_ms": 0.0007946559935808182,
+          "packing_ms": 0.00037228799890726805
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.2141759968362749,
+          "kernel_ms": 1.871999990195036,
+          "library_ms": 8.867935985326767,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.021855976432562,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 2.153984011616558,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020847699837759137,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6761088520288467e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 6.918213330209255e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 1,
+    "seconds": 0.021687906933948398,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "fbb4dfee9509e318d094155021c960556dd3e0a36211de7e6dd66baff04460c6",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007954293861985207,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022947200015187264,
+          "kernel_ms": 0.0003685439955443144,
+          "library_ms": 0.0004760319963097572,
+          "output_ms": 0.0007942719981074333,
+          "packing_ms": 0.00048182399943470956
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.4436479969881475,
+          "kernel_ms": 2.2405439857393503,
+          "library_ms": 9.343967981636524,
+          "observed_device_delta": 75497472,
+          "output_ms": 4.816127974539995,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 2.6358080110512674,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018261994933709502,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.0011717677116394e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.693896673619747e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 1,
+    "seconds": 0.019104626961052418,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "fbb4dfee9509e318d094155021c960556dd3e0a36211de7e6dd66baff04460c6",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007946356199681759,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022128000296652318,
+          "kernel_ms": 0.00036767999455332754,
+          "library_ms": 0.0004871999956667423,
+          "output_ms": 0.0007836479991674423,
+          "packing_ms": 0.0004846079982817173
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.6649279999546707,
+          "kernel_ms": 2.608223980292678,
+          "library_ms": 9.831167977303267,
+          "observed_device_delta": 75497472,
+          "output_ms": 5.5997759737074375,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.1204160093329847,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018229482928290963,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.3015232980251312e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.7941069826483727e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 2,
+    "seconds": 0.019058678997680545,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "3030bb8c85531ffb11e6cc0ab0ff8d1c28b3adf972ab960f7d80c8cba86b1693",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007953831693157554,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023008000291883945,
+          "kernel_ms": 0.0003776319995522499,
+          "library_ms": 0.0025434559881687166,
+          "output_ms": 0.0007966720014810562,
+          "packing_ms": 0.00036473599914461376
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 1.8950080028735101,
+          "kernel_ms": 2.985855979844928,
+          "library_ms": 12.374623965471983,
+          "observed_device_delta": 75497472,
+          "output_ms": 6.396447975188494,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.4851520084775984,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020599735900759697,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.651102840900421e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.029413245618343e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 2,
+    "seconds": 0.02143301907926798,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "3030bb8c85531ffb11e6cc0ab0ff8d1c28b3adf972ab960f7d80c8cba86b1693",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007954150205478072,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023372799903154372,
+          "kernel_ms": 0.0003716159984469414,
+          "library_ms": 0.002547999992966652,
+          "output_ms": 0.0007862720042467118,
+          "packing_ms": 0.00036412800126709046
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.128736001905054,
+          "kernel_ms": 3.357471978291869,
+          "library_ms": 14.922623958438635,
+          "observed_device_delta": 75497472,
+          "output_ms": 7.1827199794352055,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 3.849280009744689,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.020760342944413424,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.664094790816307e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 7.264898158609867e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 3,
+    "seconds": 0.02159030013717711,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "fbb4dfee9509e318d094155021c960556dd3e0a36211de7e6dd66baff04460c6",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007954782573506236,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00022329600155353546,
+          "kernel_ms": 0.0003637760002166033,
+          "library_ms": 0.0004757759980857372,
+          "output_ms": 0.0007927680015563965,
+          "packing_ms": 0.0004867839999496937
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.3520320034585893,
+          "kernel_ms": 3.7212479785084724,
+          "library_ms": 15.398399956524372,
+          "observed_device_delta": 75497472,
+          "output_ms": 7.975487980991602,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 4.3360640096943825,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.018214253010228276,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 1.1012889444828033e-07,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 5.728006362915039e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 3,
+    "seconds": 0.019046725938096642,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "fbb4dfee9509e318d094155021c960556dd3e0a36211de7e6dd66baff04460c6",
+      "executed_route": "density_matrix",
+      "requested_route": "density_matrix",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007945112185552716,
+        "density_matrix_products": 24,
+        "device_seconds": {
+          "input_ms": 0.00023036799672991037,
+          "kernel_ms": 0.00035759999789297583,
+          "library_ms": 0.0004761919938027859,
+          "output_ms": 0.0007858880013227463,
+          "packing_ms": 0.0004898240007460117
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.5824000001884997,
+          "kernel_ms": 4.078847976401448,
+          "library_ms": 15.874591950327158,
+          "observed_device_delta": 75497472,
+          "output_ms": 8.761375982314348,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 4.825888010440394,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 0,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.01828659209422767,
+        "source": {
+          "factor_identity": null,
+          "factor_packing_seconds": 9.010545909404755e-08,
+          "fallback_reason": "requested_density_matrix",
+          "occupied_counts": [
+            0,
+            0
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "density_matrix",
+          "source_upload_bytes": 29584,
+          "source_upload_seconds": 6.282120011746883e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 48,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 4,
+    "seconds": 0.019116078037768602,
+    "selection": "baseline",
+    "workload": "unchanged-geometry"
+  },
+  {
+    "case": "water_tzvp/PBE/dense/268435456",
+    "diagnostics": {
+      "batch_size": 1,
+      "candidate": "3030bb8c85531ffb11e6cc0ab0ff8d1c28b3adf972ab960f7d80c8cba86b1693",
+      "executed_route": "orbitals",
+      "requested_route": "orbitals",
+      "statistics": {
+        "ao_pullback_calls": 0,
+        "collocation_backend": "cuda",
+        "cpu_contraction_seconds": 0.007964362623170018,
+        "density_matrix_products": 0,
+        "device_seconds": {
+          "input_ms": 0.00023382399789988995,
+          "kernel_ms": 0.0003626559991389513,
+          "library_ms": 0.0025462720096111296,
+          "output_ms": 0.0007860799953341484,
+          "packing_ms": 0.00036563199898228047
+        },
+        "geometry_matrix_products": 0,
+        "matrix_assembly_products": 24,
+        "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
+        "native_metrics": {
+          "cublas_version": 120402,
+          "device_ms": 0.0,
+          "driver_version": 13000,
+          "input_ms": 2.8162239980883896,
+          "kernel_ms": 4.4415039755403996,
+          "library_ms": 18.420863959938288,
+          "observed_device_delta": 75497472,
+          "output_ms": 9.547455977648497,
+          "owned_device_bytes": 5366016,
+          "packing_ms": 5.191520009422675,
+          "prepare_device_delta": 75497472,
+          "provider_retained_bytes": 69206016,
+          "runtime_version": 12090
+        },
+        "orbital_matrix_products": 96,
+        "planned_device_peak_bytes": 106029312,
+        "planned_host_peak_bytes": 15345456,
+        "point_coefficient_calls": 12,
+        "scalar_calls": 12,
+        "seconds": 0.02077051205560565,
+        "source": {
+          "factor_identity": "6805b9cc0cd5d5e6a0f47d8f9e330145b7130d2e82001d08071ec922927d16ed",
+          "factor_packing_seconds": 2.6771100237965584e-05,
+          "fallback_reason": null,
+          "occupied_counts": [
+            5,
+            5
+          ],
+          "source_identity": "6e8de4351b9b3454c6aa9d4b069b3470b24a77d0e392edf6a66e16272074e382",
+          "source_kind": "orbitals",
+          "source_upload_bytes": 33024,
+          "source_upload_seconds": 6.99339434504509e-05
+        },
+        "tiles": 12,
+        "total_matrix_products": 120,
+        "xc_backend": "native_cpu"
+      },
+      "workload": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c"
+    },
+    "inputs_hash": "821dd3a71da81069084278afaf1bea940342a1d6ee782b43baa552348ba6349c",
+    "repeat": 4,
+    "seconds": 0.02160915592685342,
+    "selection": "candidate",
+    "workload": "unchanged-geometry"
+  }
+]

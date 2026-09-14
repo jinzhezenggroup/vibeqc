@@ -11,7 +11,7 @@ __pycache__/
 /_references/
 /.artifacts/
 # Benchmark runs are staged outside the reviewed result tree. A deliberate
-# scientific exception can still be force-added with a hash-pinned reason.
+# small scientific fixture can still be force-added with a hash-pinned reason.
 /benchmarks/results/**/attempts/
 /benchmarks/results/**/*.log
 /benchmarks/results/**/*.xml
@@ -20,3 +20,11 @@ __pycache__/
 /benchmarks/results/**/*.nsys-rep
 /benchmarks/results/**/*.ncu-rep
 /benchmarks/results/**/*.sqlite*
+# Full benchmark run bundles belong in external or ignored artifact storage.
+/benchmarks/results/**/*.zip
+/benchmarks/results/**/*.tar
+/benchmarks/results/**/*.tar.gz
+/benchmarks/results/**/*.tgz
+/benchmarks/results/**/*.tar.xz
+/benchmarks/results/**/*.tar.zst
+/benchmarks/results/**/*.7z

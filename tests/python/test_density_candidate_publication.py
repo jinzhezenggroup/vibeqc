@@ -10,6 +10,7 @@ import pytest
 from tools.density_workload_matrix import validate_matrix_errors
 from tools.summarize_density_candidates import summarize
 from tools.vibeqc_validation.publication import validate_publication
+from tools.vibeqc_validation.record import decode_record, load_record
 
 ROOT = Path(__file__).resolve().parents[2] / "benchmarks/results/density-candidates"
 
@@ -21,7 +22,7 @@ def publication(request):
     files = {r["path"]: (directory / r["path"]).read_bytes() for r in manifest["files"]}
     validate_publication(manifest, files)
     filename = next(r["path"] for r in manifest["files"] if r["role"] == "evidence")
-    return request.param, json.loads(files[filename]), files
+    return request.param, decode_record(files[filename], files), files
 
 
 def test_retained_summary_reconstructs_and_has_complete_matrix(publication):
@@ -90,7 +91,7 @@ def test_summary_rejects_incomparable_or_incomplete_pairs(publication, fault):
 
 @pytest.mark.parametrize("rename", [False, True])
 def test_matrix_gate_inventory_rejects_missing_or_reused_keys(rename):
-    report = json.loads((ROOT / "gpu/evidence.json").read_text())
+    report = load_record(ROOT / "gpu/evidence.json")
     key = next(iter(report["block_errors"]))
     record = report["block_errors"].pop(key)
     if rename:

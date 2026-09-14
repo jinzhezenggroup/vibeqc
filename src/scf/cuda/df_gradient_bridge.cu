@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <stdexcept>
 
@@ -336,7 +337,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const std::vector<double>& inverse, std::span<const DensityFittingDensityResponse> terms,
     double relative_threshold, unsigned schedule, std::size_t maximum_bytes,
     std::size_t maximum_auxiliary_tile, std::vector<double>& gradient, std::string& detail,
-    DfGradientResources* resources, const CudaDfMetricView* device_metric) {
+    DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle) {
   detail.clear();
   if (resources) *resources = {};
   const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
@@ -348,6 +349,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
       a > maximum / a || n * n > maximum / a || atoms > maximum / 3 ||
       atoms != auxiliary.atoms.size() || (source && !device_metric) ||
       (!source && raw_a.size() != n * n * a) ||
+      (device_metric && (!blas_handle || n * n > index_limit)) ||
       (device_metric ? (!device_metric->inverse_square_root || !device_metric->eigenvectors ||
                         !device_metric->eigenvalues)
                      : (metric.size() != a * a || inverse.size() != a * a)) ||
@@ -439,8 +441,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                          arena.stats.density_host_to_device_bytes);
       preparation.finish();
       runtime::cuda_trace::TraceRegion response_weights("response_weights", arena.stream);
+      const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
+      const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       check(contract_cuda_df_response_weights(
           n, a, terms, densities, *device_metric, tile, workspace, arena.stream,
+          reinterpret_cast<cublasHandle_t>(blas_handle), serial_dot,
           [&](std::size_t p, double* values) {
             if (source) {
               const auto status = generate_cuda_density_fitting_raw_tile(
@@ -560,6 +565,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
     detail = std::string("generated DF-HF CUDA failure: ") + cudaGetErrorString(error.status);
     return error.status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
                                                      : VIBEQC_STATUS_CUDA_ERROR;
+  } catch (const CudaDfResponseBlasFailure& error) {
+    detail = "generated DF-HF metric response cuBLAS failure (status " +
+             std::to_string(static_cast<int>(error.status)) + ")";
+    return error.status == CUBLAS_STATUS_ALLOC_FAILED ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                                      : VIBEQC_STATUS_CUDA_ERROR;
   } catch (const std::bad_alloc&) {
     detail = "generated DF-HF response exceeded its allocation budget";
     return VIBEQC_STATUS_OUT_OF_MEMORY;

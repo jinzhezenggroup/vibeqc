@@ -8,13 +8,15 @@ from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
 
-def unpack(directory, output=None):
+def unpack(directory, output=None, archive_path=None):
     """Check every byte before writing; never execute historical scripts."""
     directory = Path(directory)
     manifest = json.loads((directory / "raw-evidence.manifest.json").read_text())
     if manifest["schema"] != "vibeqc.evidence-archive.v1":
         raise ValueError("unsupported evidence archive schema")
-    raw = (directory / "raw-evidence.zip").read_bytes()
+    # Migrated archives can be restored under .artifacts/ while their original
+    # member manifest remains in the reviewed result directory.
+    raw = Path(archive_path or directory / "raw-evidence.zip").read_bytes()
     if sha256(raw).hexdigest() != manifest["archive_sha256"]:
         raise ValueError("archive SHA-256 mismatch")
     records = manifest["files"]
@@ -59,8 +61,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--output", type=Path, help="new, non-existing directory")
+    parser.add_argument("--archive", type=Path, help="restored historical ZIP path")
     args = parser.parse_args()
-    count = unpack(args.directory, args.output)
+    count = unpack(args.directory, args.output, args.archive)
     print(
         f"Verified {count} files"
         + (f"; restored to {args.output}" if args.output else "")

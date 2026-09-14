@@ -17,3 +17,13 @@ oracle is separately written from the second-quantized Hamiltonian.
 Upstream cites Hirata et al., J. Chem. Phys. 120, 2581 (2004), Eqs. 35-39.
 The actually audited source here is the pinned PySCF implementation, not an
 assertion of a line-by-line audit of that article.
+
+(T) triples correction
+
+The closed-shell CCSD(T) triples energy (triples.py) is adapted from PySCF
+2.14.0 pyscf/cc/ccsd_t_slow.py (kernel + r3) and references the production
+pyscf/cc/ccsd_t.py. Copyright 2014-2020 The PySCF Developers. All Rights
+Reserved. Author credited by upstream ccsd_t_slow.py: Qiming Sun. Licensed
+under Apache License 2.0; see LICENSE.pyscf. Upstream cites the perturbative
+triples of Raghavachari et al., JCP 94, 442 (1991), DOI:10.1063/1.460359.
+Exact upstream file URLs and SHA-256 values are in source_manifest.json.

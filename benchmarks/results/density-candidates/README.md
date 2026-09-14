@@ -60,9 +60,9 @@ content hash of its complete reference snapshot, including producer provenance
 and runtime. Executable candidate/workload identities use the actual source,
 grid and prepared contract, and do not include producer runtime. Re-exporting
 references can change the snapshot identity without changing those inputs.
-Only the 192-AO octamer archive exceeds the repository's review-size threshold;
-its exact-hash retention exception covers the unique scientific reference
-arrays. Full molecular grid-by-AO or grid-by-orbital tensors are not retained.
+The 192-AO octamer stores each original NPY array separately under
+`inputs/water8_svp/`, with file and numeric hashes checked by the loader.
+These permanent reference inputs fit the hard 1 MiB file limit. Full molecular grid-by-AO or grid-by-orbital tensors are not retained.
 
 ## Retained results
 
@@ -130,5 +130,6 @@ Reconstruct either summary without running hardware:
 
 Both publication manifests are produced by the existing `tools/evidence.py`
 publisher and validated in the retained-evidence regression. The GPU envelope
-also has an exact-content size exception because all timing rows, numerical
-gates and resource/source identities are needed to audit the result.
+keeps its timing lists in named workload JSON files. The record loader verifies
+all part hashes and restores the original sample order and values; no size
+exception is used.

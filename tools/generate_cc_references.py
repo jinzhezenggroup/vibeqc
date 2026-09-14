@@ -29,7 +29,14 @@ def generate(*, full=False):
     manifest = json.loads((ROOT / "tools/vibeqc_cc/source_manifest.json").read_text())
     if pyscf.__version__ != manifest["version"]:
         raise ValueError("reference generation requires pinned PySCF 2.14.0")
-    for module, record in zip((rccsd, rintermediates), manifest["files"]):
+    # Only the RCCSD upstream files participate in the fixed-amplitude A/B
+    # reference identity; the (T) entries are checked by the triples generator.
+    rccsd_manifest = {
+        "files": [f for f in manifest["files"] if f["path"].startswith("pyscf/cc/r")],
+        "license": manifest["license"],
+        "version": manifest["version"],
+    }
+    for module, record in zip((rccsd, rintermediates), rccsd_manifest["files"]):
         if file_hash(module.__file__) != record["sha256"]:
             raise ValueError(f"upstream source hash mismatch: {record['path']}")
     cases = []
@@ -125,7 +132,7 @@ def generate(*, full=False):
         "scipy": scipy.__version__,
         "python": platform.python_version(),
         "threads": threads,
-        "upstream": manifest,
+        "upstream": rccsd_manifest,
         "generator_sha256": file_hash(__file__),
         "cases_hash": canonical_hash(cases),
         "cases": cases,

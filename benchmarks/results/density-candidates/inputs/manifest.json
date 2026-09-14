@@ -22,7 +22,99 @@
   {
     "name": "water8_svp",
     "identity": "5c35179fe3362f1116a6bbeba9df59513ef7c5dcced7c91b422ce98e018f3f6e",
-    "archive_sha256": "6bbba06f3cde3f2ec68517c7fda3e55dec29290b27cf64ee968be7699227fea0"
+    "archive_sha256": "6bbba06f3cde3f2ec68517c7fda3e55dec29290b27cf64ee968be7699227fea0",
+    "array_files": {
+      "points": {
+        "path": "water8_svp/points.npy",
+        "bytes": 589952,
+        "sha256": "8160e20563861e90f9102c981ad0ce006a54cf8e0a0397e12ad03e6076ed3d79"
+      },
+      "weights": {
+        "path": "water8_svp/weights.npy",
+        "bytes": 196736,
+        "sha256": "d83095e047374f6329fa226309688215dfcabe9ac9190e8fe8210a5436d83707"
+      },
+      "owners": {
+        "path": "water8_svp/owners.npy",
+        "bytes": 98432,
+        "sha256": "845270e350d78deeb49778462047f1e7897196f1d3cfa830ecb12675e180992b"
+      },
+      "density_spin": {
+        "path": "water8_svp/density_spin.npy",
+        "bytes": 589952,
+        "sha256": "147b127d91be96d0096a4306df786ced1b4ce25df011d04c050fde1b39a2653a"
+      },
+      "ao_scale": {
+        "path": "water8_svp/ao_scale.npy",
+        "bytes": 1664,
+        "sha256": "9b0e63668db1acb6abbea738e7b3923a14035431c41b1710ab75c09afd8551cf"
+      },
+      "coefficients_0": {
+        "path": "water8_svp/coefficients_0.npy",
+        "bytes": 61568,
+        "sha256": "c87297e0989b5018120a78296f822e8b5d44a5fd6d89240f4b1b740a5b9ed8e0"
+      },
+      "occupations_0": {
+        "path": "water8_svp/occupations_0.npy",
+        "bytes": 448,
+        "sha256": "3034bc10219d97d8cb3084efde6f77aba66e747e4c14da73843b4a780a4f848f"
+      },
+      "coefficients_1": {
+        "path": "water8_svp/coefficients_1.npy",
+        "bytes": 61568,
+        "sha256": "c87297e0989b5018120a78296f822e8b5d44a5fd6d89240f4b1b740a5b9ed8e0"
+      },
+      "occupations_1": {
+        "path": "water8_svp/occupations_1.npy",
+        "bytes": 448,
+        "sha256": "3034bc10219d97d8cb3084efde6f77aba66e747e4c14da73843b4a780a4f848f"
+      },
+      "sample_ids": {
+        "path": "water8_svp/sample_ids.npy",
+        "bytes": 384,
+        "sha256": "a3e4b99285e122eeba858da86746f6b6855c0057865aef2f8d9a9a7ab9182b9d"
+      },
+      "sample_jets": {
+        "path": "water8_svp/sample_jets.npy",
+        "bytes": 393344,
+        "sha256": "fc6fb902b9d568b7da47a7a8953597545392a281881f403a13adcf42e8ebc3c9"
+      },
+      "sample_rho_gradient": {
+        "path": "water8_svp/sample_rho_gradient.npy",
+        "bytes": 4224,
+        "sha256": "ff4ae2c3fbf3da31969258465656a0728b542b1aaf63bf9b08ba6e1a63699cc0"
+      },
+      "LDA_XC_PW_energy": {
+        "path": "water8_svp/LDA_XC_PW_energy.npy",
+        "bytes": 136,
+        "sha256": "5bfb69cd6daf5c60e49ed28ce36d6177651d7ec605c6c36248abde20cfcff7a0"
+      },
+      "LDA_XC_PW_electrons": {
+        "path": "water8_svp/LDA_XC_PW_electrons.npy",
+        "bytes": 136,
+        "sha256": "5423257cd675303105cc262a475a0910fb5d6f5ec46fa8864b6fad9d518b9cd8"
+      },
+      "LDA_XC_PW_potential": {
+        "path": "water8_svp/LDA_XC_PW_potential.npy",
+        "bytes": 295040,
+        "sha256": "06df78eb0bf140c863ed9f2afa3e5a7ec49d7eec5ade6426640a1ebe0d65a0e7"
+      },
+      "PBE_energy": {
+        "path": "water8_svp/PBE_energy.npy",
+        "bytes": 136,
+        "sha256": "7bd958a562ac0fd955ae0cb78c4ad4f5b692e396b526c874d28d8e26a52adce5"
+      },
+      "PBE_electrons": {
+        "path": "water8_svp/PBE_electrons.npy",
+        "bytes": 136,
+        "sha256": "5423257cd675303105cc262a475a0910fb5d6f5ec46fa8864b6fad9d518b9cd8"
+      },
+      "PBE_potential": {
+        "path": "water8_svp/PBE_potential.npy",
+        "bytes": 295040,
+        "sha256": "050e3c053d60bd31fdd428f8ef1d98d83de311c4c171e24b971667d70cc53bcd"
+      }
+    }
   },
   {
     "name": "oh_diffuse",

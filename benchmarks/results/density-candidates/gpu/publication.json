@@ -7,17 +7,58 @@
   },
   "files": [
     {
-      "bytes": 3298692,
+      "bytes": 856635,
       "path": "evidence.json",
-      "reason": "Complete raw interleaved D/C timings, numerical gates, per-case source identities and composed resource capacities; no transient logs or build products.",
       "role": "evidence",
-      "sha256": "d62ec2c500cdaee4a639e2d7e99c322742d373be1c82c4e8a091953af9f4684f"
+      "sha256": "e63f42f606c60fa8d1717bafef8e25e64ead952b466b2291a367d9be56417f2d"
     },
     {
       "bytes": 35209,
       "path": "summary.json",
       "role": "summary",
       "sha256": "c4589c0ff2e9495ee55acc1a130a3ddc9fd316329134823229fd74a87d6b8318"
+    },
+    {
+      "path": "evidence-timings/water_svp.json",
+      "bytes": 530246,
+      "sha256": "407abcfa4e844fd1362c67a1afae92205f5200bd13e6f76f4b757e4541acbe94",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/water_tzvp.json",
+      "bytes": 105505,
+      "sha256": "a4078c4362b33f0bdce1396bd85fae88b2e6912f5d5675701e896816edbecae8",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/co2_tzvp.json",
+      "bytes": 105431,
+      "sha256": "5bb3fd4bcf4841487ffab16b2774a6763abf2ef2b15792ed4879d8ea1298e56f",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/water4_svp.json",
+      "bytes": 675599,
+      "sha256": "605de339af49386c972f934cbfcfd49d370026b72606300cf73b95cf1930862c",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/water8_svp.json",
+      "bytes": 272398,
+      "sha256": "f73ebe1231a4809378bfdb73d5a0a57b950f39e6e9e894bf302171469c8994e5",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/oh_diffuse.json",
+      "bytes": 529884,
+      "sha256": "e444f8ca70bd3ed4b01a42e676c415cd6521457684cd81b2021f415968b9803f",
+      "role": "samples"
+    },
+    {
+      "path": "evidence-timings/oh_minus_diffuse.json",
+      "bytes": 105659,
+      "sha256": "9ef54b02097c602108d5e8f50a491015f408922310153c0bd1a7695e87fc78d7",
+      "role": "samples"
     }
   ],
   "reproduction": {

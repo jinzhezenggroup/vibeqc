@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10852,
+  "all_handwritten_scientific_lines": 10880,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -598,20 +598,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 31522,
+      "bytes": 32222,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 554
+        "scientific": 564
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 574,
+      "physical_lines": 584,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response; conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned.",
       "regions": [],
       "role": "scientific",
-      "sha256": "b78d59808ee48bb00f149c3844183ace56e8362be9e9c20c1489725abca0f0ef",
+      "sha256": "a82becf1b5043195f9a785dbe8121a003b174c0ca2f91bcbbefc8cc009411b60",
       "subsystem": "df_derivatives"
     },
     {
@@ -710,38 +710,48 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 12815,
+      "bytes": 13988,
       "code_lines": {
         "fallback": 0,
-        "oracle": 0,
+        "oracle": 10,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 217
+        "scientific": 220
       },
       "path": "src/scf/cuda/df_response_weights.cu",
-      "physical_lines": 248,
-      "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
-      "regions": [],
+      "physical_lines": 266,
+      "reason": "Native HF density response and spectral Frechet method adapters. The default exchange metric AO-pair dot uses the existing plan-owned FP64 cuBLAS handle; provider/layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
+      "regions": [
+        {
+          "code_lines": 10,
+          "first_line": 85,
+          "last_line": 100,
+          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry.",
+          "role": "oracle",
+          "start": "__global__ void exchange_metric_kernel(",
+          "stop": "__global__ void metric_response_kernel("
+        }
+      ],
       "role": "scientific",
-      "sha256": "fa90a9e65fddf6763c1ca02bafc9b0ee02b00bd85b727bbd590e9c75e5915d03",
-      "subsystem": "df_derivatives"
+      "sha256": "81b69af34db32cc66c5e4e4f69fefa404d9270d122c35946e7f61cf041b418a4",
+      "subsystem": "df_response_weights"
     },
     {
-      "bytes": 1918,
+      "bytes": 2436,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 18
+        "scientific": 23
       },
       "path": "src/scf/cuda/df_response_weights.cuh",
-      "physical_lines": 41,
-      "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
+      "physical_lines": 52,
+      "reason": "Native HF density response and spectral Frechet method adapters. The default exchange metric AO-pair dot uses the existing plan-owned FP64 cuBLAS handle; provider/layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
       "regions": [],
       "role": "scientific",
-      "sha256": "868361eba5eccaf19db1aa6c4e6d4c3d01b57bdbea3871fdd23f4b85ebba536c",
-      "subsystem": "df_derivatives"
+      "sha256": "6ccb97436e83c80b07e2e760b1d86477d3eb05fc46b670f30488a6be19af2769",
+      "subsystem": "df_response_weights"
     },
     {
       "bytes": 1473,
@@ -3300,10 +3310,10 @@
   "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
-    "oracle": 0,
+    "oracle": 10,
     "performance_exception": 156,
     "runtime": 9169,
-    "scientific": 10696
+    "scientific": 10714
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3330,10 +3340,24 @@
         "benchmarks/results/cuda-ownership/df/README.md"
       ],
       "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter.",
-      "missing_capability": "None for the retired DF integral/coordinate-response duplicate. Host HF density-weight construction and the spectral inverse reverse map remain native method adapters; a complete equivalent TensorIR method consumer is not yet integrated.",
+      "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
       "owner": "df_derivatives",
       "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
       "status": "retired"
+    },
+    "df_response_weights": {
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only.",
+      "evidence": [
+        "tests/python/test_df_response_weights_cuda.py",
+        "benchmarks/results/issue206-metric-gemv/README.md",
+        "benchmarks/results/issue206-metric-gemv/summary.json"
+      ],
+      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
+      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+      "owner": "scf_tensor",
+      "retained_duplicate_reason": "oracle",
+      "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
+      "status": "native_baseline_with_opt_in_control"
     },
     "df_values": {
       "current_default": "Generated Rys values only; bounded transformed outputs use compiler-directed four-lane primitive groups across eight source terms per warp.",
@@ -3470,7 +3494,14 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 87,
-      "scientific": 789
+      "scientific": 564
+    },
+    "df_response_weights": {
+      "fallback": 0,
+      "oracle": 10,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 243
     },
     "df_values": {
       "fallback": 0,

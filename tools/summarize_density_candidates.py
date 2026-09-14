@@ -12,6 +12,8 @@ sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 
 from vibeqc_compiler.common.evidence import validate_evidence
 
+from tools.vibeqc_validation.record import load_record
+
 
 def summarize(report):
     """Keep all cases and raw repeats; report ratios only as descriptive statistics.
@@ -96,8 +98,6 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.write_text(
-        json.dumps(
-            summarize(json.loads(args.evidence.read_text())), indent=2, sort_keys=True
-        )
+        json.dumps(summarize(load_record(args.evidence)), indent=2, sort_keys=True)
         + "\n"
     )
