@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 # Ubuntu's ccache package installs compiler-wrapper symlinks here.  CI already
 # restores ~/.cache/ccache before pytest starts, but many Python tests invoke
 # ``c++`` directly through subprocess/shutil.which and therefore bypassed that
