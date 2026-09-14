@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Regenerate and compare committed one-electron derivative references."""
 
 from __future__ import annotations
