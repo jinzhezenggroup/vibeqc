@@ -12,9 +12,9 @@
 
 #include "runtime/cuda_component_trace.hpp"
 #include "runtime/df_progress_trace.hpp"
-#include "scf/cuda/cusolver_compat.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda/eigensolver.hpp"
 #include "scf/cuda_density_fitting_eigen.hpp"
 
 namespace vibeqc::scf::cuda_df {
@@ -120,7 +120,7 @@ vibeqc_status setup_device_solver(CudaDensityFittingJkPlan& plan, std::size_t nb
   }
   std::size_t device_bytes = 0;
   std::size_t host_bytes = 0;
-  status = cuda_compat::xsyev_batched_buffer_size(
+  status = cusolverDnXsyevBatched_bufferSize(
       solver.handle, solver.parameters, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
       static_cast<std::int64_t>(nbf), CUDA_R_64F, eigensystem, static_cast<std::int64_t>(nbf),
       CUDA_R_64F, eigenvalues, CUDA_R_64F, &device_bytes, &host_bytes,
@@ -171,7 +171,7 @@ vibeqc_status solve_device_batch(CudaDensityFittingJkPlan& plan, DeviceSolver& s
         eigensystem, static_cast<int>(nbf), eigenvalues, solver.workspace, solver.lwork, info,
         solver.jacobi, static_cast<int>(batch_size));
   } else {
-    status = cuda_compat::xsyev_batched(
+    status = cusolverDnXsyevBatched(
         solver.handle, solver.parameters, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
         static_cast<std::int64_t>(nbf), CUDA_R_64F, eigensystem, static_cast<std::int64_t>(nbf),
         CUDA_R_64F, eigenvalues, CUDA_R_64F, solver.workspace, solver.workspace_bytes,
