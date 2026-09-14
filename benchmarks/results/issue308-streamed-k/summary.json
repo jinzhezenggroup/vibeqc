@@ -1,0 +1,1083 @@
+{
+  "schema": "vibeqc.issue308.streamed-k.v1",
+  "scope": "Diagnostic fixed qualified D with component/progress tracing and memory samples. No cold SCF, full forces, global-resource acceptance, or GPU4PySCF parity claim. A timed-out K remains unvalidated.",
+  "shape_budget_note": "Planned layouts were selected by a host shape query with an assumed 1-MiB fixed reservation. The native probe accepts explicit tiles, not a public budget request. Its measured value-plan diagnostics include actual source storage; neither those diagnostics nor sampled process memory are a whole-HF budget acceptance.",
+  "implementation_commit": "bd05c51",
+  "runs": [
+    {
+      "status": "completed",
+      "slurm_job": "9550",
+      "seconds": 23.430185868171975,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 5.731176709426744e-14,
+          "electron_trace": 80.00000000000001
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.12108054,
+          "nbf": 192,
+          "naux": 192,
+          "rank": 40,
+          "value_plan_resident_bytes": 52364125,
+          "value_plan_peak_bytes": 55544825,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 1.486528473
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 4.995106757
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 4.992658402
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 1.443729179
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 4.994387821
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 4.992168194
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 8.881784197001252e-15
+        }
+      ],
+      "independent_checks": {
+        "density": 4.440892098500626e-16,
+        "j": 1.3109513474773848e-12,
+        "dense_k": 3.552713678800501e-13,
+        "occupied_k": 3.5349501104064984e-13
+      },
+      "source": {
+        "git_head": "dfd062bb58c80fd8875a7d2e890849daf47f78a3",
+        "git_dirty": true,
+        "git_status": [
+          "M  docs/density_fitting.md",
+          "M  docs/df_component_trace.md",
+          "M  src/scf/cuda/df_exchange.cpp",
+          "M  src/scf/cuda/df_generated_tiles.hpp",
+          "M  src/scf/cuda/df_occupied_exchange.cpp",
+          "M  src/scf/density_fitting.cpp",
+          "A  src/scf/df_streamed_k_policy.hpp",
+          "A  tests/python/test_df_streamed_k_cuda.py",
+          "A  tests/python/test_df_streamed_k_policy.py",
+          "M  tools/check_scf_structure.py"
+        ],
+        "git_diff_sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "851360b13b56f9611b9b358cc3c2bf9fa81b89a294d4acbabb9c123bbecc04f9"
+      },
+      "native_source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "nbf": 192,
+        "naux": 192,
+        "energy": -609.5876620703727,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 192,
+        "metric_min_max": [
+          0.09504632031548986,
+          1289.5078155068945
+        ],
+        "seed_checks": {
+          "commutator_max": 7.1918374033863586e-12,
+          "eigen_residual_max": 2.7950697312206785e-12,
+          "orthogonality_max": 1.7479591848007138e-13,
+          "electron_trace_error": 2.842170943040401e-14,
+          "metric_idempotency_max": 4.3520742565306136e-14
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "3b87f1b30107f77623dd74632c79babeb54803944ae474ff78a3631118e8cb77",
+        "reference_sha256": "bdf5428f65f0918712fd07bde07c12bfdddf5efc2f3e041a4f80a543e30f6979"
+      },
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "cuda_runtime_version": 12090,
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/nominal-192/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/nominal-192/cuda.jsonl"
+      },
+      "run": "nominal-192",
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 128,
+        "executed_ao_rows": 192,
+        "executed_auxiliary_tile": 28,
+        "executed_raw_auxiliary_tile": 28,
+        "raw_tensor_passes_per_k": 7
+      },
+      "completed_source_work": [
+        {
+          "operation": "ri_j",
+          "source_evaluations": 14155776,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 49545216,
+          "raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 49545216,
+          "raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_j",
+          "source_evaluations": 14155776,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 49545216,
+          "raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 49545216,
+          "raw_tensor_passes": 7.0
+        }
+      ],
+      "pending": [],
+      "sampled_process_gpu_peak_mib": 624,
+      "process_host_high_water_bytes": 625164288,
+      "full_array_identity": {
+        "sha256": "1bd65b0da75fa11ca5472f0f799631b5abce4e988e65d33632d94be0c25e00ab",
+        "bytes": 1179648,
+        "retention": "Full transient outputs remain local; every component was independently compared. First 24 rows of D/J/dense K/occupied K are retained, with exact input identities and reproduction source."
+      }
+    },
+    {
+      "status": "completed",
+      "slurm_job": "9550",
+      "seconds": 12.064008488086984,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 5.731176709426744e-14,
+          "electron_trace": 80.00000000000001
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.121317674,
+          "nbf": 192,
+          "naux": 192,
+          "rank": 40,
+          "value_plan_resident_bytes": 130220893,
+          "value_plan_peak_bytes": 133401593,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 1.485454906
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 2.162237754
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 2.157282116
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 1.440890306
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 2.158942101
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 2.165890851
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 8.881784197001252e-15
+        }
+      ],
+      "independent_checks": {
+        "density": 4.440892098500626e-16,
+        "j": 1.4566126083082054e-12,
+        "dense_k": 3.694822225952521e-13,
+        "occupied_k": 3.659295089164516e-13
+      },
+      "source": {
+        "git_head": "dfd062bb58c80fd8875a7d2e890849daf47f78a3",
+        "git_dirty": true,
+        "git_status": [
+          "M  docs/density_fitting.md",
+          "M  docs/df_component_trace.md",
+          "M  src/scf/cuda/df_exchange.cpp",
+          "M  src/scf/cuda/df_generated_tiles.hpp",
+          "M  src/scf/cuda/df_occupied_exchange.cpp",
+          "M  src/scf/density_fitting.cpp",
+          "A  src/scf/df_streamed_k_policy.hpp",
+          "A  tests/python/test_df_streamed_k_cuda.py",
+          "A  tests/python/test_df_streamed_k_policy.py",
+          "M  tools/check_scf_structure.py"
+        ],
+        "git_diff_sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "851360b13b56f9611b9b358cc3c2bf9fa81b89a294d4acbabb9c123bbecc04f9"
+      },
+      "native_source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "nbf": 192,
+        "naux": 192,
+        "energy": -609.5876620703727,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 192,
+        "metric_min_max": [
+          0.09504632031548986,
+          1289.5078155068945
+        ],
+        "seed_checks": {
+          "commutator_max": 7.1918374033863586e-12,
+          "eigen_residual_max": 2.7950697312206785e-12,
+          "orthogonality_max": 1.7479591848007138e-13,
+          "electron_trace_error": 2.842170943040401e-14,
+          "metric_idempotency_max": 4.3520742565306136e-14
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "3b87f1b30107f77623dd74632c79babeb54803944ae474ff78a3631118e8cb77",
+        "reference_sha256": "bdf5428f65f0918712fd07bde07c12bfdddf5efc2f3e041a4f80a543e30f6979"
+      },
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "cuda_runtime_version": 12090,
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-192-128m/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-192-128m/cuda.jsonl"
+      },
+      "run": "planned-192-128m",
+      "k_shape": {
+        "planner_ao_pair_tile": 36864,
+        "planner_auxiliary_tile": 94,
+        "executed_ao_rows": 192,
+        "executed_auxiliary_tile": 94,
+        "executed_raw_auxiliary_tile": 94,
+        "raw_tensor_passes_per_k": 3
+      },
+      "completed_source_work": [
+        {
+          "operation": "ri_j",
+          "source_evaluations": 14155776,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 21233664,
+          "raw_tensor_passes": 3.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 21233664,
+          "raw_tensor_passes": 3.0
+        },
+        {
+          "operation": "ri_j",
+          "source_evaluations": 14155776,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 21233664,
+          "raw_tensor_passes": 3.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 21233664,
+          "raw_tensor_passes": 3.0
+        }
+      ],
+      "pending": [],
+      "sampled_process_gpu_peak_mib": 704,
+      "process_host_high_water_bytes": 625049600,
+      "full_array_identity": {
+        "sha256": "82b0332a7de24b03bb99b8c2469d2b9ecb10c25efcc30ebabed8dc805bba1ec9",
+        "bytes": 1179648,
+        "retention": "Full transient outputs remain local; every component was independently compared. First 24 rows of D/J/dense K/occupied K are retained, with exact input identities and reproduction source."
+      }
+    },
+    {
+      "status": "completed",
+      "slurm_job": "9550",
+      "seconds": 96.66327465092763,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 3.257869577585404e-13,
+          "electron_trace": 160.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.138557234,
+          "nbf": 384,
+          "naux": 384,
+          "rank": 80,
+          "value_plan_resident_bytes": 1056359149,
+          "value_plan_peak_bytes": 1065144713,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 16.005801521
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 16.026605746
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 15.991075136
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 15.973135521
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 16.030531248
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 15.995574554
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 1.0658141036401503e-14
+        }
+      ],
+      "independent_checks": {
+        "density": 8.881784197001252e-16,
+        "j": 3.0198066269804258e-12,
+        "dense_k": 3.481659405224491e-13,
+        "occupied_k": 3.446132268436486e-13
+      },
+      "source": {
+        "git_head": "dfd062bb58c80fd8875a7d2e890849daf47f78a3",
+        "git_dirty": true,
+        "git_status": [
+          "M  docs/density_fitting.md",
+          "M  docs/df_component_trace.md",
+          "M  src/scf/cuda/df_exchange.cpp",
+          "M  src/scf/cuda/df_generated_tiles.hpp",
+          "M  src/scf/cuda/df_occupied_exchange.cpp",
+          "M  src/scf/density_fitting.cpp",
+          "A  src/scf/df_streamed_k_policy.hpp",
+          "A  tests/python/test_df_streamed_k_cuda.py",
+          "A  tests/python/test_df_streamed_k_policy.py",
+          "M  tools/check_scf_structure.py"
+        ],
+        "git_diff_sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "851360b13b56f9611b9b358cc3c2bf9fa81b89a294d4acbabb9c123bbecc04f9"
+      },
+      "native_source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-hexadecamer-2s4-def2-svp-spherical",
+        "nbf": 384,
+        "naux": 384,
+        "energy": -1219.1762188003197,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 384,
+        "metric_min_max": [
+          0.09370621943987813,
+          1699.0971217214687
+        ],
+        "seed_checks": {
+          "commutator_max": 3.951772242771767e-11,
+          "eigen_residual_max": 1.5425216659537e-11,
+          "orthogonality_max": 2.7481215545376025e-12,
+          "electron_trace_error": 8.526512829121202e-14,
+          "metric_idempotency_max": 1.112523539004845e-12
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "4dc1d561fdd97ba6951584bc5787902ec91b3118edb3d85cce1960087a4dc716",
+        "reference_sha256": "d559bb7cd28a9c708fde7ab47b91bc1c5eaa87c3cbee0411dc85b18ccbfcb2b1"
+      },
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "cuda_runtime_version": 12090,
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-384-1g/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-384-1g/cuda.jsonl"
+      },
+      "run": "planned-384-1g",
+      "k_shape": {
+        "planner_ao_pair_tile": 147456,
+        "planner_auxiliary_tile": 209,
+        "executed_ao_rows": 384,
+        "executed_auxiliary_tile": 209,
+        "executed_raw_auxiliary_tile": 209,
+        "raw_tensor_passes_per_k": 2
+      },
+      "completed_source_work": [
+        {
+          "operation": "ri_j",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_j",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 113246208,
+          "raw_tensor_passes": 2.0
+        }
+      ],
+      "pending": [],
+      "sampled_process_gpu_peak_mib": 1556,
+      "process_host_high_water_bytes": 636674048,
+      "full_array_identity": {
+        "sha256": "716f2afb745a7c4b3b394079e8bb6bd7d76a1835afec60394d0468d6efd18c4b",
+        "bytes": 4718592,
+        "retention": "Full transient outputs remain local; every component was independently compared. First 24 rows of D/J/dense K/occupied K are retained, with exact input identities and reproduction source."
+      }
+    },
+    {
+      "status": "timeout",
+      "slurm_job": "9550",
+      "seconds": 120.599986030953,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.38015582137527e-12,
+          "electron_trace": 320.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.227448979,
+          "nbf": 768,
+          "naux": 768,
+          "rank": 160,
+          "value_plan_resident_bytes": 303066637,
+          "value_plan_peak_bytes": 332428457,
+          "streamed": true
+        }
+      ],
+      "independent_checks": "not_run",
+      "source": {
+        "git_head": "bd05c510b9b0d93a3b9b3e04c252ab2f15508ec9",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "851360b13b56f9611b9b358cc3c2bf9fa81b89a294d4acbabb9c123bbecc04f9"
+      },
+      "native_source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "nbf": 768,
+        "naux": 768,
+        "energy": -2438.354141054296,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 768,
+        "metric_min_max": [
+          0.09304817858971055,
+          2399.4330289516
+        ],
+        "seed_checks": {
+          "commutator_max": 1.6087747246129418e-12,
+          "eigen_residual_max": 6.383810147170266e-12,
+          "orthogonality_max": 5.437206240799242e-12,
+          "electron_trace_error": 2.2737367544323206e-13,
+          "metric_idempotency_max": 2.6401103525586223e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+        "input_sha256": "decb7090464088c8cd858036a8afdb0c7f47d3da1f0e65ce2ee4e5d30e8da6d4",
+        "reference_sha256": "34bfeca7c1a31fa72246b4588cfa1901539f76895e537b069ff04e946953e047"
+      },
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "cuda_runtime_version": 12090,
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/nominal-768/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/nominal-768/cuda.jsonl"
+      },
+      "run": "nominal-768",
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 128,
+        "executed_ao_rows": 256,
+        "executed_auxiliary_tile": 5,
+        "executed_raw_auxiliary_tile": 5,
+        "raw_tensor_passes_per_k": 462
+      },
+      "completed_source_work": [],
+      "pending": [
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 0,
+          "parent": -1,
+          "time_ns": 1841932644692818,
+          "elapsed_ms": 7e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "host",
+          "name": "fixed_density_probe"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 5,
+          "parent": 0,
+          "time_ns": 1841933866201915,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "ri_k"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 937,
+          "parent": 5,
+          "time_ns": 1842035572967639,
+          "elapsed_ms": 2e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "transformed_three_center_generation"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 1096,
+          "parent": 937,
+          "time_ns": 1842052976841292,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "raw_three_center_generation"
+        }
+      ],
+      "sampled_process_gpu_peak_mib": 690,
+      "process_host_high_water_bytes": 664117248
+    },
+    {
+      "status": "completed",
+      "slurm_job": "9550",
+      "seconds": 1252.060946147889,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.38015582137527e-12,
+          "electron_trace": 320.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.230141136,
+          "nbf": 768,
+          "naux": 768,
+          "rank": 160,
+          "value_plan_resident_bytes": 8519708173,
+          "value_plan_peak_bytes": 8549069993,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 207.888517895
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 209.033896008
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 208.402404174
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 207.848292091
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 209.023891118
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 208.398402072
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 1.5987211554602254e-14
+        }
+      ],
+      "independent_checks": {
+        "density": 4.440892098500626e-16,
+        "j": 6.501466032204917e-12,
+        "dense_k": 9.805489753489383e-13,
+        "occupied_k": 9.894307595459395e-13
+      },
+      "source": {
+        "git_head": "bd05c510b9b0d93a3b9b3e04c252ab2f15508ec9",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "851360b13b56f9611b9b358cc3c2bf9fa81b89a294d4acbabb9c123bbecc04f9"
+      },
+      "native_source_identity": "a9d959ed2d6aad6070028acdf7270d8a863d2053d99d8387ed728bbc7a404ca0",
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "nbf": 768,
+        "naux": 768,
+        "energy": -2438.354141054296,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 768,
+        "metric_min_max": [
+          0.09304817858971055,
+          2399.4330289516
+        ],
+        "seed_checks": {
+          "commutator_max": 1.6087747246129418e-12,
+          "eigen_residual_max": 6.383810147170266e-12,
+          "orthogonality_max": 5.437206240799242e-12,
+          "electron_trace_error": 2.2737367544323206e-13,
+          "metric_idempotency_max": 2.6401103525586223e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+        "input_sha256": "decb7090464088c8cd858036a8afdb0c7f47d3da1f0e65ce2ee4e5d30e8da6d4",
+        "reference_sha256": "34bfeca7c1a31fa72246b4588cfa1901539f76895e537b069ff04e946953e047"
+      },
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "cuda_runtime_version": 12090,
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-768-8g/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-streamed/planned-768-8g/cuda.jsonl"
+      },
+      "run": "planned-768-8g",
+      "k_shape": {
+        "planner_ao_pair_tile": 589824,
+        "planner_auxiliary_tile": 437,
+        "executed_ao_rows": 768,
+        "executed_auxiliary_tile": 437,
+        "executed_raw_auxiliary_tile": 437,
+        "raw_tensor_passes_per_k": 2
+      },
+      "completed_source_work": [
+        {
+          "operation": "ri_j",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_j",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "source_evaluations": 905969664,
+          "raw_tensor_passes": 2.0
+        }
+      ],
+      "pending": [],
+      "sampled_process_gpu_peak_mib": 8530,
+      "process_host_high_water_bytes": 687149056,
+      "full_array_identity": {
+        "sha256": "b031cb895ef0bbb356de68da43e09a33a098e786f24bc64b2de470bd7b121c91",
+        "bytes": 18874368,
+        "retention": "Full transient outputs remain local; every component was independently compared. First 24 rows of D/J/dense K/occupied K are retained, with exact input identities and reproduction source."
+      }
+    }
+  ],
+  "validation": {
+    "slurm_job": "9549",
+    "python_gpu": "74 passed, 2 skipped in 123.15s",
+    "native_suites": [
+      "vibeqc_density_fitting_tests",
+      "vibeqc_df_capture_recovery_tests"
+    ],
+    "gpu_log_sha256": "ecd7b390fe2247714e528e27f497e2bd846c8e294accc4e703a36c75631cea19",
+    "host": "25 shape/resource tests and 97 policy/structure tests (overlapping); all pre-commit checks passed"
+  },
+  "archive": {
+    "path": "evidence.zip",
+    "bytes": 1478688,
+    "sha256": "41d6408c261ba42fa3b7e44e81d3a3f74fa343206859705e8f537b4d7b5b35f0",
+    "restoration": "Every member restored and compared byte-for-byte."
+  },
+  "files": [
+    {
+      "path": "input-192/input.json",
+      "bytes": 900,
+      "sha256": "bbd45448e063afbce770164d7fd7a30db018aac105ceabc1ea664dd7f7f38ef1"
+    },
+    {
+      "path": "input-384/input.json",
+      "bytes": 901,
+      "sha256": "b94f52e4e0c0ae9b3893f56edf7707e9050c73b297a4339c06b4dc0f3fb71625"
+    },
+    {
+      "path": "input-768/input.json",
+      "bytes": 957,
+      "sha256": "51ebb1e6e97119823b5e7f8faf02014817018ea63b11411573d7d4e8f0652048"
+    },
+    {
+      "path": "input-96/input.json",
+      "bytes": 892,
+      "sha256": "0400858a9e0ce19c8b3531c009f93845050c6b6c1f32ddd40cfd9a50815ee35a"
+    },
+    {
+      "path": "nominal-192/CMakeCache.txt",
+      "bytes": 37723,
+      "sha256": "36b80d8ee1c12019ac9a187b582bdbd09ed0b66a32b596a2041c8d1389dfa071"
+    },
+    {
+      "path": "nominal-192/cuda.jsonl",
+      "bytes": 60528,
+      "sha256": "1cc763dd90a16026b32fea72a4adbb6574de261a0a662902362ed9d04d5c1ad2"
+    },
+    {
+      "path": "nominal-192/first-24-rows-D-J-K-Kocc.bin",
+      "bytes": 147456,
+      "sha256": "612486b6af4f8a3cd00885e1b33e79132f1ae3e5f1f998e5fef2bb2a9d31c7eb"
+    },
+    {
+      "path": "nominal-192/measured-source.patch",
+      "bytes": 22955,
+      "sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961"
+    },
+    {
+      "path": "nominal-192/native.jsonl",
+      "bytes": 947,
+      "sha256": "37a285d5bc803408d46ba12cd8f830c7f16afec31b58979fe867e9e3dbe67e8b"
+    },
+    {
+      "path": "nominal-192/progress.jsonl",
+      "bytes": 642222,
+      "sha256": "ac013eb00c1fd2c7cc7644c404ec40e0c79bcf1ba34e6e525078e94e488ce12e"
+    },
+    {
+      "path": "nominal-192/result.json",
+      "bytes": 615650,
+      "sha256": "fbe9e92d9837399a47571119afdf23de0c5d9bd208b1c0b677af144a1c0705ee"
+    },
+    {
+      "path": "nominal-192/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nominal-768/CMakeCache.txt",
+      "bytes": 37723,
+      "sha256": "36b80d8ee1c12019ac9a187b582bdbd09ed0b66a32b596a2041c8d1389dfa071"
+    },
+    {
+      "path": "nominal-768/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nominal-768/native.jsonl",
+      "bytes": 510,
+      "sha256": "13d002b63e2191e13ee8795ea269a0b18a29664fab8bbbf91d6fe66c2c383ab8"
+    },
+    {
+      "path": "nominal-768/progress.jsonl",
+      "bytes": 1247174,
+      "sha256": "c34ba99be063173613e83e1dafef672bfae065ac94db65bef6d47621ebc78e44"
+    },
+    {
+      "path": "nominal-768/result.json",
+      "bytes": 1180476,
+      "sha256": "3f198de7084895731f7408d643bfe1d4313b24fcc92f42e9338a8f9cc0a1cd7d"
+    },
+    {
+      "path": "nominal-768/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "planned-192-128m/CMakeCache.txt",
+      "bytes": 37723,
+      "sha256": "36b80d8ee1c12019ac9a187b582bdbd09ed0b66a32b596a2041c8d1389dfa071"
+    },
+    {
+      "path": "planned-192-128m/cuda.jsonl",
+      "bytes": 19630,
+      "sha256": "9964f9a9d4bb94cc45603db8949c9d3665ab4c29a3eff83dc59678dd7a31b7d1"
+    },
+    {
+      "path": "planned-192-128m/first-24-rows-D-J-K-Kocc.bin",
+      "bytes": 147456,
+      "sha256": "ddfe134ddecc657f643a56c48d6e19e06066e5c30ae01f168188ea59845063a1"
+    },
+    {
+      "path": "planned-192-128m/measured-source.patch",
+      "bytes": 22955,
+      "sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961"
+    },
+    {
+      "path": "planned-192-128m/native.jsonl",
+      "bytes": 943,
+      "sha256": "d456318d821692e72d40314c43dc3bdf19cb19e77a6e6d2754aa193e0add9673"
+    },
+    {
+      "path": "planned-192-128m/progress.jsonl",
+      "bytes": 176708,
+      "sha256": "047457cb5513ebc98ec956a80556a11f3f50324b2740b1144d826c94f9ff7d2e"
+    },
+    {
+      "path": "planned-192-128m/result.json",
+      "bytes": 182006,
+      "sha256": "43476b6e83943d8269c7620333642af768f99c4ed40c01c81781655ae4bc34d4"
+    },
+    {
+      "path": "planned-192-128m/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "planned-384-1g/CMakeCache.txt",
+      "bytes": 37723,
+      "sha256": "36b80d8ee1c12019ac9a187b582bdbd09ed0b66a32b596a2041c8d1389dfa071"
+    },
+    {
+      "path": "planned-384-1g/cuda.jsonl",
+      "bytes": 13057,
+      "sha256": "28b6e8823e723beb8e238b3dd6f77bc62147195c203b60f44fedb2f7fe8d0884"
+    },
+    {
+      "path": "planned-384-1g/first-24-rows-D-J-K-Kocc.bin",
+      "bytes": 294912,
+      "sha256": "7ac3bb14bf7c44d6dc61b5ce3c51a83b822cd31f2bd03eaa4f528e6a9fb86f07"
+    },
+    {
+      "path": "planned-384-1g/measured-source.patch",
+      "bytes": 22955,
+      "sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961"
+    },
+    {
+      "path": "planned-384-1g/native.jsonl",
+      "bytes": 960,
+      "sha256": "f03a2364f624e1fd5a4a2d3d06ec49e670a264bb33867fa51590b3aeeb916ed7"
+    },
+    {
+      "path": "planned-384-1g/progress.jsonl",
+      "bytes": 107556,
+      "sha256": "27ca9c6dbcd64a2623d63f21d9f2be914f2e3ed7851672eeb2f9166ac41bc616"
+    },
+    {
+      "path": "planned-384-1g/result.json",
+      "bytes": 151185,
+      "sha256": "2044cbb5e7da1da5fca22c5674c2259274b71bf10c9f30c8191b568d88b95b5d"
+    },
+    {
+      "path": "planned-384-1g/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "planned-768-8g/CMakeCache.txt",
+      "bytes": 37723,
+      "sha256": "36b80d8ee1c12019ac9a187b582bdbd09ed0b66a32b596a2041c8d1389dfa071"
+    },
+    {
+      "path": "planned-768-8g/cuda.jsonl",
+      "bytes": 13091,
+      "sha256": "62567215edd04badcc28f5123f3829a2d907014e4718bb780310197096211421"
+    },
+    {
+      "path": "planned-768-8g/first-24-rows-D-J-K-Kocc.bin",
+      "bytes": 589824,
+      "sha256": "55c45786535bbf73b7deda4f765be26385601a1b16c2fb4ba1a41a49e64261aa"
+    },
+    {
+      "path": "planned-768-8g/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "planned-768-8g/native.jsonl",
+      "bytes": 955,
+      "sha256": "9a54fea5f6555773be496ef0092cd5d23a4c57a49a051ef2ac317d9b91ec9eb5"
+    },
+    {
+      "path": "planned-768-8g/progress.jsonl",
+      "bytes": 107362,
+      "sha256": "04f66be53241565282f592c45081a432a96d54c8496d4e96f88601de48f226ac"
+    },
+    {
+      "path": "planned-768-8g/result.json",
+      "bytes": 581175,
+      "sha256": "1849b2b97a9a6ad827a0989f2a51a449309098a5d9231b7b0517a8d8a24d2fea"
+    },
+    {
+      "path": "planned-768-8g/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reproduction/df_stage_probe.cpp",
+      "bytes": 10931,
+      "sha256": "03bf3d638b5abcc509529595c3b6c02ccd1a361455ca25cc636a204c0a0999c4"
+    },
+    {
+      "path": "reproduction/issue308_stage_probe.py",
+      "bytes": 14513,
+      "sha256": "e19bb6f345b38e5243302d39c1ac06a2df9827bd70148f172e04ef475ddb7306"
+    },
+    {
+      "path": "reproduction/retain.py",
+      "bytes": 6296,
+      "sha256": "f3aeaadf2055753bce7c0efa139ceb037fa585e64f3c291b4e56246e5a121d73"
+    },
+    {
+      "path": "reproduction/run-probes.sh",
+      "bytes": 2095,
+      "sha256": "78e1f7e7f0a860519b781a94cd83b4ac6b426a26f7212da4da5eca03ec9d8103"
+    },
+    {
+      "path": "reproduction/run-validation.sh",
+      "bytes": 852,
+      "sha256": "a2348d9f589d839845ed4adb34929453b7ecc32e2d85d20cc5bd7dca70f77b69"
+    },
+    {
+      "path": "reproduction/shape-plans.json",
+      "bytes": 7853,
+      "sha256": "de38d18ee71914df6c8375e8f75a3e77b60997098e1ec9fa0c52e51b68e34942"
+    },
+    {
+      "path": "reproduction/source-from-dfd062b.patch",
+      "bytes": 22955,
+      "sha256": "3ded8073017fe2e99d9760b32fcc1c125a0eba105eb7dd8045442312b9785961"
+    }
+  ]
+}

@@ -70,6 +70,11 @@
       "reason": "Exact accepted/rejected/timeout phase measurements, source/input identities and complete event journals from 9538/9539. The interrupted journal is the scientific evidence locating incomplete K work; no routine build/test logs or executable products.",
       "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f"
     },
+    "benchmarks/results/issue308-streamed-k/evidence.zip": {
+      "owner": "issue308-streamed-k",
+      "reason": "Exact completed/interrupted work journals, independent component error checks, sampled matrix rows, and reconstruction/input identities from the bounded 192/384/768-AO experiment. Partial evidence remains a timeout, never a passing full K.",
+      "sha256": "41d6408c261ba42fa3b7e44e81d3a3f74fa343206859705e8f537b4d7b5b35f0"
+    },
     "benchmarks/results/local-spaces-182/states.npz": {
       "owner": "local-spaces-182",
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
