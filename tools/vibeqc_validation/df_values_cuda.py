@@ -28,7 +28,7 @@ extern "C" __global__ void fixture_values(const Input* inputs, double* values, s
     value = df::three_center(in.exponents[0], in.centers[0], in.angular[0],
         in.exponents[1], in.centers[1], in.angular[1],
         in.exponents[2], in.centers[2], in.angular[2]);
-  } else { value = nan(""); }
+  } else { value = NAN; }
   values[i] = in.weight * value;
 }
 
