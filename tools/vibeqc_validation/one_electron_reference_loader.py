@@ -9,6 +9,7 @@ import numpy as np
 
 from .one_electron_derivatives import OneElectronDerivativeFixture
 from .one_electron_reference_io import _ARRAY_FIELDS, _SCHEMA_VERSION, _array_hash
+from .schema import file_hash
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_REFERENCE_DIRECTORY = _ROOT / "tests/reference_data/one_electron_derivatives"
@@ -17,7 +18,7 @@ _DEFAULT_REFERENCE_DIRECTORY = _ROOT / "tests/reference_data/one_electron_deriva
 def committed_one_electron_derivative_matrix(
     directory: Path = _DEFAULT_REFERENCE_DIRECTORY,
 ):
-    """Return audited fixtures without importing PySCF/libcint at test time."""
+    """Return audited fixtures without evaluating PySCF/libcint at test time."""
     manifest_path = directory / "manifest.json"
     payload_path = directory / "one_electron_derivatives.npz"
     manifest = json.loads(manifest_path.read_text())
@@ -28,6 +29,22 @@ def committed_one_electron_derivative_matrix(
     rows = manifest.get("fixtures", [])
     if manifest.get("fixture_count") != len(rows):
         raise ValueError("one-electron reference fixture count mismatch")
+
+    provenance = manifest.get("provenance", {})
+    expected_sources = {
+        "generator_sha256": _ROOT
+        / "tools/vibeqc_validation/one_electron_reference_io.py",
+        "derivative_fixture_source_sha256": _ROOT
+        / "tools/vibeqc_validation/one_electron_derivatives.py",
+        "value_fixture_source_sha256": _ROOT
+        / "tools/vibeqc_validation/one_electron_values.py",
+    }
+    for key, source in expected_sources.items():
+        if provenance.get(key) != file_hash(source):
+            raise ValueError(
+                f"one-electron reference provenance is stale for {source.relative_to(_ROOT)}; "
+                "regenerate the committed fixture"
+            )
 
     fixtures = []
     with np.load(payload_path, allow_pickle=False) as payload:
