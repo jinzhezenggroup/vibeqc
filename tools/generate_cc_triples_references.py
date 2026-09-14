@@ -54,17 +54,27 @@ GROUND_TRUTH = {
 
 def _triples_feeds(name):
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
-        eps = data["eps"]; occ = data["occ"]; C = data["C"]; F = data["F"]
-        g = data["g"]; t1 = data["t1"]; t2 = data["t2"]
+        eps = data["eps"]
+        occ = data["occ"]
+        C = data["C"]
+        F = data["F"]
+        g = data["g"]
+        t1 = data["t1"]
+        t2 = data["t2"]
     nocc = int(np.sum(occ > 0))
     nvir = len(eps) - nocc
     fov = (C.T @ F @ C)[:nocc, nocc:]
     return (
-        nocc, nvir,
+        nocc,
+        nvir,
         g[:nocc, nocc:, nocc:, nocc:],
         g[:nocc, nocc:, :nocc, :nocc],
         g[:nocc, nocc:, :nocc, nocc:],
-        fov, t1, t2, eps[:nocc], eps[nocc:],
+        fov,
+        t1,
+        t2,
+        eps[:nocc],
+        eps[nocc:],
     )
 
 
@@ -97,8 +107,14 @@ def _inputs_hash(name):
     nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = _triples_feeds(name)
     return array_hash(
         {
-            "ovvv": ovvv, "ovoo": ovoo, "ovov": ovov, "fov": fov,
-            "t1": t1, "t2": t2, "eps_o": eps_o, "eps_v": eps_v,
+            "ovvv": ovvv,
+            "ovoo": ovoo,
+            "ovov": ovov,
+            "fov": fov,
+            "t1": t1,
+            "t2": t2,
+            "eps_o": eps_o,
+            "eps_v": eps_v,
         }
     )
 
@@ -110,15 +126,15 @@ def generate(output, compare=None):
     if pyscf.__version__ != "2.14.0":
         raise ValueError("(T) references require pinned PySCF 2.14.0")
 
-    manifest = json.loads(
-        (ROOT / "tools/vibeqc_cc/source_manifest.json").read_text()
-    )
+    manifest = json.loads((ROOT / "tools/vibeqc_cc/source_manifest.json").read_text())
     upstream = {record["path"]: record for record in manifest["files"]}
     for path in ("pyscf/cc/ccsd_t_slow.py", "pyscf/cc/ccsd_t.py"):
         # import_module returns the leaf module, whose __file__ is the pinned
         # source; __import__("a.b.c") would return the top-level package "a".
         module = importlib.import_module(
-            "pyscf.cc.ccsd_t_slow" if path.endswith("ccsd_t_slow.py") else "pyscf.cc.ccsd_t"
+            "pyscf.cc.ccsd_t_slow"
+            if path.endswith("ccsd_t_slow.py")
+            else "pyscf.cc.ccsd_t"
         )
         if file_hash(module.__file__) != upstream[path]["sha256"]:
             raise ValueError(f"upstream source hash mismatch: {path}")
@@ -142,6 +158,7 @@ def generate(output, compare=None):
             # with our NumPy transcription.
             from pyscf import cc
             from pyscf.cc import ccsd_t
+
             from tools.generate_validation_references import pyscf_molecule
 
             mol, _, _ = pyscf_molecule(_endpoint_inputs(name))
@@ -199,7 +216,9 @@ def generate(output, compare=None):
         }
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n")
+    output.write_text(
+        json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    )
     print(f"wrote {len(molecules)} (T) references: {result['molecules_hash']}")
     return result
 

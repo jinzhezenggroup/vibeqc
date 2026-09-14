@@ -9,7 +9,6 @@ PySCF-dependent consumer and is expected to be skipped here.
 
 import numpy as np
 import pytest
-
 from vibeqc_compiler.tensor import Program, dot_test, execute, jvp
 
 
@@ -28,6 +27,7 @@ def _random_case(nocc, nvir, seed):
 
 
 # --------------------------- core engine agreement ---------------------------
+
 
 @pytest.mark.parametrize(
     "o,v,seed",
@@ -59,7 +59,7 @@ def test_reference_matches_verbatim_slow_kernel_shapes():
     table, so it must be symmetric under simultaneous (a,b,c) permutation.
     An independent re-implementation here rebuilds the table from the source
     einsum strings and compares it against the module's SLOW_TABLE."""
-    from tools.vibeqc_cc.triples import OP, SLOW_TABLE, VP, _LABELS
+    from tools.vibeqc_cc.triples import _LABELS, OP, SLOW_TABLE, VP
 
     def inv(p):
         out = [0, 0, 0]
@@ -140,7 +140,7 @@ def test_explicit_degenerate_and_double_indices_numerically():
     test additionally nails the specific index patterns the issue calls for
     (a==b, a==c, b==c, a==b==c) by checking the degeneracy table directly.
     """
-    from tools.vibeqc_cc.triples import _degeneracy, _permuted, VP
+    from tools.vibeqc_cc.triples import VP, _degeneracy, _permuted
 
     # All six virtual permutations of (a, b, c) must be reachable through VP
     # and each maps to a distinct triple index ordering.
@@ -155,6 +155,7 @@ def test_explicit_degenerate_and_double_indices_numerically():
 
 # -------------------------- degenerate-limit paths ---------------------------
 
+
 @pytest.mark.parametrize("o,v", [(2, 3), (3, 3)])
 def test_t1_zero_removes_v_and_t2_zero_keeps_w_only(o, v):
     from tools.vibeqc_cc import triples_energy, triples_fullsum
@@ -164,8 +165,12 @@ def test_t1_zero_removes_v_and_t2_zero_keeps_w_only(o, v):
     zero2 = np.zeros_like(t2)
     # With fov == 0 AND t1 == 0, V = ovov*t1 + t2*fov vanishes and only the W
     # (t2-driven) numerator survives.
-    w_only = triples_energy(o, v, ovvv, ovoo, ovov, np.zeros_like(fov), zero1, t2, eps_o, eps_v)
-    w_full = triples_fullsum(o, v, ovvv, ovoo, ovov, np.zeros_like(fov), zero1, t2, eps_o, eps_v)
+    w_only = triples_energy(
+        o, v, ovvv, ovoo, ovov, np.zeros_like(fov), zero1, t2, eps_o, eps_v
+    )
+    w_full = triples_fullsum(
+        o, v, ovvv, ovoo, ovov, np.zeros_like(fov), zero1, t2, eps_o, eps_v
+    )
     assert abs(w_only) > 1e-6  # generic nonzero (T) path with only W
     np.testing.assert_allclose(w_full, w_only, atol=1e-11, rtol=1e-10)
     # With t2 == 0 every W seed vanishes, so the (T) energy -- which is the
@@ -193,6 +198,7 @@ def test_two_electron_triples_are_zero():
 
 # ------------------------------ TensorIR + AD ------------------------------
 
+
 def test_tensorir_program_roundtrip_and_replay():
     from tools.vibeqc_cc import build_triples_program, triples_energy_tensorir
 
@@ -200,8 +206,14 @@ def test_tensorir_program_roundtrip_and_replay():
     arrays = _random_case(o, v, 21)
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
     feeds = {
-        "ovvv": ovvv, "ovoo": ovoo, "ovov": ovov, "fov": fov,
-        "t1": t1, "t2": t2, "eps_o": eps_o, "eps_v": eps_v,
+        "ovvv": ovvv,
+        "ovoo": ovoo,
+        "ovov": ovov,
+        "fov": fov,
+        "t1": t1,
+        "t2": t2,
+        "eps_o": eps_o,
+        "eps_v": eps_v,
     }
     program = build_triples_program(o, v)
     replayed = Program.loads(program.dumps())
@@ -219,8 +231,14 @@ def test_tensorir_program_is_differentiable():
     arrays = _random_case(o, v, 22)
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
     feeds = {
-        "ovvv": ovvv, "ovoo": ovoo, "ovov": ovov, "fov": fov,
-        "t1": t1, "t2": t2, "eps_o": eps_o, "eps_v": eps_v,
+        "ovvv": ovvv,
+        "ovoo": ovoo,
+        "ovov": ovov,
+        "fov": fov,
+        "t1": t1,
+        "t2": t2,
+        "eps_o": eps_o,
+        "eps_v": eps_v,
     }
     program = build_triples_program(o, v)
     rng = np.random.default_rng(23)
@@ -239,10 +257,16 @@ def test_tensorir_program_is_differentiable():
 
     def energy(feeds_map):
         return triples_energy(
-            o, v,
-            feeds_map["ovvv"], feeds_map["ovoo"], feeds_map["ovov"],
-            feeds_map["fov"], feeds_map["t1"], feeds_map["t2"],
-            feeds_map["eps_o"], feeds_map["eps_v"],
+            o,
+            v,
+            feeds_map["ovvv"],
+            feeds_map["ovoo"],
+            feeds_map["ovov"],
+            feeds_map["fov"],
+            feeds_map["t1"],
+            feeds_map["t2"],
+            feeds_map["eps_o"],
+            feeds_map["eps_v"],
         )
 
     finite = (energy(plus) - energy(minus)) / (2 * h)
@@ -251,15 +275,20 @@ def test_tensorir_program_is_differentiable():
 
 # --------------------------- input validation paths --------------------------
 
+
 def test_invalid_inputs_rejected():
     from tools.vibeqc_cc import build_triples_program, triples_energy
 
     arrays = _random_case(2, 2, 31)
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
     with pytest.raises(ValueError):
-        triples_energy(2, 2, ovvv.astype(np.float32), ovoo, ovov, fov, t1, t2, eps_o, eps_v)
+        triples_energy(
+            2, 2, ovvv.astype(np.float32), ovoo, ovov, fov, t1, t2, eps_o, eps_v
+        )
     with pytest.raises(ValueError):
-        triples_energy(2, 2, ovvv, ovoo, ovov, fov, t2, t1, eps_o, eps_v)  # t1/t2 swapped mismatch
+        triples_energy(
+            2, 2, ovvv, ovoo, ovov, fov, t2, t1, eps_o, eps_v
+        )  # t1/t2 swapped mismatch
     with pytest.raises(ValueError):
         build_triples_program(0, 2)
     with pytest.raises(ValueError):
@@ -274,19 +303,49 @@ def test_degenerate_denominators_fail_closed():
     ovvv, ovoo, ovov, fov, t1, t2, _, _ = _random_case(2, 2, 41)
     # occupied energies not strictly below virtual -> nonnegative denominator
     with pytest.raises(ValueError, match="noncanonical"):
-        triples_energy(2, 2, ovvv, ovoo, ovov, fov, t1, t2,
-                       np.array([-0.4, -0.5]), np.array([-0.5, -0.4]))
+        triples_energy(
+            2,
+            2,
+            ovvv,
+            ovoo,
+            ovov,
+            fov,
+            t1,
+            t2,
+            np.array([-0.4, -0.5]),
+            np.array([-0.5, -0.4]),
+        )
     with pytest.raises(ValueError, match="noncanonical"):
-        triples_fullsum(2, 2, ovvv, ovoo, ovov, fov, t1, t2,
-                        np.array([-0.4, -0.5]), np.array([-0.5, -0.4]))
+        triples_fullsum(
+            2,
+            2,
+            ovvv,
+            ovoo,
+            ovov,
+            fov,
+            t1,
+            t2,
+            np.array([-0.4, -0.5]),
+            np.array([-0.5, -0.4]),
+        )
     # canonical but near-zero denominator -> explicit near-degeneracy error:
     # occupied = -1.0 (triple sum -3.0), virtual = -1.0 + 1e-11 (triple sum
     # -3.0 + 3e-11), so every d3 = -3e-11 is negative but |d3| <= threshold.
     arrays = _random_case(3, 3, 43)
     ovvv, ovoo, ovov, fov, t1, t2, _, _ = arrays
     with pytest.raises(ValueError, match="near-zero"):
-        triples_energy(3, 3, ovvv, ovoo, ovov, fov, t1, t2,
-                       np.full(3, -1.0), np.full(3, -1.0 + 1e-11))
+        triples_energy(
+            3,
+            3,
+            ovvv,
+            ovoo,
+            ovov,
+            fov,
+            t1,
+            t2,
+            np.full(3, -1.0),
+            np.full(3, -1.0 + 1e-11),
+        )
 
 
 # -------------------------- hard-coded ground truth --------------------------
@@ -320,11 +379,16 @@ def _endpoint_feeds(name):
     nvir = len(eps) - nocc
     fov = (C.T @ F @ C)[:nocc, nocc:]
     return (
-        nocc, nvir,
+        nocc,
+        nvir,
         g[:nocc, nocc:, nocc:, nocc:],
         g[:nocc, nocc:, :nocc, :nocc],
         g[:nocc, nocc:, :nocc, nocc:],
-        fov, t1, t2, eps[:nocc], eps[nocc:],
+        fov,
+        t1,
+        t2,
+        eps[:nocc],
+        eps[nocc:],
     )
 
 

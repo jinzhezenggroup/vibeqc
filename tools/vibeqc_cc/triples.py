@@ -68,7 +68,6 @@ from fractions import Fraction
 from itertools import permutations
 
 import numpy as np
-
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -94,14 +93,14 @@ from tools.vibeqc_validation.schema import canonical_hash
 
 # W = W1 + W2  (exact rational coefficients, no implicit sign absorption)
 W_TERMS = (
-    (1, "if,kjf->ijk", ("ovvv", "t2")),   # + sum_f ovvv[i,a,b,f] t2[k,j,c,f]
+    (1, "if,kjf->ijk", ("ovvv", "t2")),  # + sum_f ovvv[i,a,b,f] t2[k,j,c,f]
     (-1, "ijm,mk->ijk", ("ovoo", "t2")),  # - sum_m ovoo[i,a,j,m] t2[m,k,b,c]
 )
 
 # V = V1 + V2 ; the r3 argument is W + (1/2) V
 V_TERMS = (
-    (1, "ij,k->ijk", ("ovov", "t1")),     # + ovov[i,a,j,b] t1[k,c]
-    (1, "ij,k->ijk", ("t2", "fov")),      # + t2[i,j,a,b] fov[k,c]
+    (1, "ij,k->ijk", ("ovov", "t1")),  # + ovov[i,a,j,b] t1[k,c]
+    (1, "ij,k->ijk", ("t2", "fov")),  # + t2[i,j,a,b] fov[k,c]
 )
 
 # r3(w) = sum_k coeff[k] * w.transpose(perm[k]); coefficients (4,1,1,-2,-2,-2)
@@ -144,12 +143,54 @@ OP = {
 # permutation z of r3(W+0.5V); each entry is (w-virtual-permutation,
 # occupied-permutation of w).  "ijk" is the identity occupied pairing.
 SLOW_TABLE = {
-    "abc": [("abc", "ijk"), ("acb", "ikj"), ("bac", "jik"), ("bca", "jki"), ("cab", "kij"), ("cba", "kji")],
-    "acb": [("acb", "ijk"), ("abc", "ikj"), ("cab", "jik"), ("cba", "jki"), ("bac", "kij"), ("bca", "kji")],
-    "bac": [("bac", "ijk"), ("bca", "ikj"), ("abc", "jik"), ("acb", "jki"), ("cba", "kij"), ("cab", "kji")],
-    "bca": [("bca", "ijk"), ("bac", "ikj"), ("cba", "jik"), ("cab", "jki"), ("abc", "kij"), ("acb", "kji")],
-    "cab": [("cab", "ijk"), ("cba", "ikj"), ("acb", "jik"), ("abc", "jki"), ("bca", "kij"), ("bac", "kji")],
-    "cba": [("cba", "ijk"), ("cab", "ikj"), ("bca", "jik"), ("bac", "jki"), ("acb", "kij"), ("abc", "kji")],
+    "abc": [
+        ("abc", "ijk"),
+        ("acb", "ikj"),
+        ("bac", "jik"),
+        ("bca", "jki"),
+        ("cab", "kij"),
+        ("cba", "kji"),
+    ],
+    "acb": [
+        ("acb", "ijk"),
+        ("abc", "ikj"),
+        ("cab", "jik"),
+        ("cba", "jki"),
+        ("bac", "kij"),
+        ("bca", "kji"),
+    ],
+    "bac": [
+        ("bac", "ijk"),
+        ("bca", "ikj"),
+        ("abc", "jik"),
+        ("acb", "jki"),
+        ("cba", "kij"),
+        ("cab", "kji"),
+    ],
+    "bca": [
+        ("bca", "ijk"),
+        ("bac", "ikj"),
+        ("cba", "jik"),
+        ("cab", "jki"),
+        ("abc", "kij"),
+        ("acb", "kji"),
+    ],
+    "cab": [
+        ("cab", "ijk"),
+        ("cba", "ikj"),
+        ("acb", "jik"),
+        ("abc", "jki"),
+        ("bca", "kij"),
+        ("bac", "kji"),
+    ],
+    "cba": [
+        ("cba", "ijk"),
+        ("cab", "ikj"),
+        ("bca", "jik"),
+        ("bac", "jki"),
+        ("acb", "kij"),
+        ("abc", "kji"),
+    ],
 }
 
 _LABELS = ("abc", "acb", "bac", "bca", "cab", "cba")
@@ -191,8 +232,14 @@ def r3(w):
 
 def _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v):
     arrays = {
-        "ovvv": ovvv, "ovoo": ovoo, "ovov": ovov, "fov": fov,
-        "t1": t1, "t2": t2, "eps_o": eps_o, "eps_v": eps_v,
+        "ovvv": ovvv,
+        "ovoo": ovoo,
+        "ovov": ovov,
+        "fov": fov,
+        "t1": t1,
+        "t2": t2,
+        "eps_o": eps_o,
+        "eps_v": eps_v,
     }
     for name, value in arrays.items():
         if not isinstance(value, np.ndarray) or value.dtype != np.float64:
@@ -260,8 +307,14 @@ def _check_denominators(eps_o, eps_v, threshold):
     near-degeneracy; both must fail explicitly (issue #150 step 7) rather than
     divide into silence or NaN.
     """
-    if type(threshold) not in (int, float) or not np.isfinite(threshold) or threshold <= 0:
-        raise ValueError("triples denominator_threshold must be a positive finite number")
+    if (
+        type(threshold) not in (int, float)
+        or not np.isfinite(threshold)
+        or threshold <= 0
+    ):
+        raise ValueError(
+            "triples denominator_threshold must be a positive finite number"
+        )
     eijk = eps_o[:, None, None] + eps_o[None, :, None] + eps_o[None, None, :]
     closest = np.inf
     for a in range(len(eps_v)):
@@ -282,7 +335,18 @@ def _check_denominators(eps_o, eps_v, threshold):
 
 
 def triples_energy(
-    nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v, *, denominator_threshold=1e-10
+    nocc,
+    nvir,
+    ovvv,
+    ovoo,
+    ovov,
+    fov,
+    t1,
+    t2,
+    eps_o,
+    eps_v,
+    *,
+    denominator_threshold=1e-10,
 ):
     """Non-iterative closed-shell (T) correction in Hartree (triangle + 6/2).
 
@@ -312,7 +376,18 @@ def triples_energy(
 
 
 def triples_fullsum(
-    nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v, *, denominator_threshold=1e-10
+    nocc,
+    nvir,
+    ovvv,
+    ovoo,
+    ovov,
+    fov,
+    t1,
+    t2,
+    eps_o,
+    eps_v,
+    *,
+    denominator_threshold=1e-10,
 ):
     """Independent full-sum oracle of (T): all ordered (a,b,c), no 6/2, /6.
 
@@ -390,27 +465,29 @@ def _fix(node, *selections):
 
 
 def _w_node(v, a, b, c):
-    ab = _fix(v["vvov"], (0, a), (1, b))   # (i, f)
-    cc = _fix(v["t2T"], (0, c))            # (f, k, j)
+    ab = _fix(v["vvov"], (0, a), (1, b))  # (i, f)
+    cc = _fix(v["t2T"], (0, c))  # (f, k, j)
     w1 = einsum("if,fkj->ijk", ab, cc)
-    a0 = _fix(v["vooo"], (0, a))           # (i, j, m)
-    bc = _fix(v["t2T"], (0, b), (1, c))    # (m, k)
+    a0 = _fix(v["vooo"], (0, a))  # (i, j, m)
+    bc = _fix(v["t2T"], (0, b), (1, c))  # (m, k)
     w2 = einsum("ijm,mk->ijk", a0, bc)
     return add(w1, w2, coefficients=(1, -1))
 
 
 def _v_node(v, a, b, c):
-    ab = _fix(v["vvoo"], (0, a), (1, b))   # (i, j)
-    cc = _fix(v["t1T"], (0, c))            # (k,)
+    ab = _fix(v["vvoo"], (0, a), (1, b))  # (i, j)
+    cc = _fix(v["t1T"], (0, c))  # (k,)
     v1 = einsum("ij,k->ijk", ab, cc)
-    ab2 = _fix(v["t2T"], (0, a), (1, b))   # (i, j)
-    c2 = _fix(v["fvo"], (0, c))            # (k,)
+    ab2 = _fix(v["t2T"], (0, a), (1, b))  # (i, j)
+    c2 = _fix(v["fvo"], (0, c))  # (k,)
     v2 = einsum("ij,k->ijk", ab2, c2)
     return add(v1, v2, coefficients=(1, 1))
 
 
 def _r3_node(w):
-    return add(*(transpose(w, perm) for _, perm in R3), coefficients=tuple(c for c, _ in R3))
+    return add(
+        *(transpose(w, perm) for _, perm in R3), coefficients=tuple(c for c, _ in R3)
+    )
 
 
 def _d3_node(nodes, ijk, a, b, c, fac):
@@ -446,14 +523,26 @@ def build_triples_program(nocc, nvir):
     def V(name):
         return Index(name, vir)
 
-    common = {"role": "parameter", "differentiable": True, "representation": "restricted_spatial"}
+    common = {
+        "role": "parameter",
+        "differentiable": True,
+        "representation": "restricted_spatial",
+    }
     nodes = {
-        "ovvv": input_tensor("ovvv", TensorSpec((O("i0"), V("a0"), V("b0"), V("f0")), **common)),
-        "ovoo": input_tensor("ovoo", TensorSpec((O("i1"), V("a1"), O("j1"), O("m1")), **common)),
-        "ovov": input_tensor("ovov", TensorSpec((O("i2"), V("a2"), O("j2"), V("b2")), **common)),
+        "ovvv": input_tensor(
+            "ovvv", TensorSpec((O("i0"), V("a0"), V("b0"), V("f0")), **common)
+        ),
+        "ovoo": input_tensor(
+            "ovoo", TensorSpec((O("i1"), V("a1"), O("j1"), O("m1")), **common)
+        ),
+        "ovov": input_tensor(
+            "ovov", TensorSpec((O("i2"), V("a2"), O("j2"), V("b2")), **common)
+        ),
         "fov": input_tensor("fov", TensorSpec((O("k3"), V("c3")), **common)),
         "t1": input_tensor("t1", TensorSpec((O("i4"), V("a4")), **common)),
-        "t2": input_tensor("t2", TensorSpec((O("i5"), O("j5"), V("a5"), V("b5")), **common)),
+        "t2": input_tensor(
+            "t2", TensorSpec((O("i5"), O("j5"), V("a5"), V("b5")), **common)
+        ),
         "eps_o": input_tensor("eps_o", TensorSpec((O("i6"),), **common)),
         "eps_v": input_tensor("eps_v", TensorSpec((V("a7"),), **common)),
     }
@@ -465,8 +554,14 @@ def build_triples_program(nocc, nvir):
         for b in range(a + 1):
             for c in range(b + 1):
                 d3 = _d3_node(nodes, ijk, a, b, c, _degeneracy(a, b, c))
-                ws = {lbl: _w_node(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
-                vs = {lbl: _v_node(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
+                ws = {
+                    lbl: _w_node(views, *_permuted((a, b, c), VP[lbl]))
+                    for lbl in _LABELS
+                }
+                vs = {
+                    lbl: _v_node(views, *_permuted((a, b, c), VP[lbl]))
+                    for lbl in _LABELS
+                }
                 halves = Fraction(1, 2)
                 zs = {
                     lbl: divide(
@@ -495,14 +590,31 @@ def build_triples_program(nocc, nvir):
 
 
 def triples_energy_tensorir(
-    nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v, *, denominator_threshold=1e-10
+    nocc,
+    nvir,
+    ovvv,
+    ovoo,
+    ovov,
+    fov,
+    t1,
+    t2,
+    eps_o,
+    eps_v,
+    *,
+    denominator_threshold=1e-10,
 ):
     """Build and execute the TensorIR lowering; returns the E_T scalar."""
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)
     feeds = {
-        "ovvv": ovvv, "ovoo": ovoo, "ovov": ovov, "fov": fov,
-        "t1": t1, "t2": t2, "eps_o": eps_o, "eps_v": eps_v,
+        "ovvv": ovvv,
+        "ovoo": ovoo,
+        "ovov": ovov,
+        "fov": fov,
+        "t1": t1,
+        "t2": t2,
+        "eps_o": eps_o,
+        "eps_v": eps_v,
     }
     result = execute(build_triples_program(nocc, nvir), feeds)
     return float(result.outputs["triples_energy"])

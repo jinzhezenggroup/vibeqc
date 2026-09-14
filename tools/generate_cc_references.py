@@ -32,10 +32,7 @@ def generate(*, full=False):
     # Only the RCCSD upstream files participate in the fixed-amplitude A/B
     # reference identity; the (T) entries are checked by the triples generator.
     rccsd_manifest = {
-        "files": [
-            f for f in manifest["files"]
-            if f["path"].startswith("pyscf/cc/r")
-        ],
+        "files": [f for f in manifest["files"] if f["path"].startswith("pyscf/cc/r")],
         "license": manifest["license"],
         "version": manifest["version"],
     }
