@@ -606,6 +606,8 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     result.energy = electronic_energy(density, data.one_electron.hcore, final_fock) +
                     data.one_electron.nuclear_repulsion;
   }
+  if (options.compute_forces && !cuda_plan)
+    weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
   if (options.export_physical_reference) {
     host_trace::Reason export_reason(host_trace::EigenReason::reference_export);
     host_trace::Region export_trace("reference_export", n);
@@ -621,9 +623,12 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     reference->coefficients = std::move(canonical.vectors);
     reference->orbital_energies = std::move(canonical.values);
     reference->density = density;
+    if (options.compute_forces) reference->weighted_density = weighted;
     reference->energy = result.energy;
     reference->numeric_capacity_bytes = posthf::checked_mul(
-        sizeof(double), posthf::checked_add(posthf::checked_mul(5, posthf::checked_mul(n, n)), n));
+        sizeof(double),
+        posthf::checked_add(
+            posthf::checked_mul(options.compute_forces ? 6 : 5, posthf::checked_mul(n, n)), n));
     validate_physical_reference(*reference);
     result.reference = std::move(reference);
   }
@@ -633,8 +638,6 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   }
 
   host_trace::Region force_trace("force_response", n);
-  if (!cuda_plan)
-    weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
   // The CUDA response is the sole device path; failures propagate before force
   // assembly. The independent CPU calculation below serves CPU callers only.
   const Matrix generated_one_electron = generated_one_electron_hf_gradient(data, density, weighted);
@@ -862,6 +865,18 @@ void validate_physical_reference(PhysicalReference& ref) {
   if (std::max({ref.commutator_residual, ref.canonical_density_drift, ref.eigen_residual,
                 orthogonality, canonical}) > 1e-8)
     throw std::runtime_error("invalid physical RHF reference: residual/canonicality drift");
+  if (!ref.weighted_density.empty()) {
+    if (ref.weighted_density.size() != n * n)
+      throw std::invalid_argument("invalid physical reference weighted-density shape");
+    // This optional diagnostic records the force consumer's W, rather than
+    // deriving a replacement in the probe and mistaking it for the used state.
+    const auto expected =
+        energy_weighted_density(ref.coefficients, ref.orbital_energies, n, ref.nocc);
+    for (std::size_t k = 0; k < expected.size(); ++k)
+      if (!std::isfinite(ref.weighted_density[k]) ||
+          std::abs(ref.weighted_density[k] - expected[k]) > 1e-8)
+        throw std::runtime_error("invalid physical RHF reference weighted density");
+  }
 }
 
 void validate_hf_warm_density(const core::System& source, vibeqc_method method,

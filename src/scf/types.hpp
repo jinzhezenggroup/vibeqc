@@ -76,6 +76,10 @@ struct PhysicalReference {
   std::size_t nbf{};
   std::size_t nocc{};
   std::vector<double> overlap, hcore, fock, coefficients, orbital_energies, density;
+  /** Optional native force diagnostic: the actual occupation-weighted W used
+   * by Pulay response, detached before force assembly. Energy-only/post-HF
+   * exports leave this empty and incur no additional matrix reservation. */
+  std::vector<double> weighted_density;
   double energy{};
   double commutator_residual{};
   double canonical_density_drift{};

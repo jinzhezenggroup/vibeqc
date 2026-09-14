@@ -45,6 +45,11 @@
       "reason": "Exact fixed-D/K arrays, complete same-D and cross-engine matrices, executed factor provenance, source/library identities and retained failed experiments. Every member is hash-verified and byte-restored.",
       "sha256": "e578bc6fa798189ef84b9286c427befefc5cebb1dde5fc44f58ca9c366a57f90"
     },
+    "benchmarks/results/issue308-force-state/evidence.zip": {
+      "owner": "issue308-force-state",
+      "reason": "Complete native 768-AO actual W and all force components, independent checks, stage journals, source/build/input identities, memory samples and reconstruction of the first passing full-force endpoint.",
+      "sha256": "959fbdf95582b0582c7242720f25217f6e03272cb0ac009018b20aa58a54b2ac"
+    },
     "benchmarks/results/issue308-large-diagnostics/reference.zip": {
       "owner": "issue308-large-diagnostics",
       "reason": "Byte-verified compressed independent 96-atom PySCF checkpoint and physical density/overlap/force arrays, with exact input scripts and logs, retained to reproduce strict physical comparisons without repeating the expensive SCF oracle.",

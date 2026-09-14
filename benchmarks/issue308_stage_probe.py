@@ -179,6 +179,8 @@ def run(args: argparse.Namespace) -> None:
     if args.progress:
         env["VIBEQC_DF_PROGRESS_TRACE"] = str(output / "progress.jsonl")
         env["VIBEQC_DF_TRACE"] = str(output / "cuda.jsonl")
+        if args.scf_mode:
+            env["VIBEQC_DF_HOST_TRACE"] = str(output / "host.jsonl")
     env["LD_LIBRARY_PATH"] = str(library.parent) + ":" + env.get("LD_LIBRARY_PATH", "")
     command = [
         str(probe),
@@ -189,7 +191,17 @@ def run(args: argparse.Namespace) -> None:
         str(output / "arrays.bin"),
         args.operation,
     ]
-    if args.value_budget:
+    if args.scf_mode:
+        command = [
+            str(probe),
+            str(fixture / "input.txt"),
+            str(output / "arrays.bin"),
+            args.scf_mode,
+            args.property,
+            str(args.scf_budget),
+            str(args.max_iterations),
+        ]
+    elif args.value_budget:
         command.extend(["0", str(args.value_budget)])
     elif args.retain_b:
         command.append("1")
@@ -215,6 +227,11 @@ def run(args: argparse.Namespace) -> None:
         "memory_samples": [],
         "independent_checks": "not_run",
     }
+    if args.scf_mode:
+        record["scope"] = (
+            f"Instrumented native RHF {args.scf_mode} {args.property} with physical export; "
+            "DF subbudget, not whole-HF global-resource acceptance or GPU4PySCF parity."
+        )
     cache = library.parent / "CMakeCache.txt"
     if cache.exists():
         shutil.copyfile(cache, output / "CMakeCache.txt")
@@ -302,7 +319,25 @@ def run(args: argparse.Namespace) -> None:
         record["progress"] = summarize_progress(
             read_progress(output / "progress.jsonl")
         )
-    if record["returncode"] == 0:
+    if record["returncode"] == 0 and args.scf_mode:
+        from benchmarks.df_scf_state_checks import validate_scf_export
+
+        endpoint = next(r for r in native_rows if r["operation"] == args.scf_mode)
+        try:
+            record["independent_checks"] = validate_scf_export(
+                fixture,
+                output / "arrays.bin",
+                endpoint,
+                forces=args.property == "forces",
+                checkpoint=args.checkpoint,
+                reference_forces=args.reference_forces,
+            )
+            if not record["independent_checks"]["passed"]:
+                record["status"] = "independent_comparison_failed"
+        except (ValueError, AssertionError) as error:
+            record["status"] = "independent_comparison_failed"
+            record["independent_checks"] = {"error": str(error)}
+    elif record["returncode"] == 0:
         n = metadata["nbf"]
         fields = [("density", "density")]
         fields.extend(
@@ -338,6 +373,11 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--library", type=Path)
     parser.add_argument("--probe", type=Path)
+    parser.add_argument("--scf-mode", choices=("cold", "seeded"))
+    parser.add_argument("--property", choices=("energy", "forces"), default="energy")
+    parser.add_argument("--scf-budget", type=int, default=0)
+    parser.add_argument("--max-iterations", type=int, default=100)
+    parser.add_argument("--reference-forces", type=Path)
     parser.add_argument("--auxiliary-tile", type=int, default=0)
     parser.add_argument("--ao-pairs", type=int, default=0)
     parser.add_argument(
@@ -358,6 +398,14 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=240)
     parser.add_argument("--progress", action="store_true")
     args = parser.parse_args()
+    if args.scf_budget < 0 or args.max_iterations < 1:
+        parser.error("SCF budget must be nonnegative and iteration limit positive")
+    if args.scf_mode and (
+        args.value_budget or args.retain_b or args.ao_pairs or args.auxiliary_tile
+    ):
+        parser.error(
+            "SCF probes use --scf-budget instead of explicit J/K plan controls"
+        )
     if args.value_budget < 0 or (
         args.value_budget and (args.ao_pairs or args.auxiliary_tile or args.retain_b)
     ):
