@@ -6,6 +6,14 @@
 #include <cstdint>
 #include <limits>
 
+// The policy remains CUDA-header-free for ordinary host translation units.
+// The standalone NVCC probe includes this policy directly, so let CUDA device
+// compilation pull in the runtime eigensolver surface that owns provider ABI
+// adaptation. Its include guard breaks the intentional policy/runtime cycle.
+#if defined(__CUDACC__)
+#include "scf/cuda/eigensolver.hpp"
+#endif
+
 namespace vibeqc::scf {
 
 /** CUDA 12.9 documented dimension limit for generic XsyevBatched. */
