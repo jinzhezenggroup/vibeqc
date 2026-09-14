@@ -1,6 +1,8 @@
 name: CuMetal CUDA
 
 on:
+  push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -196,11 +198,11 @@ jobs:
           retention-days: 1
 
       - name: Install Python test dependencies
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: uv pip install --python .venv/bin/python --editable '.[test]'
 
       - name: Run full CUDA suite on the Apple GPU
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         timeout-minutes: 50
         env:
           CUMETAL_ROOT: /tmp/cumetal-install
