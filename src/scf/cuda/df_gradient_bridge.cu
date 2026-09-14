@@ -346,10 +346,10 @@ vibeqc_status execute_cuda_df_hf_gradient(
   if (n > index_limit || a > index_limit || atoms > index_limit / 3 || device < 0 ||
       !stream_handle || schedule > 1 || !maximum_bytes || !n || !a || !atoms || n > maximum / n ||
       a > maximum / a || n * n > maximum / a || atoms > maximum / 3 ||
-      atoms != auxiliary.atoms.size() || (source != nullptr) != (device_metric != nullptr) ||
+      atoms != auxiliary.atoms.size() || (source && !device_metric) ||
       (!source && raw_a.size() != n * n * a) ||
-      (device_metric ? (!source || !device_metric->inverse_square_root ||
-                        !device_metric->eigenvectors || !device_metric->eigenvalues)
+      (device_metric ? (!device_metric->inverse_square_root || !device_metric->eigenvectors ||
+                        !device_metric->eigenvalues)
                      : (metric.size() != a * a || inverse.size() != a * a)) ||
       terms.empty() || !std::isfinite(relative_threshold) || relative_threshold <= 0 ||
       relative_threshold >= 1) {
@@ -442,12 +442,25 @@ vibeqc_status execute_cuda_df_hf_gradient(
       check(contract_cuda_df_response_weights(
           n, a, terms, densities, *device_metric, tile, workspace, arena.stream,
           [&](std::size_t p, double* values) {
-            const auto status = generate_cuda_density_fitting_raw_tile(
-                source, source_index, 0, n * n, p, 1, -1, stream_handle, values, detail);
-            if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
-            if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+            if (source) {
+              const auto status = generate_cuda_density_fitting_raw_tile(
+                  source, source_index, 0, n * n, p, 1, -1, stream_handle, values, detail);
+              if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+              if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+              arena.stats.recomputed_value_bytes += n * n * sizeof(double);
+            } else {
+              // raw_a is caller-owned [mu*nu,P], live until the bridge drains
+              // its stream. Gather a column directly into existing device
+              // scratch; no host response matrix or full raw GPU copy is made.
+              runtime::cuda_trace::TraceRegion upload("raw_value_slice_upload", arena.stream);
+              check(cudaMemcpy2DAsync(values, sizeof(double), raw_a.data() + p, a * sizeof(double),
+                                      sizeof(double), n * n, cudaMemcpyHostToDevice, arena.stream));
+              arena.stats.host_to_device_bytes += n * n * sizeof(double);
+              arena.stats.tensor_host_to_device_bytes += n * n * sizeof(double);
+              ++arena.stats.uploads;
+              runtime::cuda_trace::trace_counter("raw_value_upload_bytes", n * n * sizeof(double));
+            }
             ++arena.stats.value_slices;
-            arena.stats.recomputed_value_bytes += n * n * sizeof(double);
           },
           [&](unsigned kind, runtime::StridedRange range, std::size_t count,
               const double* weights) {
@@ -530,6 +543,10 @@ vibeqc_status execute_cuda_df_hf_gradient(
     ++arena.stats.stream_synchronizations;
     arena.completed = true;
     runtime::cuda_trace::trace_counter("host_to_device_bytes", arena.stats.host_to_device_bytes);
+    runtime::cuda_trace::trace_counter("tensor_host_to_device_bytes",
+                                       arena.stats.tensor_host_to_device_bytes);
+    runtime::cuda_trace::trace_counter("response_host_to_device_bytes",
+                                       arena.stats.response_host_to_device_bytes);
     runtime::cuda_trace::trace_counter("device_to_host_bytes", arena.stats.device_to_host_bytes);
     runtime::cuda_trace::trace_counter("stream_synchronizations",
                                        arena.stats.stream_synchronizations);

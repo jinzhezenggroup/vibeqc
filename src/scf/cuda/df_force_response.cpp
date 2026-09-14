@@ -17,8 +17,8 @@
 namespace vibeqc::scf {
 using namespace cuda_df;
 
-// Source response borrows forward device factors and bounded bridge scratch.
-// Explicit host-value plans retain their existing CPU metric compatibility path.
+// Both value providers borrow forward device factors and bounded bridge
+// scratch. The explicit host adapter remains available for diagnostic ablation.
 vibeqc_status execute_cuda_density_fitting_generated_force_response(
     CudaDensityFittingJkPlan* plan, std::size_t system, const core::System& orbital,
     const core::System& auxiliary, std::span<const double> raw_a,
@@ -32,7 +32,9 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   const auto elements = plan->naux * plan->naux, offset = system * elements;
-  if (plan->integral_source) {
+  const char* host_policy = std::getenv("VIBEQC_DF_HOST_RESPONSE_WEIGHTS");
+  const bool host_weights = host_policy && host_policy[0] == '1' && host_policy[1] == '\0';
+  if (plan->integral_source || !host_weights) {
     if (!plan->metric_response_valid[system]) {
       detail = "DF metric rank crossing: retained/discarded subspaces are unresolved";
       return VIBEQC_STATUS_NUMERICAL_FAILURE;
@@ -42,7 +44,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
         plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold};
     return execute_cuda_df_hf_gradient(
         plan->device_id, reinterpret_cast<void*>(plan->stream), plan->integral_source, system,
-        orbital, auxiliary, {}, {}, {}, terms, plan->metric_relative_threshold, schedule,
+        orbital, auxiliary, raw_a, {}, {}, terms, plan->metric_relative_threshold, schedule,
         maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric);
   }
   // Copies isolate one system's spectral reverse map from the packed batch.

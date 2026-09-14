@@ -203,6 +203,25 @@ This policy applies to both RHF and UHF and adds no fixed AO dimension limit.
 Unrelated runtime errors and allocation failures remain failures. SCF
 convergence and strict final-state checks are unchanged.
 
+### Device force-response weights
+
+CUDA value plans retain their original device metric eigenvectors, eigenvalues,
+and inverse square root for analytic force response. Both generated-source and
+retained-host-value plans use the existing device response contraction, including
+the retained/discarded-subspace metric response. A retained-value plan uploads
+bounded raw auxiliary slices directly into response scratch. It does not allocate
+a full raw device tensor or host response matrices; final forces are downloaded
+after the owning stream completes. Metric rank crossings still fail explicitly.
+
+`VIBEQC_DF_HOST_RESPONSE_WEIGHTS=1` selects the former host weight adapter for
+retained-host-value plans as a diagnostic ablation. Generated-source plans always
+use device weights. Both choices fit the same conservative global reservation;
+the existing global qualification remains at most 16 orbital and 128 auxiliary
+AOs. `VIBEQC_DF_TRACE` distinguishes raw tensor uploads from response-weight
+uploads with `tensor_host_to_device_bytes` and `response_host_to_device_bytes`.
+Transfer, regeneration, derivative contraction and synchronization costs remain
+part of the complete force endpoint.
+
 ### Compact DIIS and numerical recovery
 
 Production CUDA DF SCF honors the requested DIIS history inside the compact

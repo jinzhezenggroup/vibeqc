@@ -285,29 +285,31 @@ def cuda_df_candidates(
             final_snapshot_device = b * (16 * (n * n + n) + 24)
             persistent_device += final_snapshot_device
             persistent_device += row["diis_device_bytes"]
+            # All value plans retain the original device metric eigensystem
+            # and inverse root for force response, transferred out of setup.
+            persistent_device += 2 * metric + 8 * b * aux
             persistent_device += (
                 (
                     tensor + 3 * tile_bytes
                     if tile.stores_full_three_center
                     else 4 * tile_bytes
                 )
-                + 2 * metric
-                + 8 * b * aux
                 + row["source_bytes"]
                 if source
                 else tensor + 3 * tile_bytes
             )
-            setup = (
-                (2 * metric + 8 * b * aux if source else 3 * metric + 16 * b * aux)
-                + solver
-                + 4 * b
-            )
+            setup = metric + 8 * b * aux + solver + 4 * b
             # The promoted force consumer streams bounded weights. It owns no
             # raw coordinate derivative tensors or coordinate-wise CUDA scratch.
+            # Retained values admit both the device path and explicit host
+            # diagnostic ablation under one conservative resource reservation.
             force = (
                 min(row["response_capacity"], sub_budget // 2)
                 if source
-                else row["resident_response_capacity"]
+                else max(
+                    row["resident_response_capacity"],
+                    min(row["response_capacity"], 128 << 20),
+                )
             )
             generation = row["source_bytes"] + 8 * b * (
                 (1 if generated_one_electron else d + 1) * 2 * c * c

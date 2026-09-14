@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10838,
+  "all_handwritten_scientific_lines": 10852,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -598,20 +598,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 30357,
+      "bytes": 31522,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 540
+        "scientific": 554
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 557,
+      "physical_lines": 574,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response; conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned.",
       "regions": [],
       "role": "scientific",
-      "sha256": "2432a7ef383c3a76f7bfa275941816e8a8e157098e47c87fd2bda90eb2f2109e",
+      "sha256": "b78d59808ee48bb00f149c3844183ace56e8362be9e9c20c1489725abca0f0ef",
       "subsystem": "df_derivatives"
     },
     {
@@ -693,7 +693,7 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 3611,
+      "bytes": 3612,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -706,7 +706,7 @@
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "84a5fbaa6d495f4ccc910b97d8b72ec39cf829bb14f400922d444efc685b6092",
+      "sha256": "ace8aa09566e0f00e88139a6c54ecb60c347f3710a8c7116152e2c4569363fe1",
       "subsystem": "scf_tensor"
     },
     {
@@ -3303,7 +3303,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 9169,
-    "scientific": 10682
+    "scientific": 10696
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3470,7 +3470,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 87,
-      "scientific": 775
+      "scientific": 789
     },
     "df_values": {
       "fallback": 0,

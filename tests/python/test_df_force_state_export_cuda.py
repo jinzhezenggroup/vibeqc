@@ -51,7 +51,10 @@ def scf_export_probe(tmp_path_factory):
 
 @pytest.mark.parametrize("mode", ("cold", "seeded"))
 @pytest.mark.parametrize("forces", (False, True))
-def test_actual_force_weighted_density(scf_export_probe, mode, forces, tmp_path):
+@pytest.mark.parametrize("budget", (0, 64 << 20))
+def test_actual_force_weighted_density(
+    scf_export_probe, mode, forces, budget, tmp_path
+):
     binary, fixture = scf_export_probe
     arrays = tmp_path / "state.bin"
     completed = subprocess.run(
@@ -61,7 +64,7 @@ def test_actual_force_weighted_density(scf_export_probe, mode, forces, tmp_path)
             str(arrays),
             mode,
             "forces" if forces else "energy",
-            str(64 << 20),
+            str(budget),
             "100",
         ],
         check=True,

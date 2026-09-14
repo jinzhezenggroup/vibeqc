@@ -7,7 +7,7 @@
 namespace vibeqc::scf::cuda_df {
 
 /** Temporary metric-factorization storage; errors release every allocation.
- * Successful source setup transfers the retained factors before this expires.
+ * Successful setup transfers each plan's retained factors before this expires.
  */
 struct SetupBuffers {
   double* metrics{};

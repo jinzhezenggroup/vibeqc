@@ -285,10 +285,6 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     status = allocate_permanent(&candidate->exchange_density_column_major, matrix_bytes,
                                 "allocate CUDA DF exchange density transpose");
   }
-  if (status == VIBEQC_STATUS_SUCCESS && candidate->integral_source != nullptr) {
-    status = allocate_permanent(&candidate->inverse_square_roots, metric_bytes,
-                                "allocate source-backed CUDA DF metric inverse");
-  }
   if (status != VIBEQC_STATUS_SUCCESS) return fail_plan(candidate, status);
 
   SetupBuffers setup;
@@ -395,7 +391,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     scales.assign(batch_size * naux, 0.0);
     solver_info.resize(batch_size);
     diagnostics.resize(batch_size);
-    if (candidate->integral_source) candidate->metric_response_valid.assign(batch_size, 1);
+    candidate->metric_response_valid.assign(batch_size, 1);
   } catch (const std::bad_alloc&) {
     detail = "host allocation for CUDA DF metric diagnostics failed";
     return fail_plan(candidate, VIBEQC_STATUS_OUT_OF_MEMORY);
@@ -439,8 +435,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
         detail = "CUDA DF metric eigensolver returned a non-finite eigenvalue";
         return fail_plan(candidate, VIBEQC_STATUS_CUDA_ERROR);
       }
-      if (candidate->integral_source && std::abs(value - diagnostic.absolute_threshold) <=
-                                            128 * std::numeric_limits<double>::epsilon() * largest)
+      if (std::abs(value - diagnostic.absolute_threshold) <=
+          128 * std::numeric_limits<double>::epsilon() * largest)
         candidate->metric_response_valid[system] = 0;
       if (value <= diagnostic.absolute_threshold) continue;
       scales[offset + item] = 1.0 / std::sqrt(value);
@@ -481,15 +477,6 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     return fail_plan(
         candidate,
         blas_failure(blas_status, "construct CUDA DF metric inverse square root", detail));
-  }
-  if (candidate->integral_source != nullptr) {
-    cuda_error = cudaMemcpyAsync(candidate->inverse_square_roots, setup.inverse_square_roots,
-                                 metric_bytes, cudaMemcpyDeviceToDevice, candidate->stream);
-    if (cuda_error != cudaSuccess) {
-      return fail_plan(
-          candidate,
-          cuda_failure(cuda_error, "retain source-backed CUDA DF metric inverse", detail));
-    }
   }
   if (metric_progress.enabled()) {
     // The journal needs a completed boundary before raw generation starts.
@@ -556,14 +543,12 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   const std::size_t persistent_device_bytes =
       6 * matrix_bytes + auxiliary_bytes + (candidate->streamed ? 0 : tensor_bytes) +
       3 * tile_bytes + matrix_bytes + (candidate->streamed ? tile_bytes : 0) +
-      persistent_scf_bytes +
+      persistent_scf_bytes + 2 * metric_bytes + auxiliary_vector_bytes +
       (candidate->integral_source != nullptr
-           ? 2 * metric_bytes + auxiliary_vector_bytes +
-                 cuda_density_fitting_integral_source_device_bytes(candidate->integral_source)
+           ? cuda_density_fitting_integral_source_device_bytes(candidate->integral_source)
            : 0);
   const std::size_t setup_device_bytes =
-      (candidate->integral_source ? 2 * metric_bytes + auxiliary_vector_bytes
-                                  : 3 * metric_bytes + 2 * auxiliary_vector_bytes) +
+      metric_bytes + auxiliary_vector_bytes +
       (candidate->streamed || candidate->integral_source ? 0 : tensor_bytes) +
       solver_device_workspace_bytes + solver_info_bytes;
   // This record covers the value/SCF plan and its setup. Generated force
@@ -578,11 +563,11 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   const long double host_resident_estimate =
       static_cast<long double>(sizeof(*candidate)) + df_eigen_workspace_allowance(nbf) +
       64.0L * batch_size +  // lazy final-frame occupation/eligibility metadata
+      vector_capacity_bytes(candidate->metric_response_valid) +
 
       (candidate->integral_source
            ? static_cast<long double>(
-                 cuda_density_fitting_integral_source_host_bytes(candidate->integral_source)) +
-                 vector_capacity_bytes(candidate->metric_response_valid)
+                 cuda_density_fitting_integral_source_host_bytes(candidate->integral_source))
        : candidate->streamed
            ? static_cast<long double>(vector_capacity_bytes(candidate->streamed_raw_three_center)) +
                  vector_capacity_bytes(candidate->streamed_inverse_square_roots)
@@ -621,10 +606,12 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   // Keep the metric provider's handles for ordinary AO setup/final solves.
   // SetupBuffers still drops the numeric metric scratch; release() owns the
   // handle/parameter teardown after the retained ordinary workspace is freed.
-  if (candidate->integral_source) {
-    candidate->metric_eigenvectors = std::exchange(setup.metrics, nullptr);
-    candidate->metric_eigenvalues = std::exchange(setup.eigenvalues, nullptr);
-  }
+  // Every value provider reuses this same spectral map for forces. Transfer
+  // the completed setup buffers instead of copying or refactoring the metric;
+  // setup still owns all failure exits before this transaction commits.
+  candidate->inverse_square_roots = std::exchange(setup.inverse_square_roots, nullptr);
+  candidate->metric_eigenvectors = std::exchange(setup.metrics, nullptr);
+  candidate->metric_eigenvalues = std::exchange(setup.eigenvalues, nullptr);
   *plan = candidate;
   return VIBEQC_STATUS_SUCCESS;
 }

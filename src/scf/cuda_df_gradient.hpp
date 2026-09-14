@@ -60,8 +60,9 @@ vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbi
                                             DfGradientResources* resources = nullptr);
 /** HF adapter using the same generic derivative consumer on the plan's stream.
  * Values are borrowed from raw_a when resident, or regenerated from source.
- * A source plus device_metric uses only device tensor/response contractions;
- * the compatibility raw-value adapter reports its bounded host staging.
+ * device_metric selects device response contractions, with source generation
+ * or bounded uploads from raw_a. Without it, the compatibility raw-value
+ * adapter reports its bounded host response staging.
  * No coordinate-indexed A/M derivative tensors are formed or downloaded.
  * maximum_bytes bounds this bridge's numeric host/device scratch separately
  * from the caller's plan; an active resource ledger also enforces total device

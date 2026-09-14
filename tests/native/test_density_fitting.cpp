@@ -1460,6 +1460,34 @@ int main() {
             }
             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
                     "generated DF-HF replay downloaded more than its final gradient");
+            if (response_plan == resident_plan.get()) {
+              const auto width = resources.auxiliary_weight_tile;
+              const auto panels = (integrals.naux + width - 1) / width;
+              const auto expected_slices = (panels + 1) * integrals.naux - width;
+              require(resources.device_response && resources.value_slices == expected_slices &&
+                          resources.tensor_host_to_device_bytes ==
+                              expected_slices * integrals.nbf * integrals.nbf * sizeof(double) &&
+                          resources.tensor_device_to_host_bytes == 0 &&
+                          resources.response_host_to_device_bytes == 0 &&
+                          resources.recomputed_value_bytes == 0 &&
+                          resources.density_host_to_device_bytes ==
+                              terms.size() * rhf_density.size() * sizeof(double),
+                      "retained-value device response lost raw upload/weight accounting");
+              const auto saved = generated_gradient;
+              require(vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
+                          response_plan, 0, orbital, auxiliary, {}, {}, terms, 0, budget, 0,
+                          generated_gradient, generated_detail) == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                          generated_gradient == saved,
+                      "missing retained raw values changed caller output");
+              auto nonfinite = integrals.three_center;
+              nonfinite.front() = std::numeric_limits<double>::quiet_NaN();
+              require(
+                  vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
+                      response_plan, 0, orbital, auxiliary, nonfinite, {}, terms, 0, budget, 0,
+                      generated_gradient, generated_detail) == VIBEQC_STATUS_NUMERICAL_FAILURE &&
+                      generated_gradient == saved,
+                  "nonfinite retained raw values changed caller output");
+            }
             if (response_plan != resident_plan.get()) {
               const auto width = resources.auxiliary_weight_tile;
               const auto panels = (integrals.naux + width - 1) / width;
@@ -1512,27 +1540,40 @@ int main() {
       // Cover tight rows, a five-auxiliary GEMM panel with a partial final tile,
       // full residency, and retained B with one/five-auxiliary contraction
       // scratch against the same independently factored metric and response.
-      for (unsigned storage : {0U, 1U, 2U, 3U, 4U}) {
+      // The final two cases retain host values with resident/streamed B. Their
+      // force response must reuse the same truncated forward eigensystem too.
+      for (unsigned storage : {0U, 1U, 2U, 3U, 4U, 5U, 6U}) {
         vibeqc::scf::CudaDensityFittingIntegralSource* truncated_source = nullptr;
         std::vector<double> metrics;
         std::size_t n = 0, a = 0;
-        require(vibeqc::scf::create_cuda_density_fitting_integral_source(
-                    0, {orbital}, {auxiliary}, &truncated_source, metrics, n, a, source_detail) ==
-                    VIBEQC_STATUS_SUCCESS,
-                source_detail.c_str());
+        if (storage < 5)
+          require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                      0, {orbital}, {auxiliary}, &truncated_source, metrics, n, a, source_detail) ==
+                      VIBEQC_STATUS_SUCCESS,
+                  source_detail.c_str());
         vibeqc::scf::CudaDensityFittingJkPlan* raw_plan = nullptr;
         std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic> diagnostics;
         constexpr double cutoff = 0.1;
-        require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
-                    0, &truncated_source, 1, n, a, metrics, cutoff,
-                    storage == 2                   ? a
-                    : storage == 1 || storage == 4 ? 5
-                    : storage == 3                 ? 1
-                                                   : 3,
-                    storage ? n * n : 3, &raw_plan, diagnostics, source_detail,
-                    storage >= 3) == VIBEQC_STATUS_SUCCESS,
-                source_detail.c_str());
-        require(diagnostics[0].streamed == (storage < 2),
+        if (storage >= 5) {
+          n = integrals.nbf;
+          a = integrals.naux;
+          require(vibeqc::scf::create_cuda_density_fitting_jk_plan_tiled(
+                      0, 1, n, a, integrals.metric, integrals.three_center, cutoff,
+                      storage == 5 ? a : 3, storage == 5 ? n * n : 3, &raw_plan, diagnostics,
+                      source_detail) == VIBEQC_STATUS_SUCCESS,
+                  source_detail.c_str());
+        } else {
+          require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                      0, &truncated_source, 1, n, a, metrics, cutoff,
+                      storage == 2                   ? a
+                      : storage == 1 || storage == 4 ? 5
+                      : storage == 3                 ? 1
+                                                     : 3,
+                      storage ? n * n : 3, &raw_plan, diagnostics, source_detail,
+                      storage >= 3) == VIBEQC_STATUS_SUCCESS,
+                  source_detail.c_str());
+        }
+        require(diagnostics[0].streamed == (storage < 2 || storage == 6),
                 "retained B must not be classified as streamed by its scratch Q");
         CudaPlan truncated_plan(raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
         check_occupied_cuda(truncated_plan.get(), 1, n);
@@ -1569,8 +1610,10 @@ int main() {
                                                    .derivative;
           std::vector<double> actual;
           require(vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
-                      truncated_plan.get(), 0, orbital, auxiliary, {}, {}, terms, 0, 16384, 3,
-                      actual, source_detail) == VIBEQC_STATUS_SUCCESS,
+                      truncated_plan.get(), 0, orbital, auxiliary,
+                      storage >= 5 ? std::span<const double>(integrals.three_center)
+                                   : std::span<const double>{},
+                      {}, terms, 0, 16384, 3, actual, source_detail) == VIBEQC_STATUS_SUCCESS,
                   source_detail.c_str());
           require_matrix_close(actual, expected, 8e-10,
                                "device metric response omitted discarded-subspace motion");

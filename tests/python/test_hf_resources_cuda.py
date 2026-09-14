@@ -152,6 +152,10 @@ def test_cuda_df_common_ledger_preserves_factor_differential(
     # Each 2-AO DIIS owner retains 38 matrices, a 9x9 Gram matrix, nine
     # coefficients and two ring words (1944 bytes), including the retry owner.
     peak = old_peak + 2 * (1049205 + 120 + 1944)
+    # H2 retains two 2x2 metric factors and two eigenvalues (80 bytes) in
+    # both the plan and cold-retry owner. Resident setup releases those same
+    # 80 bytes; source setup instead removes the former 32-byte inverse copy.
+    peak += 2 * 80 - 80 if mode == "resident" else -32
     assert selected.peak_bytes["device"] == peak
     # The source route needs a host cap to force its selection over resident.
     budget = ResourceBudget(host_bytes=selected.peak_bytes["host"], device_bytes=peak)

@@ -59,7 +59,7 @@ struct CudaDensityFittingJkPlan {
   double* exchange_contributions{};
   double* exchange_tile_output{};
   double* exchange_density_column_major{};
-  // The source plan keeps its forward eigensystem for the spectral force
+  // Every value plan keeps its forward eigensystem for the spectral force
   // reverse map. Ownership moves out of setup; no extra setup allocation or
   // host copy of M/M+ is needed, including for rank-deficient metrics.
   double* metric_eigenvectors{};
