@@ -124,3 +124,31 @@ def density_fitting_tile_plan(
     return DensityFittingResourceTile(
         *values[:5], bool(values[5]), budget_bytes, fixed_device_bytes, generated_source
     )
+
+
+def density_fitting_diis_bytes(library, batch, nbf, history):
+    """Query the native RHF/UHF history reservation without a CUDA context."""
+    for value in (batch, nbf, history):
+        checked_bytes(value, "DF DIIS shape")
+    if (
+        not batch
+        or not nbf
+        or max(batch, nbf) > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1
+    ):
+        raise ValueError("DF DIIS dimensions exceed the positive size_t domain")
+    if history > 2 ** (8 * ctypes.sizeof(ctypes.c_uint)) - 1:
+        raise ValueError("DF DIIS history exceeds the native unsigned domain")
+    query = getattr(library, "vibeqc_resource_df_diis_bytes_v1", None)
+    if query is None:
+        raise NotImplementedError("native library has no DF DIIS capacity query")
+    query.argtypes = [
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_uint,
+        ctypes.POINTER(ctypes.c_uint64),
+    ]
+    query.restype = ctypes.c_int
+    output = ctypes.c_uint64()
+    if query(batch, nbf, history, ctypes.byref(output)):
+        raise ValueError("DF DIIS capacity overflows")
+    return checked_bytes(output.value, "DF DIIS capacity")

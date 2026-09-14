@@ -14,6 +14,7 @@
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda_density_fitting_eigen.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
@@ -102,8 +103,15 @@ vibeqc_status setup_device_solver(CudaDensityFittingJkPlan& plan, std::size_t nb
           status == CUSOLVER_STATUS_SUCCESS ? CUSOLVER_STATUS_INTERNAL_ERROR : status,
           "size CUDA DF SCF eigensolver", detail);
     }
-    return allocate_device(reinterpret_cast<void**>(&solver.workspace),
-                           static_cast<std::size_t>(solver.lwork) * sizeof(double),
+    const auto bytes = static_cast<std::size_t>(solver.lwork) * sizeof(double);
+    runtime::df_progress::number("compact_solver_workspace_bytes", bytes);
+    runtime::df_progress::number("compact_solver_workspace_allowance",
+                                 df_scf_workspace_allowance(nbf, batch_size));
+    if (bytes > df_scf_workspace_allowance(nbf, batch_size)) {
+      detail = "CUDA DF SCF eigensolver query exceeds its planned workspace";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    }
+    return allocate_device(reinterpret_cast<void**>(&solver.workspace), bytes,
                            "allocate CUDA DF SCF eigensolver workspace", detail);
   }
   std::size_t device_bytes = 0;
@@ -119,6 +127,13 @@ vibeqc_status setup_device_solver(CudaDensityFittingJkPlan& plan, std::size_t nb
   }
   solver.workspace_bytes = device_bytes;
   solver.host_workspace_bytes = host_bytes;
+  runtime::df_progress::number("compact_solver_workspace_bytes", device_bytes);
+  runtime::df_progress::number("compact_solver_workspace_allowance",
+                               df_scf_workspace_allowance(nbf, batch_size));
+  if (device_bytes > df_scf_workspace_allowance(nbf, batch_size)) {
+    detail = "CUDA DF SCF generic eigensolver query exceeds its planned workspace";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
   vibeqc_status allocation =
       allocate_device(reinterpret_cast<void**>(&solver.workspace), device_bytes,
                       "allocate CUDA DF SCF generic eigensolver workspace", detail);

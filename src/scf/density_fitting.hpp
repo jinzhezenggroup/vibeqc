@@ -248,6 +248,15 @@ class DensityFittingBudgetError : public std::invalid_argument {
                                                                 std::size_t fixed_device_bytes = 0,
                                                                 bool generated_source = false);
 
+/** Additional lazy SCF DIIS capacity, conservatively covering joined-spin UHF.
+ * Add this to fixed_device_bytes before choosing K panels, and to native
+ * plan diagnostics when the SCF owner requests a history. Includes overlap,
+ * residual/packing scratch, histories, Gram solve and per-item ring controls.
+ * Histories below two need no storage; overflow saturates to SIZE_MAX. */
+[[nodiscard]] std::size_t density_fitting_scf_diis_device_bytes(std::size_t batch_size,
+                                                                std::size_t nbf,
+                                                                unsigned history) noexcept;
+
 /** Shape-only capacity of the current bounded DF source's owned uploads.
  * Counts include the combined orbital/auxiliary/dummy basis across the batch;
  * transform_elements counts both public-to-Cartesian transform matrices.

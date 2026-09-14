@@ -946,7 +946,9 @@ int main() {
               "CUDA DF bucket SCF item failed");
       require(bucket_results[0].scf.converged && bucket_results[1].scf.converged,
               "CUDA DF bucket did not converge both systems");
-      bucket_options.density_fitting_memory_budget_bytes = 8U * 1024U * 1024U;
+      // The force value partition includes DIIS and the independent metric,
+      // compact-batch and ordinary eigensolver workspace reservations.
+      bucket_options.density_fitting_memory_budget_bytes = 12U * 1024U * 1024U;
       const auto bounded_bucket_results = vibeqc::scf::run_rhf_density_fitting_cuda_bucket(
           bucket_systems, auxiliary, bucket_options, bucket_initial, 0);
       require(bounded_bucket_results.size() == 2 &&
@@ -972,13 +974,14 @@ int main() {
           const std::vector<vibeqc::scf::initial_guess::OverlapOrthogonalizer*> overlap_views{
               &overlap_owners[0], &overlap_owners[1]};
           std::vector<double> initial_forces;
-          for (std::size_t budget : {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U,
-                                     4U * 1024U * 1024U, 8U * 1024U * 1024U}) {
+          for (std::size_t budget :
+               {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U, 4U * 1024U * 1024U,
+                8U * 1024U * 1024U, 12U * 1024U * 1024U, 16U * 1024U * 1024U}) {
             bucket_options.density_fitting_memory_budget_bytes = budget;
             const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
                                     bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-            if (budget != 0 && budget <= 2U * 1024U * 1024U) {
-              // These budgets cannot fit the fixed ordinary solver allowance
+            if (budget != 0 && budget <= 8U * 1024U * 1024U) {
+              // These budgets cannot fit the solver owners and DIIS
               // together with this sp batch's source/SCF buffers in the
               // existing half-budget value-plan partition.
               // A stale default cache used to bypass that active limit.
@@ -995,7 +998,7 @@ int main() {
             for (const auto& item : prepared_cache) {
               require(item && item->one_electron_gradient_system.has_value() &&
                           item->one_electron_gradient_budget ==
-                              (budget ? budget : 128U * 1024U * 1024U),
+                              (budget ? budget / 2 : 128U * 1024U * 1024U),
                       "generated DF cache retained the previous response budget");
             }
             if (initial_forces.empty()) initial_forces = replay[0].scf.forces;
@@ -1028,7 +1031,7 @@ int main() {
           require(vibeqc::scf::factor_density_fitting_metric(integrals.metric, integrals.naux, 0.05)
                           .effective_rank < integrals.naux,
                   "cache cutoff regression must discard a metric direction");
-          for (std::size_t budget : {0U, 4U * 1024U * 1024U}) {
+          for (std::size_t budget : {0U, 12U * 1024U * 1024U}) {
             bucket_options.density_fitting_memory_budget_bytes = budget;
             for (double cutoff : {1.0e-10, 0.05, 1.0e-10}) {
               bucket_options.density_fitting_relative_threshold = cutoff;

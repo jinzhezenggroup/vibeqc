@@ -142,6 +142,12 @@ std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPl
 }
 void set_cuda_density_fitting_scf_value_budget(CudaDensityFittingJkPlan*, std::size_t) noexcept {}
 
+void set_cuda_density_fitting_scf_diis_history(CudaDensityFittingJkPlan*, unsigned) noexcept {}
+
+unsigned cuda_density_fitting_scf_diis_history(const CudaDensityFittingJkPlan*) noexcept {
+  return 0;
+}
+
 std::size_t cuda_density_fitting_scf_value_budget(const CudaDensityFittingJkPlan*) noexcept {
   return 0;
 }
@@ -232,12 +238,29 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   return unavailable(nullptr, detail);
 }
 
+vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+    CudaDensityFittingJkPlan*, const std::vector<double>&, const std::vector<double>&,
+    const std::vector<double>&, const std::vector<std::int32_t>&, const std::vector<double>&,
+    unsigned, double, double, std::vector<double>&, std::vector<CudaDensityFittingDeviceScfItem>&,
+    std::string& detail, const std::vector<double>&, unsigned) {
+  return unavailable(nullptr, detail);
+}
+
 vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     CudaDensityFittingJkPlan*, const std::vector<double>&, const std::vector<double>&,
     const std::vector<double>&, const std::vector<double>&, const std::vector<std::int32_t>&,
     const std::vector<std::int32_t>&, const std::vector<double>&, unsigned, double, double,
     std::vector<double>&, std::vector<double>&, std::vector<CudaDensityFittingDeviceScfItem>&,
     std::string& detail) {
+  return unavailable(nullptr, detail);
+}
+
+vibeqc_status run_cuda_density_fitting_uhf_device_scf(
+    CudaDensityFittingJkPlan*, const std::vector<double>&, const std::vector<double>&,
+    const std::vector<double>&, const std::vector<double>&, const std::vector<std::int32_t>&,
+    const std::vector<std::int32_t>&, const std::vector<double>&, unsigned, double, double,
+    std::vector<double>&, std::vector<double>&, std::vector<CudaDensityFittingDeviceScfItem>&,
+    std::string& detail, const std::vector<double>&, unsigned) {
   return unavailable(nullptr, detail);
 }
 

@@ -29,6 +29,9 @@ struct CudaDensityFittingJkPlan {
   // HF cache identity: property changes alter the value/response partition.
   // Direct fixed-tile consumers keep the default compatibility value zero.
   std::size_t scf_value_budget_bytes{};
+  // High-level SCF planning includes this history before selecting K panels.
+  // Compatibility fixed-point callers retain zero and allocate no DIIS state.
+  unsigned scf_diis_history{};
   int device_id{-1};
   double metric_relative_threshold{};
   std::size_t batch_size{};

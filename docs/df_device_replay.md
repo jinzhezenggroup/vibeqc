@@ -28,8 +28,12 @@ host-backed A inputs. Its independent host force adapter and explicit weight
 uploads are reported as such. A failed source response never retries through
 that adapter. Geometry changes rebuild the corresponding source and metric;
 fixed-topology batch slots retain their existing ordering and failure isolation.
-The existing SCF numerical recovery may use CPU DIIS/eigensolvers and transfer
-AO density/Fock matrices. Both control routes keep M/A/B tile generation and
+Compact SCF now performs DIIS on device using the shared update kernel and
+one joined-spin history per UHF item. Every solve resets that history; the
+planner charges its persistent storage before selecting K panels. Existing
+numerical recovery uses host DIIS and the prepared ordinary device eigensolver,
+transferring AO density/Fock matrices. An explicit reference-eigen diagnostic
+is recorded separately. Both ordinary routes keep M/A/B tile generation and
 DF contractions on device. Complete HF traces therefore include more traffic
 than the separately captured DF force response.
 

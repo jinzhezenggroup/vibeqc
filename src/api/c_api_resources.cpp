@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <exception>
+#include <limits>
 #include <stdexcept>
 
 #include "dft/scf_diagnostic.hpp"
@@ -208,5 +209,15 @@ int vibeqc_resource_df_source_bytes_v1(std::size_t batch, std::size_t atoms, std
   } catch (const std::overflow_error&) {
     return 1;
   }
+}
+
+/** Shape-only capacity of the shared device DIIS owner; never probes CUDA. */
+int vibeqc_resource_df_diis_bytes_v1(std::size_t batch, std::size_t nbf, unsigned history,
+                                     std::uint64_t* output) {
+  if (!output || !batch || !nbf) return 1;
+  const auto bytes = vibeqc::scf::density_fitting_scf_diis_device_bytes(batch, nbf, history);
+  if (bytes == std::numeric_limits<std::size_t>::max()) return 1;
+  *output = bytes;
+  return 0;
 }
 }

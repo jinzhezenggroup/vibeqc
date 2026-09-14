@@ -11,6 +11,7 @@
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda/df_scf_diis.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
 #include "scf/cuda/df_scf_final_state.hpp"
 #include "scf/cuda/df_scf_kernels.hpp"
@@ -31,6 +32,21 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     double density_tolerance, std::vector<double>& final_alpha_density,
     std::vector<double>& final_beta_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
     std::string& detail) {
+  return run_cuda_density_fitting_uhf_device_scf(
+      plan, hcore, orthogonalizer, initial_alpha_density, initial_beta_density, alpha_occupied,
+      beta_occupied, nuclear_repulsion, max_iterations, energy_tolerance, density_tolerance,
+      final_alpha_density, final_beta_density, results, detail, {}, 0);
+}
+
+vibeqc_status run_cuda_density_fitting_uhf_device_scf(
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
+    const std::vector<double>& orthogonalizer, const std::vector<double>& initial_alpha_density,
+    const std::vector<double>& initial_beta_density,
+    const std::vector<std::int32_t>& alpha_occupied, const std::vector<std::int32_t>& beta_occupied,
+    const std::vector<double>& nuclear_repulsion, unsigned max_iterations, double energy_tolerance,
+    double density_tolerance, std::vector<double>& final_alpha_density,
+    std::vector<double>& final_beta_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
+    std::string& detail, const std::vector<double>& overlap, unsigned diis_history) {
   runtime::df_progress::Scope progress("compact_uhf_scf");
   detail.clear();
   if (plan) {
@@ -65,6 +81,11 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
   }
+  if (diis_history >= 2 && (overlap.size() != expected || !finite_values(overlap))) {
+    detail = "CUDA DF DIIS overlap has invalid dimensions or values";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  runtime::df_progress::number("diis_history", diis_history);
   final_alpha_density.clear();
   final_beta_density.clear();
   results.assign(batch_size, {});
@@ -80,6 +101,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       state != nullptr && state->unrestricted && state->device_id == plan->device_id &&
       state->batch_size == batch_size && state->nbf == plan->nbf && state->expected == expected &&
       state->occupied_exchange == occupied_exchange &&
+      state->diis_history == (diis_history >= 2 ? diis_history : 0) &&
       (!occupied_exchange ||
        (state->factor_alpha_ranks == alpha_occupied && state->factor_beta_ranks == beta_occupied));
   if (!compatible) {
@@ -202,6 +224,11 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
         return status;
       }
     }
+    status = allocate_scf_diis(*plan, *state, diis_history, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      delete state;
+      return status;
+    }
     status = allocate_scf_final_frames(*plan, *state, detail);
     if (status != VIBEQC_STATUS_SUCCESS) {
       delete state;
@@ -234,6 +261,8 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
   int* d_beta_info = state->d_beta_info;
   vibeqc_status status =
       reset_scf_final_frames(*plan, *state, alpha_occupied, beta_occupied, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  status = reset_scf_diis(*plan, *state, overlap, detail);
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   const std::size_t matrix_bytes = expected * sizeof(double);
   cuda_error =
@@ -304,6 +333,8 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
         static_cast<unsigned>(batch_size), 32, 0, plan->stream, batch_size, plan->nbf,
         d_alpha_density, d_beta_density, d_hcore, d_alpha_fock, d_beta_fock, d_nuclear, d_energy);
 
+    iteration_status = apply_scf_diis(*plan, *state, detail);
+    if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
     iteration_status = scf_gemm(*plan, false, batch_size, plan->nbf, d_alpha_fock, d_orthogonalizer,
                                 d_temporary, detail);
     if (iteration_status == VIBEQC_STATUS_SUCCESS) {

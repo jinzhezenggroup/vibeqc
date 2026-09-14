@@ -70,6 +70,20 @@ struct PersistentScfState {
   double energy_tolerance{};
   double density_tolerance{};
 
+  // Optional DIIS uses the existing shared update kernel. Histories are owned
+  // by this solve, reset on every invocation, and charged before tile planning.
+  unsigned diis_history{};
+  double* d_diis_overlap{};
+  double* d_diis_residual{};
+  double* d_diis_temporary{};
+  double* d_diis_fock{};
+  double* d_diis_fock_history{};
+  double* d_diis_residual_history{};
+  double* d_diis_gram{};
+  double* d_diis_coefficients{};
+  std::uint32_t* d_diis_count{};
+  std::uint32_t* d_diis_head{};
+
   // Active-masked full frames are separate from eigensolver/graph scratch.
   // Host eligibility is published only after successful density readback;
   // each new attempted solve clears it, including rejected input requests.

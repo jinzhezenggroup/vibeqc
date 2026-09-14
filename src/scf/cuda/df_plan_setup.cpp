@@ -357,6 +357,10 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     return fail_plan(candidate,
                      solver_failure(solver_status, "size CUDA DF metric eigensolver", detail));
   }
+  if (solver_device_workspace_bytes > df_eigen_workspace_allowance(naux)) {
+    detail = "CUDA DF metric eigensolver query exceeds its planned workspace";
+    return fail_plan(candidate, VIBEQC_STATUS_OUT_OF_MEMORY);
+  }
   if (solver_device_workspace_bytes != 0) {
     status = allocate_setup(&setup.solver_workspace, solver_device_workspace_bytes,
                             "allocate CUDA DF metric solver workspace");
@@ -543,7 +547,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
           (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) + 2.0L * sizeof(std::uint8_t) +
            sizeof(std::uint32_t) +
            (candidate->occupied_scf_reserved ? 2 * sizeof(std::uint32_t) + sizeof(int) : 0)) +
-      solver_device_workspace_bytes + matrix_bytes +  // graph bookkeeping
+      df_scf_workspace_allowance(nbf, batch_size) + matrix_bytes +  // graph bookkeeping
       df_eigen_device_reservation(nbf) + df_final_snapshot_device_reservation(nbf, batch_size);
   const std::size_t persistent_scf_bytes =
       persistent_scf_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())

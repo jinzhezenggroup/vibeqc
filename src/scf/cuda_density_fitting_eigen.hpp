@@ -25,6 +25,16 @@ inline std::size_t df_eigen_workspace_allowance(std::size_t n) {
   return fixed + 16U * n * n * sizeof(double);
 }
 
+/** Compact batched solves own one workspace, independent of the metric solve.
+ * Reserve the provider's fixed floor and matrix storage for every item;
+ * both batched providers check their actual query before allocating. */
+inline std::size_t df_scf_workspace_allowance(std::size_t n, std::size_t batch) {
+  const auto per_item = df_eigen_workspace_allowance(n);
+  if (!batch || batch > std::numeric_limits<std::size_t>::max() / per_item)
+    throw std::overflow_error("DF batched eigensolver workspace size overflows");
+  return batch * per_item;
+}
+
 inline std::size_t df_eigen_device_reservation(std::size_t n) {
   const auto workspace = df_eigen_workspace_allowance(n);
   const long double bytes = static_cast<long double>(workspace) +

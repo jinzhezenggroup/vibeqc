@@ -149,7 +149,9 @@ def test_cuda_df_common_ledger_preserves_factor_differential(
     # plus 120 bytes for both spin C/epsilon and generation/info snapshots.
     # The independently reserved cold retry owns both allowances again.
     # The occupied-factor differential keeps its pre-provider value below.
-    peak = old_peak + 2 * (1049205 + 120)
+    # Each 2-AO DIIS owner retains 38 matrices, a 9x9 Gram matrix, nine
+    # coefficients and two ring words (1944 bytes), including the retry owner.
+    peak = old_peak + 2 * (1049205 + 120 + 1944)
     assert selected.peak_bytes["device"] == peak
     # The source route needs a host cap to force its selection over resident.
     budget = ResourceBudget(host_bytes=selected.peak_bytes["host"], device_bytes=peak)

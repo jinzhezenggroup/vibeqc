@@ -10,14 +10,18 @@ from vibeqc.resources_df import density_fitting_tile_plan
 def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     monkeypatch, generated, full_bytes, dense_policy
 ):
-    """Ordinary eigen retention shifts dense/occupied boundaries equally.
+    """All solver owners shift dense/occupied boundaries equally.
 
     The original 8-AO dense bounds were 45394/41298 bytes. This slice adds
     a serialized 3-matrix AO frame and admitted provider workspace (1058373
     bytes) and both spin final frames (1176 bytes), while the occupied-factor
-    differential remains unchanged.
+    differential remains unchanged. Metric and compact solvers now also have
+    checked, separate workspace allowances, including their fixed floors.
     """
     library = Calculator()._library
+    solver_reserve = 2 * (1 << 20) + 16 * 8 * 8 * 8
+    full_bytes += solver_reserve
+    minimum_bytes = 1084719 + solver_reserve
     if dense_policy is None:
         monkeypatch.delenv("VIBEQC_DF_EXCHANGE", raising=False)
     else:
@@ -38,9 +42,9 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     dense = query(full_bytes)
     assert dense.stores_full_three_center
     assert dense.peak_workspace_bytes == full_bytes
-    assert query(1084719).peak_workspace_bytes == 1084719
+    assert query(minimum_bytes).peak_workspace_bytes == minimum_bytes
     with pytest.raises(ValueError, match="cannot hold the metric"):
-        query(1084718)
+        query(minimum_bytes - 1)
 
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
     # Two full 8x8 factors, two generation words and an error word per item.
@@ -55,8 +59,10 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
         assert not constrained.stores_full_three_center
     assert query(full_bytes + reserve).stores_full_three_center
     with pytest.raises(ValueError, match="cannot hold the metric"):
-        query(1084719)
-    assert query(1084719 + reserve).peak_workspace_bytes == 1084719 + reserve
+        query(minimum_bytes)
+    assert (
+        query(minimum_bytes + reserve).peak_workspace_bytes == minimum_bytes + reserve
+    )
 
 
 def test_df_shape_query_composes_fixed_reservation_and_native_tile_shrinking():
@@ -165,3 +171,39 @@ def test_overlap_storage_is_reserved_in_every_cuda_df_candidate():
             expected = 8 * row["batch"] * (2 * row["nbf"] ** 2 + row["coordinates"])
             assert row["overlap_cache_host_bytes"] == expected
             assert row["resident_host_bytes"] >= expected
+
+
+def test_diis_reservation_precedes_retained_panel_selection():
+    """History growth must consume capacity before a retained-B plan picks Q."""
+    from vibeqc.resources_df import (
+        density_fitting_diis_bytes,
+        density_fitting_tile_plan,
+    )
+
+    library = Calculator()._library
+    assert density_fitting_diis_bytes(library, 4, 768, 0) == 0
+    assert density_fitting_diis_bytes(library, 4, 768, 1) == 0
+    plans = []
+    for history in (2, 8, 12):
+        fixed = density_fitting_diis_bytes(library, 1, 768, history) + (1 << 20)
+        plan = density_fitting_tile_plan(
+            library,
+            1,
+            768,
+            768,
+            160,
+            budget_bytes=4 << 30,
+            fixed_device_bytes=fixed,
+            generated_source=True,
+        )
+        assert plan.peak_workspace_bytes <= 4 << 30
+        plans.append(plan)
+    assert plans[0].stores_full_three_center and plans[1].stores_full_three_center
+    assert plans[0].auxiliary_tile > plans[1].auxiliary_tile
+    # The largest history crosses the full-B boundary at this allowance;
+    # retained-Q monotonicity does not apply after switching to regeneration.
+    assert not plans[2].stores_full_three_center
+    # Keep the dimension inside the Python ABI range so native multiplication
+    # overflow, rather than argument-range validation, rejects the request.
+    with pytest.raises(ValueError, match="overflow"):
+        density_fitting_diis_bytes(library, 1, 1 << 32, 8)

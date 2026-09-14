@@ -416,11 +416,14 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
       retain_three_center || (auxiliary_tile == naux && ao_pair_tile == nbf * nbf);
   const long double setup_doubles =
       static_cast<long double>(batch_size) * (3.0L * naux * naux + 2.0L * naux);
-  // cuSOLVER's Xsyevd metric factorization uses a device workspace whose
-  // exact size depends on the CUDA toolkit and eigensolver implementation.
-  // Reserve a conservative quadratic upper bound here; the runtime records
-  // the exact queried size in `solver_device_workspace_bytes` diagnostics.
-  const long double solver_workspace_doubles = 16.0L * static_cast<long double>(naux) * naux;
+  // Metric setup and compact SCF use different solvers and dimensions. Both
+  // have a fixed workspace floor; a quadratic-only metric estimate can admit
+  // a tile that leaves no room for the actual small-system provider query.
+  // Charge both owners conservatively, matching the native diagnostic, and
+  // reject provider queries that exceed these shape-only allowances.
+  const long double solver_workspace_bytes =
+      static_cast<long double>(df_eigen_workspace_allowance(naux)) +
+      df_scf_workspace_allowance(nbf, batch_size);
   const long double contraction_doubles =
       7.0L * matrix_elements + static_cast<long double>(batch_size) * naux + 3.0L * tile_elements +
       (resident ? 0.0L : tile_elements) +
@@ -444,9 +447,8 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
       static_cast<long double>(fixed_device_bytes) + control_bytes +
       static_cast<long double>(df_eigen_device_reservation(nbf)) +
       static_cast<long double>(df_final_snapshot_device_reservation(nbf, batch_size)) +
-      static_cast<long double>(metric_bytes) * batch_size +
-      (setup_doubles + solver_workspace_doubles + contraction_doubles + one_electron_doubles) *
-          sizeof(double);
+      static_cast<long double>(metric_bytes) * batch_size + solver_workspace_bytes +
+      (setup_doubles + contraction_doubles + one_electron_doubles) * sizeof(double);
   if (bytes > static_cast<long double>(std::numeric_limits<std::size_t>::max())) {
     return std::numeric_limits<std::size_t>::max();
   }
@@ -991,6 +993,19 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   plan.stores_full_three_center = plan.batch_tile == batch_size &&
                                   plan.ao_pair_tile == ao_pair_count && plan.auxiliary_tile == naux;
   return plan;
+}
+
+std::size_t density_fitting_scf_diis_device_bytes(std::size_t batch, std::size_t nbf,
+                                                  unsigned history) noexcept {
+  if (history < 2) return 0;
+  const long double dimension = static_cast<long double>(history) + 1;
+  const long double matrices = (4.0L * history + 6) * static_cast<long double>(nbf) * nbf;
+  const long double bytes =
+      static_cast<long double>(batch) *
+      ((matrices + dimension * dimension + dimension) * sizeof(double) + 2 * sizeof(std::uint32_t));
+  return bytes >= static_cast<long double>(std::numeric_limits<std::size_t>::max())
+             ? std::numeric_limits<std::size_t>::max()
+             : static_cast<std::size_t>(bytes);
 }
 
 std::size_t density_fitting_source_metadata_bytes(std::size_t batch, std::size_t atoms,

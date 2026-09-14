@@ -203,7 +203,32 @@ This policy applies to both RHF and UHF and adds no fixed AO dimension limit.
 Unrelated runtime errors and allocation failures remain failures. SCF
 convergence and strict final-state checks are unchanged.
 
-### Host DIIS retry eigensolves
+### Compact DIIS and numerical recovery
+
+Production CUDA DF SCF honors the requested DIIS history inside the compact
+device iteration. It builds the physical `FDS-SDF` residual with cuBLAS and
+reuses the existing normalized device DIIS kernel; UHF joins both spin
+residuals under one coefficient vector per item. Energy is evaluated before
+extrapolation, and strict final selection still validates the physical Fock at
+the returned density. DIIS proposals are not accepted as physical final frames
+without those checks.
+
+Overlap, history matrices, residual/packing scratch, the small Gram solve and
+ring controls belong to the prepared SCF owner. History resets on every solve;
+inactive items retain their state within a solve. History changes invalidate
+the plan's memory choice, and the native and global planners reserve the same
+capacity before choosing retained/streamed K panels. Requested iteration limits
+and failure statuses remain authoritative. The old internal overload/ABI keeps
+its fixed-point behavior. `VIBEQC_DF_DISABLE_DEVICE_DIIS=1` restores that compact
+behavior for diagnostics while preserving the same declared memory reservation.
+
+Metric setup and compact batched eigensolves also have separate checked
+workspace allowances, including their fixed provider floors. Their actual
+queries must fit those allowances before allocation. Small DF budgets that
+cannot hold these owners and DIIS fail explicitly; a value/SCF plan cannot
+borrow the response half of a force budget. Diagnostic peak estimates include
+both setup and lazy SCF reservations conservatively, even when their lifetimes
+do not overlap. Whole-process acceptance remains owned by the global ledger.
 
 When the compact device iteration needs the existing host DIIS retry, CUDA
 DF keeps using the prepared ordinary device eigensolver. This applies to

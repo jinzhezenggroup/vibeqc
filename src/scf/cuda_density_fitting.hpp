@@ -309,14 +309,22 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk_device(
     double* coulomb, double* alpha_exchange, double* beta_exchange, std::string& detail,
     JkTermSelection terms = {}, FockMatrixLayout density_layout = FockMatrixLayout::ColumnMajor);
 
+/** Mark the DIIS capacity already included in the high-level value allowance.
+ * Set only after reserving density_fitting_scf_diis_device_bytes; no allocation
+ * is performed here. Cache reuse must match this request as well as its budget. */
+void set_cuda_density_fitting_scf_diis_history(CudaDensityFittingJkPlan* plan,
+                                               unsigned history) noexcept;
+[[nodiscard]] unsigned cuda_density_fitting_scf_diis_history(
+    const CudaDensityFittingJkPlan* plan) noexcept;
+
 /**
  * Run batched RHF DF SCF with densities, Fock assembly, eigensolves, and
  * convergence reductions resident on the selected CUDA device.  The host
  * supplies immutable one-electron matrices and an initial density once; only
  * the final density and compact scalar records are copied back.
- * The compact device loop uses direct fixed-point updates; callers may fall
- * back to the DIIS reference path when a provider does not converge within
- * the requested iteration budget.
+ * This compatibility overload retains direct fixed-point updates. Production
+ * orchestration uses the DIIS-enabled overload below; numerical recovery uses
+ * the existing host DIIS loop with its qualified ordinary eigen provider.
  */
 vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
@@ -325,6 +333,17 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     unsigned max_iterations, double energy_tolerance, double density_tolerance,
     std::vector<double>& final_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
     std::string& detail);
+
+/** DIIS-enabled overload with a physical overlap and explicitly planned history.
+ * Preserves the compatibility overload/ABI, requested iteration limits, and
+ * final-state validation. UHF uses one joined-spin history. */
+vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
+    const std::vector<double>& orthogonalizer, const std::vector<double>& initial_density,
+    const std::vector<std::int32_t>& occupied, const std::vector<double>& nuclear_repulsion,
+    unsigned max_iterations, double energy_tolerance, double density_tolerance,
+    std::vector<double>& final_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
+    std::string& detail, const std::vector<double>& overlap, unsigned diis_history);
 
 /** UHF counterpart of the device-resident DF SCF loop. */
 vibeqc_status run_cuda_density_fitting_uhf_device_scf(
@@ -336,6 +355,19 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     double density_tolerance, std::vector<double>& final_alpha_density,
     std::vector<double>& final_beta_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
     std::string& detail);
+
+/** DIIS-enabled overload with a physical overlap and explicitly planned history.
+ * Preserves the compatibility overload/ABI, requested iteration limits, and
+ * final-state validation. UHF uses one joined-spin history. */
+vibeqc_status run_cuda_density_fitting_uhf_device_scf(
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
+    const std::vector<double>& orthogonalizer, const std::vector<double>& initial_alpha_density,
+    const std::vector<double>& initial_beta_density,
+    const std::vector<std::int32_t>& alpha_occupied, const std::vector<std::int32_t>& beta_occupied,
+    const std::vector<double>& nuclear_repulsion, unsigned max_iterations, double energy_tolerance,
+    double density_tolerance, std::vector<double>& final_alpha_density,
+    std::vector<double>& final_beta_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
+    std::string& detail, const std::vector<double>& overlap, unsigned diis_history);
 
 void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan* plan) noexcept;
 

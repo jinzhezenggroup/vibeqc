@@ -10,7 +10,11 @@ import os
 from dataclasses import asdict
 
 from .resources import ResourceCandidate, ResourceEstimate, checked_bytes
-from .resources_df import density_fitting_source_bytes, density_fitting_tile_plan
+from .resources_df import (
+    density_fitting_diis_bytes,
+    density_fitting_source_bytes,
+    density_fitting_tile_plan,
+)
 
 
 def cuda_df_candidates(
@@ -77,6 +81,7 @@ def cuda_df_candidates(
             transforms=b * (n * c + aux * ac),
         )
         occupied = max(first["electrons"]["nalpha"], first["electrons"]["nbeta"], 1)
+        diis_bytes = density_fitting_diis_bytes(library, b, n, diis_history)
         default_tile = density_fitting_tile_plan(
             library,
             b,
@@ -84,7 +89,7 @@ def cuda_df_candidates(
             aux,
             occupied,
             budget_bytes=0,
-            fixed_device_bytes=source_bytes,
+            fixed_device_bytes=source_bytes + diis_bytes,
             generated_source=True,
         )
         # Match the native matrix-only one-electron chunk preflight. Direct-ERI
@@ -145,6 +150,7 @@ def cuda_df_candidates(
                 "cartesian_naux": ac,
                 "coordinates": d,
                 "source_bytes": source_bytes,
+                "diis_device_bytes": diis_bytes,
                 "occupied": occupied,
                 "host_metadata": metadata,
                 "preparation_minimum": preparation_metadata
@@ -229,7 +235,8 @@ def cuda_df_candidates(
                 # the full value allowance; this larger live set conservatively
                 # bounds the force plan's half-allowance scratch as well.
                 budget_bytes=sub_budget if source else 0,
-                fixed_device_bytes=row["source_bytes"] if source else 0,
+                fixed_device_bytes=(row["source_bytes"] if source else 0)
+                + row["diis_device_bytes"],
                 generated_source=source,
             )
             force_tile = tile
@@ -241,7 +248,7 @@ def cuda_df_candidates(
                     aux,
                     row["occupied"],
                     budget_bytes=max(1, sub_budget // 2),
-                    fixed_device_bytes=row["source_bytes"],
+                    fixed_device_bytes=row["source_bytes"] + row["diis_device_bytes"],
                     generated_source=True,
                 )
             pairs = (
@@ -277,6 +284,7 @@ def cuda_df_candidates(
             # single-item retry below receives its own complete snapshot share.
             final_snapshot_device = b * (16 * (n * n + n) + 24)
             persistent_device += final_snapshot_device
+            persistent_device += row["diis_device_bytes"]
             persistent_device += (
                 (
                     tensor + 3 * tile_bytes
@@ -322,7 +330,9 @@ def cuda_df_candidates(
                 8
                 * b
                 * (
-                    128 * n * n
+                    # The DIIS-enabled bucket uploads S alongside its H/X/D
+                    # staging. It stays live until compact dispatch returns.
+                    129 * n * n
                     + 4 * (diis_history + 1) * n * n
                     + 4 * (diis_history + 1) ** 2
                 )

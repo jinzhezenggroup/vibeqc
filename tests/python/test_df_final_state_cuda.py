@@ -22,7 +22,7 @@ def calls(rows, name):
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("size", (1, 4))
-@pytest.mark.parametrize("budget", (0, 8 << 20))
+@pytest.mark.parametrize("budget", (0, 16 << 20))
 def test_selection_rebuild_and_force_transitions(
     method, representation, size, budget, monkeypatch, tmp_path
 ):

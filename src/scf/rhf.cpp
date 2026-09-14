@@ -1047,17 +1047,52 @@ using CudaDensityFittingPlanPtr =
 /** Shape queries reject infeasible allowances as invalid arguments; an actual
  * SCF execution must report out-of-memory so a failed budget replan cannot
  * enter the ordinary numerical retry. Malformed shapes retain their status. */
-DensityFittingTilePlan plan_cuda_density_fitting_tiles(std::size_t batch, std::size_t nbf,
-                                                       std::size_t naux, std::size_t occupied,
-                                                       std::size_t budget,
-                                                       std::size_t fixed_device_bytes = 0,
-                                                       bool generated_source = false) {
+DensityFittingTilePlan plan_cuda_density_fitting_tiles(
+    std::size_t batch, std::size_t nbf, std::size_t naux, std::size_t occupied, std::size_t budget,
+    std::size_t fixed_device_bytes = 0, bool generated_source = false, unsigned diis_history = 0) {
+  const auto diis_bytes = density_fitting_scf_diis_device_bytes(batch, nbf, diis_history);
+  if (diis_bytes == std::numeric_limits<std::size_t>::max() ||
+      diis_bytes > std::numeric_limits<std::size_t>::max() - fixed_device_bytes)
+    throw std::bad_alloc();
+  fixed_device_bytes += diis_bytes;
   try {
     return plan_density_fitting_tiles(batch, nbf, naux, occupied, budget, fixed_device_bytes,
                                       generated_source);
   } catch (const DensityFittingBudgetError&) {
     throw std::bad_alloc();
   }
+}
+
+/** Include lazy DIIS in diagnostics before exposing the prepared owner.
+ * The same capacity was charged as fixed storage during tile selection. An
+ * actual value allowance cannot silently borrow its force-response half. */
+void reserve_cuda_df_diis(CudaDensityFittingJkPlan* plan, std::size_t nbf,
+                          const ScfOptions& options,
+                          std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics) {
+  const auto bytes = density_fitting_scf_diis_device_bytes(
+      cuda_density_fitting_jk_plan_batch_size(plan), nbf, options.diis_history);
+  const auto budget =
+      df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces);
+  for (auto& diagnostic : diagnostics) {
+    if (bytes > std::numeric_limits<std::size_t>::max() - diagnostic.peak_device_bytes ||
+        bytes > std::numeric_limits<std::size_t>::max() - diagnostic.device_resident_bytes)
+      throw std::bad_alloc();
+    diagnostic.peak_device_bytes += bytes;
+    diagnostic.device_resident_bytes += bytes;
+    runtime::df_progress::number("diis_reserved_device_bytes", bytes);
+    runtime::df_progress::number("value_plan_peak_device_bytes", diagnostic.peak_device_bytes);
+    runtime::df_progress::number("value_allowance_bytes", budget);
+    if (budget && diagnostic.peak_device_bytes > budget) throw std::bad_alloc();
+  }
+  set_cuda_density_fitting_scf_diis_history(plan, options.diis_history);
+}
+
+/** Diagnostic fixed-point ablation keeps the same planned memory reservation.
+ * It restores the old compact path without changing ordinary host retry DIIS,
+ * requested limits or the final physical-state acceptance contract. */
+unsigned cuda_df_iteration_diis_history(const ScfOptions& options) {
+  const char* value = std::getenv("VIBEQC_DF_DISABLE_DEVICE_DIIS");
+  return value && value[0] == '1' && value[1] == '\0' ? 0 : options.diis_history;
 }
 
 CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
@@ -1075,7 +1110,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
   std::size_t ao_pair_tile = 0;
   if (planning_budget != 0) {
     const DensityFittingTilePlan tile_plan = plan_cuda_density_fitting_tiles(
-        1, data.raw.nbf, data.raw.naux, std::max<std::size_t>(occupied, 1), planning_budget);
+        1, data.raw.nbf, data.raw.naux, std::max<std::size_t>(occupied, 1), planning_budget, 0,
+        false, options.diis_history);
     auxiliary_tile = tile_plan.auxiliary_tile;
     ao_pair_tile = tile_plan.ao_pair_tile;
   }
@@ -1096,7 +1132,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     try {
       source_tile_plan = plan_cuda_density_fitting_tiles(
           1, source_nbf, source_naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source), true);
+          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -1134,6 +1170,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
   // Keep the raw plan owned while copying optional diagnostics; an allocation
   // failure in that copy must still release all CUDA resources.
   CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
+  reserve_cuda_df_diis(owned_plan.get(), data.raw.nbf, options, diagnostics);
   set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
   if (output_diagnostics != nullptr) {
     *output_diagnostics = diagnostics;
@@ -1189,7 +1226,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     try {
       tile_plan = plan_cuda_density_fitting_tiles(
           data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source), true);
+          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -1207,6 +1244,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
       throw std::runtime_error(detail.empty() ? "CUDA DF source plan creation failed" : detail);
     }
     CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
+    reserve_cuda_df_diis(owned_plan.get(), nbf, options, diagnostics);
     set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
     if (output_diagnostics != nullptr) *output_diagnostics = diagnostics;
     return owned_plan;
@@ -1230,8 +1268,9 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   std::size_t auxiliary_tile = 0;
   std::size_t ao_pair_tile = 0;
   if (planning_budget != 0) {
-    const DensityFittingTilePlan tile_plan = plan_cuda_density_fitting_tiles(
-        data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget);
+    const DensityFittingTilePlan tile_plan =
+        plan_cuda_density_fitting_tiles(data.size(), nbf, naux, std::max<std::size_t>(occupied, 1),
+                                        planning_budget, 0, false, options.diis_history);
     auxiliary_tile = tile_plan.auxiliary_tile;
     ao_pair_tile = tile_plan.ao_pair_tile;
   }
@@ -1253,6 +1292,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   // Keep the raw plan owned while copying optional diagnostics; an allocation
   // failure in that copy must still release all CUDA resources.
   CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
+  reserve_cuda_df_diis(owned_plan.get(), nbf, options, diagnostics);
   set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
   if (output_diagnostics != nullptr) {
     *output_diagnostics = diagnostics;
@@ -1579,7 +1619,7 @@ ScfResult run_rhf_density_fitting_cuda_impl(const core::System& system,
   Matrix density =
       prepare_initial_density(system, data.one_electron, orthogonalizer, occupied, initial_density,
                               initial_orbitals, df_initial_orbital_request(), eigen);
-  // Device SCF consumes D/X only; fallback computes its own first Fock frame.
+  // Device SCF consumes D/X/S; fallback computes its own first Fock frame.
   EigenResult orbitals = std::move(initial_orbitals).value_or(EigenResult{});
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
@@ -1601,12 +1641,12 @@ ScfResult run_rhf_density_fitting_cuda_impl(const core::System& system,
           plan.get(), data.one_electron.hcore, orthogonalizer, density,
           {static_cast<std::int32_t>(occupied)}, {data.one_electron.nuclear_repulsion},
           options.max_iterations, options.energy_tolerance, options.density_tolerance,
-          device_final_density, device_records, detail);
+          device_final_density, device_records, detail, data.one_electron.overlap,
+          cuda_df_iteration_diis_history(options));
     });
     runtime::df_progress::number("compact_dispatch_status", device_status);
     // A resource rejection must not trigger an undisclosed host SCF retry.
-    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
-      throw std::bad_alloc();
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
     if (device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == 1 &&
         device_records.front().converged) {
       density = std::move(device_final_density);
@@ -1664,10 +1704,9 @@ ScfResult run_rhf_density_fitting_cuda_impl(const core::System& system,
   }
   retry_trace.finish();
   if (!result.converged) return result;
-  // The final diagonalization is intentionally rebuilt from the same CPU
-  // oracle tensor used for force response. The SCF iterations above exercise
-  // the CUDA DF contractions, while this last step keeps the existing
-  // variational weighted-density convention exact.
+  // A host retry has no published compact eigenframe. Strict finalization
+  // rebuilds the physical F[D] on the prepared provider and validates the
+  // common energy/force state before constructing its weighted density.
   finalize_density_fitting_rhf(data, orthogonalizer, occupied, density, options, result,
                                plan.get());
   return result;
@@ -1718,12 +1757,12 @@ ScfResult run_uhf_density_fitting_cuda_impl(const core::System& system,
           plan.get(), data.one_electron.hcore, orthogonalizer, alpha_density, beta_density,
           {static_cast<std::int32_t>(alpha_occupied)}, {static_cast<std::int32_t>(beta_occupied)},
           {data.one_electron.nuclear_repulsion}, options.max_iterations, options.energy_tolerance,
-          options.density_tolerance, device_final_alpha, device_final_beta, device_records, detail);
+          options.density_tolerance, device_final_alpha, device_final_beta, device_records, detail,
+          data.one_electron.overlap, cuda_df_iteration_diis_history(options));
     });
     runtime::df_progress::number("compact_dispatch_status", device_status);
     // A resource rejection must not trigger an undisclosed host SCF retry.
-    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
-      throw std::bad_alloc();
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
     if (device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == 1 &&
         device_records.front().converged) {
       alpha_density = std::move(device_final_alpha);
@@ -1883,7 +1922,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   if (cached_plan != nullptr && *cached_plan != nullptr &&
       ((prepared_cache != nullptr && !cached_data_complete) ||
        cuda_density_fitting_scf_value_budget(*cached_plan) !=
-           df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces))) {
+           df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces) ||
+       cuda_density_fitting_scf_diis_history(*cached_plan) != options.diis_history)) {
     // Positive-budget fleets deliberately retain no host preparation cache.
     // The device plan must still replan on energy/force allowance changes,
     // before the new preparation starts; a host-cache check alone misses it.
@@ -2108,11 +2148,14 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   {
     const std::size_t matrix_size = nbf * nbf;
     std::vector<double> hcore(data.size() * matrix_size);
+    std::vector<double> overlap(data.size() * matrix_size);
     std::vector<double> orthogonalizer(data.size() * matrix_size);
     std::vector<double> initial_density(data.size() * matrix_size);
     std::vector<double> nuclear(data.size());
     std::vector<std::int32_t> occupied(data.size());
     for (std::size_t slot = 0; slot < data.size(); ++slot) {
+      std::copy(data[slot].one_electron.overlap.begin(), data[slot].one_electron.overlap.end(),
+                overlap.begin() + slot * matrix_size);
       std::copy(data[slot].one_electron.hcore.begin(), data[slot].one_electron.hcore.end(),
                 hcore.begin() + slot * matrix_size);
       std::copy(orthogonalizers[slot].begin(), orthogonalizers[slot].end(),
@@ -2129,9 +2172,9 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
       return run_cuda_density_fitting_rhf_device_scf(
           plan, hcore, orthogonalizer, initial_density, occupied, nuclear, options.max_iterations,
           options.energy_tolerance, options.density_tolerance, device_final_density, device_records,
-          device_detail);
+          device_detail, overlap, cuda_df_iteration_diis_history(options));
     });
-    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger) {
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY) {
       for (const auto source : source_indices) outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
       return outputs;
     }
@@ -2345,7 +2388,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   if (cached_plan != nullptr && *cached_plan != nullptr &&
       ((prepared_cache != nullptr && !cached_data_complete) ||
        cuda_density_fitting_scf_value_budget(*cached_plan) !=
-           df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces))) {
+           df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces) ||
+       cuda_density_fitting_scf_diis_history(*cached_plan) != options.diis_history)) {
     // Positive-budget fleets deliberately retain no host preparation cache.
     // The device plan must still replan on energy/force allowance changes,
     // before the new preparation starts; a host-cache check alone misses it.
@@ -2572,6 +2616,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   {
     const std::size_t matrix_size = nbf * nbf;
     std::vector<double> hcore(data.size() * matrix_size);
+    std::vector<double> overlap(data.size() * matrix_size);
     std::vector<double> orthogonalizer(data.size() * matrix_size);
     std::vector<double> initial_alpha(data.size() * matrix_size);
     std::vector<double> initial_beta(data.size() * matrix_size);
@@ -2579,6 +2624,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     std::vector<std::int32_t> alpha_occupied(data.size());
     std::vector<std::int32_t> beta_occupied(data.size());
     for (std::size_t slot = 0; slot < data.size(); ++slot) {
+      std::copy(data[slot].one_electron.overlap.begin(), data[slot].one_electron.overlap.end(),
+                overlap.begin() + slot * matrix_size);
       std::copy(data[slot].one_electron.hcore.begin(), data[slot].one_electron.hcore.end(),
                 hcore.begin() + slot * matrix_size);
       std::copy(orthogonalizers[slot].begin(), orthogonalizers[slot].end(),
@@ -2600,9 +2647,10 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
       return run_cuda_density_fitting_uhf_device_scf(
           plan, hcore, orthogonalizer, initial_alpha, initial_beta, alpha_occupied, beta_occupied,
           nuclear, options.max_iterations, options.energy_tolerance, options.density_tolerance,
-          device_final_alpha, device_final_beta, device_records, device_detail);
+          device_final_alpha, device_final_beta, device_records, device_detail, overlap,
+          cuda_df_iteration_diis_history(options));
     });
-    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger) {
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY) {
       for (const auto source : source_indices) outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
       return outputs;
     }
