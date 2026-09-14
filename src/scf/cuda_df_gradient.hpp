@@ -63,6 +63,8 @@ vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbi
  * device_metric selects device response contractions, with source generation
  * or bounded uploads from raw_a. Without it, the compatibility raw-value
  * adapter reports its bounded host response staging.
+ * Device response borrows blas_handle from the same plan, already bound to
+ * stream with host scalar pointer mode; no handle or workspace is created here.
  * No coordinate-indexed A/M derivative tensors are formed or downloaded.
  * maximum_bytes bounds this bridge's numeric host/device scratch separately
  * from the caller's plan; an active resource ledger also enforces total device
@@ -75,6 +77,6 @@ vibeqc_status execute_cuda_df_hf_gradient(
     std::span<const DensityFittingDensityResponse> terms, double relative_threshold,
     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
     std::vector<double>& gradient, std::string& detail, DfGradientResources* resources = nullptr,
-    const CudaDfMetricView* device_metric = nullptr);
+    const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr);
 }  // namespace vibeqc::scf
 #endif

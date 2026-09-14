@@ -18,8 +18,9 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("budget", (0, 64 << 20))
+@pytest.mark.parametrize("metric_dot", ("blas", "serial"))
 def test_response_route_and_host_ablation(
-    method, representation, budget, monkeypatch, tmp_path
+    method, representation, budget, metric_dot, monkeypatch, tmp_path
 ):
     """Switch only force-weight placement, including reuse of a warm value plan.
 
@@ -29,6 +30,9 @@ def test_response_route_and_host_ablation(
     from pyscf import gto, scf
 
     assert os.environ.get("SLURM_JOB_ID")
+    monkeypatch.setenv(
+        "VIBEQC_DF_SERIAL_RESPONSE_DOT", "1" if metric_dot == "serial" else "0"
+    )
     atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
     if method == "uhf":
         atoms.pop()
@@ -85,6 +89,10 @@ def test_response_route_and_host_ablation(
             assert bool(uploaded) == (on_device and not budget)
             assert uploaded == counters["tensor_host_to_device_bytes"]
             assert bool(counters["response_host_to_device_bytes"]) != on_device
+            for dot in ("blas", "serial"):
+                assert bool(counters.get(f"response_metric_{dot}_dots", 0)) == (
+                    on_device and metric_dot == dot
+                )
             if step and not budget:
                 progress = summarize_progress(read_progress(progress_path))
                 assert "host:df_plan_setup" not in progress["phases"]
