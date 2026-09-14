@@ -30,14 +30,22 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
   trace_counter("occupied_factor_bytes", plan.nbf * rank * sizeof(double));
   if (!rank) return VIBEQC_STATUS_SUCCESS;
 
-  // Rebalance the same tile capacity as dense generated K. Rank never exceeds
-  // nbf, so both T panels fit buffers previously sized for dense AO products.
+  // Rank never exceeds nbf, so both T panels fit the dense plan's buffers.
+  // Source-backed execution uses exactly the dense raw-work policy; host
+  // compatibility panels retain their existing layout and upload lifetime.
   const auto capacity = plan.row_tile * plan.nbf * plan.auxiliary_tile;
   const bool full_pairs = !plan.streamed || capacity >= plan.matrix_elements;
-  const auto rows = full_pairs ? plan.nbf : plan.row_tile;
-  const auto auxiliary_tile = full_pairs && plan.streamed
-                                  ? std::min(plan.auxiliary_tile, capacity / plan.matrix_elements)
-                                  : plan.auxiliary_tile;
+  auto rows = full_pairs ? plan.nbf : plan.row_tile;
+  auto auxiliary_tile = full_pairs && plan.streamed
+                            ? std::min(plan.auxiliary_tile, capacity / plan.matrix_elements)
+                            : plan.auxiliary_tile;
+  if (plan.streamed && plan.integral_source) {
+    const auto panels = df_streamed_k_panel(plan.nbf, plan.naux, capacity);
+    rows = panels.rows;
+    auxiliary_tile = panels.output_auxiliaries;
+    runtime::df_progress::number("executed_raw_auxiliary_tile", panels.raw_auxiliaries);
+    runtime::df_progress::number("raw_tensor_passes_per_k", panels.row_tiles * panels.output_tiles);
+  }
   runtime::df_progress::number("planner_ao_pair_tile", plan.ao_pair_tile);
   runtime::df_progress::number("planner_auxiliary_tile", plan.auxiliary_tile);
   runtime::df_progress::number("executed_ao_rows", rows);

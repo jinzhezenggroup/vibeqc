@@ -11,6 +11,7 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_streamed_k_policy.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -903,14 +904,36 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
                         fixed_device_bytes, generated_source, occupied_exchange);
   };
   // Full transformed storage is a latency policy only when its entire
-  // contraction/setup/SCF allowance fits. Keep the deterministic zero-budget
-  // compatibility policy and fall back to the same bounded shrink traversal.
+  // contraction/setup/SCF allowance fits. Zero keeps the compatibility policy.
   if (memory_budget_bytes != 0) {
     plan.ao_pair_tile = ao_pair_count;
     plan.auxiliary_tile = naux;
     update_bytes();
     if (plan.peak_workspace_bytes <= memory_budget_bytes) {
       plan.stores_full_three_center = true;
+      return plan;
+    }
+    if (generated_source) {
+      // A streamed source owns four equally sized tile buffers. Everything
+      // else in workspace_bytes is independent of their shape. Spend only the
+      // remaining allowance on whole row/Q units, then minimize actual raw
+      // regeneration instead of falling back to the fixed 8192/128 plateau.
+      const auto minimum = workspace_bytes(nbf, 1, batch_size, nbf, naux, metric_bytes,
+                                           fixed_device_bytes, true, occupied_exchange);
+      if (minimum > memory_budget_bytes || (nbf == 1 && naux == 1))
+        throw DensityFittingBudgetError();
+      std::size_t all_row_auxiliaries = 0;
+      if (!checked_multiply(nbf, naux, all_row_auxiliaries))
+        throw std::overflow_error("DF panel dimensions overflow size_t");
+      const auto row_auxiliaries =
+          std::min(all_row_auxiliaries - 1,
+                   1 + (memory_budget_bytes - minimum) / (4 * sizeof(double) * nbf));
+      const auto panel = df_streamed_k_panel(nbf, naux, row_auxiliaries * nbf);
+      plan.ao_pair_tile = panel.rows * nbf;
+      plan.auxiliary_tile = panel.output_auxiliaries;
+      update_bytes();
+      if (!panel.rows || plan.peak_workspace_bytes > memory_budget_bytes)
+        throw DensityFittingBudgetError();
       return plan;
     }
     plan.ao_pair_tile = std::min<std::size_t>(ao_pair_count, 8192);

@@ -61,6 +61,13 @@ and failure status.
   allowance. Property changes replan cached value storage. Metric diagnostics describe
   the value/J/K plan; the whole-HF resource ledger also charges response storage.
   CUDA HF calls do not retain full derivative tensors between executions.
+  When full generated storage does not fit, positive budgets fund larger panels
+  from the remaining allowance. Dense and occupied K share a row/raw-P/output-Q
+  policy that minimizes raw source evaluations across repeated column visits and
+  Q blocks. Every raw panel feeds all active output auxiliaries through GEMM.
+  Tight capacities still require recomputation; zero keeps the established
+  allocation defaults. The progress journal reports the executed widths and
+  predicted raw tensor passes so this cost remains visible.
 - CUDA DF batch plans retain setup diagnostics for every compatible slot:
   effective rank, metric condition number, solver workspace, selected auxiliary
   tile, and conservative host/device resident and peak byte counts. Native

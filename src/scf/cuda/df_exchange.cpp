@@ -50,19 +50,19 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
   // at most row_tile * nbf rather than auxiliary_tile * nbf^2.
   if (plan.streamed) {
     if (plan.integral_source != nullptr) {
-      // Spend the same four tile buffers on full AO panels when one matrix
-      // fits. Smaller auxiliary panels remove all repeated column generation;
-      // exceptionally tight budgets retain the bounded row traversal below.
+      // Share the source-work policy with occupied K. Rebalancing must account
+      // for raw P regeneration across both row visits and output Q blocks.
       const auto capacity = plan.row_tile * plan.nbf * plan.auxiliary_tile;
-      const bool full_pairs = capacity >= plan.matrix_elements;
-      const auto row_tile = full_pairs ? plan.nbf : plan.row_tile;
-      const auto auxiliary_tile =
-          full_pairs ? std::min(plan.auxiliary_tile, capacity / plan.matrix_elements)
-                     : plan.auxiliary_tile;
+      const auto panels = df_streamed_k_panel(plan.nbf, plan.naux, capacity);
+      const auto row_tile = panels.rows;
+      const auto auxiliary_tile = panels.output_auxiliaries;
       runtime::df_progress::number("planner_ao_pair_tile", plan.ao_pair_tile);
       runtime::df_progress::number("planner_auxiliary_tile", plan.auxiliary_tile);
       runtime::df_progress::number("executed_ao_rows", row_tile);
       runtime::df_progress::number("executed_auxiliary_tile", auxiliary_tile);
+      runtime::df_progress::number("executed_raw_auxiliary_tile", panels.raw_auxiliaries);
+      runtime::df_progress::number("raw_tensor_passes_per_k",
+                                   panels.row_tiles * panels.output_tiles);
       const auto pair_capacity = row_tile * plan.nbf;
       const auto row_tiles = (plan.nbf + row_tile - 1) / row_tile;
       for (std::size_t system = system_begin; system < system_end; ++system) {

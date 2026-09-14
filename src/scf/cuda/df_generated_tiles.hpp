@@ -6,6 +6,7 @@
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
+#include "scf/df_streamed_k_policy.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
@@ -24,10 +25,11 @@ inline vibeqc_status generate_metric_panel(CudaDensityFittingJkPlan& plan, std::
     return VIBEQC_STATUS_INTERNAL_ERROR;
   }
   const auto raw_tile = std::min(plan.naux, capacity / pairs);
-  // A skinny output panel cannot amortize one raw launch per metric block.
-  // Keep the existing fused recurrence/transform for this tight-budget case;
-  // it uses the same output capacity and avoids a cascade of tiny GEMMs.
-  if (auxiliaries <= 4) {
+  // Only fuse when neither buffer can hold two auxiliary directions. Here
+  // both routes evaluate each source integral once for this Q; fusion avoids
+  // naux singleton launches without sacrificing any possible raw-panel reuse.
+  // A short output tail alone must never select repeated fused recurrences.
+  if (auxiliaries == 1 && raw_tile == 1) {
     runtime::cuda_trace::trace_counter("fused_metric_panel_productions", 1);
     // Logical (pair,Q,P) work, not an assertion about instruction count or
     // elapsed-time amplification. Capture counters describe construction only.

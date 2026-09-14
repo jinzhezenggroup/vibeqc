@@ -215,7 +215,15 @@ Neither status asserts numerical convergence. Dispatch statuses and device
 convergence readbacks remain separate observations.
 
 K records planner AO-pair/auxiliary tiles and executed AO rows/output auxiliary
-widths. `fused_source_auxiliary_evaluations` counts logical `(pair,Q,P)` recurrence
+widths. Source-backed K also reports `executed_raw_auxiliary_tile` and
+`raw_tensor_passes_per_k`, the shared dense/occupied policy's full-traversal
+prediction per system. With R row blocks and T output blocks, the current
+row/column schedule generates R*T tensor-equivalent raw values. This is a
+source-work count, not a timing multiplier. Positive-budget plans use the
+available four-buffer allowance before choosing these dimensions. The fused
+route is restricted to Q=1 when raw staging also holds only P=1; other short
+output tails reuse raw P through GEMM.
+`fused_source_auxiliary_evaluations` counts logical `(pair,Q,P)` recurrence
 work, while `raw_panel_source_auxiliary_evaluations` counts `(pair,P)` work for
 the GEMM route. Both describe submitted work within their execution mode;
 capture counts are construction templates, not executed evaluations. A killed
