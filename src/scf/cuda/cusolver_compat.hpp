@@ -15,15 +15,16 @@ inline cusolverStatus_t xsyev_batched_buffer_size_dispatch(
     cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, const void* a,
     std::int64_t lda, cudaDataType data_type_w, const void* w, cudaDataType compute_type,
     std::size_t* device_bytes, std::size_t* host_bytes, std::int64_t batch_size) {
-  constexpr bool official = std::is_invocable_r_v<
-      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
-      cublasFillMode_t, std::int64_t, cudaDataType, const void*, std::int64_t, cudaDataType,
-      const void*, cudaDataType, std::size_t*, std::size_t*, std::int64_t>;
-  constexpr bool strided = std::is_invocable_r_v<
-      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
-      cublasFillMode_t, std::int64_t, cudaDataType, const void*, std::int64_t, std::int64_t,
-      cudaDataType, const void*, std::int64_t, cudaDataType, std::int64_t, std::size_t*,
-      std::size_t*>;
+  constexpr bool official =
+      std::is_invocable_r_v<cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t,
+                            cusolverEigMode_t, cublasFillMode_t, std::int64_t, cudaDataType,
+                            const void*, std::int64_t, cudaDataType, const void*, cudaDataType,
+                            std::size_t*, std::size_t*, std::int64_t>;
+  constexpr bool strided =
+      std::is_invocable_r_v<cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t,
+                            cusolverEigMode_t, cublasFillMode_t, std::int64_t, cudaDataType,
+                            const void*, std::int64_t, std::int64_t, cudaDataType, const void*,
+                            std::int64_t, cudaDataType, std::int64_t, std::size_t*, std::size_t*>;
   static_assert(official || strided, "unsupported cusolverDnXsyevBatched_bufferSize signature");
   if constexpr (official) {
     return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, data_type_w, w,
@@ -43,15 +44,17 @@ inline cusolverStatus_t xsyev_batched_dispatch(
     cudaDataType data_type_w, void* w, cudaDataType compute_type, void* device_workspace,
     std::size_t device_bytes, void* host_workspace, std::size_t host_bytes, int* info,
     std::int64_t batch_size) {
-  constexpr bool official = std::is_invocable_r_v<
-      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
-      cublasFillMode_t, std::int64_t, cudaDataType, void*, std::int64_t, cudaDataType, void*,
-      cudaDataType, void*, std::size_t, void*, std::size_t, int*, std::int64_t>;
-  constexpr bool strided = std::is_invocable_r_v<
-      cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t,
-      cublasFillMode_t, std::int64_t, cudaDataType, void*, std::int64_t, std::int64_t, cudaDataType,
-      void*, std::int64_t, cudaDataType, std::int64_t, void*, std::size_t, void*, std::size_t,
-      int*>;
+  constexpr bool official =
+      std::is_invocable_r_v<cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t,
+                            cusolverEigMode_t, cublasFillMode_t, std::int64_t, cudaDataType, void*,
+                            std::int64_t, cudaDataType, void*, cudaDataType, void*, std::size_t,
+                            void*, std::size_t, int*, std::int64_t>;
+  constexpr bool strided =
+      std::is_invocable_r_v<cusolverStatus_t, Fn, cusolverDnHandle_t, cusolverDnParams_t,
+                            cusolverEigMode_t, cublasFillMode_t, std::int64_t, cudaDataType, void*,
+                            std::int64_t, std::int64_t, cudaDataType, void*, std::int64_t,
+                            cudaDataType, std::int64_t, void*, std::size_t, void*, std::size_t,
+                            int*>;
   static_assert(official || strided, "unsupported cusolverDnXsyevBatched signature");
   if constexpr (official) {
     return function(handle, parameters, jobz, uplo, n, data_type_a, a, lda, data_type_w, w,
@@ -82,15 +85,17 @@ inline cusolverStatus_t xsyev_batched_buffer_size(
       data_type_w, w, compute_type, device_bytes, host_bytes, batch_size);
 }
 
-inline cusolverStatus_t xsyev_batched(
-    cusolverDnHandle_t handle, cusolverDnParams_t parameters, cusolverEigMode_t jobz,
-    cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, void* a, std::int64_t lda,
-    cudaDataType data_type_w, void* w, cudaDataType compute_type, void* device_workspace,
-    std::size_t device_bytes, void* host_workspace, std::size_t host_bytes, int* info,
-    std::int64_t batch_size) {
-  return detail::xsyev_batched_dispatch(
-      &cusolverDnXsyevBatched, handle, parameters, jobz, uplo, n, data_type_a, a, lda, data_type_w,
-      w, compute_type, device_workspace, device_bytes, host_workspace, host_bytes, info, batch_size);
+inline cusolverStatus_t xsyev_batched(cusolverDnHandle_t handle, cusolverDnParams_t parameters,
+                                      cusolverEigMode_t jobz, cublasFillMode_t uplo, std::int64_t n,
+                                      cudaDataType data_type_a, void* a, std::int64_t lda,
+                                      cudaDataType data_type_w, void* w, cudaDataType compute_type,
+                                      void* device_workspace, std::size_t device_bytes,
+                                      void* host_workspace, std::size_t host_bytes, int* info,
+                                      std::int64_t batch_size) {
+  return detail::xsyev_batched_dispatch(&cusolverDnXsyevBatched, handle, parameters, jobz, uplo, n,
+                                        data_type_a, a, lda, data_type_w, w, compute_type,
+                                        device_workspace, device_bytes, host_workspace, host_bytes,
+                                        info, batch_size);
 }
 
 }  // namespace vibeqc::scf::cuda_compat
