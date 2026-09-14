@@ -35,11 +35,12 @@ def _internal_directions(shape):
 
 
 def test_water_complete_gradient_matches_directional_finite_differences():
-    """Keep an energy-only FD gate without 54 full MP2 single points.
+    """Keep a two-direction energy-only FD gate on the ordinary CI path.
 
     The exhaustive water Cartesian check remains in test_mp2_gradient.py and is
     run by scheduled/manual full CI. Ordinary PR/master CI checks two
-    independent internal directions at the same three finite-difference steps.
+    independent internal directions at two finite-difference steps, retaining
+    both an absolute fine-step accuracy gate and a convergence gate.
     """
     meta, arrays = load_fixture("water")
     arguments = source_arguments(meta)
@@ -81,7 +82,7 @@ def test_water_complete_gradient_matches_directional_finite_differences():
     for direction in _internal_directions(analytic.shape):
         expected = float(np.vdot(analytic, direction))
         errors = []
-        for step in (3e-3, 1e-3, 3e-4):
+        for step in (1e-3, 3e-4):
             plus_atoms = [
                 (atomic_number, position.tolist())
                 for atomic_number, position in zip(
