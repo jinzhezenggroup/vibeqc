@@ -79,3 +79,18 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
 ```
 
 Preserve Slurm-assigned device visibility and avoid concurrent local compilation during measurements. See [equations and lifecycle](../../../docs/df_occupied_cuda.md).
+
+## Archive storage correction
+
+`raw-evidence.zip` was removed from the current tree when restoring the hard
+1 MiB file limit. Its exact bytes remain in commit `daa2da0867877c94c40f379ffe1f3db6e3036ef8`; the
+[storage migration](../retention-size-limit/migration.json) pins its SHA-256
+and size. Existing numerical conclusions and measured identities are unchanged.
+Restore the historical archive to an ignored working directory with:
+
+```bash
+python tools/restore_retained_evidence.py benchmarks/results/issue284-occupied-exchange/raw-evidence.zip
+```
+
+Archive restoration is only needed for historical raw-run inspection. New runs
+keep full logs, profiles and retries outside Git.

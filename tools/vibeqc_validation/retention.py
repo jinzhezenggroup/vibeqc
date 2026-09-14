@@ -16,6 +16,7 @@ from collections import defaultdict
 from pathlib import Path, PurePosixPath
 
 POLICY_PATH = "benchmarks/evidence-policy.json"
+MAX_TRACKED_BYTES = 1 << 20
 REFERENCE_ROOTS = ("tests/reference_data/", "tests/data/", "external/")
 RESULT_ROOT = "benchmarks/results/"
 TRANSIENT_SUFFIXES = {
@@ -161,8 +162,8 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
     """Reject run debris, unreviewed large files and stale exceptions.
 
     No global JSON/XML ban applies: references precede pattern matching and
-    any other scientific file can carry an explicit, hash-pinned exception.
-    The review-size guard covers all tracked files, including source/oracles.
+    Small scientific files can carry an explicit, hash-pinned classification
+    exception. The hard 1 MiB cap cannot be waived by the retention policy.
     """
     if policy.get("schema") != "vibeqc.retention-policy.v1":
         raise ValueError("unsupported retention policy")
@@ -183,6 +184,11 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
         if path not in blobs or digest(blobs[path]) != exception.get("sha256"):
             errors.append(f"{path}: stale exception (missing or changed bytes)")
     for path, data in sorted(blobs.items()):
+        if len(data) > MAX_TRACKED_BYTES:
+            errors.append(
+                f"{path}: exceeds hard {MAX_TRACKED_BYTES}-byte limit; "
+                "retain compact records and store full run artifacts outside Git"
+            )
         violations = []
         category = classify(path)
         if category in {"transient", "generated-build"}:

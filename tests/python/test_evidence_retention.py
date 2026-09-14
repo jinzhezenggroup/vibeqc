@@ -79,6 +79,28 @@ def test_size_guard_is_reviewable_and_covers_references():
     assert check({path: data}, policy(**{path: exception})) == []
 
 
+def test_hard_size_limit_cannot_be_waived_or_raised_in_policy():
+    """An exact-hash rationale must not admit another oversized archive."""
+    path = "benchmarks/results/run/evidence.zip"
+    data = b"x" * ((1 << 20) + 1)
+    rule = policy(
+        **{path: {"sha256": digest(data), "reason": "Raw samples", "owner": "test"}}
+    )
+    rule["review_size_bytes"] = 1 << 30
+    assert any("hard" in error for error in check({path: data}, rule))
+
+
+def test_publisher_rejects_large_file_even_with_review_reason(tmp_path):
+    spec = publication_inputs(tmp_path)
+    (tmp_path / "large.json").write_text('"' + "x" * (1 << 20) + '"')
+    spec["files"].append(
+        {"path": "large.json", "role": "samples", "reason": "Raw measurements"}
+    )
+    with pytest.raises(ValueError, match="hard 1 MiB"):
+        publish(tmp_path, spec, tmp_path / "published")
+    assert not (tmp_path / "published").exists()
+
+
 def test_inventory_reads_staged_bytes_not_worktree_or_symlink_target(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     path = tmp_path / "file.json"

@@ -122,3 +122,18 @@ retained launcher. The archive includes the measured CMake configuration.
 Property/provider-aware budgets, streamed-K raw reuse, bounded retained-B
 scratch, SCF orchestration, complete analytic forces and the #206 acceptance
 matrix remain outstanding. This evidence does not close #308/#310/#311/#206.
+
+## Archive storage correction
+
+`scf-evidence.zip` was removed from the current tree when restoring the hard
+1 MiB file limit. Its exact bytes remain in commit `daa2da0867877c94c40f379ffe1f3db6e3036ef8`; the
+[storage migration](../retention-size-limit/migration.json) pins its SHA-256
+and size. Existing numerical conclusions and measured identities are unchanged.
+Restore the historical archive to an ignored working directory with:
+
+```bash
+python tools/restore_retained_evidence.py benchmarks/results/issue308-stage-ledger/scf-evidence.zip
+```
+
+Archive restoration is only needed for historical raw-run inspection. New runs
+keep full logs, profiles and retries outside Git.

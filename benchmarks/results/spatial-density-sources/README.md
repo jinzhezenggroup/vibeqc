@@ -52,9 +52,10 @@ remains explicit.
 A subsequent review fix takes the entire constructor snapshot under the spatial
 lock and invalidates a consumer when same-mask resource capacities change. Its
 65 CPU and 154 GPU regression results and exact source hashes are also retained.
-The compact 1.48 MB envelope retains all 960 full-cost samples, 96 resource plans
-and 444 numerical block gates; its exact bytes have a scientific size-review
-exception in `benchmarks/evidence-policy.json`.
+The envelope retains all 960 full-cost samples and 444 numerical block gates.
+Its 96 endpoint/resource records are grouped into named workload JSON files;
+`tools.vibeqc_validation.record.load_record` checks their hashes and restores
+the original record. Every file fits the hard 1 MiB limit.
 
 CUDA ownership: existing generated AO and D/C feature definitions are reused.
 Handwritten scientific CUDA LOC +0 / -0; runtime CUDA LOC +0 / -0. No legacy

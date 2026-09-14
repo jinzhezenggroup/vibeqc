@@ -48,3 +48,18 @@ The initial 30-minute allocation was stopped only after all batch-four energy sa
 Qualified source: `899a6ab8ffe3c84f1be7d89a6d61354afd14cbf2`. Native source identity: `b4eb37622c473091a8f0435e3bd8900effcda4a2da9520de8002f151b9ff04ce`. Frozen library SHA-256: `a428e9c276a28fd9276e9148ba6d7dd04ace848f20a4786516be9407e90e1152`.
 
 `evidence.zip` contains exact runners, raw samples, input qualification, traces, state exports, failed attempts, build/validation logs and reconstruction. Every member was restored and compared byte-for-byte. Archive SHA-256: `2440dafc718bc58f2981dddb4dd2262dfc2ffa59b3b7389e3d36ee4898c388e3`.
+
+## Archive storage correction
+
+`evidence.zip` was removed from the current tree when restoring the hard
+1 MiB file limit. Its exact bytes remain in commit `daa2da0867877c94c40f379ffe1f3db6e3036ef8`; the
+[storage migration](../retention-size-limit/migration.json) pins its SHA-256
+and size. Existing numerical conclusions and measured identities are unchanged.
+Restore the historical archive to an ignored working directory with:
+
+```bash
+python tools/restore_retained_evidence.py benchmarks/results/issue206-device-response/evidence.zip
+```
+
+Archive restoration is only needed for historical raw-run inspection. New runs
+keep full logs, profiles and retries outside Git.
