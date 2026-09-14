@@ -9,6 +9,16 @@
       "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
       "path": "pyscf/cc/rintermediates.py",
       "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+    },
+    {
+      "sha256": "4fd3638e0176639781ecb138575a226912c99301a1923b60d20351eec36ac960",
+      "path": "pyscf/cc/ccsd_t_slow.py",
+      "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/ccsd_t_slow.py"
+    },
+    {
+      "sha256": "a498d415289f46350f301a9405b2ff1061870dd22619b7cb2200dd9bf9fc8f34",
+      "path": "pyscf/cc/ccsd_t.py",
+      "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/ccsd_t.py"
     }
   ],
   "license": "Apache-2.0",
