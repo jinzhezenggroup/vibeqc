@@ -1,11 +1,14 @@
 """Independent analytic and finite-difference gates for generated S/T/V gradients."""
 
 import ctypes
+import hashlib
 import math
+import os
 import shutil
 import subprocess
 from functools import cache
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -63,8 +66,6 @@ def test_all_cartesian_derivatives_match_independent_libcint(family, angular):
         "nuclear_attraction": ("rinv", -2.3),
     }[family]
     with mol.with_rinv_origin(positions[2]):
-        # libcint's ip derivative acts on the electronic coordinate of the
-        # bra. Moving its Gaussian center has the opposite sign.
         first = -factor * mol.intor_by_shell(f"int1e_ip{operator}_cart", (0, 1), comp=3)
         second = -factor * mol.intor_by_shell(
             f"int1e_ip{operator}_cart", (1, 0), comp=3
@@ -134,6 +135,58 @@ def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shell
         build_one_electron_derivative_ir("kinetic", (5, 0))
 
 
+def _compile_emitted_host_fixture(source, compiler, tmp_path):
+    """Compile exactly this emitted source, optionally reusing a matching CI artifact."""
+    cache_directory = os.environ.get("VIBEQC_ONE_ELECTRON_HOST_CACHE")
+    if os.environ.get("GITHUB_EVENT_NAME") in {"schedule", "workflow_dispatch"}:
+        cache_directory = None
+
+    compiler_identity = subprocess.run(
+        [compiler, "--version"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    ).stdout.splitlines()[0]
+    digest = hashlib.sha256(
+        source.encode("utf-8") + b"\0" + compiler_identity.encode("utf-8")
+    ).hexdigest()
+
+    source_path = tmp_path / f"fixture-{digest}.cpp"
+    source_path.write_text(source)
+    if cache_directory is None:
+        libpath = tmp_path / f"fixture-{digest}.so"
+    else:
+        cache_root = Path(cache_directory)
+        cache_root.mkdir(parents=True, exist_ok=True)
+        libpath = cache_root / f"fixture-{digest}.so"
+        if libpath.is_file():
+            return libpath
+
+    output_path = libpath
+    if cache_directory is not None:
+        output_path = libpath.with_name(f".{libpath.name}.{os.getpid()}.tmp")
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++17",
+            "-O0",
+            "-shared",
+            "-fPIC",
+            str(source_path),
+            "-o",
+            str(output_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if output_path != libpath:
+        os.replace(output_path, libpath)
+    return libpath
+
+
 def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
     """Exercise emitted CSE/geometry/Boys boundaries against independent blocks."""
     pytest.importorskip("pyscf")
@@ -160,25 +213,7 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
     )
     source += '\nnamespace one = vibeqc::scf::generated_one_electron_derivatives;\nextern "C" void evaluate(const double* inputs, double* outputs, unsigned count) {\nfor (unsigned i=0;i<count;++i) { const double* p=inputs+14*i; double* out=outputs+27*i;\n'
     source += derivative_evaluation_body() + "\n}}\n"
-    path = tmp_path / "fixture.cpp"
-    path.write_text(source)
-    libpath = tmp_path / "fixture.so"
-    subprocess.run(
-        [
-            compiler,
-            "-std=c++17",
-            "-O0",
-            "-shared",
-            "-fPIC",
-            str(path),
-            "-o",
-            str(libpath),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
+    libpath = _compile_emitted_host_fixture(source, compiler, tmp_path)
     library = ctypes.CDLL(str(libpath))
     pointer = np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS")
     library.evaluate.argtypes = [pointer, pointer, ctypes.c_uint]
