@@ -24,6 +24,7 @@ jobs:
       CUMETAL_COMMIT: 041890f6f6f6e70b2f2ac1330987dd56a4f94b3c
       CUMETAL_SOURCE: /tmp/cuda-metal
       CUMETAL_PREFIX: /tmp/cumetal-install
+      CUMETAL_CCACHE_DIR: /tmp/cumetal-ccache
       VIBEQC_BUILD: ${{ github.workspace }}/build-cumetal
       CCACHE_DIR: /tmp/vibeqc-ccache
       CCACHE_MAXSIZE: 2G
@@ -62,6 +63,15 @@ jobs:
             /tmp/cumetal-install
           key: cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('.github/scripts/patch_cumetal_*.py') }}
 
+      - name: Restore CuMetal ccache
+        if: steps.cache-cumetal.outputs.cache-hit != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CUMETAL_CCACHE_DIR }}
+          key: ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('.github/scripts/patch_cumetal_*.py') }}
+          restore-keys: |
+            ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
+
       - name: Restore VibeQC ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -72,7 +82,11 @@ jobs:
 
       - name: Build pinned CuMetal
         if: steps.cache-cumetal.outputs.cache-hit != 'true'
+        env:
+          CCACHE_DIR: ${{ env.CUMETAL_CCACHE_DIR }}
+          CCACHE_COMPILERCHECK: content
         run: |
+          ccache --zero-stats
           git clone --recurse-submodules https://github.com/Lulzx/cuda-metal.git "$CUMETAL_SOURCE"
           git -C "$CUMETAL_SOURCE" checkout "$CUMETAL_COMMIT"
           git -C "$CUMETAL_SOURCE" submodule update --init --recursive
@@ -87,11 +101,15 @@ jobs:
           cmake -S "$CUMETAL_SOURCE" -B "$CUMETAL_SOURCE/build" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$CUMETAL_PREFIX" \
+            -DCMAKE_C_COMPILER_LAUNCHER="$(command -v ccache)" \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="$(command -v ccache)" \
+            -DCMAKE_OBJCXX_COMPILER_LAUNCHER="$(command -v ccache)" \
             -DCUMETAL_BUILD_TESTS=OFF \
             -DCUMETAL_ENABLE_BINARY_SHIM=OFF \
             -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm"
           cmake --build "$CUMETAL_SOURCE/build" --parallel 3
           cmake --install "$CUMETAL_SOURCE/build"
+          ccache --show-stats
 
       - name: Verify CuMetal
         run: CUMETAL_ROOT="$CUMETAL_PREFIX" "$CUMETAL_PREFIX/bin/cumetal" doctor
