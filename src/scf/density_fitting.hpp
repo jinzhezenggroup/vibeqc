@@ -206,13 +206,14 @@ struct DensityFittingUhfGradient {
     const DensityFittingThreeCenter& three_center, const std::vector<double>& alpha_density,
     const std::vector<double>& beta_density, JkTermSelection terms = {});
 
-/** Deterministic memory-bounded tile policy for future RI-J/K contractions. */
+/** Deterministic storage and contraction policy under a DF value allowance. */
 struct DensityFittingTilePlan {
   std::size_t batch_tile{};
   std::size_t ao_pair_tile{};
   std::size_t auxiliary_tile{};
   std::size_t occupied_tile{};
   std::size_t peak_workspace_bytes{};
+  // Independent of auxiliary_tile: generated B can be retained with bounded K Q.
   bool stores_full_three_center{};
 };
 
@@ -235,8 +236,9 @@ class DensityFittingBudgetError : public std::invalid_argument {
  * The permanent metric inverse square root is included in the budget. The
  * planner never requires the full `(mu nu|P)` tensor when one minimal tile
  * fits, and throws when even the metric plus a one-element tile cannot fit.
- * Positive budgets first consider full residency. generated_source permits
- * reusing the resident contraction staging for raw materialization; explicit
+ * Positive budgets first consider B retention with independently bounded K Q.
+ * generated_source permits reusing contraction staging for raw materialization;
+ * callers must pass stores_full_three_center to the source plan adapter. Explicit
  * host-tensor plans additionally need their raw upload during setup.
  */
 [[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size,

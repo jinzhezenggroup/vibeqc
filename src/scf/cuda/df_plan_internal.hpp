@@ -62,7 +62,8 @@ struct CudaDensityFittingJkPlan {
   double* metric_eigenvectors{};
   double* metric_eigenvalues{};
   std::vector<std::uint8_t> metric_response_valid;
-  // Partial tiles stream values; full tiles permit source-backed residency.
+  // True means B is regenerated, not merely that contraction Q is partial.
+  // Retained generated B can share bounded full-AO-row contraction scratch.
   // The source and its metric policy are immutable for this plan's lifetime.
   // X is shared by materialization/J/K and the spectral force response.
   bool streamed{};

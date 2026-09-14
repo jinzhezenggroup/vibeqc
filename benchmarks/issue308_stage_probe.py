@@ -189,6 +189,10 @@ def run(args: argparse.Namespace) -> None:
         str(output / "arrays.bin"),
         args.operation,
     ]
+    if args.value_budget:
+        command.extend(["0", str(args.value_budget)])
+    elif args.retain_b:
+        command.append("1")
     record = {
         "schema": "vibeqc.issue308.stage-probe.v1",
         "status": "running",
@@ -337,12 +341,29 @@ def main() -> None:
     parser.add_argument("--auxiliary-tile", type=int, default=0)
     parser.add_argument("--ao-pairs", type=int, default=0)
     parser.add_argument(
+        "--value-budget",
+        type=int,
+        default=0,
+        help="plan with actual source bytes under this DF value allowance",
+    )
+    parser.add_argument(
+        "--retain-b",
+        action="store_true",
+        help="retain B with the requested bounded K scratch",
+    )
+    parser.add_argument(
         "--operation", choices=("all", "setup", "j", "dense", "occupied"), default="all"
     )
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--timeout", type=float, default=240)
     parser.add_argument("--progress", action="store_true")
     args = parser.parse_args()
+    if args.value_budget < 0 or (
+        args.value_budget and (args.ao_pairs or args.auxiliary_tile or args.retain_b)
+    ):
+        parser.error(
+            "--value-budget must be positive and cannot accompany explicit tiles/storage"
+        )
     if args.prepare:
         prepare(args.case, args.output, args.checkpoint)
     else:

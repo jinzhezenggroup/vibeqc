@@ -1091,7 +1091,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     const vibeqc_status plan_status = create_cuda_density_fitting_jk_plan_from_source(
         device_id, &source, 1, source_nbf, source_naux, source_metrics,
         options.density_fitting_relative_threshold, auxiliary_tile, ao_pair_tile, &raw_plan,
-        diagnostics, detail);
+        diagnostics, detail, source_tile_plan.stores_full_three_center);
     destroy_cuda_density_fitting_integral_source(source);
     if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
       throw std::bad_alloc();
@@ -1184,7 +1184,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     const vibeqc_status plan_status = create_cuda_density_fitting_jk_plan_from_source(
         device_id, &source, data.size(), source_nbf, source_naux, metrics,
         options.density_fitting_relative_threshold, tile_plan.auxiliary_tile,
-        tile_plan.ao_pair_tile, &raw_plan, diagnostics, detail);
+        tile_plan.ao_pair_tile, &raw_plan, diagnostics, detail, tile_plan.stores_full_three_center);
     destroy_cuda_density_fitting_integral_source(source);
     if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
       throw std::bad_alloc();

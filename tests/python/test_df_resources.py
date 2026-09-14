@@ -7,7 +7,7 @@ from vibeqc.resources_df import density_fitting_tile_plan
 
 @pytest.mark.parametrize("generated,full_bytes", [(False, 1104943), (True, 1100847)])
 @pytest.mark.parametrize("dense_policy", [None, "dense"])
-def test_exchange_reservation_preserves_original_dense_boundaries(
+def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     monkeypatch, generated, full_bytes, dense_policy
 ):
     """Ordinary eigen retention shifts dense/occupied boundaries equally.
@@ -46,7 +46,13 @@ def test_exchange_reservation_preserves_original_dense_boundaries(
     # Two full 8x8 factors, two generation words and an error word per item.
     reserve = 2 * 8 * 8 * 8 + 12
     assert query(0).peak_workspace_bytes == full_bytes + reserve
-    assert not query(full_bytes).stores_full_three_center
+    constrained = query(full_bytes)
+    if generated:
+        # Occupied factors can coexist with retained B by reducing K scratch Q.
+        assert constrained.stores_full_three_center
+        assert constrained.auxiliary_tile < 8
+    else:
+        assert not constrained.stores_full_three_center
     assert query(full_bytes + reserve).stores_full_three_center
     with pytest.raises(ValueError, match="cannot hold the metric"):
         query(1084719)

@@ -1272,6 +1272,63 @@ int main() {
 
       // Source-backed budget replay regenerates transformed tiles directly on
       // the device instead of retaining the raw three-center tensor on host.
+      // A one-AO orbital basis with s/p/d auxiliaries forces materialization
+      // to split raw P even at one pair. Both P and K-Q tails must accumulate
+      // correctly, with independent CPU integrals and different batch densities.
+      for (auto representation : {VIBEQC_BASIS_CARTESIAN, VIBEQC_BASIS_SPHERICAL}) {
+        for (std::size_t batch : {1U, 4U})
+          for (std::size_t q : {1U, 2U}) {
+            std::vector<vibeqc::core::System> tiny_orbitals(batch), tiny_auxiliaries(batch);
+            std::vector<double> densities(batch), expected_j(batch), expected_k(batch);
+            for (std::size_t item = 0; item < batch; ++item) {
+              auto& o = tiny_orbitals[item];
+              o.atoms = {{2, {0.0, 0.0, static_cast<double>(item)}}};
+              o.basis_representation = representation;
+              o.shells = {{0, 0, {{0.9 + 0.1 * item, 1.0}}}};
+              auto& a = tiny_auxiliaries[item];
+              a = o;
+              a.shells.push_back({0, 1, {{0.6, 1.0}}});
+              a.shells.push_back({0, 2, {{0.4, 1.0}}});
+              require(
+                  vibeqc::molecule::validate_and_normalize(o, cuda_detail) == VIBEQC_STATUS_SUCCESS,
+                  cuda_detail.c_str());
+              require(
+                  vibeqc::molecule::validate_and_normalize(a, cuda_detail) == VIBEQC_STATUS_SUCCESS,
+                  cuda_detail.c_str());
+              const auto raw = vibeqc::integrals::build_density_fitting_integrals(o, a);
+              const auto transformed = vibeqc::scf::orthonormalize_density_fitting_three_center(
+                  raw.three_center, raw.nbf,
+                  vibeqc::scf::factor_density_fitting_metric(raw.metric, raw.naux, 1e-12));
+              densities[item] = 0.7 + 0.2 * item;
+              const auto expected =
+                  vibeqc::scf::build_density_fitting_rhf_jk(transformed, {densities[item]});
+              expected_j[item] = expected.coulomb[0];
+              expected_k[item] = expected.exchange[0];
+            }
+            vibeqc::scf::CudaDensityFittingIntegralSource* tiny_source = nullptr;
+            vibeqc::scf::CudaDensityFittingJkPlan* tiny_raw_plan = nullptr;
+            std::vector<double> metrics;
+            std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic> diagnostics;
+            std::size_t n{}, a{};
+            require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                        0, tiny_orbitals, tiny_auxiliaries, &tiny_source, metrics, n, a,
+                        cuda_detail) == VIBEQC_STATUS_SUCCESS,
+                    cuda_detail.c_str());
+            require(n == 1 && a > q, "tiny retained fixture must split source auxiliaries");
+            require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                        0, &tiny_source, batch, n, a, metrics, 1e-12, q, n * n, &tiny_raw_plan,
+                        diagnostics, cuda_detail, true) == VIBEQC_STATUS_SUCCESS,
+                    cuda_detail.c_str());
+            CudaPlan tiny_plan(tiny_raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+            check_occupied_cuda(tiny_plan.get(), batch, n);
+            std::vector<double> j, k;
+            require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                        tiny_plan.get(), densities, j, k, cuda_detail) == VIBEQC_STATUS_SUCCESS,
+                    cuda_detail.c_str());
+            require_matrix_close(j, expected_j, 3e-11, "retained raw-P tail changed J");
+            require_matrix_close(k, expected_k, 3e-11, "retained raw-P/K-Q tails changed K");
+          }
+      }
       vibeqc::scf::CudaDensityFittingIntegralSource* source = nullptr;
       std::vector<double> source_metrics;
       std::size_t source_nbf = 0;
@@ -1450,8 +1507,9 @@ int main() {
       // rotates. Compare its GPU Frechet map to the independent raw derivative
       // oracle, rather than testing only the full-rank -M+ E M+ shortcut.
       // Cover tight rows, a five-auxiliary GEMM panel with a partial final tile,
-      // and full residency against the same independently factored metric.
-      for (unsigned storage : {0U, 1U, 2U}) {
+      // full residency, and retained B with one/five-auxiliary contraction
+      // scratch against the same independently factored metric and response.
+      for (unsigned storage : {0U, 1U, 2U, 3U, 4U}) {
         vibeqc::scf::CudaDensityFittingIntegralSource* truncated_source = nullptr;
         std::vector<double> metrics;
         std::size_t n = 0, a = 0;
@@ -1464,12 +1522,15 @@ int main() {
         constexpr double cutoff = 0.1;
         require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
                     0, &truncated_source, 1, n, a, metrics, cutoff,
-                    storage == 2   ? a
-                    : storage == 1 ? 5
-                                   : 3,
-                    storage ? n * n : 3, &raw_plan, diagnostics,
-                    source_detail) == VIBEQC_STATUS_SUCCESS,
+                    storage == 2                   ? a
+                    : storage == 1 || storage == 4 ? 5
+                    : storage == 3                 ? 1
+                                                   : 3,
+                    storage ? n * n : 3, &raw_plan, diagnostics, source_detail,
+                    storage >= 3) == VIBEQC_STATUS_SUCCESS,
                 source_detail.c_str());
+        require(diagnostics[0].streamed == (storage < 2),
+                "retained B must not be classified as streamed by its scratch Q");
         CudaPlan truncated_plan(raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
         check_occupied_cuda(truncated_plan.get(), 1, n);
         require(diagnostics[0].effective_rank > 0 && diagnostics[0].effective_rank < a,

@@ -216,7 +216,8 @@ struct PreparedFockPlan::Impl {
       raw_source = source.release();
       checked(create_cuda_density_fitting_jk_plan_from_source(
                   device, &raw_source, 1, nbf, naux, metrics, strategy.metric_relative_threshold,
-                  tiles.auxiliary_tile, tiles.ao_pair_tile, &raw_plan, diagnostic.fitted, detail),
+                  tiles.auxiliary_tile, tiles.ao_pair_tile, &raw_plan, diagnostic.fitted, detail,
+                  tiles.stores_full_three_center),
               detail);
       cuda_df.reset(raw_plan);
       if (!diagnostic.fitted.empty())

@@ -55,6 +55,11 @@
       "reason": "Bounded native preparation outputs, exact accepted/initial-rejected native source reconstruction, input identity and reproduction commands; excludes binaries, routine logs and full transient matrices. Every member byte-restored.",
       "sha256": "08880e8b611d21dd4e111152cb084a34819684a6b0c1f93aa0bf809e8e4cbf37"
     },
+    "benchmarks/results/issue308-retained-b/evidence.zip": {
+      "owner": "issue308-retained-b",
+      "reason": "Exact 768-AO actual-source-budget setup/J/K journals, independent errors, sampled matrix rows, memory/provenance, sanitizer logs and reconstruction patch for retained B with bounded K panels.",
+      "sha256": "6f2176ad60b1dd746d7509da4ba10cfa66889091d7c925feac1857b782761be9"
+    },
     "benchmarks/results/issue308-stage-ledger/historical-followup.zip": {
       "owner": "issue308-stage-ledger",
       "reason": "Reviewed compact original 9531/9535/9536/9537 numerical measurements, reproduction source/input and first-24-pair scientific sample. Excludes logs, binaries and bulk exploratory rows; original identities and restoration audit are in historical-followup.json. Not performance promotion.",

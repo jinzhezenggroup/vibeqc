@@ -22,10 +22,9 @@
 
 namespace vibeqc::scf::cuda_df {
 namespace {
-/** Materialize a fixed-geometry source once, reusing the resident K staging.
- * Raw public-AO values are generated once per system and transformed by GEMM.
- * The scratch already belongs to the resolved full-tile plan; neither a host
- * full tensor nor an additional raw device allocation is introduced. The
+/** Materialize a fixed-geometry source once, reusing bounded resident K staging.
+ * Every raw (pair,P) is generated once and feeds ALL Q directly into retained
+ * B. Neither a full raw tensor nor another allocation is needed. The
  * caller handles failure only after this trace has drained its borrowed stream.
  */
 vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const double* inverse,
@@ -33,24 +32,35 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
   runtime::cuda_trace::TraceOperation trace("resident_three_center_materialization", plan.stream,
                                             {plan.batch_size, plan.nbf, plan.naux, true, false});
   const double one = 1.0, zero = 0.0;
+  const auto capacity = plan.row_tile * plan.nbf * plan.auxiliary_tile;
+  const auto pair_tile =
+      std::min(plan.matrix_elements, std::max<std::size_t>(1, capacity / plan.naux));
   for (std::size_t system = 0; system < plan.batch_size; ++system) {
-    const auto status = generate_cuda_density_fitting_raw_tile(
-        plan.integral_source, system, 0, plan.matrix_elements, 0, plan.naux, -1,
-        reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
-    runtime::cuda_trace::trace_tile(system, 0, plan.matrix_elements, 0, plan.naux, -1, true);
-    const auto blas_status =
-        runtime::cuda_trace::trace_call("resident_metric_transform", plan.stream, [&] {
-          return cublasDgemm(plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(plan.naux),
-                             static_cast<int>(plan.matrix_elements), static_cast<int>(plan.naux),
-                             &one, inverse + system * plan.naux * plan.naux,
-                             static_cast<int>(plan.naux), plan.auxiliary_tile_values,
-                             static_cast<int>(plan.naux), &zero,
-                             plan.three_center + system * plan.tensor_elements_per_system,
-                             static_cast<int>(plan.naux));
-        });
-    if (blas_status != CUBLAS_STATUS_SUCCESS)
-      return blas_failure(blas_status, "materialize generated CUDA DF tensor", detail);
+    for (std::size_t pair = 0; pair < plan.matrix_elements; pair += pair_tile) {
+      const auto pairs = std::min(pair_tile, plan.matrix_elements - pair);
+      const auto raw_tile = std::min(plan.naux, capacity / pairs);
+      for (std::size_t begin = 0; begin < plan.naux; begin += raw_tile) {
+        const auto count = std::min(raw_tile, plan.naux - begin);
+        const auto status = generate_cuda_density_fitting_raw_tile(
+            plan.integral_source, system, pair, pairs, begin, count, -1,
+            reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        const auto blas_status =
+            runtime::cuda_trace::trace_call("resident_metric_transform", plan.stream, [&] {
+              return cublasDgemm(
+                  plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(plan.naux),
+                  static_cast<int>(pairs), static_cast<int>(count), &one,
+                  inverse + system * plan.naux * plan.naux + begin * plan.naux,
+                  static_cast<int>(plan.naux), plan.auxiliary_tile_values, static_cast<int>(count),
+                  begin ? &one : &zero,
+                  plan.three_center + system * plan.tensor_elements_per_system + pair * plan.naux,
+                  static_cast<int>(plan.naux));
+            });
+        if (blas_status != CUBLAS_STATUS_SUCCESS)
+          return blas_failure(blas_status, "materialize generated CUDA DF tensor", detail);
+      }
+      runtime::cuda_trace::trace_tile(system, pair, pairs, 0, plan.naux, -1, true);
+    }
   }
   runtime::cuda_trace::trace_counter(
       "resident_transformed_bytes",
@@ -67,7 +77,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail, CudaDensityFittingIntegralSource* integral_source) {
+    std::string& detail, CudaDensityFittingIntegralSource* integral_source,
+    bool retain_three_center) {
   runtime::df_progress::Scope preparation("df_plan_setup");
   runtime::df_progress::number("planner_ao_pair_tile", ao_pair_tile);
   runtime::df_progress::number("planner_auxiliary_tile", auxiliary_tile);
@@ -128,6 +139,10 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     detail = "CUDA DF AO-pair tile is invalid";
     return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
+  if (retain_three_center && (!integral_source || ao_pair_tile != matrix_elements)) {
+    detail = "retained generated DF storage requires a source and complete AO rows";
+    return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
+  }
 
   std::size_t matrix_bytes = 0;
   std::size_t metric_bytes = 0;
@@ -135,10 +150,10 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   std::size_t auxiliary_bytes = 0;
   std::size_t tile_elements = 0;
   std::size_t tile_bytes = 0;
-  // Stream whenever either planner dimension is smaller than the full
-  // transformed tensor.  This matters for small auxiliary bases where all
-  // Q directions fit but the AO-pair budget still requires row staging.
-  const bool streamed = auxiliary_tile < naux || ao_pair_tile < matrix_elements;
+  // Explicit generated retention decouples B from contraction auxiliary width.
+  // Compatibility partial dimensions still request regeneration/host staging.
+  const bool streamed =
+      !retain_three_center && (auxiliary_tile < naux || ao_pair_tile < matrix_elements);
   const std::size_t staged_row_tile =
       streamed ? std::min<std::size_t>(nbf, std::max<std::size_t>(1, ao_pair_tile / nbf)) : nbf;
   std::size_t staged_pair_capacity = 0;

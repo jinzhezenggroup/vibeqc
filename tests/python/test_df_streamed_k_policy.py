@@ -127,16 +127,28 @@ def test_generated_positive_budget_reduces_raw_passes_monotonically(policy_query
         )
         for gib in [1, 2, 4, 8, 12]
     ]
-    assert all(not p.stores_full_three_center for p in plans)
+    assert [p.stores_full_three_center for p in plans] == [
+        False,
+        False,
+        True,
+        True,
+        True,
+    ]
     assert all(p.peak_workspace_bytes <= p.budget_bytes for p in plans)
     shapes = [
         (768, 768, (p.ao_pair_tile // 768) * 768 * p.auxiliary_tile) for p in plans
     ]
     panels = policy_query(shapes)
-    passes = [p[3] * p[4] for p in panels]
+    passes = [
+        0 if plan.stores_full_three_center else panel[3] * panel[4]
+        for plan, panel in zip(plans, panels, strict=True)
+    ]
     assert all(a >= b for a, b in itertools.pairwise(passes))
     assert passes[0] < 32 and passes[2] <= 4 and passes[3] <= 2
-    assert min(p.auxiliary_tile for p in plans[2:]) > 128
+    assert all(p.ao_pair_tile == 768**2 for p in plans[2:])
+    assert plans[2].auxiliary_tile < 128
+    assert plans[3].auxiliary_tile == plans[4].auxiliary_tile == 128
+    assert plans[3].peak_workspace_bytes == plans[4].peak_workspace_bytes < 6 << 30
     # Explicit zero compatibility still allocates the established 8192/128
     # plan; only its execution shape follows the shared source-work policy.
     default = density_fitting_tile_plan(

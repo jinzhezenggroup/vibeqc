@@ -36,8 +36,9 @@ def tetramer_reference():
 
 
 @pytest.mark.parametrize("provider", ["tensor", "generated"])
+@pytest.mark.parametrize("budget", [24 << 20, 64 << 20])
 def test_property_replay_replans_value_storage_with_complete_forces(
-    tetramer_reference, provider, monkeypatch
+    tetramer_reference, provider, budget, monkeypatch
 ):
     assert os.environ.get("SLURM_JOB_ID")
     case, energy, forces = tetramer_reference
@@ -47,19 +48,24 @@ def test_property_replay_replans_value_storage_with_complete_forces(
         basis_representation="spherical",
         device="cuda",
         density_fitting="cuda",
-        density_fitting_memory_budget_bytes=64 << 20,
+        density_fitting_memory_budget_bytes=budget,
         max_iterations=100,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
     )
     # This is a DF-subbudget regression, not acceptance of the larger global
-    # inventory. 64 MiB fits the full value plan; its force half does not.
+    # inventory. 64 MiB keeps B for both properties with different scratch;
+    # 24 MiB retains B only for energy and regenerates it under the force half.
     with calc.prepare_batch([case.atoms]) as batch:
         for properties in (("energy",), ("energy", "forces"), ("energy",)):
             item = batch.execute(strict=True, properties=properties).items[0]
             assert item.energy == pytest.approx(energy, abs=1e-9, rel=0)
             diagnostics = batch.last_density_fitting_metric_diagnostics()
             assert len(diagnostics) == 1
-            assert diagnostics[0].streamed == ("forces" in properties)
+            assert diagnostics[0].streamed == (
+                budget == 24 << 20 and "forces" in properties
+            )
+            if budget == 64 << 20:
+                assert (diagnostics[0].auxiliary_tile < 96) == ("forces" in properties)
             if "forces" in properties:
                 np.testing.assert_allclose(item.forces, forces, atol=1e-8, rtol=0)

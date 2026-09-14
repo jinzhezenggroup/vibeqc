@@ -23,6 +23,7 @@
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
+#include "scf/density_fitting.hpp"
 
 namespace {
 using Clock = std::chrono::steady_clock;
@@ -45,9 +46,10 @@ int main(int argc, char** argv) {
               << std::quoted(vibeqc_get_source_identity())
               << ",\"library\":" << std::quoted(library_info.dli_fname) << "}\n";
     vibeqc::runtime::df_progress::Scope endpoint("fixed_density_probe");
-    if (!std::getenv("SLURM_JOB_ID") || argc != 7)
+    if (!std::getenv("SLURM_JOB_ID") || argc < 7 || argc > 9)
       throw std::runtime_error(
-          "usage inside Slurm: probe INPUT REPEATS AUX_TILE AO_PAIRS ARRAYS MODE");
+          "usage inside Slurm: probe INPUT REPEATS AUX_TILE AO_PAIRS ARRAYS MODE [RETAIN_B "
+          "[VALUE_BUDGET]]");
     const auto repeats = std::stoul(argv[2]);
     if (!repeats || repeats > 1000) throw std::runtime_error("invalid repeat count");
     std::ifstream input(argv[1]);
@@ -124,11 +126,30 @@ int main(int argc, char** argv) {
           detail);
     CudaDensityFittingJkPlan* raw = nullptr;
     std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
-    const auto aux_tile = std::stoul(argv[3]);
-    const auto pairs = std::stoul(argv[4]);
+    auto aux_tile = std::stoul(argv[3]);
+    auto pairs = std::stoul(argv[4]);
+    // The legacy six-argument mode preserves explicit tile/regeneration probes.
+    bool retain_b = argc >= 8 && std::stoul(argv[7]) != 0;
+    const auto value_budget = argc == 9 ? std::stoull(argv[8]) : 0;
+    const auto source_bytes = cuda_density_fitting_integral_source_device_bytes(source);
+    if (value_budget) {
+      try {
+        if (aux_tile || pairs || retain_b)
+          throw std::runtime_error(
+              "value-budget planning and explicit tiles/storage are exclusive");
+        const auto tiles = plan_density_fitting_tiles(1, nbf, naux, std::max<std::size_t>(rank, 1),
+                                                      value_budget, source_bytes, true);
+        aux_tile = tiles.auxiliary_tile;
+        pairs = tiles.ao_pair_tile;
+        retain_b = tiles.stores_full_three_center;
+      } catch (...) {
+        destroy_cuda_density_fitting_integral_source(source);
+        throw;
+      }
+    }
     const auto status = create_cuda_density_fitting_jk_plan_from_source(
         0, &source, 1, nbf, naux, metrics, 1e-10, aux_tile ? aux_tile : naux,
-        pairs ? pairs : nbf * nbf, &raw, diagnostics, detail);
+        pairs ? pairs : nbf * nbf, &raw, diagnostics, detail, retain_b);
     destroy_cuda_density_fitting_integral_source(source);
     check(status, detail);
     std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)> plan(
@@ -158,6 +179,10 @@ int main(int argc, char** argv) {
     std::cout << std::setprecision(17);
     std::cout << "{\"operation\":\"setup\",\"seconds\":" << setup_seconds << ",\"nbf\":" << nbf
               << ",\"naux\":" << naux << ",\"rank\":" << rank
+              << ",\"requested_value_budget\":" << value_budget
+              << ",\"source_device_bytes\":" << source_bytes
+              << ",\"ao_pair_tile\":" << (pairs ? pairs : nbf * nbf)
+              << ",\"auxiliary_tile\":" << (aux_tile ? aux_tile : naux)
               << ",\"value_plan_resident_bytes\":" << diagnostics[0].device_resident_bytes
               << ",\"value_plan_peak_bytes\":" << diagnostics[0].peak_device_bytes
               << ",\"streamed\":" << (diagnostics[0].streamed ? "true" : "false") << "}\n";

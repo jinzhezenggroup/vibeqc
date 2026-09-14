@@ -49,9 +49,17 @@ def fixed_density_probe(tmp_path_factory):
     return binary, fixture
 
 
-@pytest.mark.parametrize("pairs,auxiliary,passes", [(8192, 96, 2), (3552, 13, 20)])
+@pytest.mark.parametrize(
+    "pairs,auxiliary,passes,retained",
+    [
+        (8192, 96, 2, False),
+        (3552, 13, 20, False),
+        (9216, 5, 0, True),
+        (9216, 1, 0, True),
+    ],
+)
 def test_streamed_raw_reuse_matches_independent_jk(
-    fixed_density_probe, pairs, auxiliary, passes, tmp_path
+    fixed_density_probe, pairs, auxiliary, passes, retained, tmp_path
 ):
     binary, fixture = fixed_density_probe
     trace = tmp_path / "trace.jsonl"
@@ -66,6 +74,7 @@ def test_streamed_raw_reuse_matches_independent_jk(
             str(pairs),
             str(arrays),
             "all",
+            str(int(retained)),
         ],
         env=env,
         check=True,
@@ -83,10 +92,19 @@ def test_streamed_raw_reuse_matches_independent_jk(
     for record in contractions:
         assert record["execution"] == "stream"
         counts = record["counters"]
-        assert counts["raw_panel_source_auxiliary_evaluations"] == 96**3 * passes
+        assert record["streamed"] != retained
+        assert counts.get("raw_panel_source_auxiliary_evaluations", 0) == 96**3 * passes
         # Q=5 has a final Q=1 tail with room for P=5 raw reuse. The old
         # <=4 branch silently repeated recurrences on that tail.
         assert counts.get("fused_source_auxiliary_evaluations", 0) == 0
         assert counts.get("fused_metric_panel_productions", 0) == 0
     for record in (r for r in records if r["operation"] == "ri_j"):
         assert record["counters"].get("transformed_tile_productions", 0) == 0
+    if retained:
+        setup = [
+            r
+            for r in records
+            if r["operation"] == "resident_three_center_materialization"
+        ]
+        assert len(setup) == 1
+        assert setup[0]["counters"]["raw_value_bytes"] == 8 * 96**3

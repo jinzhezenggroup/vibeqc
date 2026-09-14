@@ -107,13 +107,26 @@ bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegr
                                                   int device_id, std::size_t batch_size,
                                                   std::size_t nbf, std::size_t naux) noexcept;
 
-/** Prepare a streamed J/K plan that regenerates tiles from `source`. */
+/** Prepare a generated J/K plan; full dimensions retain B, partial ones stream. */
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
     std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail);
+
+/** Prepare the planner's explicit tensor-storage choice independently of K Q.
+ * Retained storage requires complete AO rows, but contraction auxiliaries may
+ * be bounded. Setup borrows K scratch to generate raw panels once and writes
+ * all transformed Q directly into retained B. The source-transfer contract is
+ * identical to the compatibility overload, which keeps its existing ABI.
+ */
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
+    std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail, bool retain_three_center);
 
 /** Generate one public-basis transformed three-center tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_transformed_tile(

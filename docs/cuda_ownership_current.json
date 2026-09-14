@@ -693,7 +693,7 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 3347,
+      "bytes": 3423,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -702,11 +702,11 @@
         "scientific": 0
       },
       "path": "src/scf/cuda/df_plan_internal.hpp",
-      "physical_lines": 82,
+      "physical_lines": 83,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "55c624f67c32587f365c5cf82c6c8f7d251449151ba063c413e04abcfbd046f6",
+      "sha256": "7696fbb967dd872029c03c7047d28aeef5593d37bd77a103669cd617dee13682",
       "subsystem": "scf_tensor"
     },
     {

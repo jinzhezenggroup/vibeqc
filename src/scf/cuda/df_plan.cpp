@@ -33,6 +33,17 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail) {
+  return create_cuda_density_fitting_jk_plan_from_source(
+      device_id, source, batch_size, nbf, naux, metrics, relative_threshold, auxiliary_tile,
+      ao_pair_tile, plan, diagnostics, detail, false);
+}
+
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
+    std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail, bool retain_three_center) {
   if (plan != nullptr) *plan = nullptr;
   if (source == nullptr || *source == nullptr) {
     detail = "source-backed CUDA DF plan requires a source";
@@ -43,7 +54,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
   // every failure path; clear the caller slot unconditionally below.
   vibeqc_status status = create_cuda_density_fitting_jk_plan_tiled_impl(
       device_id, batch_size, nbf, naux, metrics, {}, relative_threshold, auxiliary_tile,
-      ao_pair_tile, plan, diagnostics, detail, *source);
+      ao_pair_tile, plan, diagnostics, detail, *source, retain_three_center);
   if (status == VIBEQC_STATUS_SUCCESS) {
     *source = nullptr;  // ownership transfers to the prepared plan
   } else {

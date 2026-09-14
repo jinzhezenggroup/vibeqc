@@ -397,7 +397,8 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
 std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
                             std::size_t batch_size, std::size_t nbf, std::size_t naux,
                             std::size_t metric_bytes, std::size_t fixed_device_bytes,
-                            bool generated_source, bool occupied_exchange) {
+                            bool generated_source, bool occupied_exchange,
+                            bool retain_three_center = false) {
   // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
   // complete batch.  Its streamed tile rounds the logical AO-pair budget up
   // to a whole row, so account for that physical capacity rather than the
@@ -411,7 +412,8 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
       nbf, std::max<std::size_t>(1, ao_pair_tile / std::max<std::size_t>(1, nbf)));
   const long double staged_pairs = staged_rows * nbf;
   const long double tile_elements = staged_pairs * auxiliary_tile;
-  const bool resident = auxiliary_tile == naux && ao_pair_tile == nbf * nbf;
+  const bool resident =
+      retain_three_center || (auxiliary_tile == naux && ao_pair_tile == nbf * nbf);
   const long double setup_doubles =
       static_cast<long double>(batch_size) * (3.0L * naux * naux + 2.0L * naux);
   // cuSOLVER's Xsyevd metric factorization uses a device workspace whose
@@ -899,21 +901,48 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
       false,
   };
   auto update_bytes = [&]() {
-    plan.peak_workspace_bytes =
-        workspace_bytes(plan.ao_pair_tile, plan.auxiliary_tile, batch_size, nbf, naux, metric_bytes,
-                        fixed_device_bytes, generated_source, occupied_exchange);
+    plan.peak_workspace_bytes = workspace_bytes(
+        plan.ao_pair_tile, plan.auxiliary_tile, batch_size, nbf, naux, metric_bytes,
+        fixed_device_bytes, generated_source, occupied_exchange, plan.stores_full_three_center);
   };
   // Full transformed storage is a latency policy only when its entire
   // contraction/setup/SCF allowance fits. Zero keeps the compatibility policy.
   if (memory_budget_bytes != 0) {
     plan.ao_pair_tile = ao_pair_count;
-    plan.auxiliary_tile = naux;
+    // Generated B retention needs one full tensor plus three bounded K panels.
+    // Full AO rows keep the resident GEMM/capture layout; Q is independent of
+    // the stored auxiliary extent. A fixed ceiling avoids spending every extra
+    // GiB on interchangeable contraction scratch after B already fits.
+    plan.auxiliary_tile = generated_source ? std::min<std::size_t>(naux, 128) : naux;
+    plan.stores_full_three_center = generated_source;
     update_bytes();
     if (plan.peak_workspace_bytes <= memory_budget_bytes) {
       plan.stores_full_three_center = true;
       return plan;
     }
     if (generated_source) {
+      const auto retained_minimum =
+          workspace_bytes(ao_pair_count, 1, batch_size, nbf, naux, metric_bytes, fixed_device_bytes,
+                          true, occupied_exchange, true);
+      if (retained_minimum <= memory_budget_bytes) {
+        // All persistent/setup/SCF/source reservations are already charged.
+        // Find the largest bounded resident Q that fits this same live set.
+        std::size_t lower = 1, upper = plan.auxiliary_tile;
+        while (lower < upper) {
+          const auto middle = lower + (upper - lower + 1) / 2;
+          const auto bytes =
+              workspace_bytes(ao_pair_count, middle, batch_size, nbf, naux, metric_bytes,
+                              fixed_device_bytes, true, occupied_exchange, true);
+          if (bytes <= memory_budget_bytes)
+            lower = middle;
+          else
+            upper = middle - 1;
+        }
+        plan.auxiliary_tile = lower;
+        update_bytes();
+        return plan;
+      }
+      plan.stores_full_three_center = false;
       // A streamed source owns four equally sized tile buffers. Everything
       // else in workspace_bytes is independent of their shape. Spend only the
       // remaining allowance on whole row/Q units, then minimize actual raw

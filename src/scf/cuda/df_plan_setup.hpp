@@ -10,7 +10,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail, CudaDensityFittingIntegralSource* integral_source);
+    std::string& detail, CudaDensityFittingIntegralSource* integral_source,
+    bool retain_three_center = false);
 
 /** Destroy the sole plan owner, including retained SCF state. */
 void release(CudaDensityFittingJkPlan& plan) noexcept;

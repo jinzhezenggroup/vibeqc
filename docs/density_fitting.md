@@ -50,9 +50,12 @@ and failure status.
   eigendecomposition and inverse-square-root construction, cuBLAS three-center
   transforms and RI-J, and auxiliary-tiled two-GEMM RI-K for RHF and UHF. The
   transformed tensor remains resident across repeated density contractions when
-  it fits the selected tile policy. Positive-budget plans regenerate raw and
-  transformed public-basis tiles on device and retain the metric factors and
-  eigensystem. They do not require a complete transformed tensor. The native
+  it fits the selected storage policy. Generated setup borrows bounded K scratch
+  for raw panels and writes all transformed Q into retained B; retaining B no
+  longer requires three full-tensor contraction buffers. Positive-budget plans
+  use at most 128 contraction auxiliaries when B is retained, shrinking Q further
+  when needed. Plans that cannot retain B regenerate public-basis tiles on device.
+  Both routes retain the metric factors and eigensystem. The native
   compatibility API also supports explicitly host-backed input tensors.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
   tiles. Its positive budget bounds the persistent CUDA plan and bounded
@@ -61,7 +64,7 @@ and failure status.
   allowance. Property changes replan cached value storage. Metric diagnostics describe
   the value/J/K plan; the whole-HF resource ledger also charges response storage.
   CUDA HF calls do not retain full derivative tensors between executions.
-  When full generated storage does not fit, positive budgets fund larger panels
+  When retained B and its bounded scratch do not fit, positive budgets fund larger panels
   from the remaining allowance. Dense and occupied K share a row/raw-P/output-Q
   policy that minimizes raw source evaluations across repeated column visits and
   Q blocks. Every raw panel feeds all active output auxiliaries through GEMM.
