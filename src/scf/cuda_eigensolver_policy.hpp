@@ -14,9 +14,13 @@ namespace vibeqc::scf {
 
 #if VIBEQC_HAS_CUDA
 // Keep existing solver call sites on NVIDIA's documented packed signature.
-// Namespace lookup selects these internal shims before the global provider API;
-// the shared adapter then dispatches to either the packed ABI or an equivalent
-// explicit-stride ABI without provider-specific preprocessor branches.
+// Import the provider overloads and add a template fallback. NVIDIA's exact
+// non-template overload therefore wins when present; providers exposing only
+// the explicit-stride extension select the fallback and shared adapter.
+using ::cusolverDnXsyevBatched;
+using ::cusolverDnXsyevBatched_bufferSize;
+
+template <class = void>
 inline cusolverStatus_t cusolverDnXsyevBatched_bufferSize(
     cusolverDnHandle_t handle, cusolverDnParams_t parameters, cusolverEigMode_t jobz,
     cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, const void* a,
@@ -27,6 +31,7 @@ inline cusolverStatus_t cusolverDnXsyevBatched_bufferSize(
                                                 host_bytes, batch_size);
 }
 
+template <class = void>
 inline cusolverStatus_t cusolverDnXsyevBatched(
     cusolverDnHandle_t handle, cusolverDnParams_t parameters, cusolverEigMode_t jobz,
     cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, void* a, std::int64_t lda,
