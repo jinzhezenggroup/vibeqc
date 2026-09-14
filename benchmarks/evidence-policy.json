@@ -45,6 +45,11 @@
       "reason": "Exact fixed-D/K arrays, complete same-D and cross-engine matrices, executed factor provenance, source/library identities and retained failed experiments. Every member is hash-verified and byte-restored.",
       "sha256": "e578bc6fa798189ef84b9286c427befefc5cebb1dde5fc44f58ca9c366a57f90"
     },
+    "benchmarks/results/issue308-device-diis/evidence.zip": {
+      "owner": "issue308-device-diis",
+      "reason": "Same-binary 768-AO cold DIIS/fixed-point control, complete actual W/forces, physical checks, stage journals, memory/provenance, reconstruction, sanitizer and retained failed attempts.",
+      "sha256": "40f3096eb83b9f21065bc572ed12f2f042a73531ecab6c448fc758a7e65b391c"
+    },
     "benchmarks/results/issue308-force-state/evidence.zip": {
       "owner": "issue308-force-state",
       "reason": "Complete native 768-AO actual W and all force components, independent checks, stage journals, source/build/input identities, memory samples and reconstruction of the first passing full-force endpoint.",
