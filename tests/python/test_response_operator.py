@@ -1,5 +1,6 @@
 """Matrix-free RHF response actions against explicit and finite-rotation oracles."""
 
+import os
 from dataclasses import replace
 
 import numpy as np
@@ -106,7 +107,15 @@ def test_native_backend_rejects_same_sized_unrelated_reference():
 
 
 def test_native_rhf_multirhs_residuals_permutation_and_recycling():
-    meta, arrays = load_fixture("water")
+    # LiH keeps the routine PR gate nontrivial without making every feedback
+    # cycle pay for the much larger water response solve. Nightly/manual full
+    # CI retains the original water-sized stress case.
+    name = (
+        "water"
+        if os.environ.get("GITHUB_EVENT_NAME") in {"schedule", "workflow_dispatch"}
+        else "lih"
+    )
+    meta, arrays = load_fixture(name)
     snapshot = fixture_snapshot(meta, arrays)
     try:
         source = NativeSource(**source_arguments(meta))
