@@ -35,6 +35,11 @@
       "reason": "Clean 96/192-AO energy/full-force batch-1/4 samples, actual external factor ranks, exact basis stack, unmatched branches and separately traced host-response bottleneck.",
       "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
     },
+    "benchmarks/results/issue206-device-response/evidence.zip": {
+      "owner": "issue206-device-response",
+      "reason": "Repeated device/host response-placement ablations and GPU4PySCF RHF/UHF 96/192/384-AO matrices, complete raw results/ranks/traces, direct gate, validation/failures, reconstruction and measured identities.",
+      "sha256": "2440dafc718bc58f2981dddb4dd2262dfc2ffa59b3b7389e3d36ee4898c388e3"
+    },
     "benchmarks/results/issue282-streamed-panels/raw-evidence.zip": {
       "owner": "issue282-streamed-panels",
       "reason": "Compressed exact fixed-density J/K and E2-gradient arrays, successful endpoint matrix, failed experiments and reconstruction patches. Every raw member is hash-verified and byte-restored; the fixed numerical arrays are needed to reproduce bounded/resident parity.",
