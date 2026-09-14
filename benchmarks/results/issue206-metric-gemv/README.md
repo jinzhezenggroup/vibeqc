@@ -69,3 +69,29 @@ Retained Python runners have repository lint formatting/import cleanup; the
 profile sampler makes its original `check=False` default explicit. Original
 measured runner hashes remain separate from the retained file hashes. These
 files describe historical local paths; use fresh output paths when reproducing.
+
+## CUDA ownership disclosure
+
+```text
+generated capability: existing generated DF values/coordinate response reused unchanged
+handwritten scientific CUDA LOC: +33 / -5
+runtime CUDA LOC: +0 / -0
+legacy production path removed: no
+retained duplicate reason: oracle
+```
+
+[ownership-delta.json](ownership-delta.json) compares the physical source with
+base `12e46d4e6994e8015bf4c84d83d0786db5bf2d91` using the ownership reporter's
+nonblank/noncomment lexer. The net +28 lines are handle/status/layout and GEMV
+composition within method-specific functions; they remain conservatively
+scientific. Ten unchanged serial-kernel lines move from `scientific` to
+`oracle`, so the aggregate maintained scientific count still grows by 28.
+This classification does not claim physical deletion or generated migration.
+
+The semantic `df_response_weights` ledger entry owns the default cuBLAS path
+and the opt-in `VIBEQC_DF_SERIAL_RESPONSE_DOT=1` control. Its different serial
+reduction order provides numerical/regression and timing controls alongside
+independent NumPy and external references; it is never an automatic error
+fallback. The ledger requires removing the kernel and selector after complete
+#206 numerical, resource and endpoint acceptance, once independent gates and
+retained samples cover its regression role. Those closure gates remain open.

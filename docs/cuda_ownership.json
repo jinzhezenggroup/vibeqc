@@ -224,17 +224,24 @@
     },
     {
       "path": "src/scf/cuda/df_response_weights.cu",
-      "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
-      "regions": [],
+      "reason": "Native HF density response and spectral Frechet method adapters. The default exchange metric AO-pair dot uses the existing plan-owned FP64 cuBLAS handle; provider/layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
+      "regions": [
+        {
+          "start": "__global__ void exchange_metric_kernel(",
+          "stop": "__global__ void metric_response_kernel(",
+          "role": "oracle",
+          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry."
+        }
+      ],
       "role": "scientific",
-      "subsystem": "df_derivatives"
+      "subsystem": "df_response_weights"
     },
     {
       "path": "src/scf/cuda/df_response_weights.cuh",
-      "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
+      "reason": "Native HF density response and spectral Frechet method adapters. The default exchange metric AO-pair dot uses the existing plan-owned FP64 cuBLAS handle; provider/layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
       "regions": [],
       "role": "scientific",
-      "subsystem": "df_derivatives"
+      "subsystem": "df_response_weights"
     },
     {
       "path": "src/scf/cuda/one_electron_derivatives.cu",
@@ -1489,7 +1496,7 @@
         "benchmarks/results/cuda-ownership/df/README.md"
       ],
       "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter.",
-      "missing_capability": "None for the retired DF integral/coordinate-response duplicate. Host HF density-weight construction and the spectral inverse reverse map remain native method adapters; a complete equivalent TensorIR method consumer is not yet integrated.",
+      "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
       "owner": "df_derivatives",
       "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
       "status": "retired"
@@ -1614,6 +1621,20 @@
         "tests/python/test_ecp_ir.py"
       ],
       "status": "Initial native quadrature baseline; no broad heavy-element or performance claim."
+    },
+    "df_response_weights": {
+      "owner": "scf_tensor",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only.",
+      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
+      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+      "retained_duplicate_reason": "oracle",
+      "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
+      "evidence": [
+        "tests/python/test_df_response_weights_cuda.py",
+        "benchmarks/results/issue206-metric-gemv/README.md",
+        "benchmarks/results/issue206-metric-gemv/summary.json"
+      ],
+      "status": "native_baseline_with_opt_in_control"
     }
   }
 }
