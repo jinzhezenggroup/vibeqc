@@ -24,7 +24,8 @@ All three energy entry points reject non-finite values in every input array,
 nonnegative denominators, and denominators whose magnitude is at or below
 `denominator_threshold` (default `1e-10` Hartree). Canonical RHF orbitals are a
 caller precondition: occupied/virtual energy ordering alone cannot establish
-that the full Fock matrix is diagonal.
+that the full Fock matrix is diagonal. The threshold accepts Python and NumPy
+real numeric scalars; booleans are not valid tolerances.
 
 With `t2T = t2.transpose(2,3,0,1)`, `eris_vvov = ovvv.transpose(1,3,0,2)`,
 `eris_vooo = ovoo.transpose(1,0,2,3)`, `eris_vvoo = ovov.transpose(1,3,0,2)`

@@ -315,7 +315,8 @@ def _check_denominators(eps_o, eps_v, threshold):
     divide into silence or NaN.
     """
     if (
-        type(threshold) not in (int, float)
+        isinstance(threshold, (bool, np.bool_))
+        or not isinstance(threshold, (int, float, np.integer, np.floating))
         or not np.isfinite(threshold)
         or threshold <= 0
     ):

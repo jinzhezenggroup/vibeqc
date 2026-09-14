@@ -356,6 +356,36 @@ def test_nonfinite_inputs_fail_closed(engine, name, value):
         getattr(vibeqc_cc, engine)(2, 3, *arrays)
 
 
+@pytest.mark.parametrize(
+    "engine", ["triples_energy", "triples_fullsum", "triples_energy_tensorir"]
+)
+@pytest.mark.parametrize(
+    "threshold", [np.float32(1e-4), np.float64(1e-10), np.int64(1)]
+)
+def test_numpy_scalar_denominator_thresholds(engine, threshold):
+    """NumPy-derived tolerances obey the same gate as Python scalar values."""
+    from tools import vibeqc_cc
+
+    arrays = _random_case(2, 2, 33)
+    energy = getattr(vibeqc_cc, engine)
+    expected = energy(2, 2, *arrays, denominator_threshold=float(threshold))
+    assert energy(2, 2, *arrays, denominator_threshold=threshold) == expected
+    # The actual magnitude still controls rejection, regardless of scalar type.
+    with pytest.raises(ValueError, match="near-zero"):
+        energy(2, 2, *arrays, denominator_threshold=type(threshold)(100))
+
+
+@pytest.mark.parametrize(
+    "threshold",
+    [True, np.bool_(True), np.float64(np.nan), np.float32(np.inf), np.int64(0), -1.0],
+)
+def test_invalid_denominator_thresholds(threshold):
+    from tools.vibeqc_cc import triples_energy
+
+    with pytest.raises(ValueError, match="threshold must be a positive finite number"):
+        triples_energy(2, 2, *_random_case(2, 2, 34), denominator_threshold=threshold)
+
+
 def test_invalid_inputs_rejected():
     from tools.vibeqc_cc import build_triples_program, triples_energy
 
