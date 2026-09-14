@@ -65,7 +65,7 @@ def emit_df_axis_cuda() -> str:
     lines.extend(
         [
             "  }",
-            '  return nan("");  // Unsupported angular input is never silently truncated.',
+            "  return NAN;  // Unsupported angular input is never silently truncated.",
             "}",
         ]
     )
@@ -168,7 +168,7 @@ __device__ __forceinline__ double metric(
   const Vec3 difference{A.x - C.x, A.y - C.y, A.z - C.z};
   const Angular b{0, 0, 0};
   const unsigned total = order(a) + order(c);
-  if (order(a) > 3 || order(c) > 3) return nan("");
+  if (order(a) > 3 || order(c) > 3) return NAN;
   if (total <= 1) return value<1>(alpha, gamma, zero, zero, difference, a, b, c);
   if (total <= 3) return value<2>(alpha, gamma, zero, zero, difference, a, b, c);
   if (total <= 5) return value<3>(alpha, gamma, zero, zero, difference, a, b, c);
@@ -187,7 +187,7 @@ __device__ __forceinline__ double three_center(
   const Vec3 difference{A.x - C.x + pa.x, A.y - C.y + pa.y, A.z - C.z + pa.z};
   const double decay = exp(-alpha * beta / p * (ab.x * ab.x + ab.y * ab.y + ab.z * ab.z));
   const unsigned total = order(a) + order(b) + order(c);
-  if (order(a) > 3 || order(b) > 3 || order(c) > 3) return nan("");
+  if (order(a) > 3 || order(b) > 3 || order(c) > 3) return NAN;
   double result;
   if (total <= 1) result = value<1>(p, gamma, pa, pb, difference, a, b, c);
   else if (total <= 3) result = value<2>(p, gamma, pa, pb, difference, a, b, c);
