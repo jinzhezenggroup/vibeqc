@@ -10,7 +10,11 @@ from tools.vibeqc_mp2.gradient import (
     dense_molecular_gradient_oracle,
     solve_canonical_orbital_response,
 )
-from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture, source_arguments
+from tools.vibeqc_posthf.fixtures import (
+    fixture_snapshot,
+    load_fixture,
+    source_arguments,
+)
 from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response import DenseAOResponseBackend, GMRESOptions
 
@@ -70,7 +74,9 @@ def test_water_complete_gradient_matches_directional_finite_differences():
         basis_representation=arguments["representation"],
     )
     atomic_numbers = [value.atomic_number for value in arguments["atoms"]]
-    positions = np.asarray([value.position for value in arguments["atoms"]], dtype=float)
+    positions = np.asarray(
+        [value.position for value in arguments["atoms"]], dtype=float
+    )
 
     for direction in _internal_directions(analytic.shape):
         expected = float(np.vdot(analytic, direction))
@@ -89,7 +95,9 @@ def test_water_complete_gradient_matches_directional_finite_differences():
                 )
             ]
             plus = calculator.singlepoint(plus_atoms, charge=arguments["charge"]).energy
-            minus = calculator.singlepoint(minus_atoms, charge=arguments["charge"]).energy
+            minus = calculator.singlepoint(
+                minus_atoms, charge=arguments["charge"]
+            ).energy
             finite = (plus - minus) / (2 * step)
             errors.append(abs(finite - expected))
         assert errors[-1] < 1e-6
