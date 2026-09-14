@@ -138,7 +138,13 @@ its forward tensor is retained when the native tile allowance fits. Both
 candidates use **CUDA SCF with existing CPU numerical recovery**. These
 decisions appear in the plan. Allocation failures cannot trigger that host
 recovery. The default source sub-budget includes the native one-electron
-preparation minimum; v1 does not enumerate arbitrarily small DF tiles.
+preparation minimum, including Cartesian/public copies and earlier prepared
+items. The request admits both energy and forces: its capacity envelope uses
+the larger energy value allowance and also checks the force partition. Bucket
+inventories expose `energy_tiles` and `force_tiles`; the historical `tiles`
+field retains the force route. The selected one-electron derivative provider
+controls host derivative storage. v1 does not enumerate arbitrarily small DF
+tiles or expand its supported orbital/auxiliary shape range.
 
 CUDA DF numeric solver workspaces have an explicit conservative 64 MiB
 allowance plus shape terms. Opaque library retention has a separate 256 MiB

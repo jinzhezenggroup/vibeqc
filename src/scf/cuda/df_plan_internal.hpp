@@ -26,6 +26,9 @@ struct CudaDensityFittingJkPlan {
   // Frozen at creation: lazy SCF factors may only use a plan that reserved
   // their capacity. High-level caches rebuild when the policy changes.
   bool occupied_scf_reserved{};
+  // HF cache identity: property changes alter the value/response partition.
+  // Direct fixed-tile consumers keep the default compatibility value zero.
+  std::size_t scf_value_budget_bytes{};
   int device_id{-1};
   double metric_relative_threshold{};
   std::size_t batch_size{};

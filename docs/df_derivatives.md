@@ -158,8 +158,9 @@ Standalone arbitrary external weights also retain their documented upload
 boundary. Primitive values and center derivatives use the same generated
 interfaces in both execution modes.
 
-For a positive DF working-set request, the J/K planner receives half the
-request and the generated response receives half; UHF also charges its total
+For a positive DF working-set request with forces, the J/K planner receives
+half the request and each sequential generated response bridge receives half.
+Energy-only J/K uses the whole request. UHF also charges its total
 spin-density temporary against the response portion. Without an explicit
 request, the response cap is 128 MiB. A resource ledger, when requested,
 enforces total owned device allocations across the complete execution.

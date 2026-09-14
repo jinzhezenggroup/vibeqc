@@ -56,8 +56,9 @@ and failure status.
   compatibility API also supports explicitly host-backed input tensors.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
   tiles. Its positive budget bounds the persistent CUDA plan and bounded
-  generation/contraction tiles. A positive DF request is split equally between
-  this value/J/K plan and generated force staging. Metric diagnostics describe
+  generation/contraction tiles. A positive force request is split equally between
+  this value/J/K plan and generated force staging; energy-only J/K uses the whole
+  allowance. Property changes replan cached value storage. Metric diagnostics describe
   the value/J/K plan; the whole-HF resource ledger also charges response storage.
   CUDA HF calls do not retain full derivative tensors between executions.
 - CUDA DF batch plans retain setup diagnostics for every compatible slot:

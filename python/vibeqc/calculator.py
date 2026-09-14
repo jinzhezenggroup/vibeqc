@@ -336,7 +336,10 @@ class Calculator:
         ``density_fitting_memory_budget_bytes`` is a device-workspace hint for
         CUDA DF.  Positive values select smaller auxiliary tiles (and stream
         transformed three-center values when needed); zero uses the backend's
-        default policy.
+        default policy. Energy-only DF uses the whole positive value allowance;
+        force calls reserve half for response and rebuild cached value storage
+        when needed. The preparation preflight also bounds its host copies.
+        Use ``resource_budget`` for the composed whole-calculation inventory.
 
         ``target_accuracy`` requests observable diagnostics independently of
         iteration convergence. Until an explicit audit/estimator is attached,

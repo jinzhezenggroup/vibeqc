@@ -244,8 +244,9 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
         calculator.prepare_batch(systems) as batch,
         ordinary.prepare_batch(systems) as baseline,
     ):
-        for _ in range(2):
-            result, expected = batch.execute(strict=True), baseline.execute(strict=True)
+        for properties in (("energy", "forces"), ("energy",), ("energy", "forces")):
+            result = batch.execute(strict=True, properties=properties)
+            expected = baseline.execute(strict=True, properties=properties)
             ledger = batch.resource_diagnostics["observation"]["device_ledger"]
             assert (
                 0
@@ -259,19 +260,21 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
             ):
                 assert actual.energy == pytest.approx(native.energy, abs=1e-10)
                 assert actual.energy == pytest.approx(oracle.energy, abs=1e-9)
-                np.testing.assert_allclose(
-                    actual.forces, native.forces, atol=1e-9, rtol=1e-8
-                )
-                np.testing.assert_allclose(
-                    actual.forces, oracle.forces, atol=2e-8, rtol=1e-7
-                )
+                if "forces" in properties:
+                    np.testing.assert_allclose(
+                        actual.forces, native.forces, atol=1e-9, rtol=1e-8
+                    )
+                    np.testing.assert_allclose(
+                        actual.forces, oracle.forces, atol=2e-8, rtol=1e-7
+                    )
             # Generated response does not force forward J/K streaming. Compare
             # execution with the actual source-specific tile capacity decision.
             inventory = json.loads(dict(candidate.decisions)["bucket_inventory"])
+            tile_key = "force_tiles" if "forces" in properties else "energy_tiles"
             expected_tiles = sorted(
                 (
-                    not row["tiles"]["stores_full_three_center"],
-                    row["tiles"]["auxiliary_tile"],
+                    not row[tile_key]["stores_full_three_center"],
+                    row[tile_key]["auxiliary_tile"],
                 )
                 for row in inventory
                 for _ in range(row["batch"])

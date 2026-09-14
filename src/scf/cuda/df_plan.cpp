@@ -79,6 +79,15 @@ std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPl
   return plan == nullptr ? 0U : plan->batch_size;
 }
 
+void set_cuda_density_fitting_scf_value_budget(CudaDensityFittingJkPlan* plan,
+                                               std::size_t budget) noexcept {
+  if (plan) plan->scf_value_budget_bytes = budget;
+}
+
+std::size_t cuda_density_fitting_scf_value_budget(const CudaDensityFittingJkPlan* plan) noexcept {
+  return plan ? plan->scf_value_budget_bytes : 0;
+}
+
 bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept {
   return plan != nullptr && plan->occupied_scf_reserved == df_occupied_exchange_requested();
 }

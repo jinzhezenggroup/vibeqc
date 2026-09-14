@@ -13,11 +13,20 @@ copies the prepared SCF controls before setting output selection; no persistent
 option is mutated. Existing direct and DF backends receive that same per-replay
 selection, including host numerical recovery and failed-item isolation.
 
-Resource plans keep their conservative energy-plus-force allowance. Omitting
-forces does not expand the forward tensor budget or select a different fitting
-model. CUDA DF preparation omits derivative output and response bindings for
-energy-only execution, so repeated calls do not continually invalidate a
-cache that expects no response state.
+Resource plans admit both energy and force replays and reserve an envelope
+covering their different value plans. A positive CUDA DF sub-budget is fully
+available to the energy value plan; force execution reserves half for response.
+Changing properties rebuilds a cached device plan when that value allowance
+changes, even when the fleet retains no host preparation cache. Both routes
+use the same fitting model, metric cutoff and scientific tolerances.
+
+CUDA DF preparation estimates the selected output/provider: energy has S/H
+values, generated force response adds nuclear derivatives and geometry owners,
+and the tensor provider also creates full AO derivative arrays. The bound
+includes simultaneously live Cartesian/public outputs, transformation staging,
+all preceding prepared items and batch metadata. Failed chunk outputs and
+obsolete host caches are released before replacements. Positive-budget calls
+retain only bounded transient preparation; zero keeps compatibility behavior.
 
 The batched one-electron exporter also receives a separate nuclear-derivative
 flag. Omitting AO derivative matrices alone still runs nuclear response for

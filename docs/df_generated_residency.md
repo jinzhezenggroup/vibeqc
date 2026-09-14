@@ -6,8 +6,10 @@ and auxiliary tiles select a retained transformed tensor; partial tiles select
 the bounded streamed route. Both implement the same DF provider.
 
 For a positive DF sub-budget, the native planner first tries full tiles and
-checks the complete value-plan setup/contraction/SCF allowance. Half the supplied
-DF sub-budget remains reserved by the caller for response staging. If the full
+checks the complete value-plan setup/contraction/SCF allowance. Energy-only
+execution uses the whole supplied allowance; force execution reserves half for
+its sequential DF and one-electron response bridges. Cached plans record the
+value allowance and rebuild when a property change alters it. If the full
 allowance fails, the existing deterministic tile-shrinking policy applies.
 Zero-budget compatibility selection remains unchanged. The common global HF
 ledger also charges the source-specific persistent storage and bounds actual

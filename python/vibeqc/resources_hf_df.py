@@ -28,6 +28,9 @@ def cuda_df_candidates(
     ``recomputed`` mode describes that complete policy, not every forward tile.
     """
     occupied_exchange = os.environ.get("VIBEQC_DF_EXCHANGE") == "occupied"
+    generated_one_electron = (
+        os.environ.get("VIBEQC_ONE_ELECTRON_DERIVATIVES") == "generated"
+    )
     buckets = {}
     for item in items:
         orbital, auxiliary = item["orbital"], item["auxiliary"]
@@ -86,7 +89,9 @@ def cuda_df_candidates(
         )
         # Match the native matrix-only one-electron chunk preflight. Direct-ERI
         # task tables are omitted by this exporter, leaving quadratic metadata.
-        preparation_minimum = 0
+        preparation_metadata = 0
+        preparation_retained = 0
+        preparation_temporary = 0
         metadata = 0
         for item in group:
             orbital, auxiliary = item["orbital"], item["auxiliary"]
@@ -99,11 +104,25 @@ def cuda_df_candidates(
                 + c
                 + n
                 + pairs
+                + auxiliary["shells"]
+                + auxiliary["primitives"]
             )
-            preparation_minimum = max(
-                preparation_minimum,
-                packed + 8 * (2 * c * c * (d + 1) + d + 4 * c * c + 1),
+            # Native preparation holds Cartesian/public outputs together and
+            # retains all preceding items while preparing the next singleton.
+            # This global request permits both properties, so use force data
+            # for the selected provider even when a replay requests only E.
+            copies = 1 if generated_one_electron else d + 1
+            retained = packed + 8 * (2 * n * n * copies + d)
+            temporary = packed + 8 * (
+                2 * c * c * copies
+                + d
+                + 4 * c * c
+                + 1
+                + (0 if generated_one_electron else 2 * n * n)
             )
+            preparation_metadata += packed
+            preparation_retained += retained
+            preparation_temporary = max(preparation_temporary, temporary)
             combined_shells = orbital["shells"] + auxiliary["shells"] + 1
             combined_pairs = combined_shells * (combined_shells + 1) // 2
             metadata += 2048 * (
@@ -128,7 +147,11 @@ def cuda_df_candidates(
                 "source_bytes": source_bytes,
                 "occupied": occupied,
                 "host_metadata": metadata,
-                "preparation_minimum": preparation_minimum,
+                "preparation_minimum": preparation_metadata
+                + preparation_retained
+                + preparation_temporary,
+                "preparation_retained": preparation_retained,
+                "preparation_temporary": preparation_temporary,
                 "default_tile": default_tile,
             }
         )
@@ -202,10 +225,25 @@ def cuda_df_candidates(
                 n,
                 aux,
                 row["occupied"],
-                budget_bytes=sub_budget // 2 if source else 0,
+                # Prepared requests admit energy and forces. Energy can use
+                # the full value allowance; this larger live set conservatively
+                # bounds the force plan's half-allowance scratch as well.
+                budget_bytes=sub_budget if source else 0,
                 fixed_device_bytes=row["source_bytes"] if source else 0,
                 generated_source=source,
             )
+            force_tile = tile
+            if source:
+                force_tile = density_fitting_tile_plan(
+                    library,
+                    b,
+                    n,
+                    aux,
+                    row["occupied"],
+                    budget_bytes=max(1, sub_budget // 2),
+                    fixed_device_bytes=row["source_bytes"],
+                    generated_source=True,
+                )
             pairs = (
                 min(n * n, max(n, (tile.ao_pair_tile // n) * n)) if source else n * n
             )
@@ -264,7 +302,8 @@ def cuda_df_candidates(
                 else row["resident_response_capacity"]
             )
             generation = row["source_bytes"] + 8 * b * (
-                (d + 1) * 2 * c * c + (0 if source else ac * ac + c * c * ac)
+                (1 if generated_one_electron else d + 1) * 2 * c * c
+                + (0 if source else ac * ac + c * c * ac)
             )
             persistent_host = row["host_metadata"] + 8 * b * (32 * n * n + 16 * d)
             # One verified X and its exact S/geometry key per source survive
@@ -272,10 +311,13 @@ def cuda_df_candidates(
             # these are additional host copies only, retained through teardown.
             overlap_cache_host = 2 * matrix + 8 * b * d
             persistent_host += overlap_cache_host + ordinary_eigen_workspace + 64 * b
-            one_electron = 8 * b * ((d + 1) * 2 * n * n + d)
+            one_electron = (
+                8 * b * ((1 if generated_one_electron else d + 1) * 2 * n * n + d)
+            )
             raw = 8 * b * (aux * aux + n * n * aux)
+            persistent_host += one_electron
             if not source:
-                persistent_host += one_electron + raw + tensor
+                persistent_host += raw + tensor
             scf = (
                 8
                 * b
@@ -306,6 +348,7 @@ def cuda_df_candidates(
             # Matrix scratch includes canonical export products and both W.
             final_selection_host = 8 * (32 * n * n + 8 * n)
             host_temporary += final_selection_host
+            host_temporary = max(host_temporary, row["preparation_temporary"])
             host_temporary += (
                 row["response_host_capacity"]
                 if source
@@ -330,7 +373,11 @@ def cuda_df_candidates(
             inventories.append(
                 {
                     **{k: v for k, v in row.items() if k != "default_tile"},
-                    "tiles": asdict(tile),
+                    # Preserve the historical all-properties (force) route,
+                    # and expose the larger energy route used for the bound.
+                    "tiles": asdict(force_tile),
+                    "energy_tiles": asdict(tile),
+                    "force_tiles": asdict(force_tile),
                     "resident_host_bytes": persistent_host,
                     "overlap_cache_host_bytes": overlap_cache_host,
                     "ordinary_eigen_device_bytes": ordinary_eigen_device,

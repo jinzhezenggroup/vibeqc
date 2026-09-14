@@ -141,6 +141,13 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept;
 
+/** Record the HF selector's allowance on a freshly created plan; this changes
+ * cache identity only, never existing allocations. Zero denotes compatibility. */
+void set_cuda_density_fitting_scf_value_budget(CudaDensityFittingJkPlan* plan,
+                                               std::size_t budget) noexcept;
+/** Read the exact value allowance that selected this cached HF plan. */
+std::size_t cuda_density_fitting_scf_value_budget(const CudaDensityFittingJkPlan* plan) noexcept;
+
 /** Whether a cached plan reserved storage for the current SCF exchange policy.
  * High-level callers rebuild on mismatch; low-level SCF calls cannot enable
  * occupied factors on a plan created with only the dense reservation.
