@@ -93,7 +93,8 @@ struct Context {
       blas_check(cublasSetStream(handle, stream));
       blas_check(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST));
       blas_check(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
-      blas_check(cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_NOT_ALLOWED));
+      // A newly created cuBLAS handle defaults to disallowing atomics. Rely on
+      // that contract instead of requiring the optional atomics-mode controls.
       // SetStream resets the workspace; install our counted workspace
       // only after the final stream binding. A zero-byte workspace is a
       // valid conservative path; retained provider storage is budgeted above.
