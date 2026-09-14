@@ -6,7 +6,38 @@
 #include <cstdint>
 #include <limits>
 
+#if VIBEQC_HAS_CUDA
+#include "scf/cuda/cusolver_compat.hpp"
+#endif
+
 namespace vibeqc::scf {
+
+#if VIBEQC_HAS_CUDA
+// Keep existing solver call sites on NVIDIA's documented packed signature.
+// Namespace lookup selects these internal shims before the global provider API;
+// the shared adapter then dispatches to either the packed ABI or an equivalent
+// explicit-stride ABI without provider-specific preprocessor branches.
+inline cusolverStatus_t cusolverDnXsyevBatched_bufferSize(
+    cusolverDnHandle_t handle, cusolverDnParams_t parameters, cusolverEigMode_t jobz,
+    cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, const void* a,
+    std::int64_t lda, cudaDataType data_type_w, const void* w, cudaDataType compute_type,
+    std::size_t* device_bytes, std::size_t* host_bytes, std::int64_t batch_size) {
+  return cuda_compat::xsyev_batched_buffer_size(handle, parameters, jobz, uplo, n, data_type_a, a,
+                                                lda, data_type_w, w, compute_type, device_bytes,
+                                                host_bytes, batch_size);
+}
+
+inline cusolverStatus_t cusolverDnXsyevBatched(
+    cusolverDnHandle_t handle, cusolverDnParams_t parameters, cusolverEigMode_t jobz,
+    cublasFillMode_t uplo, std::int64_t n, cudaDataType data_type_a, void* a, std::int64_t lda,
+    cudaDataType data_type_w, void* w, cudaDataType compute_type, void* device_workspace,
+    std::size_t device_bytes, void* host_workspace, std::size_t host_bytes, int* info,
+    std::int64_t batch_size) {
+  return cuda_compat::xsyev_batched(handle, parameters, jobz, uplo, n, data_type_a, a, lda,
+                                    data_type_w, w, compute_type, device_workspace, device_bytes,
+                                    host_workspace, host_bytes, info, batch_size);
+}
+#endif
 
 /** CUDA 12.9 documented dimension limit for generic XsyevBatched. */
 inline constexpr std::uint64_t kXsyevBatchedDocumentedDimensionLimit = 32768;
