@@ -119,6 +119,24 @@ def _inputs_hash(name):
     )
 
 
+def _check_energies(name, et_numpy, et_pyscf, truth):
+    """Enforce both the independent agreement gate and the stored target.
+
+    Two results on opposite sides of the target can each satisfy its
+    tolerance while differing from each other by almost twice that amount.
+    """
+    if (
+        not np.all(np.isfinite([et_numpy, et_pyscf, truth]))
+        or abs(et_numpy - et_pyscf) > 1e-9
+        or abs(et_numpy - truth) > 1e-9
+        or abs(et_pyscf - truth) > 1e-9
+    ):
+        raise ValueError(
+            f"{name} (T) diverged: numpy={et_numpy:.15e} "
+            f"pyscf={et_pyscf:.15e} truth={truth:.15e}"
+        )
+
+
 def generate(output, compare=None):
     import pyscf
     from threadpoolctl import threadpool_limits
@@ -175,12 +193,7 @@ def generate(output, compare=None):
                 coupled, eris, coupled.t1, np.ascontiguousarray(coupled.t2)
             )
 
-            # Both independent derivations must reproduce the issue ground truth.
-            if abs(et_numpy - truth) > 1e-9 or abs(et_pyscf - truth) > 1e-9:
-                raise ValueError(
-                    f"{name} (T) diverged: numpy={et_numpy:.15e} "
-                    f"pyscf={et_pyscf:.15e} truth={truth:.15e}"
-                )
+            _check_energies(name, et_numpy, et_pyscf, truth)
 
             molecules.append(
                 {

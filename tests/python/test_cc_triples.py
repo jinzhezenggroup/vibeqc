@@ -517,3 +517,15 @@ def test_committed_production_reference_provenance():
         )
         assert row["et_agreement"] == abs(row["et_numpy"] - row["et_pyscf_ccsd_t"])
         assert row["et_agreement"] <= 1e-9
+
+
+def test_reference_generator_requires_direct_energy_agreement():
+    """Being close to the same target does not imply mutual 1e-9 agreement."""
+    from tools.generate_cc_triples_references import _check_energies
+
+    truth = -1e-4
+    _check_energies("within-gate", truth - 4e-10, truth + 4e-10, truth)
+    with pytest.raises(ValueError, match="opposite-sides.*diverged"):
+        _check_energies("opposite-sides", truth - 7.5e-10, truth + 7.5e-10, truth)
+    with pytest.raises(ValueError, match="shared-error.*diverged"):
+        _check_energies("shared-error", truth + 2e-9, truth + 2e-9, truth)
