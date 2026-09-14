@@ -30,14 +30,14 @@ int main() {
     require(
         cudaStreamBeginCapture(resources.stream, cudaStreamCaptureModeThreadLocal) == cudaSuccess,
         "begin rejected capture");
-    // This is the same unsupported operation performed by XsyevBatched on
-    // the observed large signature. It tests recovery without a dimension cap.
-    require(cudaStreamSynchronize(resources.stream) == cudaErrorStreamCaptureUnsupported,
+    // CUDA reserves ABI values 900/901 for unsupported/invalidated stream
+    // capture. Use the values so compatible providers need not name the enums.
+    require(static_cast<int>(cudaStreamSynchronize(resources.stream)) == 900,
             "capture fixture did not reject synchronization");
     cudaGraph_t graph{};
     const auto ended = cudaStreamEndCapture(resources.stream, &graph);
     if (graph) (void)cudaGraphDestroy(graph);
-    require(ended == cudaErrorStreamCaptureInvalidated, "capture did not invalidate");
+    require(static_cast<int>(ended) == 901, "capture did not invalidate");
     bool rejected = false;
     std::string detail;
     require(recover_scf_capture(resources.stream, ended, VIBEQC_STATUS_CUDA_ERROR, rejected,
