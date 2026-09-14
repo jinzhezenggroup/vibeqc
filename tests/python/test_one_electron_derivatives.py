@@ -148,7 +148,7 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
         derivative_evaluation_body,
     )
 
-    compiler = shutil.which("c++")
+    compiler = shutil.which("clang++") or shutil.which("c++")
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
     header = emit_one_electron_derivatives_cuda().replace(
