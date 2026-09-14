@@ -157,6 +157,13 @@ jobs:
           python3 tools/validate_f_shells.py --tier compile --smoke
           --nvcc "$CUDACXX" --compile-jobs 2 --compile-timeout 900
           --output build/f-shell-smoke.json
+      - name: Restore generated XC compile cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/xc-cache
+          key: xc-cuda-12.9-sm120-${{ hashFiles('include/**', 'python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/integral/**', 'python/vibeqc_compiler/xc/**', 'tools/validate_xc.py') }}
+          restore-keys: |
+            xc-cuda-12.9-sm120-
       - name: Compile generated XC derivative consumers
         run: >-
           python3 tools/validate_xc.py --tier cuda-compile
@@ -179,6 +186,12 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       CCACHE_MAXSIZE: 1G
+      # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
+      # libraries single-threaded so pytest-xdist owns the job-level parallelism.
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -219,8 +232,9 @@ jobs:
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
         run: >-
-          .venv/bin/python -m pytest tests/python -q --cov
-          --cov-report=xml:coverage-python.xml
+          .venv/bin/python -m pytest tests/python -q
+          -n 4 --dist=loadfile --durations=25
+          --cov --cov-report=xml:coverage-python.xml
       - name: Preserve transient benchmark/debug artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
