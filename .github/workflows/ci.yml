@@ -244,7 +244,7 @@ jobs:
             )
           fi
           .venv/bin/python -m pytest tests/python -q \
-            -n 4 --dist=loadfile --durations=25 \
+            -n 4 --dist=worksteal --durations=25 \
             --cov --cov-report=xml:coverage-python.xml \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
