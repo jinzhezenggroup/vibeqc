@@ -11,7 +11,15 @@ from tools.vibeqc_posthf.sources import NativeSource
 
 
 def check_native(
-    source, arrays, hf_energy, mo, os_ref, ss_ref, backend, tiles=(1, 2, 4, 8)
+    source,
+    arrays,
+    hf_energy,
+    mo,
+    os_ref,
+    ss_ref,
+    backend,
+    tiles=(1, 2, 4, 8),
+    orders=None,
 ):
     lib = source._library
     ptr = ct.POINTER(ct.c_double)
@@ -73,7 +81,14 @@ def check_native(
     # Asymmetric ordered MO selections exercise all four axes, pair exchange
     # and within-pair permutations independently of total-energy agreement.
     base = ((n - 1, 0), (1,), (0, n - 1), (1, 0))
-    for order in ((0, 1, 2, 3), (1, 0, 2, 3), (2, 3, 0, 1), (0, 3, 2, 1)):
+    if orders is None:
+        orders = (
+            (0, 1, 2, 3),
+            (1, 0, 2, 3),
+            (2, 3, 0, 1),
+            (0, 3, 2, 1),
+        )
+    for order in orders:
         slots = tuple(base[k] for k in order)
         shape = (ct.c_size_t * 4)(*map(len, slots))
         indices = (ct.c_size_t * sum(map(len, slots)))(
@@ -114,6 +129,16 @@ def test_same_orbitals_native_components_and_permutations(name, backend):
     ].transpose(0, 2, 1, 3)
     t = a["conventional_t2"]
     os_ref, ss_ref = np.sum(t * g), np.sum(t * (g - g.swapaxes(2, 3)))
+    kwargs = {}
+    full_ci = os.environ.get("GITHUB_EVENT_NAME") in {"schedule", "workflow_dispatch"}
+    if name == "water" and not full_ci:
+        # H2 and LiH already exercise every tile and permutation on each PR.
+        # Keep one representative water-sized transform in the fast path and
+        # retain the exhaustive water sweep in nightly/manual full CI.
+        kwargs = {
+            "tiles": (4,),
+            "orders": ((0, 1, 2, 3),),
+        }
     with NativeSource(**source_arguments(meta)) as source:
         check_native(
             source,
@@ -123,4 +148,5 @@ def test_same_orbitals_native_components_and_permutations(name, backend):
             os_ref,
             ss_ref,
             backend,
+            **kwargs,
         )
