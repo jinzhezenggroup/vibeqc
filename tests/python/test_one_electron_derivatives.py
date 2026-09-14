@@ -2,10 +2,12 @@
 
 import ctypes
 import math
+import os
 import shutil
 import subprocess
 from functools import cache
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -183,7 +185,20 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
     pointer = np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS")
     library.evaluate.argtypes = [pointer, pointer, ctypes.c_uint]
     library.evaluate.restype = None
-    for fixture in one_electron_derivative_matrix():
+    fixtures = one_electron_derivative_matrix()
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # Bootstrap the exact live oracle already used by this test. The
+        # uploaded artifact is reviewed and then committed as a hash-checked
+        # fixture; this capture path is removed before the final PR is merged.
+        from tools.vibeqc_validation.one_electron_reference_io import (
+            write_derivative_references,
+        )
+
+        write_derivative_references(
+            fixtures,
+            Path(".artifacts/one-electron-derivative-reference"),
+        )
+    for fixture in fixtures:
         values = np.zeros((len(fixture.records), 27))
         library.evaluate(fixture.records, values, len(values))
         actual = fixture.contract(values)
