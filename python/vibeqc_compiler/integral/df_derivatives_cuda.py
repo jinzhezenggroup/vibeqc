@@ -81,7 +81,7 @@ __device__ __noinline__ void axis_polynomial(unsigned a,unsigned b,unsigned c,
         lines += ["      return;", "    }"]
     lines += [
         "  }",
-        '  out[0]=nan("");',
+        "  out[0]=NAN;",
         "}",
         r"""
 /** Integrate the product of three polynomials using exact Boys moments. */
@@ -95,7 +95,7 @@ __device__ double dot(unsigned da,const double* a,unsigned db,const double* b,
 }
 __device__ __noinline__ Response evaluate(bool metric,double alpha,Vec3 A,Angular a,
     double beta,Vec3 B,Angular b,double gamma,Vec3 C,Angular c) {
-  const double invalid=nan("");
+  const double invalid=NAN;
   if (order(a)>3 || order(b)>3 || order(c)>3 || !(alpha>0) || !(gamma>0) ||
       (!metric && !(beta>0))) return {invalid,{invalid,invalid,invalid},{invalid,invalid,invalid},{invalid,invalid,invalid}};
   const double p=alpha+beta,q=gamma,rho=p*q/(p+q),sx=q/(p+q),sy=p/(p+q);
