@@ -30,7 +30,7 @@ The instrumented 384-AO warm call uses 8 panels, uploads 4,015,521,792 raw bytes
 
 The maximum sampled GPU process usage is 8258 MiB; the maximum observed cumulative host high-water value is 2,576,830,464 bytes. Every large-profile force component passes against the retained external reference. Samples and native plan estimates do not extend whole-process qualification: the global qualified range remains ≤16 orbital /128 auxiliary AOs.
 
-Validation: 71 host checks, 115 GPU checks, native DF with default/generated/serial-dot variants, capture recovery, and occupied UHF batch-four memcheck with zero errors. The frozen library embeds the independently checked source hash. The first compile hit its finite 20-minute limit; its log is retained, and the exact incremental build completed in another finite allocation before any GPU qualification.
+Validation: 71 host checks, 115 GPU checks, native DF with default/generated/serial-dot variants, capture recovery, and occupied UHF batch-four memcheck with zero errors. The frozen library embeds the independently checked source hash. The first compile hit its finite 20-minute limit; its log remains in the historical full-run bundle, and the exact incremental build completed in another finite allocation before any GPU qualification.
 
 The existing direct-SCF acceptance matrix was rerun without changing its tolerances. Historical pre-change control arrays from #343 are retained for the 96-AO comparison; no new control timing is claimed.
 
@@ -43,6 +43,29 @@ The existing direct-SCF acceptance matrix was rerun without changing its toleran
 
 The candidate and historical pre-change native forces differ by at most 6.436830e-13 Ha/Bohr, with identical native iteration rows. Strict direct acceptance failures remain open. This slice does not close #206, #308, #309, #310 or #311; complete changed-geometry/budget/ablation integration and final acceptance remain outstanding.
 
-Qualified source: `3430c0bb1071685f65072d9941a33e4f3e2d1e95`. Native source identity: `cb60b50bac01691a81ac6bd46919c840bdf1f609d5651e637adef31e7f01e9ca`. Frozen library SHA-256: `5b841ed1dfbfd34eaa73b20a1c4f28da4cf1d798bd8e502093679c9a1f7aaa06`. The exact measured patch and rebase identity record are archived.
+Qualified source: `3430c0bb1071685f65072d9941a33e4f3e2d1e95`. Native source identity: `cb60b50bac01691a81ac6bd46919c840bdf1f609d5651e637adef31e7f01e9ca`. Frozen library SHA-256: `5b841ed1dfbfd34eaa73b20a1c4f28da4cf1d798bd8e502093679c9a1f7aaa06`. The exact measured patch and rebase identity record are retained under `reproduction/`.
 
-`evidence.zip` retains raw results, exact runners and finite Slurm provenance, independent basis/factor qualification, state exports, profiles/memory samples, direct controls and build/validation logs. Every member was restored and compared byte-for-byte. Archive SHA-256: `86b7ea32a92f9d781ab621c9854f3a495d013cdeb96c6346eabf4ac2d52ed597`.
+`measurements/` retains every value in the 20 clean comparison records, including
+all raw timing samples, arrays, convergence and errors, plus independent input
+qualification. `direct-gate/` and `historical-prechange-direct/` retain the strict
+gate failures and controls. `reproduction/` retains the measured source patch,
+runner commands and identities. All JSON values and ordering match the original
+records; `summary.json` pins both original and selected file hashes.
+
+The former 7.45 MB `evidence.zip` also contained routine test outputs and detailed
+profiler traces. It has been removed from this PR's current tree. An exact local
+copy remains under ignored `.artifacts/`; its historical Git identity and SHA-256
+are recorded in `summary.json`. Full-run inspection can recover it without
+putting it back into the reviewed result directory:
+
+```bash
+mkdir -p .artifacts/metric-gemv-history
+git show 5a721350fc7ba83133e062980dff0757c2c1f3ad:benchmarks/results/issue206-metric-gemv/evidence.zip > .artifacts/metric-gemv-history/evidence.zip
+```
+
+This storage correction does not rerun benchmarks or change any reported gate.
+
+Retained Python runners have repository lint formatting/import cleanup; the
+profile sampler makes its original `check=False` default explicit. Original
+measured runner hashes remain separate from the retained file hashes. These
+files describe historical local paths; use fresh output paths when reproducing.

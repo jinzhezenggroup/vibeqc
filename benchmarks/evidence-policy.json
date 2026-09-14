@@ -40,11 +40,6 @@
       "reason": "Repeated device/host response-placement ablations and GPU4PySCF RHF/UHF 96/192/384-AO matrices, complete raw results/ranks/traces, direct gate, validation/failures, reconstruction and measured identities.",
       "sha256": "2440dafc718bc58f2981dddb4dd2262dfc2ffa59b3b7389e3d36ee4898c388e3"
     },
-    "benchmarks/results/issue206-metric-gemv/evidence.zip": {
-      "owner": "issue206-metric-gemv",
-      "reason": "Complete repeated FP64 GEMV/serial-dot ablations, RHF/UHF external comparisons, basis/factor qualification, direct gates and retained controls, component/memory profiles, source reconstruction, validation and build timeout evidence.",
-      "sha256": "86b7ea32a92f9d781ab621c9854f3a495d013cdeb96c6346eabf4ac2d52ed597"
-    },
     "benchmarks/results/issue282-streamed-panels/raw-evidence.zip": {
       "owner": "issue282-streamed-panels",
       "reason": "Compressed exact fixed-density J/K and E2-gradient arrays, successful endpoint matrix, failed experiments and reconstruction patches. Every raw member is hash-verified and byte-restored; the fixed numerical arrays are needed to reproduce bounded/resident parity.",

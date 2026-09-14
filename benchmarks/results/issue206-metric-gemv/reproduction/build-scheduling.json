@@ -1,0 +1,1 @@
+{"initial_cpu_build":9575,"initial_time_limit":"00:20:00","continuation_cpu_build":9577,"continuation_time_limit":"00:40:00","gpu_validation":9576,"gpu_validation_dependency":"afterany:9577","reason":"Generated release CUDA shards may exceed initial allocation; continue exact incremental build and require success hash before GPU validation."}
