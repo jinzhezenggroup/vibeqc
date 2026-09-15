@@ -69,3 +69,31 @@ The method adapter moves one exported history through to its C handle. The
 shared resource inventory covers CPU vector growth or the CUDA history plus
 that exported snapshot; public queries do not allocate another native history.
 Python result storage is owned by the caller.
+
+## Internal final-state handoff
+
+The resident CUDA KS owner also provides an internal, versioned handoff for
+the later stationary-gradient implementation in issue #163. It is deliberately
+absent from the public C/Python result ABI and does not make force requests
+supported.
+
+After a converged solve, `methods/dft_method.hpp` can return an eligibility
+token for either a prepared single calculation or one prepared batch item. The
+token binds the prepared provider, geometry/basis owner, GridSpec, functional,
+spin occupations, device, solve epoch and exact orbital/Fock/density
+generation. Every new `begin`, including a failed or nonconverged attempt,
+revokes the preceding token before CUDA work. Rebuilt geometry receives a new
+owner even when all matrix dimensions are unchanged.
+
+An exact-token read canonicalizes the retained physical, non-DIIS Fock on the
+owner's ordinary stream and detaches `D`, `F`, `C`, orbital energies,
+occupations, energy components, grid and provider identity. The read validates
+the AO-metric eigenframe, density reconstruction, commutator, electron trace,
+idempotency, canonicality, component energy and physical residual before
+publication. `W` is constructed on the host only when explicitly requested
+after every gate passes. A stale token is rejected before matrix transfer.
+
+`CudaKsTransfers::final_state_d2h_bytes` and `final_state_reads` separate this
+explicit handoff from ordinary energy execution. The existing public
+`matrix_d2h_bytes` total still includes snapshot matrices, so legacy transport
+accounting remains conservative without an ABI change.

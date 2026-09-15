@@ -59,6 +59,11 @@ struct KsTransportDiagnostic {
   std::uint64_t density_h2d_bytes{};
   std::uint64_t scalar_d2h_bytes{};
   std::uint64_t matrix_d2h_bytes{};
+  /** Internal #163 handoff accounting. The legacy public ABI continues to
+   * report these bytes
+   * inside matrix_d2h_bytes without adding fields. */
+  std::uint64_t final_state_d2h_bytes{};
+  std::uint64_t final_state_reads{};
   std::uint64_t synchronizations{};
   std::uint64_t iterations{};
   std::uint64_t occupation_stabilized_proposals{};
