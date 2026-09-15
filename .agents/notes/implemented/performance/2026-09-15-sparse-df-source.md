@@ -64,6 +64,11 @@ collected with intrusive counter atomics.
 
 ## Revisit when
 
+The final cold profile identifies one-electron/nuclear derivative generation
+as the largest measured device component of the separate unbudgeted resident
+endpoint (57.84 seconds). Its scope must remain distinct from the source-backed
+raw-generation bottleneck and the rejected exporter substitution.
+
 Generated primitive evaluation is now the next source optimization boundary.
 Further recurrence/scheduling changes require their own independent numerical
 and complete-generation evidence; this traversal change establishes none.

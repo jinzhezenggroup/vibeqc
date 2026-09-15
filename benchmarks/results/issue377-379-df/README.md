@@ -6,8 +6,60 @@ Naux=NAO and ranks 20/40/80/160. All real-device work uses finite Slurm jobs on
 `main` with `--gres=gpu:5090:1`. Energy/force gates remain 1e-9 Ha and 1e-8
 Ha/Bohr; the metric relative threshold remains 1e-10. No approximation changes.
 
-Final independent-engine and component qualification is in progress in the
-initial draft of this bundle; it must be complete before merging the PR.
+Independent energy/force gates pass at every size. At 768 AOs, the five-pair
+current-master exchange comparison improves the warm endpoint from about
+12.05 to 10.81 s. Occupied response then reduces it to 9.81 s. The fresh
+automatic-policy GPU4PySCF matrix measures 9.848 s; all five native samples
+take three iterations, with maximum energy/force errors of 4.05e-11 Ha and
+1.31e-10 Ha/Bohr. Only one GPU4PySCF sample shares the three-iteration branch
+(2.537 s); its other four samples take one iteration. The 96/192/384 matrix
+has no matching branches, so it establishes numerical parity and scoped raw
+times, without a qualified iteration-matched speed claim.
+
+| Full raw generation, including readback | Master median (s) | Compact median (s) | Speedup |
+| --- | ---: | ---: | ---: |
+| 192 AO | 0.72749 | 0.43598 | 1.67x |
+| 384 AO | 7.98692 | 3.16615 | 2.52x |
+| 768 AO | 103.90351 | 24.24465 | 4.29x |
+
+All three complete raw arrays are bit-identical to master. Source-backed
+768-AO plan setup measures 104.325 / 24.588 s. Fixed-density dense/occupied
+K medians are 0.82841 / 0.20960 s, with maximum K difference 1.78e-14.
+
+| 768 response diagnostic | Dense | Occupied |
+| --- | ---: | ---: |
+| AO/projection/expansion products | 1536 full-AO | 1536 projection + 1536 expansion |
+| Product device time, including metric/weight GEMMs | 1.933 s | 0.449 s |
+| Generated three-center derivative device time | 4.812 s | 5.252 s |
+| Auxiliary derivative panels | 1 | 12 |
+| Peak response-weight elements | 452,984,832 | 37,748,736 |
+| Retained projected elements | — | 19,660,800 |
+| Additional response device scratch | 132,236,872 B | 37,865,032 B |
+| Borrowed J/K capacity | 10,871,635,968 B | 10,871,635,968 B |
+| Response H2D traffic | 3,628,698,912 B | 3,628,698,912 B |
+| Additional factor-validation D2H | 0 | 4,718,596 B |
+
+The occupied projection and expansion each perform 175,154,135,040 FLOPs.
+The factor has rank 160, occupies 983,048 bytes with its generation controls,
+and produces density generation four after one dense seed and two occupied
+iterations. The observed final commutator is 1.38e-12, density RMS 3.07e-18,
+and idempotency error 2.31e-14. The 64-slice schedule slightly increases shell
+primitive work (348,913,664 to 350,896,128); its matrix-product savings still
+improve the complete clean endpoint. Profiles at 192/384 retain their own
+actual branch and counters; their intrusive wall times are not clean samples.
+
+The unchanged resident cold endpoint is 104.46 s in the independent matrix.
+Its largest measured cold device component is one-electron/nuclear derivative
+generation, 57.84 s. The cold final determinant needs strict correction and
+correctly falls back to dense response. `cold-components.json` keeps this
+whole-endpoint ledger separate from source-backed raw generation.
+
+Validation includes 91 CUDA regressions, 30 CPU native tests, 48 CPU Python
+tests (one CUDA-only skip), six final occupied-response replay cases, 36
+independent source configurations, native adversarial lifecycle checks, and
+Compute Sanitizer with zero errors. The UHF tests cover two occupied spin
+channels and zero beta rank. `independent-response-parity.json` also checks
+every clean 192/384/768 response sample against the fresh GPU4PySCF results.
 
 ## Interpretation
 
@@ -62,13 +114,16 @@ retains that frozen source rather than a later dirty checkout. An explicit
 `vibeqc_df_source_probe inputs/768.txt 3 report.jsonl raw.bin` generates the
 full raw source. The inputs contain unnormalized physical shell primitives;
 the native molecule owner applies its usual normalization. For fixed K,
-append row-major converged occupied coefficients to the same physical input
+append the row-major array from `inputs/768-occupied-coefficients.npz` to
+`inputs/768.txt` (for example with `numpy.savetxt`, using `%.17g`)
 before invoking `vibeqc_df_occupied_probe INPUT 5 0 0 arrays.bin`. The retained
 input metadata identifies the independent converged checkpoint and exact
 orthogonality check. Large raw/K arrays, logs, binaries and detailed traces
 remain outside Git; `local-artifacts.json` pins their paths, sizes and SHA-256.
 
-The source patches reconstruct cited native versions from master f23e041.
+`source-versions.json` pins each cited library and its reconstruction patch
+against master f23e041. The runner's `git_head` records the checkout at
+invocation; a pinned library can have an older reconstruction base.
 Compact endpoint files omit only repeated basis metadata, which is retained
 once, and record the full original JSON hash. Historical provisional probe
 results with an incorrect lane label are excluded from final causal counts.

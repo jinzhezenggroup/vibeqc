@@ -49,8 +49,12 @@
         "ri_k": 32.14077800000007,
         "ri_k_gemm": 1661.032806
       },
-      "counter_sums": {},
-      "counter_maxima": {},
+      "counter_sums": {
+
+      },
+      "counter_maxima": {
+
+      },
       "logical_tiles": 0,
       "repeated_tile_productions": 0
     },
