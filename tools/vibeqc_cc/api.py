@@ -1,0 +1,262 @@
+"""Energy-only public RCCSD facade over the audited #148/#149 solver tiers.
+
+This is the issue #149 C-slice API. It registers an energy-only capability and
+single-point entry point in the internal CC facade, the same tier as the #148
+``solve`` entry point. The native C-ABI ``VIBEQC_METHOD`` registry entry is
+deliberately *not* added here: a public ``VIBEQC_METHOD_RCCSD`` needs the #193
+device-resident provider interface as its prerequisite, and this module does not
+invent one. Force requests are rejected here directly; frozen-core, ECP,
+open-shell and non-RHF references are rejected by the #147 reference/provider
+validation the solver reuses (never silently reinterpreted as HF or as a
+different correlated method).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+
+from .solver import CCSDResult, solve
+
+
+@dataclass(frozen=True)
+class Capabilities:
+    """Energy-only capability record for the internal RCCSD facade."""
+
+    method: str
+    family: str
+    available: bool
+    supports_batch: bool
+    supported_properties: frozenset
+
+    def __post_init__(self):
+        if self.method != "rccsd" or self.family != "coupled_cluster":
+            raise ValueError("RCCSD capability identity mismatch")
+        if "energy" not in self.supported_properties:
+            raise ValueError("RCCSD must report the energy property")
+
+
+def method_capabilities(method: str = "rccsd") -> Capabilities:
+    """Report RCCSD support without constructing a reference or provider.
+
+    ``supports_batch`` describes the native ragged fleet plan, which requires
+    the #193 resident interface and is therefore not registered. The Python
+    :func:`batch_energy` helper executes independent per-item states instead.
+    """
+    if method.lower() != "rccsd":
+        raise ValueError(f"unknown method {method!r}")
+    return Capabilities(
+        method="rccsd",
+        family="coupled_cluster",
+        available=True,
+        supports_batch=False,
+        supported_properties=frozenset({"energy"}),
+    )
+
+
+@dataclass(frozen=True)
+class RCCSDResult:
+    """Energy-only single-point result plus the complete replayable solver state.
+
+    ``state`` is the #148 ``CCSDResult`` and carries amplitude, history,
+    provenance and replay inputs. Convergence is judged only by that state's
+    independently re-evaluated physical residuals and energy.
+    """
+
+    backend: str
+    reference_energy: float
+    correlation_energy: float | None
+    total_energy: float | None
+    state: CCSDResult
+
+    @property
+    def status(self):
+        return self.state.status
+
+    @property
+    def reason(self):
+        return self.state.reason
+
+    @property
+    def converged(self):
+        return self.state.converged
+
+    @property
+    def iterations(self):
+        return len(self.state.history)
+
+    @property
+    def final_r1_max(self):
+        return (
+            self.state.history[-1].get("independent_r1_max")
+            if self.state.history
+            else None
+        )
+
+    @property
+    def final_r2_max(self):
+        return (
+            self.state.history[-1].get("independent_r2_max")
+            if self.state.history
+            else None
+        )
+
+    @property
+    def t1(self):
+        return self.state.t1
+
+    @property
+    def t2(self):
+        return self.state.t2
+
+    @property
+    def history(self):
+        return self.state.history
+
+    @property
+    def provenance(self):
+        return self.state.provenance
+
+    def write(self, path):
+        """Export the replayable state (replayed by ``tools.replay_ccsd``)."""
+        return self.state.write(path)
+
+
+def energy(
+    snapshot,
+    provider,
+    *,
+    backend="cpu",
+    options=None,
+    t1=None,
+    t2=None,
+    compiler=None,
+    cache=None,
+    device=0,
+    provider_peak_bytes=0,
+    compute_forces=False,
+):
+    """Return the energy-only RCCSD single point from an owned RHF reference.
+
+    ``backend`` selects the physical-equation evaluator: ``"cpu"`` is the #148
+    interpreter; ``"cuda"`` compiles the same TensorIR through #146 and
+    requires an explicit ``CudaCompilerAdapter`` and cache. Forces,
+    frozen cores, ECP, open shells and non-RHF references raise before AO work;
+    a CUDA provider failure never silently falls back to CPU CCSD.
+    """
+    if compute_forces:
+        raise NotImplementedError(
+            "RCCSD exposes energy only; forces are not implemented"
+        )
+    if backend == "cpu":
+        state = solve(snapshot, provider, options=options, t1=t1, t2=t2)
+    elif backend == "cuda":
+        if not isinstance(compiler, CudaCompilerAdapter):
+            raise ValueError("CUDA RCCSD requires a CudaCompilerAdapter")
+        if not isinstance(cache, Path):
+            raise ValueError("CUDA RCCSD requires a pathlib.Path cache")
+        from .gpu_solver import solve_gpu
+
+        state = solve_gpu(
+            snapshot,
+            provider,
+            compiler=compiler,
+            cache=cache,
+            options=options,
+            t1=t1,
+            t2=t2,
+            device=device,
+            provider_peak_bytes=provider_peak_bytes,
+        )
+    else:
+        raise ValueError("RCCSD backend must be 'cpu' or 'cuda'")
+    reference = snapshot.reference_energy
+    return RCCSDResult(
+        backend=backend,
+        reference_energy=reference,
+        correlation_energy=state.correlation_energy,
+        total_energy=state.total_energy,
+        state=state,
+    )
+
+
+@dataclass(frozen=True)
+class BatchItemResult:
+    """Isolated per-system energy outcome; a failure never corrupts neighbors."""
+
+    index: int
+    status: str
+    reason: str
+    backend: str
+    converged: bool
+    correlation_energy: float | None
+    total_energy: float | None
+    state: CCSDResult | None
+
+
+@dataclass(frozen=True)
+class BatchRCCSDResult:
+    """Input-ordered energy batch; ragged AO shapes are run independently."""
+
+    items: tuple
+
+
+def batch_energy(
+    problems,
+    *,
+    backend="cpu",
+    options=None,
+    compiler=None,
+    cache=None,
+    device=0,
+    provider_peak_bytes=0,
+):
+    """Execute independent energy-only systems, isolating every item's state.
+
+    ``problems`` is an iterable of ``(snapshot, provider)`` pairs. Each item
+    owns its amplitudes, denominators, DIIS and status; an exception on one
+    item is recorded and the remaining items continue. Homogeneous-shape
+    GPU compilation is deliberately *not* grouped or padded here: grouping
+    into a native ragged fleet plan requires the #193 resident interface.
+    """
+    items = []
+    for index, (snapshot, provider) in enumerate(problems):
+        try:
+            result = energy(
+                snapshot,
+                provider,
+                backend=backend,
+                options=options,
+                compiler=compiler,
+                cache=cache,
+                device=device,
+                provider_peak_bytes=provider_peak_bytes,
+            )
+            items.append(
+                BatchItemResult(
+                    index=index,
+                    status=result.status,
+                    reason=result.reason,
+                    backend=result.backend,
+                    converged=result.converged,
+                    correlation_energy=result.correlation_energy,
+                    total_energy=result.total_energy,
+                    state=result.state,
+                )
+            )
+        except Exception as error:  # noqa: BLE001 - item isolation is the contract
+            items.append(
+                BatchItemResult(
+                    index=index,
+                    status="error",
+                    reason=f"{type(error).__name__}: {error}",
+                    backend=backend,
+                    converged=False,
+                    correlation_energy=None,
+                    total_energy=None,
+                    state=None,
+                )
+            )
+    return BatchRCCSDResult(tuple(items))

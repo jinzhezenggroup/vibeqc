@@ -7,6 +7,15 @@ entry points remain available alongside the complete R1/R2 solver and the
 audited CPU (T) triples reference (issue #150 slice A).
 """
 
+from .api import (
+    BatchItemResult,
+    BatchRCCSDResult,
+    Capabilities,
+    RCCSDResult,
+    batch_energy,
+    energy,
+    method_capabilities,
+)
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts, build_program
 from .evaluate import evaluate
@@ -19,14 +28,21 @@ from .triples import (
 )
 
 __all__ = [
+    "BatchItemResult",
+    "BatchRCCSDResult",
     "CCSDResult",
+    "Capabilities",
     "PreparedCCSD",
+    "RCCSDResult",
     "SolverOptions",
     "amplitude_layouts",
+    "batch_energy",
     "build_ccsd_program",
     "build_program",
     "build_triples_program",
+    "energy",
     "evaluate",
+    "method_capabilities",
     "solve",
     "triples_energy",
     "triples_energy_tensorir",

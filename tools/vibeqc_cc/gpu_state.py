@@ -25,6 +25,10 @@ def iteration_program(nocc, nvir, *, damping=0.0):
 
     D is a resident preconditioner input, not part of R. The final acceptance
     DAG is separately built with form='expanded' and has no D dependency.
+
+    ``iteration_program(..., damping=d)`` and ``iteration_program(..., damping=0)``
+    share the residual subgraph, so both have the same per-iteration transfer
+    volume; the physical-equation evaluation is identical at every damping.
     """
     SolverOptions(damping=damping)
     physical = build_ccsd_program(nocc, nvir, form="shared", diagnostics=False)
