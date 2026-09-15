@@ -9,8 +9,8 @@ mixes different amounts of work. This checker makes that condition explicit.
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +58,9 @@ def stability_summary(payload: dict[str, Any]) -> dict[str, Any]:
     if not shared:
         reasons.append("the two engines have no shared SCF iteration branch")
     elif shared_stable_branch is None:
-        reasons.append("the shared branch is not the unique stable branch of both engines")
+        reasons.append(
+            "the shared branch is not the unique stable branch of both engines"
+        )
 
     headline_valid = not reasons
     return {
