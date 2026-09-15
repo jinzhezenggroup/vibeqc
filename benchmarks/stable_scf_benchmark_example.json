@@ -1,0 +1,20 @@
+{
+  "vibeqc": {
+    "warm_samples": [
+      {"convergence": [{"iterations": 3}]},
+      {"convergence": [{"iterations": 3}]},
+      {"convergence": [{"iterations": 3}]},
+      {"convergence": [{"iterations": 3}]},
+      {"convergence": [{"iterations": 3}]}
+    ]
+  },
+  "gpu4pyscf": {
+    "warm_samples": [
+      {"convergence": [{"iterations": 1}]},
+      {"convergence": [{"iterations": 7}]},
+      {"convergence": [{"iterations": 4}]},
+      {"convergence": [{"iterations": 4}]},
+      {"convergence": [{"iterations": 1}]}
+    ]
+  }
+}
