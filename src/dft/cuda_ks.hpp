@@ -3,12 +3,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
+#include "dft/cuda_ks_final_state.hpp"
 #include "dft/grid.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/types.hpp"
+#include "vibeqc/vibeqc.h"
 
 namespace vibeqc::dft {
 
@@ -25,6 +28,7 @@ struct CudaKsResources {
  * preparation diagnostics are reported separately by PreparedFockPlan. */
 struct CudaKsTransfers {
   std::uint64_t setup_h2d_bytes{}, density_h2d_bytes{}, scalar_d2h_bytes{}, matrix_d2h_bytes{};
+  std::uint64_t final_state_d2h_bytes{}, final_state_reads{};
   std::uint64_t synchronizations{}, iterations{};
   /** Number of subsequent proposals using the CPU-compatible stationary-cycle
    * shift; cumulative across replays, independent of transfer counts. */
@@ -72,6 +76,16 @@ class CudaKsPlan {
   void set_warm_start_updates(bool enabled) noexcept;
   /** Forget the seed without downloading or changing the current result. */
   void clear_warm_start() noexcept;
+  /** Read-only host eligibility query. It performs no CUDA call or transfer. */
+  vibeqc_status final_state_token(CudaKsFinalStateToken& token, std::string& detail) const;
+  /** Export a detached, strictly validated current physical state. Exact-token
+   * comparison
+   * precedes transfer; eligibility is rechecked before publication.
+   * W is built only when
+   * explicitly requested. */
+  vibeqc_status read_final_state(const CudaKsFinalStateToken& expected,
+                                 bool compute_weighted_density, VerifiedKsFinalState& state,
+                                 std::string& detail);
   const CudaKsResources& resources() const noexcept;
   CudaKsTransfers transfers() const noexcept;
 

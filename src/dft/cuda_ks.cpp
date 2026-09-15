@@ -1,6 +1,7 @@
 #include "dft/cuda_ks.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <optional>
@@ -59,11 +60,12 @@ std::size_t sum(std::size_t a, std::size_t b) {
 struct KsStateStorage {
   double *hcore{}, *overlap{}, *x{}, *j{}, *density{}, *proposal{}, *warm{}, *fock{}, *residual{},
       *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{}, *gram{}, *weights{},
-      *eigenvalues{};
+      *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{};
   std::int32_t* occupied{};
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
-  int *solver_info{}, *jk_error{};
+  int *solver_info{}, *final_solver_info{}, *jk_error{};
+  std::uint8_t* final_spin_enabled{};
   cuda_ks_detail::Scalars* scalars{};
   /** The dry run and actual partition share one checked, typed layout. All
    * persistent and phase-local numeric buffers are explicitly charged. */
@@ -85,17 +87,30 @@ struct KsStateStorage {
     reserve(gram, product(history + 1, history + 1));
     reserve(weights, history + 1);
     reserve(eigenvalues, product(spins, n));
+    reserve(final_coefficients, elements);
+    reserve(final_eigenvalues, product(spins, n));
     reserve(occupied, spins);
     reserve(enabled, 1);
     reserve(spin_enabled, spins);
     reserve(history_count, 1);
     reserve(history_head, 1);
     reserve(solver_info, spins);
+    reserve(final_solver_info, spins);
     reserve(jk_error, 1);
+    reserve(final_spin_enabled, spins);
     reserve(scalars, 1);
     return bytes;
   }
 };
+
+std::uint64_t next_ks_owner() noexcept {
+  static std::atomic<std::uint64_t> next{1};
+  auto value = next.load(std::memory_order_relaxed);
+  while (value && value != std::numeric_limits<std::uint64_t>::max()) {
+    if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
+  }
+  return 0;
+}
 }  // namespace
 
 std::size_t cuda_ks_state_bytes(std::size_t n, unsigned spins, unsigned history) {
@@ -116,6 +131,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   unsigned spins{}, history{};
   std::array<std::size_t, 2> occupations{};
   std::vector<double> orthogonalizer, cold_density;
+  GridSpec grid_spec;
   CudaKsResources resource;
   CudaKsTransfers movement;
   void *arena{}, *xc_arena{};
@@ -124,7 +140,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
   bool warm_updates{true};
   bool stabilize_occupations{};
-  std::uint64_t generation{};
+  bool pbe{}, final_state_ready{}, final_frame_ready{};
+  std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
 
   void current_device() const {
@@ -157,11 +174,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
        const scf::ScfOptions& control, bool pbe, std::size_t tile)
-      : provider(plan), options(control) {
+      : provider(plan), options(control), grid_spec(grid.spec()), pbe(pbe) {
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
-    if (strategy.backend != scf::FockBackend::Cuda || strategy.spec.derivative_order != 0 ||
-        !strategy.spec.coulomb.present || strategy.spec.coulomb.coefficient != 1.0 ||
+    if (!owner || strategy.backend != scf::FockBackend::Cuda ||
+        strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
+        strategy.spec.coulomb.coefficient != 1.0 ||
         strategy.spec.coulomb.approximation != scf::FockApproximation::Exact ||
         strategy.spec.exchange.present || !(direct = provider.cuda_direct_source()))
       throw std::invalid_argument(
@@ -229,6 +247,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                     static_cast<std::uint8_t>(occupations[1] > 0)};
       upload(occupied, spin_counts, spins * sizeof(std::int32_t));
       upload(spin_enabled, selected, spins * sizeof(std::uint8_t));
+      const std::uint8_t all_spins[]{1, 1};
+      upload(final_spin_enabled, all_spins, spins * sizeof(std::uint8_t));
       // XC setup drains this same stream, including the small stack inputs.
       xc = std::make_unique<CudaXcPlan>(basis, grid, pbe, spins == 2, tile, xc_arena,
                                         resource.xc_device_bytes, stream);
@@ -252,6 +272,17 @@ struct CudaKsPlan::Impl : KsStateStorage {
   ~Impl() { cleanup(); }
 
   void begin(const std::vector<double>* input, bool reuse_warm) {
+    if (is_pending) throw std::logic_error("cannot replace a pending CUDA KS iteration");
+    final_state_ready = final_frame_ready = false;
+    final_generation = 0;
+    if (solve_epoch == std::numeric_limits<std::uint64_t>::max()) {
+      is_active = false;
+      is_failed = true;
+      throw std::overflow_error("CUDA KS solve epoch exhausted");
+    }
+    ++solve_epoch;
+    is_active = false;
+    is_failed = true;
     current_device();
 #if defined(VIBEQC_TEST_HOOKS)
     if (fail_next_ks_runtime) {
@@ -259,7 +290,6 @@ struct CudaKsPlan::Impl : KsStateStorage {
       check(cudaErrorUnknown);
     }
 #endif
-    if (is_pending) throw std::logic_error("cannot replace a pending CUDA KS iteration");
     const bool use_warm = !input && reuse_warm && warm_ready;
     std::vector<double> prepared;
     if (input) prepared = seed(input);  // Validate before replacing current state.
@@ -441,6 +471,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
         check(cudaMemcpyAsync(density, proposal, elements * sizeof(double),
                               cudaMemcpyDeviceToDevice, stream));
       }
+      if (output.converged) {
+        final_state_ready = true;
+        final_generation = generation;
+      }
     } catch (...) {
       cudaStreamSynchronize(stream);
       is_active = false;
@@ -450,6 +484,122 @@ struct CudaKsPlan::Impl : KsStateStorage {
     }
     previous_energy = output.energy;
     return is_active;
+  }
+
+  KsFinalStateIdentity final_identity() const {
+    KsFinalStateIdentity identity;
+    identity.determinant.factor = {owner, 1, final_generation, final_generation};
+    identity.determinant.solve_epoch = solve_epoch;
+    identity.determinant.model = provider.strategy();
+    identity.determinant.occupied = {occupations[0]};
+    if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
+    identity.model = {1, 1, grid_spec, xc->layout().tile_points, pbe, spins, device, owner};
+    return identity;
+  }
+
+  CudaKsFinalStateToken token() const {
+    if (!final_state_ready || !output.converged || is_active || is_pending || is_failed ||
+        !solve_epoch || !final_generation)
+      throw std::invalid_argument("CUDA KS owner has no successful current final state");
+    return {1, final_identity()};
+  }
+
+  VerifiedKsFinalState read_final(const CudaKsFinalStateToken& expected,
+                                  bool compute_weighted_density, std::string& detail) {
+    const auto current = token();
+    if (expected.version != 1 || expected != current)
+      throw std::invalid_argument(
+          "CUDA KS final-state token has stale owner, epoch, generation, model or occupations");
+    current_device();
+    cudaStreamCaptureStatus capture = cudaStreamCaptureStatusNone;
+    check(cudaStreamIsCapturing(stream, &capture));
+    if (capture != cudaStreamCaptureStatusNone)
+      throw std::invalid_argument(
+          "CUDA KS final-state read requires an ordinary noncapturing stream");
+
+    if (!final_frame_ready) {
+      const auto blocks = static_cast<unsigned>((elements + 127) / 128);
+      const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
+                                bool b_spin, double* c) {
+        launch_spin_matrix_product_kernel(blocks, 128, 0, stream, 1, spins, n, a, a_spin, transpose,
+                                          b, b_spin, enabled, c);
+        check(cudaGetLastError());
+      };
+      multiply(fock, true, false, x, false, tmp1);
+      multiply(x, false, true, tmp1, true, tmp2);
+      EigensolverResources solver{};
+      solver.stream_ = stream;
+      const auto family = n <= kSmallEigensolverLimit ? scf::CudaEigensolverFamily::small_native
+                                                      : scf::CudaEigensolverFamily::graph_native;
+      check(launch_solver(solver, family, n, spins, tmp2, effective, final_eigenvalues, 0,
+                          final_solver_info, final_spin_enabled),
+            "CUDA KS final-state eigensolver launch failed");
+      multiply(x, false, false, tmp2, true, final_coefficients);
+    }
+
+    KsPhysicalState physical;
+    KsFinalStateCandidate candidate;
+    physical.identity = candidate.identity = current.identity;
+    physical.physical = candidate.physical_origin = true;
+    physical.components = output.dft_diagnostic.components;
+    physical.reported_energy = output.energy;
+    physical.physical_residual = output.dft_diagnostic.physical_residual;
+    candidate.fock_density_generation = final_generation;
+    physical.density.resize(spins);
+    physical.fock.resize(spins);
+    candidate.spins.resize(spins);
+    for (unsigned spin = 0; spin < spins; ++spin) {
+      physical.density[spin].resize(matrix);
+      physical.fock[spin].resize(matrix);
+      candidate.spins[spin].vectors.resize(matrix);
+      candidate.spins[spin].values.resize(n);
+    }
+    int info[2]{};
+    cudaError_t error = cudaSuccess;
+    const auto copy = [&](void* target, const void* source, std::size_t bytes) {
+      if (error == cudaSuccess)
+        error = cudaMemcpyAsync(target, source, bytes, cudaMemcpyDeviceToHost, stream);
+    };
+    for (unsigned spin = 0; spin < spins; ++spin) {
+      const auto offset = static_cast<std::size_t>(spin) * matrix;
+      copy(physical.density[spin].data(), density + offset, matrix * sizeof(double));
+      copy(physical.fock[spin].data(), fock + offset, matrix * sizeof(double));
+      copy(candidate.spins[spin].vectors.data(), final_coefficients + offset,
+           matrix * sizeof(double));
+      copy(candidate.spins[spin].values.data(),
+           final_eigenvalues + static_cast<std::size_t>(spin) * n, n * sizeof(double));
+      copy(&info[spin], final_solver_info + spin, sizeof(int));
+    }
+    const auto drained = cudaStreamSynchronize(stream);
+    if (error == cudaSuccess) error = drained;
+    check(error);
+    ++movement.synchronizations;
+    ++movement.final_state_reads;
+    const auto numeric_bytes = spins * (3 * matrix + n) * sizeof(double);
+    movement.matrix_d2h_bytes += spins * 3 * matrix * sizeof(double);
+    movement.final_state_d2h_bytes += numeric_bytes + spins * sizeof(int);
+    final_frame_ready = true;
+    for (unsigned spin = 0; spin < spins; ++spin)
+      if (info[spin] != 0) {
+        final_state_ready = false;
+        throw std::runtime_error("CUDA KS final-state eigensolver reported failure");
+      }
+    if (token() != current)
+      throw std::invalid_argument("CUDA KS final-state eligibility changed during export");
+
+    scf::solver::FinalStateLimits limits;
+    limits.density_tolerance = options.density_tolerance;
+    limits.energy_tolerance = options.energy_tolerance;
+    limits.maximum_corrections = 0;
+    limits.require_canonicality = true;
+    VerifiedKsFinalState verified;
+    if (!validate_ks_final_state(current.identity, provider.one_electron().overlap,
+                                 provider.one_electron().hcore, physical, candidate, limits,
+                                 compute_weighted_density, verified, detail)) {
+      final_state_ready = false;
+      throw std::runtime_error(detail.empty() ? "CUDA KS final-state validation failed" : detail);
+    }
+    return verified;
   }
 
   std::vector<double> download(const double* source) {
@@ -505,6 +655,46 @@ std::vector<double> CudaKsPlan::warm_density() {
 }
 void CudaKsPlan::set_warm_start_updates(bool enabled) noexcept { impl_->warm_updates = enabled; }
 void CudaKsPlan::clear_warm_start() noexcept { impl_->warm_ready = false; }
+vibeqc_status CudaKsPlan::final_state_token(CudaKsFinalStateToken& token,
+                                            std::string& detail) const {
+  token = {};
+  detail.clear();
+  try {
+    token = impl_->token();
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for CUDA KS final-state token failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::exception& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+}
+vibeqc_status CudaKsPlan::read_final_state(const CudaKsFinalStateToken& expected,
+                                           bool compute_weighted_density,
+                                           VerifiedKsFinalState& state, std::string& detail) {
+  state = {};
+  detail.clear();
+  try {
+    state = impl_->read_final(expected, compute_weighted_density, detail);
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for detached CUDA KS final state failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const vibeqc::Error& error) {
+    impl_->final_state_ready = false;
+    detail = error.what();
+    return error.status();
+  } catch (const std::invalid_argument& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  } catch (const std::exception& error) {
+    impl_->final_state_ready = false;
+    if (detail.empty()) detail = error.what();
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  }
+}
 const CudaKsResources& CudaKsPlan::resources() const noexcept { return impl_->resource; }
 CudaKsTransfers CudaKsPlan::transfers() const noexcept {
   auto out = impl_->movement;

@@ -180,6 +180,8 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
   add(target.density_h2d_bytes, value.density_h2d_bytes);
   add(target.scalar_d2h_bytes, value.scalar_d2h_bytes);
   add(target.matrix_d2h_bytes, value.matrix_d2h_bytes);
+  add(target.final_state_d2h_bytes, value.final_state_d2h_bytes);
+  add(target.final_state_reads, value.final_state_reads);
   add(target.synchronizations, value.synchronizations);
   add(target.iterations, value.iterations);
   add(target.occupation_stabilized_proposals, value.occupation_stabilized_proposals);

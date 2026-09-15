@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -172,6 +173,10 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   options.density_tolerance = 1e-10;
   options.max_iterations = 150;
   dft::CudaKsPlan plan(gpu, basis, grid, options, pbe, 257);
+  dft::CudaKsFinalStateToken unavailable;
+  std::string snapshot_detail;
+  require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "fresh CUDA KS owner published a final-state token");
   plan.begin(nullptr, false);
   while (plan.active()) {
     plan.enqueue_iteration();
@@ -193,6 +198,67 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
           "CPU/CUDA SCF endpoints disagree");
   physical_check(cpu, basis, grid, pbe, result);
+  const auto before_snapshot = plan.transfers();
+  dft::CudaKsFinalStateToken token;
+  require(plan.final_state_token(token, snapshot_detail) == VIBEQC_STATUS_SUCCESS,
+          snapshot_detail.c_str());
+  require(plan.transfers().final_state_d2h_bytes == before_snapshot.final_state_d2h_bytes,
+          "CUDA KS token query transferred device state");
+  dft::VerifiedKsFinalState snapshot;
+  require(plan.read_final_state(token, false, snapshot, snapshot_detail) == VIBEQC_STATUS_SUCCESS,
+          snapshot_detail.c_str());
+  const auto snapshot_transfer = plan.transfers();
+  const auto spins = restricted ? 1U : 2U;
+  const auto expected_snapshot_bytes =
+      spins * (3 * basis.nao * basis.nao + basis.nao) * sizeof(double) + spins * sizeof(int);
+  require(snapshot.weighted_density.empty() && snapshot.density.size() == spins &&
+              snapshot.fock.size() == spins && snapshot.orbitals.size() == spins &&
+              snapshot.identity.model.grid == grid_spec && snapshot.identity.model.pbe == pbe &&
+              snapshot.identity.model.spins == spins &&
+              snapshot.identity.determinant.model == gpu.strategy() &&
+              snapshot.identity.determinant.factor.orbital_generation ==
+                  snapshot.identity.determinant.factor.density_generation &&
+              std::abs(snapshot.components.total() - result.energy) < 1e-12,
+          "CUDA KS final snapshot lost model, generation or physical state");
+  require(snapshot_transfer.final_state_d2h_bytes - before_snapshot.final_state_d2h_bytes ==
+                  expected_snapshot_bytes &&
+              snapshot_transfer.final_state_reads == before_snapshot.final_state_reads + 1 &&
+              snapshot_transfer.synchronizations == before_snapshot.synchronizations + 1,
+          "CUDA KS final snapshot transfer accounting is incomplete");
+  require(plan.read_final_state(token, true, snapshot, snapshot_detail) == VIBEQC_STATUS_SUCCESS &&
+              snapshot.weighted_density.size() == spins,
+          snapshot_detail.c_str());
+  if (!restricted && atoms == 1)
+    require(std::all_of(snapshot.weighted_density[1].begin(), snapshot.weighted_density[1].end(),
+                        [](double value) { return value == 0.0; }),
+            "empty beta occupation produced nonzero W");
+
+  const std::vector<std::function<void(dft::CudaKsFinalStateToken&)>> stale_tokens{
+      [](auto& value) { ++value.version; },
+      [](auto& value) { ++value.identity.determinant.factor.basis; },
+      [](auto& value) { ++value.identity.determinant.factor.reference; },
+      [](auto& value) { ++value.identity.determinant.factor.orbital_generation; },
+      [](auto& value) { ++value.identity.determinant.factor.density_generation; },
+      [](auto& value) { ++value.identity.determinant.solve_epoch; },
+      [](auto& value) { value.identity.determinant.model.screening_tolerance *= 2; },
+      [](auto& value) { value.identity.determinant.occupied[0] = 0; },
+      [](auto& value) { ++value.identity.model.owner; },
+      [](auto& value) { ++value.identity.model.grid.radial_points; },
+      [](auto& value) { value.identity.model.pbe = !value.identity.model.pbe; },
+      [](auto& value) { ++value.identity.model.tile_points; },
+      [](auto& value) { ++value.identity.model.device; },
+      [](auto& value) { ++value.identity.model.scf_domain_version; }};
+  for (const auto& mutate : stale_tokens) {
+    auto stale = token;
+    mutate(stale);
+    dft::VerifiedKsFinalState rejected;
+    const auto before_rejection = plan.transfers();
+    require(plan.read_final_state(stale, false, rejected, snapshot_detail) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT &&
+                rejected.density.empty() &&
+                plan.transfers().final_state_d2h_bytes == before_rejection.final_state_d2h_bytes,
+            "stale CUDA KS token transferred or published state");
+  }
   require(result.iterations == result.dft_diagnostic.history.size(),
           "missing CUDA iteration history");
   const auto before = plan.transfers();
@@ -202,6 +268,11 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
               std::abs(warm.energy - result.energy) < 1e-11 &&
               before.density_h2d_bytes == after.density_h2d_bytes,
           "unchanged-geometry replay did not reuse resident warm density");
+  dft::VerifiedKsFinalState stale_snapshot;
+  require(plan.read_final_state(token, false, stale_snapshot, snapshot_detail) ==
+                  VIBEQC_STATUS_INVALID_ARGUMENT &&
+              stale_snapshot.density.empty(),
+          "warm replay accepted the preceding CUDA KS solve epoch");
   const auto energy_only = plan.run(nullptr, true, false);
   require(energy_only.converged && energy_only.density.empty() &&
               plan.transfers().matrix_d2h_bytes == after.matrix_d2h_bytes,
@@ -230,6 +301,8 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
     invalid[atoms * atoms - 1] = 2.0;
     const auto failed = plan.run(&invalid);
     require(plan.failed() && !failed.converged, "invalid grid density did not fail the CUDA item");
+    require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+            "failed CUDA KS solve preserved final-state eligibility");
     const auto recovered = plan.run();
     require(recovered.converged && std::abs(recovered.energy - result.energy) < 1e-11,
             "failed CUDA item replaced its last-good warm state");
@@ -258,6 +331,9 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   const auto limited = unfinished.run();
   require(!limited.converged && !unfinished.failed(), "iteration limit misreported its status");
   require(unfinished.warm_density().empty(), "unfinished solve published a good warm state");
+  require(
+      unfinished.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+      "unfinished CUDA KS solve published a final-state token");
   physical_check(cpu, basis, grid, pbe, limited);
 
   // Exact arena request is charged through the existing #203 device ledger.
