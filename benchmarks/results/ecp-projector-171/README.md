@@ -1,5 +1,11 @@
 # Generated scalar ECP radial/projector migration
 
+The original RTX 4090 record below did not capture the measured candidate
+revision or dirty state. It is retained as historical data, and is not the
+qualification record for this merge. Fresh, source-bound RTX 5090 validation
+is retained in [review-qualification](review-qualification/README.md); no
+missing historical provenance has been inferred.
+
 Measured 2026-09-15 against master `743414dcb44a4a45821b900753dc1d0c4c1cf5c9`
 on an Inspire RTX 4090, driver 570.124.06, CUDA 12.9, architecture 89,
 Release without AOT shells. Python/BLAS workers were limited to two.
