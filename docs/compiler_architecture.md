@@ -74,11 +74,12 @@ explicit `python/` package root; compiler libraries never manipulate `sys.path`.
 CMake recursively tracks compiler leaves as generation dependencies and uses
 the same source inventory as `vibeqc.autotune.source_identity`.
 
-The wheel includes the integral manifests and copies the required native
-templates from `src/tensor` and `src/dft`, plus the audited Libxc source and
-license provenance from `external/libxc-7.0.0`. These inputs are included in the
-sdist too. `setup.py` copies canonical inputs at build time without importing
-either Python package; there is no second editable native source tree.
+The wheel includes the integral manifests, required native templates and their
+transitive local headers, plus the audited Libxc source and license provenance
+from `external/libxc-7.0.0`. These inputs are included in the sdist too.
+`pyproject.toml` configures scikit-build-core to package the CMake-installed native
+library and copy canonical JIT inputs through `wheel.force-include`, without
+importing either Python package; there is no second editable native source tree.
 `common.paths` resolves each input by its stable repository-relative name in a
 checkout or wheel. Independent numerical fixtures remain checkout inputs.
 
@@ -131,8 +132,8 @@ an uninstalled generator from an unrelated working directory.
 
 The decomposition/package-migration rationale, historical module sizes,
 byte-identical generation evidence, timing observations, and regression counts
-are preserved in
-`.agents/notes/implemented/architecture/2026-09-15-compiler-package-ownership.md`.
+are preserved in the
+[compiler package ownership note](../.agents/notes/implemented/architecture/2026-09-15-compiler-package-ownership.md).
 Those measurements are migration evidence rather than a current runtime
 performance claim. Raw run logs and generated build products belong in ignored
 `.artifacts/`, according to the [evidence retention policy](evidence_retention.md).

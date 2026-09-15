@@ -88,8 +88,8 @@ complete endpoint rather than only an isolated kernel.
 
 The DF-response work-amplification cliff fixed by PR #373 motivated several of
 these rules. Its exact panel counts, GEMM/transfer amplification, benchmark
-conditions, rejected alternatives, and revisit criteria are preserved in
-`.agents/notes/implemented/performance/2026-09-15-df-response-work-amplification.md`.
+conditions, rejected alternatives, and revisit criteria are preserved in the
+[DF-response work-amplification note](../.agents/notes/implemented/performance/2026-09-15-df-response-work-amplification.md).
 This document intentionally keeps the current policy rather than the migration
 history.
 
