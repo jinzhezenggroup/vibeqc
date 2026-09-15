@@ -84,23 +84,14 @@ contract the final weight directly. Reuse common geometry, Boys, moment, or
 shell work across requested derivative components when doing so improves the
 complete endpoint rather than only an isolated kernel.
 
-## Case study: PR #373
+## Historical rationale
 
-At 768 orbital and auxiliary AOs, a 128 MiB DF-response allowance split the old
-response into 77 auxiliary panels. The panel loop recomputed every
-`R_Q = D^T A_Q D` for every panel and reread the same raw three-center data.
-That produced 118,272 AO projection GEMMs and about 282.6 GB of raw H2D traffic.
-
-PR #373 reused three already-owned resident J/K temporaries, uploaded raw A
-once, computed each Q projection once, and contracted the complete auxiliary
-response with BLAS. The same 128 MiB of new response scratch then required
-1,536 projection GEMMs and about 3.62 GB raw H2D traffic. On the qualified RTX
-5090 case, the complete warm energy+force endpoint changed from 114.804 s to
-12.083 s while retaining the existing numerical gates and bounded fallback.
-
-The lesson is not that every calculation should allocate a full resident tensor.
-It is that a planner must account for repeated scientific work, and should reuse
-already-owned resident capacity when that is the faster valid execution policy.
+The DF-response work-amplification cliff fixed by PR #373 motivated several of
+these rules. Its exact panel counts, GEMM/transfer amplification, benchmark
+conditions, rejected alternatives, and revisit criteria are preserved in
+`.agents/notes/implemented/performance/2026-09-15-df-response-work-amplification.md`.
+This document intentionally keeps the current policy rather than the migration
+history.
 
 ## Performance qualification checklist
 

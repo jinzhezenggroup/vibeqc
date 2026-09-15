@@ -121,7 +121,7 @@ imports until a deliberate, independently verified reference regeneration;
 they must migrate before removal too. Legacy manifest paths are symlinks to the
 single canonical manifest, with the same removal condition.
 
-## Structural verification and measured impact
+## Structural verification
 
 Run `python tools/check_compiler_structure.py` to check import directions, or
 add `--json` for a module-size/dependency inventory. The same check is a
@@ -129,32 +129,10 @@ pre-commit hook. Tests also import every compiler module in a fresh process
 that rejects runtime/reference imports, check legacy module identity, and run
 an uninstalled generator from an unrelated working directory.
 
-At the #239 decomposition baseline, `cuda_lowering.py` had 6,813 lines and
-approximately 282 KiB; `autotune.py` had 2,173 lines and approximately 86 KiB.
-The largest lowering leaf after decomposition is `lowering/dispatch.py`
-(1,274 lines, approximately 53 KiB), and the largest tuning leaf is
-`tuning/driver.py` (704 lines, approximately 31 KiB). The compatibility facades
-contain no second lowering or tuner implementation.
-
-The decomposition and package migration each preserved **16 generated files /
-26,629,262 bytes** exactly against revision `75472d0`: sm_120 production shell
-bundles, DF, weighted ERI, and one-electron values/derivatives and inventories.
-Single-run source generation measurements on the same workstation were:
-
-| Generator | Before (s) | After package move (s) |
-| --- | ---: | ---: |
-| Production shell bundle | 2.727 | 2.827 |
-| DF values | 0.180 | 0.187 |
-| Weighted ERI | 0.154 | 0.158 |
-| One-electron values | 2.141 | 2.149 |
-| One-electron derivatives | 9.193 | 9.210 |
-
-After integration with master `9a3aae0`, all 16 outputs also matched a
-pristine checkout of that revision byte-for-byte (**26,652,374 bytes**). The
-size difference from the earlier baseline is upstream precision-counter code.
-All 13 native CPU suites and 38 selected scheduled RTX 5090 regressions passed;
-the latter cover TensorIR intermediates/layouts, grid/AO execution and XC replay.
-
-These are build-impact observations, not a runtime performance claim. Raw run
-logs and generated build products belong in ignored `.artifacts/`, according to
-the [evidence retention policy](evidence_retention.md).
+The decomposition/package-migration rationale, historical module sizes,
+byte-identical generation evidence, timing observations, and regression counts
+are preserved in
+`.agents/notes/implemented/architecture/2026-09-15-compiler-package-ownership.md`.
+Those measurements are migration evidence rather than a current runtime
+performance claim. Raw run logs and generated build products belong in ignored
+`.artifacts/`, according to the [evidence retention policy](evidence_retention.md).

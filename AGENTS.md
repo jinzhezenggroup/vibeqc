@@ -1,41 +1,43 @@
 # VibeQC agent instructions
 
-These repository-local rules complement the user-level agent instructions.
-They apply to performance, CUDA, compiler, response, DFT, and post-HF work.
+These repository-local rules complement user-level agent instructions. They apply
+repo-wide unless a nested `AGENTS.md` adds more specific constraints.
 
-## Performance engineering
+## Repository-wide invariants
 
-Before optimizing a kernel, establish whether the endpoint is doing the right
-amount of work. A memory-bounded plan is not necessarily work-bounded.
+- Prefer scientific correctness, reproducibility, and complete-endpoint behavior
+  over isolated kernel or microbenchmark wins.
+- Production paths must not silently depend on CPU/PySCF/reference-oracle work
+  unless that consumer is explicitly part of the production contract.
+- Performance claims must include complete endpoint timing and semantic work
+  counts; memory-bounded is not necessarily work-bounded. See
+  `docs/performance_engineering.md`.
+- Numerical, precision, derivative, and response changes require an independent
+  oracle/reference and explicit acceptance gates appropriate to the method.
+- Keep explicit bounded fallbacks when a faster path depends on optional resident
+  storage, identity/lifetime assumptions, or other resource preconditions.
+- Preserve durable rationale for non-trivial architecture, numerics, performance,
+  and compatibility decisions as Agent Notes under `.agents/notes/`.
 
-For performance-sensitive changes:
+## Scoped instructions
 
-- Measure complete endpoint time and semantic work counts. At minimum inspect
-  relevant tile/panel counts, source evaluations, contraction/GEMM counts, and
-  host/device transfer bytes. Do not select an optimization from kernel time
-  alone.
-- Audit nested tiling for work amplification. If an expensive quantity is
-  invariant to an outer consumer tile, panel, or block, do not recompute it
-  inside that outer loop without measured justification.
-- Prefer source-driven reuse: generate an expensive integral/intermediate once
-  and feed as many consumers as its lifetime and memory policy safely allow.
-- Reuse already-accounted resident state when identity, lifetime, stream
-  ordering, and resource ownership are valid. Do not force recomputation merely
-  to preserve an artificial private scratch budget.
-- Keep an explicit bounded fallback when resident storage is unavailable.
-  Resident reuse must not silently turn a bounded path into an unbounded one.
-- Treat memory and work as separate planner objectives. Record work
-  amplification across budget/tile choices; a lower-memory schedule that
-  repeats expensive source or cubic work may be the wrong default.
-- Keep oracle/reference/compatibility preparation out of production CUDA hot
-  paths unless the production consumer actually needs it.
-- For derivative/response code, contract generated derivatives with final
-  weights as early as practical instead of materializing large derivative
-  tensors or round-tripping them through the host.
-- Test at a larger size before promoting a performance policy. A schedule that
-  wins at 192--384 AOs may cross a tiling/work-amplification cliff at 768 AOs.
-- Separate cold, same-geometry warm, changed-geometry, batch, and constrained-
-  memory evidence. Do not use one regime as a proxy for another.
+Read the closest applicable nested instructions before editing:
 
-See `docs/performance_engineering.md` for rationale, evidence requirements, and
-the #373 DF-response case study that motivated these rules.
+- `docs/AGENTS.md` for current-state documentation versus historical rationale;
+- `python/vibeqc_compiler/AGENTS.md` for compiler ownership and generation rules;
+- `src/integrals/AGENTS.md` for integral, derivative, precision, and scheduling
+  constraints; and
+- `.agents/notes/AGENTS.md` before adding or revising an Agent Note.
+
+## Agent Notes
+
+`docs/` describes the current system: what is true now and how to work with it.
+`.agents/notes/` preserves why durable decisions were made, including discarded
+alternatives, measured evidence, and conditions for revisiting them.
+
+Add a note for a non-trivial change when it changes architecture/ownership,
+scientific numerics or precision, algorithmic work/data movement, or a retained
+compatibility/fallback policy. Ordinary bug fixes, tests, and local mechanical
+refactors do not need notes. As a practical rule, if a diagnosis took substantial
+investigation and a future agent could plausibly repeat a failed approach, record
+it.
