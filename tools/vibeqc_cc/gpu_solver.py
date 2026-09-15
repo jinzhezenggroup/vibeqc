@@ -18,6 +18,7 @@ a hidden resident acceleration, and it must not be advertised as such.
 from __future__ import annotations
 
 import time
+from contextlib import ExitStack
 from dataclasses import asdict, fields
 from hashlib import sha256
 from pathlib import Path
@@ -26,10 +27,10 @@ import numpy as np
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 
-from tools.vibeqc_posthf.reference import immutable
+from tools.vibeqc_posthf.reference import ReferenceSnapshot, immutable
 
 from .gpu_state import solver_plans
-from .solver import _DIIS, CCSDResult, PreparedCCSD
+from .solver import _DIIS, CCSDResult, PreparedCCSD, SolverOptions
 
 
 class PreparedGPUSolver:
@@ -56,16 +57,17 @@ class PreparedGPUSolver:
         t1=None,
         t2=None,
         device=0,
-        providers_peak_bytes=0,
+        provider_peak_bytes=0,
     ):
         if not isinstance(compiler, CudaCompilerAdapter):
             raise TypeError("GPU RCCSD requires a CudaCompilerAdapter")
         if not isinstance(cache, Path):
             raise TypeError("GPU RCCSD cache must be a pathlib.Path")
-        # Full reference/provider/amplitude/denominator/integral preflight plus
-        # the host MO blocks and the MP2-like guess, identical to the CPU path.
-        self.cpu = PreparedCCSD(snapshot, provider, options, t1, t2)
-        self.options = self.cpu.options
+        if not isinstance(snapshot, ReferenceSnapshot):
+            raise TypeError("CCSD requires a validated RHF ReferenceSnapshot")
+        if type(device) is not int or device < 0:
+            raise ValueError("device must be a nonnegative visible CUDA ordinal")
+        self.options = SolverOptions() if options is None else options
         self.snapshot = snapshot
         o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
         self.shape = (o, v)
@@ -74,22 +76,35 @@ class PreparedGPUSolver:
         self.device = device
         target = compiler.target
         primary, replay, diagnostic = solver_plans(
-            o, v, target, self.options, provider_peak_bytes=providers_peak_bytes
+            o, v, target, self.options, provider_peak_bytes=provider_peak_bytes
         )
+        # Reject the combined CUDA budget before PreparedCCSD reads any MO
+        # blocks. Its independent host budget and scientific preflight still
+        # apply before compilation or allocation.
+        self.cpu = PreparedCCSD(snapshot, provider, self.options, t1, t2)
         self.diagnostic = diagnostic
-        self.primary = PreparedCuda(
-            primary, compile_cuda(primary, compiler, cache), device=device
-        )
-        self.replay = PreparedCuda(
-            replay, compile_cuda(replay, compiler, cache), device=device
-        )
+        # A failed replay compile/allocation can retain this constructor's
+        # traceback. Release the primary immediately so batch neighbors can
+        # reuse its budget without waiting for garbage collection.
+        with ExitStack() as cleanup:
+            self.primary = cleanup.enter_context(
+                PreparedCuda(
+                    primary, compile_cuda(primary, compiler, cache), device=device
+                )
+            )
+            self.replay = cleanup.enter_context(
+                PreparedCuda(
+                    replay, compile_cuda(replay, compiler, cache), device=device
+                )
+            )
+            self._transfer = self._transfer_accounting(primary, replay)
+            cleanup.pop_all()
         # Host-controlled DIIS storage follows the CPU solver's bounded
         # allowance; the plan reservation charges the future resident path.
-        self._transfer = self._transfer_accounting(primary, replay)
 
     @staticmethod
     def _transfer_accounting(primary, replay):
-        """Per-iteration upload/download byte bounds for the primary loop.
+        """Per-evaluation transfer sizes and successful execution counters.
 
         The host reads only ``correlation_energy`` and the two residual
         tensors to drive the iteration; the `next_t1/next_t2` proposal outputs
@@ -117,12 +132,13 @@ class PreparedGPUSolver:
             tensor_bytes(replay.program.live_nodes[s]) for s in replay.inputs
         )
         return {
-            "primary_upload_bytes_per_iteration": inputs,
-            "primary_download_bytes_per_iteration": outputs,
-            "residual_scalar_download_bytes_per_iteration": residual_only,
-            # A trial residual evaluation uploads the trial amplitudes over the
-            # already-resident integral host staging cost (host inputs).
-            "trial_residual_host_eval_per_iteration": True,
+            "primary_upload_bytes_per_evaluation": inputs,
+            "primary_download_bytes_per_evaluation": outputs,
+            "residual_scalar_download_bytes_per_evaluation": residual_only,
+            # Ordinary iterations evaluate both current and trial amplitudes;
+            # each call uploads the complete integral inputs again.
+            "primary_evaluations": 0,
+            "independent_replay_evaluations": 0,
             "independent_replay_input_bytes": replay_inputs,
         }
 
@@ -175,7 +191,24 @@ class PreparedGPUSolver:
             "d1": d1,
             "d2": d2,
         }
-        return executor.execute(feeds).outputs
+        try:
+            result = executor.execute(feeds)
+            count = (
+                "independent_replay_evaluations"
+                if independent
+                else "primary_evaluations"
+            )
+            self._transfer[count] += 1
+            return result.outputs
+        except RuntimeError as error:
+            # TensorIR transports arithmetic failures through its native error
+            # string. Match only those explicit boundaries; driver, compiler
+            # and allocation failures must keep their original exception.
+            if str(error).startswith(
+                ("non-finite tensor at step ", "tensor division by zero at step ")
+            ):
+                raise FloatingPointError(str(error)) from error
+            raise
 
     def close(self):
         self.primary.close()
@@ -219,7 +252,7 @@ def solve_gpu(
         t1=t1,
         t2=t2,
         device=device,
-        providers_peak_bytes=provider_peak_bytes,
+        provider_peak_bytes=provider_peak_bytes,
     ) as prepared:
         options = prepared.options
         current = prepared.initial

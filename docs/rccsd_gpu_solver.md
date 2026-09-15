@@ -45,8 +45,10 @@ output on each call; it does not expose device-resident pointers. A complete
 resident loop where only small residual scalars cross the host is #193's
 resident provider interface. This module therefore runs a **host-controlled
 ordinary-stream iteration**: amplitudes and residuals are staged through host
-buffers each iteration, and that per-iteration transfer volume plus the
-`graph_status = "ordinary-stream: ..."` fact are recorded in the result
+buffers each iteration. Provenance reports bytes per evaluation and separate
+primary/replay evaluation counts: an ordinary iteration evaluates both the
+current and trial amplitudes, uploading all integral inputs on both calls. The
+`graph_status = "ordinary-stream: ..."` fact is recorded in the result
 provenance. It is an honest bounded GPU solver and convergence endpoint, not a
 claim of resident acceleration. `src/cc/cuda_state.cuh` DIIS/`max-norm`
 kernels remain preparatory until the #193 interface provides resident device

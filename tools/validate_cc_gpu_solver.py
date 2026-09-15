@@ -25,11 +25,12 @@ from types import SimpleNamespace
 import numpy as np
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
-from vibeqc_compiler.tensor.cuda_execute import tensor_source_identity
+from vibeqc_compiler.tensor.cuda_execute import compile_cuda, tensor_source_identity
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture
 from tools.replay_ccsd import replay
 from tools.vibeqc_cc.gpu_solver import solve_gpu
+from tools.vibeqc_cc.gpu_state import solver_plans
 from tools.vibeqc_cc.solver import SolverOptions
 from tools.vibeqc_posthf.providers import BlockResult, ConventionalProvider
 from tools.vibeqc_validation.schema import file_hash
@@ -72,6 +73,12 @@ def run(output, compiler, cache, *, compile_only=False):
         "revision": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip(),
+        "dirty": bool(
+            subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)
+        ),
+        "nvcc_version": subprocess.check_output(
+            [str(compiler.nvcc), "--version"], text=True
+        ).strip(),
         "target_architecture": target,
         "source_files": sources,
         "tensor_source_identity": tensor_source_identity(),
@@ -91,8 +98,26 @@ def run(output, compiler, cache, *, compile_only=False):
         provider = FixtureProvider(snapshot, a["g"])
         options = SolverOptions(residual_tolerance=1e-10, energy_tolerance=1e-12)
         if compile_only:
-            print(f"skip {name} (compile-only records no device evidence)", flush=True)
-            manifest["cases"].append({"name": name, "executed": False})
+            primary, independent, diagnostic = solver_plans(
+                snapshot.nocc, snapshot.nmo - snapshot.nocc, compiler.target, options
+            )
+            artifacts = [
+                compile_cuda(plan, compiler, cache) for plan in (primary, independent)
+            ]
+            manifest["cases"].append(
+                {
+                    "name": name,
+                    "executed": False,
+                    "compiled_binary_sha256": [
+                        file_hash(artifact.library) for artifact in artifacts
+                    ],
+                    "combined_peak_bytes": diagnostic["combined_peak_bytes"],
+                }
+            )
+            print(
+                f"compiled {name} (no device execution or numerical acceptance)",
+                flush=True,
+            )
             continue
         result = solve_gpu(
             snapshot,
@@ -122,6 +147,7 @@ def run(output, compiler, cache, *, compile_only=False):
                 result.history[-1].get("independent_r2_max") if result.history else None
             ),
             "backend": result.provenance.get("backend"),
+            "device": result.provenance.get("device"),
             "residency": result.provenance.get("residency"),
             "combined_peak_bytes": result.provenance.get("combined_peak_bytes"),
             "primary_peak_bytes": result.provenance.get("primary_peak_bytes"),

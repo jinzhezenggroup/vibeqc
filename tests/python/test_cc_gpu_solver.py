@@ -16,7 +16,7 @@ from test_cc_api import FixtureProvider, fixture_problem  # noqa: F401  (same fi
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
-from tools.vibeqc_cc.gpu_solver import solve_gpu
+from tools.vibeqc_cc.gpu_solver import PreparedGPUSolver, solve_gpu
 from tools.vibeqc_cc.solver import SolverOptions
 
 
@@ -47,6 +47,53 @@ def test_gpu_solver_requires_explicit_compiler_and_cache():
         )
 
 
+def test_gpu_budget_rejection_precedes_integral_reads(monkeypatch, tmp_path):
+    """An impossible composed budget must not trigger AO-to-MO preparation."""
+    s, p, _, _ = fixture_problem()
+    monkeypatch.setattr(
+        p, "get", lambda block: pytest.fail("integral read before budget gate")
+    )
+    with pytest.raises(ValueError, match="budget exhausted"):
+        solve_gpu(
+            s,
+            p,
+            compiler=CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120")),
+            cache=tmp_path,
+            provider_peak_bytes=SolverOptions().max_bytes,
+        )
+
+
+def test_replay_preparation_failure_releases_primary(monkeypatch, tmp_path):
+    """Retaining a failed constructor traceback must not retain device memory."""
+    from tools.vibeqc_cc import gpu_solver
+
+    closed = []
+
+    class Executor:
+        def __init__(self, plan, artifact, *, device):
+            if closed:
+                raise RuntimeError("replay allocation failed")
+            closed.append(False)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *unused):
+            closed[0] = True
+
+    monkeypatch.setattr(gpu_solver, "compile_cuda", lambda *args: None)
+    monkeypatch.setattr(gpu_solver, "PreparedCuda", Executor)
+    s, p, _, _ = fixture_problem()
+    with pytest.raises(RuntimeError, match="replay allocation") as failure:
+        PreparedGPUSolver(
+            s,
+            p,
+            CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120")),
+            tmp_path,
+        )
+    assert failure.traceback is not None and closed == [True]
+
+
 @pytest.mark.skipif(
     os.environ.get("VIBEQC_CC_CUDA_TEST") != "1",
     reason="requires explicitly allocated GPU validation window",
@@ -71,6 +118,9 @@ def test_real_device_gpu_solver_converges_and_replays(name, tmp_path):
     assert result.converged, (name, result.reason, result.history[-1])
     assert result.provenance["backend"] == "cuda-fp64-ordinary-stream"
     assert result.provenance["residency"]
+    transfers = result.provenance["transfer"]
+    assert transfers["primary_evaluations"] == 2 * len(result.history) - 1
+    assert transfers["independent_replay_evaluations"] >= 1
     assert abs(result.total_energy - meta["total_energy"]) <= 1e-8
     # Independent scaled physical residual gates (#138/#148).
     assert (
@@ -114,3 +164,28 @@ def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(tmp_path):
     )
     assert result.status == "not_converged"
     assert not result.converged
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_CC_CUDA_TEST") != "1",
+    reason="requires explicitly allocated GPU validation window",
+)
+def test_real_device_gpu_overflow_retains_serializable_failure(tmp_path):
+    """Native arithmetic failure returns the last finite input for replay."""
+    from vibeqc.profiles import find_nvcc
+
+    s, p, _, a = fixture_problem("h2")
+    result = solve_gpu(
+        s,
+        p,
+        compiler=CudaCompilerAdapter(
+            find_nvcc(), cuda_target_info(os.environ["VIBEQC_TENSOR_ARCH"])
+        ),
+        cache=Path(os.environ.get("VIBEQC_TENSOR_CACHE", tmp_path / "cache")),
+        t1=np.full_like(a["t1"], 1e100),
+        t2=np.full_like(a["t2"], 1e100),
+    )
+    assert result.status == "nonfinite" and not result.converged
+    assert result.correlation_energy is None and not result.history
+    assert np.isfinite(result.t1).all() and np.isfinite(result.t2).all()
+    result.write(tmp_path / "overflow.json")
