@@ -5,6 +5,7 @@
 #include <limits>
 #include <new>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,57 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
   const auto elements = plan->naux * plan->naux, offset = system * elements;
   const char* host_policy = std::getenv("VIBEQC_DF_HOST_RESPONSE_WEIGHTS");
   const bool host_weights = host_policy && host_policy[0] == '1' && host_policy[1] == '\0';
+  const char* storage_control = std::getenv("VIBEQC_DF_RESPONSE_STORAGE");
+  const std::string_view storage = storage_control ? storage_control : "auto";
+  if (storage != "auto" && storage != "panel" && storage != "jk-scratch") {
+    detail = "unknown DF response storage (use auto, panel or jk-scratch)";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  // Retained B alone does not establish scratch capacity: generated resident
+  // plans can retain B while their J/K temporaries cover only a small tile.
+  const bool full_scratch = !host_weights && !plan->integral_source && !plan->streamed &&
+                            plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
+                            plan->auxiliary_tile_values && plan->exchange_intermediate &&
+                            plan->exchange_contributions;
+  bool borrow = storage == "jk-scratch";
+  if (storage == "auto" && full_scratch && schedule == 0 && plan->nbf == 768 && plan->naux == 768 &&
+      plan->batch_size == 1 && terms.size() == 1) {
+    // Promote only the measured large RHF endpoint. Explicit comparison
+    // schedules and attribution probes keep their panel execution; other
+    // shapes/backends remain available through the checked opt-in selector.
+    const auto compatible = [](const char* name, std::string_view expected) {
+      const char* value = std::getenv(name);
+      return !value || std::string_view(value) == expected;
+    };
+    const auto absent = [](const char* name) {
+      const char* value = std::getenv(name);
+      return !value || !*value;
+    };
+    const char* serial = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
+    if (compatible("VIBEQC_DF_WEIGHTED_EXECUTION", "shell") &&
+        compatible("VIBEQC_DF_SHELL_SCHEDULE", "compact") &&
+        compatible("VIBEQC_DF_RESPONSE_ALGEBRA", "blas") &&
+        absent("VIBEQC_DF_RESPONSE_UPLOAD_PROBE") && absent("VIBEQC_DF_RESPONSE_SCATTER_PROBE") &&
+        !(serial && std::string_view(serial) == "1")) {
+      cudaDeviceProp properties{};
+      const auto error = cudaGetDeviceProperties(&properties, plan->device_id);
+      if (error != cudaSuccess) return cuda_failure(error, "DF response device properties", detail);
+      borrow = properties.major == 12 && properties.minor == 0;
+    }
+  }
+  CudaDfResponseBuffers buffers;
+  if (borrow) {
+    // Dense resident plans reserved three full tensor temporaries for J/K.
+    // Force executes after SCF on this same stream, and lends them back before
+    // the next replay. Never infer capacity from retained B alone: generated
+    // resident plans can retain B while their K scratch is only a small tile.
+    if (!full_scratch) {
+      detail = "JK-scratch response requires a resident host-raw plan with full J/K tensors";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,
+               plan->exchange_intermediate, plan->tensor_elements_per_system};
+  }
   if (plan->integral_source || !host_weights) {
     if (!plan->metric_response_valid[system]) {
       detail = "DF metric rank crossing: retained/discarded subspaces are unresolved";
@@ -42,11 +94,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     const CudaDfMetricView metric{
         plan->inverse_square_roots + offset, plan->metric_eigenvectors + offset,
         plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold};
-    return execute_cuda_df_hf_gradient(plan->device_id, reinterpret_cast<void*>(plan->stream),
-                                       plan->integral_source, system, orbital, auxiliary, raw_a, {},
-                                       {}, terms, plan->metric_relative_threshold, schedule,
-                                       maximum_bytes, maximum_auxiliary_tile, derivative, detail,
-                                       resources, &metric, reinterpret_cast<void*>(plan->blas));
+    return execute_cuda_df_hf_gradient(
+        plan->device_id, reinterpret_cast<void*>(plan->stream), plan->integral_source, system,
+        orbital, auxiliary, raw_a, {}, {}, terms, plan->metric_relative_threshold, schedule,
+        maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric,
+        reinterpret_cast<void*>(plan->blas), borrow ? &buffers : nullptr);
   }
   // Copies isolate one system's spectral reverse map from the packed batch.
   // Charge them while the bounded HF/derivative bridge is also alive.

@@ -460,7 +460,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const std::vector<double>& inverse, std::span<const DensityFittingDensityResponse> terms,
     double relative_threshold, unsigned schedule, std::size_t maximum_bytes,
     std::size_t maximum_auxiliary_tile, std::vector<double>& gradient, std::string& detail,
-    DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle) {
+    DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle,
+    const CudaDfResponseBuffers* borrowed) {
   detail.clear();
   if (resources) *resources = {};
   const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
@@ -479,6 +480,15 @@ vibeqc_status execute_cuda_df_hf_gradient(
       terms.empty() || !std::isfinite(relative_threshold) || relative_threshold <= 0 ||
       relative_threshold >= 1) {
     detail = "invalid generated DF-HF response dimensions or budget";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (borrowed && (!device_metric || source || n * n * a > maximum / 3 ||
+                   borrowed->elements_per_buffer < n * n * a || !borrowed->staging_weights ||
+                   !borrowed->raw_auxiliary_major || !borrowed->exchange_response ||
+                   borrowed->staging_weights == borrowed->raw_auxiliary_major ||
+                   borrowed->staging_weights == borrowed->exchange_response ||
+                   borrowed->raw_auxiliary_major == borrowed->exchange_response)) {
+    detail = "invalid borrowed resident DF response tensors";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   for (const auto& term : terms) {
@@ -535,15 +545,17 @@ vibeqc_status execute_cuda_df_hf_gradient(
     arena.owns_stream = false;
     const auto o = arena.upload(host_o), x = arena.upload(host_a);
     // Clean complete-force endpoints qualify this combined default only for
-    // resident 192--384-AO sm_120 execution. Small UHF regresses from launch and
-    // pinned-allocation overhead; other backends and source-backed/larger
-    // regimes need their own endpoint evidence. Explicit selectors stay usable
-    // everywhere. Attribution probes retain the original comparison defaults.
+    // resident 192--384-AO sm_120 execution and the qualified 768/768-AO
+    // borrowed response. Small UHF regresses from launch and pinned-allocation
+    // overhead; other backends and source-backed regimes need their own
+    // endpoint evidence. Explicit selectors stay usable everywhere.
+    // Attribution probes retain the original comparison defaults.
     bool promoted_default = false;
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    if (device_metric && schedule == 0 && !source && n >= 192 && n <= 384 &&
+    if (device_metric && schedule == 0 && !source &&
+        ((n >= 192 && n <= 384) || (borrowed && n == 768 && a == 768)) &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
@@ -586,7 +598,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (device_metric) {
       // Choose the auxiliary block from the remaining *device* budget, after
       // basis metadata, coordinates and final output have been charged. Every
-      // response allocation is owned here; launch wrappers allocate nothing.
+      // new response allocation is owned here; launch wrappers allocate
+      // nothing. Full borrowed J/K tensors stay charged to the value plan.
       const long double fixed_elements =
           4.0L * a * a + (3.0L + terms.size()) * n * n + 2.0L * terms.size() * a;
       const auto available = maximum_bytes - arena.stats.device_bytes;
@@ -595,6 +608,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
           static_cast<std::size_t>((available / sizeof(double) - fixed_elements) / (2.0L * n * n));
       const auto tile =
           std::min({a, capacity, maximum_auxiliary_tile ? maximum_auxiliary_tile : a});
+      const auto consume_tile =
+          borrowed ? std::min(a, maximum_auxiliary_tile ? maximum_auxiliary_tile : a) : tile;
       auto* densities = static_cast<double*>(arena.allocate(terms.size() * n * n * sizeof(double)));
       for (std::size_t t = 0; t < terms.size(); ++t) {
         check(cudaMemcpyAsync(densities + t * n * n, terms[t].density.data(),
@@ -606,8 +621,17 @@ vibeqc_status execute_cuda_df_hf_gradient(
       auto* workspace = static_cast<double*>(arena.allocate(
           cuda_df_response_workspace_elements(n, a, terms.size(), tile) * sizeof(double)));
       arena.stats.device_response = true;
-      arena.stats.auxiliary_weight_tile = tile;
-      arena.stats.weight_tile_elements = tile * n * n;
+      arena.stats.auxiliary_weight_tile = consume_tile;
+      arena.stats.weight_tile_elements = consume_tile * n * n;
+      if (borrowed) {
+        // These allocations remain owned and charged by the value plan. Keep
+        // their capacity visible without double-counting it as new response
+        // scratch or silently widening the caller's private force allowance.
+        arena.stats.borrowed_device_bytes = 3 * n * n * a * sizeof(double);
+        runtime::cuda_trace::trace_counter("response_borrowed_jk_bytes",
+                                           arena.stats.borrowed_device_bytes);
+        runtime::cuda_trace::trace_counter("response_resident_auxiliary_tile", consume_tile);
+      }
       runtime::cuda_trace::trace_counter("response_scratch_bytes", arena.stats.device_bytes);
       runtime::cuda_trace::trace_counter("density_upload_bytes",
                                          arena.stats.density_host_to_device_bytes);
@@ -621,12 +645,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
         throw std::invalid_argument("unknown DF response upload probe (use drain or packed)");
       if (!probe.empty() && source)
         throw std::invalid_argument("DF response upload probe requires resident host raw values");
+      if (borrowed && !probe.empty())
+        throw std::invalid_argument("resident JK scratch cannot be combined with upload probes");
       const char* staging_control = std::getenv("VIBEQC_DF_RAW_STAGING");
       const std::string_view staging =
           staging_control ? staging_control : (promoted_default ? "pinned-panels" : "pageable");
       if (staging != "pageable" && staging != "pinned-panels")
         throw std::invalid_argument("unknown DF raw staging (use pageable or pinned-panels)");
-      if (staging == "pinned-panels" && !source) {
+      if (staging == "pinned-panels" && !source && !borrowed) {
         if (!probe.empty())
           throw std::invalid_argument("pinned panel staging cannot be combined with upload probes");
         const auto bytes = raw_panels.initialize(n * n, a, maximum_bytes - arena.stats.host_bytes);
@@ -672,11 +698,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
       const std::string_view algebra =
-          algebra_control ? algebra_control : (promoted_default ? "blas" : "scalar");
+          algebra_control ? algebra_control : (borrowed || promoted_default ? "blas" : "scalar");
       if (algebra != "scalar" && algebra != "blas")
         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
+      if (borrowed && (algebra != "blas" || serial_dot || gradient_copies != 1))
+        throw std::invalid_argument(
+            "resident JK scratch requires BLAS response without serial/scatter probes");
+      if (borrowed) {
+        arena.stats.host_to_device_bytes += raw_a.size_bytes();
+        arena.stats.tensor_host_to_device_bytes += raw_a.size_bytes();
+        arena.stats.value_slices += a;
+        ++arena.stats.uploads;
+      }
       check(contract_cuda_df_response_weights(
-          n, a, terms, densities, *device_metric, tile, workspace, arena.stream,
+          n, a, terms, densities, *device_metric, consume_tile, workspace, arena.stream,
           reinterpret_cast<cublasHandle_t>(blas_handle), serial_dot, algebra == "blas",
           [&](std::size_t p, double* values) {
             if (source) {
@@ -749,7 +784,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                               gradient_copies, shell_execution && !kind));
             ++arena.stats.tiles;
             arena.stats.device_response_bytes += count * sizeof(double);
-          }));
+          },
+          borrowed, raw_a));
       if (gradient_copies > 1) {
         runtime::cuda_trace::TraceRegion reduction("gradient_probe_shard_reduction", arena.stream);
         // Each column is already a complete contracted atom gradient, not an

@@ -1,6 +1,7 @@
 #include "scf/rhf.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -10,6 +11,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -79,10 +81,16 @@ initial_guess::InitialOrbitalRequest df_initial_orbital_request() {
              : initial_guess::InitialOrbitalRequest::ColdDensityOnly;
 }
 
-/** Assemble immutable DF state from already-evaluated one- and three-center data. */
+/** Assemble immutable DF state from already-evaluated one- and three-center data.
+ * CUDA plans factor the raw metric and transform A on their own device stream.
+ * They never consume the CPU oracle's transformed tensor, even on their host-
+ * orchestrated retry path. Only reference consumers need that extra O(n^2 a^2)
+ * preparation and tensor-sized host owner.
+ */
 DensityFittingScfData assemble_density_fitting_data(integrals::IntegralData one_electron,
                                                     integrals::DensityFittingIntegralData raw,
-                                                    double relative_threshold) {
+                                                    double relative_threshold,
+                                                    bool build_reference_factors = true) {
   if (!(relative_threshold > 0.0) || !(relative_threshold < 1.0) ||
       !std::isfinite(relative_threshold)) {
     throw std::invalid_argument(
@@ -92,12 +100,17 @@ DensityFittingScfData assemble_density_fitting_data(integrals::IntegralData one_
   data.one_electron = std::move(one_electron);
   data.raw = std::move(raw);
   data.metric_relative_threshold = relative_threshold;
-  const DensityFittingMetricFactor factor =
-      factor_density_fitting_metric(data.raw.metric, data.raw.naux, relative_threshold);
-  data.three_center =
-      orthonormalize_density_fitting_three_center(data.raw.three_center, data.raw.nbf, factor);
   if (data.raw.nbf != data.one_electron.nbf) {
     throw std::runtime_error("DF orbital and one-electron AO dimensions are inconsistent");
+  }
+  if (build_reference_factors) {
+    const DensityFittingMetricFactor factor =
+        factor_density_fitting_metric(data.raw.metric, data.raw.naux, relative_threshold);
+    data.three_center =
+        orthonormalize_density_fitting_three_center(data.raw.three_center, data.raw.nbf, factor);
+  } else {
+    data.three_center.nbf = data.raw.nbf;
+    data.three_center.naux = data.raw.naux;
   }
   return data;
 }
@@ -171,6 +184,20 @@ void bind_generated_one_electron(DensityFittingScfData& data, const core::System
 
 /** Reserve half a constrained DF request for the generated force bridge. */
 [[maybe_unused]] std::size_t df_response_budget(std::size_t requested) {
+  // Isolate response tiling from the value-provider choice during endpoint
+  // tuning. A positive public allowance already partitions both owners and
+  // must never be silently enlarged by this resident-path diagnostic override.
+  const char* control = std::getenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES");
+  if (control && *control) {
+    if (requested)
+      throw std::invalid_argument("DF response budget override requires a zero public DF budget");
+    const std::string_view text(control);
+    std::size_t bytes{};
+    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), bytes);
+    if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || !bytes)
+      throw std::invalid_argument("DF response budget override must be a positive byte count");
+    return bytes;
+  }
   return df_force_budget(requested);
 }
 void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
@@ -309,7 +336,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
       integrals::build_density_fitting_integrals(system, auxiliary_system, include_derivatives);
 #endif
   data = assemble_density_fitting_data(std::move(data.one_electron), std::move(data.raw),
-                                       relative_threshold);
+                                       relative_threshold, cuda_device_id < 0 || !VIBEQC_HAS_CUDA);
   if (include_derivatives) {
     bind_generated_one_electron(data, system, cuda_device_id, output_budget_bytes);
     bind_generated_df(data, system, auxiliary_system, cuda_device_id, output_budget_bytes);
@@ -1457,7 +1484,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
                     ? assemble_density_fitting_metadata(std::move(one_electron), std::move(raw),
                                                         relative_threshold)
                     : assemble_density_fitting_data(std::move(one_electron), std::move(raw),
-                                                    relative_threshold);
+                                                    relative_threshold, false);
             retain(source);
           } catch (const std::bad_alloc&) {
             statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -1524,7 +1551,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
                       ? assemble_density_fitting_metadata(std::move(one_electron), std::move(raw),
                                                           relative_threshold)
                       : assemble_density_fitting_data(std::move(one_electron), std::move(raw),
-                                                      relative_threshold);
+                                                      relative_threshold, false);
               retain(source);
               continue;
             }
@@ -1563,11 +1590,12 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           integrals::DensityFittingIntegralData raw =
               integrals::transform_density_fitting_integrals(cartesian, systems[source],
                                                              auxiliaries[source]);
-          prepared[source] = output_budget_bytes != 0U
-                                 ? assemble_density_fitting_metadata(
-                                       std::move(one_electron), std::move(raw), relative_threshold)
-                                 : assemble_density_fitting_data(
-                                       std::move(one_electron), std::move(raw), relative_threshold);
+          prepared[source] =
+              output_budget_bytes != 0U
+                  ? assemble_density_fitting_metadata(std::move(one_electron), std::move(raw),
+                                                      relative_threshold)
+                  : assemble_density_fitting_data(std::move(one_electron), std::move(raw),
+                                                  relative_threshold, false);
         } catch (const std::bad_alloc&) {
           statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
         } catch (const std::invalid_argument&) {

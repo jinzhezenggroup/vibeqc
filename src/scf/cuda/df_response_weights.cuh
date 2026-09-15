@@ -48,8 +48,8 @@ cudaError_t contract_cuda_df_response_weights(
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
-        consume);
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+    const CudaDfResponseBuffers* borrowed = nullptr, std::span<const double> raw_host = {});
 
 }  // namespace vibeqc::scf
 #endif

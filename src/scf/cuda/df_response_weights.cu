@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_response_weights.cuh"
 
 namespace vibeqc::scf {
@@ -138,13 +139,168 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
   return 4 * a * a + (3 + 2 * tile) * n * n + 2 * terms * a;
 }
 
+/** Reuse the resident plan's three full J/K temporaries, with no new tensor allocation.
+ * Upload raw A once and transpose it to [Q,ij]. For each exchange density,
+ * compute every R_Q=D^T A_Q D once, then perform both all-auxiliary contractions
+ * with GEMM. The raw tensor remains intact across spin terms. In particular,
+ * E[P,Q]=A_P:R_Q still contains discarded metric directions; the same spectral
+ * Frechet map as the bounded panel route handles those directions below.
+ */
+static cudaError_t contract_resident_response(
+    std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+    const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+    cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
+    std::span<const double> raw_host,
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
+        consume) {
+  const auto matrix = n * n, aa = a * a;
+  auto* inverse = workspace;
+  auto* bar_inverse = inverse + aa;
+  auto* metric_temp = bar_inverse + aa;
+  auto* transformed = metric_temp + aa;
+  auto* temporary = transformed + aa;
+  // The common bridge reserves at least three AO matrices; only one is used
+  // by the serial Q projections here. Neither charges nor potentials alias it.
+  auto* charges = temporary + 3 * matrix;
+  auto* potentials = charges + terms.size() * a;
+  auto* weights = buffers.staging_weights;
+  auto* raw = buffers.raw_auxiliary_major;
+  auto* response = buffers.exchange_response;
+  const auto ni = static_cast<int>(n), ai = static_cast<int>(a);
+  const auto mi = static_cast<int>(matrix), ti = static_cast<int>(terms.size());
+  const double one = 1.0, zero = 0.0;
+  const auto blas_check = [](cublasStatus_t status) {
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+  };
+  {
+    runtime::cuda_trace::TraceRegion upload("raw_value_resident_upload", stream);
+    const auto error = cudaMemcpyAsync(weights, raw_host.data(), raw_host.size_bytes(),
+                                       cudaMemcpyHostToDevice, stream);
+    if (error != cudaSuccess) return error;
+    runtime::cuda_trace::trace_counter("raw_value_upload_bytes", raw_host.size_bytes());
+    runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 1);
+  }
+  {
+    runtime::cuda_trace::TraceRegion transpose("raw_value_resident_transpose", stream);
+    // Host [ij,Q] is column-major [Q,ij]; turn it into column-major [ij,Q].
+    // CuMetal exposes a subset of cuBLAS without GEAM. A dependent capability
+    // check keeps NVIDIA's fast transpose and reuses the existing J/K gather
+    // on such providers, without adding another layout or derivative kernel.
+    const auto transpose_raw = [&](auto handle) {
+      if constexpr (requires {
+                      cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mi, ai, &one, weights, ai,
+                                  &zero, weights, ai, raw, mi);
+                    }) {
+        blas_check(cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mi, ai, &one, weights, ai, &zero,
+                               weights, ai, raw, mi));
+      } else {
+        cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix,
+                                                     a, 0, 0, a, weights, raw);
+      }
+    };
+    transpose_raw(blas);
+    const auto error = cudaGetLastError();
+    if (error != cudaSuccess) return error;
+    runtime::cuda_trace::trace_counter("raw_resident_transpose_elements", matrix * a);
+  }
+  runtime::cuda_trace::TraceRegion metric_inverse("metric_inverse", stream);
+  inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
+  metric_inverse.finish();
+  auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  // Raw has been transposed before this same-stream overwrite of its upload
+  // destination. That destination now accumulates the complete response W.
+  error = cudaMemsetAsync(weights, 0, matrix * a * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  runtime::cuda_trace::TraceRegion coulomb("coulomb_response", stream);
+  {
+    runtime::cuda_trace::TraceRegion charge_dot("coulomb_response_charge_dot", stream);
+    blas_check(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ti, mi, &one, raw, mi, densities, mi,
+                           &zero, charges, ai));
+    runtime::cuda_trace::trace_counter("response_charge_blas_dots", terms.size() * a);
+    runtime::cuda_trace::trace_counter("response_charge_dot_elements", terms.size() * a * matrix);
+  }
+  potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
+                                                                     charges, potentials);
+  for (std::size_t t = 0; t < terms.size(); ++t) {
+    if (terms[t].coulomb_coefficient == 0) continue;
+    coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, terms[t].coulomb_coefficient,
+                                                              charges + t * a, bar_inverse);
+    coulomb_weights_kernel<<<blocks(matrix * a), threads, 0, stream>>>(
+        matrix, a, 0, a, terms[t].coulomb_coefficient, densities + t * matrix, potentials + t * a,
+        weights);
+  }
+  coulomb.finish();
+  for (std::size_t t = 0; t < terms.size(); ++t) {
+    const auto coefficient = terms[t].exchange_coefficient;
+    if (coefficient == 0) continue;
+    for (std::size_t q = 0; q < a; ++q) {
+      runtime::cuda_trace::TraceRegion products("exchange_response_matrix_products", stream);
+      // Preserve the old row/column-major contract without assuming bitwise
+      // symmetry of either the physical density or a computed AO slice.
+      blas_check(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ni, ni, &one,
+                             densities + t * matrix, ni, raw + q * matrix, ni, &zero, temporary,
+                             ni));
+      blas_check(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ni, &one, temporary, ni,
+                             densities + t * matrix, ni, &zero, response + q * matrix, ni));
+      runtime::cuda_trace::trace_counter("response_ao_matrix_products", 2);
+      runtime::cuda_trace::trace_counter("response_density_blas_products", 2);
+      runtime::cuda_trace::trace_counter("response_resident_exchange_columns", 1);
+    }
+    {
+      runtime::cuda_trace::TraceRegion dot("exchange_response_metric_gemm", stream);
+      const double alpha = -coefficient;
+      // E row-major[P,Q] is column-major[Q,P]: R^T A writes precisely that
+      // transpose, including both spin terms and the prior Coulomb adjoint.
+      blas_check(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, mi, &alpha, response, mi, raw,
+                             mi, &one, bar_inverse, ai));
+      runtime::cuda_trace::trace_counter("response_metric_blas_dots", aa);
+      runtime::cuda_trace::trace_counter("response_metric_blas_gemms", 1);
+    }
+    {
+      runtime::cuda_trace::TraceRegion contraction("exchange_response_weight_gemm", stream);
+      const double alpha = -2 * coefficient;
+      // W^T=R^T (M+)^T. The existing row-major inverse is already the required
+      // column-major transpose; explicit ordering retains its index contract.
+      blas_check(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, mi, ai, ai, &alpha, response, mi,
+                             inverse, ai, &one, weights, mi));
+      runtime::cuda_trace::trace_counter("response_weight_blas_gemms", 1);
+    }
+  }
+  error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  for (std::size_t begin = 0; begin < a; begin += tile) {
+    const auto count = std::min(tile, a - begin);
+    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
+    consume(0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix);
+  }
+  runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
+                                                             metric_temp);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
+                                                             transformed);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
+                                                             metric_temp);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
+                                                             bar_inverse);
+  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
+  error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  reverse.finish();
+  consume(1, {}, aa, bar_inverse);
+  return cudaSuccess;
+}
+
 cudaError_t contract_cuda_df_response_weights(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
-        consume) {
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
+  if (borrowed)
+    return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
+                                      *borrowed, raw_host, consume);
   const auto matrix = n * n, aa = a * a;
   auto* inverse = workspace;
   auto* bar_inverse = inverse + aa;

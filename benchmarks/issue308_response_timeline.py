@@ -23,7 +23,7 @@ from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
 
 from benchmarks._cases import benchmark_cases
-from benchmarks.compare_gpu4pyscf_batch import scaled_geometries
+from benchmarks.compare_gpu4pyscf_batch import convergence_payload, scaled_geometries
 from benchmarks.df_component_ledger import (
     aggregate,
     aggregate_host,
@@ -36,6 +36,7 @@ CASES = {
     19: "oh-def2-svp-spherical-uhf",
     192: "water-octamer-s4-def2-svp-spherical",
     384: "water-hexadecamer-2s4-def2-svp-spherical",
+    768: "water-32mer-4s4-def2-svp-spherical",
 }
 CANDIDATES = {
     "generic": ("generic", "warp", "scalar", "pageable"),
@@ -64,6 +65,22 @@ def main():
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--reference",
+        type=Path,
+        help="Retained matched comparator JSON; required for cases without a committed reference",
+    )
+    parser.add_argument(
+        "--density-fitting-memory-budget-bytes",
+        type=int,
+        default=0,
+        help="Native DF allowance; positive force requests split it between values and response",
+    )
+    parser.add_argument(
+        "--response-memory-budget-bytes",
+        type=int,
+        help="Override only resident DF response scratch, keeping the raw value provider fixed",
+    )
     parser.add_argument("--component-trace", action="store_true")
     parser.add_argument("--nsys", action="store_true")
     parser.add_argument(
@@ -73,6 +90,23 @@ def main():
         help="Sweep named force consumers on one fixed post-cold density; repeat to select order",
     )
     args = parser.parse_args()
+    if args.density_fitting_memory_budget_bytes < 0:
+        parser.error("DF memory allowance must be nonnegative")
+    if args.response_memory_budget_bytes is not None:
+        if (
+            args.response_memory_budget_bytes <= 0
+            or args.density_fitting_memory_budget_bytes
+        ):
+            parser.error(
+                "response override requires positive bytes and a zero public DF allowance"
+            )
+        os.environ["VIBEQC_DF_RESPONSE_BUDGET_BYTES"] = str(
+            args.response_memory_budget_bytes
+        )
+    elif os.environ.get("VIBEQC_DF_RESPONSE_BUDGET_BYTES"):
+        parser.error(
+            "select the response override explicitly with --response-memory-budget-bytes"
+        )
     if args.repeats < 1:
         parser.error("repeats must be positive")
     if args.nsys and args.repeats != 1:
@@ -106,11 +140,14 @@ def main():
         raise RuntimeError(
             "native library does not match the current scientific source"
         )
-    reference_path = (
+    reference_path = args.reference or (
         ROOT
         / "benchmarks/results/issue206-metric-gemv/measurements"
         / f"{args.aos}ao-b{args.batch}-forces-blas.json"
     )
+    reference_path = reference_path.resolve()
+    if not reference_path.is_file():
+        parser.error("supply --reference with a retained matched complete-force result")
     reference = json.loads(reference_path.read_text())
     case = benchmark_cases()[CASES[args.aos]]
     geometries = scaled_geometries(case.atoms, args.batch)
@@ -161,9 +198,15 @@ def main():
         ),
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "process_id": os.getpid(),
         "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
         "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
-        "reference": str(reference_path.relative_to(ROOT)),
+        "reference": str(reference_path),
+        "density_fitting_memory_budget_bytes": args.density_fitting_memory_budget_bytes,
+        "response_memory_budget_bytes": args.response_memory_budget_bytes,
+        "reference_density_fitting_memory_budget_bytes": inputs[
+            "density_fitting_memory_budget_bytes"
+        ],
         "reference_sha256": hashlib.sha256(reference_path.read_bytes()).hexdigest(),
         "scientific_settings": expected_settings,
         "warm_start_policy": "fixed post-cold density, one untimed replay before measurement",
@@ -187,7 +230,7 @@ def main():
         device="cuda",
         density_fitting="cuda",
         auxiliary_basis=case.vibeqc_basis,
-        density_fitting_memory_budget_bytes=0,
+        density_fitting_memory_budget_bytes=args.density_fitting_memory_budget_bytes,
         screening_tolerance=1e-12,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
@@ -199,11 +242,17 @@ def main():
         multiplicities=[case.multiplicity] * args.batch,
     ) as batch:
         # Prime the same prepared state; cold work is outside every timed sample.
+        cold_start = time.perf_counter()
         cold = batch.execute(strict=True, properties=("energy", "forces"))
+        payload["cold_seconds"] = time.perf_counter() - cold_start
         payload["cold_iterations"] = [item.iterations for item in cold.items]
+        payload["cold_convergence"] = convergence_payload(cold)
         batch.set_warm_start_updates(False)
-        prime = batch.execute(strict=True, properties=("energy", "forces"))
-        payload["prime_iterations"] = [item.iterations for item in prime.items]
+        if not args.candidate:
+            prime = batch.execute(strict=True, properties=("energy", "forces"))
+            payload["prime_iterations"] = [item.iterations for item in prime.items]
+        # Named candidates each receive their own prime below, including the
+        # first one. Avoid an additional duplicate replay on large endpoints.
         save()
         runs = [
             (candidate, repeat)
@@ -231,15 +280,19 @@ def main():
             if args.component_trace:
                 os.environ["VIBEQC_DF_TRACE"] = str(trace_path.resolve())
                 os.environ["VIBEQC_DF_HOST_TRACE"] = str(host_path.resolve())
-            if cudart and cudart.cudaProfilerStart() != 0:
-                raise RuntimeError("cudaProfilerStart failed")
+            if cudart:
+                payload["capture_start_monotonic_ns"] = time.monotonic_ns()
+                if cudart.cudaProfilerStart() != 0:
+                    raise RuntimeError("cudaProfilerStart failed")
             start = time.perf_counter()
             try:
                 result = batch.execute(strict=True, properties=("energy", "forces"))
                 seconds = time.perf_counter() - start
             finally:
-                if cudart and cudart.cudaProfilerStop() != 0:
-                    raise RuntimeError("cudaProfilerStop failed")
+                if cudart:
+                    if cudart.cudaProfilerStop() != 0:
+                        raise RuntimeError("cudaProfilerStop failed")
+                    payload["capture_end_monotonic_ns"] = time.monotonic_ns()
                 os.environ.pop("VIBEQC_DF_TRACE", None)
                 os.environ.pop("VIBEQC_DF_HOST_TRACE", None)
             energies = np.array([item.energy for item in result.items])
@@ -252,6 +305,7 @@ def main():
                 "controls": {k: os.environ.get(k) for k in CANDIDATE_CONTROLS},
                 "seconds": seconds,
                 "iterations": [item.iterations for item in result.items],
+                "convergence": convergence_payload(result),
                 "warm_start_used": [item.warm_start_used for item in result.items],
                 "warm_start_fallback": [
                     item.warm_start_fallback for item in result.items
@@ -282,16 +336,15 @@ def main():
                     raise RuntimeError("missing per-item force response trace")
                 probe = os.environ.get("VIBEQC_DF_RESPONSE_UPLOAD_PROBE", "")
                 scatter_probe = os.environ.get("VIBEQC_DF_RESPONSE_SCATTER_PROBE", "")
+                sample["response_plans"] = []
                 for response in responses:
                     n, a, counters = (
                         response["nbf"],
                         response["naux"],
                         response["counters"],
                     )
-                    if response["source_backed"] or n != args.aos or a != args.aos:
-                        raise RuntimeError(
-                            "unexpected response value provider or dimensions"
-                        )
+                    if n != args.aos or a != args.aos:
+                        raise RuntimeError("unexpected response dimensions")
                     if counters["three_center_derivative_weights"] != n * n * a:
                         raise RuntimeError("incomplete three-center response work")
                     if counters["metric_derivative_weights"] != a * a:
@@ -312,15 +365,74 @@ def main():
                             )
                         if bool(counters.get("raw_panel_pinned_host_bytes")) != (
                             staging == "pinned-panels"
+                            and not response["source_backed"]
+                            and not counters.get("response_borrowed_jk_bytes", 0)
                         ):
                             raise RuntimeError(
                                 "selected raw panel staging did not execute"
                             )
-                    slices, remainder = divmod(
-                        counters["raw_value_upload_bytes"], n * n * 8
+                    # Source providers regenerate raw columns on the device.
+                    # Validate their logical tile work rather than pretending
+                    # absent H2D copies are a missing or free response.
+                    source_backed = response["source_backed"]
+                    byte_key = (
+                        "raw_value_bytes" if source_backed else "raw_value_upload_bytes"
                     )
+                    forbidden_key = (
+                        "raw_value_upload_bytes" if source_backed else "raw_value_bytes"
+                    )
+                    if counters.get(forbidden_key, 0):
+                        raise RuntimeError(
+                            "response used an unexpected raw value provider"
+                        )
+                    slices, remainder = divmod(counters.get(byte_key, 0), n * n * 8)
                     if remainder or slices == 0:
                         raise RuntimeError("invalid raw response byte count")
+                    panels = counters["response_auxiliary_blocks"]
+                    borrowed_bytes = counters.get("response_borrowed_jk_bytes", 0)
+                    if borrowed_bytes:
+                        tile = counters["response_resident_auxiliary_tile"]
+                        if (
+                            source_backed
+                            or borrowed_bytes != 3 * n * n * a * 8
+                            or slices != a
+                            or counters.get("raw_value_bulk_uploads") != 1
+                            or counters.get("raw_panel_host_gather_elements", 0)
+                            or counters["response_ao_matrix_products"]
+                            != 2 * a * (2 if case.method == "uhf" else 1)
+                        ):
+                            raise RuntimeError(
+                                "resident response did not reuse its raw/projected tensors"
+                            )
+                    else:
+                        reused, remainder = divmod(
+                            counters["raw_value_reuse_bytes"], n * n * 8
+                        )
+                        # Charge retains the first tile; each later exchange
+                        # panel reuses its own raw columns and rereads the rest.
+                        tile = reused - a
+                        if remainder or slices != (panels + 1) * a - tile:
+                            raise RuntimeError(
+                                "raw response reads disagree with panel reuse"
+                            )
+                    if not 1 <= tile <= a or panels != (a + tile - 1) // tile:
+                        raise RuntimeError("invalid response consumer panel count")
+                    sample["response_plans"].append(
+                        {
+                            "source_backed": source_backed,
+                            "borrowed_jk_bytes": borrowed_bytes,
+                            "auxiliary_weight_tile": tile,
+                            "auxiliary_blocks": panels,
+                            "raw_value_slices": slices,
+                            "raw_value_bytes": slices * n * n * 8,
+                            "response_scratch_bytes": counters[
+                                "response_scratch_bytes"
+                            ],
+                            "pinned_host_bytes": counters.get(
+                                "raw_panel_pinned_host_bytes", 0
+                            ),
+                        }
+                    )
                     if counters.get("raw_probe_prior_stream_drains", 0) != (
                         slices if probe else 0
                     ):

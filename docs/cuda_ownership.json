@@ -231,14 +231,14 @@
     },
     {
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added.",
+      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch.",
       "regions": [],
       "role": "scientific",
       "subsystem": "df_derivatives"
     },
     {
       "path": "src/scf/cuda/df_response_weights.cu",
-      "reason": "Native HF density response and spectral Frechet method adapters. Plan-owned FP64 cuBLAS supplies default exchange metric dots and opt-in charge GEMV/density GEMM. Provider, layout and accumulation glue remain conservatively scientific; scalar charge/density kernels remain the default comparison route until full endpoint promotion. Integral values and coordinate derivatives retain their generated owners.",
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
       "regions": [
         {
           "start": "__global__ void exchange_metric_kernel(",
@@ -252,7 +252,7 @@
     },
     {
       "path": "src/scf/cuda/df_response_weights.cuh",
-      "reason": "Native HF density response and spectral Frechet method adapters. Plan-owned FP64 cuBLAS supplies default exchange metric dots and opt-in charge GEMV/density GEMM. Provider, layout and accumulation glue remain conservatively scientific; scalar charge/density kernels remain the default comparison route until full endpoint promotion. Integral values and coordinate derivatives retain their generated owners.",
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
       "regions": [],
       "role": "scientific",
       "subsystem": "df_response_weights"
@@ -1654,7 +1654,7 @@
     },
     "df_response_weights": {
       "owner": "scf_tensor",
-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere.",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check.",
       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
       "retained_duplicate_reason": "oracle",
@@ -1663,7 +1663,10 @@
         "tests/python/test_df_response_weights_cuda.py",
         "benchmarks/results/issue206-metric-gemv/README.md",
         "benchmarks/results/issue206-metric-gemv/summary.json",
-        "benchmarks/results/issue308-shell-schedules/summary.json"
+        "benchmarks/results/issue308-shell-schedules/summary.json",
+        "tests/python/test_df_resident_response_cuda.py",
+        "benchmarks/results/issue308-768ao-response/README.md",
+        "benchmarks/results/issue308-768ao-response/summary.json"
       ],
       "status": "native_baseline_with_opt_in_control"
     }

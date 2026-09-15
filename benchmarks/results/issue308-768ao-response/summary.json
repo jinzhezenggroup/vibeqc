@@ -1,0 +1,675 @@
+{
+  "scope": "96-atom water 32-mer, 768 orbital / 768 auxiliary spherical def2-SVP AOs, RHF, batch 1, RTX 5090. Complete FP64 energy+force with all metric/auxiliary/Pulay response.",
+  "response_allowance_bytes": 134217728,
+  "public_df_budget_bytes": 0,
+  "default_controls": "No force optimization selectors or response budget override are set in the candidate clean/profile runs.",
+  "clean": {
+    "previous": {
+      "cold_seconds": 1052.291155918967,
+      "warm_seconds": [
+        114.76040750811808,
+        114.94321175687946,
+        114.8044263960328,
+        114.92309623002075,
+        114.57172397198156
+      ],
+      "warm_median_seconds": 114.8044263960328,
+      "gpu4pyscf_warm_seconds": [
+        2.1418457138352096,
+        2.1515242841560394,
+        2.139686191920191,
+        2.552084751892835,
+        2.140010421164334
+      ],
+      "gpu4pyscf_warm_median_seconds": 2.1418457138352096,
+      "native_iteration_branches": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "gpu4pyscf_iteration_branches": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          3
+        ],
+        [
+          1
+        ]
+      ],
+      "accuracy_all_pairs": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.335599547624966e-10,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3351066086020325e-10,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3359326145323536e-10,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3313096458578144e-10,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3341029669877713e-10,
+          "repeat": 4
+        }
+      ],
+      "maximum_energy_error_hartree": 3.956301952712238e-11,
+      "maximum_force_error_hartree_per_bohr": 1.3359326145323536e-10
+    },
+    "preparation_only": {
+      "cold_seconds": 208.94747950020246,
+      "warm_seconds": [
+        113.50642790994607,
+        113.4929278101772,
+        113.77454361901619,
+        113.53200149303302,
+        113.29651710996404
+      ],
+      "warm_median_seconds": 113.50642790994607,
+      "gpu4pyscf_warm_seconds": [
+        2.143412397010252,
+        2.1197142160963267,
+        2.1339391961228102,
+        2.5508501168806106,
+        2.557028292911127
+      ],
+      "gpu4pyscf_warm_median_seconds": 2.143412397010252,
+      "native_iteration_branches": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "gpu4pyscf_iteration_branches": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "accuracy_all_pairs": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 4.1382008930668235e-11,
+          "maximum_force_error_hartree_per_bohr": 1.334933413810191e-10,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 4.229150363244116e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3357993877693985e-10,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 4.1382008930668235e-11,
+          "maximum_force_error_hartree_per_bohr": 1.335253158041283e-10,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 4.0472514228895307e-11,
+          "maximum_force_error_hartree_per_bohr": 1.3314872815417544e-10,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 4.1382008930668235e-11,
+          "maximum_force_error_hartree_per_bohr": 1.331793703096551e-10,
+          "repeat": 4
+        }
+      ],
+      "maximum_energy_error_hartree": 4.229150363244116e-11,
+      "maximum_force_error_hartree_per_bohr": 1.3357993877693985e-10
+    },
+    "default": {
+      "cold_seconds": 107.06881367601454,
+      "warm_seconds": [
+        12.086437936173752,
+        12.082400992978364,
+        12.081664064899087,
+        12.084084928967059,
+        12.091174612985924
+      ],
+      "warm_median_seconds": 12.084084928967059,
+      "gpu4pyscf_warm_seconds": [
+        2.114066424081102,
+        2.1348507239017636,
+        2.5204563580919057,
+        2.3491114990320057,
+        2.5629817929584533
+      ],
+      "gpu4pyscf_warm_median_seconds": 2.3491114990320057,
+      "native_iteration_branches": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "gpu4pyscf_iteration_branches": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          3
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ]
+      ],
+      "accuracy_all_pairs": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5397652076976076e-10,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5403158783178217e-10,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5380066144266014e-10,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 4.1382008930668235e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5384684672048454e-10,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5366743467970512e-10,
+          "repeat": 4
+        }
+      ],
+      "maximum_energy_error_hartree": 4.1382008930668235e-11,
+      "maximum_force_error_hartree_per_bohr": 1.5403158783178217e-10
+    }
+  },
+  "warm_speedup_over_previous": 9.500465039006162,
+  "warm_speedup_over_preparation_only": 9.393051155893236,
+  "cold_speedup_over_previous": 9.828176102736629,
+  "ordinary_native_over_gpu4pyscf": 5.14410871256921,
+  "cross_engine_timing_limit": "Ordinary endpoint timings only; iteration branches are retained per sample. The ordinary ratio is not an iteration-matched cross-engine speed claim. All five complete numerical comparisons are checked, not just the comparator selected gate pair.",
+  "intrusive": {
+    "default_profile_controls": {
+      "VIBEQC_RESOURCE_CUDA_TEST": "1",
+      "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1",
+      "VIBEQC_LIBRARY": ".artifacts/issue308-768ao/v5/libvibeqc.so"
+    },
+    "final_trace_source_identity": "5053f0fa2e5a1986ae40c6a60c8236ae4f1d949ca7d731cdd1df3d1d1fe8f731",
+    "nsight_source_identity": "bf5881a50cffd2364afd35ef5eef40a0aa2beed78df4005390799baf8e38b14e",
+    "nsight_commit": "9eeb060db2e2b55c9ed6d157543f8e04f57e8f47",
+    "response_counters": {
+      "atom_coordinates": 288,
+      "density_upload_bytes": 4718592,
+      "device_to_host_bytes": 2304,
+      "host_to_device_bytes": 3628698912,
+      "metric_derivative_weight_bytes": 4718592,
+      "metric_derivative_weights": 589824,
+      "raw_resident_transpose_elements": 452984832,
+      "raw_value_bulk_uploads": 1,
+      "raw_value_upload_bytes": 3623878656,
+      "response_ao_matrix_products": 1536,
+      "response_auxiliary_blocks": 1,
+      "response_borrowed_jk_bytes": 10871635968,
+      "response_charge_blas_dots": 768,
+      "response_charge_dot_elements": 452984832,
+      "response_density_blas_products": 1536,
+      "response_host_to_device_bytes": 0,
+      "response_metric_blas_dots": 589824,
+      "response_metric_blas_gemms": 1,
+      "response_probe_total_device_bytes": 132236832,
+      "response_resident_auxiliary_tile": 768,
+      "response_resident_exchange_columns": 768,
+      "response_scratch_bytes": 132236832,
+      "response_weight_blas_gemms": 1,
+      "stream_synchronizations": 1,
+      "tensor_host_to_device_bytes": 3623878656,
+      "three_center_derivative_weight_bytes": 3623878656,
+      "three_center_derivative_weights": 452984832,
+      "three_center_shell_panels": 1
+    },
+    "actual_kernel_components": {
+      "ri_k_gemm": {
+        "calls": 8,
+        "device_ms": 3298.322857
+      },
+      "three_center_derivative_contraction": {
+        "calls": 27,
+        "device_ms": 4810.4746319999995
+      },
+      "exchange_response_matrix_products": {
+        "calls": 1536,
+        "device_ms": 1001.258925
+      },
+      "exchange_response_metric_gemm": {
+        "calls": 1,
+        "device_ms": 477.821779
+      },
+      "exchange_response_weight_gemm": {
+        "calls": 1,
+        "device_ms": 406.348257
+      },
+      "unassigned": {
+        "calls": 39,
+        "device_ms": 180.31750000000002
+      },
+      "ri_k": {
+        "calls": 9,
+        "device_ms": 60.799685
+      },
+      "compact_eigensolve": {
+        "calls": 474,
+        "device_ms": 51.319334000000005
+      },
+      "metric_center_derivative_contraction": {
+        "calls": 1,
+        "device_ms": 11.710902
+      },
+      "ri_j_gemm": {
+        "calls": 12,
+        "device_ms": 17.381071
+      },
+      "raw_value_resident_transpose": {
+        "calls": 10,
+        "device_ms": 5.024595
+      },
+      "coulomb_response": {
+        "calls": 3,
+        "device_ms": 4.7850079999999995
+      },
+      "metric_frechet_response": {
+        "calls": 5,
+        "device_ms": 3.832359
+      },
+      "coulomb_response_charge_dot": {
+        "calls": 2,
+        "device_ms": 2.303607
+      },
+      "metric_inverse": {
+        "calls": 1,
+        "device_ms": 1.789618
+      }
+    },
+    "raw_copies": {
+      "calls": 1,
+      "bytes": 3623878656,
+      "host_api_ms": 243.446907,
+      "device_dma_ms": 243.396052,
+      "host_overlap_same_stream_kernels_ms": 0.0,
+      "host_overlap_same_stream_copies_ms": 243.365568,
+      "host_residual_not_device_activity_ms": 0.081339,
+      "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+    },
+    "response_execution_coverage": {
+      "host_window_ms": 6976.953128,
+      "kernel_union_ms": 6725.349682,
+      "copy_union_ms": 243.723959,
+      "memset_union_ms": 2.153462,
+      "active_union_ms": 6971.227103,
+      "no_recorded_gpu_work_ms": 5.726025
+    },
+    "host_inclusive": {
+      "ri_j": {
+        "calls": 4,
+        "host_ms": 0.364059
+      },
+      "ri_j_gemm": {
+        "calls": 8,
+        "host_ms": 0.294636
+      },
+      "ri_k": {
+        "calls": 4,
+        "host_ms": 0.346444
+      },
+      "ri_k_gemm": {
+        "calls": 8,
+        "host_ms": 0.167731
+      },
+      "compact_eigensolve": {
+        "calls": 3,
+        "host_ms": 203.599577
+      },
+      "final_state_download": {
+        "calls": 1,
+        "host_ms": 4.314733
+      },
+      "force_response": {
+        "calls": 1,
+        "host_ms": 6976.953128
+      },
+      "response_allocation_and_uploads": {
+        "calls": 1,
+        "host_ms": 1.924139
+      },
+      "response_weights": {
+        "calls": 1,
+        "host_ms": 957.596133
+      },
+      "raw_value_resident_upload": {
+        "calls": 1,
+        "host_ms": 243.470182
+      },
+      "raw_value_resident_transpose": {
+        "calls": 1,
+        "host_ms": 0.09954
+      },
+      "metric_inverse": {
+        "calls": 1,
+        "host_ms": 0.013616
+      },
+      "coulomb_response": {
+        "calls": 1,
+        "host_ms": 0.08843
+      },
+      "coulomb_response_charge_dot": {
+        "calls": 1,
+        "host_ms": 0.06255
+      },
+      "exchange_response_matrix_products": {
+        "calls": 768,
+        "host_ms": 350.885186
+      },
+      "exchange_response_metric_gemm": {
+        "calls": 1,
+        "host_ms": 0.020069
+      },
+      "exchange_response_weight_gemm": {
+        "calls": 1,
+        "host_ms": 0.633736
+      },
+      "three_center_derivative_contraction": {
+        "calls": 1,
+        "host_ms": 8.804281
+      },
+      "metric_frechet_response": {
+        "calls": 1,
+        "host_ms": 1.891016
+      },
+      "metric_center_derivative_contraction": {
+        "calls": 1,
+        "host_ms": 1.246049
+      },
+      "response_output_and_synchronization": {
+        "calls": 1,
+        "host_ms": 6017.033791
+      }
+    },
+    "timeline_database_sha256": "d1e94fc059c8ac6d34f82c2a72943c61799c2ab47fc465097132dfd5ba2dbfee",
+    "trace_sha256": "5bcc04898800a8e0a4e0b04c22e6be60c9562d3cf88a89fb2c4ab932ba101ba8",
+    "note": "Actual CUDA activity is from the v4 Nsight capture before the portability-only GEAM capability guard. The final v5 trace confirms unchanged NVIDIA work counts. Inclusive host/device times overlap and are not summed."
+  },
+  "memory": {
+    "borrowed_existing_jk_bytes": 10871635968,
+    "new_response_scratch_bytes": 132236832,
+    "value_plan_diagnostics": [
+      {
+        "absolute_threshold": 2.3994330289515975e-07,
+        "auxiliary_tile": 768,
+        "bucket_id": 0,
+        "condition_number": 25786.996213448292,
+        "device_resident_bytes": 14993095555,
+        "effective_rank": 768,
+        "host_resident_bytes": 76546489,
+        "peak_device_bytes": 18641617439,
+        "peak_host_bytes": 3705156029,
+        "solver_device_workspace_bytes": 19918488,
+        "solver_host_workspace_bytes": 0,
+        "streamed": false,
+        "system_index": 0
+      }
+    ],
+    "intrusive_process_samples": [
+      {
+        "monotonic_ns": 1903360170719103,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903361195540126,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903362218457337,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903363241402190,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903364264026056,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903365286718613,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903366308471608,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903367333298055,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903368355402511,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903369377620174,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903370400756957,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903371423238153,
+        "used_mib": 20420.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903372446266367,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      },
+      {
+        "monotonic_ns": 1903373469378080,
+        "used_mib": 20292.0,
+        "gpu_uuid": "GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8"
+      }
+    ],
+    "sampled_capture_peak_mib": 20420.0,
+    "meaning": "One-second process-memory samples within the recorded capture interval; a lower bound on the true peak, not an allocator high-water mark. Borrowed J/K tensors were already counted by the value plan and are not new response allocations."
+  },
+  "validation": {
+    "focused_gpu_tests": 15,
+    "existing_gpu_regressions": 193,
+    "memcheck_cases": 3,
+    "memcheck_errors": 0,
+    "benchmark_and_timeline_tests": 44,
+    "slurm_job": "9617",
+    "prior_regression_and_memcheck_job": "9616",
+    "evidence_and_ownership_tests": 98
+  },
+  "rollout": "Automatic only for 768/768-AO single-RHF sm_120 host-raw resident plans with three full J/K scratch tensors and compatible schedules. Other eligible shapes can opt in; source-backed/partial scratch cannot borrow. Explicit panel and diagnostic controls remain available.",
+  "remaining": "GPU4PySCF parity is not reached. Generated derivative contraction and SCF RI-K dominate the remaining endpoint. Constrained/source-backed response and broad 768-AO changed-geometry timings are not qualified by this PR; #206/#308 remain open.",
+  "supplemental_generic_control": {
+    "status": "cancelled_at_user_request_during_unmeasured_priming",
+    "slurm_job": "9618",
+    "controls": {
+      "VIBEQC_DF_RESPONSE_STORAGE": "panel",
+      "VIBEQC_DF_WEIGHTED_EXECUTION": "generic",
+      "VIBEQC_DF_SHELL_SCHEDULE": "warp",
+      "VIBEQC_DF_RESPONSE_ALGEBRA": "scalar",
+      "VIBEQC_DF_RAW_STAGING": "pageable"
+    },
+    "completed_progress": [
+      {
+        "stage": "started",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "batch": 1,
+        "properties": [
+          "energy",
+          "forces"
+        ]
+      },
+      {
+        "stage": "vibeqc_cold",
+        "seconds": 1282.1898762059864,
+        "convergence": [
+          {
+            "converged": true,
+            "iterations": 24,
+            "energy_change_hartree": 0.0,
+            "density_rms": 1.7708126440821321e-12,
+            "warm_start_used": false,
+            "warm_start_fallback": false,
+            "final_residuals": {
+              "energy_change_hartree": 0.0,
+              "density_rms": 1.7708126440821321e-12,
+              "orbital_gradient_norm": null
+            },
+            "warm_start": {
+              "used": false,
+              "fallback": false
+            }
+          }
+        ],
+        "metric": [
+          {
+            "bucket_id": 0,
+            "system_index": 0,
+            "effective_rank": 768,
+            "absolute_threshold": 2.3994330289515975e-07,
+            "condition_number": 25786.996213448292,
+            "solver_device_workspace_bytes": 19918488,
+            "solver_host_workspace_bytes": 0,
+            "device_resident_bytes": 14993095555,
+            "peak_device_bytes": 18641617439,
+            "host_resident_bytes": 76546489,
+            "peak_host_bytes": 3705156029,
+            "auxiliary_tile": 768,
+            "streamed": false
+          }
+        ]
+      },
+      {
+        "stage": "gpu4pyscf_cold",
+        "seconds": 13.144906771136448,
+        "convergence": [
+          {
+            "converged": true,
+            "iterations": 51,
+            "final_residuals": {
+              "energy_change_hartree": 0.0,
+              "density_rms": 1.483890149338225e-11,
+              "orbital_gradient_norm": 3.391618396251609e-11
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ]
+      }
+    ],
+    "measured_warm_repeats": 0,
+    "numerical_comparison_completed": false,
+    "explicit_combined_followup": "not_started; cancelled with the same job",
+    "interpretation": "Cold timings and convergence only. No full paired energy/force record or warm result was produced; excluded from acceptance and speedup claims. Existing five-repeat default validation remains the acceptance evidence."
+  }
+}

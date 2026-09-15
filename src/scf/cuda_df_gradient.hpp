@@ -20,6 +20,18 @@ struct CudaDfMetricView {
   const double* eigenvalues{};
   double relative_threshold{};
 };
+/** Exclusive, stream-ordered borrow of three existing J/K scratch tensors.
+ * The value-plan owner validates full [nbf*nbf,naux] capacity before lending
+ * these distinct buffers. Response does not own or free them. The same plan
+ * stream orders the last J/K use, this complete force, and the next SCF use;
+ * the synchronous bridge drains on success and failure before returning.
+ */
+struct CudaDfResponseBuffers {
+  double* staging_weights{};
+  double* raw_auxiliary_major{};
+  double* exchange_response{};
+  std::size_t elements_per_buffer{};
+};
 /** Owned numeric staging and explicit transfers, excluding caller weights/system data. */
 struct DfGradientResources {
   std::size_t host_bytes{}, device_bytes{}, host_to_device_bytes{}, device_to_host_bytes{};
@@ -29,6 +41,8 @@ struct DfGradientResources {
   std::size_t tensor_host_to_device_bytes{}, tensor_device_to_host_bytes{};
   std::size_t response_host_to_device_bytes{}, density_host_to_device_bytes{};
   std::size_t recomputed_value_bytes{}, device_response_bytes{};
+  /** Already charged to the value plan, never added again to owned device_bytes. */
+  std::size_t borrowed_device_bytes{};
   bool device_response{};
 };
 /** Synchronous bounded bridge for fixed full A[mu,nu,P] and M[P,Q] weights.
@@ -77,6 +91,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     std::span<const DensityFittingDensityResponse> terms, double relative_threshold,
     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
     std::vector<double>& gradient, std::string& detail, DfGradientResources* resources = nullptr,
-    const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr);
+    const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr,
+    const CudaDfResponseBuffers* borrowed = nullptr);
 }  // namespace vibeqc::scf
 #endif

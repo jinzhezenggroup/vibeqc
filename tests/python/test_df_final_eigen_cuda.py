@@ -49,7 +49,9 @@ def test_tiny_final_provider_budget_rejects_without_reference_retry(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("batch_size", (1, 4))
-@pytest.mark.parametrize("budget", (0, 8 << 20))
+# Keep a feasible positive allowance for the current solver/DIIS reservations;
+# the rejected former batch-four 8-MiB request remains covered separately.
+@pytest.mark.parametrize("budget", (0, 32 << 20))
 def test_final_provider_matches_reference_across_replans(
     method, representation, batch_size, budget, monkeypatch, tmp_path
 ):

@@ -9,6 +9,8 @@ benchmarks/results/tensor-cuda-146/*.json linguist-generated=true
 benchmarks/results/posthf-147/*.json linguist-generated=true
 tests/reference_data/grid/*.json linguist-generated=true
 benchmarks/results/dft-grid-160/*.json linguist-generated=true
+# Keep the 768-AO numerical samples available beside the readable fix summary.
+benchmarks/results/issue308-768ao-response/*-768ao.json linguist-generated=true text eol=lf
 
 # These files are hashed byte-for-byte as third-party/reference provenance.
 external/libxc-7.0.0/* text eol=lf

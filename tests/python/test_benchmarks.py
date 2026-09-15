@@ -92,7 +92,10 @@ def test_batch_benchmark_writes_reproducible_json(tmp_path):
     output = tmp_path / "batch.json"
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(REPOSITORY_ROOT / "python")
-    environment["VIBEQC_LIBRARY"] = str(REPOSITORY_ROOT / "build" / "libvibeqc.so")
+    # Keep an explicit frozen library when validating benchmark changes.
+    environment.setdefault(
+        "VIBEQC_LIBRARY", str(REPOSITORY_ROOT / "build" / "libvibeqc.so")
+    )
     completed = subprocess.run(
         (
             sys.executable,
