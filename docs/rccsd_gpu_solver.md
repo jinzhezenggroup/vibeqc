@@ -98,8 +98,11 @@ VIBEQC_CC_CUDA_TEST=1 VIBEQC_TENSOR_ARCH=sm_90 \
   tests/python/test_cc_gpu_solver.py -q
 ```
 
-This run requires an allocated GPU validation window on qz/inspire. It has not
-been executed from this workstation (which has no CUDA toolchain); until it
-passes there, the real-device convergence gate is honestly **not-run**, not
-fabricated. The `compile_only` flag records planning/compilation evidence
-without claiming numerical acceptance.
+RTX 5090 qualification now passes on clean source
+`b7dcace8263b5a12b5aa9639c47679317fb71cae`: all five molecular endpoints,
+fresh native RHF-to-CUDA-CC endpoints, CPU replay and the full CC test
+selection (201 passed, 8 explicit skips). The source-bound results and
+reproduction are retained in
+[`rccsd-149-bc-review`](../benchmarks/results/rccsd-149-bc-review/README.md).
+The `compile_only` flag compiles both plans without executing CUDA or
+claiming numerical acceptance. All local GPU runs use finite Slurm allocations.

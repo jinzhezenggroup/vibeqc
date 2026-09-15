@@ -1,0 +1,92 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "archive_bytes": 81918,
+  "archive_sha256": "04a091ebadea2fbc318a6953eb6567c5334a951327e9760124e616497e2ec38e",
+  "files": [
+    {
+      "path": "ch4-state.json",
+      "bytes": 175292,
+      "sha256": "544f3647563c71a85373e2d69298c7f87a93495180d4dfa7f8947b61461b27e3"
+    },
+    {
+      "path": "ch4.json",
+      "bytes": 1692,
+      "sha256": "19ce54797bc5832ecaf0f32b5f8140a5a5d0a53a1ea5c69b74dcd377a506eb0b"
+    },
+    {
+      "path": "compile-only-manifest.json",
+      "bytes": 3511,
+      "sha256": "dd27ffedb4b83af3678373af340a3f4d7466aa9bf783e0525cdef76d08380b1b"
+    },
+    {
+      "path": "compile-only.log",
+      "bytes": 293,
+      "sha256": "777139609d9d68fb9b003156405f07eb1fe4a2b359eddf4748d8a56f1bb15cf7"
+    },
+    {
+      "path": "full-gpu.log",
+      "bytes": 402,
+      "sha256": "35c15300631c48b51ed87aaff67eca7bfd4072d42c080dd2d6afe601e74d3830"
+    },
+    {
+      "path": "h2-state.json",
+      "bytes": 8206,
+      "sha256": "9eab3dfc618ab239b7545457ba03ac526b1236bb95956d6546852c3c71fb903a"
+    },
+    {
+      "path": "h2.json",
+      "bytes": 1646,
+      "sha256": "f4522c7183385c66daff2fd3fa3515409b603e108a565d4f6a966654cf8b0f82"
+    },
+    {
+      "path": "h2o-state.json",
+      "bytes": 80447,
+      "sha256": "769388453271704fd5a89830bc6d0a05e33dfa525e7a0e908244dc26adb4d382"
+    },
+    {
+      "path": "h2o.json",
+      "bytes": 1690,
+      "sha256": "46b0effa29c894c9092e1667a868c11e38520d99cd3f76b01ca567453a0e4439"
+    },
+    {
+      "path": "he-state.json",
+      "bytes": 8172,
+      "sha256": "f30e7687a8579cbdf98fa5d819a8e8e22fd8461cf91da9bd0731789e93ed27d8"
+    },
+    {
+      "path": "he.json",
+      "bytes": 1642,
+      "sha256": "bf9f9c8ce28989604a3a2cb99a74f02ca455e69d6b37c2343fddd035bf11403b"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 2351,
+      "sha256": "1ea9469fe9b57dca0a6bcb57d3b4ef30b651cdee9c812b848989fd89409cbcb1"
+    },
+    {
+      "path": "native-endpoints.json",
+      "bytes": 1303,
+      "sha256": "1ed20c2cc3d8dd69ea916580ff684ae5c9371438c1364eee4818fced71ded0a0"
+    },
+    {
+      "path": "native-reproduction.py",
+      "bytes": 2168,
+      "sha256": "2dd37ac95d584be14107ec5a508a75b82a6c9aff049cdc275879ece49e02f573"
+    },
+    {
+      "path": "nh3-state.json",
+      "bytes": 119220,
+      "sha256": "ecccc19dba16f8705fed50c6ea6d706605a232c729a679b02903c81d752f59b1"
+    },
+    {
+      "path": "nh3.json",
+      "bytes": 1692,
+      "sha256": "bdee7a0a5a7c6f9d06d1543c15b99e16b4799b083ee1c079bdeaa634db907db3"
+    },
+    {
+      "path": "reproduction.sh",
+      "bytes": 680,
+      "sha256": "ecf6bb21d554bca137e6e0cbe0747ca58130e0fc3353d9a4c07b7fc50c1690be"
+    }
+  ]
+}
