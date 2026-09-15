@@ -1,5 +1,6 @@
 #ifndef VIBEQC_SCF_CUDA_DF_GRADIENT_HPP
 #define VIBEQC_SCF_CUDA_DF_GRADIENT_HPP
+#include <array>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -26,11 +27,22 @@ struct CudaDfMetricView {
  * stream orders the last J/K use, this complete force, and the next SCF use;
  * the synchronous bridge drains on success and failure before returning.
  */
+/** Borrow of one canonical column-major C, with D=density_scale*C*C^T.
+ * The plan owner validates the method token, exact density and device
+ * generation before constructing this view. A zero-rank spin has no pointer.
+ */
+struct CudaDfOccupiedResponseFactor {
+  const double* coefficients{};
+  std::size_t rank{};
+  double density_scale{};
+};
 struct CudaDfResponseBuffers {
   double* staging_weights{};
   double* raw_auxiliary_major{};
   double* exchange_response{};
   std::size_t elements_per_buffer{};
+  bool occupied_response{};
+  std::array<CudaDfOccupiedResponseFactor, 3> occupied_factors{};
 };
 /** Owned numeric staging and explicit transfers, excluding caller weights/system data. */
 struct DfGradientResources {
@@ -44,6 +56,8 @@ struct DfGradientResources {
   /** Already charged to the value plan, never added again to owned device_bytes. */
   std::size_t borrowed_device_bytes{};
   bool device_response{};
+  /** True only after the owner validates and executes occupied response. */
+  bool occupied_response{};
 };
 /** Synchronous bounded bridge for fixed full A[mu,nu,P] and M[P,Q] weights.
  * Orbital/auxiliary bases share the same physical atom coordinates but may

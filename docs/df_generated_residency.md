@@ -11,7 +11,7 @@ execution uses the whole supplied allowance; force execution reserves half for
 its sequential DF and one-electron response bridges. Cached plans record the
 value allowance and rebuild when a property change alters it. If the full
 allowance fails, the existing deterministic tile-shrinking policy applies.
-Zero-budget compatibility selection remains unchanged. The common global HF
+Zero-budget selection retains host-raw residency. The common global HF
 ledger also charges the source-specific persistent storage and bounds actual
 allocations; a DF sub-budget alone is not a whole-HF peak-memory measurement.
 
@@ -20,6 +20,19 @@ once per system, applies the retained inverse metric factor with cuBLAS, and
 keeps the transformed tensor across fixed-geometry J/K builds. It allocates
 neither a host full tensor nor an extra raw device tensor. The independent
 host-tensor resident implementation retains its own setup upload allowance.
+
+Source-backed replay traverses compact public-AO expansions from normalized
+molecule metadata. Each expansion carries
+only its actual Cartesian indices and coefficients, in Cartesian summation
+order; batch items own separate maps. Cartesian AOs use one-term maps. No
+generated integral or derivative formula changes with this representation.
+Unbudgeted host-raw preparation retains its separate Cartesian integral
+exporter and public-basis host transform. Source timing must not be attributed
+to this separate path.
+
+The [sparse-source decision](../.agents/notes/implemented/performance/2026-09-15-sparse-df-source.md)
+distinguishes the source traversal speedup from the separate resident exporter
+that bypasses it, with full-generation counters and qualification.
 
 The private shape-query v2 adds an explicit generated-source flag. The original
 v1 query retains host-tensor accounting. Source-generated response may coexist

@@ -30,40 +30,36 @@ bool cuda_df_shell_domain(const core::System& system, const char* role, std::str
 
 namespace {
 
-/** Build public-row/Cartesian-column transforms from normalized AO expansions. */
-std::vector<double> make_public_to_cartesian_transform(const core::System& system) {
-  const std::size_t public_count = molecule::ao_count(system);
-  const std::size_t cartesian_count = molecule::cartesian_ao_count(system);
-  std::size_t transform_elements = 0;
-  if (!checked_multiply(public_count, cartesian_count, transform_elements)) {
-    throw std::overflow_error("DF public-basis transform dimensions overflow");
-  }
-  std::vector<double> transform(transform_elements, 0.0);
-  std::size_t public_offset = 0;
-  std::size_t cartesian_offset = 0;
-  for (const core::Shell& shell : system.shells) {
-    const std::vector<molecule::CartesianComponent> components =
-        molecule::cartesian_components(shell.angular_momentum);
+/** Pack only nonzero normalized expansion terms, preserving Cartesian order.
+ * Sorting reproduces the old dense scan's summation order even when the
+ * scientific expansion lists its terms in a different order.
+ */
+std::vector<DfPublicAoExpansion> make_public_to_cartesian_transform(const core::System& system) {
+  const auto public_count = molecule::ao_count(system);
+  std::vector<DfPublicAoExpansion> transform(public_count);
+  std::size_t public_offset = 0, cartesian_offset = 0;
+  for (const auto& shell : system.shells) {
+    const auto components = molecule::cartesian_components(shell.angular_momentum);
     const auto expansions =
         molecule::ao_expansions(shell.angular_momentum, system.basis_representation);
-    for (const molecule::AoExpansion& expansion : expansions) {
-      for (const molecule::CartesianExpansionTerm& term : expansion) {
-        const auto component = std::find(components.begin(), components.end(), term.component);
-        if (component == components.end()) {
-          throw std::invalid_argument(
-              "DF public-basis transform references an unknown Cartesian AO");
-        }
-        const std::size_t cartesian =
-            cartesian_offset + static_cast<std::size_t>(component - components.begin());
-        transform[public_offset * cartesian_count + cartesian] = term.coefficient;
+    for (const auto& expansion : expansions) {
+      auto& packed = transform.at(public_offset++);
+      for (std::size_t component = 0; component < components.size(); ++component) {
+        const auto term = std::find_if(expansion.begin(), expansion.end(), [&](const auto& entry) {
+          return entry.component == components[component];
+        });
+        if (term == expansion.end() || term->coefficient == 0.0) continue;
+        if (packed.count == molecule::kMaximumAoExpansionTerms)
+          throw std::invalid_argument("DF public AO expansion exceeds normalized basis bound");
+        packed.cartesian[packed.count] = static_cast<std::int32_t>(cartesian_offset + component);
+        packed.coefficients[packed.count++] = term->coefficient;
       }
-      ++public_offset;
+      if (!packed.count) throw std::invalid_argument("empty DF public AO expansion");
     }
     cartesian_offset += components.size();
   }
-  if (public_offset != public_count || cartesian_offset != cartesian_count) {
+  if (public_offset != public_count || cartesian_offset != molecule::cartesian_ao_count(system))
     throw std::invalid_argument("DF public-basis transform dimensions are inconsistent");
-  }
   return transform;
 }
 
@@ -268,27 +264,25 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   // transform would silently corrupt every later source replay.
   std::size_t orbital_transform_elements = 0;
   std::size_t auxiliary_transform_elements = 0;
-  if (!checked_multiply(public_nbf, cartesian_nbf, orbital_transform_elements) ||
-      !checked_multiply(public_naux, cartesian_naux, auxiliary_transform_elements) ||
+  if (!checked_multiply(public_nbf, sizeof(DfPublicAoExpansion), orbital_transform_elements) ||
+      !checked_multiply(public_naux, sizeof(DfPublicAoExpansion), auxiliary_transform_elements) ||
       !checked_multiply(batch_size, orbital_transform_elements, orbital_transform_elements) ||
       !checked_multiply(batch_size, auxiliary_transform_elements, auxiliary_transform_elements)) {
     detail = "bounded DF source transform dimensions overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
-  std::vector<double> orbital_transform;
-  std::vector<double> auxiliary_transform;
+  std::vector<DfPublicAoExpansion> orbital_transform;
+  std::vector<DfPublicAoExpansion> auxiliary_transform;
   try {
-    orbital_transform.resize(orbital_transform_elements);
-    auxiliary_transform.resize(auxiliary_transform_elements);
+    orbital_transform.resize(orbital_transform_elements / sizeof(DfPublicAoExpansion));
+    auxiliary_transform.resize(auxiliary_transform_elements / sizeof(DfPublicAoExpansion));
     for (std::size_t system = 0; system < batch_size; ++system) {
-      const std::vector<double> orbital_item =
-          make_public_to_cartesian_transform(orbital_systems[system]);
-      const std::vector<double> auxiliary_item =
-          make_public_to_cartesian_transform(auxiliary_systems[system]);
+      const auto orbital_item = make_public_to_cartesian_transform(orbital_systems[system]);
+      const auto auxiliary_item = make_public_to_cartesian_transform(auxiliary_systems[system]);
       std::copy(orbital_item.begin(), orbital_item.end(),
-                orbital_transform.begin() + system * public_nbf * cartesian_nbf);
+                orbital_transform.begin() + system * public_nbf);
       std::copy(auxiliary_item.begin(), auxiliary_item.end(),
-                auxiliary_transform.begin() + system * public_naux * cartesian_naux);
+                auxiliary_transform.begin() + system * public_naux);
     }
   } catch (const std::bad_alloc&) {
     detail = "host allocation failed for bounded DF source transforms";
@@ -298,17 +292,19 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   void* orbital_transform_device = nullptr;
-  vibeqc_status status =
-      source_upload(*candidate, orbital_transform.data(), orbital_transform.size() * sizeof(double),
-                    &orbital_transform_device, detail);
+  vibeqc_status status = source_upload(*candidate, orbital_transform.data(),
+                                       orbital_transform.size() * sizeof(DfPublicAoExpansion),
+                                       &orbital_transform_device, detail);
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   void* auxiliary_transform_device = nullptr;
   status = source_upload(*candidate, auxiliary_transform.data(),
-                         auxiliary_transform.size() * sizeof(double), &auxiliary_transform_device,
-                         detail);
+                         auxiliary_transform.size() * sizeof(DfPublicAoExpansion),
+                         &auxiliary_transform_device, detail);
   if (status != VIBEQC_STATUS_SUCCESS) return status;
-  candidate->orbital_to_cartesian = static_cast<const double*>(orbital_transform_device);
-  candidate->auxiliary_to_cartesian = static_cast<const double*>(auxiliary_transform_device);
+  candidate->orbital_to_cartesian =
+      static_cast<const DfPublicAoExpansion*>(orbital_transform_device);
+  candidate->auxiliary_to_cartesian =
+      static_cast<const DfPublicAoExpansion*>(auxiliary_transform_device);
 
   try {
     metrics.resize(metric_total_elements);
@@ -418,8 +414,8 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   // Each transform helper briefly materializes one public-to-Cartesian item
   // before copying it into the packed arrays. Charge that per-item temporary
   // in addition to the retained batch transforms.
-  host_peak += static_cast<long double>(public_nbf) * cartesian_nbf * sizeof(double);
-  host_peak += static_cast<long double>(public_naux) * cartesian_naux * sizeof(double);
+  host_peak += static_cast<long double>(public_nbf) * sizeof(DfPublicAoExpansion);
+  host_peak += static_cast<long double>(public_naux) * sizeof(DfPublicAoExpansion);
   // Recompute retained bytes after all metadata uploads have populated the
   // device-allocation pointer vector.  The dynamic pointer array is small but
   // is still host state owned by the source and must not disappear from the

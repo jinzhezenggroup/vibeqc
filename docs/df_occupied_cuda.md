@@ -1,9 +1,11 @@
-# Bounded occupied-factor CUDA exchange (#284)
+# Occupied-factor CUDA exchange and force response
 
-`VIBEQC_DF_EXCHANGE=occupied` opts the device RHF/UHF SCF loop into the factor
-path. The measured complete endpoints retain `dense` as the default.
-This changes execution of the existing DF exchange model, leaving J and the
-complete analytic derivative model in their existing consumers.
+`VIBEQC_DF_EXCHANGE=auto` (also the unset default) selects occupied RI-K for
+the qualified resident RHF domain: one system, 768 orbital and auxiliary AOs,
+occupied rank 160, full host-raw J/K scratch, and NVIDIA GeForce RTX 5090
+(`sm_120`). Other domains retain dense exchange. `dense` and `occupied` remain
+explicit comparison overrides. This changes execution of the existing DF
+exchange and complete analytic force model without changing its approximation.
 
 For one spin, `D = w C C^T` with canonical occupation w=2 (RHF) or w=1 (UHF).
 For each auxiliary slice compute `U = C^T L_row^T`, then accumulate
@@ -43,7 +45,8 @@ caller's established numerical recovery. Force evaluation receives only the
 validated converged density and keeps its full metric/center/Pulay response.
 
 Native and common resource ledgers reserve two full AO matrices for spin
-factors plus generation flags only when occupied exchange is selected; actual
+factors plus generation flags for explicit occupied selection or a potential
+768/768 batch-one automatic domain; actual
 allocation uses the bucket's occupied ranks. Dense mode retains its previous
 minimum-budget and residency boundaries. A native plan freezes this reservation
 at creation and rejects occupied SCF before allocation if it reserved only dense
@@ -60,25 +63,37 @@ construction; `occupied_scf_provenance` separately reports executed iteration
 counts, dense seeding and final generation validation. Uninstrumented complete
 endpoints remain the performance selection gate.
 
-## Measured selection policy
+## Exact occupied force response
 
-The [retained RTX 5090 evidence](../benchmarks/results/issue284-occupied-exchange/README.md)
-compares fixed-density K calls, complete warm energy and energy-plus-force
-endpoints, and the #206 VibeQC/GPU4PySCF matrix. Resident fixed-K calls improve
-by 2.260x, 2.773x and 3.229x at 96, 192 and 384 AOs respectively, including
-factor/density upload and K readback. Generated full-panel and tight-row cases
-remain approximately neutral because source generation dominates; their dense
-and occupied traces produce identical quantities of transformed values.
+`VIBEQC_DF_RESPONSE_SPACE=auto` (also unset) selects occupied response in the
+same measured 768/768 RHF rank-160 device domain, with automatic resident
+storage and the default generated shell schedule. Explicit panel storage and
+diagnostic schedules preserve their original route. `dense` retains the full-AO
+comparison; `occupied` requests factor validation on compatible resident plans.
+Small systems keep dense automatic response.
 
-Complete SCF endpoints do not establish a benefit sufficient to change the
-default. Both policies replay the same frozen density, and policy-transition
-priming is recorded separately. CPU reference eigensolving dominates these
-endpoints. An initial dense regression caused by function alignment was
-corrected and checked against the pre-change library before final measurements.
+The method passes its verified final-state token. The response owner checks
+source identity, solve epoch, system, model, occupations, exact canonical device
+density, and each device factor generation before borrowing C. Missing/stale
+tokens, corrected determinants, external densities, unreserved plans and
+unsupported factors keep dense response. UHF additionally verifies the exact
+sum of its spin densities and admits both rank-squared projections together.
 
-Use the fastest measured RI-K schedule for the corresponding provider, budget
-and factor-eligibility domain in #246 crossover studies. These timing results
-cover RHF spherical def2-SVP water clusters with Naux = NAO and occupied ranks
-20/40/80; UHF has separate correctness and lifecycle coverage. They do not
-establish TZ/QZ or larger-system COSX crossover behavior. Plan memory diagnostics
-record capacity accounting; they are not measured global GPU peaks.
+The response computes `T_Q=C^T A_Q C` and `U_P=sum_Q V_PQ T_Q` from raw
+three-center values, preserving finite discarded metric directions. It feeds
+at most 64 auxiliary AO pseudo-density matrices at a time to the existing
+generated derivative consumers. It does not retain a full response-weight
+tensor in the qualified domain. Projections, transformed projections and raw
+values borrow the three already charged resident J/K tensors; the consumed
+projection buffer becomes panel storage. Additional response workspace contains
+four auxiliary matrices, three AO matrices, densities and auxiliary charges.
+`DfGradientResources` reports the executed route and borrowed capacity.
+
+The [derivation and lifetime note](../.agents/notes/implemented/performance/2026-09-15-occupied-df-response.md)
+records RHF/UHF coefficients, metric response and rejected schedules.
+The [qualification evidence](../benchmarks/results/issue377-379-df/README.md)
+retains frozen-density policy comparisons, independent strict force gates,
+component/work counters, reservation and priming costs. The automatic selector
+is deliberately limited to that measured domain; it establishes no TZ/QZ,
+other-device or COSX crossover. Memory diagnostics report charged capacity,
+not a measured global GPU peak.

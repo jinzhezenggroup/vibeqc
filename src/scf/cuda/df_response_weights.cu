@@ -291,6 +291,158 @@ static cudaError_t contract_resident_response(
   return cudaSuccess;
 }
 
+/** Exact low-rank contraction for generation-validated canonical densities.
+ * C is column-major and D=w C C^T. Raw slices keep every metric direction:
+ * T_Q=C^T A_Q C, U_P=sum_Q V_PQ T_Q. The metric adjoint is -cK*w^2*T^T*T;
+ * only a bounded panel of C U_P C^T is expanded for generated derivatives.
+ * All rank-squared storage borrows already charged resident J/K buffers.
+ */
+static cudaError_t contract_occupied_response(
+    std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+    const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+    cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
+    std::span<const double> raw_host,
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
+        consume) {
+  const auto matrix = n * n, aa = a * a;
+  auto* inverse = workspace;
+  auto* bar_inverse = inverse + aa;
+  auto* metric_temp = bar_inverse + aa;
+  auto* transformed = metric_temp + aa;
+  auto* temporary = transformed + aa;
+  // Every T projection has been consumed before derivative panels begin.
+  // Its borrowed buffer can then hold a fixed-capacity pseudo-density panel,
+  // avoiding small panels without allocating or retaining a complete W tensor.
+  auto* weights = buffers.exchange_response;
+  auto* charges = temporary + 3 * matrix;
+  auto* potentials = charges + terms.size() * a;
+  auto* raw = buffers.raw_auxiliary_major;
+  auto* projected = buffers.exchange_response;
+  auto* transformed_projected = buffers.staging_weights;
+  const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
+  const double one = 1, zero = 0;
+  const auto checked = [](cublasStatus_t status) {
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+  };
+  {
+    runtime::cuda_trace::TraceRegion upload("raw_value_resident_upload", stream);
+    auto error = cudaMemcpyAsync(transformed_projected, raw_host.data(), raw_host.size_bytes(),
+                                 cudaMemcpyHostToDevice, stream);
+    if (error != cudaSuccess) return error;
+    runtime::cuda_trace::trace_counter("raw_value_upload_bytes", raw_host.size_bytes());
+    runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 1);
+  }
+  {
+    runtime::cuda_trace::TraceRegion transpose("raw_value_resident_transpose", stream);
+    // The existing gather supports both NVIDIA and providers without GEAM.
+    cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix, a,
+                                                 0, 0, a, transformed_projected, raw);
+  }
+  inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
+  auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  {
+    runtime::cuda_trace::TraceRegion charge("coulomb_response_charge_dot", stream);
+    checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(terms.size()), mi,
+                        &one, raw, mi, densities, mi, &zero, charges, ai));
+    potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
+                                                                       charges, potentials);
+    for (std::size_t t = 0; t < terms.size(); ++t)
+      if (terms[t].coulomb_coefficient != 0)
+        coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, terms[t].coulomb_coefficient,
+                                                                  charges + t * a, bar_inverse);
+  }
+  std::size_t retained = 0;
+  for (std::size_t t = 0; t < terms.size(); ++t) {
+    const auto& factor = buffers.occupied_factors[t];
+    const auto r = factor.rank, rr = r * r;
+    if (!r || terms[t].exchange_coefficient == 0) continue;
+    const auto ri = static_cast<int>(r), rri = static_cast<int>(rr);
+    const double coefficient =
+        terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
+    {
+      runtime::cuda_trace::TraceRegion products("exchange_response_occupied_products", stream);
+      for (std::size_t q = 0; q < a; ++q) {
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ni, &one, raw + q * matrix, ni,
+                            factor.coefficients, ni, &zero, temporary, ni));
+        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ri, ri, ni, &one, factor.coefficients,
+                            ni, temporary, ni, &zero, projected + q * rr, ri));
+      }
+      runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2 * a);
+      runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
+                                         2 * a * (n * n * r + n * rr));
+    }
+    {
+      runtime::cuda_trace::TraceRegion dot("exchange_response_occupied_metric_gemm", stream);
+      const double alpha = -coefficient;
+      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, projected, rri,
+                          projected, rri, &one, bar_inverse, ai));
+    }
+    {
+      runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
+      checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
+                          inverse, ai, &zero, transformed_projected + retained, rri));
+    }
+    retained += a * rr;
+    runtime::cuda_trace::trace_counter("response_occupied_rank", r);
+  }
+  runtime::cuda_trace::trace_counter("response_occupied_projected_elements", retained);
+  runtime::cuda_trace::trace_counter("response_occupied_projected_bytes",
+                                     retained * sizeof(double));
+  runtime::cuda_trace::trace_counter("response_pseudo_density_peak_elements", tile * matrix);
+  // A tiny explicit domain may fit in one bounded panel. Report that literal
+  // full-domain materialization rather than claiming it also saved W storage.
+  runtime::cuda_trace::trace_counter("response_full_weight_tensor_elements",
+                                     tile == a ? matrix * a : 0);
+  for (std::size_t begin = 0; begin < a; begin += tile) {
+    const auto count = std::min(tile, a - begin);
+    error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
+    if (error != cudaSuccess) return error;
+    std::size_t offset = 0;
+    for (std::size_t t = 0; t < terms.size(); ++t) {
+      if (terms[t].coulomb_coefficient != 0)
+        coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
+            matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
+            potentials + t * a, weights);
+      const auto& factor = buffers.occupied_factors[t];
+      const auto r = factor.rank, rr = r * r;
+      if (!r || terms[t].exchange_coefficient == 0) continue;
+      const auto ri = static_cast<int>(r);
+      const double alpha =
+          -2 * terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
+      runtime::cuda_trace::TraceRegion expand("exchange_response_pseudo_density_products", stream);
+      for (std::size_t p = 0; p < count; ++p) {
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ri, &one, factor.coefficients,
+                            ni, transformed_projected + offset + (begin + p) * rr, ri, &zero,
+                            temporary, ni));
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ri, &alpha, temporary, ni,
+                            factor.coefficients, ni, &one, weights + p * matrix, ni));
+      }
+      offset += a * rr;
+      runtime::cuda_trace::trace_counter("response_pseudo_density_products", 2 * count);
+      runtime::cuda_trace::trace_counter("response_pseudo_density_flops",
+                                         2 * count * (n * rr + n * n * r));
+    }
+    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
+    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
+  }
+  runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
+                                                             metric_temp);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
+                                                             transformed);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
+                                                             metric_temp);
+  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
+                                                             bar_inverse);
+  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
+  error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  reverse.finish();
+  consume(1, {}, aa, bar_inverse);
+  return cudaSuccess;
+}
+
 cudaError_t contract_cuda_df_response_weights(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
@@ -298,6 +450,9 @@ cudaError_t contract_cuda_df_response_weights(
     const std::function<void(std::size_t, double*)>& read_values,
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
     const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
+  if (borrowed && borrowed->occupied_response)
+    return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
+                                      *borrowed, raw_host, consume);
   if (borrowed)
     return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume);

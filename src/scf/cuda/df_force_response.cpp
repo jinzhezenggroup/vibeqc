@@ -10,13 +10,128 @@
 #include <vector>
 
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda/df_scf_state.hpp"
+#include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/cuda_df_gradient.hpp"
 #include "scf/density_fitting.hpp"
 
 namespace vibeqc::scf {
 using namespace cuda_df;
+
+namespace {
+/** Validate a method-authorized canonical density before lending SCF factors.
+ * Tokens bind owner/geometry, epoch, system, model and occupations. Exact
+ * comparison with the actual device density excludes corrected determinants;
+ * dimension equality or a nearby physical residual cannot authorize reuse.
+ */
+vibeqc_status select_occupied_response_factors(CudaDensityFittingJkPlan& plan, std::size_t system,
+                                               const CudaDfFinalStateToken* requested,
+                                               std::span<const DensityFittingDensityResponse> terms,
+                                               std::size_t maximum_bytes,
+                                               CudaDfResponseBuffers& buffers,
+                                               std::string& detail) {
+  auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state);
+  if (!requested || !state || !state->occupied_exchange || !plan.occupied_scf_reserved ||
+      !state->final_frames_available)
+    return VIBEQC_STATUS_SUCCESS;
+  CudaDfFinalStateToken current;
+  const auto status = cuda_density_fitting_final_state_token(&plan, system, current, detail);
+  if (status == VIBEQC_STATUS_OUT_OF_MEMORY) return status;
+  if (status != VIBEQC_STATUS_SUCCESS || current != *requested) {
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  const auto spins = state->unrestricted ? 2U : 1U, first = state->unrestricted ? 1U : 0U;
+  const auto matrix = plan.nbf * plan.nbf;
+  if (terms.size() != (state->unrestricted ? 3U : 1U) || terms[0].density.size() != matrix ||
+      terms[0].coulomb_coefficient != 1.0 ||
+      (state->unrestricted && terms[0].exchange_coefficient != 0.0) ||
+      spins * matrix * sizeof(double) > maximum_bytes)
+    return VIBEQC_STATUS_SUCCESS;
+  const auto rank = [&](unsigned spin) {
+    return static_cast<std::size_t>(spin ? state->factor_beta_ranks[system]
+                                         : state->factor_alpha_ranks[system]);
+  };
+  std::size_t projected = 0;
+  for (unsigned spin = 0; spin < spins; ++spin) {
+    const auto t = first + spin;
+    const auto r = rank(spin);
+    if (r > plan.nbf || terms[t].density.size() != matrix ||
+        terms[t].exchange_coefficient != (state->unrestricted ? .5 : .25) ||
+        (state->unrestricted && terms[t].coulomb_coefficient != 0.0) ||
+        current.identity.occupied[spin] != r)
+      return VIBEQC_STATUS_SUCCESS;
+    projected += r * r;
+  }
+  // Both spin projections coexist in one existing tensor. Saturated UHF
+  // ranks that exceed this capacity keep the dense reference route.
+  if (projected > buffers.elements_per_buffer / plan.naux) return VIBEQC_STATUS_SUCCESS;
+  try {
+    std::vector<double> canonical(spins * matrix);
+    std::uint32_t generations[2]{};
+    auto error = cudaSetDevice(plan.device_id);
+    runtime::cuda_trace::TraceOperation trace("occupied_response_provenance", plan.stream,
+                                              {1, plan.nbf, plan.naux, false, false, system});
+    const auto copy = [&](void* output, const void* input, std::size_t bytes) {
+      if (error == cudaSuccess)
+        error = cudaMemcpyAsync(output, input, bytes, cudaMemcpyDeviceToHost, plan.stream);
+    };
+    for (unsigned spin = 0; spin < spins; ++spin) {
+      copy(canonical.data() + spin * matrix,
+           (spin                  ? state->d_beta_density
+            : state->unrestricted ? state->d_alpha_density
+                                  : state->d_density) +
+               system * matrix,
+           matrix * sizeof(double));
+      copy(&generations[spin],
+           (spin ? state->d_beta_factor_generation : state->d_alpha_factor_generation) + system,
+           sizeof(std::uint32_t));
+    }
+    const auto drained = cudaStreamSynchronize(plan.stream);
+    if (error == cudaSuccess) error = drained;
+    if (error != cudaSuccess) return cuda_failure(error, "validate DF response factors", detail);
+    runtime::cuda_trace::trace_counter("factor_validation_download_bytes",
+                                       spins * (matrix * sizeof(double) + sizeof(std::uint32_t)));
+    for (unsigned spin = 0; spin < spins; ++spin) {
+      // SCF factor generations count committed iterations from zero; the
+      // final-state protocol counts the imported density as generation one.
+      if (generations[spin] != state->final_iterations[system] ||
+          static_cast<std::uint64_t>(generations[spin]) + 1 !=
+              current.identity.factor.density_generation ||
+          !std::equal(terms[first + spin].density.begin(), terms[first + spin].density.end(),
+                      canonical.begin() + spin * matrix))
+        return VIBEQC_STATUS_SUCCESS;
+    }
+    if (state->unrestricted)
+      for (std::size_t k = 0; k < matrix; ++k)
+        if (terms[0].density[k] != canonical[k] + canonical[matrix + k])
+          return VIBEQC_STATUS_SUCCESS;
+    for (unsigned spin = 0; spin < spins; ++spin) {
+      const auto r = rank(spin);
+      const auto* coefficients = spin ? state->d_beta_factor : state->d_alpha_factor;
+      if (r && !coefficients) return VIBEQC_STATUS_SUCCESS;
+      buffers.occupied_factors[first + spin] = {
+          coefficients
+              ? coefficients +
+                    system * plan.nbf * (spin ? state->beta_factor_rank : state->alpha_factor_rank)
+              : nullptr,
+          r, state->unrestricted ? 1.0 : 2.0};
+    }
+    buffers.occupied_response = true;
+    runtime::cuda_trace::trace_counter("validated_density_generations", spins);
+    runtime::cuda_trace::trace_counter("density_generation",
+                                       current.identity.factor.density_generation);
+    runtime::cuda_trace::trace_counter("solve_epoch", current.identity.solve_epoch);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (const std::bad_alloc&) {
+    detail = "DF response factor validation exceeded host storage";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+}
+}  // namespace
 
 // Both value providers borrow forward device factors and bounded bridge
 // scratch. The explicit host adapter remains available for diagnostic ablation.
@@ -25,7 +140,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     const core::System& auxiliary, std::span<const double> raw_a,
     const std::vector<double>& raw_metric, std::span<const DensityFittingDensityResponse> terms,
     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
-    std::vector<double>& derivative, std::string& detail, DfGradientResources* resources) {
+    std::vector<double>& derivative, std::string& detail, DfGradientResources* resources,
+    const CudaDfFinalStateToken* final_state) {
   if (resources) *resources = {};
   if (!plan || system >= plan->batch_size || molecule::ao_count(orbital) != plan->nbf ||
       molecule::ao_count(auxiliary) != plan->naux) {
@@ -47,7 +163,15 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                             plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
                             plan->auxiliary_tile_values && plan->exchange_intermediate &&
                             plan->exchange_contributions;
-  bool borrow = storage == "jk-scratch";
+  const char* space_control = std::getenv("VIBEQC_DF_RESPONSE_SPACE");
+  const std::string_view space = space_control ? space_control : "auto";
+  if (space != "auto" && space != "dense" && space != "occupied") {
+    detail = "unknown DF response space (use auto, dense or occupied)";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  bool borrow =
+      storage == "jk-scratch" || (space == "occupied" && full_scratch && storage != "panel");
+  bool automatic_occupied = false;
   if (storage == "auto" && full_scratch && schedule == 0 && plan->nbf == 768 && plan->naux == 768 &&
       plan->batch_size == 1 && terms.size() == 1) {
     // Promote only the measured large RHF endpoint. Explicit comparison
@@ -71,6 +195,12 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       const auto error = cudaGetDeviceProperties(&properties, plan->device_id);
       if (error != cudaSuccess) return cuda_failure(error, "DF response device properties", detail);
       borrow = properties.major == 12 && properties.minor == 0;
+      // The low-rank endpoint is qualified only for this exact RHF rank and
+      // device. The token is only a selection hint here; full owner, model,
+      // density and device-generation validation below authorizes execution.
+      automatic_occupied = borrow &&
+                           std::string_view(properties.name) == "NVIDIA GeForce RTX 5090" &&
+                           final_state && final_state->identity.occupied[0] == 160;
     }
   }
   CudaDfResponseBuffers buffers;
@@ -85,6 +215,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     }
     buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,
                plan->exchange_intermediate, plan->tensor_elements_per_system};
+  }
+  if (borrow && (space == "occupied" || (space == "auto" && automatic_occupied))) {
+    const auto selected = select_occupied_response_factors(*plan, system, final_state, terms,
+                                                           maximum_bytes, buffers, detail);
+    if (selected != VIBEQC_STATUS_SUCCESS) return selected;
   }
   if (plan->integral_source || !host_weights) {
     if (!plan->metric_response_valid[system]) {

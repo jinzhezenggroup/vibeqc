@@ -126,7 +126,8 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
                         assert not counters.get("response_borrowed_jk_bytes", 0)
 
 
-def test_jk_scratch_retains_discarded_metric_response(monkeypatch):
+@pytest.mark.parametrize("space", ["dense", "occupied"])
+def test_jk_scratch_retains_discarded_metric_response(monkeypatch, space):
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
     basis = [Shell(i, 0, (Primitive(1.0, 1.0),)) for i in range(2)]
@@ -147,6 +148,8 @@ def test_jk_scratch_retains_discarded_metric_response(monkeypatch):
         atoms
     )
     select_response(monkeypatch, "jk-scratch")
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
+    monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", space)
     calc = Calculator(device="cuda", density_fitting="cuda", **common)
     with calc.prepare_batch([atoms]) as batch:
         actual = batch.execute(strict=True).items[0]

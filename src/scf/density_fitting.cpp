@@ -874,7 +874,7 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
                                                   std::size_t memory_budget_bytes,
                                                   std::size_t fixed_device_bytes,
                                                   bool generated_source) {
-  const bool occupied_exchange = df_occupied_exchange_requested();
+  const bool occupied_exchange = df_occupied_exchange_requested(nbf, naux, batch_size);
   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
     throw std::invalid_argument("DF planner dimensions must all be positive");
   }
@@ -1025,7 +1025,19 @@ std::size_t density_fitting_source_metadata_bytes(std::size_t batch, std::size_t
   add(shells, 29);  // center/angular values and three shell offset arrays
   add(cartesian_aos, 20 + 11 * molecule::kMaximumAoExpansionTerms);
   add(primitives, 16);
-  add(transform_elements, 8);
+  // The v1 caller supplies the historical dense-transform element bound.
+  // Keep that ABI conservative while also covering fixed-size sparse records
+  // for very small Cartesian bases, where a record can exceed a dense row.
+  std::size_t dense_bytes = 0, sparse_bytes = 0;
+  if (!checked_multiply(transform_elements, 8, dense_bytes) ||
+      !checked_multiply(
+          cartesian_aos,
+          sizeof(std::uint32_t) +
+              molecule::kMaximumAoExpansionTerms * (sizeof(std::int32_t) + sizeof(double)) +
+              alignof(double) - 1,
+          sparse_bytes))
+    throw std::overflow_error("DF transform metadata overflows size_t");
+  add(std::max(dense_bytes, sparse_bytes), 1);
   return bytes;
 }
 

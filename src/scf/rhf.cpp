@@ -412,7 +412,8 @@ Matrix generated_one_electron_hf_gradient(const DensityFittingScfData& data, con
 /** Form DF weights and contract before entering any legacy fallback guard. */
 Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFittingJkPlan* plan,
                                 std::size_t system, const Matrix& density,
-                                const Matrix* beta = nullptr) {
+                                const Matrix* beta = nullptr,
+                                const CudaDfFinalStateToken* final_state = nullptr) {
   Matrix gradient;
 #if VIBEQC_HAS_CUDA
   if (!data.df_gradient_orbital) return gradient;
@@ -433,7 +434,7 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
   const auto status = execute_cuda_density_fitting_generated_force_response(
       plan, system, *data.df_gradient_orbital, *data.df_gradient_auxiliary, data.raw.three_center,
       data.raw.metric, terms, data.df_gradient_mapping,
-      data.df_gradient_budget - spin_staging_bytes, 0, gradient, detail);
+      data.df_gradient_budget - spin_staging_bytes, 0, gradient, detail, nullptr, final_state);
   if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
   if (status != VIBEQC_STATUS_SUCCESS || gradient.size() != data.raw.ncoord)
     throw std::runtime_error(detail.empty() ? "generated DF response failed" : detail);
@@ -443,6 +444,7 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
   (void)system;
   (void)density;
   (void)beta;
+  (void)final_state;
 #endif
   return gradient;
 }
@@ -563,6 +565,22 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   if (selected.status == solver::FinalStateStatus::OutOfMemory) throw std::bad_alloc();
   if (!selected.state) throw std::runtime_error(selected.detail);
   host_trace::Region accepted(selected.reused ? "final_state_reuse" : "final_state_corrected", n);
+  // The intrusive journal retains the actual physical gate at the returned
+  // determinant; ordinary endpoint timing adds neither formatting nor I/O.
+  const char* journal = std::getenv("VIBEQC_DF_PROGRESS_TRACE");
+  if (journal && *journal) {
+    const auto record = [](const char* name, double value) {
+      char text[64];
+      std::snprintf(text, sizeof(text), "%.17g", value);
+      runtime::df_progress::label(name, text);
+    };
+    record("final_maximum_commutator", selected.state->diagnostic.maximum_commutator);
+    record("final_density_rms", selected.state->diagnostic.density_rms);
+    record("final_maximum_idempotency_error", selected.state->diagnostic.maximum_idempotency_error);
+    runtime::df_progress::number("final_density_generation",
+                                 selected.state->identity.factor.density_generation);
+    runtime::df_progress::number("final_solve_epoch", selected.state->identity.solve_epoch);
+  }
   return std::move(*selected.state);
 }
 
@@ -578,6 +596,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   (void)cuda_plan;
 #endif
   const std::size_t n = data.one_electron.nbf;
+  CudaDfFinalStateToken response_token;
   Matrix final_fock, weighted;
   EigenResult orbitals;
   const auto execute_item_rhf_jk =
@@ -613,6 +632,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     auto state =
         select_cuda_df_final_state(data, orthogonalizer, {density}, {occupied}, options, result,
                                    cuda_plan, cuda_system, device_candidate, physical);
+    response_token.identity = state.identity;
     density = std::move(state.density[0]);
     final_fock = std::move(state.fock[0]);
     orbitals = std::move(state.orbitals[0]);
@@ -668,7 +688,8 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   // The CUDA response is the sole device path; failures propagate before force
   // assembly. The independent CPU calculation below serves CPU callers only.
   const Matrix generated_one_electron = generated_one_electron_hf_gradient(data, density, weighted);
-  const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, density);
+  const Matrix generated_df =
+      generated_df_hf_gradient(data, cuda_plan, cuda_system, density, nullptr, &response_token);
   if (cuda_plan != nullptr) {
     if (generated_df.size() != data.raw.ncoord)
       throw std::runtime_error("generated DF response has invalid coordinate dimensions");
@@ -718,6 +739,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   (void)cuda_plan;
 #endif
   const std::size_t n = data.one_electron.nbf;
+  CudaDfFinalStateToken response_token;
   Matrix alpha_fock;
   Matrix beta_fock, alpha_weighted, beta_weighted;
   EigenResult alpha_orbitals, beta_orbitals;
@@ -762,6 +784,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     auto state = select_cuda_df_final_state(data, orthogonalizer, {alpha_density, beta_density},
                                             {alpha_occupied, beta_occupied}, options, result,
                                             cuda_plan, cuda_system, device_candidate, physical);
+    response_token.identity = state.identity;
     alpha_density = std::move(state.density[0]);
     beta_density = std::move(state.density[1]);
     alpha_fock = std::move(state.fock[0]);
@@ -805,8 +828,8 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   }
   const Matrix generated_one_electron = generated_one_electron_hf_gradient(
       data, alpha_density, alpha_weighted, &beta_density, &beta_weighted);
-  const Matrix generated_df =
-      generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density, &beta_density);
+  const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density,
+                                                       &beta_density, &response_token);
   if (cuda_plan != nullptr) {
     if (generated_df.size() != data.raw.ncoord)
       throw std::runtime_error("generated DF response has invalid coordinate dimensions");

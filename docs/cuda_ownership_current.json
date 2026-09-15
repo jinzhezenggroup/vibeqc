@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 11294,
+  "all_handwritten_scientific_lines": 11446,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -598,20 +598,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 50951,
+      "bytes": 52244,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 853
+        "scientific": 875
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 911,
+      "physical_lines": 936,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch.",
       "regions": [],
       "role": "scientific",
-      "sha256": "291916ea0f89d9aeac2cda96e4b9a7d6b0fb034678f2d2cc17319fb43b2b46e1",
+      "sha256": "aba489ecefc62b6b57fcb1b23b762fdd47595074d4cbf1e9205a5e0840d57d90",
       "subsystem": "df_derivatives"
     },
     {
@@ -710,16 +710,16 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 25316,
+      "bytes": 34489,
       "code_lines": {
         "fallback": 0,
         "oracle": 10,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 382
+        "scientific": 524
       },
       "path": "src/scf/cuda/df_response_weights.cu",
-      "physical_lines": 455,
+      "physical_lines": 610,
       "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
       "regions": [
         {
@@ -733,7 +733,7 @@
         }
       ],
       "role": "scientific",
-      "sha256": "d08d0e58da130902eaa1d4fdb087d3bd3f7b2d971203f8fb4577afeb8c87e494",
+      "sha256": "3594993d6187778f724f32f69d3d81ee2a2bcb5340df257d9bd7c496dad10728",
       "subsystem": "df_response_weights"
     },
     {
@@ -849,33 +849,33 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 2383,
+      "bytes": 2451,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 38,
+        "runtime": 39,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_source_internal.hpp",
-      "physical_lines": 62,
+      "physical_lines": 63,
       "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
       "regions": [],
       "role": "runtime",
-      "sha256": "f52fc38a63f92faea81284312b811aff5a5d93aeec7624404919da77260da6bc",
+      "sha256": "0850c9e0d4d23fcf2e1dbca3cfaaef2b54b77b6f71024d9710399728c8d02133",
       "subsystem": "df_values"
     },
     {
-      "bytes": 17580,
+      "bytes": 17094,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 105,
-        "scientific": 166
+        "scientific": 154
       },
       "path": "src/scf/cuda/df_source_kernels.cu",
-      "physical_lines": 317,
+      "physical_lines": 305,
       "reason": "Existing generated-policy traversal and bounded raw/public-layout DF value/response contractions, moved from cuda_rhf.cu without copying formulas.",
       "regions": [
         {
@@ -889,8 +889,8 @@
         },
         {
           "code_lines": 59,
-          "first_line": 256,
-          "last_line": 317,
+          "first_line": 244,
+          "last_line": 305,
           "reason": "Host-callable wrappers preserve exact specialization selection, launch geometry, stream and argument forwarding.",
           "role": "runtime",
           "start": "void launch_build_cuda_df_integrals_kernel",
@@ -898,24 +898,24 @@
         }
       ],
       "role": "scientific",
-      "sha256": "3b2b6730bcfdc8305d1936aee3b4613f9bb304c3308637212b535da8383c2a76",
+      "sha256": "27749639fc13fa754867a23bde0f782a83fe687586d3ceb03d6f0bc1bbdceaa2",
       "subsystem": "df_values"
     },
     {
-      "bytes": 2284,
+      "bytes": 2849,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 29,
+        "runtime": 35,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_source_kernels.hpp",
-      "physical_lines": 45,
+      "physical_lines": 57,
       "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
       "regions": [],
       "role": "runtime",
-      "sha256": "31c159a0edec794732637533250fe688d6092c290357724d97b2327de4f52550",
+      "sha256": "5cbd55cf6b582226c32b1fa2b568c36283e4e0cb1c066fd23e6908f960b6a023",
       "subsystem": "df_values"
     },
     {
@@ -3364,8 +3364,8 @@
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
-    "runtime": 9364,
-    "scientific": 11128
+    "runtime": 9371,
+    "scientific": 11280
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3552,21 +3552,21 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 265,
-      "scientific": 853
+      "scientific": 875
     },
     "df_response_weights": {
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 405
+      "scientific": 547
     },
     "df_values": {
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 172,
-      "scientific": 166
+      "runtime": 179,
+      "scientific": 154
     },
     "direct_integrals": {
       "fallback": 0,

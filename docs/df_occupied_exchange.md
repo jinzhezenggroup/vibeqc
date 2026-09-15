@@ -36,6 +36,6 @@ one, two and full rank for RHF and both UHF spin channels. It checks the SCF
 density constructor independently and exercises each identity mismatch, a
 same-label density change, missing factors and invalid occupations.
 
-This slice defines equations, host provenance and the reference only. CUDA
-factor upload/lifetime, occupied GEMMs, SCF generation wiring and #206/#246
-endpoint selection are pending. It makes no performance or completed-SCF claim.
+This document defines equations, host provenance and the reference. The
+[CUDA implementation and selection policy](df_occupied_cuda.md) describe
+factor lifetime, SCF generation wiring, force response and endpoint qualification.

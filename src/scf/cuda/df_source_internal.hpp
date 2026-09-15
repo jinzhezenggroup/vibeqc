@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "runtime/resource_cuda.cuh"
+#include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/metadata_upload.hpp"
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda_density_fitting.hpp"
@@ -32,8 +33,8 @@ struct CudaDensityFittingIntegralSourceImpl {
   std::size_t cartesian_naux{};
   std::size_t dummy_index{};
   DeviceBatch batch{};
-  const double* orbital_to_cartesian{};
-  const double* auxiliary_to_cartesian{};
+  const DfPublicAoExpansion* orbital_to_cartesian{};
+  const DfPublicAoExpansion* auxiliary_to_cartesian{};
   // Host mirror used only to translate a public per-system derivative index;
   // the packed DeviceBatch pointer cannot be dereferenced by host code.
   std::vector<std::int64_t> host_atom_offsets;

@@ -77,9 +77,15 @@ int main(int argc, char** argv) {
     std::size_t count;
     unsigned representation;
     input >> count >> representation;
-    require(count > 0 && count <= 8 && representation <= 1, "invalid fixture batch");
+    require(count > 0 && count <= 8 && representation <= 2, "invalid fixture batch");
     std::vector<System> orbital(count), auxiliary(count);
     for (std::size_t system = 0; system < count; ++system) {
+      // Version-two fixtures specify the two public basis representations
+      // independently. Legacy Cartesian/spherical fixtures keep their layout.
+      unsigned orbital_representation = representation, auxiliary_representation = representation;
+      if (representation == 2) input >> orbital_representation >> auxiliary_representation;
+      require(orbital_representation <= 1 && auxiliary_representation <= 1,
+              "invalid orbital/auxiliary representation");
       std::size_t atoms, orbital_shells, auxiliary_shells;
       input >> atoms >> orbital_shells >> auxiliary_shells;
       require(atoms > 0 && atoms <= 100, "invalid fixture geometry");
@@ -89,8 +95,10 @@ int main(int argc, char** argv) {
         orbital[system].atoms.push_back(value);
       }
       orbital[system].basis_representation =
-          representation == 0 ? VIBEQC_BASIS_CARTESIAN : VIBEQC_BASIS_SPHERICAL;
+          orbital_representation == 0 ? VIBEQC_BASIS_CARTESIAN : VIBEQC_BASIS_SPHERICAL;
       auxiliary[system] = orbital[system];
+      auxiliary[system].basis_representation =
+          auxiliary_representation == 0 ? VIBEQC_BASIS_CARTESIAN : VIBEQC_BASIS_SPHERICAL;
       read_shells(input, orbital[system], orbital_shells);
       read_shells(input, auxiliary[system], auxiliary_shells);
     }

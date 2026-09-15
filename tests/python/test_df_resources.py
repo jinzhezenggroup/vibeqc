@@ -5,6 +5,25 @@ from vibeqc import Calculator
 from vibeqc.resources_df import density_fitting_tile_plan
 
 
+@pytest.mark.parametrize(
+    "shape",
+    [(1, 768, 768, 160), (1, 384, 384, 80), (2, 768, 768, 160), (1, 768, 767, 160)],
+)
+def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape):
+    """Reservation precedes device/rank admission and never removes dense capacity."""
+    library = Calculator()._library
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    dense = density_fitting_tile_plan(
+        library, *shape, budget_bytes=0, fixed_device_bytes=0
+    )
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    automatic = density_fitting_tile_plan(
+        library, *shape, budget_bytes=0, fixed_device_bytes=0
+    )
+    expected = 2 * 768 * 768 * 8 + 12 if shape[:3] == (1, 768, 768) else 0
+    assert automatic.peak_workspace_bytes - dense.peak_workspace_bytes == expected
+
+
 @pytest.mark.parametrize("generated,full_bytes", [(False, 1104943), (True, 1100847)])
 @pytest.mark.parametrize("dense_policy", [None, "dense"])
 def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(

@@ -134,7 +134,8 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   bool occupied_exchange = false;
-  const auto policy = occupied_scf_policy(*plan, occupied_exchange, detail);
+  const auto policy = occupied_scf_policy(*plan, occupied_exchange, detail,
+                                          state->final_alpha_occupied, state->final_beta_occupied);
   if (policy != VIBEQC_STATUS_SUCCESS) return policy;
   if (occupied_exchange != state->occupied_exchange) {
     detail = "CUDA DF exchange policy changed after the retained solve";

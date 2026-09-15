@@ -94,7 +94,8 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     return cuda_failure(cuda_error, "select CUDA DF device", detail);
   }
   bool occupied_exchange = false;
-  const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail);
+  const auto policy_status =
+      occupied_scf_policy(*plan, occupied_exchange, detail, alpha_occupied, beta_occupied);
   if (policy_status != VIBEQC_STATUS_SUCCESS) return policy_status;
   PersistentScfState* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
   const bool compatible =

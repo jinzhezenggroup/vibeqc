@@ -109,7 +109,9 @@ unsigned cuda_density_fitting_scf_diis_history(const CudaDensityFittingJkPlan* p
 }
 
 bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept {
-  return plan != nullptr && plan->occupied_scf_reserved == df_occupied_exchange_requested();
+  return plan != nullptr &&
+         plan->occupied_scf_reserved ==
+             df_occupied_exchange_requested(plan->nbf, plan->naux, plan->batch_size);
 }
 
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan* plan, std::size_t item,

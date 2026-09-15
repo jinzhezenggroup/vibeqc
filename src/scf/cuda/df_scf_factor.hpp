@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_scf_state.hpp"
 
@@ -7,7 +9,8 @@ namespace vibeqc::scf::cuda_df {
 
 /** Explicit opt-in until fixed-K and complete endpoint evidence selects policy. */
 vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
-                                  std::string& detail);
+                                  std::string& detail, std::span<const std::int32_t> alpha = {},
+                                  std::span<const std::int32_t> beta = {});
 vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                    const std::vector<std::int32_t>& alpha,
                                    const std::vector<std::int32_t>& beta, std::string& detail);

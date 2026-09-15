@@ -175,7 +175,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   }
 
-  const bool occupied_scf_reserved = df_occupied_exchange_requested();
+  const bool occupied_scf_reserved = df_occupied_exchange_requested(nbf, naux, batch_size);
   cudaError_t cuda_error = cudaSetDevice(device_id);
   if (cuda_error != cudaSuccess) {
     return fail_before_plan(cuda_failure(cuda_error, "select CUDA DF device", detail));

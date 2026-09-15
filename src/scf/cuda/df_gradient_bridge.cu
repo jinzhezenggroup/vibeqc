@@ -491,6 +491,23 @@ vibeqc_status execute_cuda_df_hf_gradient(
     detail = "invalid borrowed resident DF response tensors";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  if (borrowed && borrowed->occupied_response) {
+    if (terms.size() > borrowed->occupied_factors.size()) {
+      detail = "too many occupied DF response descriptors";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    std::size_t projected = 0;
+    for (std::size_t t = 0; t < terms.size(); ++t) {
+      const auto& factor = borrowed->occupied_factors[t];
+      if (factor.rank > n || (factor.rank && !factor.coefficients) ||
+          !std::isfinite(factor.density_scale) || factor.density_scale < 0 ||
+          factor.rank * factor.rank > borrowed->elements_per_buffer / a - projected) {
+        detail = "invalid occupied DF response factor or borrowed capacity";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+      projected += factor.rank * factor.rank;
+    }
+  }
   for (const auto& term : terms) {
     if (term.density.size() != n * n || !std::isfinite(term.coulomb_coefficient) ||
         !std::isfinite(term.exchange_coefficient)) {
@@ -608,8 +625,13 @@ vibeqc_status execute_cuda_df_hf_gradient(
           static_cast<std::size_t>((available / sizeof(double) - fixed_elements) / (2.0L * n * n));
       const auto tile =
           std::min({a, capacity, maximum_auxiliary_tile ? maximum_auxiliary_tile : a});
+      // Occupied projection scratch is dead before derivative consumption.
+      // Borrow at most 64 auxiliary AO matrices from it: this bounds W
+      // independently of Naux and avoids fragmenting generated shell work.
       const auto consume_tile =
-          borrowed ? std::min(a, maximum_auxiliary_tile ? maximum_auxiliary_tile : a) : tile;
+          borrowed ? std::min({a, borrowed->occupied_response ? std::size_t{64} : a,
+                               maximum_auxiliary_tile ? maximum_auxiliary_tile : a})
+                   : tile;
       auto* densities = static_cast<double*>(arena.allocate(terms.size() * n * n * sizeof(double)));
       for (std::size_t t = 0; t < terms.size(); ++t) {
         check(cudaMemcpyAsync(densities + t * n * n, terms[t].density.data(),
@@ -619,8 +641,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
         ++arena.stats.uploads;
       }
       auto* workspace = static_cast<double*>(arena.allocate(
-          cuda_df_response_workspace_elements(n, a, terms.size(), tile) * sizeof(double)));
+          cuda_df_response_workspace_elements(n, a, terms.size(),
+                                              borrowed && borrowed->occupied_response ? 0 : tile) *
+          sizeof(double)));
       arena.stats.device_response = true;
+      arena.stats.occupied_response = borrowed && borrowed->occupied_response;
       arena.stats.auxiliary_weight_tile = consume_tile;
       arena.stats.weight_tile_elements = consume_tile * n * n;
       if (borrowed) {

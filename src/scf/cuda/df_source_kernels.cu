@@ -118,9 +118,9 @@ __global__ void build_cuda_df_transformed_tile_kernel(
     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
-    const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
-    const double* inverse_square_root, bool apply_metric_transform, double* output,
-    unsigned mapping = 0U) {
+    const DfPublicAoExpansion* orbital_to_cartesian,
+    const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
+    bool apply_metric_transform, double* output, unsigned mapping = 0U) {
   const unsigned lanes = !Derivative && mapping == 2U ? 32U : 1U;
   const unsigned lane = threadIdx.x % lanes;
   const std::size_t element =
@@ -137,12 +137,9 @@ __global__ void build_cuda_df_transformed_tile_kernel(
   // The source stores transforms for every system contiguously.  A fleet can
   // legitimately mix different shell layouts while keeping the same public
   // AO dimensions, so never reuse system zero's transform for later items.
-  const std::size_t orbital_transform_stride = public_nbf * cartesian_orbital_count;
-  const std::size_t auxiliary_transform_stride = public_naux * cartesian_auxiliary_count;
-  const double* system_orbital_to_cartesian =
-      orbital_to_cartesian + system * orbital_transform_stride;
-  const double* system_auxiliary_to_cartesian =
-      auxiliary_to_cartesian + system * auxiliary_transform_stride;
+  const auto& first_expansion = orbital_to_cartesian[system * public_nbf + public_first];
+  const auto& second_expansion = orbital_to_cartesian[system * public_nbf + public_second];
+  const auto* system_auxiliary_to_cartesian = auxiliary_to_cartesian + system * public_naux;
   double value = 0.0;
   const std::size_t source_begin = apply_metric_transform ? 0U : auxiliary;
   const std::size_t source_end = apply_metric_transform ? public_naux : source_begin + 1U;
@@ -161,20 +158,16 @@ __global__ void build_cuda_df_transformed_tile_kernel(
   for (std::size_t source = source_begin + lane / primitive_lanes; source < source_end;
        source += source_lanes) {
     double transformed_raw = 0.0;
-    for (std::size_t first = 0; first < cartesian_orbital_count; ++first) {
-      const double first_coefficient =
-          system_orbital_to_cartesian[public_first * cartesian_orbital_count + first];
-      if (first_coefficient == 0.0) continue;
-      for (std::size_t second = 0; second < cartesian_orbital_count; ++second) {
-        const double second_coefficient =
-            system_orbital_to_cartesian[public_second * cartesian_orbital_count + second];
-        if (second_coefficient == 0.0) continue;
-        for (std::size_t cartesian_auxiliary = 0; cartesian_auxiliary < cartesian_auxiliary_count;
-             ++cartesian_auxiliary) {
-          const double auxiliary_coefficient =
-              system_auxiliary_to_cartesian[source * cartesian_auxiliary_count +
-                                            cartesian_auxiliary];
-          if (auxiliary_coefficient == 0.0) continue;
+    const auto& auxiliary_expansion = system_auxiliary_to_cartesian[source];
+    for (unsigned i = 0; i < first_expansion.count; ++i) {
+      const auto first = first_expansion.cartesian[i];
+      const double first_coefficient = first_expansion.coefficients[i];
+      for (unsigned j = 0; j < second_expansion.count; ++j) {
+        const auto second = second_expansion.cartesian[j];
+        const double second_coefficient = second_expansion.coefficients[j];
+        for (unsigned k = 0; k < auxiliary_expansion.count; ++k) {
+          const auto cartesian_auxiliary = auxiliary_expansion.cartesian[k];
+          const double auxiliary_coefficient = auxiliary_expansion.coefficients[k];
           const double raw = contracted_df<Derivative, false>(
               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
               static_cast<std::int32_t>(second),
@@ -206,8 +199,8 @@ __global__ void build_cuda_df_metric_source_kernel(
     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
-    unsigned mapping = 0U) {
+    std::int64_t derivative_coordinate, const DfPublicAoExpansion* auxiliary_to_cartesian,
+    double* output, unsigned mapping = 0U) {
   const unsigned lanes = !Derivative && mapping == 2U ? 32U : 1U;
   const unsigned lane = threadIdx.x % lanes;
   const std::size_t element =
@@ -220,20 +213,15 @@ __global__ void build_cuda_df_metric_source_kernel(
       (components_contiguous ? element % auxiliary_row_count : element / public_naux);
   const std::size_t second =
       components_contiguous ? element / auxiliary_row_count : element % public_naux;
-  const std::size_t auxiliary_transform_stride = public_naux * cartesian_auxiliary_count;
-  const double* system_auxiliary_to_cartesian =
-      auxiliary_to_cartesian + system * auxiliary_transform_stride;
+  const auto& first_expansion = auxiliary_to_cartesian[system * public_naux + first];
+  const auto& second_expansion = auxiliary_to_cartesian[system * public_naux + second];
   double value = 0.0;
-  for (std::size_t cartesian_first = 0; cartesian_first < cartesian_auxiliary_count;
-       ++cartesian_first) {
-    const double first_coefficient =
-        system_auxiliary_to_cartesian[first * cartesian_auxiliary_count + cartesian_first];
-    if (first_coefficient == 0.0) continue;
-    for (std::size_t cartesian_second = 0; cartesian_second < cartesian_auxiliary_count;
-         ++cartesian_second) {
-      const double second_coefficient =
-          system_auxiliary_to_cartesian[second * cartesian_auxiliary_count + cartesian_second];
-      if (second_coefficient == 0.0) continue;
+  for (unsigned i = 0; i < first_expansion.count; ++i) {
+    const auto cartesian_first = first_expansion.cartesian[i];
+    const double first_coefficient = first_expansion.coefficients[i];
+    for (unsigned j = 0; j < second_expansion.count; ++j) {
+      const auto cartesian_second = second_expansion.cartesian[j];
+      const double second_coefficient = second_expansion.coefficients[j];
       const double raw = contracted_df<Derivative, true>(
           batch, static_cast<std::int32_t>(system),
           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_first),
@@ -275,8 +263,8 @@ void launch_build_cuda_df_metric_source_kernel(
     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
-    unsigned mapping) {
+    std::int64_t derivative_coordinate, const DfPublicAoExpansion* auxiliary_to_cartesian,
+    double* output, unsigned mapping) {
   if (derivative) {
     build_cuda_df_metric_source_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, cartesian_orbital_count, cartesian_auxiliary_count, public_naux, dummy_index, system,
@@ -296,9 +284,9 @@ void launch_build_cuda_df_transformed_tile_kernel(
     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
-    const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
-    const double* inverse_square_root, bool apply_metric_transform, double* output,
-    unsigned mapping) {
+    const DfPublicAoExpansion* orbital_to_cartesian,
+    const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
+    bool apply_metric_transform, double* output, unsigned mapping) {
   if (derivative) {
     build_cuda_df_transformed_tile_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, cartesian_orbital_count, cartesian_auxiliary_count, public_nbf, public_naux,

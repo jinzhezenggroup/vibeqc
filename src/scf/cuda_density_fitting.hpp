@@ -13,6 +13,7 @@
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::scf {
+struct CudaDfFinalStateToken;
 
 struct CudaDensityFittingJkPlan;
 struct CudaDensityFittingIntegralSource;
@@ -69,7 +70,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     const core::System& auxiliary, std::span<const double> raw_a, const std::vector<double>& metric,
     std::span<const DensityFittingDensityResponse> terms, unsigned schedule,
     std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile, std::vector<double>& derivative,
-    std::string& detail, DfGradientResources* resources = nullptr);
+    std::string& detail, DfGradientResources* resources = nullptr,
+    const CudaDfFinalStateToken* final_state = nullptr);
 
 /**
  * Prepare a device-resident source for bounded DF tile generation.

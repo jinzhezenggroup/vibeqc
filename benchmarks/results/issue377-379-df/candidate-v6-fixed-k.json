@@ -1,0 +1,72 @@
+[
+  {
+    "operation": "setup",
+    "seconds": 24.587581787,
+    "nbf": 768,
+    "naux": 768,
+    "rank": 160,
+    "value_plan_resident_bytes": 14823419777,
+    "value_plan_peak_bytes": 14848063005,
+    "streamed": false
+  },
+  {
+    "operation": "dense",
+    "repeat": 0,
+    "seconds": 0.828449371,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "occupied",
+    "repeat": 0,
+    "seconds": 0.209607789,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "occupied",
+    "repeat": 1,
+    "seconds": 0.209484371,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "dense",
+    "repeat": 1,
+    "seconds": 0.828411544,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "dense",
+    "repeat": 2,
+    "seconds": 0.828415769,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "occupied",
+    "repeat": 2,
+    "seconds": 0.209600492,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "occupied",
+    "repeat": 3,
+    "seconds": 0.209563952,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "dense",
+    "repeat": 3,
+    "seconds": 0.82834569,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "dense",
+    "repeat": 4,
+    "seconds": 0.828412786,
+    "maximum_k_error": 1.7763568394002505e-14
+  },
+  {
+    "operation": "occupied",
+    "repeat": 4,
+    "seconds": 0.209617052,
+    "maximum_k_error": 1.7763568394002505e-14
+  }
+]

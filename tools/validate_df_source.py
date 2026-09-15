@@ -22,12 +22,11 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from pyscf.df.incore import aux_e2
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.generate_validation_references import pyscf_molecule
+from tools.vibeqc_validation.df_gradient import reference_df_matrices
 from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
@@ -69,6 +68,16 @@ def fixture_systems(representation, *, long_contractions=False):
                 }
                 for i in angular
             ]
+            if item == 1:
+                # Equal public/Cartesian dimensions cannot authorize reuse of
+                # another item's expansion map: change the actual shell order.
+                # Keep atom-group ordering accepted by the independent
+                # libcint adapter, but reverse angular shell order across
+                # atoms so system zero's expansion map is invalid here.
+                for shell in value["shells"]:
+                    shell["angular_momentum"] = (
+                        len(angular) - 1 - shell["angular_momentum"]
+                    )
             pair.append(value)
         systems.append(pair)
     return systems
@@ -77,8 +86,17 @@ def fixture_systems(representation, *, long_contractions=False):
 def write_input(path, systems):
     """Serialize physical shell inputs, before either implementation normalizes."""
     representation = int(systems[0][0]["basis_representation"] == "spherical")
+    if any(o["basis_representation"] != a["basis_representation"] for o, a in systems):
+        representation = 2
     rows = [f"{len(systems)} {representation}"]
     for orbital, auxiliary in systems:
+        if representation == 2:
+            rows.append(
+                " ".join(
+                    str(int(b["basis_representation"] == "spherical"))
+                    for b in (orbital, auxiliary)
+                )
+            )
         rows.append(
             f"{len(orbital['coordinates'])} {len(orbital['shells'])} {len(auxiliary['shells'])}"
         )
@@ -103,24 +121,20 @@ def references(systems, *, derivatives=False):
     diagnostics = []
     responses = {key: [] for key in ("raw_derivative", "metric_derivative")}
     for item, (orbital, auxiliary) in enumerate(systems):
+        # Libcint has no general mixed public-basis int3c interface. Start
+        # from Cartesian integrals and independently transform each basis;
+        # this also preserves the fixture's original shell ordering.
+        raw, metric, da, dm = reference_df_matrices(orbital, auxiliary)
         if derivatives:
-            from tools.vibeqc_validation.df_gradient import reference_df_matrices
-
-            _, _, da, dm = reference_df_matrices(orbital, auxiliary)
             responses["raw_derivative"].append(da.reshape((-1, *da.shape[2:])))
             responses["metric_derivative"].append(dm.reshape((-1, *dm.shape[2:])))
-        mol, scale, _ = pyscf_molecule(orbital)
-        aux, aux_scale, _ = pyscf_molecule(auxiliary)
-        metric = aux.intor("int2c2e") * np.outer(aux_scale, aux_scale)
-        raw = aux_e2(mol, aux, intor="int3c2e", aosym="s1")
-        raw *= np.einsum("i,j,p->ijp", scale, scale, aux_scale)
         values, vectors = np.linalg.eigh(metric)
         retained = values > values.max() * 1e-12
         inverse = (vectors[:, retained] / np.sqrt(values[retained])) @ vectors[
             :, retained
         ].T
         tensor = raw @ inverse
-        n = len(scale)
+        n = raw.shape[0]
         density = np.fromfunction(
             lambda i, j, item=item: (
                 np.where(i == j, 0.3, 0.01 / (1 + abs(i - j))) * (item + 1)
@@ -154,8 +168,22 @@ def main():
     parser.add_argument(
         "--cases",
         nargs="+",
-        choices=("cartesian", "spherical", "long", "dependent"),
-        default=["cartesian", "spherical", "long", "dependent"],
+        choices=(
+            "cartesian",
+            "spherical",
+            "spherical-cartesian",
+            "cartesian-spherical",
+            "long",
+            "dependent",
+        ),
+        default=[
+            "cartesian",
+            "spherical",
+            "spherical-cartesian",
+            "cartesian-spherical",
+            "long",
+            "dependent",
+        ],
     )
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):
@@ -185,15 +213,28 @@ def main():
     }
     for case in args.cases:
         systems = fixture_systems(
-            "cartesian" if case in ("long", "dependent") else case,
+            "cartesian" if case in ("long", "dependent") else case.split("-")[0],
             long_contractions=case in ("long", "dependent"),
         )
+        if "-" in case:
+            for _, auxiliary in systems:
+                auxiliary["basis_representation"] = case.split("-")[1]
         if case == "dependent":
             # Exact duplicate auxiliary charge distributions have a deficient
             # metric by construction. Compare rank/RI values at one threshold
             # rather than treating discarded eigenmodes as arithmetic errors.
             for _, auxiliary in systems:
-                auxiliary["shells"].insert(0, copy.deepcopy(auxiliary["shells"][0]))
+                # Both batch items must gain the same AO count despite their
+                # different shell order. Duplicate the s shell beside itself
+                # to preserve the oracle's atom-group ordering.
+                index = next(
+                    i
+                    for i, shell in enumerate(auxiliary["shells"])
+                    if shell["angular_momentum"] == 0
+                )
+                auxiliary["shells"].insert(
+                    index, copy.deepcopy(auxiliary["shells"][index])
+                )
         inputs = directory / f"{case}.txt"
         write_input(inputs, systems)
         expected, diagnostics = references(systems, derivatives=args.derivatives)

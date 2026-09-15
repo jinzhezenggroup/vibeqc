@@ -41,7 +41,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     CudaDensityFittingJkPlan*, std::size_t, const core::System&, const core::System&,
     std::span<const double>, const std::vector<double>&,
     std::span<const DensityFittingDensityResponse>, unsigned, std::size_t, std::size_t,
-    std::vector<double>&, std::string& detail, DfGradientResources*) {
+    std::vector<double>&, std::string& detail, DfGradientResources*, const CudaDfFinalStateToken*) {
   detail = "CUDA DF generated response is unavailable in this build";
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 }

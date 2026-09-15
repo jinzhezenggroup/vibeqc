@@ -66,6 +66,9 @@ macro(vibeqc_add_native_tests)
     add_executable(vibeqc_df_occupied_probe benchmarks/df_occupied_probe.cpp)
     target_link_libraries(vibeqc_df_occupied_probe PRIVATE vibeqc)
     target_include_directories(vibeqc_df_occupied_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    add_executable(vibeqc_df_source_probe benchmarks/df_source_probe.cpp)
+    target_link_libraries(vibeqc_df_source_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_df_source_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   endif()
   vibeqc_native_test(vibeqc_cuda_eigensolver_policy_tests tests/native/test_cuda_eigensolver_policy.cpp)
   vibeqc_native_test(vibeqc_uhf_tests tests/native/test_uhf.cpp)
@@ -124,6 +127,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_df_capture_recovery_tests tests/native/test_df_capture_recovery.cpp
                        LIBRARIES CUDA::cudart CUDA::cusolver)
     vibeqc_native_test(vibeqc_df_final_snapshot_tests tests/native/test_df_final_snapshot.cpp
+                       LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver)
+    vibeqc_native_test(vibeqc_df_occupied_response_tests tests/native/test_df_occupied_response.cpp
                        LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver)
     vibeqc_native_test(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp
                        LIBRARIES CUDA::cudart)

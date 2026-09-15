@@ -13,12 +13,25 @@
 namespace vibeqc::scf::cuda_df {
 
 vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
-                                  std::string& detail) {
+                                  std::string& detail, std::span<const std::int32_t> alpha,
+                                  std::span<const std::int32_t> beta) {
   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
   enabled = df_occupied_exchange_requested();
-  if (value && !enabled && std::string(value) != "dense") {
-    detail = "VIBEQC_DF_EXCHANGE must be dense or occupied";
+  if (value && !enabled && std::string(value) != "dense" && std::string(value) != "auto") {
+    detail = "VIBEQC_DF_EXCHANGE must be auto, dense or occupied";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (df_occupied_exchange_auto_requested() && plan.occupied_scf_reserved && plan.nbf == 768 &&
+      plan.naux == 768 && plan.batch_size == 1 && alpha.size() == 1 && alpha[0] == 160 &&
+      beta.empty() && !plan.integral_source && !plan.streamed && plan.row_tile == plan.nbf &&
+      plan.auxiliary_tile == plan.naux) {
+    // This qualification is deliberately an exact measured domain, including
+    // rank/reference and backend identity, rather than an AO-only threshold.
+    cudaDeviceProp properties{};
+    const auto error = cudaGetDeviceProperties(&properties, plan.device_id);
+    if (error != cudaSuccess) return cuda_failure(error, "DF exchange device identity", detail);
+    enabled = properties.major == 12 && properties.minor == 0 &&
+              std::strcmp(properties.name, "NVIDIA GeForce RTX 5090") == 0;
   }
   if (enabled && !plan.occupied_scf_reserved) {
     detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
