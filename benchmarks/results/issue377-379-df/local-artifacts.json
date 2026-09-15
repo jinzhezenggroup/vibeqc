@@ -518,5 +518,30 @@
     "path": ".artifacts/final-v9/768-exchange-profile.0-dense.jsonl",
     "bytes": 82185,
     "sha256": "34815f6c76cccc2b94a8ffd19c99c07d22d0fd49e5d1f2f352dfae61c3c8555d"
+  },
+  {
+    "path": ".artifacts/final-v10/libvibeqc.so",
+    "bytes": 298210448,
+    "sha256": "f37aa91b7f5b77e22799c53f6e2e773fd953057d7d5f53edf5bb24405a32e66a"
+  },
+  {
+    "path": ".artifacts/final-v10/source.patch",
+    "bytes": 1149,
+    "sha256": "223684d322eb2814765ba0f7975ce436399f5dbfa73906433ef88cecf4307cef"
+  },
+  {
+    "path": ".artifacts/final-v10/source-base.txt",
+    "bytes": 41,
+    "sha256": "ed0b37dadf4742005fc6ce407df4c6bc3dc27f447c7df4866715a4620f6023b2"
+  },
+  {
+    "path": ".artifacts/final-v10/768-final-policy.json",
+    "bytes": 84031,
+    "sha256": "d7585215c128a26687f4d67ce4d9fcfadc7a1443486db413b1d374650702e7de"
+  },
+  {
+    "path": ".artifacts/final-v10/qualification.log",
+    "bytes": 159,
+    "sha256": "2875d6fedd95e4b15e3ff6bb906530c5e89a1b04d7c9031d3dc07b11a5c182ef"
   }
 ]

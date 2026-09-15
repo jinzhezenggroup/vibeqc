@@ -60,6 +60,12 @@ independent source configurations, native adversarial lifecycle checks, and
 Compute Sanitizer with zero errors. The UHF tests cover two occupied spin
 channels and zero beta rank. `independent-response-parity.json` also checks
 every clean 192/384/768 response sample against the fresh GPU4PySCF results.
+The final build also passes seven focused CUDA checks and the native lifecycle
+test after preserving explicit occupied precedence over automatic backend
+filtering. Its independent 768-AO confirmation records 9.818 s occupied and
+9.829 s automatic execution, both with three iterations and unchanged gates
+(`final-policy-confirmation.json`). This guard changes no executed route in
+the main RTX 5090 qualification.
 
 ## Interpretation
 
@@ -121,8 +127,9 @@ input metadata identifies the independent converged checkpoint and exact
 orthogonality check. Large raw/K arrays, logs, binaries and detailed traces
 remain outside Git; `local-artifacts.json` pins their paths, sizes and SHA-256.
 
-`source-versions.json` pins each cited library and its reconstruction patch
-against master f23e041. The runner's `git_head` records the checkout at
+`source-versions.json` pins each cited library, patch and reconstruction base.
+The main implementation patches use master f23e041; the final precedence
+guard is an incremental patch against 4be1c3a. The runner's `git_head` records the checkout at
 invocation; a pinned library can have an older reconstruction base.
 Compact endpoint files omit only repeated basis metadata, which is retained
 once, and record the full original JSON hash. Historical provisional probe

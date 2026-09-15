@@ -34,6 +34,11 @@
       "path": ".artifacts/final-v9/pre-commit-final.log",
       "sha256": "1e8a1f36cd5a804c25f69deb0127eeab46ff4168a2e19605722a170209431cd9",
       "conclusions": ["trim trailing whitespace.......................................................Passed","fix end of files...............................................................Passed","check json.....................................................................Passed","check for added large files....................................................Passed","check for merge conflicts......................................................Passed","Check tracked evidence retention and review size...............................Passed","Check scientific compiler dependency directions................................Passed","Check native CUDA ownership inventory and source anchors.......................Passed","Check shared SCF dependency directions.........................................Passed","ruff (legacy alias)............................................................Passed","ruff format....................................................................Passed","clang-format...................................................................Passed"]
+    },
+    {
+      "path": ".artifacts/final-v10/qualification.log",
+      "sha256": "2875d6fedd95e4b15e3ff6bb906530c5e89a1b04d7c9031d3dc07b11a5c182ef",
+      "conclusions": ["7 focused CUDA tests passed; native factor lifecycle passed; final occupied/auto 768-AO gates passed"]
     }
   ],
   "strict_gates": {
