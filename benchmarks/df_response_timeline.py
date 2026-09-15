@@ -57,6 +57,31 @@ def _nvtx_regions(connection, strings):
     return {tid: sorted(rows) for tid, rows in result.items()}
 
 
+def execution_coverage(window, kernels, copies, memsets):
+    """Measure recorded activity unions within a host interval, without sums.
+
+    The uncovered interval includes submission gaps and host preparation. It
+    is not a utilization sample, and cannot identify why the GPU had no work.
+    Memsets count as activity too; omitting them would invent tiny idle gaps.
+    """
+    windows = [window]
+    kernel_intervals = [(r["start"], r["end"]) for r in kernels]
+    copy_intervals = [(r["start"], r["end"]) for r in copies]
+    memset_intervals = [(r["start"], r["end"]) for r in memsets]
+    active = intersect_duration(
+        windows, kernel_intervals + copy_intervals + memset_intervals
+    )
+    duration = window[1] - window[0]
+    return {
+        "host_window_ms": duration / 1e6,
+        "kernel_union_ms": intersect_duration(windows, kernel_intervals) / 1e6,
+        "copy_union_ms": intersect_duration(windows, copy_intervals) / 1e6,
+        "memset_union_ms": intersect_duration(windows, memset_intervals) / 1e6,
+        "active_union_ms": active / 1e6,
+        "no_recorded_gpu_work_ms": (duration - active) / 1e6,
+    }
+
+
 def summarize(database):
     """Require actual kernel/API/copy activity, retaining exact correlation counts."""
     with sqlite3.connect(f"file:{database.resolve()}?mode=ro", uri=True) as connection:
@@ -75,6 +100,15 @@ def summarize(database):
             dict(r)
             for r in connection.execute("select * from CUPTI_ACTIVITY_KIND_MEMCPY")
         ]
+        tables = {r[0] for r in connection.execute("select name from sqlite_master")}
+        memsets = (
+            [
+                dict(r)
+                for r in connection.execute("select * from CUPTI_ACTIVITY_KIND_MEMSET")
+            ]
+            if "CUPTI_ACTIVITY_KIND_MEMSET" in tables
+            else []
+        )
     if not apis or not kernels or not copies:
         raise ValueError("missing executed CUDA activity")
     tids = {r["globalTid"] for r in apis.values()}
@@ -104,15 +138,26 @@ def summarize(database):
             raise ValueError("uncorrelated device copy")
         name = strings[api["nameId"]]
         leaf = region(api)
-        if leaf == "raw_value_slice_upload" or (
+        if leaf in ("raw_value_slice_upload", "raw_value_resident_upload") or (
             not regions and name.startswith("cudaMemcpy2DAsync")
         ):
             raw.append((copy, api))
-    if not raw:
+    # A source-backed response regenerates raw columns instead of uploading
+    # them. Require positively identified executed generation; an incomplete
+    # trace must not become a fictitious zero-transfer result.
+    regenerated = [
+        kernel
+        for kernel in kernels
+        if kernel["correlationId"] in apis
+        and region(apis[kernel["correlationId"]]) == "raw_three_center_generation"
+    ]
+    if not raw and not regenerated:
         raise ValueError(
-            "missing raw-value copies (packed runs require component NVTX)"
+            "missing raw-value copies or generation (requires component NVTX)"
         )
-    streams = {c["streamId"] for c, _ in raw}
+    if raw and regenerated:
+        raise ValueError("mixed raw-value providers in one response probe")
+    streams = {c["streamId"] for c, _ in raw} or {k["streamId"] for k in regenerated}
     if len(streams) != 1:
         raise ValueError("expected one response stream")
     stream = streams.pop()
@@ -152,11 +197,11 @@ def summarize(database):
         (start, end)
         for rows in regions.values()
         for start, end, name in rows
-        if name == "raw_value_slice_upload"
+        if name in ("raw_value_slice_upload", "raw_value_resident_upload")
     ]
     scope_summary = None
     if raw_scopes:
-        if len(raw_scopes) != len(raw):
+        if len(raw_scopes) != len({api["correlationId"] for _, api in raw}):
             raise ValueError("raw NVTX scopes do not match executed copy count")
         scope_ns = sum(end - start for start, end in interval_union(raw_scopes))
         scope_summary = {
@@ -175,9 +220,78 @@ def summarize(database):
             / 1e6,
             "scope": "includes progress fences when enabled; separate from the copy API interval",
         }
+    force_windows = [
+        (start, end)
+        for ranges in regions.values()
+        for start, end, name in ranges
+        if name == "force_response"
+    ]
+    response_coverage, panel_rows = None, []
+    if len(force_windows) == 1:
+        force_start, force_end = force_windows[0]
+        response_coverage = execution_coverage(
+            force_windows[0], kernels, copies, memsets
+        )
+        charge_ends = [
+            end
+            for ranges in regions.values()
+            for start, end, name in ranges
+            if name == "coulomb_response" and force_start <= start <= end <= force_end
+        ]
+        derivative_ranges = sorted(
+            (start, end)
+            for ranges in regions.values()
+            for start, end, name in ranges
+            if name == "three_center_derivative_contraction"
+            and force_start <= start <= end <= force_end
+        )
+        if len(charge_ends) == 1:
+            begin = charge_ends[0]
+            # Each panel begins after the preceding consumer submission. Use
+            # API correlation to assign asynchronous work: clipping a kernel
+            # to its host NVTX range loses execution queued after range exit.
+            for index, (_, end) in enumerate(derivative_ranges):
+                ids = {key for key, api in apis.items() if begin <= api["start"] < end}
+                panel_kernels = [k for k in kernels if k["correlationId"] in ids]
+                panel_copies = [c for c in copies if c["correlationId"] in ids]
+                by_component = defaultdict(
+                    lambda: {"kernel_calls": 0, "device_ms": 0.0}
+                )
+                for kernel in panel_kernels:
+                    label = leaves[kernel["correlationId"]] or "unassigned"
+                    by_component[label]["kernel_calls"] += 1
+                    by_component[label]["device_ms"] += (
+                        kernel["end"] - kernel["start"]
+                    ) / 1e6
+                raw_ids = {c["correlationId"] for c, _ in raw}
+                panel_raw = [c for c in panel_copies if c["correlationId"] in raw_ids]
+                host_components = defaultdict(lambda: {"calls": 0, "host_ms": 0.0})
+                for ranges in regions.values():
+                    for start, stop, name in ranges:
+                        if begin <= start <= stop <= end:
+                            host_components[name]["calls"] += 1
+                            host_components[name]["host_ms"] += (stop - start) / 1e6
+                panel_rows.append(
+                    {
+                        "index": index,
+                        "host_submission_ms": (end - begin) / 1e6,
+                        "raw_copy_calls": len(panel_raw),
+                        "raw_copy_bytes": sum(c["bytes"] for c in panel_raw),
+                        "raw_dma_ms": sum(c["end"] - c["start"] for c in panel_raw)
+                        / 1e6,
+                        "components": dict(by_component),
+                        "host_components_inclusive": dict(host_components),
+                    }
+                )
+                begin = end
     return {
         "scope": "actual Nsight device activity; host/device columns overlap and must not be added",
         "database_sha256": hashlib.sha256(database.read_bytes()).hexdigest(),
+        "raw_value_provider": "source" if regenerated else "host",
+        "raw_generation": {
+            "calls": len(regenerated),
+            "device_ms": sum(k["end"] - k["start"] for k in regenerated) / 1e6,
+        },
         "raw_copies": {
             "calls": len(raw),
             "bytes": sum(c["bytes"] for c, _ in raw),
@@ -198,6 +312,8 @@ def summarize(database):
             "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration",
         },
         "raw_copy_scope": scope_summary,
+        "response_execution_coverage": response_coverage,
+        "response_panels": panel_rows,
         "kernels": sorted(kernel_rows, key=lambda r: r["device_ms"], reverse=True),
         "api": sorted(
             [

@@ -18,7 +18,9 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("batch_size", (1, 4))
-@pytest.mark.parametrize("budget", (0, 8 << 20))
+# Cover provider substitution with the current per-item solver/DIIS floors.
+# Batch-four rejection of the former 8-MiB request has its own resource test.
+@pytest.mark.parametrize("budget", (0, 32 << 20))
 def test_setup_provider_matches_reference_across_replans(
     method, representation, batch_size, budget, monkeypatch, tmp_path
 ):

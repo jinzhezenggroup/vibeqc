@@ -25,7 +25,11 @@
 namespace vibeqc::runtime::cuda_trace {
 namespace {
 using Clock = std::chrono::steady_clock;
-constexpr std::size_t kMaximumRegions = 65536;
+// A complete 768-AO response under the legacy 128-MiB allowance visits more
+// than 300,000 regions because each auxiliary panel repeats the exchange loop.
+// Grow lazily within this finite diagnostic-only bound; truncating at 65,536
+// loses the tail of precisely the large endpoint that needs attribution.
+constexpr std::size_t kMaximumRegions = 524288;
 constexpr std::size_t kMaximumTiles = 65536;
 std::atomic<std::uint64_t> next_operation{0};
 std::mutex output_mutex;

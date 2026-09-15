@@ -14,10 +14,12 @@ its AO convention.
 from __future__ import annotations
 
 import argparse
+import json
 import statistics
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -513,6 +515,11 @@ def main() -> None:
         default=".artifacts/benchmarks/compare_gpu4pyscf_batch.json",
         help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
+    parser.add_argument(
+        "--progress-output",
+        type=Path,
+        help="Optional fresh JSONL journal of completed stages, written outside endpoint timers",
+    )
     args = parser.parse_args()
     compute_forces = not args.energy_only
     properties = ("energy", "forces") if compute_forces else ("energy",)
@@ -540,6 +547,20 @@ def main() -> None:
         raise ValueError("--maximum-energy-error must be non-negative")
     if args.maximum_force_error is not None and args.maximum_force_error < 0.0:
         raise ValueError("--maximum-force-error must be non-negative")
+
+    def progress(stage: str, **record: Any) -> None:
+        """Preserve completed work if a later large endpoint fails or times out."""
+        if args.progress_output:
+            with args.progress_output.open("a") as journal:
+                journal.write(json.dumps({"stage": stage, **record}) + "\n")
+
+    if args.progress_output:
+        args.progress_output.parent.mkdir(parents=True, exist_ok=True)
+        # Never append a fresh experiment to another run's partial journal.
+        args.progress_output.touch(exist_ok=False)
+        progress(
+            "started", case=args.case, batch=args.batch, properties=list(properties)
+        )
 
     # Import GPU packages only after argument parsing so workload construction
     # and --help remain usable on login nodes without an allocated device.
@@ -631,6 +652,12 @@ def main() -> None:
             if args.density_fitting == "cuda"
             else []
         )
+        progress(
+            "vibeqc_cold",
+            seconds=vibeqc_cold,
+            convergence=convergence_payload(vibeqc_cold_result),
+            metric=density_fitting_diagnostics,
+        )
         # Freeze the converged post-cold density before collecting either
         # engine's warm samples.  The benchmark compares the same replay from
         # one fixed dm0; allowing VibeQC to replace its retained density after
@@ -652,6 +679,7 @@ def main() -> None:
         cp.cuda.Stream.null.synchronize()
         gpu_cold = time.perf_counter() - start
         gpu_cold_convergence = gpu_convergence_payload(gpu_objects, gpu_cold_trackers)
+        progress("gpu4pyscf_cold", seconds=gpu_cold, convergence=gpu_cold_convergence)
         gpu_warm_densities = [engine.make_rdm1().copy() for engine in gpu_objects]
 
         # Establish a steady resident-state path before starting the captured
@@ -664,6 +692,7 @@ def main() -> None:
         vibeqc_prime = _vibeqc_sample(batch, cp, -1, compute_forces)
         gpu_prime = _gpu_sample(gpu_objects, gpu_warm_densities, cp, -1, compute_forces)
         warm_start_priming = warm_start_priming_metadata(vibeqc_prime, gpu_prime)
+        progress("primed", **warm_start_priming)
 
         if args.capture_warm_range:
             cp.cuda.profiler.start()
@@ -673,6 +702,7 @@ def main() -> None:
                     vibeqc_samples.append(
                         _vibeqc_sample(batch, cp, sequence_index, compute_forces)
                     )
+                    progress("vibeqc_warm", **vibeqc_samples[-1])
                 else:
                     gpu_samples.append(
                         _gpu_sample(
@@ -683,6 +713,7 @@ def main() -> None:
                             compute_forces,
                         )
                     )
+                    progress("gpu4pyscf_warm", **gpu_samples[-1])
         finally:
             if args.capture_warm_range:
                 cp.cuda.profiler.stop()
