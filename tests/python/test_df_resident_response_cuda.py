@@ -127,7 +127,10 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
 
 
 @pytest.mark.parametrize("space", ["dense", "occupied"])
-def test_jk_scratch_retains_discarded_metric_response(monkeypatch, tmp_path, space):
+@pytest.mark.parametrize("pairs", ["full", "packed"])
+def test_jk_scratch_retains_discarded_metric_response(
+    monkeypatch, tmp_path, space, pairs
+):
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
     basis = [Shell(i, 0, (Primitive(1.0, 1.0),)) for i in range(2)]
@@ -150,6 +153,7 @@ def test_jk_scratch_retains_discarded_metric_response(monkeypatch, tmp_path, spa
     select_response(monkeypatch, "jk-scratch")
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", space)
+    monkeypatch.setenv("VIBEQC_DF_DERIVATIVE_PAIRS", pairs)
     trace = tmp_path / "metric-response.jsonl"
     monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
     calc = Calculator(device="cuda", density_fitting="cuda", **common)
@@ -163,6 +167,9 @@ def test_jk_scratch_retains_discarded_metric_response(monkeypatch, tmp_path, spa
     assert len(responses) == 1
     assert (responses[0]["counters"].get("response_occupied_rank", 0) > 0) == (
         space == "occupied"
+    )
+    assert bool(responses[0]["counters"].get("response_packed_pairs", 0)) == (
+        space == "occupied" and pairs == "packed"
     )
     for step in (2e-4, 5e-5):
         energies = []
@@ -210,6 +217,8 @@ def test_jk_scratch_rejects_partial_source_plan(monkeypatch):
     ("control", "value"),
     [
         ("VIBEQC_DF_RESPONSE_STORAGE", "invalid"),
+        ("VIBEQC_DF_DERIVATIVE_PAIRS", "invalid"),
+        ("VIBEQC_DF_PACKED_AO_BLOCK_ROWS", "0"),
         ("VIBEQC_DF_RESPONSE_ALGEBRA", "scalar"),
         ("VIBEQC_DF_SERIAL_RESPONSE_DOT", "1"),
         ("VIBEQC_DF_RESPONSE_UPLOAD_PROBE", "packed"),

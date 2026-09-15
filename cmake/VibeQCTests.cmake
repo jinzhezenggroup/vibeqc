@@ -130,6 +130,8 @@ macro(vibeqc_add_native_tests)
                        LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver)
     vibeqc_native_test(vibeqc_df_occupied_response_tests tests/native/test_df_occupied_response.cpp
                        LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver)
+    vibeqc_native_test(vibeqc_df_shell_pairs_tests tests/native/test_df_shell_pairs.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp

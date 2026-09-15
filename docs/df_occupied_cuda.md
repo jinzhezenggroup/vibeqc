@@ -80,14 +80,47 @@ unsupported factors keep dense response. UHF additionally verifies the exact
 sum of its spin densities and admits both rank-squared projections together.
 
 The response computes `T_Q=C^T A_Q C` and `U_P=sum_Q V_PQ T_Q` from raw
-three-center values, preserving finite discarded metric directions. It feeds
-at most 64 auxiliary AO pseudo-density matrices at a time to the existing
-generated derivative consumers. It does not retain a full response-weight
-tensor in the qualified domain. Projections, transformed projections and raw
+three-center values, preserving finite discarded metric directions. In the
+qualified domain it feeds at most 64 auxiliary slices of packed symmetric
+AO-pair weights to the existing generated derivative consumers. It does not
+retain a full response-weight tensor. Projections, transformed projections and raw
 values borrow the three already charged resident J/K tensors; the consumed
 projection buffer becomes panel storage. Additional response workspace contains
 four auxiliary matrices, three AO matrices, densities and auxiliary charges.
 `DfGradientResources` reports the executed route and borrowed capacity.
+
+`VIBEQC_DF_DERIVATIVE_PAIRS=auto` selects packed weights for the qualified
+768/768-AO, rank-160 RHF occupied response on RTX 5090. The previously promoted
+resident 192--384-AO shell route instead folds the existing dense weights,
+preserving its response producer. Other automatic routes retain their original
+execution. Explicit `full` executes the ordered dense shell product;
+`symmetric` adds the two dense off-diagonal shell weights and executes each
+unordered shell pair once. `packed` requests packed production when a trusted
+occupied response and complete generated shell consumer are available, otherwise
+retaining the dense producer and symmetric shell consumer. Generic and host
+consumers retain their dense contracts. These controls are captured in resource
+plan identity and cannot be changed inside a frozen global resource plan.
+
+Packed weights store `W_ii` once and `W_ij+W_ji` at `i*(i+1)/2+j` for `i>j`.
+Diagonal-shell AO pairs and normalized spherical/Cartesian expansions preserve
+their physical atom derivatives. Auxiliary panels end at whole shells whenever
+the cap permits; a smaller explicit cap can still split a shell. Generated
+derivatives reduce directly into the atomic gradient, without a derivative
+tensor or a second derivative formula implementation.
+
+The producer expands only lower rectangular AO blocks, with 256 rows by
+default. `VIBEQC_DF_PACKED_AO_BLOCK_ROWS=64|128|256|384` retains diagnostic
+alternatives. Upper off-diagonal blocks are skipped; unused upper entries
+inside diagonal blocks are counted as executed work. Counters distinguish
+shell pairs/triples, public weight loads including zeros, primitive products,
+nonzero Cartesian contractions, rectangular GEMM entries and panel bytes.
+`VIBEQC_DF_SHELL_COUNTERS=1` enables diagnostic device atomics and must be
+disabled for clean timings.
+
+Packing halves the weight handoff, not the complete resident plan allocation.
+The full raw upload and borrowed J/K capacity remain separately reported.
+Tiny explicit domains can fit in one panel or one AO block; counters report
+their actual dense and packed materialization rather than implying a saving.
 
 The [derivation and lifetime note](../.agents/notes/implemented/performance/2026-09-15-occupied-df-response.md)
 records RHF/UHF coefficients, metric response and rejected schedules.
@@ -97,3 +130,7 @@ component/work counters, reservation and priming costs. The automatic selector
 is deliberately limited to that measured domain; it establishes no TZ/QZ,
 other-device or COSX crossover. Memory diagnostics report charged capacity,
 not a measured global GPU peak.
+
+The [packed derivative note](../.agents/notes/implemented/performance/2026-09-15-packed-df-derivative-pairs.md)
+documents symmetry, diagonal-shell treatment, the block-size tradeoff and
+[current qualification](../benchmarks/results/issue382-packed-df/README.md).

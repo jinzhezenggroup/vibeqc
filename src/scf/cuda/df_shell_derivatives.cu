@@ -22,7 +22,8 @@ template <unsigned A, unsigned B, unsigned C, unsigned Variant>
 __global__ void shell_panel(DfShellBasisView orbital, DfShellBasisView auxiliary,
                             const double* positions, std::size_t panel_begin,
                             std::size_t panel_count, const double* weights, double* gradient,
-                            unsigned long long* counters) {
+                            unsigned long long* counters, DfDerivativePairs pairs,
+                            std::size_t tasks) {
   using Math = generated::Shell<A, B, C>;
   using Schedule = generated::Schedule<A, B, C, Variant>;
   constexpr auto lanes = Schedule::lanes, groups = Schedule::groups;
@@ -34,11 +35,21 @@ __global__ void shell_panel(DfShellBasisView orbital, DfShellBasisView auxiliary
   auto* cache = all_cache[group];
   auto& geometry = all_geometry[group];
   const auto task = std::size_t{blockIdx.x} * groups + group;
-  if (task >= orbital.count[A] * orbital.count[B] * auxiliary.count[C]) return;
+  if (task >= tasks) return;
   const auto sc = auxiliary.shell_ids[auxiliary.begin[C] + task % auxiliary.count[C]];
   const auto pair = task / auxiliary.count[C];
-  const auto sb = orbital.shell_ids[orbital.begin[B] + pair % orbital.count[B]];
-  const auto sa = orbital.shell_ids[orbital.begin[A] + pair / orbital.count[B]];
+  auto ia_shell = pair / orbital.count[B], ib_shell = pair % orbital.count[B];
+  if constexpr (A == B) {
+    if (pairs != DfDerivativePairs::full) {
+      // Invert the compact triangular index, correcting roundoff at boundaries.
+      ia_shell = static_cast<std::size_t>((sqrt(8.0 * pair + 1) - 1) * .5);
+      while (ia_shell * (ia_shell + 1) / 2 > pair) --ia_shell;
+      while ((ia_shell + 1) * (ia_shell + 2) / 2 <= pair) ++ia_shell;
+      ib_shell = pair - ia_shell * (ia_shell + 1) / 2;
+    }
+  }
+  const auto sb = orbital.shell_ids[orbital.begin[B] + ib_shell];
+  const auto sa = orbital.shell_ids[orbital.begin[A] + ia_shell];
   if (lane == 0 && counters) atomicAdd(counters, 1ULL);
   const auto& o = orbital.basis;
   const auto& x = auxiliary.basis;
@@ -50,11 +61,29 @@ __global__ void shell_panel(DfShellBasisView orbital, DfShellBasisView auxiliary
   if (oc >= panel_begin + panel_count || oc + nc <= panel_begin) return;
   for (unsigned i = lane; i < Math::components; i += lanes) cart_weights[i] = 0;
   __syncwarp(mask);
-  unsigned public_work = 0;
+  unsigned public_work = 0, public_loads = 0;
   for (auto i = std::int64_t{lane}; i < na * nb * nc; i += lanes) {
     const auto ai = oa + i / nb / nc, bi = ob + i / nc % nb, ci = oc + i % nc;
     if (ci < panel_begin || ci - panel_begin >= panel_count) continue;
-    const double weight = weights[(ci - panel_begin) * o.nbf * o.nbf + ai * o.nbf + bi];
+    double weight;
+    if (pairs == DfDerivativePairs::packed) {
+      // A diagonal shell shares one physical center; its lower AO triangle
+      // carries the complete folded response, including spherical expansions.
+      if (sa == sb && ai < bi) continue;
+      const auto hi = ai > bi ? ai : bi, lo = ai > bi ? bi : ai;
+      weight = weights[(ci - panel_begin) * o.nbf * (o.nbf + 1) / 2 + hi * (hi + 1) / 2 + lo];
+      ++public_loads;
+    } else {
+      const auto offset = (ci - panel_begin) * o.nbf * o.nbf;
+      weight = weights[offset + ai * o.nbf + bi];
+      ++public_loads;
+      if (pairs == DfDerivativePairs::symmetric && sa != sb) {
+        // Read both adjoints: exact also for nonsymmetric diagnostic weights.
+        // Swapping orbital centers leaves the physical atomic derivative equal.
+        weight += weights[offset + bi * o.nbf + ai];
+        ++public_loads;
+      }
+    }
     if (weight == 0) continue;
     ++public_work;
     for (unsigned at = 0; at < o.term_counts[ai]; ++at)
@@ -76,9 +105,13 @@ __global__ void shell_panel(DfShellBasisView orbital, DfShellBasisView auxiliary
   const bool active = __any_sync(mask, component_work != 0);
   for (unsigned delta = lanes / 2; delta; delta /= 2) {
     public_work += __shfl_down_sync(mask, public_work, delta, lanes);
+    public_loads += __shfl_down_sync(mask, public_loads, delta, lanes);
     component_work += __shfl_down_sync(mask, component_work, delta, lanes);
   }
-  if (lane == 0 && counters) atomicAdd(counters + 2, static_cast<unsigned long long>(public_work));
+  if (lane == 0 && counters) {
+    atomicAdd(counters + 2, static_cast<unsigned long long>(public_work));
+    atomicAdd(counters + 5, static_cast<unsigned long long>(public_loads));
+  }
   if (!active) return;
   const auto atom_a = o.shell_atoms[sa], atom_b = o.shell_atoms[sb], atom_c = x.shell_atoms[sc];
   const auto* ra = positions + 3 * atom_a;
@@ -126,18 +159,22 @@ __global__ void shell_panel(DfShellBasisView orbital, DfShellBasisView auxiliary
 template <unsigned A, unsigned B, unsigned C, unsigned Variant>
 cudaError_t launch(DfShellBasisView o, DfShellBasisView x, const double* positions,
                    std::size_t begin, std::size_t count, const double* weights, double* gradient,
-                   unsigned long long* counters, cudaStream_t stream) {
+                   unsigned long long* counters, cudaStream_t stream, DfDerivativePairs pairs) {
+  if (pairs != DfDerivativePairs::full && A < B) return cudaSuccess;
   if (!o.count[A] || !o.count[B] || !x.count[C]) return cudaSuccess;
   const auto maximum = static_cast<std::size_t>(std::numeric_limits<int>::max());
   if (o.count[A] > maximum / o.count[B] || o.count[A] * o.count[B] > maximum / x.count[C])
     return cudaErrorInvalidValue;
   using Schedule = generated::Schedule<A, B, C, Variant>;
-  const auto tasks = o.count[A] * o.count[B] * x.count[C];
+  const auto shell_pairs = pairs != DfDerivativePairs::full && A == B
+                               ? o.count[A] * (o.count[A] + 1) / 2
+                               : o.count[A] * o.count[B];
+  const auto tasks = shell_pairs * x.count[C];
   if (tasks)
     shell_panel<A, B, C, Variant>
         <<<static_cast<unsigned>((tasks + Schedule::groups - 1) / Schedule::groups),
            Schedule::lanes * Schedule::groups, 0, stream>>>(o, x, positions, begin, count, weights,
-                                                            gradient, counters);
+                                                            gradient, counters, pairs, tasks);
   return cudaPeekAtLastError();
 }
 }  // namespace
@@ -147,21 +184,21 @@ cudaError_t launch_df_shell_derivative_panel(DfShellBasisView o, DfShellBasisVie
                                              std::size_t count, const double* weights,
                                              double* gradient, unsigned long long* counters,
                                              cudaStream_t stream, bool full_domain,
-                                             unsigned variant) {
+                                             unsigned variant, DfDerivativePairs pairs) {
   if (variant > 2) return cudaErrorInvalidValue;
   cudaError_t status = cudaSuccess;
   generated::for_each_class([&]<unsigned A, unsigned B, unsigned C>() {
     if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))
       return;
     if (variant == 0)
-      status =
-          launch<A, B, C, 0>(o, x, positions, begin, count, weights, gradient, counters, stream);
+      status = launch<A, B, C, 0>(o, x, positions, begin, count, weights, gradient, counters,
+                                  stream, pairs);
     else if (variant == 1)
-      status =
-          launch<A, B, C, 1>(o, x, positions, begin, count, weights, gradient, counters, stream);
+      status = launch<A, B, C, 1>(o, x, positions, begin, count, weights, gradient, counters,
+                                  stream, pairs);
     else
-      status =
-          launch<A, B, C, 2>(o, x, positions, begin, count, weights, gradient, counters, stream);
+      status = launch<A, B, C, 2>(o, x, positions, begin, count, weights, gradient, counters,
+                                  stream, pairs);
   });
   return status;
 }

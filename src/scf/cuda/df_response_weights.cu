@@ -49,6 +49,39 @@ __global__ void coulomb_weights_kernel(std::size_t matrix, std::size_t a, std::s
   weights[pi] += coefficient * density[pi % matrix] * potential[begin + pi / matrix];
 }
 
+/** Fold the physical Coulomb adjoint directly into public lower AO pairs.
+ * Reading both density entries retains the dense adapter's exact convention,
+ * even when its accepted symmetric input differs by floating-point roundoff.
+ */
+__global__ void packed_coulomb_weights(std::size_t n, std::size_t begin, std::size_t count,
+                                       double coefficient, const double* density,
+                                       const double* potential, double* weights) {
+  const auto k = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  const auto pairs = n * (n + 1) / 2;
+  if (k >= count * pairs) return;
+  const auto pair = k % pairs;
+  auto i = static_cast<std::size_t>((sqrt(8.0 * pair + 1) - 1) * .5);
+  while (i * (i + 1) / 2 > pair) --i;
+  while ((i + 1) * (i + 2) / 2 <= pair) ++i;
+  const auto j = pair - i * (i + 1) / 2;
+  const double density_pair = density[i * n + j] + (i == j ? 0 : density[j * n + i]);
+  weights[k] += coefficient * density_pair * potential[begin + k / pairs];
+}
+
+/** Scatter one bounded rectangular GEMM block into folded lower AO pairs.
+ * Columns of the BLAS output label consecutive public AO rows. Only diagonal
+ * blocks contain unused upper entries; no dense AO panel is ever constructed.
+ * The producer symmetrizes U before C U C^T, so doubling its off-diagonal
+ * entries contracts precisely the symmetric part of the original adjoint.
+ */
+__global__ void add_packed_exchange_block(std::size_t begin, std::size_t rows, std::size_t columns,
+                                          const double* block, double* weights) {
+  const auto k = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (k >= rows * columns) return;
+  const auto i = begin + k / columns, j = k % columns;
+  if (j <= i) weights[i * (i + 1) / 2 + j] += (i == j ? 1 : 2) * block[k];
+}
+
 __global__ void coulomb_metric_kernel(std::size_t a, double coefficient, const double* charges,
                                       double* bar_inverse) {
   const auto pq = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
@@ -294,7 +327,9 @@ static cudaError_t contract_resident_response(
 /** Exact low-rank contraction for generation-validated canonical densities.
  * C is column-major and D=w C C^T. Raw slices keep every metric direction:
  * T_Q=C^T A_Q C, U_P=sum_Q V_PQ T_Q. The metric adjoint is -cK*w^2*T^T*T;
- * only a bounded panel of C U_P C^T is expanded for generated derivatives.
+ * Only bounded dense or folded AO-pair panels reach generated derivatives.
+ * Packed expansion uses lower rectangular blocks of C U_P C^T, never a dense
+ * panel followed by compression. The scalar derivative equations are unchanged.
  * All rank-squared storage borrows already charged resident J/K buffers.
  */
 static cudaError_t contract_occupied_response(
@@ -302,9 +337,11 @@ static cudaError_t contract_occupied_response(
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
     std::span<const double> raw_host,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
-        consume) {
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+    bool packed_pairs, std::span<const std::int64_t> auxiliary_shell_offsets,
+    std::size_t ao_block_rows) {
   const auto matrix = n * n, aa = a * a;
+  const auto pair_stride = packed_pairs ? n * (n + 1) / 2 : matrix;
   auto* inverse = workspace;
   auto* bar_inverse = inverse + aa;
   auto* metric_temp = bar_inverse + aa;
@@ -389,21 +426,38 @@ static cudaError_t contract_occupied_response(
   runtime::cuda_trace::trace_counter("response_occupied_projected_elements", retained);
   runtime::cuda_trace::trace_counter("response_occupied_projected_bytes",
                                      retained * sizeof(double));
-  runtime::cuda_trace::trace_counter("response_pseudo_density_peak_elements", tile * matrix);
-  // A tiny explicit domain may fit in one bounded panel. Report that literal
-  // full-domain materialization rather than claiming it also saved W storage.
-  runtime::cuda_trace::trace_counter("response_full_weight_tensor_elements",
-                                     tile == a ? matrix * a : 0);
-  for (std::size_t begin = 0; begin < a; begin += tile) {
-    const auto count = std::min(tile, a - begin);
-    error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
+  runtime::cuda_trace::trace_counter("response_packed_pairs", packed_pairs);
+  runtime::cuda_trace::trace_counter("response_pseudo_density_capacity_elements",
+                                     tile * pair_stride);
+  runtime::cuda_trace::trace_counter("response_dense_weight_panel_elements",
+                                     packed_pairs ? 0 : a * matrix);
+  std::size_t peak_count = 0, block_peak_elements = 0;
+  for (std::size_t begin = 0; begin < a;) {
+    auto count = std::min(tile, a - begin);
+    if (packed_pairs && !auxiliary_shell_offsets.empty()) {
+      // Keep the byte cap while avoiding repeated primitive work for a shell
+      // cut by an arbitrary auxiliary AO boundary. A shell wider than the cap
+      // remains split and is still handled exactly by the derivative consumer.
+      auto end = std::upper_bound(auxiliary_shell_offsets.begin(), auxiliary_shell_offsets.end(),
+                                  begin + count);
+      if (end != auxiliary_shell_offsets.begin() && static_cast<std::size_t>(*--end) > begin)
+        count = *end - begin;
+    }
+    peak_count = std::max(peak_count, count);
+    error = cudaMemsetAsync(weights, 0, count * pair_stride * sizeof(double), stream);
     if (error != cudaSuccess) return error;
     std::size_t offset = 0;
     for (std::size_t t = 0; t < terms.size(); ++t) {
-      if (terms[t].coulomb_coefficient != 0)
-        coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
-            matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
-            potentials + t * a, weights);
+      if (terms[t].coulomb_coefficient != 0) {
+        if (packed_pairs)
+          packed_coulomb_weights<<<blocks(count * pair_stride), threads, 0, stream>>>(
+              n, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
+              potentials + t * a, weights);
+        else
+          coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
+              matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
+              potentials + t * a, weights);
+      }
       const auto& factor = buffers.occupied_factors[t];
       const auto r = factor.rank, rr = r * r;
       if (!r || terms[t].exchange_coefficient == 0) continue;
@@ -412,20 +466,62 @@ static cudaError_t contract_occupied_response(
           -2 * terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
       runtime::cuda_trace::TraceRegion expand("exchange_response_pseudo_density_products", stream);
       for (std::size_t p = 0; p < count; ++p) {
+        auto* u = transformed_projected + offset + (begin + p) * rr;
+        if (packed_pairs) symmetrize_kernel<<<blocks(rr), threads, 0, stream>>>(r, u);
         checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ri, &one, factor.coefficients,
-                            ni, transformed_projected + offset + (begin + p) * rr, ri, &zero,
-                            temporary, ni));
-        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ri, &alpha, temporary, ni,
-                            factor.coefficients, ni, &one, weights + p * matrix, ni));
+                            ni, u, ri, &zero, temporary, ni));
+        runtime::cuda_trace::trace_counter("response_pseudo_density_products", 1);
+        runtime::cuda_trace::trace_counter("response_pseudo_density_flops", 2 * n * rr);
+        if (packed_pairs) {
+          // temporary holds C U (n*rank); the following existing AO scratch
+          // holds at most n*ao_block_rows entries, bounded by its existing
+          // n*n capacity, and is reused before the next block.
+          // Computing rows [i,i+b) against columns [0,i+b) avoids every upper
+          // off-diagonal block, with only b*(b-1)/2 extra diagonal entries.
+          auto* block = temporary + matrix;
+          for (std::size_t row = 0; row < n; row += ao_block_rows) {
+            const auto rows = std::min(ao_block_rows, n - row), columns = row + rows;
+            block_peak_elements = std::max(block_peak_elements, rows * columns);
+            checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, static_cast<int>(columns),
+                                static_cast<int>(rows), ri, &alpha, factor.coefficients, ni,
+                                temporary + row, ni, &zero, block, static_cast<int>(columns)));
+            add_packed_exchange_block<<<blocks(rows * columns), threads, 0, stream>>>(
+                row, rows, columns, block, weights + p * pair_stride);
+            runtime::cuda_trace::trace_counter("response_pseudo_density_products", 1);
+            runtime::cuda_trace::trace_counter("response_pseudo_density_flops",
+                                               2 * rows * columns * r);
+            runtime::cuda_trace::trace_counter("response_pseudo_density_rectangular_elements",
+                                               rows * columns);
+          }
+        } else {
+          checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ri, &alpha, temporary, ni,
+                              factor.coefficients, ni, &one, weights + p * matrix, ni));
+          runtime::cuda_trace::trace_counter("response_pseudo_density_products", 1);
+          runtime::cuda_trace::trace_counter("response_pseudo_density_flops", 2 * n * n * r);
+          runtime::cuda_trace::trace_counter("response_pseudo_density_rectangular_elements",
+                                             matrix);
+        }
       }
       offset += a * rr;
-      runtime::cuda_trace::trace_counter("response_pseudo_density_products", 2 * count);
-      runtime::cuda_trace::trace_counter("response_pseudo_density_flops",
-                                         2 * count * (n * rr + n * n * r));
     }
     runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
-    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
+    consume(packed_pairs ? 2 : 0, {begin, pair_stride, 1, a}, count * pair_stride, weights);
+    begin += count;
   }
+  runtime::cuda_trace::trace_counter("response_pseudo_density_peak_elements",
+                                     peak_count * pair_stride);
+  runtime::cuda_trace::trace_counter("response_pseudo_density_peak_bytes",
+                                     peak_count * pair_stride * sizeof(double));
+  runtime::cuda_trace::trace_counter("response_pseudo_density_block_peak_elements",
+                                     block_peak_elements);
+  runtime::cuda_trace::trace_counter("response_pseudo_density_block_rows",
+                                     packed_pairs ? ao_block_rows : 0);
+  // Small explicit domains can fit in one panel; report literal full-domain
+  // storage separately for dense and packed weights instead of hiding it.
+  runtime::cuda_trace::trace_counter("response_full_weight_tensor_elements",
+                                     !packed_pairs && peak_count == a ? matrix * a : 0);
+  runtime::cuda_trace::trace_counter("response_full_packed_weight_tensor_elements",
+                                     packed_pairs && peak_count == a ? pair_stride * a : 0);
   runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
   metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
                                                              metric_temp);
@@ -449,10 +545,14 @@ cudaError_t contract_cuda_df_response_weights(
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
+    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host, bool packed_pairs,
+    std::span<const std::int64_t> auxiliary_shell_offsets, std::size_t packed_block_rows) {
+  if (packed_pairs && (!borrowed || !borrowed->occupied_response || !packed_block_rows))
+    return cudaErrorInvalidValue;
   if (borrowed && borrowed->occupied_response)
     return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
-                                      *borrowed, raw_host, consume);
+                                      *borrowed, raw_host, consume, packed_pairs,
+                                      auxiliary_shell_offsets, packed_block_rows);
   if (borrowed)
     return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume);

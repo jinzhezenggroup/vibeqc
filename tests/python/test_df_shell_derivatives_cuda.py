@@ -69,8 +69,17 @@ def test_shell_execution_and_return_to_generic(
     monkeypatch.setenv("VIBEQC_DF_RAW_STAGING", staging)
     with calc.prepare_batch([atoms], multiplicities=[spin + 1]) as owner:
         owner.execute(properties=("energy", "forces"), strict=True)
-        for index, route in enumerate(("generic", "shell-sp", "shell", "generic")):
+        routes = [
+            ("generic", "full"),
+            ("shell-sp", "full"),
+            ("shell-sp", "symmetric"),
+            ("shell", "full"),
+            ("shell", "symmetric"),
+            ("generic", "full"),
+        ]
+        for index, (route, pairs) in enumerate(routes):
             monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", route)
+            monkeypatch.setenv("VIBEQC_DF_DERIVATIVE_PAIRS", pairs)
             monkeypatch.setenv("VIBEQC_DF_SHELL_COUNTERS", "1")
             trace = tmp_path / f"response-{index}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
@@ -107,6 +116,14 @@ def test_shell_execution_and_return_to_generic(
                     < counters["shell_primitive_products"]
                     < counters["shell_cartesian_component_products"]
                 )
+                if route == "shell":
+                    ns = mol.nbas
+                    logical = ns * ns if pairs == "full" else ns * (ns + 1) // 2
+                    assert counters["shell_pairs_logical"] == logical
+                    assert counters["shell_triples_visited"] == logical * ns
+                    # Slice A folds the two dense loads; it reduces primitive
+                    # work while retaining the complete dense weight contract.
+                    assert counters["shell_public_weights_consumed"] == mol.nao**3
             else:
                 assert "shell_triples_visited" not in counters
             policy = owner._warm_metadata[0]["controls"]["runtime_policy"]

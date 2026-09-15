@@ -555,7 +555,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     PinnedResponseSlice packed_slice;
     PinnedResponsePanels raw_panels;
     // The host destination must outlive Arena's exceptional-path stream drain.
-    std::array<unsigned long long, 5> observed_shell_work{};
+    std::array<unsigned long long, 6> observed_shell_work{};
     unsigned long long* shell_counters = nullptr;
     Arena arena(maximum_bytes);
     arena.stream = reinterpret_cast<cudaStream_t>(stream_handle);
@@ -567,7 +567,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // overhead; other backends and source-backed regimes need their own
     // endpoint evidence. Explicit selectors stay usable everywhere.
     // Attribution probes retain the original comparison defaults.
-    bool promoted_default = false;
+    bool promoted_default = false, packed_default = false;
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
@@ -579,6 +579,12 @@ vibeqc_status execute_cuda_df_hf_gradient(
       cudaDeviceProp properties{};
       check(cudaGetDeviceProperties(&properties, device));
       promoted_default = properties.major == 12 && properties.minor == 0;
+      // Packed production is qualified on the same trusted 768-AO occupied
+      // response as #381. Smaller defaults keep the faster dense response
+      // producer and consume its shell pairs symmetrically.
+      packed_default = promoted_default && borrowed && borrowed->occupied_response && n == 768 &&
+                       a == 768 && terms.size() == 1 && borrowed->occupied_factors[0].rank == 160 &&
+                       std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
@@ -587,6 +593,36 @@ vibeqc_status execute_cuda_df_hf_gradient(
       throw std::invalid_argument("unknown DF weighted execution (use generic, shell-sp or shell)");
     const bool shell_execution = execution != "generic" && device_metric && schedule == 0;
     const bool full_shell_domain = execution == "shell";
+    const char* pair_control = std::getenv("VIBEQC_DF_DERIVATIVE_PAIRS");
+    const std::string_view pair_policy = pair_control ? pair_control : "auto";
+    if (pair_policy != "auto" && pair_policy != "full" && pair_policy != "symmetric" &&
+        pair_policy != "packed")
+      throw std::invalid_argument(
+          "unknown DF derivative pairs (use auto, full, symmetric or packed)");
+    // Only the trusted occupied producer supplies folded packed AO weights.
+    // Unsupported/corrected states retain the dense response, folding its two
+    // ordered adjoints when a generated shell consumer is available.
+    const bool packed_pairs =
+        (pair_policy == "packed" || (pair_policy == "auto" && packed_default)) && shell_execution &&
+        full_shell_domain && borrowed && borrowed->occupied_response;
+    const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
+                                  : pair_policy == "symmetric" || pair_policy == "packed" ||
+                                          (pair_policy == "auto" && promoted_default)
+                                      ? DfDerivativePairs::symmetric
+                                      : DfDerivativePairs::full;
+    const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
+    const char* block_control = std::getenv("VIBEQC_DF_PACKED_AO_BLOCK_ROWS");
+    // The 64-row experiment halved weight storage but paid for many small
+    // GEMMs. 256 rows recover the complete endpoint while still skipping all
+    // upper off-diagonal blocks; diagnostic sizes preserve that experiment.
+    const std::string_view block_policy = block_control ? block_control : "256";
+    if (block_policy != "64" && block_policy != "128" && block_policy != "256" &&
+        block_policy != "384")
+      throw std::invalid_argument("unknown DF packed AO block size (use 64, 128, 256 or 384)");
+    const std::size_t packed_block_rows = block_policy == "64"    ? 64
+                                          : block_policy == "128" ? 128
+                                          : block_policy == "256" ? 256
+                                                                  : 384;
     const char* shell_schedule_control = std::getenv("VIBEQC_DF_SHELL_SCHEDULE");
     const std::string_view shell_schedule =
         shell_schedule_control ? shell_schedule_control : (promoted_default ? "compact" : "warp");
@@ -599,6 +635,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (shell_execution) {
       shell_o = std::make_unique<ShellMetadata>(orbital, host_o, o, arena);
       shell_x = std::make_unique<ShellMetadata>(auxiliary, host_a, x, arena);
+      // Count distinct orbital shell pairs once, independently of auxiliary
+      // classes and panel clipping (which can revisit a partial auxiliary shell).
+      std::size_t logical_pairs = 0;
+      for (unsigned la = 0; la < 4; ++la)
+        for (unsigned lb = 0; lb < 4; ++lb) {
+          if ((!full_shell_domain && (la > 1 || lb > 1)) ||
+              (!full_shell_domain && la + lb == 0 && !shell_x->view.count[1]) ||
+              (derivative_pairs != DfDerivativePairs::full && la < lb))
+            continue;
+          const auto na = shell_o->view.count[la], nb = shell_o->view.count[lb];
+          logical_pairs +=
+              derivative_pairs != DfDerivativePairs::full && la == lb ? na * (na + 1) / 2 : na * nb;
+        }
+      runtime::cuda_trace::trace_counter("shell_pairs_logical", logical_pairs);
       const char* counter_control = std::getenv("VIBEQC_DF_SHELL_COUNTERS");
       if (counter_control && std::string_view(counter_control) == "1") {
         shell_counters =
@@ -647,7 +697,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
       arena.stats.device_response = true;
       arena.stats.occupied_response = borrowed && borrowed->occupied_response;
       arena.stats.auxiliary_weight_tile = consume_tile;
-      arena.stats.weight_tile_elements = consume_tile * n * n;
+      arena.stats.weight_tile_elements = consume_tile * response_pair_stride;
       if (borrowed) {
         // These allocations remain owned and charged by the value plan. Keep
         // their capacity visible without double-counting it as new response
@@ -787,30 +837,37 @@ vibeqc_status execute_cuda_df_hf_gradient(
           },
           [&](unsigned kind, runtime::StridedRange range, std::size_t count,
               const double* weights) {
+            const bool metric_weights = kind == 1;
+            const auto stride = kind == 2 ? n * (n + 1) / 2 : n * n;
             runtime::cuda_trace::TraceRegion derivatives(
-                kind ? "metric_center_derivative_contraction"
-                     : "three_center_derivative_contraction",
+                metric_weights ? "metric_center_derivative_contraction"
+                               : "three_center_derivative_contraction",
                 arena.stream);
             runtime::cuda_trace::trace_counter(
-                kind ? "metric_derivative_weights" : "three_center_derivative_weights", count);
-            runtime::cuda_trace::trace_counter(
-                kind ? "metric_derivative_weight_bytes" : "three_center_derivative_weight_bytes",
-                count * sizeof(double));
-            if (shell_execution && !kind) {
+                metric_weights ? "metric_derivative_weights" : "three_center_derivative_weights",
+                count);
+            runtime::cuda_trace::trace_counter(metric_weights
+                                                   ? "metric_derivative_weight_bytes"
+                                                   : "three_center_derivative_weight_bytes",
+                                               count * sizeof(double));
+            if (shell_execution && !metric_weights) {
               check(launch_df_shell_derivative_panel(
-                  shell_o->view, shell_x->panel(range.offset, count / (n * n)), r, range.offset,
-                  count / (n * n), weights, derivative_output, shell_counters, arena.stream,
-                  full_shell_domain, shell_variant));
+                  shell_o->view, shell_x->panel(range.offset, count / stride), r, range.offset,
+                  count / stride, weights, derivative_output, shell_counters, arena.stream,
+                  full_shell_domain, shell_variant, derivative_pairs));
               runtime::cuda_trace::trace_counter("three_center_shell_panels", 1);
             }
-            if (kind || !shell_execution || !full_shell_domain)
+            if (metric_weights || !shell_execution || !full_shell_domain)
               check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule,
                                               derivative_output, arena.stream, 0, result.size(),
-                                              gradient_copies, shell_execution && !kind));
+                                              gradient_copies, shell_execution && !metric_weights));
             ++arena.stats.tiles;
             arena.stats.device_response_bytes += count * sizeof(double);
           },
-          borrowed, raw_a));
+          borrowed, raw_a, packed_pairs,
+          packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
+                       : std::span<const std::int64_t>{},
+          packed_block_rows));
       if (gradient_copies > 1) {
         runtime::cuda_trace::TraceRegion reduction("gradient_probe_shard_reduction", arena.stream);
         // Each column is already a complete contracted atom gradient, not an
@@ -893,9 +950,12 @@ vibeqc_status execute_cuda_df_hf_gradient(
     ++arena.stats.stream_synchronizations;
     arena.completed = true;
     if (shell_counters) {
-      constexpr const char* names[]{"shell_triples_visited", "shell_triples_nonzero",
-                                    "shell_public_weights_nonzero", "shell_primitive_products",
-                                    "shell_cartesian_component_products"};
+      constexpr const char* names[]{"shell_triples_visited",
+                                    "shell_triples_nonzero",
+                                    "shell_public_weights_nonzero",
+                                    "shell_primitive_products",
+                                    "shell_cartesian_component_products",
+                                    "shell_public_weights_consumed"};
       for (unsigned i = 0; i < observed_shell_work.size(); ++i)
         runtime::cuda_trace::trace_counter(names[i], observed_shell_work[i]);
     }

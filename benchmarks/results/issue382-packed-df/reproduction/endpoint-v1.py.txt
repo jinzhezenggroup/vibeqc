@@ -255,25 +255,6 @@ def main():
                 }
                 if args.trace:
                     sample["components"] = aggregate(read_trace(trace))
-                    # Query after the timed call, while the prepared owner is
-                    # still live. A separate sampler measures process peaks;
-                    # a post-close reading would instead measure teardown.
-                    processes = subprocess.check_output(
-                        [
-                            "nvidia-smi",
-                            "--query-compute-apps=pid,used_memory",
-                            "--format=csv,noheader,nounits",
-                        ],
-                        text=True,
-                    )
-                    process_memory = {
-                        int(pid): int(mib) * 1024**2
-                        for line in processes.splitlines()
-                        for pid, mib in [line.split(",")]
-                    }
-                    sample["process_device_resident_bytes"] = process_memory[
-                        os.getpid()
-                    ]
                 if args.trace or args.host_trace:
                     # Inclusive host force scope begins after the physical
                     # final state is selected and includes one-electron/Pulay,

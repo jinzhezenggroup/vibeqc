@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 11446,
+  "all_handwritten_scientific_lines": 11576,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -598,20 +598,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 52244,
+      "bytes": 56422,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 875
+        "scientific": 924
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 936,
-      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch.",
+      "physical_lines": 996,
+      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink.",
       "regions": [],
       "role": "scientific",
-      "sha256": "aba489ecefc62b6b57fcb1b23b762fdd47595074d4cbf1e9205a5e0840d57d90",
+      "sha256": "f9b9124a3230be14f74cb7f4336279c98c74dd15a12d1468695ed266220d3d62",
       "subsystem": "df_derivatives"
     },
     {
@@ -710,22 +710,22 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 34489,
+      "bytes": 40904,
       "code_lines": {
         "fallback": 0,
         "oracle": 10,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 524
+        "scientific": 602
       },
       "path": "src/scf/cuda/df_response_weights.cu",
-      "physical_lines": 610,
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
+      "physical_lines": 710,
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
       "regions": [
         {
           "code_lines": 10,
-          "first_line": 86,
-          "last_line": 101,
+          "first_line": 119,
+          "last_line": 134,
           "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry.",
           "role": "oracle",
           "start": "__global__ void exchange_metric_kernel(",
@@ -733,24 +733,24 @@
         }
       ],
       "role": "scientific",
-      "sha256": "3594993d6187778f724f32f69d3d81ee2a2bcb5340df257d9bd7c496dad10728",
+      "sha256": "34f8c26d971bc63392c92d470a9561dd5dc1559aacf0f26a701f4c772b18986d",
       "subsystem": "df_response_weights"
     },
     {
-      "bytes": 2773,
+      "bytes": 3480,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 23
+        "scientific": 26
       },
       "path": "src/scf/cuda/df_response_weights.cuh",
-      "physical_lines": 55,
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners.",
+      "physical_lines": 66,
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
       "regions": [],
       "role": "scientific",
-      "sha256": "77b15c3fbc1d7acb17f14aa540b9645ea2b098bf4bef7b0c02245325d7e33596",
+      "sha256": "1102504aa56b4c8ce37105d57b1f2a011daf66b25b0609499bded20fc19e2dcb",
       "subsystem": "df_response_weights"
     },
     {
@@ -815,37 +815,37 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 8842,
+      "bytes": 10737,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 154,
+        "runtime": 186,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "physical_lines": 168,
-      "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator.",
+      "physical_lines": 205,
+      "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available.",
       "regions": [],
       "role": "runtime",
-      "sha256": "e7bd6a14b19da787afd22bb58c15b63b69c086efaf440509393a666da76f47a2",
+      "sha256": "7e23bb374403b6544c6de3b5bdc9fc18d8e17d05979e0a07755c57ca484830fb",
       "subsystem": "df_derivatives"
     },
     {
-      "bytes": 1692,
+      "bytes": 2141,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 16,
+        "runtime": 18,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_derivatives.cuh",
-      "physical_lines": 32,
+      "physical_lines": 40,
       "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
       "regions": [],
       "role": "runtime",
-      "sha256": "8a1ea6902567a38bfc0764f74439d8781892c34a052935782bf472d8a9244868",
+      "sha256": "ba85c4f6eed7bf3d279d41e94ea521a945f201b06136baabe6ff4b0be721bff6",
       "subsystem": "runtime"
     },
     {
@@ -3364,8 +3364,8 @@
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
-    "runtime": 9371,
-    "scientific": 11280
+    "runtime": 9405,
+    "scientific": 11410
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3399,7 +3399,7 @@
       "status": "retired"
     },
     "df_response_weights": {
-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Within that resident domain, automatic occupied-space response additionally requires rank-160 RHF, the actual RTX 5090 identity, and a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta.",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Within that resident domain, automatic occupied-space response additionally requires rank-160 RHF, the actual RTX 5090 identity, and a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
       "evidence": [
         "tests/python/test_df_response_weights_cuda.py",
         "benchmarks/results/issue206-metric-gemv/README.md",
@@ -3410,7 +3410,10 @@
         "benchmarks/results/issue308-768ao-response/summary.json",
         "tests/python/test_df_occupied_response_cuda.py",
         "tests/native/test_df_occupied_response.cpp",
-        "benchmarks/results/issue377-379-df/README.md"
+        "benchmarks/results/issue377-379-df/README.md",
+        "tests/native/test_df_shell_pairs.cpp",
+        "tests/python/test_df_shell_derivatives_cuda.py",
+        "benchmarks/results/issue382-packed-df/README.md"
       ],
       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
@@ -3554,15 +3557,15 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 265,
-      "scientific": 875
+      "runtime": 297,
+      "scientific": 924
     },
     "df_response_weights": {
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 547
+      "scientific": 628
     },
     "df_values": {
       "fallback": 0,
@@ -3610,7 +3613,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4236,
+      "runtime": 4238,
       "scientific": 5
     },
     "scf_tensor": {

@@ -149,7 +149,6 @@ def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(monkeypatch, tmp
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "shell")
     monkeypatch.setenv("VIBEQC_DF_SHELL_SCHEDULE", "compact")
     monkeypatch.setenv("VIBEQC_DF_DERIVATIVE_PAIRS", "packed")
-    monkeypatch.setenv("VIBEQC_DF_PACKED_AO_BLOCK_ROWS", "64")
     monkeypatch.setenv("VIBEQC_DF_SHELL_COUNTERS", "1")
     calc = Calculator(
         method="rhf",
@@ -180,4 +179,3 @@ def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(monkeypatch, tmp
     assert c["shell_triples_visited"] == (48 * 49 // 2) * 48
     # These include the small unused upper triangles of diagonal blocks.
     assert c["response_pseudo_density_rectangular_elements"] == 96 * (64 * 64 + 32 * 96)
-    assert c["response_pseudo_density_block_peak_elements"] == 64 * 64

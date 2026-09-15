@@ -109,3 +109,7 @@ to reduce the whole-plan peak.
 #358 method arithmetic ownership; #143 generated derivatives.
 
 [Retained qualification](../../../../benchmarks/results/issue377-379-df/README.md).
+
+The subsequent [packed derivative handoff](2026-09-15-packed-df-derivative-pairs.md)
+supersedes this note's dense AO weight panels while preserving its occupied
+projections, metric equations, factor provenance and scratch ownership.
