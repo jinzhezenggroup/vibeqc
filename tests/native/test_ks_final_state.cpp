@@ -121,6 +121,7 @@ void model_and_state_rejection() {
       [](auto& a) { a.physical.fock[0][0] += 1e-5; },
       [](auto& a) { a.candidate.spins[0].values[0] += 1e-5; },
       [](auto& a) { a.physical.physical_residual = 2e-9; },
+      [](auto& a) { a.physical.physical_residual = -1e-12; },
       [](auto& a) { a.physical.reported_energy += 1e-5; },
       [nan](auto& a) { a.physical.components.xc = nan; },
       [nan](auto& a) { a.physical.physical_residual = nan; }};

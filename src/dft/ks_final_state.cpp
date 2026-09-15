@@ -67,7 +67,8 @@ bool validate_ks_final_state(const KsFinalStateIdentity& current,
   const double component_energy = physical.components.total();
   const double energy_error = std::abs(component_energy - physical.reported_energy);
   const double residual_gate = std::min(1e-9, limits.density_tolerance);
-  if (energy_error > limits.energy_tolerance || physical.physical_residual > residual_gate) {
+  if (energy_error > limits.energy_tolerance || physical.physical_residual < 0.0 ||
+      physical.physical_residual > residual_gate) {
     detail = "KS final state failed component-energy or physical-residual consistency";
     return false;
   }

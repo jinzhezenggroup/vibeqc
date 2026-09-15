@@ -293,6 +293,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
   Result execute(bool compute_forces) override {
+    invalidate_final_state();
     const char* method_name =
         (method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS) ? "PBE" : "LDA";
     if (compute_forces) {
@@ -414,6 +415,8 @@ class KsPreparedBatch final : public PreparedBatch {
 
   std::vector<BatchItemResult> execute(const Coordinates& coordinates,
                                        bool compute_forces) override {
+    for (auto& item : items_)
+      if (item.plan) item.plan->invalidate_final_state();
     if (compute_forces)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "KS nuclear gradients are tracked separately in issue #163");
@@ -429,7 +432,6 @@ class KsPreparedBatch final : public PreparedBatch {
       result.bucket_id = i;  // One ordinary stream/owner per stable input slot.
       result.calculation.executed_backend = backend_;
       result.calculation.energy = std::numeric_limits<double>::quiet_NaN();
-      if (items_[i].plan) items_[i].plan->invalidate_final_state();
       try {
         auto target = systems_[i];
         if (!coordinates.empty() && coordinates[i]) {
