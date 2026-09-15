@@ -655,6 +655,10 @@ std::vector<double> CudaKsPlan::warm_density() {
 }
 void CudaKsPlan::set_warm_start_updates(bool enabled) noexcept { impl_->warm_updates = enabled; }
 void CudaKsPlan::clear_warm_start() noexcept { impl_->warm_ready = false; }
+void CudaKsPlan::invalidate_final_state() noexcept {
+  impl_->final_state_ready = impl_->final_frame_ready = false;
+  impl_->final_generation = 0;
+}
 vibeqc_status CudaKsPlan::final_state_token(CudaKsFinalStateToken& token,
                                             std::string& detail) const {
   token = {};

@@ -83,7 +83,9 @@ token binds the prepared provider, geometry/basis owner, GridSpec, functional,
 spin occupations, device, solve epoch and exact orbital/Fock/density
 generation. Every new `begin`, including a failed or nonconverged attempt,
 revokes the preceding token before CUDA work. Rebuilt geometry receives a new
-owner even when all matrix dimensions are unchanged.
+owner even when all matrix dimensions are unchanged. Prepared-call exceptions
+and batch items rejected before device submission explicitly revoke their old
+eligibility while preserving independent warm-start ownership.
 
 An exact-token read canonicalizes the retained physical, non-DIIS Fock on the
 owner's ordinary stream and detaches `D`, `F`, `C`, orbital energies,

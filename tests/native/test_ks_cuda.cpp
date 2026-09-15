@@ -259,6 +259,12 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
                 plan.transfers().final_state_d2h_bytes == before_rejection.final_state_d2h_bytes,
             "stale CUDA KS token transferred or published state");
   }
+  plan.invalidate_final_state();
+  require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "explicit result invalidation preserved CUDA KS eligibility");
+  require(plan.run(nullptr, true, false).converged &&
+              plan.final_state_token(token, snapshot_detail) == VIBEQC_STATUS_SUCCESS,
+          "CUDA KS owner did not recover eligibility after explicit invalidation");
   require(result.iterations == result.dft_diagnostic.history.size(),
           "missing CUDA iteration history");
   const auto before = plan.transfers();

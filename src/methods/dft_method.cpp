@@ -246,6 +246,18 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #endif
   }
 
+  void invalidate_result() override {
+#if VIBEQC_HAS_CUDA
+    if (cuda_) cuda_->invalidate_final_state();
+#endif
+  }
+
+  void invalidate_final_state() noexcept {
+#if VIBEQC_HAS_CUDA
+    if (cuda_) cuda_->invalidate_final_state();
+#endif
+  }
+
 #if VIBEQC_HAS_CUDA
   dft::CudaKsPlan* cuda_plan() noexcept { return cuda_.get(); }
 #endif
@@ -417,6 +429,7 @@ class KsPreparedBatch final : public PreparedBatch {
       result.bucket_id = i;  // One ordinary stream/owner per stable input slot.
       result.calculation.executed_backend = backend_;
       result.calculation.energy = std::numeric_limits<double>::quiet_NaN();
+      if (items_[i].plan) items_[i].plan->invalidate_final_state();
       try {
         auto target = systems_[i];
         if (!coordinates.empty() && coordinates[i]) {

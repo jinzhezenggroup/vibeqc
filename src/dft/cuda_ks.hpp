@@ -76,6 +76,8 @@ class CudaKsPlan {
   void set_warm_start_updates(bool enabled) noexcept;
   /** Forget the seed without downloading or changing the current result. */
   void clear_warm_start() noexcept;
+  /** Revoke final-state eligibility without changing warm-start ownership. */
+  void invalidate_final_state() noexcept;
   /** Read-only host eligibility query. It performs no CUDA call or transfer. */
   vibeqc_status final_state_token(CudaKsFinalStateToken& token, std::string& detail) const;
   /** Export a detached, strictly validated current physical state. Exact-token
