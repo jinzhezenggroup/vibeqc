@@ -47,9 +47,26 @@ IntegralIR records two Gaussian shell slots and a distinct physical ECP
 center. Its schema version 4 preserves radial/projector terms and the shared
 RawBlock/WeightedDerivative contracts. Generated Gaussian component DAGs
 differentiate basis centers analytically before emitting device arithmetic.
-The projector/quadrature loops remain a native baseline, not a complete
-generated projector lowering. ECP-center derivatives use `dC = -(dA+dB)`
-before physical atom accumulation, including coincident A/B/C cases.
+`integral/ecp_projector.py` now owns the residual radial integrand, angular
+projection reductions and local/nonlocal pair contractions. Radial expressions
+include the volume measure (`r^2` cancels the operator's `r^-2`); bilinear
+derivatives are differentiated from the value expression. The same generated
+C++ header runs in native host tests and the production CUDA adapter.
+ECP-center derivatives use generated `dC = -(dA+dB)` after the angular
+reduction and before physical atom accumulation, including coincident A/B/C
+cases. Value-only calls do not read derivative slots.
+
+This migration preserves the initial domain and one-radial-shell schedule.
+The independent `src/integrals/ecp.cpp` CPU implementation remains the public
+CPU fallback and a numerical oracle; it intentionally does not call these
+generated contractions. The CUDA adapter retains primitive/component
+accumulation, HF density consumption, allocation/launch/scatter and grid
+convergence checks. Host quadrature-node/harmonic construction also remains
+explicit. These remaining scientific portions are conservatively retained in
+the ownership ledger; this slice does not claim complete ECP code retirement.
+They can be retired only after an equivalent generated replacement passes
+independent raw, derivative, method and resource gates. The CPU oracle must
+remain structurally independent of generated production arithmetic.
 
 ## Numerical and execution boundaries
 
@@ -104,6 +121,14 @@ PySCF LANL2DZ Na ECP/orbitals with STO-3G H, asymmetric mixed centers, d shells,
 Cartesian/spherical layouts, charged open-shell HF, independent ECP center
 motion and two finite-difference steps. Synthetic fixtures isolate local and
 nonlocal components. Production code never imports PySCF.
+
+`vibeqc_ecp_projector_tests` independently checks the emitted host arithmetic
+using a double angular-node sum and the Legendre addition theorem, without
+forming the production AO projections. It covers all radial powers 0..4,
+local/s/p/d channels, signed mixed-exponent terms, center filtering, the
+radial origin, and poisoned derivative slots in value-only mode. The Python
+ECP suite also compares every radial power and d projectors with Libcint and
+finite differences of an independently displaced ECP center on CPU/CUDA.
 
 Real numerical parameter tables are read from the test installation and are
 not redistributed by this change. PySCF is Apache-2.0; consult its installed

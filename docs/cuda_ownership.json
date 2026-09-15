@@ -1384,7 +1384,7 @@
     },
     {
       "path": "src/integrals/ecp_cuda.cu",
-      "reason": "Semilocal quadrature, projector products and ECP center scatter; Gaussian value/derivative arithmetic is generated. Count glue conservatively as scientific.",
+      "reason": "Generated AO jets, residual radial potentials, harmonic projections and local/nonlocal pair contractions. Native AO primitive accumulation, HF density consumption, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
       "subsystem": "ecp"
@@ -1489,6 +1489,13 @@
         "generated/generated_df_derivative_schedule.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
+    },
+    {
+      "name": "ecp_quadrature",
+      "outputs": [
+        "generated/generated_ecp_ao.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",
@@ -1633,16 +1640,17 @@
       "status": "resident_prepared_cuda_energy_only"
     },
     "ecp": {
-      "owner": "python/vibeqc_compiler/integral/ecp.py and src/integrals/ecp_cuda.cu",
+      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py and src/integrals/ecp_cuda.cu",
       "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
-      "generated_capability": "Gaussian component values and analytic basis-center derivative DAGs; explicit external ECP center in IntegralIR.",
+      "generated_capability": "Gaussian AO and center-derivative DAGs; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery. One C++ header supplies host tests and production CUDA.",
       "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
-      "retirement_condition": "A future generated projector lowering must preserve independent raw local/nonlocal and all-center derivative gates.",
+      "retirement_condition": "Radial/projector scientific loops retired from CUDA after independent addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining native primitive accumulation, density consumption and host grid/harmonic construction require equivalent generated replacements with those gates. Keep the independent ecp.cpp CPU oracle/fallback separate from generated production algebra.",
       "evidence": [
         "tests/python/test_ecp.py",
-        "tests/python/test_ecp_ir.py"
+        "tests/python/test_ecp_ir.py",
+        "tests/native/test_ecp_projector.cpp"
       ],
-      "status": "Initial native quadrature baseline; no broad heavy-element or performance claim."
+      "status": "Bounded projector/radial lowering migration; unchanged capability domain; no DFT, broad heavy-element or performance-promotion claim."
     },
     "df_response_weights": {
       "owner": "scf_tensor",

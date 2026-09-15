@@ -27,11 +27,6 @@ struct AO {
 struct Four {
   double v[4];
 };
-__device__ double power(double x, unsigned n) {
-  double v = 1;
-  for (unsigned i = 0; i < n; ++i) v *= x;
-  return v;
-}
 __global__ void evaluate_ao(const AO* aos, const Primitive* primitives,
                             const EcpSpherePoint* sphere, const EcpRadialPoint* radial, int n,
                             int nq, int nr, double cx, double cy, double cz, bool derivatives,
@@ -61,13 +56,7 @@ __global__ void project(const Four* values, const EcpSpherePoint* sphere, int n,
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= nr * n * 9) return;
   const int m = i % 9, a = (i / 9) % n, r = i / (9 * n);
-  Four out{};
-  for (int q = 0; q < nq; ++q) {
-    const double w = sphere[q].weight * sphere[q].harmonics[m];
-    const auto v = values[(r * n + a) * nq + q];
-    for (int d = 0; d < (derivatives ? 4 : 1); ++d) out.v[d] += w * v.v[d];
-  }
-  projections[i] = out;
+  projections[i] = generated::ecp_project(values + (r * n + a) * nq, sphere, nq, m, derivatives);
 }
 __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
                          const EcpSpherePoint* sphere, const EcpRadialPoint* radii,
@@ -78,35 +67,10 @@ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
   const int b = i % n, a = (i / n) % n, r = i / (n * n);
   if (b > a) return;
   const int size = n * n, stride = size * (1 + ncoord);
-  double potential[4] = {}, parts[2][7] = {};
-  for (int t = 0; t < nt; ++t) {
-    const auto term = terms[t];
-    if (term.atom_index == static_cast<unsigned>(center))
-      potential[term.channel + 1] += radii[r].weight * term.coefficient *
-                                     power(radii[r].r, term.power) *
-                                     exp(-term.exponent * radii[r].r * radii[r].r);
-  }
-  for (int q = 0; q < nq; ++q) {
-    const auto va = values[(r * n + a) * nq + q], vb = values[(r * n + b) * nq + q];
-    const double w = potential[0] * sphere[q].weight;
-    parts[0][0] += w * va.v[0] * vb.v[0];
-    if (ncoord)
-      for (int d = 0; d < 3; ++d) {
-        parts[0][d + 1] += w * va.v[d + 1] * vb.v[0];
-        parts[0][d + 4] += w * va.v[0] * vb.v[d + 1];
-      }
-  }
-  for (int l = 0; l <= 2; ++l)
-    for (int m = l * l; m < (l + 1) * (l + 1); ++m) {
-      const auto va = projections[(r * n + a) * 9 + m], vb = projections[(r * n + b) * 9 + m];
-      const double w = potential[l + 1];
-      parts[1][0] += w * va.v[0] * vb.v[0];
-      if (ncoord)
-        for (int d = 0; d < 3; ++d) {
-          parts[1][d + 1] += w * va.v[d + 1] * vb.v[0];
-          parts[1][d + 4] += w * va.v[0] * vb.v[d + 1];
-        }
-    }
+  double parts[2][10];
+  generated::ecp_contract(terms, nt, radii[r], sphere, nq, center, values + (r * n + a) * nq,
+                          values + (r * n + b) * nq, projections + (r * n + a) * 9,
+                          projections + (r * n + b) * 9, ncoord != 0, parts);
   for (int part = 0; part < 2; ++part)
     for (int transpose = 0; transpose < (a == b ? 1 : 2); ++transpose) {
       const int item = transpose ? b * n + a : a * n + b;
@@ -116,8 +80,7 @@ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
         for (int d = 0; d < 3; ++d) {
           atomicAdd(out + (1 + aos[a].atom * 3 + d) * size + item, parts[part][d + 1]);
           atomicAdd(out + (1 + aos[b].atom * 3 + d) * size + item, parts[part][d + 4]);
-          atomicAdd(out + (1 + center * 3 + d) * size + item,
-                    -parts[part][d + 1] - parts[part][d + 4]);
+          atomicAdd(out + (1 + center * 3 + d) * size + item, parts[part][d + 7]);
         }
     }
 }

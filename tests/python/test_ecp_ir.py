@@ -6,6 +6,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from vibeqc_compiler.integral.ecp import build_ecp_ir, gaussian_roots
+from vibeqc_compiler.integral.ecp_projector import pair_roots, radial_roots
 from vibeqc_compiler.integral.ir import EcpRadialTerm, OperatorSpec
 from vibeqc_compiler.integral.ir_serialization import (
     integral_from_payload,
@@ -82,3 +83,43 @@ def test_invalid_ecp_lowerings_fail_closed():
     ):
         with pytest.raises(ValueError):
             replace(term, **kwargs)
+
+
+@pytest.mark.parametrize("power", range(5))
+def test_radial_measure_and_operator_contract(power):
+    graph, (root,) = radial_roots(power)
+    for r in (0.0, 1e-8, 0.37, 1.8, 17.0):
+        values = {"r": r, "alpha": 0.63, "coefficient": -1.23, "weight": 0.41}
+        expected = -1.23 * 0.41 * r**power * math.exp(-0.63 * r**2)
+        assert graph.evaluate(root, values) == pytest.approx(expected, abs=1e-15)
+    for bad in (-1, 5, True, 1.5):
+        with pytest.raises(ValueError):
+            radial_roots(bad)
+
+
+def test_projector_pair_jets_against_displaced_bilinear():
+    graph, roots = pair_roots()
+    rng = np.random.default_rng(17102)
+    for _ in range(20):
+        a, b = rng.normal(size=(2, 4))
+        weight = rng.normal()
+        values = {
+            f"{ab}{d}": jet[d] for ab, jet in (("a", a), ("b", b)) for d in range(4)
+        }
+        actual = np.array(
+            [graph.evaluate(root, dict(values, weight=weight)) for root in roots]
+        )
+        assert actual[0] == pytest.approx(weight * a[0] * b[0])
+        for d in range(1, 4):
+            step = 1e-5
+            da = (
+                weight * (a[0] + step * a[d]) * b[0]
+                - weight * (a[0] - step * a[d]) * b[0]
+            ) / (2 * step)
+            db = (
+                weight * a[0] * (b[0] + step * b[d])
+                - weight * a[0] * (b[0] - step * b[d])
+            ) / (2 * step)
+            np.testing.assert_allclose(
+                actual[[d, d + 3]], [da, db], atol=2e-10, rtol=1e-9
+            )

@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 11166,
+  "all_handwritten_scientific_lines": 11129,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -195,20 +195,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 14035,
+      "bytes": 12750,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 324
+        "scientific": 287
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 330,
-      "reason": "Semilocal quadrature, projector products and ECP center scatter; Gaussian value/derivative arithmetic is generated. Count glue conservatively as scientific.",
+      "physical_lines": 293,
+      "reason": "Generated AO jets, residual radial potentials, harmonic projections and local/nonlocal pair contractions. Native AO primitive accumulation, HF density consumption, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "3167503f3b68a5956c8eab277a0d1e217cdad8f72a4a50ad5395af47f11a7f0c",
+      "sha256": "e64f6352ae720dab31d2ad47e2f792929a14ec4d1e5d04c3e0080cacc54f15c5",
       "subsystem": "ecp"
     },
     {
@@ -3348,6 +3348,15 @@
         "generated/generated_df_derivative_schedule.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "ecp_quadrature",
+      "outputs": [
+        "generated/generated_ecp_ao.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
     }
   ],
   "generated_bytes": 0,
@@ -3356,7 +3365,7 @@
     "oracle": 10,
     "performance_exception": 156,
     "runtime": 9364,
-    "scientific": 11000
+    "scientific": 10963
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3436,13 +3445,14 @@
       "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
       "evidence": [
         "tests/python/test_ecp.py",
-        "tests/python/test_ecp_ir.py"
+        "tests/python/test_ecp_ir.py",
+        "tests/native/test_ecp_projector.cpp"
       ],
-      "generated_capability": "Gaussian component values and analytic basis-center derivative DAGs; explicit external ECP center in IntegralIR.",
+      "generated_capability": "Gaussian AO and center-derivative DAGs; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery. One C++ header supplies host tests and production CUDA.",
       "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
-      "owner": "python/vibeqc_compiler/integral/ecp.py and src/integrals/ecp_cuda.cu",
-      "retirement_condition": "A future generated projector lowering must preserve independent raw local/nonlocal and all-center derivative gates.",
-      "status": "Initial native quadrature baseline; no broad heavy-element or performance claim."
+      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py and src/integrals/ecp_cuda.cu",
+      "retirement_condition": "Radial/projector scientific loops retired from CUDA after independent addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining native primitive accumulation, density consumption and host grid/harmonic construction require equivalent generated replacements with those gates. Keep the independent ecp.cpp CPU oracle/fallback separate from generated production algebra.",
+      "status": "Bounded projector/radial lowering migration; unchanged capability domain; no DFT, broad heavy-element or performance-promotion claim."
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
@@ -3567,7 +3577,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 324
+      "scientific": 287
     },
     "low_rank": {
       "fallback": 0,

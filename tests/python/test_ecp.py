@@ -197,7 +197,7 @@ def test_parameters_invalidate_identity_and_malformed_channels_fail():
         resolve_ecp(bad, tuple(Atom.from_value(a) for a in atoms))
 
 
-def detached_native(xyz, *, device="cpu"):
+def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
     """An ECP atom with no Gaussian shell tests its independent center motion."""
     from vibeqc import _native
 
@@ -234,16 +234,22 @@ def detached_native(xyz, *, device="cpu"):
         _native.BASIS_CARTESIAN,
     )
     cores = (ctypes.c_int32 * 3)(10, 0, 0)
-    terms = (_native.EcpTermDescriptor * 3)(
-        _native.EcpTermDescriptor(0, -1, 2, 0.8, -2.0),
-        _native.EcpTermDescriptor(0, 0, 2, 0.5, 3.0),
-        _native.EcpTermDescriptor(0, 1, 2, 0.4, -1.0),
+    records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
+    if d_projector:
+        records.append((2, 0.63, 0.74))
+    terms = (_native.EcpTermDescriptor * len(records))(
+        *(_native.EcpTermDescriptor(0, l, power, a, c) for l, a, c in records)
     )
     try:
         _native.check(
             library,
             library.vibeqc_system_create_ecp(
-                context, ctypes.byref(descriptor), cores, terms, 3, ctypes.byref(system)
+                context,
+                ctypes.byref(descriptor),
+                cores,
+                terms,
+                len(terms),
+                ctypes.byref(system),
             ),
         )
         result = np.empty((2, 10, 4, 4))
@@ -266,15 +272,14 @@ def detached_native(xyz, *, device="cpu"):
         library.vibeqc_context_destroy(context)
 
 
-def detached_reference(xyz):
+def detached_reference(xyz, *, power=2, d_projector=False):
     gto = pytest.importorskip("pyscf.gto")
+    records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
+    if d_projector:
+        records.append((2, 0.63, 0.74))
     channels = [
-        [channel, [[], [], [[exponent, coefficient]]]]
-        for channel, exponent, coefficient in (
-            (-1, 0.8, -2.0),
-            (0, 0.5, 3.0),
-            (1, 0.4, -1.0),
-        )
+        [channel, [[] for _ in range(power)] + [[[exponent, coefficient]]]]
+        for channel, exponent, coefficient in records
     ]
     mol = gto.M(
         atom=list(zip(("Na", "H", "He"), xyz)),
@@ -492,3 +497,27 @@ def test_cuda_d_shell_and_independent_potential_center(representation):
         atol=2e-10,
         rtol=1e-10,
     )
+
+
+@pytest.mark.parametrize("power", range(5))
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_all_radial_powers_and_d_projector_libcint(power, device):
+    if device == "cuda" and os.getenv("VIBEQC_ECP_CUDA_TEST") != "1":
+        pytest.skip("requires explicit real CUDA run")
+    xyz = np.array([[0.13, -0.27, 0.32], [0.43, 0.38, 1.12], [-0.31, 0.12, -0.62]])
+    actual = detached_native(xyz, device=device, power=power, d_projector=True)
+    np.testing.assert_allclose(
+        actual[:, 0],
+        detached_reference(xyz, power=power, d_projector=True),
+        atol=2e-10,
+        rtol=1e-10,
+    )
+    # Independently move the ECP center, which has no Gaussian basis attached.
+    for d in range(3):
+        delta = np.zeros_like(xyz)
+        delta[0, d] = 4e-5
+        expected = (
+            detached_reference(xyz + delta, power=power, d_projector=True)
+            - detached_reference(xyz - delta, power=power, d_projector=True)
+        ) / 8e-5
+        np.testing.assert_allclose(actual[:, 1 + d], expected, atol=1e-8, rtol=2e-7)

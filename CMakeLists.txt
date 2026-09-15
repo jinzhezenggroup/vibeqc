@@ -242,6 +242,18 @@ target_include_directories(vibeqc
 target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
+set(VIBEQC_ECP_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_ecp_ao.cuh")
+add_custom_command(
+  OUTPUT "${VIBEQC_ECP_HEADER}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
+          --output "${VIBEQC_ECP_HEADER}"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
+          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+  VERBATIM)
+add_custom_target(vibeqc_ecp_codegen DEPENDS "${VIBEQC_ECP_HEADER}")
+add_dependencies(vibeqc vibeqc_ecp_codegen)
+target_sources(vibeqc PRIVATE "${VIBEQC_ECP_HEADER}")
+
 if(VIBEQC_ENABLE_CUDA)
   foreach(_arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
     if(_arch STREQUAL "native" OR _arch STREQUAL "all" OR _arch STREQUAL "all-major")
@@ -272,15 +284,6 @@ if(VIBEQC_ENABLE_CUDA)
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}")
   target_sources(vibeqc PRIVATE src/integrals/ecp_cuda.cu)
-  set(VIBEQC_ECP_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_ecp_ao.cuh")
-  add_custom_command(
-    OUTPUT "${VIBEQC_ECP_HEADER}"
-    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
-            --output "${VIBEQC_ECP_HEADER}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
-            ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
-    VERBATIM)
-  target_sources(vibeqc PRIVATE "${VIBEQC_ECP_HEADER}")
   set(VIBEQC_DF_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives.cuh")
   set(VIBEQC_DF_DERIVATIVE_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_policy.cuh")
   set(VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_schedule.cuh")
