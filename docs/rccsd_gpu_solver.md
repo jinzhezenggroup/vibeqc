@@ -1,13 +1,14 @@
-# GPU RCCSD solver, energy-only API and isolated batches (#149 B/C)
+# Experimental CUDA RCCSD validation solver
 
-This document records the #149 B/C implementation state and its explicit
-boundaries. The A slice (fixed-amplitude kernel parity) is `rccsd_gpu.md`; the
+This is a preparatory validation helper for #149, not completion of its B or
+C acceptance slices. The required resident T/R iteration, native method
+registration and supported homogeneous prepared batches remain open. The A slice (fixed-amplitude kernel parity) is `rccsd_gpu.md`; the
 scientific B/C CPU baseline is `rccsd_bc.md`. The physical equations, inputs,
 denominators and final acceptance are exactly #148's — the code described here
 only changes which backend evaluates the residual, and how energy-only
 single points and batches are exposed.
 
-## B: bounded ordinary-stream GPU solver
+## Experimental ordinary-stream GPU solver
 
 `tools.vibeqc_cc.gpu_solver.PreparedGPUSolver` owns the #148 preparation and
 two compiled #146 plans:
@@ -41,9 +42,9 @@ adds backend timings; the physics and acceptance are identical.
 ### Residency boundary (honest, not hidden)
 
 The #146 executor `PreparedCuda.execute` uploads every feed and downloads every
-output on each call; it does not expose device-resident pointers. A complete
-resident loop where only small residual scalars cross the host is #193's
-resident provider interface. This module therefore runs a **host-controlled
+output on each call; it does not expose device-resident pointers. Issue #149 step 2 requires a complete
+resident loop where only small residual scalars cross the host. That execution
+contract is not implemented by this experimental helper. This module therefore runs a **host-controlled
 ordinary-stream iteration**: amplitudes and residuals are staged through host
 buffers each iteration. Provenance reports bytes per evaluation and separate
 primary/replay evaluation counts: an ordinary iteration evaluates both the
@@ -51,7 +52,7 @@ current and trial amplitudes, uploading all integral inputs on both calls. The
 `graph_status = "ordinary-stream: ..."` fact is recorded in the result
 provenance. It is an honest bounded GPU solver and convergence endpoint, not a
 claim of resident acceleration. `src/cc/cuda_state.cuh` DIIS/`max-norm`
-kernels remain preparatory until the #193 interface provides resident device
+kernels remain preparatory until a resident #149 iteration can use device
 pointers.
 
 Failures are explicit: provider failure raises (never a silent CPU fallback);
@@ -59,7 +60,7 @@ numerical overflow is a `nonfinite` result; the iteration limit is a
 `not_converged` result carrying the last finite state. Compilation requires an
 explicit `CudaCompilerAdapter` and cache — CUDA is never implicit.
 
-## C: energy-only API and isolated batch semantics
+## Internal energy-only facade and isolated batch helper
 
 `tools.vibeqc_cc.api` exposes:
 
@@ -72,7 +73,8 @@ explicit `CudaCompilerAdapter` and cache — CUDA is never implicit.
 
 The native C-ABI registry (`VIBEQC_METHOD_*`) is deliberately unchanged: there
 is no `VIBEQC_METHOD_RCCSD` identifier, and no native C++ CC solver or resident
-executor exists yet — those are #193's resident-interface prerequisite. The
+executor exists yet. These remain required work under #149; this helper does
+not add a new dependency to that issue. The
 reserved `VIBEQC_METHOD_RCCSD_T` stays unavailable. Registering ABI methods or
 a native ragged `supports_batch` without the resident interface would advertise
 capabilities that do not exist, so this slice exposes the method at the same

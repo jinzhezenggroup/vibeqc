@@ -1,4 +1,4 @@
-"""#149 B: memory-bounded GPU solver, convergence/failure and replay state.
+"""Experimental GPU solver: convergence/failure and replay state.
 
 Preparation and ordinary-stream plan contracts run on CPU and are always
 active. Real-device execution compiles the #148 physical equations through the

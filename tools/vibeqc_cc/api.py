@@ -41,8 +41,8 @@ class Capabilities:
 def method_capabilities(method: str = "rccsd") -> Capabilities:
     """Report RCCSD support without constructing a reference or provider.
 
-    ``supports_batch`` describes the native ragged fleet plan, which requires
-    the #193 resident interface and is therefore not registered. The Python
+    ``supports_batch`` describes native prepared batching, which this
+    experimental helper does not implement. The Python
     :func:`batch_energy` helper executes independent per-item states instead.
     """
     if method.lower() != "rccsd":
@@ -219,7 +219,7 @@ def batch_energy(
     owns its amplitudes, denominators, DIIS and status; an exception on one
     item is recorded and the remaining items continue. Homogeneous-shape
     GPU compilation is deliberately *not* grouped or padded here: grouping
-    into a native ragged fleet plan requires the #193 resident interface.
+    into a native prepared fleet remains required production work under #149.
     """
     items = []
     for index, (snapshot, provider) in enumerate(problems):

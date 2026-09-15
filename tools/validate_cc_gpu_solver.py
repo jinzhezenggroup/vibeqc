@@ -1,4 +1,4 @@
-"""Audit #149 B on real CUDA: bounded GPU solver convergence, failure and replay.
+"""Audit the experimental #149 helper on real CUDA: bounded GPU solver convergence, failure and replay.
 
 This is a converged molecular endpoint, *not* the #149 A fixed-amplitude kernel
 parity (``tools/validate_cc_cuda``). The GPU solver uses the exact #148 control
@@ -68,7 +68,7 @@ def run(output, compiler, cache, *, compile_only=False):
     }
     target = compiler.target.architecture
     manifest = {
-        "scope": "#149 B bounded GPU solver; C API/batch delivered in the Python facade",
+        "scope": "Experimental host-staged CUDA validation helper; #149 B/C remain open",
         "base_dependency": "#148 CPU solver + #146 FP64 CUDA executor",
         "revision": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True

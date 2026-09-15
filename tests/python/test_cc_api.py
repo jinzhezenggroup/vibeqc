@@ -1,4 +1,4 @@
-"""#149 C: energy-only RCCSD API, capability record and isolated item batches.
+"""Experimental RCCSD facade, capability record and isolated item batches.
 
 These tests exercise the CPU facade end to end from committed HF/CCSD endpoints,
 with no native libraries and no GPU. The CUDA backend of the same facade is

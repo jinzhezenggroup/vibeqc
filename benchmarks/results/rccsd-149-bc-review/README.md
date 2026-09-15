@@ -20,6 +20,8 @@ result, replay state, source/toolchain manifest, test output and reproduction
 script. Verify it with `python -m tools.unpack_evidence
 benchmarks/results/rccsd-149-bc-review`.
 
-This qualifies correctness of the host-controlled ordinary-stream facade.
+This qualifies correctness of the experimental host-controlled facade only.
+It does not complete #149 B/C: the resident iteration and native registry/API
+acceptance requirements remain open.
 Amplitudes, residuals and integrals still cross the host/device boundary;
 there is no resident-loop, performance, force or native public-ABI claim.

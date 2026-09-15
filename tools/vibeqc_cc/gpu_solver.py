@@ -1,4 +1,7 @@
-"""Memory-bounded GPU RCCSD iteration over the #146 fixed-amplitude executor.
+"""Experimental host-staged RCCSD validation over the #146 CUDA executor.
+
+This helper does not satisfy #149 B/C: resident T/R iteration and native
+registry/prepared-batch integration remain required production work.
 
 The audited physical equations and final acceptance are exactly #148's: this
 module swaps only the residual-evaluation backend. Inputs, Fock/integral
@@ -10,7 +13,7 @@ Each iteration executes the whole damped-Jacobi TensorIR on one ordinary
 stream, so amplitudes and residuals are staged through host buffers on every
 iteration; those transfers are counted and reported explicitly. A
 device-resident T/R loop where the host reads only small residual scalars is
-#193's resident interface and is *not* implemented here. This solver is
+required by #149 step 2 and is *not* implemented here. This solver is
 therefore an honestly reported ordinary-stream host-controlled iteration, not
 a hidden resident acceleration, and it must not be advertised as such.
 """
@@ -239,7 +242,8 @@ def solve_gpu(
     CC DIIS, and expanded-DAG final acceptance) is identical to
     :func:`tools.vibeqc_cc.solve`. Only the residual/energy evaluation runs on
     the GPU; amplitudes and residuals cross the host boundary every iteration,
-    which the returned provenance reports explicitly. ``compiler`` and
+    which the returned provenance reports explicitly. This is an experimental
+    validation helper, not the resident production solver required by #149. ``compiler`` and
     ``cache`` are required so compilation is never implicit. Provider failures
     never silently switch to CPU CCSD: they raise, exactly as on the CPU path.
     """
