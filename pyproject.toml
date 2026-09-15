@@ -36,8 +36,14 @@ wheel.install-dir = "vibeqc"
 wheel.py-api = "py3"
 
 [tool.scikit-build.wheel.force-include]
+# JIT templates need their transitive local headers in installed wheels too.
 "src/tensor/cuda_runtime.cuh" = "vibeqc_compiler/assets/src/tensor/cuda_runtime.cuh"
+"src/tensor/cuda_error.hpp" = "vibeqc_compiler/assets/src/tensor/cuda_error.hpp"
+"src/tensor/metrics.hpp" = "vibeqc_compiler/assets/src/tensor/metrics.hpp"
+"src/runtime/allocation_measurement.hpp" = "vibeqc_compiler/assets/src/runtime/allocation_measurement.hpp"
 "src/dft/cuda_grid.cu" = "vibeqc_compiler/assets/src/dft/cuda_grid.cu"
+"src/dft/grid_task_view.cuh" = "vibeqc_compiler/assets/src/dft/grid_task_view.cuh"
+"src/dft/xc_point.hpp" = "vibeqc_compiler/assets/src/dft/xc_point.hpp"
 "src/dft/xc_runtime.cuh" = "vibeqc_compiler/assets/src/dft/xc_runtime.cuh"
 "src/integrals/range_moments.hpp" = "vibeqc_compiler/assets/src/integrals/range_moments.hpp"
 "src/integrals/eri_geometry.hpp" = "vibeqc_compiler/assets/src/integrals/eri_geometry.hpp"
