@@ -126,6 +126,13 @@ All public descriptors begin with `struct_size` and `abi_version`. ABI version
 0 is experimental: callers can detect compatibility, but semantic stability is
 not promised until a 1.0 release.
 
+## Performance engineering
+
+Performance-sensitive planners must account for scientific work amplification as well as
+peak memory. Source-driven reuse, resident-state borrowing, bounded fallbacks, and
+performance-qualification requirements are documented in
+[`performance_engineering.md`](performance_engineering.md).
+
 ## Runtime ownership
 
 Contexts own device selection and runtime resources. Systems and calculations
