@@ -19,8 +19,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 
-import numpy as np
-
 from .fused_schedule import FusedShellResult
 from .ir import (
     DerivativeSpec,
@@ -301,6 +299,10 @@ def _moment_roots_weights(
     independent high-accuracy oracle for the fixed-root interpolation tables
     and must never be lowered into a production device kernel.
     """
+
+    # Only the numerical oracle needs NumPy; build-time code generation must
+    # also work before the Python package dependencies have been installed.
+    import numpy as np
 
     if nroots < 1:
         raise ValueError("a Rys rule requires at least one root")

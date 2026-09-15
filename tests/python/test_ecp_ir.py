@@ -1,18 +1,39 @@
 """ECP scientific identities, derivative rules, and strict lowering boundaries."""
 
 import math
+import subprocess
+import sys
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
 from vibeqc_compiler.integral.ecp import build_ecp_ir, gaussian_roots
-from vibeqc_compiler.integral.ecp_projector import pair_roots, radial_roots
+from vibeqc_compiler.integral.ecp_projector import (
+    emit_ecp_quadrature_cpp,
+    pair_roots,
+    radial_roots,
+)
 from vibeqc_compiler.integral.ir import EcpRadialTerm, OperatorSpec
 from vibeqc_compiler.integral.ir_serialization import (
     integral_from_payload,
     integral_to_payload,
 )
 from vibeqc_compiler.integral.shell_spec import cartesian_components
+
+
+def test_ecp_codegen_without_site_packages(tmp_path):
+    """CPU builds generate this header before installing Python dependencies."""
+    generator = Path(__file__).resolve().parents[2] / "tools/generate_ecp_kernels.py"
+    output = tmp_path / "generated" / "generated_ecp_ao.cuh"
+    subprocess.run(
+        [sys.executable, "-I", "-S", str(generator), "--output", str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert output.read_text() == emit_ecp_quadrature_cpp()
 
 
 @pytest.mark.parametrize("weighted", [False, True])
