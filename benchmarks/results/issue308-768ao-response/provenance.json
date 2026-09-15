@@ -38,25 +38,34 @@
       "reconstruction_patch": "preparation-only.patch"
     },
     "default": {
-      "source_identity": "bf5881a50cffd2364afd35ef5eef40a0aa2beed78df4005390799baf8e38b14e",
-      "library_sha256": "34ad8fb7052f51e50eff7b4a63f105b2344511f382650d9962f59d0b268cad7a",
-      "source_patch_sha256": "4caa2aa96cb76367c6cab9777cc8de1c8d37050a77314e33c826f694c8c08d40",
-      "git_head": "743414dcb44a4a45821b900753dc1d0c4c1cf5c9",
-      "source_root": "/home/jzzeng/codes/qc-mixed-precision",
-      "resident_tests_sha256": "d52db6cbc1d85ae9c8fa46fcda0e9f436a67df78ef80cbc57dcb36fd6e750c15",
-      "test_attempts": [
-        {
-          "job": 9615,
-          "passed": 9,
-          "failed": 6,
-          "reason": "Negative tests expected private adapter detail strings; public batch API returns item numerical-failure status. Corrected assertions, and added successful baseline/recovery for the same plan. Native library unchanged."
-        }
-      ],
-      "raw_record": ".artifacts/issue308-768ao/v4/768ao-b1-forces-default.json",
-      "raw_record_sha256": "5ace6dd9c60b7ab3ebae08efffe6614166f0c432d21553b5383bd0a6544ad721",
+      "source_identity": "5053f0fa2e5a1986ae40c6a60c8236ae4f1d949ca7d731cdd1df3d1d1fe8f731",
+      "library_sha256": "52eafcfa6c253b7ff2ce5d322485fb6d96fd54f19ab621b396b4ccd564213256",
+      "source_patch_sha256": "89d617f9283e27e6bb41e67930d234a39df7b3b3a979a391946967ad013b8086",
+      "git_head": "9eeb060db2e2b55c9ed6d157543f8e04f57e8f47",
+      "change": "Compile-time GEAM capability detection. NVIDIA keeps GEAM; providers without it reuse the existing J/K gather.",
+      "raw_record": ".artifacts/issue308-768ao/v5/768ao-b1-forces-default.json",
+      "raw_record_sha256": "3a50495a4e3a735ea1d819dee692a29be471e4b574a4117cf480b475f0d751e1",
       "compact_record": "default-768ao.json",
-      "compact_record_sha256": "5d9c92cc0e5476f2ff87865e940dceec6a9a2e9b7fcd820eeab4e7953e4fed95",
-      "reconstruction": "Build this PR scientific source; native source identity and library hash are recorded above. The later fast-forward from 743414d to 886ed31 only updates pre-commit versions."
+      "compact_record_sha256": "0a7ab932cdf48f3b6e5d6929ac767a2be5950b792cbbe459fa49e223564951af",
+      "reconstruction": "Build this PR scientific source including the GEAM capability guard; native source identity and library hash are recorded above."
     }
+  },
+  "nvidia_nsight_before_portability_guard": {
+    "source_identity": "bf5881a50cffd2364afd35ef5eef40a0aa2beed78df4005390799baf8e38b14e",
+    "library_sha256": "34ad8fb7052f51e50eff7b4a63f105b2344511f382650d9962f59d0b268cad7a",
+    "source_patch_sha256": "4caa2aa96cb76367c6cab9777cc8de1c8d37050a77314e33c826f694c8c08d40",
+    "git_head": "743414dcb44a4a45821b900753dc1d0c4c1cf5c9",
+    "source_root": "/home/jzzeng/codes/qc-mixed-precision",
+    "resident_tests_sha256": "d52db6cbc1d85ae9c8fa46fcda0e9f436a67df78ef80cbc57dcb36fd6e750c15",
+    "test_attempts": [
+      {
+        "job": 9615,
+        "passed": 9,
+        "failed": 6,
+        "reason": "Negative tests expected private adapter detail strings; public batch API returns item numerical-failure status. Corrected assertions, and added successful baseline/recovery for the same plan. Native library unchanged."
+      }
+    ],
+    "commit": "9eeb060db2e2b55c9ed6d157543f8e04f57e8f47",
+    "note": "NVIDIA GEAM execution is preserved by the later compile-time capability guard. Final v5 force counters and numerical samples are checked separately."
   }
 }

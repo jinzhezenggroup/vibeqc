@@ -179,23 +179,23 @@
       "maximum_force_error_hartree_per_bohr": 1.3357993877693985e-10
     },
     "default": {
-      "cold_seconds": 107.187765810173,
+      "cold_seconds": 107.06881367601454,
       "warm_seconds": [
-        12.066800902830437,
-        12.082581978058442,
-        12.099290646146983,
-        12.07386595197022,
-        12.095859084045514
+        12.086437936173752,
+        12.082400992978364,
+        12.081664064899087,
+        12.084084928967059,
+        12.091174612985924
       ],
-      "warm_median_seconds": 12.082581978058442,
+      "warm_median_seconds": 12.084084928967059,
       "gpu4pyscf_warm_seconds": [
-        2.357855261070654,
-        2.3104127207770944,
-        2.354110107058659,
-        2.3593111620284617,
-        2.328649357892573
+        2.114066424081102,
+        2.1348507239017636,
+        2.5204563580919057,
+        2.3491114990320057,
+        2.5629817929584533
       ],
-      "gpu4pyscf_warm_median_seconds": 2.354110107058659,
+      "gpu4pyscf_warm_median_seconds": 2.3491114990320057,
       "native_iteration_branches": [
         [
           3
@@ -215,68 +215,71 @@
       ],
       "gpu4pyscf_iteration_branches": [
         [
-          2
+          1
+        ],
+        [
+          1
+        ],
+        [
+          3
         ],
         [
           2
         ],
         [
-          2
-        ],
-        [
-          2
-        ],
-        [
-          2
+          3
         ]
       ],
       "accuracy_all_pairs": [
         {
           "iteration_branches_match": false,
-          "maximum_energy_error_hartree": 3.956301952712238e-11,
-          "maximum_force_error_hartree_per_bohr": 1.5385750486152094e-10,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5397652076976076e-10,
           "repeat": 0
         },
         {
           "iteration_branches_match": false,
           "maximum_energy_error_hartree": 3.956301952712238e-11,
-          "maximum_force_error_hartree_per_bohr": 1.5380243779949954e-10,
+          "maximum_force_error_hartree_per_bohr": 1.5403158783178217e-10,
           "repeat": 1
         },
         {
-          "iteration_branches_match": false,
-          "maximum_energy_error_hartree": 4.0472514228895307e-11,
-          "maximum_force_error_hartree_per_bohr": 1.5374914709431753e-10,
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 3.865352482534945e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5380066144266014e-10,
           "repeat": 2
         },
         {
           "iteration_branches_match": false,
-          "maximum_energy_error_hartree": 3.956301952712238e-11,
-          "maximum_force_error_hartree_per_bohr": 1.5374559438063873e-10,
+          "maximum_energy_error_hartree": 4.1382008930668235e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5384684672048454e-10,
           "repeat": 3
         },
         {
-          "iteration_branches_match": false,
-          "maximum_energy_error_hartree": 4.0472514228895307e-11,
-          "maximum_force_error_hartree_per_bohr": 1.5376158159219333e-10,
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 3.956301952712238e-11,
+          "maximum_force_error_hartree_per_bohr": 1.5366743467970512e-10,
           "repeat": 4
         }
       ],
-      "maximum_energy_error_hartree": 4.0472514228895307e-11,
-      "maximum_force_error_hartree_per_bohr": 1.5385750486152094e-10
+      "maximum_energy_error_hartree": 4.1382008930668235e-11,
+      "maximum_force_error_hartree_per_bohr": 1.5403158783178217e-10
     }
   },
-  "warm_speedup_over_previous": 9.501646800701517,
-  "warm_speedup_over_preparation_only": 9.394219556388682,
-  "cold_speedup_over_previous": 9.817269237447768,
-  "ordinary_native_over_gpu4pyscf": 5.132547514166622,
-  "cross_engine_timing_limit": "Ordinary endpoint timings only: native has 3 SCF iterations and GPU4PySCF has 2 in every candidate pair, so there is no iteration-matched cross-engine speed claim. All five complete numerical comparisons are checked, not just the comparator selected gate pair.",
+  "warm_speedup_over_previous": 9.500465039006162,
+  "warm_speedup_over_preparation_only": 9.393051155893236,
+  "cold_speedup_over_previous": 9.828176102736629,
+  "ordinary_native_over_gpu4pyscf": 5.14410871256921,
+  "cross_engine_timing_limit": "Ordinary endpoint timings only; iteration branches are retained per sample. The ordinary ratio is not an iteration-matched cross-engine speed claim. All five complete numerical comparisons are checked, not just the comparator selected gate pair.",
   "intrusive": {
     "default_profile_controls": {
-      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-768ao/v4/libvibeqc.so",
       "VIBEQC_RESOURCE_CUDA_TEST": "1",
-      "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1"
+      "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1",
+      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-768ao/v5/libvibeqc.so"
     },
+    "final_trace_source_identity": "5053f0fa2e5a1986ae40c6a60c8236ae4f1d949ca7d731cdd1df3d1d1fe8f731",
+    "nsight_source_identity": "bf5881a50cffd2364afd35ef5eef40a0aa2beed78df4005390799baf8e38b14e",
+    "nsight_commit": "9eeb060db2e2b55c9ed6d157543f8e04f57e8f47",
     "response_counters": {
       "atom_coordinates": 288,
       "density_upload_bytes": 4718592,
@@ -474,8 +477,8 @@
       }
     },
     "timeline_database_sha256": "d1e94fc059c8ac6d34f82c2a72943c61799c2ab47fc465097132dfd5ba2dbfee",
-    "trace_sha256": "7f67a11cd3e5ea0d93f3719fc043e050179dff9d405c7ba3131b272aab093f26",
-    "note": "Actual CUDA activity comes from separate Nsight capture. Inclusive host/device times overlap and are not summed."
+    "trace_sha256": "5bcc04898800a8e0a4e0b04c22e6be60c9562d3cf88a89fb2c4ab932ba101ba8",
+    "note": "Actual CUDA activity is from the v4 Nsight capture before the portability-only GEAM capability guard. The final v5 trace confirms unchanged NVIDIA work counts. Inclusive host/device times overlap and are not summed."
   },
   "memory": {
     "borrowed_existing_jk_bytes": 10871635968,
@@ -578,7 +581,9 @@
     "memcheck_cases": 3,
     "memcheck_errors": 0,
     "benchmark_and_timeline_tests": 44,
-    "slurm_job": "9616"
+    "slurm_job": "9617",
+    "prior_regression_and_memcheck_job": "9616",
+    "evidence_and_ownership_tests": 98
   },
   "rollout": "Automatic only for 768/768-AO single-RHF sm_120 host-raw resident plans with three full J/K scratch tensors and compatible schedules. Other eligible shapes can opt in; source-backed/partial scratch cannot borrow. Explicit panel and diagnostic controls remain available.",
   "remaining": "GPU4PySCF parity is not reached. Generated derivative contraction and SCF RI-K dominate the remaining endpoint. Constrained/source-backed response and broad 768-AO changed-geometry timings are not qualified by this PR; #206/#308 remain open."

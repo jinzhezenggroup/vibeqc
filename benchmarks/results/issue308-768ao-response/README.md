@@ -1,26 +1,26 @@
 # Fix the 768-AO response scaling cliff
 
 The default 768-AO complete warm energy+force endpoint falls from
-**114.804 s to 12.083 s (9.50x faster)**.
+**114.804 s to 12.084 s (9.50x faster)**.
 This is the 96-atom water 32-mer, 768 orbital / 768 auxiliary spherical def2-SVP
 AOs, RHF, batch 1 on RTX 5090. All five paired force/energy comparisons pass
 unchanged **1e-8 Ha/Bohr / 1e-9 Ha** limits. Maximum candidate errors are
-1.539e-10 Ha/Bohr and 4.047e-11 Ha.
+1.540e-10 Ha/Bohr and 4.138e-11 Ha.
 
 | Native version | Cold complete endpoint (s) | Warm median of five (s) |
 | --- | ---: | ---: |
 | Previous shell implementation | 1052.291 | 114.804 |
 | CPU preparation removal only | 208.947 | 113.506 |
-| This PR, default selectors | 107.188 | 12.083 |
+| This PR, default selectors | 107.069 | 12.084 |
 
 The warm improvement attributable to the response change is
 **9.39x** versus the preparation-only build. Every native
 sample in all three records uses the same three-iteration warm branch, with a
 fixed engine-local post-cold density and deterministic ABBA ordering.
-The fresh GPU4PySCF ordinary median is 2.354 s:
-the remaining ordinary latency ratio is **5.13x**.
-GPU4PySCF uses two iterations in this run, so this is **not an iteration-matched
-cross-engine speed claim**. The earlier 2.14-s GPU4PySCF result used a different
+The fresh GPU4PySCF ordinary median is 2.349 s:
+the remaining ordinary latency ratio is **5.14x**.
+The iteration branches are retained per sample; the ordinary ratio is **not
+an iteration-matched cross-engine speed claim**. The earlier 2.14-s GPU4PySCF result used a different
 mixture of iteration branches. Full raw numerical samples, branches, inputs,
 versions and compaction provenance are retained beside this report.
 
@@ -42,6 +42,10 @@ Frechet map are reused, including retained/discarded metric directions.
 | Raw H2D bytes | 282,615,349,248 | 3,623,878,656 |
 | Raw DMA time (s) | 10.543 | 0.243 |
 | Host panel gather elements | 36,282,433,536 | 0 |
+
+Final-build trace counters confirm the same NVIDIA work counts after the
+CuMetal compatibility fix. CUDA durations and memory samples in this report
+come from the preceding v4 Nsight capture; its exact source identity is retained.
 
 The candidate submits one bulk raw upload. New response scratch remains
 **132,236,832 bytes, within 128 MiB**. The three borrowed
@@ -73,8 +77,7 @@ execution in auto mode. Explicit borrowing rejects incompatible controls or
 partial/source-backed scratch rather than overrunning it. The standalone
 storage selector supplies BLAS unless explicitly overridden. Providers without
 `cublasDgeam`, including CuMetal, reuse the existing J/K gather for raw layout
-conversion. A compile-time capability check preserves NVIDIA GEAM execution;
-no new transpose kernel is added.
+conversion. NVIDIA retains GEAM through a compile-time capability check.
 
 Removing unused CPU metric/transformed-B preparation fixes a separate cold
 cost and preserves the CPU oracle. A positive public DF budget retains its
@@ -91,12 +94,15 @@ at smaller RHF/UHF sizes; 768-AO changed-geometry wall times remain unmeasured.
 
 ## Validation and reproduction
 
-Slurm job 9616: **15 focused GPU tests, 193 existing GPU regressions,
+Slurm job 9617: **15 focused GPU tests and the final five-repeat
+768-AO endpoint plus complete counter trace**. Before the portability-only
+capability guard, job 9616 passed **193 existing GPU regressions and
 3 Compute Sanitizer cases with zero errors**. Focused cases cover RHF/UHF,
 batch 1/4, dense/occupied SCF, force/energy/force reuse, geometry changes,
 finite discarded metric modes against CPU/finite differences, bounded-plan
 rejection, and recovery after invalid controls. The benchmark/timeline suite
-has **44 passing tests**. Repository formatting, ownership and dependency checks pass.
+has **44 passing tests**, and **98 evidence/ownership tests** pass after refreshing
+the maintained ownership snapshot. Repository formatting and dependency checks pass.
 No force tolerance is relaxed. Historical batch-four provider tests now use
 32 MiB for their successful comparison; their 8-MiB failures were reproduced
 on the old library and are explicitly retained as out-of-memory tests.
