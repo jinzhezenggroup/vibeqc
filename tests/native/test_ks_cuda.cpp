@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "api/handles.hpp"
@@ -20,7 +21,7 @@
 namespace {
 using namespace vibeqc;
 using scf::reference::Matrix;
-void require(bool value, const char* message) {
+void require(bool value, const std::string& message) {
   if (!value) throw std::runtime_error(message);
 }
 core::System hydrogens(unsigned count, bool restricted, double shift = 0.0) {
@@ -35,8 +36,7 @@ core::System hydrogens(unsigned count, bool restricted, double shift = 0.0) {
          {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}});
   }
   std::string detail;
-  require(molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
-          detail.c_str());
+  require(molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS, detail);
   return system;
 }
 scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
@@ -111,8 +111,7 @@ void run_hydroxyl(bool pbe) {
        0,
        {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}}};
   std::string detail;
-  require(molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
-          detail.c_str());
+  require(molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS, detail);
   const dft::AoBasis basis(system);
   const dft::MolecularGrid grid(system);
   const scf::PreparedFockPlan cpu(system, nullptr, strategy(false, scf::FockBackend::Cpu));
@@ -202,13 +201,12 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   physical_check(cpu, basis, grid, pbe, result);
   const auto before_snapshot = plan.transfers();
   dft::CudaKsFinalStateToken token;
-  require(plan.final_state_token(token, snapshot_detail) == VIBEQC_STATUS_SUCCESS,
-          snapshot_detail.c_str());
+  require(plan.final_state_token(token, snapshot_detail) == VIBEQC_STATUS_SUCCESS, snapshot_detail);
   require(plan.transfers().final_state_d2h_bytes == before_snapshot.final_state_d2h_bytes,
           "CUDA KS token query transferred device state");
   dft::VerifiedKsFinalState snapshot;
   require(plan.read_final_state(token, false, snapshot, snapshot_detail) == VIBEQC_STATUS_SUCCESS,
-          snapshot_detail.c_str());
+          snapshot_detail);
   const auto snapshot_transfer = plan.transfers();
   const auto spins = restricted ? 1U : 2U;
   const auto expected_snapshot_bytes =
@@ -229,7 +227,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
           "CUDA KS final snapshot transfer accounting is incomplete");
   require(plan.read_final_state(token, true, snapshot, snapshot_detail) == VIBEQC_STATUS_SUCCESS &&
               snapshot.weighted_density.size() == spins,
-          snapshot_detail.c_str());
+          snapshot_detail);
   if (!restricted && atoms == 1)
     require(std::all_of(snapshot.weighted_density[1].begin(), snapshot.weighted_density[1].end(),
                         [](double value) { return value == 0.0; }),

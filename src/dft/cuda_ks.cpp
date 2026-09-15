@@ -584,6 +584,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
         final_state_ready = false;
         throw std::runtime_error("CUDA KS final-state eigensolver reported failure");
       }
+    // CUDA matrix products/eigensolvers store columns contiguously, whereas
+    // the detached reference frame uses row-major C[ao, orbital]. Symmetric
+    // D/F need no conversion; copying C verbatim would validate its transpose
+    // and reject even a converged two-orbital state.
+    for (auto& frame : candidate.spins)
+      for (std::size_t row = 0; row < n; ++row)
+        for (std::size_t column = row + 1; column < n; ++column)
+          std::swap(frame.vectors[row * n + column], frame.vectors[column * n + row]);
     if (token() != current)
       throw std::invalid_argument("CUDA KS final-state eligibility changed during export");
 
