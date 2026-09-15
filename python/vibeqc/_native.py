@@ -10,6 +10,8 @@ import ctypes
 import os
 from pathlib import Path
 
+PACKAGE_DIR = Path(__file__).resolve().parent
+
 ABI_VERSION = 0
 STATUS_SUCCESS = 0
 STATUS_INVALID_ARGUMENT = 1
@@ -515,10 +517,26 @@ class InactiveEigensolverProfileEntry(ctypes.Structure):
     ]
 
 
+def _installed_package_library() -> Path | None:
+    """Return the native library bundled beside the installed Python package."""
+    candidates: list[Path] = []
+    for runtime_dir in (
+        PACKAGE_DIR / "lib",
+        PACKAGE_DIR / "lib64",
+        PACKAGE_DIR / "bin",
+    ):
+        candidates.extend(sorted(runtime_dir.glob("libvibeqc.so*")))
+        candidates.extend(sorted(runtime_dir.glob("libvibeqc.dylib*")))
+        candidates.extend(sorted(runtime_dir.glob("vibeqc.dll")))
+    return candidates[0] if candidates else None
+
+
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
     if configured := os.environ.get("VIBEQC_LIBRARY"):
         candidates.append(Path(configured))
+    if bundled := _installed_package_library():
+        candidates.append(bundled)
     root = Path(__file__).resolve().parents[2]
     candidates.extend(
         [root / "build" / "libvibeqc.so", root / "build" / "libvibeqc.dylib"]
@@ -538,7 +556,7 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             break
     else:
         raise RuntimeError(
-            "VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build"
+            "VIBEQC native library was not found; set VIBEQC_LIBRARY, install a native wheel, or build in ./build"
         )
 
     if device == "cuda":

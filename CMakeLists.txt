@@ -16,6 +16,8 @@ option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
+option(VIBEQC_PYTHON_WHEEL
+       "Install one unversioned shared library for a Python wheel" OFF)
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
 option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
@@ -749,11 +751,16 @@ else()
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
 endif()
 
-set_target_properties(vibeqc PROPERTIES
-  VERSION ${PROJECT_VERSION}
-  SOVERSION 0
-  OUTPUT_NAME vibeqc
-)
+set_target_properties(vibeqc PROPERTIES OUTPUT_NAME vibeqc)
+if(NOT VIBEQC_PYTHON_WHEEL)
+  # Native SDK installs retain the normal SONAME chain. Wheel archives often
+  # dereference those symlinks and would otherwise store the large CUDA shared
+  # object multiple times, so Python wheels install one unversioned library.
+  set_target_properties(vibeqc PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 0
+  )
+endif()
 
 if(VIBEQC_BUILD_TESTS)
   vibeqc_add_native_tests()

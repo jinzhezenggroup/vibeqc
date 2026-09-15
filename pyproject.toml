@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=1.0.3"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "vibeqc"
@@ -20,15 +20,36 @@ autotune = ["pyscf>=2.8"]
 [project.scripts]
 vibeqc = "vibeqc.__main__:main"
 
-[tool.setuptools]
-package-dir = {"" = "python"}
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.build-type = "Release"
+cmake.args = [
+  "-DVIBEQC_BUILD_TESTS=OFF",
+  "-DVIBEQC_PYTHON_WHEEL=ON",
+  "-DCMAKE_INSTALL_LIBDIR=lib",
+  "-DCMAKE_INSTALL_BINDIR=bin",
+]
+wheel.packages = ["python/vibeqc", "python/vibeqc_compiler"]
+wheel.install-dir = "vibeqc"
+# VibeQC uses ctypes against a stable C ABI rather than a CPython extension,
+# so one native wheel works across all supported Python 3 versions.
+wheel.py-api = "py3"
 
-[tool.setuptools.packages.find]
-where = ["python"]
+[tool.scikit-build.wheel.force-include]
+"src/tensor/cuda_runtime.cuh" = "vibeqc_compiler/assets/src/tensor/cuda_runtime.cuh"
+"src/dft/cuda_grid.cu" = "vibeqc_compiler/assets/src/dft/cuda_grid.cu"
+"src/dft/xc_runtime.cuh" = "vibeqc_compiler/assets/src/dft/xc_runtime.cuh"
+"src/integrals/range_moments.hpp" = "vibeqc_compiler/assets/src/integrals/range_moments.hpp"
+"src/integrals/eri_geometry.hpp" = "vibeqc_compiler/assets/src/integrals/eri_geometry.hpp"
+"src/scf/cuda_weighted_eri.hpp" = "vibeqc_compiler/assets/src/scf/cuda_weighted_eri.hpp"
+"src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
+"include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
+"external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
 
-[tool.setuptools.package-data]
-vibeqc = ["data/*.json"]
-"vibeqc_compiler.integral" = ["*.json"]
+[tool.scikit-build.cmake.define]
+VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
+VIBEQC_ENABLE_AOT_SHELLS = { env = "VIBEQC_ENABLE_AOT_SHELLS", default = "ON" }
+VIBEQC_CUDA_ARCHITECTURES = { env = "VIBEQC_CUDA_ARCHITECTURES", default = "" }
 
 [tool.coverage.run]
 branch = true

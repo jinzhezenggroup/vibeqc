@@ -44,6 +44,19 @@ independent references, and performance claims require reproducible gates.
 Requirements: CMake 3.24+, a C++20 compiler, Python 3.10+, and optionally CUDA
 12.9 for the GPU backend.
 
+For a Python installation from source, `scikit-build-core` drives CMake and
+bundles the native library into the installed package:
+
+```bash
+python -m pip install .
+```
+
+Force a CPU-only Python build with `VIBEQC_ENABLE_CUDA=OFF`. For a CUDA build,
+set `CUDACXX` to the desired NVCC and select the target architecture, for
+example `VIBEQC_CUDA_ARCHITECTURES=120`.
+
+For native development and benchmark builds, configure CMake directly:
+
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_CUDA_COMPILER=/path/to/cuda/bin/nvcc \
@@ -108,16 +121,15 @@ For CPU only, configure with:
 cmake -S . -B build -G Ninja -DVIBEQC_ENABLE_CUDA=OFF
 ```
 
-Then build and install:
+Then build:
 
 ```bash
 cmake --build build -j10
-python -m pip install -e .
 ```
 
-The Python package finds `build/libvibeqc.so` automatically when built in the
-repository. For another build location, set `VIBEQC_LIBRARY` to the shared
-library path.
+The source-tree Python interface finds `build/libvibeqc.so` automatically. An
+installed wheel loads its bundled library first; `VIBEQC_LIBRARY` remains the
+explicit override for a different development or benchmark build.
 
 ## Python API
 
