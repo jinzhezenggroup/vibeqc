@@ -184,9 +184,10 @@ def test_jk_scratch_rejects_partial_source_plan(monkeypatch):
         with monkeypatch.context() as bounded:
             bounded.setenv("VIBEQC_DF_RESPONSE_STORAGE", "auto")
             expected = batch.execute(strict=True).items[0]
-        # The batch API exposes the item's failure status rather than the
-        # private response adapter's detail string. Establish a working source
-        # plan first so this assertion cannot pass from a preparation failure.
+        # generated_df_hf_gradient converts the adapter's INVALID_ARGUMENT to
+        # runtime_error; RHF finalization maps that to NUMERICAL_FAILURE, which
+        # the batch API renders here. Establish a working source plan first so
+        # this assertion cannot pass from a preparation failure.
         with pytest.raises(RuntimeError, match="numerical failure"):
             batch.execute(strict=True)
         monkeypatch.setenv("VIBEQC_DF_RESPONSE_STORAGE", "auto")
@@ -217,7 +218,8 @@ def test_jk_scratch_rejects_incompatible_controls_and_recovers(
         batch.execute(strict=True)
         with monkeypatch.context() as rejected:
             rejected.setenv(control, value)
-            # Batch status translation intentionally omits the adapter detail.
+            # The force callback throws runtime_error even for INVALID_ARGUMENT;
+            # batch finalization therefore exposes NUMERICAL_FAILURE here.
             with pytest.raises(RuntimeError, match="numerical failure"):
                 batch.execute(strict=True)
         # The storage selector supplies BLAS by default, without requiring an

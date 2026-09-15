@@ -275,7 +275,7 @@
     "default_profile_controls": {
       "VIBEQC_RESOURCE_CUDA_TEST": "1",
       "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1",
-      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-768ao/v5/libvibeqc.so"
+      "VIBEQC_LIBRARY": ".artifacts/issue308-768ao/v5/libvibeqc.so"
     },
     "final_trace_source_identity": "5053f0fa2e5a1986ae40c6a60c8236ae4f1d949ca7d731cdd1df3d1d1fe8f731",
     "nsight_source_identity": "bf5881a50cffd2364afd35ef5eef40a0aa2beed78df4005390799baf8e38b14e",
@@ -586,5 +586,90 @@
     "evidence_and_ownership_tests": 98
   },
   "rollout": "Automatic only for 768/768-AO single-RHF sm_120 host-raw resident plans with three full J/K scratch tensors and compatible schedules. Other eligible shapes can opt in; source-backed/partial scratch cannot borrow. Explicit panel and diagnostic controls remain available.",
-  "remaining": "GPU4PySCF parity is not reached. Generated derivative contraction and SCF RI-K dominate the remaining endpoint. Constrained/source-backed response and broad 768-AO changed-geometry timings are not qualified by this PR; #206/#308 remain open."
+  "remaining": "GPU4PySCF parity is not reached. Generated derivative contraction and SCF RI-K dominate the remaining endpoint. Constrained/source-backed response and broad 768-AO changed-geometry timings are not qualified by this PR; #206/#308 remain open.",
+  "supplemental_generic_control": {
+    "status": "cancelled_at_user_request_during_unmeasured_priming",
+    "slurm_job": "9618",
+    "controls": {
+      "VIBEQC_DF_RESPONSE_STORAGE": "panel",
+      "VIBEQC_DF_WEIGHTED_EXECUTION": "generic",
+      "VIBEQC_DF_SHELL_SCHEDULE": "warp",
+      "VIBEQC_DF_RESPONSE_ALGEBRA": "scalar",
+      "VIBEQC_DF_RAW_STAGING": "pageable"
+    },
+    "completed_progress": [
+      {
+        "stage": "started",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "batch": 1,
+        "properties": [
+          "energy",
+          "forces"
+        ]
+      },
+      {
+        "stage": "vibeqc_cold",
+        "seconds": 1282.1898762059864,
+        "convergence": [
+          {
+            "converged": true,
+            "iterations": 24,
+            "energy_change_hartree": 0.0,
+            "density_rms": 1.7708126440821321e-12,
+            "warm_start_used": false,
+            "warm_start_fallback": false,
+            "final_residuals": {
+              "energy_change_hartree": 0.0,
+              "density_rms": 1.7708126440821321e-12,
+              "orbital_gradient_norm": null
+            },
+            "warm_start": {
+              "used": false,
+              "fallback": false
+            }
+          }
+        ],
+        "metric": [
+          {
+            "bucket_id": 0,
+            "system_index": 0,
+            "effective_rank": 768,
+            "absolute_threshold": 2.3994330289515975e-07,
+            "condition_number": 25786.996213448292,
+            "solver_device_workspace_bytes": 19918488,
+            "solver_host_workspace_bytes": 0,
+            "device_resident_bytes": 14993095555,
+            "peak_device_bytes": 18641617439,
+            "host_resident_bytes": 76546489,
+            "peak_host_bytes": 3705156029,
+            "auxiliary_tile": 768,
+            "streamed": false
+          }
+        ]
+      },
+      {
+        "stage": "gpu4pyscf_cold",
+        "seconds": 13.144906771136448,
+        "convergence": [
+          {
+            "converged": true,
+            "iterations": 51,
+            "final_residuals": {
+              "energy_change_hartree": 0.0,
+              "density_rms": 1.483890149338225e-11,
+              "orbital_gradient_norm": 3.391618396251609e-11
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ]
+      }
+    ],
+    "measured_warm_repeats": 0,
+    "numerical_comparison_completed": false,
+    "explicit_combined_followup": "not_started; cancelled with the same job",
+    "interpretation": "Cold timings and convergence only. No full paired energy/force record or warm result was produced; excluded from acceptance and speedup claims. Existing five-repeat default validation remains the acceptance evidence."
+  }
 }

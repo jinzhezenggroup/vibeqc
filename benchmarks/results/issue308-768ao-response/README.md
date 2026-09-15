@@ -1,7 +1,8 @@
 # Fix the 768-AO response scaling cliff
 
-The default 768-AO complete warm energy+force endpoint falls from
-**114.804 s to 12.084 s (9.50x faster)**.
+With this PR's default selectors, the 768-AO complete warm energy+force endpoint
+is **12.084 s, down from 114.804 s (9.50x faster)** with the previous optimized
+shell combination.
 This is the 96-atom water 32-mer, 768 orbital / 768 auxiliary spherical def2-SVP
 AOs, RHF, batch 1 on RTX 5090. All five paired force/energy comparisons pass
 unchanged **1e-8 Ha/Bohr / 1e-9 Ha** limits. Maximum candidate errors are
@@ -103,6 +104,13 @@ finite discarded metric modes against CPU/finite differences, bounded-plan
 rejection, and recovery after invalid controls. The benchmark/timeline suite
 has **44 passing tests**, and **98 evidence/ownership tests** pass after refreshing
 the maintained ownership snapshot. Repository formatting and dependency checks pass.
+A supplemental final-library generic control (job 9618, explicit
+panel/generic/warp/scalar/pageable) completed cold execution in 1282.190 s,
+then was stopped at the user's request during unmeasured priming. No generic
+warm sample or complete paired numerical record was produced, and the queued
+explicit-combination follow-up did not start. These cold-only observations are
+retained in the summary and excluded from acceptance and speedup claims.
+
 No force tolerance is relaxed. Historical batch-four provider tests now use
 32 MiB for their successful comparison; their 8-MiB failures were reproduced
 on the old library and are explicitly retained as out-of-memory tests.
