@@ -155,6 +155,7 @@ add_library(vibeqc SHARED
   src/dft/ao_grid.cpp
   src/dft/bridge.cpp
   src/dft/grid.cpp
+  src/dft/ks_final_state.cpp
   src/dft/rks.cpp
   src/dft/uks.cpp
   src/dft/xc.cpp
