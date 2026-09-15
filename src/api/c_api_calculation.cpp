@@ -43,9 +43,18 @@ void vibeqc_calculation_destroy(vibeqc_calculation* calculation) {
 vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
                                          vibeqc_result_descriptor* output) {
   vibeqc::runtime::host_trace::Region trace("calculation_execute");
-  if (calculation == nullptr || output == nullptr) {
+  if (calculation == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  std::lock_guard<std::recursive_mutex> context_lock(calculation->context->mutex);
+  // An attempted execution revokes any internal final-state token even if
+  // the output descriptor is rejected before the method can run.
+  try {
+    calculation->plan->invalidate_result();
+  } catch (...) {
+    return vibeqc::api::map_exception(&calculation->context->last_detail);
+  }
+  if (output == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   if (!vibeqc::api::valid_descriptor(output)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
@@ -57,7 +66,6 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 
-  std::lock_guard<std::recursive_mutex> context_lock(calculation->context->mutex);
   // Reset to the conservative FP64 record before the run so a failed or
   // fallback execution can never expose the previous successful mixed run.
   calculation->precision = {};

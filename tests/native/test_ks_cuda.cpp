@@ -8,8 +8,10 @@
 #include <stdexcept>
 #include <vector>
 
+#include "api/handles.hpp"
 #include "dft/cuda_ks.hpp"
 #include "dft/xc.hpp"
+#include "methods/dft_method.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_ledger.hpp"
 #include "scf/mean_field.hpp"
@@ -365,12 +367,93 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
             << " iterations=" << result.iterations
             << " residual=" << result.dft_diagnostic.physical_residual << '\n';
 }
+/** Exercise the C validation layer, which can reject a request before the
+ * prepared method's execute() invalidation is reached. */
+void rejected_api_requests_revoke_tokens() {
+  vibeqc_context_descriptor context_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                         VIBEQC_BACKEND_CUDA};
+  vibeqc_context* raw_context{};
+  require(vibeqc_context_create(&context_spec, &raw_context) == VIBEQC_STATUS_SUCCESS,
+          "KS token API test context failed");
+  std::unique_ptr<vibeqc_context, decltype(&vibeqc_context_destroy)> context(
+      raw_context, vibeqc_context_destroy);
+  vibeqc_system system{hydrogens(2, true)};
+  vibeqc_method_descriptor method{sizeof(vibeqc_method_descriptor),
+                                  VIBEQC_ABI_VERSION,
+                                  VIBEQC_METHOD_LDA_RKS,
+                                  150,
+                                  8,
+                                  1e-12,
+                                  1e-10,
+                                  1e-12,
+                                  VIBEQC_DENSITY_FITTING_NONE,
+                                  nullptr,
+                                  1e-10,
+                                  0};
+  vibeqc_calculation* raw_calculation{};
+  require(vibeqc_calculation_prepare(context.get(), &system, &method, &raw_calculation) ==
+              VIBEQC_STATUS_SUCCESS,
+          "KS token API test preparation failed");
+  std::unique_ptr<vibeqc_calculation, decltype(&vibeqc_calculation_destroy)> calculation(
+      raw_calculation, vibeqc_calculation_destroy);
+  std::string detail;
+  dft::CudaKsFinalStateToken token;
+  dft::VerifiedKsFinalState snapshot;
+  for (int rejected = 0; rejected < 3; ++rejected) {
+    vibeqc_result_descriptor output{};
+    output.struct_size = sizeof(output);
+    output.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_execute(calculation.get(), &output) == VIBEQC_STATUS_SUCCESS &&
+                methods::detail::dft_final_state_token(*calculation->plan, token, detail) ==
+                    VIBEQC_STATUS_SUCCESS,
+            "KS calculation failed to publish current token");
+    if (rejected == 1) ++output.abi_version;
+    if (rejected == 2) output.force_count = 1;
+    require(vibeqc_calculation_execute(calculation.get(), rejected == 0 ? nullptr : &output) !=
+                VIBEQC_STATUS_SUCCESS,
+            "malformed KS calculation unexpectedly executed");
+    require(methods::detail::read_dft_final_state(*calculation->plan, token, false, snapshot,
+                                                  detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+            "rejected C calculation request retained a previous token");
+  }
+
+  const vibeqc_system* systems[]{&system, &system};
+  vibeqc_batch* raw_batch{};
+  require(vibeqc_batch_prepare(context.get(), systems, 2, &method, VIBEQC_BATCH_ENABLE_WARM_STARTS,
+                               &raw_batch) == VIBEQC_STATUS_SUCCESS,
+          "KS token batch preparation failed");
+  std::unique_ptr<vibeqc_batch, decltype(&vibeqc_batch_destroy)> batch(raw_batch,
+                                                                       vibeqc_batch_destroy);
+  for (int rejected = 0; rejected < 3; ++rejected) {
+    vibeqc_batch_item_result_descriptor outputs[2]{};
+    for (auto& output : outputs) {
+      output.struct_size = sizeof(output);
+      output.abi_version = VIBEQC_ABI_VERSION;
+    }
+    require(vibeqc_batch_execute(batch.get(), nullptr, 0, outputs, 2) == VIBEQC_STATUS_SUCCESS,
+            "KS token batch execution failed");
+    dft::CudaKsFinalStateToken tokens[2];
+    for (std::size_t i = 0; i < 2; ++i)
+      require(methods::detail::dft_final_state_token(*batch->plan, i, tokens[i], detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              "KS batch failed to publish current token");
+    if (rejected == 2) ++outputs[1].abi_version;
+    require(vibeqc_batch_execute(batch.get(), nullptr, 0, rejected == 0 ? nullptr : outputs,
+                                 rejected == 1 ? 1 : 2) != VIBEQC_STATUS_SUCCESS,
+            "malformed KS batch unexpectedly executed");
+    for (std::size_t i = 0; i < 2; ++i)
+      require(methods::detail::read_dft_final_state(*batch->plan, i, tokens[i], false, snapshot,
+                                                    detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
+              "rejected C batch request retained a previous token");
+  }
+}
 }  // namespace
 
 int main() {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    rejected_api_requests_revoke_tokens();
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);
       run_hydroxyl(pbe);

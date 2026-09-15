@@ -418,12 +418,20 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
                                    vibeqc_batch_item_result_descriptor* results,
                                    uint32_t result_count) {
   vibeqc::runtime::host_trace::Region trace("batch_execute");
-  if (batch == nullptr || results == nullptr) {
+  if (batch == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   // Invalidation mutates shared diagnostics even when validation rejects the
   // replay, so it belongs to the same serialized operation as execution.
   std::lock_guard<std::recursive_mutex> context_lock(batch->context->mutex);
+  // Method-owned tokens must follow the same invalidation boundary as the
+  // cached diagnostics, including malformed descriptors and output counts.
+  try {
+    batch->plan->invalidate_result();
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+  if (results == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   std::fill(batch->last_fock_builds.begin(), batch->last_fock_builds.end(), 0);
   // Invalidate before validation/execution so rejected or throwing replays
   // cannot expose a record from the previous run.

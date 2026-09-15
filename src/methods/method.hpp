@@ -202,6 +202,8 @@ class PreparedBatch {
    * A false force request skips response evaluation for the complete fleet. */
   virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates,
                                                bool compute_forces = true) = 0;
+  /** Revoke exported-state eligibility even when API validation rejects a replay. */
+  virtual void invalidate_result() {}
   virtual void clear_warm_starts() = 0;
   [[nodiscard]] virtual std::size_t warm_density_size(std::size_t index) const = 0;
   [[nodiscard]] virtual const std::optional<scf::HfWarmState>& warm_state(

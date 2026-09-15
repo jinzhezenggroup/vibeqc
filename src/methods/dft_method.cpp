@@ -413,10 +413,14 @@ class KsPreparedBatch final : public PreparedBatch {
 
   std::size_t size() const noexcept override { return systems_.size(); }
 
-  std::vector<BatchItemResult> execute(const Coordinates& coordinates,
-                                       bool compute_forces) override {
+  void invalidate_result() override {
     for (auto& item : items_)
       if (item.plan) item.plan->invalidate_final_state();
+  }
+
+  std::vector<BatchItemResult> execute(const Coordinates& coordinates,
+                                       bool compute_forces) override {
+    invalidate_result();
     if (compute_forces)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "KS nuclear gradients are tracked separately in issue #163");
