@@ -16,6 +16,8 @@ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& en
                                   std::string& detail, std::span<const std::int32_t> alpha,
                                   std::span<const std::int32_t> beta) {
   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
+  // No dimensions are supplied here: the helper's zero defaults keep auto
+  // disabled until every runtime qualification below succeeds.
   enabled = df_occupied_exchange_requested();
   if (value && !enabled && std::string(value) != "dense" && std::string(value) != "auto") {
     detail = "VIBEQC_DF_EXCHANGE must be auto, dense or occupied";

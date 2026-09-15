@@ -200,9 +200,9 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       // The low-rank endpoint is qualified only for this exact RHF rank and
       // device. The token is only a selection hint here; full owner, model,
       // density and device-generation validation below authorizes execution.
-      automatic_occupied = borrow &&
-                           std::string_view(properties.name) == "NVIDIA GeForce RTX 5090" &&
-                           final_state && final_state->identity.occupied[0] == 160;
+      automatic_occupied =
+          borrow && std::string_view(properties.name) == "NVIDIA GeForce RTX 5090" && final_state &&
+          final_state->identity.occupied.size() == 1 && final_state->identity.occupied[0] == 160;
     }
   }
   CudaDfResponseBuffers buffers;

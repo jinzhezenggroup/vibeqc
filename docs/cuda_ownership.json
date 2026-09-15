@@ -1654,7 +1654,7 @@
     },
     "df_response_weights": {
       "owner": "scf_tensor",
-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check.",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Within that resident domain, automatic occupied-space response additionally requires rank-160 RHF, the actual RTX 5090 identity, and a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta.",
       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
       "retained_duplicate_reason": "oracle",
@@ -1666,7 +1666,10 @@
         "benchmarks/results/issue308-shell-schedules/summary.json",
         "tests/python/test_df_resident_response_cuda.py",
         "benchmarks/results/issue308-768ao-response/README.md",
-        "benchmarks/results/issue308-768ao-response/summary.json"
+        "benchmarks/results/issue308-768ao-response/summary.json",
+        "tests/python/test_df_occupied_response_cuda.py",
+        "tests/native/test_df_occupied_response.cpp",
+        "benchmarks/results/issue377-379-df/README.md"
       ],
       "status": "native_baseline_with_opt_in_control"
     }

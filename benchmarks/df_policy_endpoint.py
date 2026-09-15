@@ -21,7 +21,7 @@ import numpy as np
 from vibeqc import Calculator, _native
 
 from benchmarks._cases import benchmark_cases
-from benchmarks.compare_gpu4pyscf_batch import convergence_payload
+from benchmarks.compare_gpu4pyscf_batch import convergence_payload, scaled_geometries
 from benchmarks.df_component_ledger import aggregate, read_trace
 
 CASES = {
@@ -30,6 +30,66 @@ CASES = {
     384: "water-hexadecamer-2s4-def2-svp-spherical",
     768: "water-32mer-4s4-def2-svp-spherical",
 }
+
+
+def independent_reference(reference, aos, energies, forces, basis_metadata):
+    """Reject stale scientific metadata and broadcasting before numerical gates.
+
+    Geometry uses the comparison runner's deterministic batch-one round trip;
+    basis fingerprints bind the retained reference to the active basis pack.
+    No native library or GPU is needed to validate an already loaded result.
+    """
+    case = benchmark_cases()[CASES[aos]]
+    expected = {
+        "case": CASES[aos],
+        "ao_count": aos,
+        "batch_size": 1,
+        "method": case.method,
+        "charge": case.charge,
+        "multiplicity": case.multiplicity,
+        "basis_representation": case.basis_representation,
+        "auxiliary_basis": "same as orbital basis",
+        "properties": ["energy", "forces"],
+        "density_fitting": "cuda",
+        "density_fitting_relative_threshold": 1e-10,
+        "density_fitting_memory_budget_bytes": 0,
+        "energy_tolerance": 1e-12,
+        "density_tolerance": 1e-10,
+        "reference_gradient_tolerance": 1e-10,
+        "max_iterations": 100,
+        "vibeqc_screening_tolerance": 1e-12,
+        "direct_scf_tolerance": 1e-14,
+        "geometries": [
+            [
+                {"element": element, "coordinates_bohr": list(position)}
+                for element, position in atoms
+            ]
+            for atoms in scaled_geometries(case.atoms, 1)
+        ],
+    }
+    workload = reference["workload"]
+    for key, value in expected.items():
+        if workload.get(key) != value:
+            raise RuntimeError(f"independent reference workload differs: {key}")
+    retained_basis = [
+        row.get("basis_metadata") for row in reference["vibeqc"]["cold_convergence"]
+    ]
+    # Live electron metadata contains tuples; JSON necessarily retains lists.
+    # Canonicalize that representation without weakening identity comparisons.
+    actual_basis = json.loads(json.dumps(basis_metadata))
+    if not all(actual_basis) or retained_basis != actual_basis:
+        raise RuntimeError("independent reference basis metadata differs")
+    expected_energy = np.asarray(reference["gpu4pyscf"]["energies_hartree"])
+    expected_forces = np.asarray(reference["gpu4pyscf"]["forces_hartree_per_bohr"])
+    for label, actual, retained in (
+        ("energy", energies, expected_energy),
+        ("force", forces, expected_forces),
+    ):
+        if actual.shape != retained.shape:
+            raise RuntimeError(f"independent reference {label} shape differs")
+        if not np.all(np.isfinite(retained)):
+            raise RuntimeError(f"independent reference {label} is not finite")
+    return expected_energy, expected_forces
 
 
 def main():
@@ -99,9 +159,11 @@ def main():
     }
 
     def save():
+        """Keep raw numerical evidence even if a subsequent gate fails."""
         args.output.write_text(json.dumps(payload, indent=2) + "\n")
 
     def execute(batch):
+        """Time the complete strict energy-and-force endpoint."""
         start = time.perf_counter()
         result = batch.execute(strict=True, properties=("energy", "forces"))
         seconds = time.perf_counter() - start
@@ -133,16 +195,15 @@ def main():
         expected_energy = cold.energies
         expected_forces = np.array([item.forces for item in cold.items])
         if args.reference:
-            reference = json.loads(args.reference.read_text())
-            if reference["workload"]["case"] != CASES[args.aos]:
-                raise RuntimeError("independent reference case differs")
-            expected_energy = np.asarray(reference["gpu4pyscf"]["energies_hartree"])
-            expected_forces = np.asarray(
-                reference["gpu4pyscf"]["forces_hartree_per_bohr"]
+            reference_bytes = args.reference.read_bytes()
+            expected_energy, expected_forces = independent_reference(
+                json.loads(reference_bytes),
+                args.aos,
+                expected_energy,
+                expected_forces,
+                [item.basis_metadata for item in cold.items],
             )
-            payload["reference_sha256"] = hashlib.sha256(
-                args.reference.read_bytes()
-            ).hexdigest()
+            payload["reference_sha256"] = hashlib.sha256(reference_bytes).hexdigest()
         save()
         for repeat in range(args.repeats):
             policies = args.policies if repeat % 2 == 0 else args.policies[::-1]
@@ -159,6 +220,13 @@ def main():
                 os.environ.pop("VIBEQC_DF_PROGRESS_TRACE", None)
                 os.environ.pop("VIBEQC_DF_TRACE", None)
                 forces = np.array([item.forces for item in result.items])
+                if (
+                    result.energies.shape != expected_energy.shape
+                    or forces.shape != expected_forces.shape
+                    or not np.all(np.isfinite(result.energies))
+                    or not np.all(np.isfinite(forces))
+                ):
+                    raise RuntimeError("endpoint returned invalid energy/force arrays")
                 sample = {
                     "policy": policy,
                     "repeat": repeat,

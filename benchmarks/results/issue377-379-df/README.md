@@ -120,17 +120,25 @@ retains that frozen source rather than a later dirty checkout. An explicit
 `vibeqc_df_source_probe inputs/768.txt 3 report.jsonl raw.bin` generates the
 full raw source. The inputs contain unnormalized physical shell primitives;
 the native molecule owner applies its usual normalization. For fixed K,
-append the row-major array from `inputs/768-occupied-coefficients.npz` to
-`inputs/768.txt` (for example with `numpy.savetxt`, using `%.17g`)
-before invoking `vibeqc_df_occupied_probe INPUT 5 0 0 arrays.bin`. The retained
-input metadata identifies the independent converged checkpoint and exact
-orthogonality check. Large raw/K arrays, logs, binaries and detailed traces
+append the row-major `coefficients` array from the **Git-tracked**
+[`inputs/768-occupied-coefficients.npz`](inputs/768-occupied-coefficients.npz)
+to `inputs/768.txt` (for example with `numpy.savetxt`, using `%.17g`)
+before invoking `vibeqc_df_occupied_probe INPUT 5 0 0 arrays.bin`. The NPZ
+is available in a clean checkout and has SHA-256
+`9eca543c2e88db47b30f11dd29ca6c20fcd691a836a2593a82da04ade69da8a2`.
+The retained input metadata identifies the independent converged checkpoint
+and exact orthogonality check. Large raw tensors and **output** density/K
+arrays, logs, binaries and detailed traces
 remain outside Git; `local-artifacts.json` pins their paths, sizes and SHA-256.
 
 `source-versions.json` pins each cited library, patch and reconstruction base.
-The main implementation patches use master f23e041; the final precedence
-guard is an incremental patch against 4be1c3a. The runner's `git_head` records the checkout at
-invocation; a pinned library can have an older reconstruction base.
+The main implementation patches use master f23e041; the precedence guard
+is an incremental patch against 4be1c3a. The review-v11 patch against 4f3f2dc
+adds a bounds check for malformed automatic-response tokens; valid-token
+execution and the cited performance samples are unchanged. Its focused CUDA,
+sanitizer, reference-contract and independent endpoint checks are recorded in
+`validation.json`. The runner's `git_head` records the checkout at invocation;
+a pinned library can have an older reconstruction base.
 Compact endpoint files omit only repeated basis metadata, which is retained
 once, and record the full original JSON hash. Historical provisional probe
 results with an incorrect lane label are excluded from final causal counts.

@@ -127,7 +127,7 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
 
 
 @pytest.mark.parametrize("space", ["dense", "occupied"])
-def test_jk_scratch_retains_discarded_metric_response(monkeypatch, space):
+def test_jk_scratch_retains_discarded_metric_response(monkeypatch, tmp_path, space):
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
     basis = [Shell(i, 0, (Primitive(1.0, 1.0),)) for i in range(2)]
@@ -150,6 +150,8 @@ def test_jk_scratch_retains_discarded_metric_response(monkeypatch, space):
     select_response(monkeypatch, "jk-scratch")
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", space)
+    trace = tmp_path / "metric-response.jsonl"
+    monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
     calc = Calculator(device="cuda", density_fitting="cuda", **common)
     with calc.prepare_batch([atoms]) as batch:
         actual = batch.execute(strict=True).items[0]
@@ -157,6 +159,11 @@ def test_jk_scratch_retains_discarded_metric_response(monkeypatch, space):
         assert diagnostic.effective_rank == 2
         np.testing.assert_allclose(actual.energy, reference.energy, atol=1e-9, rtol=0)
         np.testing.assert_allclose(actual.forces, reference.forces, atol=3e-9, rtol=0)
+    responses = [r for r in read_trace(trace) if r["operation"] == "force_response"]
+    assert len(responses) == 1
+    assert (responses[0]["counters"].get("response_occupied_rank", 0) > 0) == (
+        space == "occupied"
+    )
     for step in (2e-4, 5e-5):
         energies = []
         for sign in (1, -1):

@@ -39,6 +39,13 @@
     "base_commit": "4be1c3a1a8189d804dce925a6585696072bb5a96",
     "library_sha256": "f37aa91b7f5b77e22799c53f6e2e773fd953057d7d5f53edf5bb24405a32e66a",
     "patch_sha256": "223684d322eb2814765ba0f7975ce436399f5dbfa73906433ef88cecf4307cef",
-    "role": "final; explicit occupied override precedes automatic backend filtering"
+    "role": "precedence fix; same measured valid-token execution as review-v11"
+  },
+  {
+    "version": "review-v11",
+    "base_commit": "4f3f2dcd1da80aac392ccdfc7834027eef8baa08",
+    "library_sha256": "5195dd40e59df3b38e27f2419bd0134aab746f9e31af5df5cc4ed6227c9a6dc6",
+    "patch_sha256": "0f834b30bad2608e3922e9a73db4e4b7b7a73b8d3bb26ae8dc55788134d6ebfb",
+    "role": "review follow-up: bound automatic token occupancy indexing; valid-token measured execution unchanged"
   }
 ]

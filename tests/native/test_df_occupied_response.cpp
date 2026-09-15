@@ -19,6 +19,34 @@ void require(bool value, const std::string& detail) {
   if (!value) throw std::runtime_error(detail);
 }
 void check(cudaError_t error) { require(error == cudaSuccess, cudaGetErrorString(error)); }
+/** Exercise automatic token inspection without allocating full 768-AO tensors.
+ * An unresolved metric stops execution after selection, before the placeholder
+ * scratch addresses can be used by a device consumer.
+ */
+void malformed_automatic_token() {
+  setenv("VIBEQC_DF_RESPONSE_STORAGE", "auto", 1);
+  setenv("VIBEQC_DF_RESPONSE_SPACE", "auto", 1);
+  CudaDensityFittingJkPlan plan;
+  plan.device_id = 0;
+  plan.batch_size = 1;
+  plan.nbf = plan.naux = plan.row_tile = plan.auxiliary_tile = 768;
+  double unused = 0;
+  plan.auxiliary_tile_values = plan.exchange_intermediate = plan.exchange_contributions = &unused;
+  plan.metric_response_valid = {0};
+  vibeqc::core::System orbital;
+  orbital.atoms = {{1, {0, 0, 0}}};
+  orbital.shells.assign(768, {0, 0, {{1, 1}}});
+  const std::vector<DensityFittingDensityResponse> terms{{{}, 1, .25}};
+  std::vector<double> derivative;
+  std::string detail;
+  CudaDfFinalStateToken empty;
+  const auto status = execute_cuda_density_fitting_generated_force_response(
+      &plan, 0, orbital, orbital, {}, {}, terms, 0, 4U << 20, 0, derivative, detail, nullptr,
+      &empty);
+  require(status == VIBEQC_STATUS_NUMERICAL_FAILURE &&
+              detail == "DF metric rank crossing: retained/discarded subspaces are unresolved",
+          "malformed automatic token did not reach the metric guard");
+}
 void lifecycle(bool uhf) {
   setenv("VIBEQC_DF_EXCHANGE", "occupied", 1);
   setenv("VIBEQC_DF_RESPONSE_STORAGE", "jk-scratch", 1);
@@ -106,6 +134,7 @@ void lifecycle(bool uhf) {
 }  // namespace
 int main() {
   try {
+    malformed_automatic_token();
     lifecycle(false);
     lifecycle(true);
   } catch (const std::exception& error) {
