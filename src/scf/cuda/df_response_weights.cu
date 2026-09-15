@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_response_weights.cuh"
 
 namespace vibeqc::scf {
@@ -182,8 +183,24 @@ static cudaError_t contract_resident_response(
   {
     runtime::cuda_trace::TraceRegion transpose("raw_value_resident_transpose", stream);
     // Host [ij,Q] is column-major [Q,ij]; turn it into column-major [ij,Q].
-    blas_check(cublasDgeam(blas, CUBLAS_OP_T, CUBLAS_OP_T, mi, ai, &one, weights, ai, &zero,
-                           weights, ai, raw, mi));
+    // CuMetal exposes a subset of cuBLAS without GEAM. A dependent capability
+    // check keeps NVIDIA's fast transpose and reuses the existing J/K gather
+    // on such providers, without adding another layout or derivative kernel.
+    const auto transpose_raw = [&](auto handle) {
+      if constexpr (requires {
+                      cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mi, ai, &one, weights, ai,
+                                  &zero, weights, ai, raw, mi);
+                    }) {
+        blas_check(cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mi, ai, &one, weights, ai, &zero,
+                               weights, ai, raw, mi));
+      } else {
+        cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix,
+                                                     a, 0, 0, a, weights, raw);
+      }
+    };
+    transpose_raw(blas);
+    const auto error = cudaGetLastError();
+    if (error != cudaSuccess) return error;
     runtime::cuda_trace::trace_counter("raw_resident_transpose_elements", matrix * a);
   }
   runtime::cuda_trace::TraceRegion metric_inverse("metric_inverse", stream);

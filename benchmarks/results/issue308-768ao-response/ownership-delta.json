@@ -1,6 +1,6 @@
 {
   "added": {
-    "scientific": 163
+    "scientific": 177
   },
   "definition": "Nonblank/noncomment physical code lines, SequenceMatcher(autojunk=False); unchanged lines changing role are separate from physical edits.",
   "net_role_delta": {
@@ -8,7 +8,7 @@
     "oracle": 0,
     "performance_exception": 0,
     "runtime": 0,
-    "scientific": 151
+    "scientific": 165
   },
   "removed": {
     "scientific": 12

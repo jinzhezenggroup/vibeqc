@@ -71,7 +71,10 @@ single-system RHF, sm_120 resident shape, with full J/K scratch capacity.
 Explicit incompatible algebra/schedules and attribution probes keep panel
 execution in auto mode. Explicit borrowing rejects incompatible controls or
 partial/source-backed scratch rather than overrunning it. The standalone
-storage selector supplies BLAS unless explicitly overridden.
+storage selector supplies BLAS unless explicitly overridden. Providers without
+`cublasDgeam`, including CuMetal, reuse the existing J/K gather for raw layout
+conversion. A compile-time capability check preserves NVIDIA GEAM execution;
+no new transpose kernel is added.
 
 Removing unused CPU metric/transformed-B preparation fixes a separate cold
 cost and preserves the CPU oracle. A positive public DF budget retains its
@@ -134,7 +137,7 @@ For the older implementations, use the base commits and exact patches in
 `VIBEQC_DF_RESPONSE_BUDGET_BYTES` while keeping the public DF budget zero.
 Large raw traces/libraries remain outside Git; their hashes, numerical samples,
 compact actual-work summaries and [ownership delta](ownership-delta.json) are retained.
-The conservative CUDA ledger counts +163/-12 scientific adapter lines and
+The conservative CUDA ledger counts +177/-12 scientific adapter lines and
 +0/-0 runtime CUDA lines; no derivative kernel family or generated capability
 is added. The bounded panel route is still needed where full scratch is absent;
 the separately recorded serial metric-dot oracle retains its existing retirement gate.
