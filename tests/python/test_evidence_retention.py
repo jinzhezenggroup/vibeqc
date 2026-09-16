@@ -20,6 +20,33 @@ from tools.vibeqc_validation.schema import block_error, new_evidence, outcome
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_cli_publication_uses_git_paths_on_windows(monkeypatch, corrupt, capsys):
+    from pathlib import PureWindowsPath
+
+    from tools import evidence as cli
+
+    class WindowsPaths(PureWindowsPath):
+        def resolve(self):
+            return self
+
+    data = b"measurement"
+    manifest = {
+        "files": [{"path": "samples.json", "bytes": len(data), "sha256": digest(data)}]
+    }
+    blobs = {
+        cli.POLICY_PATH: json.dumps({**policy(), "review_size_bytes": 4096}).encode(),
+        "benchmarks/results/test/publication.json": json.dumps(manifest).encode(),
+        "benchmarks/results/test/samples.json": data + (b"changed" if corrupt else b""),
+    }
+    monkeypatch.setattr(cli, "Path", WindowsPaths)
+    monkeypatch.setattr(cli, "tracked_blobs", lambda *_: blobs)
+    monkeypatch.setattr(cli.sys, "argv", ["evidence.py", "check"])
+    assert cli.main() == int(corrupt)
+    output = capsys.readouterr().out
+    assert ("missing/changed" in output) == corrupt
+
+
 def policy(**exceptions):
     return {
         "schema": "vibeqc.retention-policy.v1",

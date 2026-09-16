@@ -59,14 +59,21 @@ cases. Value-only calls do not read derivative slots.
 This migration preserves the initial domain and one-radial-shell schedule.
 The independent `src/integrals/ecp.cpp` CPU implementation remains the public
 CPU fallback and a numerical oracle; it intentionally does not call these
-generated contractions. The CUDA adapter retains primitive/component
-accumulation, HF density consumption, allocation/launch/scatter and grid
+generated contractions. The compiler also owns ECP-centered node displacement,
+normalized AO primitive/component accumulation, local/nonlocal hcore addition
+and the full AO fixed-weight derivative contraction with the energy-to-force
+sign. The CUDA adapter supplies total RHF/UHF density without an extra occupancy
+factor. Component/primitive/AO reduction order and FP64 storage are unchanged.
+The CUDA adapter retains allocation/launch/scatter and grid
 convergence checks. Host quadrature-node/harmonic construction also remains
 explicit. These remaining scientific portions are conservatively retained in
 the ownership ledger; this slice does not claim complete ECP code retirement.
 They can be retired only after an equivalent generated replacement passes
 independent raw, derivative, method and resource gates. The CPU oracle must
 remain structurally independent of generated production arithmetic.
+
+See the [AO/weight ownership decision](../.agents/notes/implemented/architecture/2026-09-16-ecp-ao-weight-consumers.md)
+for the reduction-order and oracle rationale.
 
 ## Numerical and execution boundaries
 

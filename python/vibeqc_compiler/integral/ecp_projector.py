@@ -49,6 +49,86 @@ def _emit(graph, roots, variables=None, *, accumulate=False):
     ]
 
 
+def _scalar_function(name, arguments, expression):
+    """Lower small consumer expressions through the shared scalar algebra."""
+    graph = Graph()
+    root = expression(*(graph.variable(arg) for arg in arguments))
+    emitter = ScalarCEmitter(graph, {})
+    emitter.emit((root,))
+    return [
+        f"VIBEQC_ECP_INLINE double {name}("
+        + ", ".join(f"double {arg}" for arg in arguments)
+        + ") {",
+        *emitter.lines,
+        f"  return {emitter.reference(root)};",
+        "}",
+    ]
+
+
+def _emit_ao_consumer():
+    """Contract normalized Cartesian components without changing loop order."""
+    lines = _scalar_function(
+        "ecp_node_displacement",
+        ("center", "radius", "direction", "basis_center"),
+        lambda c, r, u, a: c + r * u - a,
+    )
+    lines += _scalar_function(
+        "ecp_ao_term",
+        ("component", "primitive", "value"),
+        lambda c, p, v: c * p * v,
+    )
+    lines += [
+        "template<class Jet, class AO, class Primitive, class Point>",
+        "VIBEQC_ECP_INLINE Jet ecp_evaluate_ao(const AO& ao,",
+        "    const Primitive* primitives, const Point& point, double radius,",
+        "    double cx, double cy, double cz, bool derivatives) {",
+        "  const double x = ecp_node_displacement(cx, radius, point.x, ao.x);",
+        "  const double y = ecp_node_displacement(cy, radius, point.y, ao.y);",
+        "  const double z = ecp_node_displacement(cz, radius, point.z, ao.z);",
+        "  Jet out{};",
+        "  for (int t=0; t<ao.term_count; ++t) {",
+        "    const auto term = ao.components[t];",
+        "    for (int k=0; k<ao.primitive_count; ++k) {",
+        "      const auto p = primitives[ao.primitive_offset+k];",
+        "      double roots[4];",
+        "      ecp_ao(term.x, term.y, term.z, x, y, z, p.exponent, roots);",
+        "      for (int d=0; d<(derivatives ? 4 : 1); ++d)",
+        "        out.v[d] += ecp_ao_term(term.coefficient, p.coefficient, roots[d]);",
+        "    }",
+        "  }",
+        "  return out;",
+        "}",
+    ]
+    return lines
+
+
+def _emit_weighted_consumer():
+    """Full AO contraction: arbitrary real weights, no occupancy multiplier."""
+    lines = _scalar_function(
+        "ecp_add_operator",
+        ("hcore", "local", "nonlocal_value"),
+        lambda h, l, n: h + (l + n),
+    )
+    lines += _scalar_function(
+        "ecp_weighted_term",
+        ("weight", "local", "nonlocal_value"),
+        lambda w, l, n: w * (l + n),
+    )
+    lines += _scalar_function(
+        "ecp_energy_derivative_to_force", ("derivative",), lambda d: -d
+    )
+    lines += [
+        "VIBEQC_ECP_INLINE double ecp_force_component(const double* local,",
+        "    const double* nonlocal_value, const double* weights, int size) {",
+        "  double sum = 0;",
+        "  for (int j=0; j<size; ++j)",
+        "    sum += ecp_weighted_term(weights[j], local[j], nonlocal_value[j]);",
+        "  return ecp_energy_derivative_to_force(sum);",
+        "}",
+    ]
+    return lines
+
+
 def emit_ecp_quadrature_cpp():
     """Emit the validated s/p/d projector and powers 0..4 domain.
 
@@ -68,6 +148,8 @@ def emit_ecp_quadrature_cpp():
         .replace("#pragma once\n", "")
         .replace("__device__ inline", "VIBEQC_ECP_INLINE"),
         "namespace vibeqc::generated {",
+        *_emit_ao_consumer(),
+        *_emit_weighted_consumer(),
         "// Scalar ECP operator contract: local=-1, projectors=0..2, powers=0..4.",
         "VIBEQC_ECP_INLINE double ecp_radial(unsigned power, double r,",
         "    double alpha, double coefficient, double weight) {",

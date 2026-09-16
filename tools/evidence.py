@@ -13,7 +13,7 @@ _compiler_sys.path.insert(
 import argparse
 import json
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -67,7 +67,7 @@ def main() -> int:
                 from tools.vibeqc_validation.retention import digest, safe_relative
 
                 manifest = json.loads(data)
-                parent = str(Path(path).parent)
+                parent = str(PurePosixPath(path).parent)
                 for entry in manifest["files"]:
                     target = parent + "/" + safe_relative(entry["path"])
                     if (

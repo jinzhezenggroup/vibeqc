@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 12048,
+  "all_handwritten_scientific_lines": 12033,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -162,7 +162,7 @@
       "oracle": 10,
       "performance_exception": 66,
       "runtime": -5797,
-      "scientific": 1780
+      "scientific": 1765
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -373,20 +373,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 12750,
+      "bytes": 12271,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 287
+        "scientific": 272
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 293,
-      "reason": "Generated AO jets, residual radial potentials, harmonic projections and local/nonlocal pair contractions. Native AO primitive accumulation, HF density consumption, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
+      "physical_lines": 278,
+      "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption. Native normalization metadata, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "e64f6352ae720dab31d2ad47e2f792929a14ec4d1e5d04c3e0080cacc54f15c5",
+      "sha256": "8ebfd8cabd9cd5b117f8f049e90975506e644cf509b3681fdb866b649711f6b5",
       "subsystem": "ecp"
     },
     {
@@ -3702,10 +3702,10 @@
     {
       "files": [
         {
-          "bytes": 13625,
-          "code_lines": 489,
+          "bytes": 15768,
+          "code_lines": 542,
           "path": "generated/generated_ecp_ao.cuh",
-          "sha256": "8b47cec89c48834e009d669a033d90514b7b9291fe6921d0a290971e1d96f825"
+          "sha256": "3c80c44c94642f4bd99c1f6c5013c9ee11a34c8cff07dec86b363a20ccc815a6"
         }
       ],
       "measurement": "explicit build",
@@ -3716,13 +3716,13 @@
       "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
     }
   ],
-  "generated_bytes": 27154196,
+  "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
     "runtime": 9776,
-    "scientific": 11882
+    "scientific": 11867
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3814,11 +3814,11 @@
         "tests/python/test_ecp_ir.py",
         "tests/native/test_ecp_projector.cpp"
       ],
-      "generated_capability": "Gaussian AO and center-derivative DAGs; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery. One C++ header supplies host tests and production CUDA.",
+      "generated_capability": "Gaussian AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA.",
       "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
       "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py and src/integrals/ecp_cuda.cu",
-      "retirement_condition": "Radial/projector scientific loops retired from CUDA after independent addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining native primitive accumulation, density consumption and host grid/harmonic construction require equivalent generated replacements with those gates. Keep the independent ecp.cpp CPU oracle/fallback separate from generated production algebra.",
-      "status": "Bounded projector/radial lowering migration; unchanged capability domain; no DFT, broad heavy-element or performance-promotion claim."
+      "retirement_condition": "Radial/projector, AO primitive/component and fixed-weight consumer loops require independent polynomial/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining host normalization metadata, grid/harmonic construction and grid-convergence policy require equivalent compiler-owned replacements with those gates before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback separate from generated production algebra.",
+      "status": "Bounded projector/radial and AO/fixed-weight consumer lowering; unchanged capability domain; no DFT, broad heavy-element or performance-promotion claim."
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
@@ -3944,7 +3944,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 287
+      "scientific": 272
     },
     "low_rank": {
       "fallback": 0,

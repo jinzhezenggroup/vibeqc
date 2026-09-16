@@ -34,22 +34,8 @@ __global__ void evaluate_ao(const AO* aos, const Primitive* primitives,
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= nr * n * nq) return;
   const int q = i % nq, a = (i / nq) % n, r = i / (nq * n);
-  const auto ao = aos[a];
-  const auto point = sphere[q];
-  const double xyz[3] = {cx + radial[r].r * point.x - ao.x, cy + radial[r].r * point.y - ao.y,
-                         cz + radial[r].r * point.z - ao.z};
-  Four out{};
-  for (int t = 0; t < ao.term_count; ++t) {
-    const auto term = ao.components[t];
-    for (int k = 0; k < ao.primitive_count; ++k) {
-      const auto p = primitives[ao.primitive_offset + k];
-      double roots[4];
-      generated::ecp_ao(term.x, term.y, term.z, xyz[0], xyz[1], xyz[2], p.exponent, roots);
-      for (int d = 0; d < (derivatives ? 4 : 1); ++d)
-        out.v[d] += term.coefficient * p.coefficient * roots[d];
-    }
-  }
-  values[i] = out;
+  values[i] = generated::ecp_evaluate_ao<Four>(aos[a], primitives, sphere[q], radial[r].r, cx, cy,
+                                               cz, derivatives);
 }
 __global__ void project(const Four* values, const EcpSpherePoint* sphere, int n, int nq, int nr,
                         bool derivatives, Four* projections) {
@@ -88,12 +74,11 @@ __global__ void consume(const double* output, int size, int ncoord, double* hcor
                         const double* density, double* forces) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   const int stride = size * (1 + ncoord);
-  if (hcore && i < size) hcore[i] += output[i] + output[stride + i];
+  if (hcore && i < size)
+    hcore[i] = generated::ecp_add_operator(hcore[i], output[i], output[stride + i]);
   if (forces && i < ncoord) {
-    double sum = 0;
-    for (int j = 0; j < size; ++j)
-      sum += density[j] * (output[(1 + i) * size + j] + output[stride + (1 + i) * size + j]);
-    forces[i] -= sum;
+    forces[i] += generated::ecp_force_component(output + (1 + i) * size,
+                                                output + stride + (1 + i) * size, density, size);
   }
 }
 struct CudaFailure {
