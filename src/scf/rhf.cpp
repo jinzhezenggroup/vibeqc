@@ -620,7 +620,14 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     const solver::PhysicalFockOperation physical = [&](const auto& current, const auto& densities) {
       std::vector<double> coulomb, exchange;
       std::string detail;
-      const auto status = execute_item_rhf_jk(densities[0], coulomb, exchange, detail);
+      bool retained = false;
+      auto status =
+          try_cuda_density_fitting_final_rhf_jk(cuda_plan, CudaDfFinalStateToken{1, current},
+                                                densities[0], coulomb, exchange, retained, detail);
+      if (status == VIBEQC_STATUS_SUCCESS && !retained) {
+        host_trace::Region dense_final("final_state_dense_jk", n);
+        status = execute_item_rhf_jk(densities[0], coulomb, exchange, detail);
+      }
       if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
       if (status != VIBEQC_STATUS_SUCCESS || coulomb.size() != n * n || exchange.size() != n * n)
         throw std::runtime_error(detail.empty() ? "strict CUDA DF physical J/K evaluation failed"

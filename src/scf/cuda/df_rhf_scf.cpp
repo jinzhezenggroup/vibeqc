@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
@@ -318,13 +319,17 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
                ? VIBEQC_STATUS_SUCCESS
                : cuda_failure(iteration_error, "advance CUDA DF device RHF SCF", detail);
   };
-  // Imported/warm D has no trustworthy C. Execute one dense iteration on
-  // every invocation, then capture/replay only the canonical factor loop.
+  // Imported/warm D has no trustworthy C. The seed can use a checked algebraic
+  // D=L L^T factor, then capture/replay only the canonical factor loop.
   // The seed has no tail launch and is downloaded once even at max_iterations=1.
   if (occupied_exchange) {
+    runtime::cuda_trace::TraceOperation seed_trace(
+        "scf_seed_iteration", plan->stream,
+        {batch_size, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
     status = reset_scf_factors(*plan, *state, detail);
     if (status == VIBEQC_STATUS_SUCCESS) status = launch_iteration(false, false);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
+    runtime::cuda_trace::trace_counter("factorized", state->density_seed_used);
   }
   bool graph_replay = state->graph_replay;
   // Host-backed streamed tiles require pageable copies and fences, while a
@@ -388,7 +393,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   };
   for (unsigned iteration = 0; iteration < max_iterations && !all_converged; ++iteration) {
     if (occupied_exchange && iteration == 0) {
-      // The already-executed dense seed needs its convergence/limit readback.
+      // The already-executed seed needs its convergence/limit readback.
     } else if (graph_replay) {
       runtime::df_progress::number("host_graph_replay", 1);
       cuda_error = cudaGraphLaunch(iteration_graph.executable, plan->stream);

@@ -1,0 +1,18 @@
+{
+  "v1": {
+    "bytes": 205367120,
+    "sha256": "d5636ddcd48bd129417a3fd0fe536637fb897c22e1c8a738619f6e6ea2de9f2b",
+    "source_patch_sha256": "774ff0d6ebb1b18331b8cabfadd5b4f955e8540cda12338de2a5fb15f9e909f7"
+  },
+  "v2": {
+    "bytes": 205371680,
+    "sha256": "08502d7b43bc78f495a208d008b3c5ce1eff2a75abcdf779d4e20f3d8b5efc0e",
+    "source_patch_sha256": "7c80f675e34d81ab3cf50e9daf6c123692b5e0578f6dc16093339f2352454253"
+  },
+  "configuration": [
+    "CMAKE_BUILD_TYPE:STRING=Release",
+    "CMAKE_CUDA_COMPILER:STRING=/group/software/cuda-12.9.1/bin/nvcc",
+    "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+    "VIBEQC_CUDA_FAST_COMPILE:BOOL=OFF"
+  ]
+}

@@ -100,3 +100,40 @@ def test_reference_rejects_broadcastable_or_nonfinite_arrays(key, value, message
     reference["gpu4pyscf"][key] = value
     with pytest.raises(RuntimeError, match=message):
         independent_reference(reference, *args)
+
+
+@pytest.mark.parametrize(
+    "controls",
+    [
+        {"dense": {"VIBEQC_DF_FINAL_EXCHANGE": "dense"}},
+        {"dense": {"CUDA_VISIBLE_DEVICES": "0"}, "auto": {"CUDA_VISIBLE_DEVICES": "0"}},
+        {"unknown": {}},
+    ],
+)
+def test_coupled_policies_reject_incomplete_or_non_schedule_arms(
+    controls, monkeypatch, tmp_path, capsys
+):
+    """Reject settings that could leak between arms or change scheduler visibility."""
+    from benchmarks.df_policy_endpoint import main
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "df_policy_endpoint",
+            "--aos",
+            "768",
+            "--output",
+            str(tmp_path / "run.json"),
+            "--control",
+            "VIBEQC_DF_SEED_EXCHANGE",
+            "--policies",
+            "dense",
+            "auto",
+            "--policy-controls",
+            json.dumps(controls),
+        ],
+    )
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 2
+    assert "policy-controls" in capsys.readouterr().err

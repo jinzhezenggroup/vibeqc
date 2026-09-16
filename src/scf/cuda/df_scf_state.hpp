@@ -99,11 +99,14 @@ struct PersistentScfState {
   int* d_final_alpha_info{};
   int* d_final_beta_info{};
 
-  // A solve always seeds from its arbitrary input D with dense K. Only the
-  // coefficients that constructed the next canonical density are retained.
+  // An algebraic seed factor may temporarily occupy alpha storage before the
+  // first update. It never receives a canonical generation; the first C that
+  // constructs the next density overwrites it before graph capture.
   // Inactive items keep both D and factors. Occupation changes rebuild this
   // owner and its captured GEMM shapes; buffers never borrow d_temporary.
   bool occupied_exchange{};
+  bool density_seed_used{};
+  std::size_t density_seed_rank{};
   std::vector<std::int32_t> factor_alpha_ranks, factor_beta_ranks;
   std::size_t alpha_factor_rank{}, beta_factor_rank{};
   double* d_alpha_factor{};

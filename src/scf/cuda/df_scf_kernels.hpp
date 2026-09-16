@@ -7,6 +7,18 @@
 
 namespace vibeqc::scf::cuda_df {
 
+/** Scale the retained, sorted positive eigenvectors into column-major L.
+ * Rank selection is already validated; occupation is absorbed in sqrt(lambda).
+ */
+void launch_density_exchange_factor(cudaStream_t stream, std::size_t nbf, std::size_t rank,
+                                    const double* vectors, const double* values, double* factor);
+
+/** Check every entry, including both triangles of the original density.
+ * Writes maximum and RMS error into two scratch doubles; nonfinite values fail.
+ */
+void launch_density_exchange_error(cudaStream_t stream, std::size_t elements, const double* density,
+                                   const double* reconstructed, double* errors);
+
 /** Snapshot only active items before their density commit. Device coefficients
  * retain column-major layout; the detached host reader converts them once. */
 void launch_store_device_final_frame_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

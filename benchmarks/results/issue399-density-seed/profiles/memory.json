@@ -1,0 +1,7 @@
+{
+  "scope": "100 ms process device-memory sampling across initialization and warm captures; lower-bound high-water, including opaque runtime/module memory",
+  "sha256": "73b37c04a08b9f98b3c5b8268e4a610dbf784257b9718c2db48047aeddddc375",
+  "readings": 3538,
+  "maximum_bytes_per_pid": {"1972508": 24584912896},
+  "host_process_residency": "\tCommand being timed: \"/group/software/cuda-12.9.1/bin/nsys profile --trace=cuda,nvtx --sample=none --cpuctxsw=none --cuda-graph-trace=node --capture-range=cudaProfilerApi --capture-range-end=repeat:5 --export=sqlite --output .artifacts/issue399/profiles/seed-final /tmp/vibeqc-pr-review-env/bin/python .artifacts/issue399/profile.py\"\n\tUser time (seconds): 0.07\n\tSystem time (seconds): 0.14\n\tPercent of CPU this job got: 0%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 5:56.33\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 50304\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 1\n\tMinor (reclaiming a frame) page faults: 9135\n\tVoluntary context switches: 3268\n\tInvoluntary context switches: 4\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 72\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n"
+}

@@ -48,13 +48,46 @@ cannot authorize use. A missing or incompatible factor runs dense K for that
 item while compatible neighbors retain factorized K. Factor upload borrows
 the existing density-transpose staging; no allocation is needed for host B.
 
-Every device SCF invocation starts with one dense iteration because imported
-and warm densities have no trustworthy orbital factor. The iteration stores
+Every device SCF invocation starts with one seed iteration. Imported and warm
+densities have no trustworthy orbital factor, but a checked algebraic factor
+can replace its dense K. `VIBEQC_DF_SEED_EXCHANGE=dense|factor|auto` controls this
+choice; `factor` enables guarded factorization and `auto` selects it only in the
+qualified RTX 5090 RHF domain: 768 AOs, 768 auxiliaries and 160 occupied orbitals.
+Factorization requires an occupied-SCF singleton resident RHF plan
+with full AO/auxiliary tiles and existing factor capacity. UHF, batch, streamed
+and generated-source plans keep dense seeds.
+
+The seed reuses the compact GPU eigensolver and transient Fock/eigenvalue
+scratch to form `L = V sqrt(lambda)`, then builds occupied K with weight one.
+Eigenvalues below `-1e-13` reject the seed. Values at most `1e-13` may be
+discarded only if their combined Frobenius norm is at most `1e-12`; retained
+rank cannot exceed the reserved occupied rank. A full `L L^T` reconstruction
+must match both triangles of the input with maximum error at most `1e-12` and
+RMS error at most `1e-13`. No canonical identity is assigned to this factor.
+Numerical rejection returns to dense K; CUDA failures propagate. The ordinary
+path adds two explicit stream synchronizations and downloads the spectrum,
+solver status and two reconstruction scalars. It allocates no new persistent
+device buffer. `VIBEQC_DF_SEED_VERIFY=1` additionally compares candidate and
+dense K for the identical density under max/RMS gates `1e-10`/`1e-11`, restores
+candidate K, and records K/Fock errors in the progress journal. This intrusive
+validation must be disabled for clean endpoint timing.
+
+`VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
+physical Fock evaluation; `occupied` enables retained-factor qualification,
+while `auto` uses the same qualified 768/768/160 RTX 5090 domain as the seed.
+The singleton resident RHF route requires
+an exact current final-state token, matching device generation/solver status,
+and entry-for-entry equality of the supplied and retained densities. It uses
+the full retained coefficients with RHF weight two. The strict physical Fock
+and final-state gates still run; changed densities or correction generations
+use dense K. No previous physical Fock is reused.
+
+The seed iteration stores
 the exact C that constructs the next D before the convergence update. Each
 spin owns `batch*nbf*max_occupied` values plus generation controls. Inactive
 systems retain both density and factor; eigensolver scratch is never borrowed
 as persistent C. Occupation/policy changes rebuild captured GEMM shapes.
-The first dense iteration counts against the original iteration limit, even
+The first seed iteration counts against the original iteration limit, even
 when that limit is one. Generation checks run before occupied K and at final
 readback; a stale generation rejects the device result and preserves the
 caller's established numerical recovery. Force evaluation receives only the
@@ -77,7 +110,9 @@ existing tiles independently of the SCF reservation.
 GEMM dimensions, intermediate bytes and panel hits. Captured records describe graph
 construction; `occupied_scf_provenance` separately reports executed iteration
 counts, dense seeding and final generation validation. Uninstrumented complete
-endpoints remain the performance selection gate.
+endpoints remain the performance selection gate. The
+[density exchange seed note](../.agents/notes/implemented/performance/2026-09-16-density-exchange-seed.md)
+records the factorization, final-state audit and qualification rationale.
 
 ## Resident raw ownership and response storage
 

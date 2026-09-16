@@ -11,6 +11,12 @@ tests/reference_data/grid/*.json linguist-generated=true
 benchmarks/results/dft-grid-160/*.json linguist-generated=true
 # Keep the 768-AO numerical samples available beside the readable fix summary.
 benchmarks/results/issue308-768ao-response/*-768ao.json linguist-generated=true text eol=lf
+# Preserve every #399 sample/counter while keeping the implementation review visible.
+benchmarks/results/issue399-density-seed/measurements/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/components/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/profiles/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/journals.json linguist-generated=true
+benchmarks/results/issue399-density-seed/ownership.json linguist-generated=true
 
 # These files are hashed byte-for-byte as third-party/reference provenance.
 external/libxc-7.0.0/* text eol=lf

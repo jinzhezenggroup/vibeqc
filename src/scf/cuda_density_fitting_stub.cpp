@@ -3,6 +3,14 @@
 #include "scf/cuda_density_fitting_final_state.hpp"
 
 namespace vibeqc::scf {
+vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
+                                                    const CudaDfFinalStateToken&,
+                                                    const std::vector<double>&,
+                                                    std::vector<double>&, std::vector<double>&,
+                                                    bool& used, std::string&) {
+  used = false;
+  return VIBEQC_STATUS_SUCCESS;
+}
 void bind_cuda_density_fitting_response_source(CudaDensityFittingJkPlan*, const core::System&,
                                                const core::System&,
                                                std::span<const double>) noexcept {}

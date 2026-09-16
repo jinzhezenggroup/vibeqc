@@ -100,6 +100,12 @@ def main():
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--control", default="VIBEQC_DF_EXCHANGE")
     parser.add_argument("--policies", nargs="+", default=["dense", "occupied"])
+    parser.add_argument(
+        "--policy-controls",
+        type=json.loads,
+        default={},
+        help="JSON mapping each policy to additional CUDA controls, applied before its prime",
+    )
     parser.add_argument("--trace", action="store_true")
     parser.add_argument(
         "--components-after",
@@ -157,6 +163,32 @@ def main():
         parser.error("skip-cold requires a frozen checkpoint and independent reference")
     from vibeqc.resources_hf import _CUDA_SCHEDULE_VARIABLES
 
+    if not isinstance(args.policy_controls, dict) or any(
+        policy not in args.policies
+        or not isinstance(controls, dict)
+        or any(
+            name not in _CUDA_SCHEDULE_VARIABLES
+            or name == args.control
+            or not isinstance(value, str)
+            or not value
+            for name, value in controls.items()
+        )
+        for policy, controls in args.policy_controls.items()
+    ):
+        parser.error(
+            "policy-controls must map selected policies to known CUDA controls"
+        )
+    # Every arm must set the same extra controls. Otherwise an interleaved arm
+    # could silently inherit the preceding arm's settings.
+    control_sets = [set(args.policy_controls.get(p, {})) for p in args.policies]
+    if any(names != control_sets[0] for names in control_sets):
+        parser.error("policy-controls must set the same controls for every policy")
+
+    def select_policy(policy):
+        """Apply the complete declared arm before rebuilding/priming its owner."""
+        os.environ[args.control] = policy
+        os.environ.update(args.policy_controls.get(policy, {}))
+
     cold_controls = {}
     for assignment in args.cold_control:
         name, separator, value = assignment.partition("=")
@@ -208,6 +240,7 @@ def main():
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "control": args.control,
         "policies": args.policies,
+        "policy_controls": args.policy_controls,
         "warm_policy": "one frozen post-cold density, prime every policy transition",
         "measured_properties": ["energy"] if args.energy_only else ["energy", "forces"],
         "expected_iterations": args.expected_iterations,
@@ -231,7 +264,7 @@ def main():
         seconds = time.perf_counter() - start
         return result, seconds
 
-    os.environ[args.control] = args.policies[0]
+    select_policy(args.policies[0])
     previous_controls = {name: os.environ.get(name) for name in cold_controls}
     os.environ.update(cold_controls)
     calculator = Calculator(
@@ -324,7 +357,7 @@ def main():
         for repeat, policy, diagnostic in jobs:
             traced = args.trace or diagnostic
             phase = "diagnostic-" if diagnostic else ""
-            os.environ[args.control] = policy
+            select_policy(policy)
             prime, prime_seconds = execute(batch)
             trace = args.output.with_suffix(f".{phase}{repeat}-{policy}.jsonl")
             host_trace = args.output.with_suffix(

@@ -1,0 +1,31 @@
+{
+  "sha256": "e8ace033e06dd059b671b583c91daa3f104c2060d8688a6a45abcd5e5349e02c",
+  "records": [
+    {
+      "schema": "vibeqc.df_host_trace",
+      "version": 1,
+      "id": 3,
+      "valid": true,
+      "regions": [
+        {"name": "batch_execute", "reason": "unspecified", "parent": -1, "item": -1, "nbf": 0, "wall_ms": 891.508804, "cpu_ms": 888.5921599999733, "finished": true, "failed": false},
+        {"name": "run_rhf_density_fitting_cuda_bucket_impl", "reason": "unspecified", "parent": 0, "item": -1, "nbf": 0, "wall_ms": 891.392631, "cpu_ms": 888.4778159999769, "finished": true, "failed": false},
+        {"name": "prepare_item", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 0.806809, "cpu_ms": 0.8068129999969642, "finished": true, "failed": false},
+        {"name": "prepare_initial_frame", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 0.801969, "cpu_ms": 0.8019539999963854, "finished": true, "failed": false},
+        {"name": "overlap_cache_hit", "reason": "unspecified", "parent": 3, "item": 0, "nbf": 384, "wall_ms": 0.001273, "cpu_ms": 0.0011320000226078264, "finished": true, "failed": false},
+        {"name": "initial_density", "reason": "core_guess", "parent": 3, "item": 0, "nbf": 384, "wall_ms": 0.575728, "cpu_ms": 0.5757089999747222, "finished": true, "failed": false},
+        {"name": "device_scf_submission_wait", "reason": "unspecified", "parent": 1, "item": -1, "nbf": 0, "wall_ms": 158.923773, "cpu_ms": 158.87833700003284, "finished": true, "failed": false},
+        {"name": "compact_eigensolve_provider", "reason": "unspecified", "parent": 6, "item": -1, "nbf": 384, "wall_ms": 0.763315, "cpu_ms": 0.7631209999772182, "finished": true, "failed": false},
+        {"name": "finalization", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 730.265969, "cpu_ms": 727.397137999958, "finished": true, "failed": false},
+        {"name": "final_state_read", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 0, "wall_ms": 0.837738, "cpu_ms": 0.8378809999953774, "finished": true, "failed": false},
+        {"name": "final_state_fock_build", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 0, "wall_ms": 63.529516, "cpu_ms": 60.876115999974445, "finished": true, "failed": false},
+        {"name": "final_state_dense_jk", "reason": "unspecified", "parent": 10, "item": 0, "nbf": 384, "wall_ms": 60.543362, "cpu_ms": 60.542069999996784, "finished": true, "failed": false},
+        {"name": "final_state_validation", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 384, "wall_ms": 158.761734, "cpu_ms": 158.63657500000272, "finished": true, "failed": false},
+        {"name": "final_state_weighted_density", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 384, "wall_ms": 10.391294, "cpu_ms": 10.390986999993856, "finished": true, "failed": false},
+        {"name": "final_state_reuse", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 384, "wall_ms": 0.04205, "cpu_ms": 0.042059000008976, "finished": true, "failed": false},
+        {"name": "force_response", "reason": "unspecified", "parent": 8, "item": 0, "nbf": 384, "wall_ms": 494.705266, "cpu_ms": 494.6178270000132, "finished": true, "failed": false},
+        {"name": "df_shell_metadata", "reason": "unspecified", "parent": 15, "item": 0, "nbf": 384, "wall_ms": 0.167139, "cpu_ms": 0.16707300000007308, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 15, "item": 0, "nbf": 384, "wall_ms": 208.50268, "cpu_ms": 208.44655700000203, "finished": true, "failed": false}
+      ]
+    }
+  ]
+}

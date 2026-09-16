@@ -1,10 +1,12 @@
 #include "scf/cuda/df_scf_final_state.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 #include <new>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
 #include "scf/cuda/df_scf_kernels.hpp"
@@ -161,6 +163,102 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
     detail = "host allocation for CUDA DF final-state token failed";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
+}
+
+vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
+                                                    const CudaDfFinalStateToken& expected,
+                                                    const std::vector<double>& density,
+                                                    std::vector<double>& coulomb,
+                                                    std::vector<double>& exchange, bool& used,
+                                                    std::string& detail) {
+  using namespace runtime::cuda_trace;
+  used = false;
+  const char* policy = std::getenv("VIBEQC_DF_FINAL_EXCHANGE");
+  if (policy && std::string(policy) != "auto" && std::string(policy) != "dense" &&
+      std::string(policy) != "occupied") {
+    detail = "VIBEQC_DF_FINAL_EXCHANGE must be auto, dense or occupied";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  // Keep the final-state ablation independent of the seed control.
+  if ((policy && std::string(policy) == "dense") || !plan || plan->batch_size != 1 ||
+      plan->streamed || plan->integral_source || plan->row_tile != plan->nbf ||
+      plan->auxiliary_tile != plan->naux || plan->nbf < 2)
+    return VIBEQC_STATUS_SUCCESS;
+  auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
+  if (!state || state->unrestricted || !state->occupied_exchange ||
+      density.size() != plan->matrix_elements || !finite_values(density))
+    return VIBEQC_STATUS_SUCCESS;
+  if (!policy || std::string(policy) == "auto") {
+    bool qualified = false;
+    const auto status = qualified_resident_rhf_exchange(
+        *plan, state->final_alpha_occupied, state->final_beta_occupied, qualified, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (!qualified) return VIBEQC_STATUS_SUCCESS;
+  }
+  CudaDfFinalStateToken current;
+  auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
+  if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_INVALID_ARGUMENT) return status;
+  if (status != VIBEQC_STATUS_SUCCESS || expected != current) {
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  TraceOperation trace("final_state_retained_jk", plan->stream,
+                       {1, plan->nbf, plan->naux, false, false});
+  const auto bytes = plan->matrix_elements * sizeof(double);
+  auto error = cudaSetDevice(plan->device_id);
+  if (error == cudaSuccess)
+    error = cudaMemcpyAsync(plan->primary_density, density.data(), bytes, cudaMemcpyHostToDevice,
+                            plan->stream);
+  if (error != cudaSuccess)
+    return cuda_failure(error, "upload final density for identity check", detail);
+  launch_density_exchange_error(plan->stream, plan->matrix_elements, plan->primary_density,
+                                state->d_density, state->d_next_density);
+  double errors[2]{};
+  std::uint64_t generation = 0;
+  int info = 0;
+  error = cudaMemcpyAsync(errors, state->d_next_density, sizeof(errors), cudaMemcpyDeviceToHost,
+                          plan->stream);
+  if (error == cudaSuccess)
+    error = cudaMemcpyAsync(&generation, state->d_final_alpha_generation, sizeof(generation),
+                            cudaMemcpyDeviceToHost, plan->stream);
+  if (error == cudaSuccess)
+    error = cudaMemcpyAsync(&info, state->d_final_alpha_info, sizeof(info), cudaMemcpyDeviceToHost,
+                            plan->stream);
+  const auto drained = cudaStreamSynchronize(plan->stream);
+  if (error == cudaSuccess) error = drained;
+  if (error != cudaSuccess) return cuda_failure(error, "validate final retained density", detail);
+  trace_counter("h2d_bytes", bytes);
+  trace_counter("d2h_bytes", sizeof(errors) + sizeof(generation) + sizeof(info));
+  trace_counter("explicit_synchronizations", 1);
+  if (errors[0] != 0 || errors[1] != 0 || info ||
+      generation != current.identity.factor.density_generation) {
+    trace_counter("identity_rejected", 1);
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  // Both D and the full retained C were committed under this generation. The
+  // strict selector still checks the resulting physical F[D] and eigenframe;
+  // if it changes D or generation, this exact identity gate refuses reuse.
+  coulomb.resize(plan->matrix_elements);
+  exchange.resize(plan->matrix_elements);
+  status = build_coulomb(*plan, state->d_density, detail);
+  if (status == VIBEQC_STATUS_SUCCESS)
+    status = build_occupied_exchange(*plan, 0, state->d_final_alpha_coefficients,
+                                     current.identity.occupied[0], true, 2, plan->alpha_exchange,
+                                     detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  error =
+      cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
+  if (error == cudaSuccess)
+    error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
+                            plan->stream);
+  const auto finished = cudaStreamSynchronize(plan->stream);
+  if (error == cudaSuccess) error = finished;
+  if (error != cudaSuccess) return cuda_failure(error, "download final retained J/K", detail);
+  trace_counter("d2h_bytes", 2 * bytes);
+  trace_counter("explicit_synchronizations", 1);
+  trace_counter("accepted", 1);
+  used = true;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* plan,

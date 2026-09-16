@@ -33,6 +33,9 @@ from .resources import (
 # Preserve that distinction in restart provenance; absence is not a claim
 # that an older build implemented today's automatic execution policy.
 _CUDA_SCHEDULE_EXTENSION_VARIABLES = (
+    "VIBEQC_DF_SEED_EXCHANGE",
+    "VIBEQC_DF_SEED_VERIFY",
+    "VIBEQC_DF_FINAL_EXCHANGE",
     "VIBEQC_DF_RESIDENT_EXCHANGE",
     "VIBEQC_DF_RAW_REUSE",
     "VIBEQC_DF_RESPONSE_BATCHING",

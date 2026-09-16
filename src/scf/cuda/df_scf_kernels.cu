@@ -14,6 +14,54 @@
 
 namespace vibeqc::scf::cuda_df {
 
+__global__ void density_exchange_factor_kernel(std::size_t nbf, std::size_t rank,
+                                               const double* vectors, const double* values,
+                                               double* factor) {
+  const std::size_t k = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (k < nbf * rank) {
+    const std::size_t offset = nbf - rank;
+    factor[k] = vectors[offset * nbf + k] * sqrt(values[offset + k / nbf]);
+  }
+}
+
+__global__ void density_exchange_error_kernel(std::size_t elements, const double* density,
+                                              const double* reconstructed, double* errors) {
+  __shared__ double maxima[256], squares[256];
+  double maximum = 0, sum = 0;
+  for (std::size_t k = threadIdx.x; k < elements; k += blockDim.x) {
+    const double error = fabs(density[k] - reconstructed[k]);
+    // fmax alone would hide NaNs. Reject nonfinite reconstruction explicitly.
+    maximum = isfinite(error) ? fmax(maximum, error) : CUDART_INF;
+    sum += error * error;
+  }
+  maxima[threadIdx.x] = maximum;
+  squares[threadIdx.x] = sum;
+  __syncthreads();
+  for (unsigned width = 128; width; width >>= 1) {
+    if (threadIdx.x < width) {
+      maxima[threadIdx.x] = fmax(maxima[threadIdx.x], maxima[threadIdx.x + width]);
+      squares[threadIdx.x] += squares[threadIdx.x + width];
+    }
+    __syncthreads();
+  }
+  if (!threadIdx.x) {
+    errors[0] = maxima[0];
+    errors[1] = sqrt(squares[0] / elements);
+  }
+}
+
+void launch_density_exchange_factor(cudaStream_t stream, std::size_t nbf, std::size_t rank,
+                                    const double* vectors, const double* values, double* factor) {
+  if (rank)
+    density_exchange_factor_kernel<<<(nbf * rank + 255) / 256, 256, 0, stream>>>(nbf, rank, vectors,
+                                                                                 values, factor);
+}
+
+void launch_density_exchange_error(cudaStream_t stream, std::size_t elements, const double* density,
+                                   const double* reconstructed, double* errors) {
+  density_exchange_error_kernel<<<1, 256, 0, stream>>>(elements, density, reconstructed, errors);
+}
+
 __global__ void store_device_final_frame_kernel(
     std::size_t nbf, const double* coefficients, const double* eigenvalues, const int* info,
     const std::uint8_t* active, const std::uint32_t* iterations, double* retained_coefficients,

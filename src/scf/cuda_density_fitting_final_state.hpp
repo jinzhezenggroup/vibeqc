@@ -47,6 +47,18 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
                                                     CudaDfFinalStateSnapshot& snapshot,
                                                     std::string& detail);
 
+/** Try physical J/K from an exact current singleton RHF retained density/frame.
+ * Token, device generation and every supplied density entry must match. A
+ * correction step, stale token or unsupported plan returns used=false so the
+ * caller evaluates dense J/K. Successful reuse still evaluates physical F[D].
+ */
+vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
+                                                    const CudaDfFinalStateToken& expected,
+                                                    const std::vector<double>& density,
+                                                    std::vector<double>& coulomb,
+                                                    std::vector<double>& exchange, bool& used,
+                                                    std::string& detail);
+
 /** Two-spin upper bound shared by native planning and the prepared owner.
  * Full C/epsilon snapshots and generation/info words are per item, unlike
  * the one serialized ordinary correction eigensystem. */

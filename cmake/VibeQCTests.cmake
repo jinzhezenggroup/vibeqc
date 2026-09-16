@@ -23,6 +23,8 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_df_density_seed_tests tests/native/test_df_density_seed.cpp
+                       LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver SKIP_77)
     set_property(SOURCE "${VIBEQC_GRID_SOURCE}" src/dft/cuda_ks.cpp src/dft/cuda_xc.cpp
                  APPEND PROPERTY COMPILE_DEFINITIONS VIBEQC_TEST_HOOKS=1)
     add_executable(vibeqc_weighted_eri_probe tests/native/weighted_eri_probe.cpp)
