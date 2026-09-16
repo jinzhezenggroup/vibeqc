@@ -164,7 +164,7 @@
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 66,
-      "runtime": -5524,
+      "runtime": -5525,
       "scientific": 2026
     },
     "reclassified_files": [
@@ -1005,20 +1005,20 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 22289,
+      "bytes": 22181,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 388,
+        "runtime": 384,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "physical_lines": 414,
+      "physical_lines": 412,
       "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
       "regions": [],
       "role": "runtime",
-      "sha256": "911a9d243720c86c6c842f4aa8515a1790ad2c2dd6da2ad9dfaf0fd6edc64157",
+      "sha256": "89c4be0b7b8c31494e8e49698b40e301abf162cb9fc7391de6c0debd4c3956be",
       "subsystem": "df_derivatives"
     },
     {
@@ -1056,20 +1056,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 18137,
+      "bytes": 18378,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 309,
+        "runtime": 312,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_kernel.cuh",
-      "physical_lines": 344,
+      "physical_lines": 348,
       "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
       "regions": [],
       "role": "runtime",
-      "sha256": "d8f53447f68e2317d4386341e6ff99b45fda67e6a443ea99d5cc14a2f87de9e6",
+      "sha256": "fb990f89412563c784674d0fdb03e3f23dfb52bc38cc664bd91587e5ce432548",
       "subsystem": "df_derivatives"
     },
     {
@@ -3608,10 +3608,10 @@
     {
       "files": [
         {
-          "bytes": 2096,
-          "code_lines": 30,
+          "bytes": 42928,
+          "code_lines": 155,
           "path": "generated/generated_df_rys.cuh",
-          "sha256": "5fd6a8c1cdaefefa464a33f2b8743585ea2fc77fe922dfb815edea245ca248d9"
+          "sha256": "103d3d65945471d2eeecaf601bf7101f088c68819bf4b5b51e170815ab9f70d3"
         }
       ],
       "measurement": "explicit build",
@@ -3624,16 +3624,16 @@
     {
       "files": [
         {
-          "bytes": 2913,
-          "code_lines": 70,
+          "bytes": 76148,
+          "code_lines": 2440,
           "path": "generated/generated_df_rys_shell.cuh",
-          "sha256": "99cb64c0cfea27e21eef0f9c40cb7483d0fc688b3c01f5ef19d4eb7bd5a9e613"
+          "sha256": "4b4b7f1ad71b34ac58272b8ebdd84baae8d583fd4c9469839774834c535ceef5"
         },
         {
-          "bytes": 432,
+          "bytes": 449,
           "code_lines": 8,
           "path": "generated/generated_df_rys_policy.hpp",
-          "sha256": "d89791e9e4fde768c2a4851cca86cbdad6d2788d22898a4f425f4648b36303f5"
+          "sha256": "d1a83446e9943746f72348ec70821fb50c008d88687e9a8ec80e5cfa9b75c162"
         }
       ],
       "measurement": "explicit build",
@@ -3788,7 +3788,7 @@
           "bytes": 2297,
           "code_lines": 56,
           "path": "generated/generated_df_screening.cuh",
-          "sha256": "071e3b8f67f9df4da88dadc1ca3b4d7f02a8e7c6e1df1dbce037a5a2afd07179"
+          "sha256": "1dca9586bb2d53479e2ba171fa3478b8239e8aab4402028419c4b692f56a5aab"
         }
       ],
       "measurement": "explicit build",
@@ -3815,12 +3815,12 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 12118208,
+  "generated_bytes": 12232292,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
-    "runtime": 10049,
+    "runtime": 10048,
     "scientific": 12128
   },
   "migration_ledger": {
@@ -4016,7 +4016,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 808,
+      "runtime": 807,
       "scientific": 1172
     },
     "df_response_weights": {
