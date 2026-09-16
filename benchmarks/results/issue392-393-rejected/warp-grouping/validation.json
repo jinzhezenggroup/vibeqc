@@ -1,0 +1,20 @@
+{
+  "slurm_job": 9751,
+  "partition": "main",
+  "gres": "gpu:5090:1",
+  "time_limit": "00:15:00",
+  "exit_code": 0,
+  "native_oracle": "passed",
+  "memcheck_errors": 0,
+  "synccheck_errors": 0,
+  "native_source_identity": "3f9ffa7b6df17a014ace14c1a74362c169f9e0c350a4aad1fd3390cfe7acc2e2",
+  "local_source_identity_matched": true,
+  "cpu_tests": {"passed": 223, "seconds": 11.01},
+  "python_cuda_tests": {"passed": 120, "seconds": 126.2},
+  "files": {
+    "libvibeqc.so": {"bytes": 205811712, "sha256": "2d698a1f409b87ee119c757a962c5d2a5adcd4f7246c453b6e9d694aa9ab1335"},
+    "vibeqc_df_shell_pairs_tests": {"bytes": 91792, "sha256": "9ccf6315cf323ae62671a53e78bc24a282d2885515952a51cf5de4b10590c6e4"},
+    "cuda-test.patch": {"bytes": 1196, "sha256": "208a55e68d1c8f94cf931f43f7c775960fb748a2301ffa1a73c3482400733191"},
+    "validation.log": {"bytes": 423, "sha256": "8f4717af06ea6f16901d3eca92d6c66b9806ff2a4a8b6b9f99fb4471a815d46c"}
+  }
+}

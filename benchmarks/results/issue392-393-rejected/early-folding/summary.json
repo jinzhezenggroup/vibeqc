@@ -1,0 +1,132 @@
+{
+  "384": {
+    "variants": {
+      "baseline": {
+        "seconds": [0.9231789608020335, 0.923075064085424, 0.9154202910140157, 0.9160140028689057, 0.9233704481739551],
+        "median_seconds": 0.923075064085424,
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298597446900312e-11,
+        "component_derivative_ms": [205.250046, 206.731705],
+        "post_call_resident_bytes": [8426356736, 8426356736],
+        "class_kernel_total_ms": 204.204762,
+        "folding_work": {
+          "public_weight_loads": 56623104,
+          "expansion_term_products": 40680576,
+          "folding_shared_atomics": 40680576,
+          "folding_direct_stores": 0,
+          "folding_register_values": 0
+        }
+      },
+      "direct": {
+        "seconds": [0.9255124388728291, 0.9378246970009059, 0.9343721040058881, 0.9175996971316636, 0.9262858119327575],
+        "median_seconds": 0.9262858119327575,
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298686264742282e-11,
+        "component_derivative_ms": [203.692551, 200.765915],
+        "post_call_resident_bytes": [8426356736, 8426356736],
+        "class_kernel_total_ms": 199.189173,
+        "folding_work": {
+          "public_weight_loads": 56623104,
+          "expansion_term_products": 40680576,
+          "folding_shared_atomics": 26528768,
+          "folding_direct_stores": 14151808,
+          "folding_register_values": 0
+        },
+        "endpoint_ratio_to_baseline": 1.0034783171729535,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 6.394884621840902e-14}
+      },
+      "register": {
+        "seconds": [0.9342989639844745, 0.9251327039673924, 0.9354713950306177, 0.9181176801212132, 0.9256038300227374],
+        "median_seconds": 0.9256038300227374,
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298597446900312e-11,
+        "component_derivative_ms": [200.806885, 200.253952],
+        "post_call_resident_bytes": [8426356736, 8426356736],
+        "class_kernel_total_ms": 201.878074,
+        "folding_work": {
+          "public_weight_loads": 56623104,
+          "expansion_term_products": 40680576,
+          "folding_shared_atomics": 26528768,
+          "folding_direct_stores": 0,
+          "folding_register_values": 14151808
+        },
+        "endpoint_ratio_to_baseline": 1.002739501949193,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 9.237055564881302e-14}
+      }
+    },
+    "warm_density_sha256": {"density_0": "3985f3aaa44108759dcb1488b4880301ee0bfe4ec7b9142126170a8a436d3a9c"},
+    "scientific_work": {
+      "shell_triples_visited": 3557376,
+      "shell_triples_nonzero": 3557376,
+      "shell_primitive_products": 21976064,
+      "shell_public_weights_consumed": 56623104,
+      "shell_public_weights_nonzero": 28520448,
+      "shell_cartesian_component_products": 122438784
+    }
+  },
+  "768": {
+    "variants": {
+      "baseline": {
+        "seconds": [5.328877154039219, 5.333255225094035, 5.314179559936747, 5.33497835486196, 5.3211644070688635],
+        "median_seconds": 5.328877154039219,
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3574863455545483e-10,
+        "component_derivative_ms": [1310.6764825, 1297.0319116],
+        "post_call_resident_bytes": [21252538368, 21252538368],
+        "class_kernel_total_ms": 1303.554184,
+        "folding_work": {
+          "public_weight_loads": 226787328,
+          "expansion_term_products": 322970112,
+          "folding_shared_atomics": 322970112,
+          "folding_direct_stores": 0,
+          "folding_register_values": 0
+        }
+      },
+      "direct": {
+        "seconds": [5.330138677963987, 5.337130994070321, 5.326476410962641, 5.338719623861834, 5.326120765181258],
+        "median_seconds": 5.330138677963987,
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3574863455545483e-10,
+        "component_derivative_ms": [1302.0519357, 1296.8295635],
+        "post_call_resident_bytes": [21252538368, 21252538368],
+        "class_kernel_total_ms": 1309.388651,
+        "folding_work": {
+          "public_weight_loads": 226787328,
+          "expansion_term_products": 322970112,
+          "folding_shared_atomics": 210407424,
+          "folding_direct_stores": 112562688,
+          "folding_register_values": 0
+        },
+        "endpoint_ratio_to_baseline": 1.0002367335347206,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 7.105427357601002e-14}
+      },
+      "register": {
+        "seconds": [5.333873692899942, 5.3195748871658, 5.339431639993563, 5.3273100750520825, 5.33008639793843],
+        "median_seconds": 5.33008639793843,
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3575041091229423e-10,
+        "component_derivative_ms": [1293.1449200000002, 1307.794006],
+        "post_call_resident_bytes": [21252538368, 21252538368],
+        "class_kernel_total_ms": 1290.615764,
+        "folding_work": {
+          "public_weight_loads": 226787328,
+          "expansion_term_products": 322970112,
+          "folding_shared_atomics": 210407424,
+          "folding_direct_stores": 0,
+          "folding_register_values": 112562688
+        },
+        "endpoint_ratio_to_baseline": 1.0002269228327576,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 6.039613253960852e-14}
+      }
+    },
+    "warm_density_sha256": {"density_0": "638cf6ad1d0f08bc29198c739c7237c4fcbc24d35bc8e69e58f2c2dfe720fd33"},
+    "scientific_work": {
+      "shell_triples_visited": 28385280,
+      "shell_triples_nonzero": 28385280,
+      "shell_primitive_products": 175132672,
+      "shell_public_weights_consumed": 226787328,
+      "shell_public_weights_nonzero": 226787328,
+      "shell_cartesian_component_products": 973859328
+    }
+  }
+}
