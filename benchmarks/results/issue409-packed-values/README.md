@@ -10,7 +10,7 @@ All timings below are seconds on the RTX 5090, in finite Slurm jobs.
 Each row contains seven interleaved dense/packed pairs. Clean calls have no
 tracing or memory sampling; intrusive diagnostics are separate. Both policies
 start from the same frozen density for warm/changed cells and use normal
-convergence. Every retained sample passes `1e-9 Eh / 1e-8 Eh/Bohr` against
+convergence. Every sample in the completed rows below passes `1e-9 Eh / 1e-8 Eh/Bohr` against
 independent references. These large-case gates do not relax stricter fixtures.
 
 | Endpoint | Dense median | Packed median | Dense/packed SCF updates |
@@ -24,6 +24,8 @@ independent references. These large-case gates do not relax stricter fixtures.
 | 384 cold forces | 10.135832240 | 11.948631649 | 20 / 18 |
 | 384 changed-geometry forces | 9.606932915 | 11.256079176 | 12 / 12 |
 | 768 cold forces | 85.685922099 | 82.768054998 | 23 / 24 |
+| 24/116 unequal warm forces | 0.019747868 | 0.018764724 | 2 / 2 |
+| 96/464 unequal warm forces | 0.568663857 | 0.552863172 | 2 / 2 |
 
 Changed SCF branches are ordinary-latency results, not iteration-matched
 comparisons. The 192-AO force gain is about 21.2%; packed force response removes
@@ -49,6 +51,21 @@ count: the warm graph was cached before tracing, so there are no in-range graph
 construction counters to multiply. Transfer counters remain scoped to individual
 operations because nested semantic counters overlap. Full hardware traffic and
 raw-integral recurrence FLOPs remain explicitly unmeasured.
+
+The 768-AO changed-geometry clean series also completed all seven pairs:
+86.357965270 -> 191.511216193 seconds, with nine updates in each arm. Its
+maximum energy/force differences are 5.87e-11 Eh / 1.78e-10 Eh/Bohr. Job 9845
+then timed out before completing the separate diagnostic pass. The original
+clean file and terminal scheduler record are retained under `partial/` and
+`campaigns/`; a diagnostic companion is queued, with no repeated or pooled
+clean samples. The reason for the large regression remains unconfirmed.
+
+The unequal cases use unmodified cc-pVDZ/cc-pVDZ-JKFIT bases. At 384/1856 and
+an 8-GiB total DF allowance, the dense cold preflight fails the unchanged force
+gate: 1.300395833e-8 exceeds 1e-8 Eh/Bohr (energy error 3.98e-10 Eh). Both
+metric ranks are 1856. The campaign stops before packed or warm timing, so this
+larger case is unqualified and establishes no representation speed comparison.
+`failed/unequal/` retains its full numerical record, including the failure.
 
 ## Constrained memory: diagnostic evidence only
 
@@ -83,8 +100,8 @@ publishing routine logs. Stage-1 and stage-2 library identities are distinct.
 
 The draft still requires:
 
-- 768-AO changed endpoints and their independent references/work counts;
-- complete-shell cc-pVDZ/cc-pVDZ-JKFIT unequal-auxiliary endpoints;
+- the separate 768-AO changed-geometry diagnostic and work counts;
+- diagnosis/domain resolution of the failed 384/1856 unequal preflight;
 - seven clean constrained pairs and a final domain/negative-result decision;
 - the remaining complete traffic/component/resource and compilation audit;
 - a rebuild and required validation of the subsequently formatted native source;

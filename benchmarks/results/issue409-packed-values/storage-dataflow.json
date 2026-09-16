@@ -1,7 +1,7 @@
 {
   "scope": "Reconcile retained #409 storage shapes with executed logical work.\n\nShape arithmetic is not a device-memory observation or a hardware traffic count.\nNative event intervals include stream idle time. Nested operations/byte counters\ncan overlap and are deliberately not summed into a complete endpoint total.\nWarm traces can reuse a graph captured before tracing started. Eager counters\ntherefore exclude replay work; full logical J FLOPs are derived separately from\nobserved operator counts and the source's two matrix-vector contractions.\n",
   "runner_sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d",
-  "source_summary_sha256": "736549ba95c81ade332dc04ecdb6347e1df2d12c1f3300f03af2a303b032d99e",
+  "source_summary_sha256": "20928fe837e2205c9eee04bb7cdfac3231a0df3e590abc80c28d89ca27a7e39b",
   "capacity_definition": "src/scf/df_value_storage.hpp::df_packed_value_capacity",
   "capacity_definition_sha256": "0e7257fefd46c36c5b370c9bc30306f9868d7f6201984c6e557c4b7714ba7dec",
   "capacity_scope": "Publishing source after verified clang-format-only change; explicit allocated tensor/scratch shapes. Other source/metric/SCF/library reservations remain in reported plan diagnostics.",

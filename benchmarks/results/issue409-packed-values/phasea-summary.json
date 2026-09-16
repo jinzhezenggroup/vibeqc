@@ -838,6 +838,34 @@
       ]
     },
     {
+      "source": ".artifacts/issue409/rebuild-v2/768-changed-clean.json",
+      "sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
+      "phase": "changed",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 86.35796527005732,
+        "packed": 191.51121619297192
+      },
+      "packed_over_dense": 2.2176439150005556,
+      "paired_bootstrap_ratio_95": [
+        2.2172818135904957,
+        2.2201427509828835
+      ],
+      "work_distributions": {
+        "dense": {
+          "9": 7
+        },
+        "packed": {
+          "9": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 5.866240826435387e-11,
+      "maximum_force_error": 1.7779832402371742e-10,
+      "diagnostic_work": []
+    },
+    {
       "source": ".artifacts/issue409/rebuild-v2/768-cold-clean.json",
       "sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778",
       "phase": "cold",
@@ -949,15 +977,229 @@
           "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
         }
       ]
+    },
+    {
+      "source": ".artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.json",
+      "sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2",
+      "phase": "warm",
+      "aos": 24,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.019747868180274963,
+        "packed": 0.018764723790809512
+      },
+      "packed_over_dense": 0.9502151634550884,
+      "paired_bootstrap_ratio_95": [
+        0.9458732947771727,
+        0.9560518025937611
+      ],
+      "work_distributions": {
+        "dense": {
+          "2": 7
+        },
+        "packed": {
+          "2": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 1.7195134205394424e-12,
+      "maximum_force_error": 2.864588184714467e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 72,
+            "host_to_device_bytes": 546376,
+            "raw_value_cache_hits": 232,
+            "raw_value_reuse_bytes": 1069056,
+            "raw_value_upload_bytes": 534528,
+            "response_ao_matrix_products": 232,
+            "response_density_scalar_products": 232,
+            "response_metric_blas_dots": 13456,
+            "tensor_host_to_device_bytes": 534528
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "c3062c0082bb085bee5912a99e63359596783c38bf62a061a7dbc900806e02f5",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 72,
+            "host_to_device_bytes": 11848,
+            "raw_packed_unpacked_elements": 66816,
+            "raw_packed_value_reused_bytes": 278400,
+            "raw_value_cache_hits": 232,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 1069056,
+            "response_ao_matrix_products": 232,
+            "response_density_scalar_products": 232,
+            "response_metric_blas_dots": 13456,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "2661d77bf36d06eb68a5d3307979545e0501d71e6640a5f8c3c88c79a79e4f01",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.json",
+      "sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00",
+      "phase": "warm",
+      "aos": 96,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.5686638569459319,
+        "packed": 0.5528631720226258
+      },
+      "packed_over_dense": 0.9722143675383814,
+      "paired_bootstrap_ratio_95": [
+        0.9679353245465679,
+        0.9739124754384029
+      ],
+      "work_distributions": {
+        "dense": {
+          "2": 7
+        },
+        "packed": {
+          "2": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 8.071765478234738e-12,
+      "maximum_force_error": 3.6300346357293067e-09,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 34312432,
+            "raw_value_cache_hits": 928,
+            "raw_value_reuse_bytes": 68419584,
+            "raw_value_upload_bytes": 34209792,
+            "response_ao_matrix_products": 928,
+            "response_density_scalar_products": 928,
+            "response_metric_blas_dots": 215296,
+            "tensor_host_to_device_bytes": 34209792
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "21dc68ac42a6290ee3827fd4042882bde34d09d05aa7a04bb8a447f1d23fa21e",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 102640,
+            "raw_packed_unpacked_elements": 4276224,
+            "raw_packed_value_reused_bytes": 17283072,
+            "raw_value_cache_hits": 928,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 68419584,
+            "response_ao_matrix_products": 928,
+            "response_density_scalar_products": 928,
+            "response_metric_blas_dots": 215296,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "6ac43c3ce6f4b6dfeb0a77fad943ee6ebe871ea185d8b1974c8526976abc0357",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
     }
   ],
   "incomplete": [
     {
-      "source": ".artifacts/issue409/rebuild-v2/768-changed-clean.json",
-      "failure": null,
+      "source": ".artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
+      "failure": "AssertionError({'policy': 'dense', 'repeat': -1, 'seconds': 112.59982304717414, 'iterations': 20, 'convergence': [{'converged': True, 'iterations': 20, 'basis_metadata': {'orbital': {'name': 'explicit-shells', 'role': 'orbital', 'mathematical_identity': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413', 'basis_identity': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413', 'representation': 'spherical', 'provenance': {'source': 'explicit native Shell input', 'version': '1', 'license': 'caller-supplied', 'checksum': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413'}, 'electrons': {'atomic_numbers': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'nuclear_charges': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'ecp_core_electrons': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 'ionic_charge': 0, 'electron_count': 160, 'multiplicity': 1, 'nalpha': 80, 'nbeta': 80}, 'shell_count': 192, 'primitive_count': 512}, 'auxiliary': {'name': 'explicit-shells', 'role': 'auxiliary', 'mathematical_identity': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a', 'basis_identity': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a', 'representation': 'spherical', 'provenance': {'source': 'explicit native Shell input', 'version': '1', 'license': 'caller-supplied', 'checksum': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a'}, 'electrons': {'atomic_numbers': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'nuclear_charges': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'ecp_core_electrons': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 'ionic_charge': 0, 'electron_count': 160, 'multiplicity': 1, 'nalpha': 80, 'nbeta': 80}, 'shell_count': 672, 'primitive_count': 672}, 'model_identity': '029bfcc9c0312ce42956ceb12c218431ff9c5003879cc57ccf5e09d4efaef95a'}, 'energy_change_hartree': 4.547473508864641e-13, 'density_rms': 6.180360012185939e-12, 'warm_start_used': False, 'warm_start_fallback': False, 'final_residuals': {'energy_change_hartree': 4.547473508864641e-13, 'density_rms': 6.180360012185939e-12, 'orbital_gradient_norm': None}, 'warm_start': {'used': False, 'fallback': False}}], 'energy_hartree': -1216.662861871048, 'forces_hartree_per_bohr': [[-0.001028048048193497, -0.01668085572625427, -0.010860033573234932], [0.016433469991855527, 0.015520519877524014, -0.00015302551321261755], [-0.012923783646905369, 0.0016115195553737785, 0.009636766642955171], [-0.016974732613366853, 0.001271144416961293, 0.010456953703003107], [0.0018099670947710608, 0.012623117540194087, -0.009501830182488806], [0.015728049493453116, -0.016592981774486062, 0.0002474928756461985], [0.004244226942561505, 0.016244538312286703, -0.013812328259812143], [0.004381216472726443, -0.0001387525408685915, 0.018613964068160297], [-0.011448982808446808, -0.014504313476444973, -0.0039846453873441596], [-0.016153091547671552, 0.0043840410808110705, 0.013656546833086756], [0.00015566058310650884, 0.004363919564866137, -0.01847249365421164], [0.014493053047124413, -0.01149004198759954, 0.00403003050353861], [0.0163271646097348, -0.004315076170543461, 0.013628714079132354], [-0.014615893044652276, 0.011529428528329864, 0.004091233541610511], [-0.00013692927879078672, -0.0043742516660904875, -0.01845287790699954], [0.01675603551884069, -0.0012334510821771956, 0.010446545605510647], [-0.01554469932391932, 0.016472450738058912, 0.0002717469147358897], [-0.0017454913827097632, -0.012628101208008446, -0.009497086335815414], [0.0013387681948940767, 0.016876302607128812, -0.010610055699203232], [-0.01661434623324133, -0.015698343441035045, -0.00018691830806623753], [0.01259885497393069, -0.001778846277508067, 0.009527061604117685], [-0.004652724656122349, -0.016162297661963042, -0.014017710298480165], [-0.004276267263158729, 0.0001019844867675188, 0.018910961832754425], [0.011623090299062715, 0.01454228952032643, -0.003969012732279838], [-0.0013387648291174202, -0.01687631166337974, -0.010610059161387552], [0.016614346129698507, 0.015698350069885778, -0.00018691744687812073], [-0.01259885772040919, 0.0017788487168647594, 0.009527065064099088], [-0.016756045815447686, 0.0012334490077235175, 0.010446555011192783], [0.0017454941620037444, 0.012628110841297134, -0.009497095577531598], [0.015544705081677435, -0.016472456978359883, 0.0002717458139921041], [0.0046527198746250725, 0.016162286193819788, -0.014017721741926144], [0.004276267936977807, -0.00010198361444593175, 0.018910969348730457], [-0.011623085111133675, -0.01454227880258274, -0.0039690088960757505], [-0.01632717210608746, 0.004315082109947813, 0.013628707566667635], [0.00013692912096505093, 0.0043742517845237515, -0.0184528707890589], [0.014615901130039313, -0.011529437872609072, 0.004091231554338799], [0.0161530861806337, -0.004384037713392714, 0.013656547005524329], [-0.014493046746210889, 0.011490039600134293, 0.0040300269627642354], [-0.00015565974718978137, -0.0043639185137434745, -0.01847249125773698], [0.016974736392580576, -0.0012711448326699311, 0.010456958340501954], [-0.01572805270650102, 0.01659298381935292, 0.0002474914063381582], [-0.001809967215529104, -0.012623120004409046, -0.009501832058908404], [0.0010280516735547164, 0.01668085710778688, -0.010860031224911672], [-0.01643347396438161, -0.015520522197824835, -0.00015302611237272385], [0.012923780976834493, -0.0016115185030643373, 0.00963676485787836], [-0.004244235111865868, -0.016244550283107846, -0.013812334021985761], [-0.004381217811557032, 0.00013875480180171155, 0.01861397149523946], [0.011448992844128349, 0.014504323707221487, -0.003984646482427149]], 'maximum_energy_error': 3.979039320256561e-10, 'maximum_force_error': 1.3003958328552945e-08, 'rms_force_error': 3.92789558737656e-09, 'force_sum': [-6.829061621749233e-12, -3.5802801695572484e-12, 9.169527116770215e-12], 'metric': [{'bucket_id': 0, 'system_index': 0, 'effective_rank': 1856, 'absolute_threshold': 7.463230027563506e-08, 'condition_number': 11155409.7341553, 'solver_device_workspace_bytes': 112381080, 'solver_host_workspace_bytes': 0, 'device_resident_bytes': 2832104749, 'peak_device_bytes': 2972058569, 'host_resident_bytes': 19924490, 'peak_host_bytes': 136448939, 'auxiliary_tile': 128, 'streamed': False}]})",
       "counts": {
-        "dense": 3,
-        "packed": 3
+        "dense": 0,
+        "packed": 0
       }
     }
   ]

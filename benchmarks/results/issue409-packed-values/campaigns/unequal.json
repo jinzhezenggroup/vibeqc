@@ -1,0 +1,121 @@
+{
+  "scope": "Qualify physical unequal auxiliary cases before larger capacity evidence.",
+  "slurm_job_id": "9847",
+  "checks": [
+    {
+      "name": "water-def2-svp-spherical-reference",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-def2-svp-spherical",
+        "--mode",
+        "reference",
+        "--budget",
+        "0",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "water-def2-svp-spherical-measure",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-def2-svp-spherical",
+        "--mode",
+        "measure",
+        "--budget",
+        "0",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.json",
+        "--reference",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-reference",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--mode",
+        "reference",
+        "--budget",
+        "0",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-measure",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--mode",
+        "measure",
+        "--budget",
+        "0",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.json",
+        "--reference",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "water-hexadecamer-2s4-def2-svp-spherical-reference",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+        "--mode",
+        "reference",
+        "--budget",
+        "8589934592",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "water-hexadecamer-2s4-def2-svp-spherical-measure",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-endpoints.py",
+        "--case",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+        "--mode",
+        "measure",
+        "--budget",
+        "8589934592",
+        "--repeats",
+        "7",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
+        "--reference",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-reference.json"
+      ],
+      "exit_code": 1
+    }
+  ],
+  "runner_sha256": "64ee672652ab3bbb08dd7c4ab2857b471b6325bfa8dbef9cc7c9daf1bcb5438c"
+}

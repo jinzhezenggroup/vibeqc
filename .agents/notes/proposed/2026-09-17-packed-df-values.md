@@ -342,3 +342,21 @@ undercount the solve. The audit also charges both immutable factors and all thre
 simultaneous shared scratch buffers; at 768 AO these total 5,591,531,520 bytes
 before source/metric/SCF/library allocations. Semantic transfer counters remain
 per operation, and no complete hardware traffic is inferred by adding them.
+
+## Additional completed cells and retained failures (2026-09-17)
+
+All seven 768-AO changed-geometry clean pairs complete before job 9845 reaches
+its 90-minute limit: 86.357965270 -> 191.511216193 seconds, nine updates in both
+arms, and unchanged numerical gates pass. The timeout interrupts the subsequent
+diagnostic portion. Keep the exact original series and scheduler terminal record;
+job 9851 supplies only a separate diagnostic companion. Do not pool interrupted
+and retried series, or infer the regression's cause from residuals alone.
+
+The complete-shell cc-pVDZ/cc-pVDZ-JKFIT campaign passes seven warm pairs and
+separate diagnostics at 24/116 and 96/464 AO/auxiliary sizes. Their force medians
+are 0.019747868 -> 0.018764724 and 0.568663857 -> 0.552863172 seconds, with two
+updates in every arm. These do not qualify the larger 384/1856 workload: its
+dense cold preflight fails the 1e-8 force gate with 1.300395833e-8 Eh/Bohr;
+energy error is 3.98e-10 Eh and both metric ranks are 1856. The failure precedes
+packed execution. Preserve the complete failed record and leave this domain
+unqualified while diagnosing the independent-reference difference.

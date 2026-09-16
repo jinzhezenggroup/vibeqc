@@ -3,6 +3,14 @@
   "partial_draft": true,
   "files": [
     {
+      "path": "campaigns/unequal.json",
+      "bytes": 4006,
+      "sha256": "96d802028d6a98106b532c8d43a734d0c5b990c2911e1e9d627da1924a6b993f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/manifest.json",
+      "original_bytes": 4006,
+      "original_sha256": "96d802028d6a98106b532c8d43a734d0c5b990c2911e1e9d627da1924a6b993f"
+    },
+    {
       "path": "warm/96-forces.json",
       "bytes": 149691,
       "sha256": "7d3687438134ad03b9fe8b3ff258faac4b5ca44ef4a1576ade35b8d2a75af41d",
@@ -75,12 +83,52 @@
       "original_sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778"
     },
     {
+      "path": "partial/rebuild/768-changed.json",
+      "bytes": 401967,
+      "sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-clean.json",
+      "original_bytes": 401967,
+      "original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c"
+    },
+    {
+      "path": "unequal/water-def2-svp-spherical.json",
+      "bytes": 107712,
+      "sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.json",
+      "original_bytes": 107712,
+      "original_sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2"
+    },
+    {
+      "path": "unequal/water-tetramer-def2-svp-spherical.json",
+      "bytes": 146198,
+      "sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.json",
+      "original_bytes": 146198,
+      "original_sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00"
+    },
+    {
+      "path": "failed/unequal/water-hexadecamer-2s4-def2-svp-spherical.json",
+      "bytes": 33827,
+      "sha256": "1f33566bc28dee3f5415b2785c56688a209bdd3a487fcaa8e5b207a0568bec6c",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
+      "original_bytes": 33827,
+      "original_sha256": "1f33566bc28dee3f5415b2785c56688a209bdd3a487fcaa8e5b207a0568bec6c"
+    },
+    {
       "path": "phasea-summary.json",
-      "bytes": 35020,
-      "sha256": "736549ba95c81ade332dc04ecdb6347e1df2d12c1f3300f03af2a303b032d99e",
+      "bytes": 50644,
+      "sha256": "20928fe837e2205c9eee04bb7cdfac3231a0df3e590abc80c28d89ca27a7e39b",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/phasea-summary.json",
-      "original_bytes": 35020,
-      "original_sha256": "736549ba95c81ade332dc04ecdb6347e1df2d12c1f3300f03af2a303b032d99e"
+      "original_bytes": 50644,
+      "original_sha256": "20928fe837e2205c9eee04bb7cdfac3231a0df3e590abc80c28d89ca27a7e39b"
+    },
+    {
+      "path": "storage-dataflow.json",
+      "bytes": 135548,
+      "sha256": "a3e66b31438e52773c3557277ae167ab7d12aab5d4095f375494fe168450094b",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/storage-dataflow.json",
+      "original_bytes": 135548,
+      "original_sha256": "a3e66b31438e52773c3557277ae167ab7d12aab5d4095f375494fe168450094b"
     },
     {
       "path": "clean-warm/work-reconciliation.json",
@@ -129,6 +177,38 @@
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-reference.json",
       "original_bytes": 18821,
       "original_sha256": "c809c6364d63848201f299abc2de3fcb4c1602a97cd182ccd9ca1928611e0dfe"
+    },
+    {
+      "path": "campaigns/terminal-9845.json",
+      "bytes": 1622,
+      "sha256": "2bba957d632807c7b4cb52a91f790528e582e97acfd7ad622e9669aaeed977ed",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/terminal-9845.json",
+      "original_bytes": 1622,
+      "original_sha256": "2bba957d632807c7b4cb52a91f790528e582e97acfd7ad622e9669aaeed977ed"
+    },
+    {
+      "path": "references/water-def2-svp-spherical-reference.json",
+      "bytes": 7014,
+      "sha256": "6c4d00e7db9b39fe814fc730a149a384c6df25b4c4d2b0de738289ee920f4e75",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-reference.json",
+      "original_bytes": 7014,
+      "original_sha256": "6c4d00e7db9b39fe814fc730a149a384c6df25b4c4d2b0de738289ee920f4e75"
+    },
+    {
+      "path": "references/water-hexadecamer-2s4-def2-svp-spherical-reference.json",
+      "bytes": 17101,
+      "sha256": "3493794c979e57125c0dae40df82376184c5958ef6f54ed2fdf1334211146f54",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-reference.json",
+      "original_bytes": 17101,
+      "original_sha256": "3493794c979e57125c0dae40df82376184c5958ef6f54ed2fdf1334211146f54"
+    },
+    {
+      "path": "references/water-tetramer-def2-svp-spherical-reference.json",
+      "bytes": 9132,
+      "sha256": "f9b7b8b9ca7c22521594cb4759f53c9d866ea8eebdd2680828bfdc49880fae4f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json",
+      "original_bytes": 9132,
+      "original_sha256": "f9b7b8b9ca7c22521594cb4759f53c9d866ea8eebdd2680828bfdc49880fae4f"
     },
     {
       "path": "projection/independent-small-summary.json",
@@ -459,6 +539,22 @@
       "original_sha256": "bc6b1ce90507b00ff562d1806c2603c18f274d1c16dac34e7ab48d2e570d646c"
     },
     {
+      "path": "qualification/format-verification.json",
+      "bytes": 8051,
+      "sha256": "cc4774cc803397eee9779374e65c39680339ecd5540f28588af4542284a4978b",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/format-verification.json",
+      "original_bytes": 8051,
+      "original_sha256": "cc4774cc803397eee9779374e65c39680339ecd5540f28588af4542284a4978b"
+    },
+    {
+      "path": "qualification/publishing-cuda-ownership.json",
+      "bytes": 2464,
+      "sha256": "ffb91d977faea1f51772888ff56680325e2f1fcef19b7796e5dcfb392694017a",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/publishing-cuda-ownership.json",
+      "original_bytes": 2464,
+      "original_sha256": "ffb91d977faea1f51772888ff56680325e2f1fcef19b7796e5dcfb392694017a"
+    },
+    {
       "path": "reproduction/manifest.json",
       "bytes": 3723,
       "sha256": "fb281fc5f612ce61e1a096ab10dcd3dd4c5d1d8d02c9fe186b8bfece541fbe66",
@@ -643,6 +739,14 @@
       "original_sha256": "65dfa82e0f125005e9dab61944f35670647609a60b6bf2fcf5b3fe7f6a98a2ab"
     },
     {
+      "path": "reproduction/measured-account-dataflow.py.txt",
+      "bytes": 11706,
+      "sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/account-dataflow.py",
+      "original_bytes": 11706,
+      "original_sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d"
+    },
+    {
       "path": "reproduction/measured-run-tests.py.txt",
       "bytes": 2065,
       "sha256": "cc1d96eced5445dce44150e0a42ebf6d3074569c86b10ee5def1dbe65bc15741",
@@ -684,53 +788,31 @@
     },
     {
       "path": "collector.py.txt",
-      "bytes": 10667,
-      "sha256": "8740975843cad871a07a81dad5ea02e93ac511e04b42874317fb3f6377c9c1a4",
+      "bytes": 12068,
+      "sha256": "2b28d03301ee2cf223a6d75339d0e5aa68a65e5214b2f6ba5e69e70e6dbc8661",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/benchmarks/experiments/issue409-packed-values/collect.py",
-      "original_bytes": 10667,
-      "original_sha256": "8740975843cad871a07a81dad5ea02e93ac511e04b42874317fb3f6377c9c1a4"
-    },
-    {
-      "path": "storage-dataflow.json",
-      "bytes": 135548,
-      "sha256": "b9df574e3d09aa7b561330a21d090ce526df7f2612c354de24328c8f886c1ff1",
-      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/storage-dataflow.json",
-      "original_bytes": 135548,
-      "original_sha256": "b9df574e3d09aa7b561330a21d090ce526df7f2612c354de24328c8f886c1ff1"
-    },
-    {
-      "path": "reproduction/measured-account-dataflow.py.txt",
-      "bytes": 11706,
-      "sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d",
-      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/account-dataflow.py",
-      "original_bytes": 11706,
-      "original_sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d"
+      "original_bytes": 12068,
+      "original_sha256": "2b28d03301ee2cf223a6d75339d0e5aa68a65e5214b2f6ba5e69e70e6dbc8661"
     }
   ],
   "incomplete": [
     {
-      "path": "unequal-v2/manifest.json",
-      "reason": "unequal campaign not complete"
+      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/manifest.json",
+      "reason": "unequal campaign failed; original failed cell retained"
     },
     {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-clean.json",
-      "reason": "incomplete interleaving"
+      "reason": "incomplete interleaving or diagnostics",
+      "retained": "partial/rebuild/768-changed.json"
     },
     {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/constrained-clean/768-12GiB-forces.json",
       "reason": "missing"
     },
     {
-      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.json",
-      "reason": "missing"
-    },
-    {
-      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.json",
-      "reason": "missing"
-    },
-    {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
-      "reason": "missing"
+      "reason": "endpoint failed",
+      "retained": "failed/unequal/water-hexadecamer-2s4-def2-svp-spherical.json"
     }
   ]
 }

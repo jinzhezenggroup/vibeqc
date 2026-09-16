@@ -99,6 +99,19 @@ def main():
                     "reason": "unequal campaign not complete",
                 }
             )
+        else:
+            campaign = source / "unequal-v2/manifest.json"
+            retain(campaign, "campaigns/unequal.json")
+            if any(
+                check["exit_code"]
+                for check in json.loads(campaign.read_text())["checks"]
+            ):
+                manifest["incomplete"].append(
+                    {
+                        "path": str(campaign),
+                        "reason": "unequal campaign failed; original failed cell retained",
+                    }
+                )
         order = [
             (i, p)
             for i in range(7)
@@ -118,10 +131,19 @@ def main():
                     and len(data.get("diagnostics", [])) != 2
                 )
             ):
+                # Preserve failed and interrupted observations without admitting
+                # them as completed qualification cells or pooling their samples.
+                retained_name = (
+                    "failed/" if data.get("failure") else "partial/"
+                ) + name
+                retain(path, retained_name)
                 manifest["incomplete"].append(
                     {
                         "path": str(path),
-                        "reason": data.get("failure", "incomplete interleaving"),
+                        "reason": "endpoint failed"
+                        if data.get("failure")
+                        else "incomplete interleaving or diagnostics",
+                        "retained": retained_name,
                     }
                 )
                 continue
@@ -155,6 +177,8 @@ def main():
             retain(path, f"capacity/{path.name}")
         for path in sorted((source / "rebuild-v2").glob("*-changed-reference.json")):
             retain(path, f"references/{path.name}")
+        for path in sorted((source / "rebuild-v2").glob("terminal-*.json")):
+            retain(path, f"campaigns/{path.name}")
         for path in sorted((source / "unequal-v2").glob("*-reference.json")):
             retain(path, f"references/{path.name}")
         for path in sorted(
@@ -186,6 +210,14 @@ def main():
                 "qualification/native-paths.json",
             ),
             ("stage2/validation.json", "qualification/high-level.json"),
+            (
+                "stage2/format-verification.json",
+                "qualification/format-verification.json",
+            ),
+            (
+                "publishing-cuda-ownership.json",
+                "qualification/publishing-cuda-ownership.json",
+            ),
         ):
             retain(source / name, target)
         for name in (
