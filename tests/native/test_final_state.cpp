@@ -4,11 +4,20 @@
 #include <stdexcept>
 
 #include "scf/solver/final_state.hpp"
+#ifdef VIBEQC_TEST_DEVICE_FINAL_STATE
+#include <cuda_runtime_api.h>
+
+#include <memory>
+
+#include "scf/cuda_density_fitting.hpp"
+#include "scf/cuda_density_fitting_final_state.hpp"
+#endif
 
 namespace {
 using namespace vibeqc::scf;
 using namespace vibeqc::scf::solver;
 using reference::Matrix;
+const FinalStateOperations* backend = nullptr;
 void require(bool value, const char* detail) {
   if (!value) throw std::runtime_error(detail);
 }
@@ -34,7 +43,7 @@ struct Fixture {
   bool valid() const {
     FinalStateDiagnostic diagnostic;
     std::string detail;
-    return validate_final_state(id, s, h, nuclear, d, f, c, limits, diagnostic, detail);
+    return validate_final_state(id, s, h, nuclear, d, f, c, limits, diagnostic, detail, backend);
   }
   PhysicalFockOperation physical() const {
     return [this](const FinalStateIdentity& current, const std::vector<Matrix>& density) {
@@ -53,7 +62,7 @@ struct Fixture {
   }
   FinalStateSelection select(bool weighted = false, bool force = false) const {
     return select_final_state(id, s, h, x, nuclear, d, &c, physical(), eigen(), limits, weighted,
-                              force);
+                              force, backend);
   }
 };
 
@@ -205,6 +214,10 @@ void physical_reference_caps() {
   a.f.spins[0] = {-1e-8 + 1e-15, 0, 0, 3};
   a.d = {{2e8, 0, 0, 0}};
   require(a.valid(), "analytic scaled-residual fixture failed the generic contract");
+  const auto ill_conditioned_force = a.select(true);
+  require(ill_conditioned_force.state.has_value(), "ill-conditioned accepted state lost W");
+  near(ill_conditioned_force.state->weighted_density[0][0], -2e8,
+       "ill-conditioned W disagrees with its analytic occupied projector");
   a.limits.require_canonicality = true;
   require(!a.valid(), "physical-reference CFC amplification escaped absolute canonicality");
   a = Fixture{};
@@ -277,7 +290,7 @@ void provider_failure_and_nonlinear_exhaustion() {
       return f;
     };
     auto result = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, &a.c, faulty, a.eigen(),
-                                     a.limits, true);
+                                     a.limits, true, false, backend);
     require(!result.state && result.fock_evaluations == 1 && result.eigen_solves == 0 &&
                 result.status == (fault == 1 ? FinalStateStatus::OutOfMemory
                                              : FinalStateStatus::ProviderFailure),
@@ -292,7 +305,7 @@ void provider_failure_and_nonlinear_exhaustion() {
       return c;
     };
     const auto result = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, nullptr,
-                                           a.physical(), bad, a.limits, true);
+                                           a.physical(), bad, a.limits, true, false, backend);
     require(!result.state && result.status == FinalStateStatus::ProviderFailure &&
                 result.eigen_solves == 1 && result.density_updates == 0,
             "failed eigen provider projected D or published a state");
@@ -312,7 +325,7 @@ void provider_failure_and_nonlinear_exhaustion() {
                        : reference::EigenResult{{f[0], f[3]}, {1, 0, 0, 1}};
   };
   const auto result = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, nullptr, oscillating,
-                                         diagonal, a.limits, true);
+                                         diagonal, a.limits, true, false, backend);
   require(!result.state && result.status == FinalStateStatus::NumericalFailure &&
               result.fock_evaluations == 5 && result.eigen_solves == 4 &&
               result.density_updates == 4 && result.candidate_rejections == 4,
@@ -322,6 +335,21 @@ void provider_failure_and_nonlinear_exhaustion() {
 
 int main() {
   try {
+#ifdef VIBEQC_TEST_DEVICE_FINAL_STATE
+    int devices = 0;
+    if (cudaGetDeviceCount(&devices) != cudaSuccess || !devices) return 77;
+    CudaDensityFittingJkPlan* raw{};
+    std::vector<CudaDensityFittingMetricDiagnostic> metric;
+    std::string detail;
+    require(
+        create_cuda_density_fitting_jk_plan_tiled(0, 1, 2, 1, {1}, Matrix(4, 0), 1e-10, 1, 4, &raw,
+                                                  metric, detail) == VIBEQC_STATUS_SUCCESS,
+        detail.c_str());
+    std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)> plan(
+        raw, destroy_cuda_density_fitting_jk_plan);
+    const auto operations = cuda_density_fitting_final_state_operations(raw);
+    backend = &operations;
+#endif
     analytic_spin_states();
     identity_and_physical_origin();
     malformed_states_and_strict_gates();

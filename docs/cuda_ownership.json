@@ -1421,6 +1421,27 @@
       "regions": [],
       "role": "runtime",
       "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/final_validation_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Launch boundary for shared final-state validation products.",
+      "regions": [
+        {
+          "start": "__device__ void add(",
+          "stop": "void launch_validation_eigen(",
+          "role": "scientific",
+          "reason": "FP64 final-state norms, finite/generation checks, trace/energy reductions and occupied-column weighting; common acceptance policy remains in the shared solver."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/final_validation_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Fixed-size device reduction payloads and launch declarations.",
+      "regions": []
     }
   ],
   "generated_families": [

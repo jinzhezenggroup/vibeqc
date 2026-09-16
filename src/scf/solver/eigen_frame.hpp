@@ -10,6 +10,10 @@ struct EigenFrameDiagnostic {
   double maximum_eigen_residual{}, scaled_eigen_residual{}, maximum_metric_error{};
   int solver_info{};
 };
+/** Apply the common absolute/scaled gates to finite backend-produced evidence.
+ * Product overflow must be reported by the producer before calling this gate. */
+bool accept_eigen_frame(const EigenFrameDiagnostic& diagnostic, std::string& detail);
+
 /** Validate the returned frame independently of the production eigen backend.
  * A null overlap means I. The existing physical-reference absolute 1e-8
  * eigen/metric gates also apply here, alongside a scaled 1e-12 residual.

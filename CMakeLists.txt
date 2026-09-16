@@ -418,6 +418,8 @@ if(VIBEQC_ENABLE_CUDA)
     src/scf/cuda/df_scf_library.cpp
     src/scf/cuda/df_scf_diis.cpp
     src/scf/cuda/df_eigensystem.cpp
+    src/scf/cuda/df_final_validation.cpp
+    src/scf/cuda/final_validation_kernels.cu
     src/scf/cuda/df_uhf_scf.cpp
     src/scf/cuda_eigensolver_probe.cu
     src/scf/cuda_rhf.cpp

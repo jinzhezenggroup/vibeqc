@@ -171,7 +171,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
                                                     const std::vector<double>& density,
                                                     std::vector<double>& coulomb,
                                                     std::vector<double>& exchange, bool& used,
-                                                    std::string& detail) {
+                                                    std::string& detail, bool download) {
   using namespace runtime::cuda_trace;
   used = false;
   if (plan) plan->final_projection_token.reset();
@@ -240,23 +240,25 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   // Both D and the full retained C were committed under this generation. The
   // strict selector still checks the resulting physical F[D] and eigenframe;
   // if it changes D or generation, this exact identity gate refuses reuse.
-  coulomb.resize(plan->matrix_elements);
-  exchange.resize(plan->matrix_elements);
+  coulomb.resize(download ? plan->matrix_elements : 0);
+  exchange.resize(download ? plan->matrix_elements : 0);
   status = build_coulomb(*plan, state->d_density, detail);
   if (status == VIBEQC_STATUS_SUCCESS)
     status = build_occupied_exchange(*plan, 0, state->d_final_alpha_coefficients,
                                      current.identity.occupied[0], true, 2, plan->alpha_exchange,
                                      detail);
   if (status != VIBEQC_STATUS_SUCCESS) return status;
-  error =
-      cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
-  if (error == cudaSuccess)
-    error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
-                            plan->stream);
+  if (download) {
+    error =
+        cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
+    if (error == cudaSuccess)
+      error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
+                              plan->stream);
+  }
   const auto finished = cudaStreamSynchronize(plan->stream);
   if (error == cudaSuccess) error = finished;
   if (error != cudaSuccess) return cuda_failure(error, "download final retained J/K", detail);
-  trace_counter("d2h_bytes", 2 * bytes);
+  trace_counter("d2h_bytes", download ? 2 * bytes : 0);
   trace_counter("explicit_synchronizations", 1);
   // The projection and final coefficients refer to precisely this density
   // generation. Publishing after the successful drain excludes partial K.
@@ -273,7 +275,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
 vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* plan,
                                                     const CudaDfFinalStateToken& expected,
                                                     CudaDfFinalStateSnapshot& snapshot,
-                                                    std::string& detail) {
+                                                    std::string& detail, bool include_density) {
   snapshot = {};
   try {
     CudaDfFinalStateToken current;
@@ -300,13 +302,13 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
     local.candidate.physical_origin = true;
     local.candidate.fock_density_generation = current.identity.factor.density_generation - 1;
     local.candidate.spins.resize(spins);
-    local.density.resize(spins);
+    if (include_density) local.density.resize(spins);
     // Allocate all pageable destinations before the first asynchronous copy,
     // then always drain the stream before any local storage can be released.
     for (std::size_t spin = 0; spin < spins; ++spin) {
       local.candidate.spins[spin].vectors.resize(count);
       local.candidate.spins[spin].values.resize(n);
-      local.density[spin].resize(count);
+      if (include_density) local.density[spin].resize(count);
     }
     std::uint64_t generations[2]{};
     int info[2]{};
@@ -325,12 +327,14 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
       copy(local.candidate.spins[spin].values.data(),
            (spin ? state.d_final_beta_values : state.d_final_alpha_values) + item * n,
            n * sizeof(double));
-      copy(local.density[spin].data(),
-           (spin                 ? state.d_beta_density
-            : state.unrestricted ? state.d_alpha_density
-                                 : state.d_density) +
-               item * count,
-           count * sizeof(double));
+      if (include_density) {
+        copy(local.density[spin].data(),
+             (spin                 ? state.d_beta_density
+              : state.unrestricted ? state.d_alpha_density
+                                   : state.d_density) +
+                 item * count,
+             count * sizeof(double));
+      }
       copy(&generations[spin],
            (spin ? state.d_final_beta_generation : state.d_final_alpha_generation) + item,
            sizeof(std::uint64_t));
@@ -344,7 +348,7 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
       auto& frame = local.candidate.spins[spin];
       if (generations[spin] != current.identity.factor.density_generation || info[spin] != 0 ||
           !finite_values(frame.values) || !finite_values(frame.vectors) ||
-          !finite_values(local.density[spin])) {
+          (include_density && !finite_values(local.density[spin]))) {
         detail = "CUDA DF retained frame has stale generation, solver failure or nonfinite data";
         return VIBEQC_STATUS_NUMERICAL_FAILURE;
       }
@@ -354,7 +358,8 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
     }
     runtime::cuda_trace::trace_counter(
         "final_state_download_bytes",
-        spins * ((2 * count + n) * sizeof(double) + sizeof(std::uint64_t) + sizeof(int)));
+        spins * (((include_density ? 2 : 1) * count + n) * sizeof(double) + sizeof(std::uint64_t) +
+                 sizeof(int)));
     snapshot = std::move(local);
     return VIBEQC_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {

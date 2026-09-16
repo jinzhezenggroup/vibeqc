@@ -53,8 +53,18 @@ bool validate_eigen_frame(const std::vector<double>& matrix, const std::vector<d
   }
   const double scale = matrix_norm * coefficient_norm + rhs_norm;
   diagnostic.scaled_eigen_residual = scale == 0 ? residual_norm : residual_norm / scale;
-  if (!std::isfinite(scale) || !std::isfinite(residual_norm) ||
-      !std::isfinite(diagnostic.scaled_eigen_residual) ||
+  if (!std::isfinite(scale) || !std::isfinite(residual_norm)) {
+    detail = "DF eigenframe validation norm overflow";
+    return false;
+  }
+  return accept_eigen_frame(diagnostic, detail);
+}
+
+bool accept_eigen_frame(const EigenFrameDiagnostic& diagnostic, std::string& detail) {
+  if (diagnostic.solver_info != 0 || !std::isfinite(diagnostic.maximum_eigen_residual) ||
+      !std::isfinite(diagnostic.maximum_metric_error) ||
+      !std::isfinite(diagnostic.scaled_eigen_residual) || diagnostic.maximum_eigen_residual < 0 ||
+      diagnostic.maximum_metric_error < 0 || diagnostic.scaled_eigen_residual < 0 ||
       diagnostic.maximum_eigen_residual > 1e-8 || diagnostic.maximum_metric_error > 1e-8 ||
       diagnostic.scaled_eigen_residual > 1e-12) {
     detail = "DF eigensystem failed physical eigen residual or metric orthogonality checks";

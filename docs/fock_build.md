@@ -276,3 +276,38 @@ a selected endpoint with its normal setup/warmup. The retained CPU bundle
 includes an alternating-order focused reproducer and the code-layout diagnosis
 that led to the local DF function alignment hint. Python plan identities use
 native-normalized controls and device indices, including accepted NumPy scalars.
+
+### CUDA DF final-state validation
+
+The shared final-state selector owns the identity checks, absolute/scaled
+acceptance gates and bounded physical-Fock correction loop. Its CUDA algebra
+provider evaluates eigen residuals, metric orthogonality, density reconstruction,
+DSD idempotency, commutator, electron/spin traces, physical energy and requested
+canonicality with FP64 device products. Stable norm reductions detect nonfinite
+inputs and overflowing products before acceptance. Matching sizes or a prior
+converged flag never authorize reuse.
+
+Ordinary finalization consumes the retained C/epsilon and verifies device
+solver status and determinant generation against the full source/model/epoch
+identity. It downloads compact diagnostics; requested physical-reference C and
+force-consumer W remain explicit host outputs. W is formed on the device only
+after acceptance and only for force requests. Reference export reuses the
+selector's stronger canonicality diagnostics. The independent CPU reference
+validator remains available for imported references and scientific tests.
+
+One lazy workspace per prepared DF plan holds nine matrices, one spectrum and
+bounded reduction storage, serialized across items and spins and included in
+tile-budget admission. It never borrows graph scratch. CUDA allocation, library
+and execution failures propagate without selecting a CPU fallback.
+
+`VIBEQC_DF_REFERENCE_FINAL_VALIDATION=1` explicitly restores the CPU validation,
+projection and W path for independent diagnostics and causal timing comparisons.
+`VIBEQC_DF_FORCE_FINAL_REBUILD=1` and `VIBEQC_DF_REFERENCE_FINAL_EIGEN=1` still
+perform the actual bounded correction/rebuild path. Component traces report
+validation/W GPU intervals, transfers, synchronization and workspace bytes;
+host regions and the progress journal retain physical-Fock/eigen/correction
+counts. These intrusive diagnostics must be run separately from clean endpoint
+timing, with independent oracle checks outside the timed call.
+
+See the [device-validation decision](../.agents/notes/implemented/performance/2026-09-16-device-final-validation.md)
+for ownership rationale, resource tradeoffs and qualification evidence.

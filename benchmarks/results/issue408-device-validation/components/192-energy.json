@@ -1,0 +1,230 @@
+[
+  {
+    "policy": "1",
+    "scope": "intrusive diagnostic; inclusive regions overlap",
+    "gpu": {
+      "groups": [
+        {
+          "execution": "stream",
+          "operation": "compact_diis_reset",
+          "calls": 1,
+          "host_completion_ms": 0.127143,
+          "final_synchronization_ms": 0.000912,
+          "gpu_inclusive_ms": 0.0960320011,
+          "host_exclusive_ms": {"compact_diis_reset": 0.126231},
+          "gpu_exclusive_ms": {"compact_diis_reset": 0.0960320011},
+          "counter_sums": {},
+          "counter_maxima": {},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "final_state_download",
+          "calls": 1,
+          "host_completion_ms": 0.237574,
+          "final_synchronization_ms": 0.000691,
+          "gpu_inclusive_ms": 0.210943997,
+          "host_exclusive_ms": {"final_state_download": 0.236883},
+          "gpu_exclusive_ms": {"final_state_download": 0.210943997},
+          "counter_sums": {"final_state_download_bytes": 591372},
+          "counter_maxima": {"final_state_download_bytes": 591372},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "ri_j",
+          "calls": 1,
+          "host_completion_ms": 0.230641,
+          "final_synchronization_ms": 0.000682,
+          "gpu_inclusive_ms": 0.201856002,
+          "host_exclusive_ms": {"ri_j": 0.055816000000000004, "ri_j_gemm": 0.174143},
+          "gpu_exclusive_ms": {"ri_j": 0.07555200510000001, "ri_j_gemm": 0.1263039969},
+          "counter_sums": {},
+          "counter_maxima": {},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "ri_k",
+          "calls": 1,
+          "host_completion_ms": 4.311594,
+          "final_synchronization_ms": 0.000701,
+          "gpu_inclusive_ms": 4.28815985,
+          "host_exclusive_ms": {"ri_k": 0.11415799999999976, "ri_k_density_projection_gemm": 2.093493, "ri_k_exchange_gemm": 2.022888, "ri_k_exchange_reduce": 0.08035400000000001},
+          "gpu_exclusive_ms": {"ri_k": 0.33583981180000055, "ri_k_density_projection_gemm": 1.953823984, "ri_k_exchange_gemm": 1.968992054, "ri_k_exchange_reduce": 0.0295040002},
+          "counter_sums": {"dense_exchange_auxiliary_tile": 96},
+          "counter_maxima": {"dense_exchange_auxiliary_tile": 96},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        }
+      ],
+      "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+    },
+    "host": {
+      "exclusive_phases": {
+        "batch_execute": {"calls": 1, "wall_ms": 0.05312200000000189, "cpu_ms": 0.051457000000532105},
+        "run_rhf_density_fitting_cuda_bucket_impl": {"calls": 1, "wall_ms": 0.16572599999999937, "cpu_ms": 0.16540900000006076},
+        "prepare_item": {"calls": 1, "wall_ms": 0.112575, "cpu_ms": 0.11264199999949653},
+        "prepare_initial_frame": {"calls": 1, "wall_ms": 0.047311000000000006, "cpu_ms": 0.047417999999410654},
+        "overlap_cache_hit": {"calls": 1, "wall_ms": 0.000821, "cpu_ms": 0.0007120000002913685},
+        "initial_density": {"calls": 1, "wall_ms": 0.102987, "cpu_ms": 0.10299300000049527},
+        "device_scf_submission_wait": {"calls": 1, "wall_ms": 33.119587, "cpu_ms": 33.11855000000019},
+        "finalization": {"calls": 1, "wall_ms": 0.37727100000000036, "cpu_ms": 0.37718600000058444},
+        "final_state_read": {"calls": 1, "wall_ms": 0.301998, "cpu_ms": 0.3021069999995518},
+        "final_state_fock_build": {"calls": 1, "wall_ms": 0.08171600000000012, "cpu_ms": 0.081463000000781},
+        "final_state_dense_jk": {"calls": 1, "wall_ms": 4.739102, "cpu_ms": 4.739167999999516},
+        "final_state_validation": {"calls": 1, "wall_ms": 21.980348, "cpu_ms": 21.979571000000142},
+        "final_state_reuse": {"calls": 1, "wall_ms": 0.035177, "cpu_ms": 0.035125999999330304}
+      },
+      "roots": [
+        {"root_id": 0, "name": "batch_execute", "reason": "unspecified", "parent": -1, "item": -1, "nbf": 0, "wall_ms": 61.117741, "cpu_ms": 61.11380200000038, "finished": true, "failed": false}
+      ],
+      "reference_eigensolves": [],
+      "eigensolves_by_reason": {},
+      "device_eigensolves": [],
+      "device_eigensolves_by_reason": {},
+      "interpretation": "Reference eigensolve leaf rows count actual calls, including failures. Item indices are local to the enclosing native bucket; root and ancestor IDs disambiguate ragged buckets; fleet worker items use source ordering. Host phases are exclusive within a root only. Concurrent worker roots overlap the waiting endpoint, so summed wall phases are not elapsed endpoint time. CPU and wall clocks overlap and must not be added to each other or CUDA events. CPU clock is null where thread CPU timing is unavailable. Use separate clean endpoint timings."
+    },
+    "host_inclusive": {
+      "batch_execute": {"calls": 1, "wall_ms": 61.117741, "cpu_ms": 61.11380200000038},
+      "run_rhf_density_fitting_cuda_bucket_impl": {"calls": 1, "wall_ms": 61.064619, "cpu_ms": 61.06234499999985},
+      "prepare_item": {"calls": 1, "wall_ms": 0.112575, "cpu_ms": 0.11264199999949653},
+      "prepare_initial_frame": {"calls": 1, "wall_ms": 0.151119, "cpu_ms": 0.1511230000001973},
+      "overlap_cache_hit": {"calls": 1, "wall_ms": 0.000821, "cpu_ms": 0.0007120000002913685},
+      "initial_density": {"calls": 1, "wall_ms": 0.102987, "cpu_ms": 0.10299300000049527},
+      "device_scf_submission_wait": {"calls": 1, "wall_ms": 33.119587, "cpu_ms": 33.11855000000019},
+      "finalization": {"calls": 1, "wall_ms": 27.515612, "cpu_ms": 27.514620999999906},
+      "final_state_read": {"calls": 1, "wall_ms": 0.301998, "cpu_ms": 0.3021069999995518},
+      "final_state_fock_build": {"calls": 1, "wall_ms": 4.820818, "cpu_ms": 4.820631000000297},
+      "final_state_dense_jk": {"calls": 1, "wall_ms": 4.739102, "cpu_ms": 4.739167999999516},
+      "final_state_validation": {"calls": 1, "wall_ms": 21.980348, "cpu_ms": 21.979571000000142},
+      "final_state_reuse": {"calls": 1, "wall_ms": 0.035177, "cpu_ms": 0.035125999999330304}
+    },
+    "observations": {"final_state_download_bytes": 591372, "final_fock_evaluations": 1, "final_eigen_solves": 0, "final_density_updates": 0, "final_candidate_rejections": 0, "final_maximum_commutator": "2.7555735471196385e-13", "final_density_rms": "4.5513367674066426e-18", "final_maximum_idempotency_error": "2.042810365310288e-14", "final_density_generation": 4, "final_solve_epoch": 22},
+    "original_trace_sha256": {"host.jsonl": "4849bc607d9a68a15829f7e782417c5ecd18fe8884c5eb31d36a25a7f905f1ad", "jsonl": "5a9e9206c25dd9980f7452e2496b69094d7e2d5c209accd3f2659af6f36ce3ab", "journal.jsonl": "9d594525a004c528a2b4cd27cc2003c32c72dba953dd40f2e2990eaf254dd3b6"}
+  },
+  {
+    "policy": "0",
+    "scope": "intrusive diagnostic; inclusive regions overlap",
+    "gpu": {
+      "groups": [
+        {
+          "execution": "stream",
+          "operation": "compact_diis_reset",
+          "calls": 1,
+          "host_completion_ms": 0.127344,
+          "final_synchronization_ms": 0.000932,
+          "gpu_inclusive_ms": 0.0960640013,
+          "host_exclusive_ms": {"compact_diis_reset": 0.126412},
+          "gpu_exclusive_ms": {"compact_diis_reset": 0.0960640013},
+          "counter_sums": {},
+          "counter_maxima": {},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "ri_j",
+          "calls": 1,
+          "host_completion_ms": 0.230149,
+          "final_synchronization_ms": 0.000641,
+          "gpu_inclusive_ms": 0.205280006,
+          "host_exclusive_ms": {"ri_j": 0.05648700000000001, "ri_j_gemm": 0.17302099999999998},
+          "gpu_exclusive_ms": {"ri_j": 0.08288000539999998, "ri_j_gemm": 0.1224000006},
+          "counter_sums": {},
+          "counter_maxima": {},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "ri_k",
+          "calls": 1,
+          "host_completion_ms": 4.30894,
+          "final_synchronization_ms": 0.000712,
+          "gpu_inclusive_ms": 4.28604794,
+          "host_exclusive_ms": {"ri_k": 0.1103809999999994, "ri_k_density_projection_gemm": 2.092892, "ri_k_exchange_gemm": 2.023219, "ri_k_exchange_reduce": 0.081736},
+          "gpu_exclusive_ms": {"ri_k": 0.33260797039999934, "ri_k_density_projection_gemm": 1.953855992, "ri_k_exchange_gemm": 1.969663978, "ri_k_exchange_reduce": 0.0299199996},
+          "counter_sums": {"dense_exchange_auxiliary_tile": 96},
+          "counter_maxima": {"dense_exchange_auxiliary_tile": 96},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "final_state_physical_fock",
+          "calls": 1,
+          "host_completion_ms": 4.723502,
+          "final_synchronization_ms": 0.000661,
+          "gpu_inclusive_ms": 4.69827223,
+          "host_exclusive_ms": {"final_state_physical_fock": 4.722841},
+          "gpu_exclusive_ms": {"final_state_physical_fock": 4.69827223},
+          "counter_sums": {"explicit_synchronizations": 1, "host_to_device_bytes": 294912},
+          "counter_maxima": {"explicit_synchronizations": 1, "host_to_device_bytes": 294912},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        },
+        {
+          "execution": "stream",
+          "operation": "final_state_validation",
+          "calls": 1,
+          "host_completion_ms": 1.984995,
+          "final_synchronization_ms": 0.000661,
+          "gpu_inclusive_ms": 1.96006405,
+          "host_exclusive_ms": {"final_state_validation": 1.984334},
+          "gpu_exclusive_ms": {"final_state_validation": 1.96006405},
+          "counter_sums": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 884736, "workspace_bytes": 2698864},
+          "counter_maxima": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 884736, "workspace_bytes": 2698864},
+          "logical_tiles": 0,
+          "repeated_tile_productions": 0
+        }
+      ],
+      "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+    },
+    "host": {
+      "exclusive_phases": {
+        "batch_execute": {"calls": 1, "wall_ms": 0.0531610000000029, "cpu_ms": 0.05198899999925288},
+        "run_rhf_density_fitting_cuda_bucket_impl": {"calls": 1, "wall_ms": 0.16746099999999586, "cpu_ms": 0.16707300000096126},
+        "prepare_item": {"calls": 1, "wall_ms": 0.113156, "cpu_ms": 0.11319199999970664},
+        "prepare_initial_frame": {"calls": 1, "wall_ms": 0.04706099999999999, "cpu_ms": 0.0471980000007477},
+        "overlap_cache_hit": {"calls": 1, "wall_ms": 0.000851, "cpu_ms": 0.0007619999999874949},
+        "initial_density": {"calls": 1, "wall_ms": 0.098398, "cpu_ms": 0.09836499999948956},
+        "device_scf_submission_wait": {"calls": 1, "wall_ms": 33.149714, "cpu_ms": 33.14871599999947},
+        "finalization": {"calls": 1, "wall_ms": 0.2992910000000002, "cpu_ms": 0.2991510000001085},
+        "final_state_read": {"calls": 1, "wall_ms": 0.007425, "cpu_ms": 0.007393999999827372},
+        "final_state_fock_build": {"calls": 1, "wall_ms": 0.11201499999999953, "cpu_ms": 0.11184000000064032},
+        "final_state_dense_jk": {"calls": 1, "wall_ms": 4.647045, "cpu_ms": 4.647044999999572},
+        "final_state_validation": {"calls": 1, "wall_ms": 2.130183, "cpu_ms": 2.1302949999997267},
+        "final_state_reuse": {"calls": 1, "wall_ms": 0.034266, "cpu_ms": 0.034244000000072106}
+      },
+      "roots": [
+        {"root_id": 1, "name": "batch_execute", "reason": "unspecified", "parent": -1, "item": -1, "nbf": 0, "wall_ms": 40.860027, "cpu_ms": 40.85726399999956, "finished": true, "failed": false}
+      ],
+      "reference_eigensolves": [],
+      "eigensolves_by_reason": {},
+      "device_eigensolves": [],
+      "device_eigensolves_by_reason": {},
+      "interpretation": "Reference eigensolve leaf rows count actual calls, including failures. Item indices are local to the enclosing native bucket; root and ancestor IDs disambiguate ragged buckets; fleet worker items use source ordering. Host phases are exclusive within a root only. Concurrent worker roots overlap the waiting endpoint, so summed wall phases are not elapsed endpoint time. CPU and wall clocks overlap and must not be added to each other or CUDA events. CPU clock is null where thread CPU timing is unavailable. Use separate clean endpoint timings."
+    },
+    "host_inclusive": {
+      "batch_execute": {"calls": 1, "wall_ms": 40.860027, "cpu_ms": 40.85726399999956},
+      "run_rhf_density_fitting_cuda_bucket_impl": {"calls": 1, "wall_ms": 40.806866, "cpu_ms": 40.80527500000031},
+      "prepare_item": {"calls": 1, "wall_ms": 0.113156, "cpu_ms": 0.11319199999970664},
+      "prepare_initial_frame": {"calls": 1, "wall_ms": 0.14631, "cpu_ms": 0.14632500000022475},
+      "overlap_cache_hit": {"calls": 1, "wall_ms": 0.000851, "cpu_ms": 0.0007619999999874949},
+      "initial_density": {"calls": 1, "wall_ms": 0.098398, "cpu_ms": 0.09836499999948956},
+      "device_scf_submission_wait": {"calls": 1, "wall_ms": 33.149714, "cpu_ms": 33.14871599999947},
+      "finalization": {"calls": 1, "wall_ms": 7.230225, "cpu_ms": 7.229968999999947},
+      "final_state_read": {"calls": 1, "wall_ms": 0.007425, "cpu_ms": 0.007393999999827372},
+      "final_state_fock_build": {"calls": 1, "wall_ms": 4.75906, "cpu_ms": 4.7588850000002125},
+      "final_state_dense_jk": {"calls": 1, "wall_ms": 4.647045, "cpu_ms": 4.647044999999572},
+      "final_state_validation": {"calls": 1, "wall_ms": 2.130183, "cpu_ms": 2.1302949999997267},
+      "final_state_reuse": {"calls": 1, "wall_ms": 0.034266, "cpu_ms": 0.034244000000072106}
+    },
+    "observations": {"final_fock_evaluations": 1, "final_eigen_solves": 0, "final_density_updates": 0, "final_candidate_rejections": 0, "final_maximum_commutator": "2.7633451082920146e-13", "final_density_rms": "0", "final_maximum_idempotency_error": "2.042810365310288e-14", "final_density_generation": 4, "final_solve_epoch": 24},
+    "original_trace_sha256": {"host.jsonl": "2cac951fa0d6ddcb589e9620371bc42ea83ccc8aa56f91022e5845107a081d1b", "jsonl": "97a7d610803e6849f62ce6fd8a420e8cb4e9027773d2e6f61edc79507b325bc8", "journal.jsonl": "455ded51fe2081755631a6c18f8a4c37e56606a9afc80397ef172f6bd512dd1a"}
+  }
+]

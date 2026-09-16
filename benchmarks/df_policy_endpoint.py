@@ -148,12 +148,6 @@ def main():
         or (args.expected_iterations is not None and args.expected_iterations < 1)
     ):
         parser.error("requires Slurm and positive repeats")
-    if args.energy_only and (
-        args.trace or args.host_trace or args.journal or args.components_after
-    ):
-        parser.error(
-            "energy-only diagnostics must use clean timing; trace complete endpoints separately"
-        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.output.exists():
         parser.error("refusing to overwrite evidence")
@@ -370,7 +364,7 @@ def main():
             journal = args.output.with_suffix(
                 f".{phase}{repeat}-{policy}.journal.jsonl"
             )
-            if args.journal:
+            if args.journal or diagnostic:
                 os.environ["VIBEQC_DF_PROGRESS_TRACE"] = str(journal.resolve())
             if args.cuda_profile:
                 cudart = ctypes.CDLL("libcudart.so.12")
@@ -456,10 +450,16 @@ def main():
                     for region in record["regions"]
                     if region["name"] == "force_response"
                 ]
-                if len(force_regions) != 1 or force_regions[0]["failed"]:
-                    raise RuntimeError("expected one completed force stage")
-                sample["force_stage_seconds"] = force_regions[0]["wall_ms"] / 1000
-            if args.journal:
+                if args.energy_only:
+                    if force_regions:
+                        raise RuntimeError(
+                            "energy-only endpoint executed a force stage"
+                        )
+                else:
+                    if len(force_regions) != 1 or force_regions[0]["failed"]:
+                        raise RuntimeError("expected one completed force stage")
+                    sample["force_stage_seconds"] = force_regions[0]["wall_ms"] / 1000
+            if args.journal or diagnostic:
                 sample["final_state_observations"] = [
                     row
                     for line in journal.read_text().splitlines()

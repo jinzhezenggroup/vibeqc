@@ -83,11 +83,56 @@ void lifecycle(bool uhf, std::size_t batch) {
             snapshot.candidate.fock_density_generation == records[item].iterations,
         "snapshot confused input/output density generations");
     solver::FinalStateDiagnostic diagnostic;
+    solver::FinalStateLimits export_limits;
+    export_limits.require_canonicality = true;
     const solver::PhysicalFockFrame physical{tokens[item].identity, true,
                                              std::vector<Matrix>(uhf ? 2 : 1, f)};
+    require(
+        solver::validate_final_state(tokens[item].identity, s, f, .3, snapshot.density, physical,
+                                     snapshot.candidate, export_limits, diagnostic, detail),
+        detail);
+    // Exercise the normal no-C-download provider against the independent
+    // CPU products, then compare the actual W supplied to force consumers.
+    const auto operations = cuda_density_fitting_final_state_operations(plan.get());
+    auto retained = snapshot.candidate;
+    retained.spins.assign(uhf ? 2 : 1, {});
+    solver::FinalStateDiagnostic device_diagnostic;
     require(solver::validate_final_state(tokens[item].identity, s, f, .3, snapshot.density,
-                                         physical, snapshot.candidate, {}, diagnostic, detail),
+                                         physical, retained, export_limits, device_diagnostic,
+                                         detail, &operations),
             detail);
+    for (auto field :
+         {&solver::FinalStateDiagnostic::energy, &solver::FinalStateDiagnostic::maximum_commutator,
+          &solver::FinalStateDiagnostic::density_rms,
+          &solver::FinalStateDiagnostic::maximum_trace_error,
+          &solver::FinalStateDiagnostic::maximum_idempotency_error,
+          &solver::FinalStateDiagnostic::maximum_density_error,
+          &solver::FinalStateDiagnostic::maximum_canonical_error})
+      require(std::abs(device_diagnostic.*field - diagnostic.*field) < 1e-12,
+              "device diagnostics disagree with independent CPU products");
+    for (std::size_t spin = 0; spin < diagnostic.eigenframes.size(); ++spin)
+      for (auto field : {&solver::EigenFrameDiagnostic::maximum_eigen_residual,
+                         &solver::EigenFrameDiagnostic::scaled_eigen_residual,
+                         &solver::EigenFrameDiagnostic::maximum_metric_error})
+        require(std::abs(device_diagnostic.eigenframes[spin].*field -
+                         diagnostic.eigenframes[spin].*field) < 1e-12,
+                "device eigen diagnostics disagree with independent CPU products");
+    const auto selected = solver::select_final_state(
+        tokens[item].identity, s, f, x, .3, snapshot.density, &retained,
+        [&](const auto&, const auto&) { return physical; },
+        [](const auto&, const auto*, const auto*, auto) -> reference::EigenResult {
+          throw std::runtime_error("valid retained fixture unexpectedly needed correction");
+        },
+        {}, true, false, &operations);
+    require(selected.state.has_value() && selected.reused, selected.detail);
+    for (std::size_t spin = 0; spin < snapshot.density.size(); ++spin) {
+      const auto expected = reference::energy_weighted_density(
+          snapshot.candidate.spins[spin].vectors, snapshot.candidate.spins[spin].values, 2,
+          tokens[item].identity.occupied[spin], uhf ? 1 : 2);
+      for (std::size_t k = 0; k < 4; ++k)
+        require(std::abs(selected.state->weighted_density[spin][k] - expected[k]) < 1e-12,
+                "device W differs from the force-state oracle");
+    }
     for (std::size_t k = 0; k < 4; ++k)
       require(std::abs(snapshot.density[0][k] - one[k]) < 1e-12 &&
                   snapshot.density[0][k] == final[item * 4 + k],
@@ -150,9 +195,30 @@ void lifecycle(bool uhf, std::size_t batch) {
                                                 reused, detail) == VIBEQC_STATUS_SUCCESS &&
               !reused && !plan->final_projection_token,
           "unsupported final K preserved the old projection lease");
+  const auto rejects_device_frame = [&](const CudaDfFinalStateToken& token) {
+    const auto operations = cuda_density_fitting_final_state_operations(plan.get());
+    solver::FinalFrameCandidate retained{token.identity,
+                                         token.identity.factor.density_generation - 1, true,
+                                         std::vector<reference::EigenResult>(uhf ? 2 : 1)};
+    std::vector<Matrix> densities{Matrix(final.begin(), final.begin() + 4)};
+    if (uhf) densities.emplace_back(beta.begin(), beta.begin() + 4);
+    const auto selected = solver::select_final_state(
+        token.identity, s, f, x, .3, densities, &retained,
+        [&](const auto&, const auto&) {
+          return solver::PhysicalFockFrame{token.identity, true,
+                                           std::vector<Matrix>(uhf ? 2 : 1, f)};
+        },
+        [](const auto&, const auto*, const auto*, auto) -> reference::EigenResult {
+          throw std::runtime_error("corrupt owner must not enter correction");
+        },
+        {}, true, false, &operations);
+    return !selected.state && selected.status == solver::FinalStateStatus::ProviderFailure &&
+           selected.eigen_solves == 0;
+  };
   // Retained device generation/info corruption fails independently of the
   // host token. Every failure must leave the output empty.
   checked(cudaMemsetAsync(state->d_final_alpha_generation, 0, sizeof(std::uint64_t), plan->stream));
+  require(rejects_device_frame(tokens[0]), "device validation accepted a corrupt generation");
   require(read_cuda_density_fitting_final_state(plan.get(), tokens[0], snapshot, detail) ==
                   VIBEQC_STATUS_NUMERICAL_FAILURE &&
               snapshot.density.empty(),
@@ -169,6 +235,7 @@ void lifecycle(bool uhf, std::size_t batch) {
           detail);
   state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
   checked(cudaMemsetAsync(state->d_final_alpha_info, 1, sizeof(int), plan->stream));
+  require(rejects_device_frame(recovered), "device validation accepted failed solver info");
   require(read_cuda_density_fitting_final_state(plan.get(), recovered, snapshot, detail) ==
                   VIBEQC_STATUS_NUMERICAL_FAILURE &&
               snapshot.density.empty(),

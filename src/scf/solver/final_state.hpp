@@ -39,7 +39,10 @@ struct FinalFrameCandidate {
 
 /** A physical evaluation at exactly the tagged density. Defaults fail closed.
  * Providers must evaluate the passed D on their immutable target model; an
- * old cached or extrapolated Fock cannot be relabeled as this evaluation. */
+ * old cached or extrapolated Fock cannot be relabeled as this evaluation.
+ * A backend operation may use empty host matrices for its tagged borrowed
+ * device products; it must check their finite/symmetric input contract and
+ * materialize them on demand for correction or public reference output. */
 struct PhysicalFockFrame {
   FinalStateIdentity identity;
   bool physical{};
@@ -64,6 +67,30 @@ struct FinalStateDiagnostic {
   std::vector<EigenFrameDiagnostic> eigenframes;
 };
 
+/** Synchronous backend algebra beneath the shared identity, acceptance and
+ * correction policy. An installed provider must supply every operation;
+ * exceptions are observable provider failures, never a reference fallback.
+ * Products return finite numerical evidence, not an acceptance decision.
+ * A provider may resolve empty candidate matrices from an exactly tagged
+ * retained owner; it must verify the device generations and solver status.
+ * Projection/W return host data for the existing density/force consumers. */
+struct FinalStateOperations {
+  // Materialize a borrowed physical F only for correction/export consumers.
+  std::function<std::vector<reference::Matrix>(const PhysicalFockFrame&)> materialize_fock;
+  std::function<bool(const FinalStateIdentity&, const reference::Matrix&, const reference::Matrix&,
+                     double, const std::vector<reference::Matrix>&, const PhysicalFockFrame&,
+                     const FinalFrameCandidate&, const FinalStateLimits&, FinalStateDiagnostic&,
+                     std::string&)>
+      products;
+  std::function<bool(const reference::Matrix&, const reference::Matrix&,
+                     const reference::EigenResult&, EigenFrameDiagnostic&, std::string&)>
+      eigen;
+  std::function<reference::Matrix(const reference::EigenResult&, std::size_t, double)> project;
+  std::function<std::vector<reference::Matrix>(const FinalStateIdentity&,
+                                               const FinalFrameCandidate&)>
+      weighted;
+};
+
 /** Check current F, C/epsilon and D without diagonalizing or repairing inputs.
  * The physical-reference 1e-8 absolute gates remain caps; a tighter requested
  * density tolerance also applies to density drift and physical commutator.
@@ -75,11 +102,13 @@ bool validate_final_state(const FinalStateIdentity& current, const reference::Ma
                           const std::vector<reference::Matrix>& density,
                           const PhysicalFockFrame& fock, const FinalFrameCandidate& orbitals,
                           const FinalStateLimits& limits, FinalStateDiagnostic& diagnostic,
-                          std::string& detail);
+                          std::string& detail, const FinalStateOperations* operations = nullptr);
 
 /** Owned, validated output. W is empty unless requested after strict checks;
  * no cached W is accepted as input. Consumers must preserve this identity when
- * constructing factors or exporting a physical reference. */
+ * constructing factors or exporting a physical reference. A backend candidate
+ * may keep C/epsilon resident (empty host orbital arrays); the driver must
+ * materialize that exact identity when a public reference requests them. */
 struct VerifiedFinalState {
   FinalStateIdentity identity;
   std::vector<reference::Matrix> density, fock, weighted_density;
@@ -118,5 +147,6 @@ FinalStateSelection select_final_state(
     const reference::Matrix& orthogonalizer, double nuclear_energy,
     std::vector<reference::Matrix> density, const FinalFrameCandidate* candidate,
     const PhysicalFockOperation& evaluate, const initial_guess::EigenOperation& eigen,
-    const FinalStateLimits& limits, bool compute_weighted_density, bool force_rebuild = false);
+    const FinalStateLimits& limits, bool compute_weighted_density, bool force_rebuild = false,
+    const FinalStateOperations* operations = nullptr);
 }  // namespace vibeqc::scf::solver

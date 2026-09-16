@@ -570,7 +570,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
            sizeof(std::uint32_t) +
            (candidate->occupied_scf_reserved ? 2 * sizeof(std::uint32_t) + sizeof(int) : 0)) +
       df_scf_workspace_allowance(nbf, batch_size) + matrix_bytes +  // graph bookkeeping
-      df_eigen_device_reservation(nbf) + df_final_snapshot_device_reservation(nbf, batch_size);
+      df_eigen_device_reservation(nbf) + df_final_snapshot_device_reservation(nbf, batch_size) +
+      df_final_validation_device_reservation(nbf);
   const std::size_t persistent_scf_bytes =
       persistent_scf_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())
           ? std::numeric_limits<std::size_t>::max()

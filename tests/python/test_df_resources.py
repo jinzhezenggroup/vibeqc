@@ -36,9 +36,12 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     bytes) and both spin final frames (1176 bytes), while the occupied-factor
     differential remains unchanged. Metric and compact solvers now also have
     checked, separate workspace allowances, including their fixed floors.
+    Final validation reserves nine serialized matrices, a spectrum and bounded
+    reduction storage equally for both exchange policies.
     """
     library = Calculator()._library
     solver_reserve = 2 * (1 << 20) + 16 * 8 * 8 * 8
+    solver_reserve += (9 * 8 * 8 + 8) * 8 + (3 * 1 + 1) * 128
     full_bytes += solver_reserve
     minimum_bytes = 1084719 + solver_reserve
     if dense_policy is None:

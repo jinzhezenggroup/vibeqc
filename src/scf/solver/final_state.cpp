@@ -50,11 +50,13 @@ bool valid_input(const FinalStateIdentity& current, const Matrix& overlap, const
     if (current.occupied[spin] > n || !symmetric(density[spin], n)) return false;
   return true;
 }
-bool valid_fock(const FinalStateIdentity& current, const PhysicalFockFrame& fock, std::size_t n) {
+bool valid_fock(const FinalStateIdentity& current, const PhysicalFockFrame& fock, std::size_t n,
+                bool device = false) {
   return fock.physical && fock.identity == current &&
          fock.spins.size() == current.occupied.size() &&
-         std::all_of(fock.spins.begin(), fock.spins.end(),
-                     [n](const auto& f) { return symmetric(f, n); });
+         std::all_of(fock.spins.begin(), fock.spins.end(), [n, device](const auto& f) {
+           return (device && f.empty()) || symmetric(f, n);
+         });
 }
 double physical_energy(const Matrix& hcore, double nuclear, const std::vector<Matrix>& density,
                        const PhysicalFockFrame& fock) {
@@ -70,7 +72,8 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
                           const Matrix& hcore, double nuclear_energy,
                           const std::vector<Matrix>& density, const PhysicalFockFrame& fock,
                           const FinalFrameCandidate& orbitals, const FinalStateLimits& limits,
-                          FinalStateDiagnostic& diagnostic, std::string& detail) {
+                          FinalStateDiagnostic& diagnostic, std::string& detail,
+                          const FinalStateOperations* operations) {
   diagnostic = {};
   detail.clear();
   runtime::host_trace::Region trace("final_state_validation", dimension(overlap));
@@ -79,8 +82,8 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
     return false;
   }
   const auto n = dimension(overlap);
-  if (!valid_fock(current, fock, n) || orbitals.identity != current || !orbitals.physical_origin ||
-      !orbitals.fock_density_generation ||
+  if (!valid_fock(current, fock, n, operations != nullptr) || orbitals.identity != current ||
+      !orbitals.physical_origin || !orbitals.fock_density_generation ||
       orbitals.fock_density_generation > current.factor.density_generation ||
       orbitals.spins.size() != density.size()) {
     detail =
@@ -90,55 +93,75 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
   const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
   const double tolerance = std::min(1e-8, limits.density_tolerance);
   diagnostic.eigenframes.resize(density.size());
-  for (std::size_t spin = 0; spin < density.size(); ++spin) {
-    const auto& frame = orbitals.spins[spin];
-    if (!validate_eigen_frame(fock.spins[spin], &overlap, frame.values, frame.vectors, n,
-                              diagnostic.eigenframes[spin], detail))
+  if (operations) {
+    if (!operations->products(current, overlap, hcore, nuclear_energy, density, fock, orbitals,
+                              limits, diagnostic, detail))
       return false;
-    const auto reconstructed =
-        reference::density_from_orbitals(frame.vectors, n, current.occupied[spin], weight);
-    const auto ds = reference::multiply(density[spin], overlap, n);
-    const auto dsd = reference::multiply(ds, density[spin], n);
-    const auto residual =
-        reference::commutator_residual(fock.spins[spin], density[spin], overlap, n);
-    if (!finite(reconstructed) || !finite(ds) || !finite(dsd) || !finite(residual)) {
-      detail = "nonfinite final-state validation products";
+    if (diagnostic.eigenframes.size() != density.size()) {
+      detail = "final-state provider returned incomplete spin diagnostics";
       return false;
     }
-    long double electrons = 0;
-    double drift = 0;
-    for (std::size_t row = 0; row < n; ++row) electrons += ds[row * n + row];
-    for (std::size_t k = 0; k < n * n; ++k) {
-      drift = std::hypot(drift, reconstructed[k] - density[spin][k]);
-      diagnostic.maximum_density_error =
-          std::max(diagnostic.maximum_density_error, std::abs(reconstructed[k] - density[spin][k]));
-      diagnostic.maximum_commutator =
-          std::max(diagnostic.maximum_commutator, std::abs(residual[k]));
-      diagnostic.maximum_idempotency_error = std::max(diagnostic.maximum_idempotency_error,
-                                                      std::abs(dsd[k] - weight * density[spin][k]));
-    }
-    diagnostic.density_rms = std::max(diagnostic.density_rms, drift / n);
-    diagnostic.maximum_trace_error =
-        std::max(diagnostic.maximum_trace_error,
-                 std::abs(static_cast<double>(electrons - weight * current.occupied[spin])));
-    if (limits.require_canonicality) {
-      // Export's absolute canonicality gate can be stricter than the scaled
-      // eigen residual in an ill-conditioned AO metric. Include it in state
-      // selection so rejection enters correction before W/reference output.
-      const auto fc = reference::multiply(fock.spins[spin], frame.vectors, n);
-      const auto cfc = reference::multiply(reference::transpose(frame.vectors, n), fc, n);
-      if (!finite(cfc)) {
-        detail = "nonfinite final-state canonicality products";
+    for (const auto& frame : diagnostic.eigenframes)
+      if (!accept_eigen_frame(frame, detail)) return false;
+  } else {
+    for (std::size_t spin = 0; spin < density.size(); ++spin) {
+      const auto& frame = orbitals.spins[spin];
+      if (!validate_eigen_frame(fock.spins[spin], &overlap, frame.values, frame.vectors, n,
+                                diagnostic.eigenframes[spin], detail))
+        return false;
+      const auto reconstructed =
+          reference::density_from_orbitals(frame.vectors, n, current.occupied[spin], weight);
+      const auto ds = reference::multiply(density[spin], overlap, n);
+      const auto dsd = reference::multiply(ds, density[spin], n);
+      const auto residual =
+          reference::commutator_residual(fock.spins[spin], density[spin], overlap, n);
+      if (!finite(reconstructed) || !finite(ds) || !finite(dsd) || !finite(residual)) {
+        detail = "nonfinite final-state validation products";
         return false;
       }
-      for (std::size_t row = 0; row < n; ++row)
-        for (std::size_t column = 0; column < n; ++column)
-          diagnostic.maximum_canonical_error =
-              std::max(diagnostic.maximum_canonical_error,
-                       std::abs(cfc[row * n + column] - (row == column ? frame.values[row] : 0.0)));
+      long double electrons = 0;
+      double drift = 0;
+      for (std::size_t row = 0; row < n; ++row) electrons += ds[row * n + row];
+      for (std::size_t k = 0; k < n * n; ++k) {
+        drift = std::hypot(drift, reconstructed[k] - density[spin][k]);
+        diagnostic.maximum_density_error = std::max(diagnostic.maximum_density_error,
+                                                    std::abs(reconstructed[k] - density[spin][k]));
+        diagnostic.maximum_commutator =
+            std::max(diagnostic.maximum_commutator, std::abs(residual[k]));
+        diagnostic.maximum_idempotency_error = std::max(
+            diagnostic.maximum_idempotency_error, std::abs(dsd[k] - weight * density[spin][k]));
+      }
+      diagnostic.density_rms = std::max(diagnostic.density_rms, drift / n);
+      diagnostic.maximum_trace_error =
+          std::max(diagnostic.maximum_trace_error,
+                   std::abs(static_cast<double>(electrons - weight * current.occupied[spin])));
+      if (limits.require_canonicality) {
+        // Export's absolute canonicality gate can be stricter than the scaled
+        // eigen residual in an ill-conditioned AO metric. Include it in state
+        // selection so rejection enters correction before W/reference output.
+        const auto fc = reference::multiply(fock.spins[spin], frame.vectors, n);
+        const auto cfc = reference::multiply(reference::transpose(frame.vectors, n), fc, n);
+        if (!finite(cfc)) {
+          detail = "nonfinite final-state canonicality products";
+          return false;
+        }
+        for (std::size_t row = 0; row < n; ++row)
+          for (std::size_t column = 0; column < n; ++column)
+            diagnostic.maximum_canonical_error = std::max(
+                diagnostic.maximum_canonical_error,
+                std::abs(cfc[row * n + column] - (row == column ? frame.values[row] : 0.0)));
+      }
+    }
+    diagnostic.energy = physical_energy(hcore, nuclear_energy, density, fock);
+  }
+  for (double value : {diagnostic.maximum_commutator, diagnostic.density_rms,
+                       diagnostic.maximum_trace_error, diagnostic.maximum_idempotency_error,
+                       diagnostic.maximum_density_error, diagnostic.maximum_canonical_error}) {
+    if (!std::isfinite(value) || value < 0) {
+      detail = "nonfinite or invalid final-state validation diagnostics";
+      return false;
     }
   }
-  diagnostic.energy = physical_energy(hcore, nuclear_energy, density, fock);
   if (!std::isfinite(diagnostic.energy) || !std::isfinite(diagnostic.density_rms) ||
       !std::isfinite(diagnostic.maximum_trace_error) || diagnostic.maximum_commutator > tolerance ||
       diagnostic.density_rms > tolerance || diagnostic.maximum_trace_error > 1e-8 ||
@@ -153,18 +176,18 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
   return true;
 }
 
-FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix& overlap,
-                                       const Matrix& hcore, const Matrix& orthogonalizer,
-                                       double nuclear_energy, std::vector<Matrix> density,
-                                       const FinalFrameCandidate* candidate,
-                                       const PhysicalFockOperation& evaluate,
-                                       const initial_guess::EigenOperation& eigen,
-                                       const FinalStateLimits& limits,
-                                       bool compute_weighted_density, bool force_rebuild) {
+FinalStateSelection select_final_state(
+    FinalStateIdentity current, const Matrix& overlap, const Matrix& hcore,
+    const Matrix& orthogonalizer, double nuclear_energy, std::vector<Matrix> density,
+    const FinalFrameCandidate* candidate, const PhysicalFockOperation& evaluate,
+    const initial_guess::EigenOperation& eigen, const FinalStateLimits& limits,
+    bool compute_weighted_density, bool force_rebuild, const FinalStateOperations* operations) {
   FinalStateSelection result;
   try {
     const auto n = dimension(overlap);
     if (!evaluate || !eigen ||
+        (operations && (!operations->products || !operations->eigen || !operations->project ||
+                        !operations->weighted)) ||
         !valid_input(current, overlap, hcore, nuclear_energy, density, limits) ||
         !symmetric(orthogonalizer, n)) {
       result.status = FinalStateStatus::InvalidInput;
@@ -176,22 +199,34 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
     double previous_energy = std::numeric_limits<double>::quiet_NaN();
     for (unsigned step = 0;; ++step) {
       ++result.fock_evaluations;
-      const auto physical = runtime::host_trace::call("final_state_fock_build",
-                                                      [&] { return evaluate(current, density); });
-      if (!valid_fock(current, physical, n)) {
+      auto physical = runtime::host_trace::call("final_state_fock_build",
+                                                [&] { return evaluate(current, density); });
+      if (!valid_fock(current, physical, n, operations != nullptr)) {
         result.status = FinalStateStatus::ProviderFailure;
         result.detail = "physical provider did not evaluate the current tagged density";
-        return result;
-      }
-      const double energy = physical_energy(hcore, nuclear_energy, density, physical);
-      if (!std::isfinite(energy)) {
-        result.detail = "nonfinite strict final-state energy";
         return result;
       }
       FinalStateDiagnostic diagnostic;
       const bool valid =
           frame && validate_final_state(current, overlap, hcore, nuclear_energy, density, physical,
-                                        *frame, limits, diagnostic, result.detail);
+                                        *frame, limits, diagnostic, result.detail, operations);
+      const auto materialize = [&] {
+        if (std::any_of(physical.spins.begin(), physical.spins.end(),
+                        [](const auto& f) { return f.empty(); })) {
+          if (!operations || !operations->materialize_fock)
+            throw std::runtime_error("missing physical Fock materialization provider");
+          physical.spins = operations->materialize_fock(physical);
+          if (!valid_fock(current, physical, n))
+            throw std::runtime_error("invalid materialized physical Fock");
+        }
+      };
+      if (!valid) materialize();
+      const double energy =
+          valid ? diagnostic.energy : physical_energy(hcore, nuclear_energy, density, physical);
+      if (!std::isfinite(energy)) {
+        result.detail = "nonfinite strict final-state energy";
+        return result;
+      }
       diagnostic.energy_change = step ? std::abs(energy - previous_energy) : 0;
       if (valid && !(force_rebuild && step == 0) &&
           diagnostic.energy_change <= limits.energy_tolerance) {
@@ -199,16 +234,26 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
                                  {},      frame->spins,       std::move(diagnostic)};
         if (compute_weighted_density) {
           runtime::host_trace::Region weighted("final_state_weighted_density", n);
-          const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
-          for (std::size_t spin = 0; spin < state.orbitals.size(); ++spin) {
-            auto w = reference::energy_weighted_density(state.orbitals[spin].vectors,
-                                                        state.orbitals[spin].values, n,
-                                                        current.occupied[spin], weight);
-            if (!finite(w)) {
-              result.detail = "nonfinite validated energy-weighted density";
+          if (operations) {
+            state.weighted_density = operations->weighted(current, *frame);
+            if (state.weighted_density.size() != current.occupied.size() ||
+                !std::all_of(state.weighted_density.begin(), state.weighted_density.end(),
+                             [n](const auto& w) { return w.size() == n * n && finite(w); })) {
+              result.detail = "invalid device energy-weighted density";
               return result;
             }
-            state.weighted_density.push_back(std::move(w));
+          } else {
+            const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
+            for (std::size_t spin = 0; spin < state.orbitals.size(); ++spin) {
+              auto w = reference::energy_weighted_density(state.orbitals[spin].vectors,
+                                                          state.orbitals[spin].values, n,
+                                                          current.occupied[spin], weight);
+              if (!finite(w)) {
+                result.detail = "nonfinite validated energy-weighted density";
+                return result;
+              }
+              state.weighted_density.push_back(std::move(w));
+            }
           }
         }
         result.state = std::move(state);
@@ -224,6 +269,7 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
         result.detail = "strict final-state correction exhausted without a consistent state";
         return result;
       }
+      materialize();
       runtime::host_trace::Region correction("strict_final_correction", n);
       const auto origin = current.factor.density_generation;
       corrected.emplace();
@@ -237,14 +283,25 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
       for (std::size_t spin = 0; spin < density.size(); ++spin) {
         EigenFrameDiagnostic checked;
         const auto& c = corrected->spins[spin];
-        if (!validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n, checked,
-                                  result.detail)) {
+        const bool valid_eigen =
+            operations
+                ? operations->eigen(physical.spins[spin], overlap, c, checked, result.detail) &&
+                      accept_eigen_frame(checked, result.detail)
+                : validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n,
+                                       checked, result.detail);
+        if (!valid_eigen) {
           result.status = FinalStateStatus::ProviderFailure;
           return result;
         }
-        density[spin] = reference::density_from_orbitals(
-            c.vectors, n, current.occupied[spin],
-            current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0);
+        const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
+        density[spin] = operations ? operations->project(c, current.occupied[spin], weight)
+                                   : reference::density_from_orbitals(
+                                         c.vectors, n, current.occupied[spin], weight);
+        if (!symmetric(density[spin], n)) {
+          result.status = FinalStateStatus::ProviderFailure;
+          result.detail = "invalid projected final-state density";
+          return result;
+        }
       }
       ++current.factor.orbital_generation;
       ++current.factor.density_generation;

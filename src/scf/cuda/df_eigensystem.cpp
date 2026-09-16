@@ -16,6 +16,7 @@
 #include "scf/cuda/df_scf_library.hpp"
 #include "scf/cuda/eigensolver.hpp"
 #include "scf/cuda_density_fitting_eigen.hpp"
+#include "scf/cuda_density_fitting_final_state.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -256,7 +257,8 @@ vibeqc_status solve_cuda_density_fitting_eigen(
     auto vectors = column_major(packed, n);  // Transpose the layout, not the mathematical frame.
     {
       host::Region validation("eigenframe_validation", n);
-      if (!solver::validate_eigen_frame(matrix, overlap, values, vectors, n, diagnostic, detail))
+      if (!validate_cuda_density_fitting_eigen_frame(plan, matrix, overlap, values, vectors,
+                                                     diagnostic, detail))
         return VIBEQC_STATUS_NUMERICAL_FAILURE;
     }
     eigenvalues = std::move(values);
@@ -268,6 +270,9 @@ vibeqc_status solve_cuda_density_fitting_eigen(
   } catch (const std::overflow_error& error) {
     detail = error.what();
     return VIBEQC_STATUS_INVALID_ARGUMENT;
+  } catch (const std::runtime_error& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_CUDA_ERROR;
   }
 }
 }  // namespace vibeqc::scf

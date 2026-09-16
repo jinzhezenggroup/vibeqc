@@ -446,7 +446,8 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   const long double bytes =
       static_cast<long double>(fixed_device_bytes) + control_bytes +
       static_cast<long double>(df_eigen_device_reservation(nbf)) +
-      static_cast<long double>(df_final_snapshot_device_reservation(nbf, batch_size)) +
+      static_cast<long double>(df_final_snapshot_device_reservation(nbf, batch_size) +
+                               df_final_validation_device_reservation(nbf)) +
       static_cast<long double>(metric_bytes) * batch_size + solver_workspace_bytes +
       (setup_doubles + contraction_doubles + one_electron_doubles) * sizeof(double);
   if (bytes > static_cast<long double>(std::numeric_limits<std::size_t>::max())) {

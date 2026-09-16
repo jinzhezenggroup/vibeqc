@@ -110,6 +110,8 @@ struct CudaDensityFittingJkPlan {
   // Ordinary AO setup/final eigen operations share the existing handles while
   // retaining one bounded scratch frame, separate from captured SCF state.
   void* ordinary_eigensystem{};
+  // Serialized FP64 final validation/projection storage, separate from graphs.
+  void* final_validation{};
 };
 
 }  // namespace vibeqc::scf

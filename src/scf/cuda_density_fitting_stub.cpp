@@ -7,7 +7,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
                                                     const CudaDfFinalStateToken&,
                                                     const std::vector<double>&,
                                                     std::vector<double>&, std::vector<double>&,
-                                                    bool& used, std::string&) {
+                                                    bool& used, std::string&, bool) {
   used = false;
   return VIBEQC_STATUS_SUCCESS;
 }
@@ -27,7 +27,7 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
 vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan*,
                                                     const CudaDfFinalStateToken&,
                                                     CudaDfFinalStateSnapshot& snapshot,
-                                                    std::string& detail) {
+                                                    std::string& detail, bool) {
   snapshot = {};
   detail = "CUDA DF final-state snapshots are unavailable in this build";
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
@@ -290,4 +290,20 @@ vibeqc_status execute_cuda_density_fitting_occupied_exchange(
   return unavailable(nullptr, detail);
 }
 
+solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
+    CudaDensityFittingJkPlan*, const solver::FinalStateIdentity&,
+    const std::vector<reference::Matrix>&, const reference::Matrix&) {
+  throw std::runtime_error("CUDA physical Fock evaluation is unavailable");
+}
+solver::FinalStateOperations cuda_density_fitting_final_state_operations(
+    CudaDensityFittingJkPlan*) {
+  throw std::runtime_error("CUDA final-state validation is unavailable");
+}
+bool validate_cuda_density_fitting_eigen_frame(CudaDensityFittingJkPlan*, const reference::Matrix&,
+                                               const reference::Matrix*, const reference::Matrix&,
+                                               const reference::Matrix&,
+                                               solver::EigenFrameDiagnostic&, std::string& detail) {
+  detail = "CUDA eigenframe validation is unavailable";
+  return false;
+}
 }  // namespace vibeqc::scf

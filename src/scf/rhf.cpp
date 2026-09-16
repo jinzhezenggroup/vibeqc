@@ -516,19 +516,32 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     const solver::PhysicalFockOperation& physical) {
   result.converged = false;
   const auto n = data.one_electron.nbf;
+  const auto enabled = [](const char* name) {
+    const char* value = std::getenv(name);
+    return value && value[0] == '1' && value[1] == '\0';
+  };
+  // Explicit reference selection is for independent diagnostics/causal runs.
+  // A device failure never selects it implicitly.
+  const bool reference_validation = enabled("VIBEQC_DF_REFERENCE_FINAL_VALIDATION");
+  const auto operations = reference_validation ? solver::FinalStateOperations{}
+                                               : cuda_density_fitting_final_state_operations(plan);
   CudaDfFinalStateSnapshot snapshot;
   solver::FinalStateIdentity identity;
   if (device_candidate) {
+    host_trace::Region final_read("final_state_read", n);
     CudaDfFinalStateToken token;
     std::string detail;
     auto status = cuda_density_fitting_final_state_token(plan, system, token, detail);
-    if (status == VIBEQC_STATUS_SUCCESS)
-      status = host_trace::call("final_state_read", [&] {
-        return read_cuda_density_fitting_final_state(plan, token, snapshot, detail);
-      });
+    if (status == VIBEQC_STATUS_SUCCESS && reference_validation)
+      status = read_cuda_density_fitting_final_state(plan, token, snapshot, detail);
+    if (status == VIBEQC_STATUS_SUCCESS && !reference_validation) {
+      snapshot.candidate = {token.identity, token.identity.factor.density_generation - 1, true, {}};
+      snapshot.candidate.spins.resize(density.size());
+    }
     if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
     if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
-    if (snapshot.density != density || token.identity.occupied != occupied ||
+    if ((reference_validation && snapshot.density != density) ||
+        token.identity.occupied != occupied ||
         token.identity.model.metric_relative_threshold !=
             options.density_fitting_relative_threshold)
       throw std::runtime_error(
@@ -548,22 +561,40 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   const initial_guess::EigenOperation eigen = [&](const auto& f, const auto*, const auto*, auto) {
     return final_df_eigen(f, data.one_electron.overlap, orthogonalizer, n, plan, system);
   };
-  const auto enabled = [](const char* name) {
-    const char* value = std::getenv(name);
-    return value && value[0] == '1' && value[1] == '\0';
-  };
   // Both diagnostic controls perform actual correction. The reference option
   // changes the provider; it must never be satisfied by reusing the candidate.
   const bool force =
       enabled("VIBEQC_DF_FORCE_FINAL_REBUILD") || enabled("VIBEQC_DF_REFERENCE_FINAL_EIGEN");
+  const solver::PhysicalFockOperation device_physical = [&](const auto& current, const auto& d) {
+    return evaluate_cuda_density_fitting_final_fock(plan, current, d, data.one_electron.hcore);
+  };
   auto selected = solver::select_final_state(
       identity, data.one_electron.overlap, data.one_electron.hcore, orthogonalizer,
       data.one_electron.nuclear_repulsion, std::move(density),
-      device_candidate ? &snapshot.candidate : nullptr, physical, eigen,
+      device_candidate ? &snapshot.candidate : nullptr,
+      reference_validation ? physical : device_physical, eigen,
       {options.density_tolerance, options.energy_tolerance, 16, options.export_physical_reference},
-      options.compute_forces, force);
+      options.compute_forces, force, reference_validation ? nullptr : &operations);
   if (selected.status == solver::FinalStateStatus::OutOfMemory) throw std::bad_alloc();
   if (!selected.state) throw std::runtime_error(selected.detail);
+  if (options.export_physical_reference && selected.state->fock[0].empty()) {
+    selected.state->fock =
+        operations.materialize_fock({selected.state->identity, true, selected.state->fock});
+  }
+  if (options.export_physical_reference && selected.state->orbitals[0].vectors.empty()) {
+    // C/epsilon are public reference outputs only on request. The accepted
+    // identity must still match the retained owner before their download.
+    std::string detail;
+    const auto status = read_cuda_density_fitting_final_state(
+        plan, CudaDfFinalStateToken{1, selected.state->identity}, snapshot, detail, false);
+    if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+    if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+    selected.state->orbitals = std::move(snapshot.candidate.spins);
+  }
+  runtime::df_progress::number("final_fock_evaluations", selected.fock_evaluations);
+  runtime::df_progress::number("final_eigen_solves", selected.eigen_solves);
+  runtime::df_progress::number("final_density_updates", selected.density_updates);
+  runtime::df_progress::number("final_candidate_rejections", selected.candidate_rejections);
   host_trace::Region accepted(selected.reused ? "final_state_reuse" : "final_state_corrected", n);
   // The intrusive journal retains the actual physical gate at the returned
   // determinant; ordinary endpoint timing adds neither formatting nor I/O.
@@ -598,6 +629,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   const std::size_t n = data.one_electron.nbf;
   CudaDfFinalStateToken response_token;
   Matrix final_fock, weighted;
+  solver::FinalStateDiagnostic final_diagnostic;
   EigenResult orbitals;
   const auto execute_item_rhf_jk =
       [&](const Matrix& item_density, std::vector<double>& item_coulomb,
@@ -644,6 +676,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     final_fock = std::move(state.fock[0]);
     orbitals = std::move(state.orbitals[0]);
     if (options.compute_forces) weighted = std::move(state.weighted_density[0]);
+    final_diagnostic = state.diagnostic;
     result.energy = state.diagnostic.energy;
     result.converged = true;
   } else {
@@ -683,7 +716,17 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
         sizeof(double),
         posthf::checked_add(
             posthf::checked_mul(options.compute_forces ? 6 : 5, posthf::checked_mul(n, n)), n));
-    validate_physical_reference(*reference);
+    if (cuda_plan) {
+      // The selector already enforced export's stronger absolute canonicality
+      // and maximum-density gates on this exact state, before constructing W.
+      // The independent public validator remains for imported/CPU references.
+      if (!occupied || occupied >= n) throw std::invalid_argument("invalid reference occupation");
+      reference->commutator_residual = final_diagnostic.maximum_commutator;
+      reference->canonical_density_drift = final_diagnostic.maximum_density_error;
+      reference->eigen_residual = final_diagnostic.eigenframes[0].maximum_eigen_residual;
+    } else {
+      validate_physical_reference(*reference);
+    }
     result.reference = std::move(reference);
   }
   if (!options.compute_forces) {
