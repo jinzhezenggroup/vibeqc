@@ -36,5 +36,7 @@
   "raw_launcher_log_bytes": 1693,
   "diagnostic_followup": "changed-work-protocol.json; no replacement clean qualification samples",
   "retained_candidate": "candidate-source.patch and candidate-validation.patch on 25e8efebb069e6067ba3649f220c37e844ecc8f6; full attempted implementation at 258f76b2b9201b4690cda4a48b1c8f9a39f8aedc",
-  "unchanged": "post-#415 derivative mapping, default Gram path, scientific model, tolerances, metric cutoff and screening"
+  "unchanged": "post-#415 derivative mapping, default Gram path, scientific model, tolerances, metric cutoff and screening",
+  "diagnostic_slurm_job": "9826",
+  "diagnostic_srun_exit_code": 0
 }

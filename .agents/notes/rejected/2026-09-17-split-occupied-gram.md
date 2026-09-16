@@ -69,6 +69,15 @@ regressions passed. The first 768 pair failed the work requirement, so magnitude
 and stability gates were not evaluated and the remaining qualifying runs were
 not continued. Follow-up diagnostic timings cannot replace missing clean pairs.
 
+The independent intrusive follow-up reproduces three/five updates for both
+energy and force endpoints. Each arm accepts one final Fock without correction
+or rejection, and both force arms reuse the final projection once. J/K builds
+and eigensolves (including seed factorization) increase from four to six.
+Total leading Gram FLOPs increase from 290,287,779,840 to 869,730,877,440.
+Both observable processes have the same sampled combined-policy device peak,
+24,631,050,240 bytes including initialization; this does not establish a memory
+improvement or separate per-policy peaks. Independent scientific gates still pass.
+
 ## Consequences and revisit conditions
 
 A deterministic, numerically valid reduction change can add SCF iterations and

@@ -1,0 +1,989 @@
+{
+  "case": "water-32mer-4s4-def2-svp-spherical",
+  "aos": 768,
+  "scope": "intrusive diagnostic",
+  "native_source_identity": "d2a7fa9f7365b4a095fc9fb9b8b94e9060abdc46a406ee75b9ed81ff00604da4",
+  "source_patch_sha256": "f13c3b3c53ecf2d95a6e4ae62ab237f0f00cc340fcbcc5a399765e0838116d91",
+  "runner_sha256": "9bbd641c34fb2ff3ec38ce341b0b6ca4c9d00c8da1dfc4b0bc75567954364557",
+  "controls": {"VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0", "VIBEQC_DF_FINAL_PROJECTION": "auto", "VIBEQC_DF_FORCE_SCREEN_ABS": "off", "VIBEQC_DF_EXCHANGE": "auto", "VIBEQC_DF_SEED_EXCHANGE": "auto", "VIBEQC_DF_FINAL_EXCHANGE": "auto", "VIBEQC_DF_SHELL_POLICY": "auto", "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/candidate/libvibeqc.so"},
+  "scientific_settings": {
+    "basis": "def2-svp",
+    "basis_representation": "spherical",
+    "auxiliary_basis": "same as orbital basis",
+    "metric_relative_threshold": 1e-10,
+    "method": "rhf",
+    "energy_tolerance": 1e-12,
+    "density_tolerance": 1e-10,
+    "max_iterations": 100,
+    "screening_tolerance": 1e-12,
+    "geometries_bohr": [
+      [
+        "O",
+        [-5.68695864870603, -9.653477530875584, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-6.934741636687752, -11.0488257295427, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-4.339681395600782, -10.03509801091492, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-9.653477530875584, -13.210302597551673, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-10.03509801091492, -14.557579850656921, 3.923524987977727]
+      ],
+      [
+        "H",
+        [-11.0488257295427, -11.96251960956995, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [-13.112343224611836, -9.496961557199665, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-13.553997598721192, -9.398815932861053, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-12.092024916334609, -7.999127260240872, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.400299689058038, -13.112343224611836, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-9.49844531339665, -13.553997598721192, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [-10.89813398601683, -12.092024916334609, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.496961557199665, -5.784918021645867, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-7.999127260240872, -6.805236329923094, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [-9.398815932861053, -5.343263647536509, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [-9.243783715382119, -5.68695864870603, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-7.848435516715002, -6.934741636687752, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [-8.862163235342782, -4.339681395600782, 3.923524987977727]
+      ],
+      [
+        "O",
+        [-13.210302597551673, -9.243783715382119, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-11.96251960956995, -7.848435516715002, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-14.557579850656921, -8.862163235342782, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-5.784918021645867, -9.400299689058038, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-5.343263647536509, -9.49844531339665, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-6.805236329923094, -10.89813398601683, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [-5.68695864870603, 9.243783715382119, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-6.934741636687752, 7.848435516715002, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-4.339681395600782, 8.862163235342782, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-9.653477530875584, 5.68695864870603, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-10.03509801091492, 4.339681395600782, 3.923524987977727]
+      ],
+      [
+        "H",
+        [-11.0488257295427, 6.934741636687752, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [-13.112343224611836, 9.400299689058038, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-13.553997598721192, 9.49844531339665, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-12.092024916334609, 10.89813398601683, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.400299689058038, 5.784918021645867, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-9.49844531339665, 5.343263647536509, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [-10.89813398601683, 6.805236329923094, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.496961557199665, 13.112343224611836, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-7.999127260240872, 12.092024916334609, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [-9.398815932861053, 13.553997598721192, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [-9.243783715382119, 13.210302597551673, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-7.848435516715002, 11.96251960956995, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [-8.862163235342782, 14.557579850656921, 3.923524987977727]
+      ],
+      [
+        "O",
+        [-13.210302597551673, 9.653477530875584, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-11.96251960956995, 11.0488257295427, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-14.557579850656921, 10.03509801091492, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-5.784918021645867, 9.496961557199665, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-5.343263647536509, 9.398815932861053, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-6.805236329923094, 7.999127260240872, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [13.210302597551673, -9.653477530875584, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.96251960956995, -11.0488257295427, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [14.557579850656921, -10.03509801091492, -3.923524987977727]
+      ],
+      [
+        "O",
+        [9.243783715382119, -13.210302597551673, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [8.862163235342782, -14.557579850656921, 3.923524987977727]
+      ],
+      [
+        "H",
+        [7.848435516715002, -11.96251960956995, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [5.784918021645867, -9.496961557199665, 2.648657577077294]
+      ],
+      [
+        "H",
+        [5.343263647536509, -9.398815932861053, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [6.805236329923094, -7.999127260240872, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.496961557199665, -13.112343224611836, -2.648657577077294]
+      ],
+      [
+        "H",
+        [9.398815932861053, -13.553997598721192, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [7.999127260240872, -12.092024916334609, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.400299689058038, -5.784918021645867, -2.648657577077294]
+      ],
+      [
+        "H",
+        [10.89813398601683, -6.805236329923094, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [9.49844531339665, -5.343263647536509, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [9.653477530875584, -5.68695864870603, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.0488257295427, -6.934741636687752, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [10.03509801091492, -4.339681395600782, 3.923524987977727]
+      ],
+      [
+        "O",
+        [5.68695864870603, -9.243783715382119, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [6.934741636687752, -7.848435516715002, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [4.339681395600782, -8.862163235342782, -3.923524987977727]
+      ],
+      [
+        "O",
+        [13.112343224611836, -9.400299689058038, 2.648657577077294]
+      ],
+      [
+        "H",
+        [13.553997598721192, -9.49844531339665, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [12.092024916334609, -10.89813398601683, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [13.210302597551673, 9.243783715382119, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.96251960956995, 7.848435516715002, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [14.557579850656921, 8.862163235342782, -3.923524987977727]
+      ],
+      [
+        "O",
+        [9.243783715382119, 5.68695864870603, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [8.862163235342782, 4.339681395600782, 3.923524987977727]
+      ],
+      [
+        "H",
+        [7.848435516715002, 6.934741636687752, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [5.784918021645867, 9.400299689058038, 2.648657577077294]
+      ],
+      [
+        "H",
+        [5.343263647536509, 9.49844531339665, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [6.805236329923094, 10.89813398601683, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.496961557199665, 5.784918021645867, -2.648657577077294]
+      ],
+      [
+        "H",
+        [9.398815932861053, 5.343263647536509, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [7.999127260240872, 6.805236329923094, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.400299689058038, 13.112343224611836, -2.648657577077294]
+      ],
+      [
+        "H",
+        [10.89813398601683, 12.092024916334609, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [9.49844531339665, 13.553997598721192, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [9.653477530875584, 13.210302597551673, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.0488257295427, 11.96251960956995, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [10.03509801091492, 14.557579850656921, 3.923524987977727]
+      ],
+      [
+        "O",
+        [5.68695864870603, 9.653477530875584, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [6.934741636687752, 11.0488257295427, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [4.339681395600782, 10.03509801091492, -3.923524987977727]
+      ],
+      [
+        "O",
+        [13.112343224611836, 9.496961557199665, 2.648657577077294]
+      ],
+      [
+        "H",
+        [13.553997598721192, 9.398815932861053, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [12.092024916334609, 7.999127260240872, 2.9564098944273542]
+      ]
+    ]
+  },
+  "git_head": "258f76b2b9201b4690cda4a48b1c8f9a39f8aedc",
+  "library_sha256": "34e2bf65208e07dbd7618434481116528eb6d6855bbe536be5760da343a43908",
+  "slurm_job_id": "9826",
+  "cuda_visible_devices": "0",
+  "control": "VIBEQC_DF_RESIDENT_EXCHANGE",
+  "policies": ["auto", "split4"],
+  "policy_controls": {},
+  "warm_policy": "one frozen post-cold density, prime every policy transition",
+  "measured_properties": ["energy"],
+  "expected_iterations": null,
+  "cold_controls": {},
+  "samples": [
+    {
+      "policy": "auto",
+      "scope": "intrusive diagnostic",
+      "repeat": 0,
+      "seconds": 1.0191994369961321,
+      "prime_seconds": 13.7379706769716,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "basis_metadata": {
+            "orbital": {
+              "name": "def2-svp",
+              "role": "orbital",
+              "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+              "electrons": {
+                "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "ionic_charge": 0,
+                "electron_count": 320,
+                "multiplicity": 1,
+                "nalpha": 160,
+                "nbeta": 160
+              },
+              "shell_count": 384,
+              "primitive_count": 704
+            },
+            "auxiliary": {
+              "name": "def2-svp",
+              "role": "auxiliary",
+              "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+              "electrons": {
+                "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "ionic_charge": 0,
+                "electron_count": 320,
+                "multiplicity": 1,
+                "nalpha": 160,
+                "nbeta": 160
+              },
+              "shell_count": 384,
+              "primitive_count": 704
+            },
+            "model_identity": "653fd1314a6c99386498a78be80922455e1fe02194d7a7672e5207683859589b"
+          },
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 2.1381724777624472e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 2.1381724777624472e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-2438.354141054294],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 768, "absolute_threshold": 2.3994330289515975e-07, "condition_number": 25786.996213448292, "solver_device_workspace_bytes": 19918488, "solver_host_workspace_bytes": 0, "device_resident_bytes": 15045055503, "peak_device_bytes": 18693577387, "host_resident_bytes": 76546794, "peak_host_bytes": 3705156334, "auxiliary_tile": 768, "streamed": false}
+      ],
+      "components": {
+        "groups": [
+          {
+            "execution": "stream",
+            "operation": "compact_diis_reset",
+            "calls": 1,
+            "host_completion_ms": 0.682986,
+            "final_synchronization_ms": 0.000812,
+            "gpu_inclusive_ms": 0.635327995,
+            "host_exclusive_ms": {"compact_diis_reset": 0.682174},
+            "gpu_exclusive_ms": {"compact_diis_reset": 0.635327995},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "compact_eigensolve",
+            "calls": 4,
+            "host_completion_ms": 73.426078,
+            "final_synchronization_ms": 0.003138,
+            "gpu_inclusive_ms": 69.3168316,
+            "host_exclusive_ms": {"compact_eigensolve": 73.42294},
+            "gpu_exclusive_ms": {"compact_eigensolve": 69.3168316},
+            "counter_sums": {"eigensystems": 4, "retained_solver_device_workspace_bytes": 79673952, "retained_solver_host_workspace_bytes": 0},
+            "counter_maxima": {"eigensystems": 1, "retained_solver_device_workspace_bytes": 19918488, "retained_solver_host_workspace_bytes": 0},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "density_exchange_seed",
+            "calls": 1,
+            "host_completion_ms": 14.956464,
+            "final_synchronization_ms": 0.000681,
+            "gpu_inclusive_ms": 14.9240637,
+            "host_exclusive_ms": {"density_exchange_seed": 14.778825, "density_seed_reconstruction": 0.176958},
+            "gpu_exclusive_ms": {"density_exchange_seed": 14.774879697, "density_seed_reconstruction": 0.149184003},
+            "counter_sums": {"accepted": 1, "candidate_rank": 160, "d2h_bytes": 6164, "explicit_synchronizations": 2},
+            "counter_maxima": {"accepted": 1, "candidate_rank": 160, "d2h_bytes": 6164, "explicit_synchronizations": 2},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_j",
+            "calls": 4,
+            "host_completion_ms": 17.998442,
+            "final_synchronization_ms": 0.002857,
+            "gpu_inclusive_ms": 17.894335750000003,
+            "host_exclusive_ms": {"ri_j": 0.23763199999999962, "ri_j_gemm": 17.757953},
+            "gpu_exclusive_ms": {"ri_j": 0.3503036599999998, "ri_j_gemm": 17.544032089999998},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_k_occupied",
+            "calls": 4,
+            "host_completion_ms": 767.5950220000001,
+            "final_synchronization_ms": 0.002974,
+            "gpu_inclusive_ms": 767.48973,
+            "host_exclusive_ms": {"ri_k_occupied": 0.8734510000000171, "ri_k_occupied_projection_gemm": 351.697821, "ri_k_occupied_exchange_gemm": 414.867202, "ri_k_occupied_mirror": 0.153574},
+            "gpu_exclusive_ms": {"ri_k_occupied": 1.1308241008000266, "ri_k_occupied_projection_gemm": 351.56956479999997, "ri_k_occupied_exchange_gemm": 414.7396771, "ri_k_occupied_mirror": 0.0496639992},
+            "counter_sums": {"occupied_exchange_blas_calls": 4, "occupied_exchange_extra_owned_bytes": 0, "occupied_exchange_finish_launches": 4, "occupied_exchange_flops": 290287779840, "occupied_exchange_k": 491520, "occupied_exchange_m": 3072, "occupied_exchange_n": 3072, "occupied_exchange_partial_borrowed_bytes": 0, "occupied_exchange_partial_write_bytes": 0, "occupied_exchange_products": 4, "occupied_exchange_reduction_output_read_bytes": 0, "occupied_exchange_reduction_output_write_bytes": 0, "occupied_exchange_reduction_read_bytes": 0, "occupied_exchange_reduction_source_additions": 0, "occupied_exchange_split_count": 0, "occupied_exchange_triangular": 4, "occupied_factor_bytes": 3932160, "occupied_intermediate_bytes": 3019898880, "occupied_projection_batch": 3072, "occupied_projection_flops": 579820584960, "occupied_projection_k": 3072, "occupied_projection_m": 3072, "occupied_projection_n": 640, "occupied_projection_products": 3072, "occupied_rank": 640},
+            "counter_maxima": {"occupied_exchange_blas_calls": 1, "occupied_exchange_extra_owned_bytes": 0, "occupied_exchange_finish_launches": 1, "occupied_exchange_flops": 72571944960, "occupied_exchange_k": 122880, "occupied_exchange_m": 768, "occupied_exchange_n": 768, "occupied_exchange_partial_borrowed_bytes": 0, "occupied_exchange_partial_write_bytes": 0, "occupied_exchange_products": 1, "occupied_exchange_reduction_output_read_bytes": 0, "occupied_exchange_reduction_output_write_bytes": 0, "occupied_exchange_reduction_read_bytes": 0, "occupied_exchange_reduction_source_additions": 0, "occupied_exchange_split_count": 0, "occupied_exchange_triangular": 1, "occupied_factor_bytes": 983040, "occupied_intermediate_bytes": 754974720, "occupied_projection_batch": 768, "occupied_projection_flops": 144955146240, "occupied_projection_k": 768, "occupied_projection_m": 768, "occupied_projection_n": 160, "occupied_projection_products": 768, "occupied_rank": 160},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "compact_diis",
+            "calls": 3,
+            "host_completion_ms": 75.593212,
+            "final_synchronization_ms": 0.0020829999999999998,
+            "gpu_inclusive_ms": 53.486527499999994,
+            "host_exclusive_ms": {"compact_diis": 0.2458720000000021, "diis_residual_products": 30.053517000000003, "diis_history_update": 45.291740000000004},
+            "gpu_exclusive_ms": {"compact_diis": 0.1732790700000013, "diis_residual_products": 8.10278392, "diis_history_update": 45.210464509999994},
+            "counter_sums": {"diis_cooperative_dots": 3, "diis_dot_partial_bytes": 221184},
+            "counter_maxima": {"diis_cooperative_dots": 1, "diis_dot_partial_bytes": 73728},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "scf_seed_iteration",
+            "calls": 1,
+            "host_completion_ms": 260.23613,
+            "final_synchronization_ms": 0.000721,
+            "gpu_inclusive_ms": 260.183777,
+            "host_exclusive_ms": {"scf_seed_iteration": 260.235409},
+            "gpu_exclusive_ms": {"scf_seed_iteration": 260.183777},
+            "counter_sums": {"factorized": 1},
+            "counter_maxima": {"factorized": 1},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "occupied_scf_provenance",
+            "calls": 1,
+            "host_completion_ms": 0.118286,
+            "final_synchronization_ms": 0.000661,
+            "gpu_inclusive_ms": 0.0891200006,
+            "host_exclusive_ms": {"occupied_scf_provenance": 0.117625},
+            "gpu_exclusive_ms": {"occupied_scf_provenance": 0.0891200006},
+            "counter_sums": {"dense_seed_iterations": 0, "density_seed_rank": 160, "factor_seed_iterations": 1, "occupied_iterations": 2, "occupied_state_bytes": 983048, "validated_density_generations": 1},
+            "counter_maxima": {"dense_seed_iterations": 0, "density_seed_rank": 160, "factor_seed_iterations": 1, "occupied_iterations": 2, "occupied_state_bytes": 983048, "validated_density_generations": 1},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_retained_jk",
+            "calls": 1,
+            "host_completion_ms": 190.138189,
+            "final_synchronization_ms": 0.000591,
+            "gpu_inclusive_ms": 190.101028,
+            "host_exclusive_ms": {"final_state_retained_jk": 190.137598},
+            "gpu_exclusive_ms": {"final_state_retained_jk": 190.101028},
+            "counter_sums": {"accepted": 1, "d2h_bytes": 28, "explicit_synchronizations": 2, "h2d_bytes": 4718592},
+            "counter_maxima": {"accepted": 1, "d2h_bytes": 28, "explicit_synchronizations": 2, "h2d_bytes": 4718592},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_physical_fock",
+            "calls": 1,
+            "host_completion_ms": 192.502931,
+            "final_synchronization_ms": 0.000591,
+            "gpu_inclusive_ms": 192.448486,
+            "host_exclusive_ms": {"final_state_physical_fock": 192.50234},
+            "gpu_exclusive_ms": {"final_state_physical_fock": 192.448486},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_validation",
+            "calls": 1,
+            "host_completion_ms": 19.931078,
+            "final_synchronization_ms": 0.000631,
+            "gpu_inclusive_ms": 19.8765125,
+            "host_exclusive_ms": {"final_state_validation": 19.930447},
+            "gpu_exclusive_ms": {"final_state_validation": 19.8765125},
+            "counter_sums": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 14155776, "workspace_bytes": 42516592},
+            "counter_maxima": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 14155776, "workspace_bytes": 42516592},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          }
+        ],
+        "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+      },
+      "process_device_resident_bytes": 21252538368,
+      "final_state_observations": [
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 55, "parent": 1, "time_ns": 2042726810831705, "elapsed_ms": 221.155118, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_fock_evaluations", "value": 1},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 55, "parent": 1, "time_ns": 2042726810837697, "elapsed_ms": 221.16111, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_eigen_solves", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 55, "parent": 1, "time_ns": 2042726810842937, "elapsed_ms": 221.16635, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_density_updates", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 55, "parent": 1, "time_ns": 2042726810848157, "elapsed_ms": 221.17157, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_candidate_rejections", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 69, "parent": 55, "time_ns": 2042726810887021, "elapsed_ms": 0.018255, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_maximum_commutator", "value": "1.4013235016818726e-12"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 69, "parent": 55, "time_ns": 2042726810893473, "elapsed_ms": 0.024707, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_density_rms", "value": "0"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 69, "parent": 55, "time_ns": 2042726810899204, "elapsed_ms": 0.030438, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_maximum_idempotency_error", "value": "2.8421709430404007e-14"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 69, "parent": 55, "time_ns": 2042726810905025, "elapsed_ms": 0.036259, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_density_generation", "value": 4},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 69, "parent": 55, "time_ns": 2042726810910175, "elapsed_ms": 0.041409, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_solve_epoch", "value": 2}
+      ]
+    },
+    {
+      "policy": "split4",
+      "scope": "intrusive diagnostic",
+      "repeat": 0,
+      "seconds": 1.4391607011202723,
+      "prime_seconds": 4.010216803057119,
+      "prime_iterations": [5],
+      "iterations": [5],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 5,
+          "basis_metadata": {
+            "orbital": {
+              "name": "def2-svp",
+              "role": "orbital",
+              "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+              "electrons": {
+                "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "ionic_charge": 0,
+                "electron_count": 320,
+                "multiplicity": 1,
+                "nalpha": 160,
+                "nbeta": 160
+              },
+              "shell_count": 384,
+              "primitive_count": 704
+            },
+            "auxiliary": {
+              "name": "def2-svp",
+              "role": "auxiliary",
+              "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+              "electrons": {
+                "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+                "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "ionic_charge": 0,
+                "electron_count": 320,
+                "multiplicity": 1,
+                "nalpha": 160,
+                "nbeta": 160
+              },
+              "shell_count": 384,
+              "primitive_count": 704
+            },
+            "model_identity": "653fd1314a6c99386498a78be80922455e1fe02194d7a7672e5207683859589b"
+          },
+          "energy_change_hartree": 0.0,
+          "density_rms": 6.067473275049043e-15,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 0.0, "density_rms": 6.067473275049043e-15, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-2438.354141054335],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 3.228706191293895e-11,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 768, "absolute_threshold": 2.3994330289515975e-07, "condition_number": 25786.996213448292, "solver_device_workspace_bytes": 19918488, "solver_host_workspace_bytes": 0, "device_resident_bytes": 15045055503, "peak_device_bytes": 18693577387, "host_resident_bytes": 76546794, "peak_host_bytes": 3705156334, "auxiliary_tile": 768, "streamed": false}
+      ],
+      "components": {
+        "groups": [
+          {
+            "execution": "stream",
+            "operation": "compact_diis_reset",
+            "calls": 1,
+            "host_completion_ms": 0.679008,
+            "final_synchronization_ms": 0.000821,
+            "gpu_inclusive_ms": 0.628512025,
+            "host_exclusive_ms": {"compact_diis_reset": 0.678187},
+            "gpu_exclusive_ms": {"compact_diis_reset": 0.628512025},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "compact_eigensolve",
+            "calls": 6,
+            "host_completion_ms": 110.585335,
+            "final_synchronization_ms": 0.004868,
+            "gpu_inclusive_ms": 103.9824334,
+            "host_exclusive_ms": {"compact_eigensolve": 110.580467},
+            "gpu_exclusive_ms": {"compact_eigensolve": 103.9824334},
+            "counter_sums": {"eigensystems": 6, "retained_solver_device_workspace_bytes": 119510928, "retained_solver_host_workspace_bytes": 0},
+            "counter_maxima": {"eigensystems": 1, "retained_solver_device_workspace_bytes": 19918488, "retained_solver_host_workspace_bytes": 0},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "density_exchange_seed",
+            "calls": 1,
+            "host_completion_ms": 14.955723,
+            "final_synchronization_ms": 0.000671,
+            "gpu_inclusive_ms": 14.9246721,
+            "host_exclusive_ms": {"density_exchange_seed": 14.778555, "density_seed_reconstruction": 0.176497},
+            "gpu_exclusive_ms": {"density_exchange_seed": 14.776096094, "density_seed_reconstruction": 0.148576006},
+            "counter_sums": {"accepted": 1, "candidate_rank": 160, "d2h_bytes": 6164, "explicit_synchronizations": 2},
+            "counter_maxima": {"accepted": 1, "candidate_rank": 160, "d2h_bytes": 6164, "explicit_synchronizations": 2},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_j",
+            "calls": 6,
+            "host_completion_ms": 26.974540000000005,
+            "final_synchronization_ms": 0.004249,
+            "gpu_inclusive_ms": 26.83014393,
+            "host_exclusive_ms": {"ri_j": 0.3435449999999989, "ri_j_gemm": 26.626745999999994},
+            "gpu_exclusive_ms": {"ri_j": 0.5354881500000008, "ri_j_gemm": 26.294655780000003},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_k_occupied",
+            "calls": 6,
+            "host_completion_ms": 1063.375211,
+            "final_synchronization_ms": 0.004410000000000001,
+            "gpu_inclusive_ms": 1063.221359,
+            "host_exclusive_ms": {"ri_k_occupied": 1.2861499999999637, "ri_k_occupied_projection_gemm": 519.830016, "ri_k_occupied_exchange_gemm": 541.957937, "ri_k_occupied_split_reduce": 0.296698},
+            "gpu_exclusive_ms": {"ri_k_occupied": 1.707981401599966, "ri_k_occupied_projection_gemm": 519.6273269, "ri_k_occupied_exchange_gemm": 541.7558747, "ri_k_occupied_split_reduce": 0.1301759984},
+            "counter_sums": {"occupied_exchange_blas_calls": 6, "occupied_exchange_extra_owned_bytes": 0, "occupied_exchange_finish_launches": 6, "occupied_exchange_flops": 869730877440, "occupied_exchange_k": 737280, "occupied_exchange_m": 4608, "occupied_exchange_n": 4608, "occupied_exchange_partial_borrowed_bytes": 113246208, "occupied_exchange_partial_write_bytes": 113246208, "occupied_exchange_products": 24, "occupied_exchange_reduction_output_read_bytes": 28311552, "occupied_exchange_reduction_output_write_bytes": 28311552, "occupied_exchange_reduction_read_bytes": 113246208, "occupied_exchange_reduction_source_additions": 17694720, "occupied_exchange_split_count": 24, "occupied_exchange_triangular": 0, "occupied_factor_bytes": 5898240, "occupied_intermediate_bytes": 4529848320, "occupied_projection_batch": 4608, "occupied_projection_flops": 869730877440, "occupied_projection_k": 4608, "occupied_projection_m": 4608, "occupied_projection_n": 960, "occupied_projection_products": 4608, "occupied_rank": 960},
+            "counter_maxima": {"occupied_exchange_blas_calls": 1, "occupied_exchange_extra_owned_bytes": 0, "occupied_exchange_finish_launches": 1, "occupied_exchange_flops": 144955146240, "occupied_exchange_k": 122880, "occupied_exchange_m": 768, "occupied_exchange_n": 768, "occupied_exchange_partial_borrowed_bytes": 18874368, "occupied_exchange_partial_write_bytes": 18874368, "occupied_exchange_products": 4, "occupied_exchange_reduction_output_read_bytes": 4718592, "occupied_exchange_reduction_output_write_bytes": 4718592, "occupied_exchange_reduction_read_bytes": 18874368, "occupied_exchange_reduction_source_additions": 2949120, "occupied_exchange_split_count": 4, "occupied_exchange_triangular": 0, "occupied_factor_bytes": 983040, "occupied_intermediate_bytes": 754974720, "occupied_projection_batch": 768, "occupied_projection_flops": 144955146240, "occupied_projection_k": 768, "occupied_projection_m": 768, "occupied_projection_n": 160, "occupied_projection_products": 768, "occupied_rank": 160},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "compact_diis",
+            "calls": 5,
+            "host_completion_ms": 133.283724,
+            "final_synchronization_ms": 0.003305,
+            "gpu_inclusive_ms": 96.80892750000001,
+            "host_exclusive_ms": {"compact_diis": 0.41076799999999736, "diis_residual_products": 49.32062500000001, "diis_history_update": 83.54902600000001},
+            "gpu_exclusive_ms": {"compact_diis": 0.29033656000000363, "diis_residual_products": 13.10921573, "diis_history_update": 83.40937521000001},
+            "counter_sums": {"diis_cooperative_dots": 5, "diis_dot_partial_bytes": 368640},
+            "counter_maxima": {"diis_cooperative_dots": 1, "diis_dot_partial_bytes": 73728},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "scf_seed_iteration",
+            "calls": 1,
+            "host_completion_ms": 253.301019,
+            "final_synchronization_ms": 0.000801,
+            "gpu_inclusive_ms": 253.247742,
+            "host_exclusive_ms": {"scf_seed_iteration": 253.300218},
+            "gpu_exclusive_ms": {"scf_seed_iteration": 253.247742},
+            "counter_sums": {"factorized": 1},
+            "counter_maxima": {"factorized": 1},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "occupied_scf_provenance",
+            "calls": 1,
+            "host_completion_ms": 0.11979,
+            "final_synchronization_ms": 0.000632,
+            "gpu_inclusive_ms": 0.0858239979,
+            "host_exclusive_ms": {"occupied_scf_provenance": 0.119158},
+            "gpu_exclusive_ms": {"occupied_scf_provenance": 0.0858239979},
+            "counter_sums": {"dense_seed_iterations": 0, "density_seed_rank": 160, "factor_seed_iterations": 1, "occupied_iterations": 4, "occupied_state_bytes": 983048, "validated_density_generations": 1},
+            "counter_maxima": {"dense_seed_iterations": 0, "density_seed_rank": 160, "factor_seed_iterations": 1, "occupied_iterations": 4, "occupied_state_bytes": 983048, "validated_density_generations": 1},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_retained_jk",
+            "calls": 1,
+            "host_completion_ms": 177.855039,
+            "final_synchronization_ms": 0.000831,
+            "gpu_inclusive_ms": 177.802277,
+            "host_exclusive_ms": {"final_state_retained_jk": 177.854208},
+            "gpu_exclusive_ms": {"final_state_retained_jk": 177.802277},
+            "counter_sums": {"accepted": 1, "d2h_bytes": 28, "explicit_synchronizations": 2, "h2d_bytes": 4718592},
+            "counter_maxima": {"accepted": 1, "d2h_bytes": 28, "explicit_synchronizations": 2, "h2d_bytes": 4718592},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_physical_fock",
+            "calls": 1,
+            "host_completion_ms": 180.175868,
+            "final_synchronization_ms": 0.000631,
+            "gpu_inclusive_ms": 180.136703,
+            "host_exclusive_ms": {"final_state_physical_fock": 180.175237},
+            "gpu_exclusive_ms": {"final_state_physical_fock": 180.136703},
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_validation",
+            "calls": 1,
+            "host_completion_ms": 19.885922,
+            "final_synchronization_ms": 0.000641,
+            "gpu_inclusive_ms": 19.8311043,
+            "host_exclusive_ms": {"final_state_validation": 19.885281},
+            "gpu_exclusive_ms": {"final_state_validation": 19.8311043},
+            "counter_sums": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 14155776, "workspace_bytes": 42516592},
+            "counter_maxima": {"device_to_host_bytes": 112, "explicit_synchronizations": 1, "host_to_device_bytes": 14155776, "workspace_bytes": 42516592},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          }
+        ],
+        "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+      },
+      "process_device_resident_bytes": 21252538368,
+      "final_state_observations": [
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 153, "parent": 71, "time_ns": 2042732287707349, "elapsed_ms": 208.856359, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_fock_evaluations", "value": 1},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 153, "parent": 71, "time_ns": 2042732287713471, "elapsed_ms": 208.862481, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_eigen_solves", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 153, "parent": 71, "time_ns": 2042732287718701, "elapsed_ms": 208.867711, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_density_updates", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 153, "parent": 71, "time_ns": 2042732287724081, "elapsed_ms": 208.873091, "event": "VALUE", "status": "observed", "execution": "host", "name": "finalization", "key": "final_candidate_rejections", "value": 0},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 167, "parent": 153, "time_ns": 2042732287749059, "elapsed_ms": 0.017684, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_maximum_commutator", "value": "1.8207657603852567e-13"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 167, "parent": 153, "time_ns": 2042732287755361, "elapsed_ms": 0.023986, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_density_rms", "value": "0"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 167, "parent": 153, "time_ns": 2042732287761012, "elapsed_ms": 0.029637, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_maximum_idempotency_error", "value": "2.5757174171303632e-14"},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 167, "parent": 153, "time_ns": 2042732287778475, "elapsed_ms": 0.0471, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_density_generation", "value": 6},
+        {"schema": "vibeqc.df_progress", "version": 1, "id": 167, "parent": 153, "time_ns": 2042732287783775, "elapsed_ms": 0.0524, "event": "VALUE", "status": "observed", "execution": "host", "name": "final_state_reuse", "key": "final_solve_epoch", "value": 2}
+      ]
+    }
+  ],
+  "prepare_seconds": 0.0168237560428679,
+  "warm_checkpoint_restore": {
+    "schema_version": 1,
+    "bytes": 4726716,
+    "manifest_identity": "e4d33a115e6c738485f114110a33fd0f4956805b6b031b66b31374a4ec526924",
+    "read_seconds": 210.80692059290595,
+    "items": [
+      {
+        "index": 0,
+        "compatibility": "warm_start_compatible",
+        "reason": "geometry or numerical controls differ",
+        "restored_fields": ["density"],
+        "rejected_fields": [],
+        "source_status": 0,
+        "source_model_identity": "281ef99ce479bfbe3e07bd7c5e8ad97953a757a3ab5c0c973a927c5d8189d850"
+      }
+    ],
+    "target_verification": "executed",
+    "validation_backend": "cpu_source_overlap",
+    "target_results": [
+      {"index": 0, "converged": true, "status": 0, "energy": -2438.354141054335, "density_rms": 6.067473275049043e-15, "restart_origin": "persistent_restart"}
+    ]
+  },
+  "cold_seconds": null,
+  "complete_cold_seconds": null,
+  "cold_convergence": null,
+  "initialization": "checkpoint replay",
+  "initialization_seconds": 76.81975936400704,
+  "initialization_convergence": [
+    {
+      "converged": true,
+      "iterations": 3,
+      "basis_metadata": {
+        "orbital": {
+          "name": "def2-svp",
+          "role": "orbital",
+          "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+          "electrons": {
+            "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+            "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+            "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "ionic_charge": 0,
+            "electron_count": 320,
+            "multiplicity": 1,
+            "nalpha": 160,
+            "nbeta": 160
+          },
+          "shell_count": 384,
+          "primitive_count": 704
+        },
+        "auxiliary": {
+          "name": "def2-svp",
+          "role": "auxiliary",
+          "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+          "electrons": {
+            "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+            "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+            "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "ionic_charge": 0,
+            "electron_count": 320,
+            "multiplicity": 1,
+            "nalpha": 160,
+            "nbeta": 160
+          },
+          "shell_count": 384,
+          "primitive_count": 704
+        },
+        "model_identity": "653fd1314a6c99386498a78be80922455e1fe02194d7a7672e5207683859589b"
+      },
+      "energy_change_hartree": 9.094947017729282e-13,
+      "density_rms": 2.1381724777624472e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 2.1381724777624472e-13, "orbital_gradient_norm": null},
+      "warm_start": {"used": true, "fallback": false}
+    }
+  ],
+  "warm_checkpoint_sha256": "5bfada828560a2b9121988544805dd9b63b19510cb5231619b8fdfb983e8a7fe",
+  "warm_density_sha256": {"density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"},
+  "reference_sha256": "33164661464fc63b15e277d97755053cec3188f7063e0219624a41676b955aa6"
+}

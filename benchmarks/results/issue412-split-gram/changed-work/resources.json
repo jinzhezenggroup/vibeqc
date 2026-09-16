@@ -1,0 +1,30 @@
+[
+  {
+    "label": "768-forces",
+    "slurm_job_id": "9826",
+    "cuda_visible_devices": "0",
+    "exit_code": 0,
+    "command": ["/tmp/vibeqc-pr-review-env/bin/python", "-m", "benchmarks.df_policy_endpoint", "--aos", "768", "--output", "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/changed-work-diagnostics/768-forces.json", "--repeats", "1", "--control", "VIBEQC_DF_RESIDENT_EXCHANGE", "--policies", "auto", "split4", "--trace", "--journal", "--source-patch", ".artifacts/issue412/candidate/source.patch", "--skip-cold", "--warm-checkpoint-in", "/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/768-VIBEQC_DF_DIIS_DOTS.checkpoint", "--reference", "benchmarks/results/issue377-379-df/gpu4pyscf/water-32mer-4s4-def2-svp-spherical.json"],
+    "scope": "intrusive changed-work diagnostic after fixed-work stop; exclude all times from performance qualification",
+    "peak_host_rss_bytes": 13909282816,
+    "peak_host_highwater_bytes": 13909282816,
+    "peak_process_device_resident_bytes": 24631050240,
+    "sample_count": 1318,
+    "samples_sha256": "076c03fae3db336b045dd3d04a9c256e5a8135b18d604ac66cd9d7d8e9c8a940",
+    "definition": "Per-process NVIDIA reported device residency at 200 ms plus query cost, and /proc VmRSS/VmHWM from initialization through teardown. Device peak is a sampled lower bound, includes CUDA context/modules, and may miss short allocations; it is not an allocator peak. Each process runs both policies for one observable; the peak is not attributable to either arm separately."
+  },
+  {
+    "label": "768-energy",
+    "slurm_job_id": "9826",
+    "cuda_visible_devices": "0",
+    "exit_code": 0,
+    "command": ["/tmp/vibeqc-pr-review-env/bin/python", "-m", "benchmarks.df_policy_endpoint", "--aos", "768", "--output", "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/changed-work-diagnostics/768-energy.json", "--repeats", "1", "--control", "VIBEQC_DF_RESIDENT_EXCHANGE", "--policies", "auto", "split4", "--trace", "--journal", "--source-patch", ".artifacts/issue412/candidate/source.patch", "--skip-cold", "--warm-checkpoint-in", "/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/768-VIBEQC_DF_DIIS_DOTS.checkpoint", "--reference", "benchmarks/results/issue377-379-df/gpu4pyscf/water-32mer-4s4-def2-svp-spherical.json", "--energy-only"],
+    "scope": "intrusive changed-work diagnostic after fixed-work stop; exclude all times from performance qualification",
+    "peak_host_rss_bytes": 13909286912,
+    "peak_host_highwater_bytes": 13909286912,
+    "peak_process_device_resident_bytes": 24631050240,
+    "sample_count": 1343,
+    "samples_sha256": "a3ddb357249f76bc1f0036ef2368443c341af9cf0ea1acfde7d59b79e8719a63",
+    "definition": "Per-process NVIDIA reported device residency at 200 ms plus query cost, and /proc VmRSS/VmHWM from initialization through teardown. Device peak is a sampled lower bound, includes CUDA context/modules, and may miss short allocations; it is not an allocator peak. Each process runs both policies for one observable; the peak is not attributable to either arm separately."
+  }
+]

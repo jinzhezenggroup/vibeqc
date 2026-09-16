@@ -71,6 +71,38 @@ Its timings are excluded from performance qualification; it cannot replace the
 missing seven matched-work pairs. `candidate-analyze.py.txt` preserves the original
 complete-campaign analysis rather than silently weakening its assertions.
 
+Job 9826 reproduces the changed branch for **both** complete energy and force
+calls. Each policy accepts one final physical Fock with zero final corrections
+or candidate rejections. The force projection lease is reused once in both arms.
+
+| Observed work per complete call | SYRK | split4 |
+| --- | ---: | ---: |
+| SCF updates | 3 | 5 |
+| J builds | 4 | 6 |
+| K builds | 4 | 6 |
+| Eigensolves, including density-seed factorization | 4 | 6 |
+| Leading Gram FLOPs over all K builds | 290,287,779,840 | 869,730,877,440 |
+
+Maximum follow-up energy/force errors remain 3.229e-11 Eh / 1.620e-10 Eh/Bohr.
+`work.json` records scopes, final-state observations, each occupied Gram call
+and hashes of the complete local traces. Final physical work is included once;
+four partial products inside a split build do not count as four K builds.
+
+Both observable processes reach a sampled device-residency peak of
+24,631,050,240 bytes, including initialization, context/modules and both policies.
+This is a sampled lower bound, not an allocator peak or a peak attributable to
+either arm. The candidate's 18 MiB partial storage is borrowed and its additional
+application-owned allocation is zero; no whole-process memory improvement is
+claimed. `changed-work/resources.json` records host RSS/high-water readings,
+sampling definition and command identities; all sampled readings are retained.
+All intrusive timings remain excluded from the clean comparison.
+
+Recompute the rejection, numerical gates and work/resource summary without a GPU:
+
+```bash
+python benchmarks/results/issue412-split-gram/analyze.py
+```
+
 ## Identity and reproduction
 
 `candidate-build.json` freezes Release CUDA 12.9.1/sm_120, fast compile and AOT
@@ -82,6 +114,14 @@ not an automatic promotion. `candidate-validation.patch` reconstructs its tests.
 Apply both patches to the pinned baseline in an isolated checkout and finish
 compilation before timing. `run-endpoints.sh` reproduces the original campaign
 and deliberately exits nonzero when the fixed-work requirement fails.
+
+Historical checkpoints and large input arrays remain local. Every endpoint
+retains checkpoint and density hashes; regenerating a density starts a new
+campaign and does not reproduce the same SCF branch by assertion. The intrusive
+follow-up pins the frozen candidate library while the checkout retires that
+candidate. Its library/source hashes and reconstruction patch identify executed
+code; `git_head` also records the launcher's evolving checkout and must not be
+mistaken for a relabeled native implementation.
 
 The [decision note](../../../.agents/notes/rejected/2026-09-17-split-occupied-gram.md)
 records the rejection. #409 requires a separate packed-representation experiment;
