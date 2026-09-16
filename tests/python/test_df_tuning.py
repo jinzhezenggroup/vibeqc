@@ -52,11 +52,13 @@ def rank(profiles, rows):
 
 def test_available_trials_and_identity():
     trials = enumerate_trials()
-    assert len(trials) == 24
+    assert len(trials) == 42
     assert len({t.key for t in trials}) == len(trials)
-    assert {t.angular for t in trials if t.lowering == "rys"} == {(0, 0, 0)}
+    assert {t.angular for t in trials if t.lowering == "rys"} == {
+        t.angular for t in trials
+    }
     with pytest.raises(ValueError, match="unsupported"):
-        DfDerivativeTrial((1, 0, 0), "rys", 2)
+        DfDerivativeTrial((1, 1, 1), "rys", 2)
     trial = trials[0]
     identity = {
         "generator_sha256": "abc",

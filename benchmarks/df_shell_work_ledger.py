@@ -241,11 +241,29 @@ def reduce_work(record, shells):
             == primitives
         ):
             raise ValueError("geometry/Boys counts differ from active primitive work")
-        if roots and (signature[:3] != (0, 0, 0) or roots != primitives):
-            raise ValueError("Rys work must belong entirely to the generated 000 class")
+        rys_model = shell_rys_work_model(signature[:3]) if roots else None
+        if roots and roots != primitives:
+            raise ValueError("Rys work must cover the entire primitive signature")
+        states = values.get("recurrence_states", 0)
+        if rys_model:
+            component_states = rys_model["component_recurrence_states"]
+            products = values["active_component_products"]
+            # Zero folded components skip their moments. The aggregate ledger
+            # cannot identify which sparse components survived, so enforce the
+            # exact dense count or the documented bounds for a sparse domain.
+            valid_states = (
+                states == primitives * sum(component_states)
+                if products == primitives * len(component_states)
+                else min(component_states) * products
+                <= states
+                <= max(component_states) * products
+            )
+        else:
+            valid_states = states == 0
         if (
-            values.get("rys_roots", 0) != roots
-            or values.get("recurrence_states", 0) != 6 * roots
+            values.get("rys_roots", 0)
+            != roots * (rys_model["rys_roots"] if rys_model else 0)
+            or not valid_states
         ):
             raise ValueError("Rys root/recurrence counts differ from generated work")
         if values["boys_order_sum"] != (primitives - roots) * (sum(signature[:3]) + 1):

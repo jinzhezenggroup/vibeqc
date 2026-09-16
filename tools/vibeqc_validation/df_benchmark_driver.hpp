@@ -84,19 +84,27 @@ inline std::vector<Profile> read_profiles(const char* path) {
  * input is folded before the symmetric/packed single-AB launch. Partial
  * auxiliary panels exercise clipping even when C is a spherical d shell.
  */
-inline double oracle_error(const Candidate& candidate, const Signature& signature) {
+inline double oracle_error(const Candidate& candidate, const Signature& signature,
+                           unsigned holdout = 0) {
   double maximum = 0;
   for (bool spherical : {false, true}) {
     core::System orbital;
     orbital.atoms = {{2, {.13, -.31, .24}}, {1, {-.43, .27, .51}}, {1, {.68, -.14, -.22}}};
     orbital.basis_representation = spherical ? VIBEQC_BASIS_SPHERICAL : VIBEQC_BASIS_CARTESIAN;
-    const auto shell = [](unsigned atom, unsigned angular, std::size_t primitives) {
+    if (holdout == 2)
+      orbital.atoms = {{2, {-.21, .17, .4}}, {1, {.2, -.3, -.14}}, {1, {.1, .6, -.4}}};
+    const auto shell = [holdout](unsigned atom, unsigned angular, std::size_t primitives) {
       core::Shell result{atom, angular, {}};
       for (std::size_t i = 0; i < primitives; ++i)
-        result.primitives.push_back({.57 + .23 * atom + .71 * i, i ? -.17 / i : .83});
+        result.primitives.push_back(
+            {(.57 + .23 * atom + .71 * i) * (holdout == 2 ? (atom == 1 ? .13 : 3.7) : 1),
+             i ? -.17 / i : .83});
       return result;
     };
     orbital.shells = {shell(0, signature.a, signature.pa), shell(1, signature.b, signature.pb)};
+    // Distinct shells can share one physical atom. The independent CPU oracle
+    // and the GPU scatter must combine both mathematical center derivatives.
+    if (holdout == 1) orbital.shells[1].atom_index = 0;
     auto auxiliary = orbital;
     auxiliary.shells = {shell(2, signature.c, signature.pc)};
     normalize(orbital);
@@ -165,6 +173,28 @@ inline int run(int argc, char** argv, const std::vector<Candidate>& candidates) 
               << 10 * properties.major + properties.minor
               << "\",\"driver_version\":" << driver_version
               << ",\"runtime_version\":" << runtime_version << "}" << std::endl;
+    if (std::string(argv[1]) == "--qualify-only") {
+      // A bounded sanitizer/holdout mode exercises every emitted candidate
+      // without traversing the large timing distributions under instrumentation.
+      // Each oracle checks Cartesian/spherical and full/symmetric/packed inputs.
+      bool passed = true;
+      for (const auto& candidate : candidates) {
+        double error = 0;
+        for (unsigned holdout = 0; holdout < 3; ++holdout) {
+          Signature signature{candidate.a, candidate.b,
+                              candidate.c, holdout == 2 ? 3U : 2U,
+                              2,           holdout == 2 ? 5U : 1U,
+                              {}};
+          error = std::max(error, oracle_error(candidate, signature, holdout));
+        }
+        const bool valid = std::isfinite(error) && error < 8e-11;
+        passed = passed && valid;
+        std::cout << std::setprecision(17) << "{\"candidate\":\"" << candidate.key
+                  << "\",\"maximum_error\":" << error
+                  << ",\"numerical_passed\":" << (valid ? "true" : "false") << "}" << std::endl;
+      }
+      return passed ? 0 : 1;
+    }
     const auto profiles = read_profiles(argv[1]);
     std::cout << std::setprecision(17);
     for (const auto& profile : profiles) {

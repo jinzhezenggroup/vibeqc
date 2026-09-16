@@ -18,10 +18,16 @@ from vibeqc_compiler.integral.df_rys import (
 def arguments():
     """Cover cancellation, branch boundaries, random interiors and asymptotics."""
     rng = random.Random(394)
-    values = [0.0, 1e300]
+    values = [
+        0.0,
+        math.nextafter(0.0, 1.0),
+        1e300,
+        1e308,
+        float.fromhex("0x1.fffffffffffffp+1023"),
+    ]
     values += [10.0 ** (-30 + k / 10) for k in range(381)]
     values += [rng.uniform(0, 60) for _ in range(512)]
-    for boundary in (0.5, *(float(2 * k) for k in range(1, 31))):
+    for boundary in (0.5, *(2.0 * k for k in range(1, 25))):
         values += [
             math.nextafter(boundary, 0),
             boundary,
@@ -41,9 +47,21 @@ def check_reference(evaluate, nroots):
                 if not t
                 else mp.gammainc(k + mp.mpf("0.5"), 0, t)
                 / (2 * t ** (k + mp.mpf("0.5")))
-                for k in range(2)
+                for k in range(2 * nroots)
             ]
-            reference = ((moments[1] / moments[0],), (moments[0],))
+            if nroots == 1:
+                reference = ((moments[1] / moments[0],), (moments[0],))
+            else:
+                # Independent 75-digit orthogonal polynomial, using incomplete
+                # gamma moments instead of the production interpolation table.
+                f0, f1, f2, f3 = moments
+                determinant = f0 * f2 - f1 * f1
+                a = (f1 * f2 - f0 * f3) / determinant
+                b = (f1 * f3 - f2 * f2) / determinant
+                x0 = (-a - mp.sqrt(a * a - 4 * b)) / 2
+                x1 = (-a + mp.sqrt(a * a - 4 * b)) / 2
+                w0 = (f0 * x1 - f1) / (x1 - x0)
+                reference = ((x0, x1), (w0, f0 - w0))
             nodes, weights = actual
             assert len(nodes) == len(weights) == nroots
             assert all(0 < x < 1 for x in nodes)
@@ -74,7 +92,7 @@ def check_reference(evaluate, nroots):
                 assert abs(moment / expected - 1) < mp.mpf("5e-14")
 
 
-@pytest.mark.parametrize("nroots", (1,))
+@pytest.mark.parametrize("nroots", (1, 2))
 def test_python_evaluator_matches_independent_integrals(nroots):
     check_reference(rys_roots, nroots)
 
@@ -121,14 +139,15 @@ __global__ void evaluate(const double* arguments, size_t count, double* output) 
   }
 }
 extern "C" int probe(unsigned roots, const double* input, size_t count, double* output) {
-  if (!count || roots != 1) return cudaErrorInvalidValue;
+  if (!count || (roots != 1 && roots != 2)) return cudaErrorInvalidValue;
   double *arguments = nullptr, *values = nullptr;
   auto status = cudaMalloc(&arguments, count * sizeof(double));
   if (status == cudaSuccess) status = cudaMalloc(&values, 4 * count * sizeof(double));
   if (status == cudaSuccess)
     status = cudaMemcpy(arguments, input, count * sizeof(double), cudaMemcpyHostToDevice);
   if (status == cudaSuccess) {
-    evaluate<1><<<(count + 127) / 128, 128>>>(arguments, count, values);
+    if(roots==1) evaluate<1><<<(count + 127) / 128, 128>>>(arguments, count, values);
+    else evaluate<2><<<(count + 127) / 128, 128>>>(arguments, count, values);
     status = cudaGetLastError();
   }
   if (status == cudaSuccess)
@@ -165,7 +184,7 @@ extern "C" int probe(unsigned roots, const double* input, size_t count, double* 
     grid = arguments()
     input_values = (ctypes.c_double * len(grid))(*grid)
     observed = {}
-    for roots in (1,):
+    for roots in (1, 2):
         values = (ctypes.c_double * (4 * len(grid)))()
         status = library.probe(roots, input_values, len(grid), values)
         assert status == 0, f"CUDA Rys evaluation failed with status {status}"
@@ -183,7 +202,7 @@ extern "C" int probe(unsigned roots, const double* input, size_t count, double* 
     os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
     reason="requires an explicitly Slurm-allocated GPU",
 )
-@pytest.mark.parametrize("nroots", (1,))
+@pytest.mark.parametrize("nroots", (1, 2))
 def test_cuda_evaluator_matches_independent_integrals(cuda_evaluator, nroots):
     check_reference(cuda_evaluator, nroots)
 
@@ -201,11 +220,12 @@ def emitted_evaluator(tmp_path_factory):
     directory = tmp_path_factory.mktemp("df_rys")
     source = directory / "probe.cpp"
     source.write_text(
-        "#define __device__\n#define __forceinline__ inline\n"
+        "#define __device__\n#define __forceinline__ inline\n#define __noinline__ __attribute__((noinline))\n"
         + emit_df_rys_cuda()
         + r"""
 extern "C" void probe(unsigned n,double t,double* nodes,double* weights) {
   if(n==1) vibeqc::scf::generated_df_rys::roots<1>(t,nodes,weights);
+  else vibeqc::scf::generated_df_rys::roots<2>(t,nodes,weights);
 }
 """
     )
@@ -245,6 +265,6 @@ extern "C" void probe(unsigned n,double t,double* nodes,double* weights) {
     return evaluate
 
 
-@pytest.mark.parametrize("nroots", (1,))
+@pytest.mark.parametrize("nroots", (1, 2))
 def test_emitted_evaluator_matches_independent_integrals(emitted_evaluator, nroots):
     check_reference(emitted_evaluator, nroots)

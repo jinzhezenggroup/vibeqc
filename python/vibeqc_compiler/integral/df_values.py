@@ -252,7 +252,12 @@ def evaluate_df_primitive(kernel: DFComponentKernel, exponents, centers) -> floa
 
 
 def build_df_axis_moment(
-    a: int, b: int, c: int, *, internal_derivative: bool = False
+    a: int,
+    b: int,
+    c: int,
+    *,
+    internal_derivative: bool = False,
+    states: set[tuple[int, int, int]] | None = None,
 ) -> tuple[Graph, Expr]:
     """Build one-axis Gaussian moments used by a bounded Rys value schedule.
 
@@ -262,6 +267,8 @@ def build_df_axis_moment(
     root-dependent inputs; recurrence pruning visits only ancestors of (a,b,c).
     Internal first derivatives may raise one orbital power to four. This is
     recurrence scratch, not an extension of public orbital/auxiliary families.
+    An optional diagnostic set collects the nonconstant recurrence states visited
+    by this same builder, before expression simplification or backend CSE.
     """
     powers = (a, b, c)
     maximum = 4 if internal_derivative else 3
@@ -281,6 +288,8 @@ def build_df_axis_moment(
     def moment(i, j, k):
         if i + j + k == 0:
             return graph.constant(1)
+        if states is not None:
+            states.add((i, j, k))
         powers = [i, j, k]
         slot = next(s for s, n in enumerate(powers) if n)
         powers[slot] -= 1

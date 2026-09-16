@@ -1,4 +1,4 @@
-"""Independent scientific gates for the first generated Rys shell slice."""
+"""Independent scientific gates for the complete low-angular Rys shell family."""
 
 import ctypes
 import math
@@ -10,6 +10,7 @@ import pytest
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cuda
 from vibeqc_compiler.integral.df_rys import emit_df_rys_cuda
 from vibeqc_compiler.integral.df_rys_shell import (
+    RYS_SHELL_CLASSES,
     emit_df_rys_policy_cpp,
     emit_df_rys_shell_cuda,
 )
@@ -19,7 +20,7 @@ from tools.vibeqc_validation.df_derivatives import make_df_derivative_fixture
 
 
 @pytest.fixture(scope="module")
-def sss_evaluator(tmp_path_factory):
+def shell_evaluator(tmp_path_factory):
     """Compile the emitted primitive arithmetic; no native runtime or GPU probe."""
     compiler = shutil.which("c++")
     if compiler is None:
@@ -41,24 +42,36 @@ def sss_evaluator(tmp_path_factory):
 #define __noinline__ __attribute__((noinline))
 #include "generated_df_rys_shell.cuh"
 using namespace vibeqc::scf;
-extern "C" void probe(bool rys,const double* e,const double* r,double* out) {
+template<unsigned A,unsigned B,unsigned C>
+void evaluate(bool rys,unsigned item,const double* e,const double* r,double* out) {
   generated_df_derivatives::Geometry g;
   const generated_df_derivatives::Vec3 a{r[0],r[1],r[2]}, b{r[3],r[4],r[5]}, c{r[6],r[7],r[8]};
   double independent[6]{};
   if(rys) {
-    using Math=generated_df_shell::RysShell<0,0,0>;
-    generated_df_derivatives::prepare_geometry_rys<1>(e[0],a,e[1],b,e[2],c,0,g);
-    Math::accumulate(0,e[0],e[1],g,nullptr,1.0,independent);
+    using Math=generated_df_shell::RysShell<A,B,C>;
+    generated_df_derivatives::prepare_geometry_rys<Math::nroots>(e[0],a,e[1],b,e[2],c,A+B+C,g);
+    Math::accumulate(item,e[0],e[1],g,nullptr,1.0,independent);
   } else {
-    using Math=generated_df_shell::Shell<0,0,0>;
-    generated_df_derivatives::prepare_geometry(e[0],a,e[1],b,e[2],c,0,g);
+    using Math=generated_df_shell::Shell<A,B,C>;
+    generated_df_derivatives::prepare_geometry(e[0],a,e[1],b,e[2],c,A+B+C,g);
     double cache[3*Math::axis_size];
     for(unsigned lane=0;lane<3;++lane) Math::prepare(g,cache,lane,3);
-    Math::accumulate(0,e[0],e[1],g,cache,1.0,independent);
+    Math::accumulate(item,e[0],e[1],g,cache,1.0,independent);
   }
-  const auto value=generated_df_shell::Shell<0,0,0>::finish(independent);
+  const auto value=generated_df_shell::Shell<A,B,C>::finish(independent);
   for(unsigned center=0;center<3;++center)
     for(unsigned axis=0;axis<3;++axis) out[3*center+axis]=value.gradient[center][axis];
+}
+extern "C" void probe(unsigned cls,bool rys,unsigned item,const double* e,const double* r,double* out) {
+  switch(cls) {
+    case 0: return evaluate<0,0,0>(rys,item,e,r,out);
+    case 1: return evaluate<0,0,1>(rys,item,e,r,out);
+    case 2: return evaluate<0,0,2>(rys,item,e,r,out);
+    case 100: return evaluate<1,0,0>(rys,item,e,r,out);
+    case 101: return evaluate<1,0,1>(rys,item,e,r,out);
+    case 110: return evaluate<1,1,0>(rys,item,e,r,out);
+    case 200: return evaluate<2,0,0>(rys,item,e,r,out);
+  }
 }
 """)
     output = directory / "probe.so"
@@ -82,15 +95,33 @@ extern "C" void probe(bool rys,const double* e,const double* r,double* out) {
     )
     library = ctypes.CDLL(str(output))
     double = ctypes.POINTER(ctypes.c_double)
-    library.probe.argtypes = [ctypes.c_bool, double, double, double]
+    library.probe.argtypes = [
+        ctypes.c_uint,
+        ctypes.c_bool,
+        ctypes.c_uint,
+        double,
+        double,
+        double,
+    ]
     library.probe.restype = None
 
-    def evaluate(exponents, centers, *, rys=True):
+    def evaluate(exponents, centers, angular=((0, 0, 0),) * 3, *, rys=True):
         exponents = np.ascontiguousarray(exponents, dtype=np.float64)
         centers = np.ascontiguousarray(centers, dtype=np.float64)
         out = np.empty((3, 3))
+        degrees = [sum(powers) for powers in angular]
+        item = 0
+        for powers, degree in zip(angular, degrees, strict=True):
+            row = int(powers[1] + powers[2])
+            item = (
+                item * ((degree + 1) * (degree + 2) // 2)
+                + row * (row + 1) // 2
+                + powers[2]
+            )
         library.probe(
+            int(100 * degrees[0] + 10 * degrees[1] + degrees[2]),
             rys,
+            int(item),
             exponents.ctypes.data_as(double),
             centers.ctypes.data_as(double),
             out.ctypes.data_as(double),
@@ -100,17 +131,21 @@ extern "C" void probe(bool rys,const double* e,const double* r,double* out) {
     return evaluate
 
 
+@pytest.mark.parametrize("angular", RYS_SHELL_CLASSES)
 @pytest.mark.parametrize("variant", ("asymmetric", "coincident"))
 @pytest.mark.parametrize("lengths", ((2, 1, 2), (3, 2, 5)))
-def test_rys_sss_matches_independent_libcint_contractions(
-    sss_evaluator, variant, lengths
+def test_rys_shell_matches_independent_libcint_contractions(
+    shell_evaluator, angular, variant, lengths
 ):
     pytest.importorskip("pyscf")
     fixture = make_df_derivative_fixture(
-        (0, 0, 0), variant=variant, primitive_lengths=lengths
+        angular, variant=variant, primitive_lengths=lengths
     )
     output = np.array(
-        [sss_evaluator(r["exponents"], r["centers"]) for r in fixture.records]
+        [
+            shell_evaluator(r["exponents"], r["centers"], r["angular"])
+            for r in fixture.records
+        ]
     )
     output *= fixture.records["weight"][:, None, None]
     actual = fixture.contract(output)
@@ -120,12 +155,15 @@ def test_rys_sss_matches_independent_libcint_contractions(
     )
 
 
-def test_rys_sss_retains_polynomial_force_contract_across_argument_branches(
-    sss_evaluator,
+@pytest.mark.parametrize("angular", RYS_SHELL_CLASSES)
+@pytest.mark.parametrize(
+    "exponents", ((0.7, 1.3, 0.9), (0.03, 7.1, 0.002), (40, 0.04, 15))
+)
+def test_rys_retains_polynomial_force_contract_across_argument_branches(
+    shell_evaluator, angular, exponents
 ):
     # Coincident orbital centers keep pair decay finite while C independently
     # sweeps small-argument cancellation and the large-argument asymptotic regime.
-    exponents = (0.7, 1.3, 0.9)
     rho = sum(exponents[:2]) * exponents[2] / sum(exponents)
     arguments = [
         0.0,
@@ -134,13 +172,77 @@ def test_rys_sss_retains_polynomial_force_contract_across_argument_branches(
         np.nextafter(0.5, 1),
         30.0,
         60.0,
-        1e300,
     ]
-    arguments.extend(np.geomspace(1e-16, 1e8, 120))
+    arguments.extend(np.geomspace(1e-16, 1e8, 40))
+    arguments.extend([np.nextafter(48.0, 0), 48.0, np.nextafter(48.0, 49)])
+    powers = tuple((l, 0, 0) for l in angular)
     for argument in arguments:
         centers = ((0, 0, 0), (0, 0, 0), (math.sqrt(argument / rho), 0, 0))
-        actual = sss_evaluator(exponents, centers)
-        expected = sss_evaluator(exponents, centers, rys=False)
+        actual = shell_evaluator(exponents, centers, powers)
+        expected = shell_evaluator(exponents, centers, powers, rys=False)
         assert np.isfinite(actual).all()
         np.testing.assert_allclose(actual, expected, atol=8e-11, rtol=8e-11)
         np.testing.assert_allclose(actual.sum(axis=0), 0, atol=8e-11, rtol=0)
+
+
+@pytest.mark.parametrize("angular", RYS_SHELL_CLASSES)
+@pytest.mark.parametrize("argument", (0.5, 48.0, 1e300))
+def test_independent_high_precision_center_differentiation(
+    shell_evaluator, angular, argument
+):
+    """Differentiate the closed SSS integral; no generated DAG or Rys oracle.
+
+    Cartesian p/d functions are center derivatives of an s Gaussian (d also
+    includes its lower-order correction). High precision resolves the tiny
+    coordinate perturbations at T=1e300, where the polynomial FP64 reference
+    itself overflows. Relative checks keep underflow-sized errors visible.
+    """
+    from itertools import product
+
+    mp = pytest.importorskip("mpmath")
+    exponents = (0.7, 1.3, 0.9)
+    rho = sum(exponents[:2]) * exponents[2] / sum(exponents)
+    positions = (0.0, 0.0, math.sqrt(argument / rho))
+    powers = tuple((l, 0, 0) for l in angular)
+    centers = tuple((x, 0, 0) for x in positions)
+    actual = shell_evaluator(exponents, centers, powers)
+    with mp.workdps(400 if argument > 1e100 else 90):
+        alpha, beta, gamma = map(mp.mpf, exponents)
+        p, q = alpha + beta, gamma
+        rho_mp = p * q / (p + q)
+
+        def sss(a, b, c):
+            t = rho_mp * ((alpha * a + beta * b) / p - c) ** 2
+            f0 = (
+                mp.mpf(1)
+                if not t
+                else mp.sqrt(mp.pi) * mp.erf(mp.sqrt(t)) / (2 * mp.sqrt(t))
+            )
+            return (
+                2
+                * mp.pi ** mp.mpf("2.5")
+                / (p * q * mp.sqrt(p + q))
+                * mp.exp(-alpha * beta / p * (a - b) ** 2)
+                * f0
+            )
+
+        operators = []
+        for degree, exponent in zip(angular, (alpha, beta, gamma), strict=True):
+            if degree == 0:
+                operators.append(((0, mp.mpf(1)),))
+            elif degree == 1:
+                operators.append(((1, 1 / (2 * exponent)),))
+            else:
+                operators.append(((2, 1 / (4 * exponent**2)), (0, 1 / (2 * exponent))))
+        expected = np.zeros((3, 3))
+        point = tuple(map(mp.mpf, positions))
+        for center in range(3):
+            value = mp.mpf(0)
+            for terms in product(*operators):
+                orders = [term[0] for term in terms]
+                orders[center] += 1
+                value += mp.fprod(term[1] for term in terms) * mp.diff(
+                    sss, point, tuple(orders)
+                )
+            expected[center, 0] = float(value)
+    np.testing.assert_allclose(actual, expected, rtol=5e-13, atol=1e-323)

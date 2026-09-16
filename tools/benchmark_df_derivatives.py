@@ -27,6 +27,7 @@ from vibeqc_compiler.common.cuda_adapter import (
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.df_tuning.batch import compile_batch
 from vibeqc_compiler.integral.df_tuning.emission import API, emit_candidate, emit_driver
+from vibeqc_compiler.integral.df_tuning.manifest import MANIFEST, load_manifest
 from vibeqc_compiler.integral.df_tuning.policy import (
     enumerate_trials,
     rank_profiles,
@@ -104,6 +105,7 @@ def main():
     parser.add_argument("--compile-jobs", type=int, default=2)
     parser.add_argument("--compile-timeout", type=float, default=600)
     parser.add_argument("--compile-only", action="store_true")
+    parser.add_argument("--baseline-manifest", type=Path, default=MANIFEST)
     args = parser.parse_args()
     if args.compile_jobs < 1 or not 0 < args.compile_timeout <= 3600:
         parser.error("bounded positive compilation limits required")
@@ -120,6 +122,17 @@ def main():
     if len(profiles) != len(args.profile):
         parser.error("duplicate AO workload profile")
     trials = enumerate_trials()
+    baseline_profile = load_manifest(args.baseline_manifest)["architectures"].get(
+        args.architecture
+    )
+    if not baseline_profile or not baseline_profile["qualified"]:
+        parser.error("the current architecture needs a qualified production control")
+    baselines = {
+        row["class"]: f"{row['class']}:{row['lowering']}:{row['schedule']}"
+        for row in baseline_profile["kernels"]
+    }
+    if set(baselines) != {t.class_name for t in trials}:
+        parser.error("production control must cover the complete candidate class set")
     target = cuda_target_info(args.architecture)
     compiler = CudaCompilerAdapter(args.nvcc.resolve(), target, args.compile_timeout)
     identity = source_identity(generated)
@@ -159,6 +172,10 @@ def main():
         },
         "compiled": compiled,
         "production_promoted": False,
+        "production_baselines": baselines,
+        "baseline_manifest_sha256": hashlib.sha256(
+            args.baseline_manifest.read_bytes()
+        ).hexdigest(),
     }
     report_path = directory / "report.json"
     report_path.write_text(json.dumps(report, indent=2) + "\n")
@@ -209,11 +226,6 @@ def main():
     results = [r for r in records if r.get("kind") != "device"]
     for row in results:
         row["eligible"] = True
-    baselines = {
-        t.class_name: t.key
-        for t in trials
-        if t.lowering == "polynomial" and t.variant == 2
-    }
     report["ranking"] = rank_profiles(profiles, results, baselines=baselines)
     report["results"] = results
     report_path.write_text(json.dumps(report, indent=2) + "\n")

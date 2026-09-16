@@ -9,10 +9,16 @@ libcint oracles; source generation never imports them or probes a GPU.
 ## Batch qualification
 
 `tools/benchmark_df_derivatives.py` enumerates every available lowering for
-`000 001 002 100 101 110 200`, crossed with warp/packed/compact schedules. Only
-000 currently has Rys derivatives, giving 24 candidates. Each independent CUDA
+`000 001 002 100 101 110 200`, crossed with warp/packed/compact schedules. Both polynomial and Rys
+lowerings cover all seven classes, giving 42 candidates. Each independent CUDA
 translation unit instantiates the production shell template; it does not copy
-the recurrence. The linked executable checks full/symmetric/packed and
+the recurrence. The Rys node convention is `u=t²`: one root for `000`, two for the six
+other classes, restricted to ordinary full-range first derivatives. All six
+share one generated degree-17 Chebyshev evaluator and its analytic large-T
+limit. Source generation needs no high-precision library; the offline table
+reproducer is `tools/generate_df_rys2_table.py`. Availability does not qualify
+a production choice. The [numerical decision note](../.agents/notes/implemented/numerics/2026-09-16-batch-df-rys.md) records the evaluator and oracle boundaries.
+The linked executable checks full/symmetric/packed and
 Cartesian/spherical fixtures against native CPU derivatives, then measures each
 real primitive signature in the retained 384/768 work ledgers.
 
