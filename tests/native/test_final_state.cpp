@@ -206,6 +206,29 @@ void degenerate_gauge() {
   near(result.state->weighted_density[0][3], -.5, "degenerate W changed with gauge");
 }
 
+void malformed_candidates_and_provider_dimensions() {
+  const Fixture a;
+  for (const bool values : {false, true}) {
+    auto candidate = a.c;
+    (values ? candidate.spins[0].values : candidate.spins[0].vectors).pop_back();
+    // A detached candidate can be replaced by a fresh, independently checked
+    // solve. The same malformed dimensions from that solve are a hard failure.
+    const auto corrected =
+        select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, &candidate, a.physical(), a.eigen(),
+                           a.limits, true, false, backend);
+    require(corrected.state && !corrected.reused && corrected.candidate_rejections == 1 &&
+                corrected.eigen_solves == 1 && corrected.density_updates == 1,
+            "malformed detached candidate bypassed bounded correction");
+    const initial_guess::EigenOperation malformed = [&](const auto&, const auto*, const auto*,
+                                                        auto) { return candidate.spins[0]; };
+    const auto failed = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, nullptr,
+                                           a.physical(), malformed, a.limits, true, false, backend);
+    require(!failed.state && failed.status == FinalStateStatus::ProviderFailure &&
+                failed.eigen_solves == 1 && failed.density_updates == 0,
+            "malformed eigen provider projected a density or published a state");
+  }
+}
+
 void physical_reference_caps() {
   Fixture a;
   a.s = {1e-8, 0, 0, 1};
@@ -341,10 +364,9 @@ int main() {
     CudaDensityFittingJkPlan* raw{};
     std::vector<CudaDensityFittingMetricDiagnostic> metric;
     std::string detail;
-    require(
-        create_cuda_density_fitting_jk_plan_tiled(0, 1, 2, 1, {1}, Matrix(4, 0), 1e-10, 1, 4, &raw,
-                                                  metric, detail) == VIBEQC_STATUS_SUCCESS,
-        detail.c_str());
+    const auto status = create_cuda_density_fitting_jk_plan_tiled(
+        0, 1, 2, 1, {1}, Matrix(4, 0), 1e-10, 1, 4, &raw, metric, detail);
+    require(status == VIBEQC_STATUS_SUCCESS, detail.c_str());
     std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)> plan(
         raw, destroy_cuda_density_fitting_jk_plan);
     const auto operations = cuda_density_fitting_final_state_operations(raw);
@@ -354,6 +376,7 @@ int main() {
     identity_and_physical_origin();
     malformed_states_and_strict_gates();
     degenerate_gauge();
+    malformed_candidates_and_provider_dimensions();
     physical_reference_caps();
     corrections_and_factor_invalidation();
     provider_failure_and_nonlinear_exhaustion();

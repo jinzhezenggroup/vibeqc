@@ -71,10 +71,13 @@ def retain(path, destination):
     assert data["scope"] == "clean endpoint"
     assert data["policies"] == ["1", "0"]
     assert len(data["samples"]) == 10 and len(data["diagnostics"]) == 2
-    iterations = data["samples"][0]["iterations"]
-    assert len(iterations) == 1 and iterations[0] > 0
-    if data["expected_iterations"] is not None:
-        assert iterations == [data["expected_iterations"]]
+    # Declare the workload before measuring, rather than blessing whichever
+    # iteration branch the first sample happened to take.
+    expected = data["expected_iterations"]
+    assert type(expected) is int and expected > 0, (
+        "declare positive expected_iterations"
+    )
+    iterations = [expected]
     for row in data["samples"] + data["diagnostics"]:
         assert row["iterations"] == iterations
         assert row["prime_iterations"] == iterations
@@ -184,6 +187,11 @@ def main():
             timings[f"{aos}-energy"]["warm_density_sha256"]
             == timings[f"{aos}-forces"]["warm_density_sha256"]
         )
+        for policy in ("1", "0"):
+            assert (
+                timings[f"{aos}-energy"][policy]["iterations"]
+                == timings[f"{aos}-forces"][policy]["iterations"]
+            ), "energy and force endpoints must perform the same SCF work"
     write(args.destination / "timings.json", timings)
     for aos in (384, 768):
         path = args.source / f"{aos}-warm-memory.json"
@@ -198,9 +206,9 @@ def main():
             )
         data["original_json_sha256"] = digest(path)
         write(args.destination / "memory" / path.name, data)
-    (args.destination / "reproduction" / "source.patch").write_bytes(
-        (args.source / "source.patch").read_bytes()
-    )
+    patch = args.destination / "reproduction" / "source.patch"
+    patch.parent.mkdir(parents=True, exist_ok=True)
+    patch.write_bytes((args.source / "source.patch").read_bytes())
 
 
 if __name__ == "__main__":

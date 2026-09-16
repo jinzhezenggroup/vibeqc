@@ -122,6 +122,11 @@ Measured source base: `b9df84f3fdee2fc8ddf4236a6f238bac3bb71409`, dirty.
 software and hardware. This qualification uses **Release, CUDA 12.9.1, sm_120,
 AOT shells OFF, fast compile OFF**, with one host numerical thread.
 
+These patches preserve the exact measured sources, including their original
+CuMetal build limitations. Use the current repository for the reviewed portable
+implementation. Later source fixes are described in the Agent Note; regenerating
+historical patches would break the recorded source identities.
+
 From the repository root, build with the recorded configuration:
 
 ```bash
@@ -150,8 +155,15 @@ hash or exact timings. External oracle inputs remain versioned under
 `reproduction/measured-*` preserves the exact historical drivers and memory
 sampler, including local paths. `reproduction/warm_memory.py` reproduces separate memory sampling
 with `--aos`, `--checkpoint` and `--output` inside a finite Slurm allocation.
-Use `--expected-iterations 3` to enforce the archived 384/768 work count; without
-it, fresh seeds must still produce identical work across all sampled arms.
+The portable script declares two expected iterations at 96 AO and three at the
+other sizes. A fresh seed that changes this work must be qualified as a separate
+experiment with its own explicit expected count. The historical 96/192 records
+retain `expected_iterations: null` because those original runs omitted that CLI
+flag; all their recorded samples, primes and diagnostics nevertheless agree on
+two/three iterations. We preserve that original metadata instead of claiming
+the flag was set retroactively.
 `reproduction/collect.py` publishes only complete runs and verifies sample count,
 interleaving, unchanged numerical gates, identical density hashes and work counts.
+New publications require a positive declared expected count and matching
+per-policy iteration arrays across energy and force endpoints.
 Routine logs, binaries, checkpoints and raw diagnostic traces stay in `.artifacts/`.

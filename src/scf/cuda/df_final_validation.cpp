@@ -236,6 +236,10 @@ bool products(CudaDensityFittingJkPlan& plan, const solver::FinalStateIdentity& 
               const std::vector<Matrix>& density, const solver::PhysicalFockFrame& fock,
               const solver::FinalFrameCandidate& frame, const solver::FinalStateLimits& limits,
               solver::FinalStateDiagnostic& diagnostic, std::string& detail) {
+  // Detached candidates are untrusted inputs: bad dimensions reject reuse and
+  // permit the shared CPU/CUDA correction policy. Broken retained owners throw
+  // from inputs(); malformed frames returned by a new solve fail its provider
+  // check before projection in select_final_state().
   for (const auto& c : frame.spins) {
     if ((!c.vectors.empty() || !c.values.empty()) &&
         (c.vectors.size() != plan.nbf * plan.nbf || c.values.size() != plan.nbf)) {
