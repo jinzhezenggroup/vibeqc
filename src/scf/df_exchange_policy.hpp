@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 namespace vibeqc::scf {
 
@@ -11,12 +12,44 @@ namespace vibeqc::scf {
 inline bool df_resident_exchange_requested() noexcept {
   const char* value = std::getenv("VIBEQC_DF_RESIDENT_EXCHANGE");
   return !value || std::strcmp(value, "auto") == 0 || std::strcmp(value, "full") == 0 ||
-         std::strcmp(value, "flat") == 0;
+         std::strcmp(value, "flat") == 0 || std::strcmp(value, "split4") == 0;
 }
 
 inline bool df_triangular_exchange_requested() noexcept {
   const char* value = std::getenv("VIBEQC_DF_RESIDENT_EXCHANGE");
-  return !value || std::strcmp(value, "auto") == 0 || std::strcmp(value, "flat") == 0;
+  return !value || std::strcmp(value, "auto") == 0 || std::strcmp(value, "flat") == 0 ||
+         std::strcmp(value, "split4") == 0;
+}
+
+/** Diagnostic candidate only until complete endpoint qualification. */
+inline bool df_split_occupied_exchange_requested() noexcept {
+  const char* value = std::getenv("VIBEQC_DF_RESIDENT_EXCHANGE");
+  return value && std::strcmp(value, "split4") == 0;
+}
+
+/** Four disjoint Gram outputs borrowing existing, already charged K scratch.
+ * The first three segments have equal length; the fourth consumes the tail.
+ * A zero count selects the existing exact SYRK/GEMM fallback. Capacity and
+ * byte arithmetic are checked before forming products, including CPU-only
+ * planner queries with dimensions that could never fit a device allocation.
+ */
+struct DfOccupiedGramSplit {
+  unsigned count{};
+  std::size_t segment{}, tail{}, partial_elements{};
+};
+
+inline constexpr DfOccupiedGramSplit df_occupied_gram_split(
+    std::size_t nbf, std::size_t naux, std::size_t rank, std::size_t capacity_elements) noexcept {
+  constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+  constexpr auto blas_maximum = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (!nbf || !rank || rank > nbf || nbf > blas_maximum || naux > blas_maximum / rank ||
+      nbf > maximum / nbf)
+    return {};
+  const auto length = naux * rank, matrix = nbf * nbf;
+  if (length < 4 || matrix > capacity_elements / 4 || matrix > maximum / (4 * sizeof(double)))
+    return {};
+  const auto segment = length / 4;
+  return {4, segment, length - 3 * segment, 4 * matrix};
 }
 
 /** Keep the original flattened dense contraction as an isolated ablation. */

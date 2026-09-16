@@ -60,9 +60,10 @@ struct CudaDensityFittingJkPlan {
   double* auxiliary_tile_values{};
   double* exchange_intermediate{};
   double* exchange_contributions{};
-  // Resident occupied K uses one scratch tensor; dense K fits its Q panels
-  // in the other two. The former contribution buffer retains raw A[Q,mu,nu],
-  // including discarded metric directions, from setup until destruction.
+  // Resident occupied K uses one tensor for U and may borrow the separate
+  // intermediate for split partials; dense K fits its Q panels in those two
+  // tensors. The former contribution buffer retains raw A[Q,mu,nu], including
+  // discarded metric directions, from setup until destruction.
   // Never reuse it as J/K output under the resident exchange policy.
   bool resident_raw_valid{};
   // An exclusive lease on U[mu,i,Q] in auxiliary_tile_values. Only the
@@ -75,6 +76,9 @@ struct CudaDensityFittingJkPlan {
   std::vector<std::uint8_t> metric_full_rank;
   bool resident_exchange_enabled{};
   bool triangular_exchange{};
+  // Frozen with captured SCF nodes; partial K borrows exchange_intermediate
+  // without touching immutable raw A or the final projection's U lease.
+  bool split_occupied_exchange{};
   bool flat_dense_exchange{};
   bool cooperative_diis{};
   // The prepared HF owner binds the exact immutable host allocations from

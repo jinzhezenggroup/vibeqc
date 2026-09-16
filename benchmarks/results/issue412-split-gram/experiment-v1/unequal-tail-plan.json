@@ -1,0 +1,151 @@
+{
+  "budget": {
+    "host_bytes": 2147483648,
+    "device_bytes": 2147483648,
+    "pinned_host_bytes": null,
+    "per_device_bytes": [],
+    "host_reserve_bytes": 0,
+    "device_reserve_bytes": 0,
+    "headroom_fraction": 0.0,
+    "schema_version": 1
+  },
+  "requests": [
+    {
+      "name": "unequal-tail",
+      "identity": {
+        "method": "fixed-real-U Gram",
+        "provider": "cuBLAS FP64 bounded trial",
+        "backend": "cuda",
+        "precision": "fp64",
+        "topology": "{\"auxiliary\": 193, \"input_sha256\": \"f5b12bb9d339d4a838de846cb48f40222940bb84e8795fffba5a6e86760a4064\", \"leading_dimension\": 7141, \"length\": 7141, \"n\": 97, \"rank\": 37, \"weight\": 1}",
+        "observables": [
+          "full K"
+        ],
+        "schedule": "SYRK+mirror; GEMM; full-GEMM split B=1/4/8/16 with ascending FP64 reduction",
+        "schema_version": 1
+      },
+      "candidates": [
+        {
+          "name": "bounded-matrix",
+          "mode": "resident",
+          "estimates": [
+            {
+              "name": "immutable real U",
+              "bytes": 5541416,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "complete K output",
+              "bytes": 75272,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "sixteen disjoint partial K matrices",
+              "bytes": 1204352,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "cuBLAS opaque workspace allowance",
+              "bytes": 67108864,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "library",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "runtime_allowance"
+            },
+            {
+              "name": "host U and K staging",
+              "bytes": 5616688,
+              "space": "pageable",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "independent numerical checks",
+              "bytes": 67108864,
+              "space": "pageable",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            }
+          ],
+          "relative_cost": 0,
+          "decisions": []
+        }
+      ],
+      "scope_exclusions": [
+        "CUDA context and loaded code modules",
+        "host runtime and filesystem page cache"
+      ],
+      "unsupported_reason": null,
+      "infeasible_reason": null
+    }
+  ],
+  "selections": [
+    [
+      "unequal-tail",
+      "bounded-matrix"
+    ]
+  ],
+  "status": "feasible",
+  "diagnostic": null,
+  "schema_version": 1,
+  "peak_bytes": {
+    "host": 72725552,
+    "device": 73929904,
+    "pinned": 0,
+    "pageable": 72725552,
+    "device:0": 73929904
+  },
+  "resident_bytes": {
+    "host": 0,
+    "device": 67108864,
+    "pinned": 0,
+    "pageable": 0,
+    "device:0": 67108864
+  },
+  "peak_phases": {
+    "device:0": 0,
+    "pageable": 0,
+    "host": 0,
+    "device": 0
+  },
+  "limits": {
+    "host": 2147483648,
+    "device": 2147483648
+  },
+  "identity": "d9706fbf73b26137d8b3197c31e757303cf5df82dd524e0dc33b3359ebc632c2"
+}

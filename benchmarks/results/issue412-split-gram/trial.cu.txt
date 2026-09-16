@@ -1,0 +1,174 @@
+// Fixed-real-U Gram trial. All candidates preserve the original leading
+// dimension; partial matrices have disjoint storage and a serial FP64 sum.
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+void check(cudaError_t e) { if (e != cudaSuccess) throw std::runtime_error(cudaGetErrorString(e)); }
+void blas(cublasStatus_t e) { if (e != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cuBLAS status " + std::to_string(e)); }
+__global__ void mirror(int n, double* k) {
+  const auto i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (i < static_cast<std::size_t>(n) * n) {
+    const auto row = i % n, col = i / n;
+    if (row < col) k[i] = k[col + row * n];
+  }
+}
+__global__ void reduce(int count, std::size_t elements, const double* partial, double* output) {
+  const auto i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (i < elements) {
+    double sum = 0;
+    // Ascending partial index defines the deterministic reduction order.
+    for (int b = 0; b < count; ++b) sum += partial[static_cast<std::size_t>(b) * elements + i];
+    output[i] = sum;
+  }
+}
+struct Arena {
+  double *u = nullptr, *output = nullptr, *partial = nullptr;
+  cudaStream_t stream = nullptr;
+  cublasHandle_t handle = nullptr;
+  cudaEvent_t start = nullptr, middle = nullptr, end = nullptr;
+  ~Arena() {
+    if (stream) cudaStreamSynchronize(stream);
+    if (handle) cublasDestroy(handle);
+    if (u) cudaFree(u);
+    if (output) cudaFree(output);
+    if (partial) cudaFree(partial);
+    if (start) cudaEventDestroy(start);
+    if (middle) cudaEventDestroy(middle);
+    if (end) cudaEventDestroy(end);
+    if (stream) cudaStreamDestroy(stream);
+  }
+};
+int main(int argc, char** argv) {
+  try {
+    if (!std::getenv("SLURM_JOB_ID") || argc != 8)
+      throw std::runtime_error("usage within Slurm: trial U.bin N L weight output-directory repeats device-budget-bytes");
+    const int n = std::stoi(argv[2]), length = std::stoi(argv[3]), repeats = std::stoi(argv[6]);
+    const double weight = std::stod(argv[4]);
+    const auto budget = std::stoull(argv[7]);
+    if (n <= 0 || n > 4096 || length < 0 || repeats < 5 || !std::isfinite(weight))
+      throw std::runtime_error("invalid bounded trial dimensions");
+    const auto matrix = static_cast<std::size_t>(n) * n;
+    const auto inputs = static_cast<std::size_t>(n) * length;
+    // The provider's default workspace is kept identical to the native DF
+    // handle. Charge a conservative 64-MiB opaque allowance before allocation;
+    // observed device-free deltas are reported separately from owned arrays.
+    const auto owned_bytes = sizeof(double) * (std::max<std::size_t>(1, inputs) + 17 * matrix);
+    constexpr std::size_t workspace_allowance = 64ULL << 20;
+    if (owned_bytes + workspace_allowance > budget) throw std::runtime_error("resource budget exceeded before allocation");
+    std::vector<double> host(inputs);
+    if (std::filesystem::file_size(argv[1]) != inputs * sizeof(double))
+      throw std::runtime_error("input byte size differs from physical U dimensions");
+    std::ifstream input(argv[1], std::ios::binary);
+    input.read(reinterpret_cast<char*>(host.data()), host.size() * sizeof(double));
+    if (!input && inputs) throw std::runtime_error("input read failed");
+    if (!std::all_of(host.begin(), host.end(), [](double x) { return std::isfinite(x); }))
+      throw std::runtime_error("nonfinite molecular input");
+    const std::filesystem::path out(argv[5]);
+    if (std::filesystem::exists(out)) throw std::runtime_error("refusing to overwrite evidence");
+    std::filesystem::create_directories(out);
+    Arena arena;
+    check(cudaStreamCreateWithFlags(&arena.stream, cudaStreamNonBlocking));
+    blas(cublasCreate(&arena.handle));
+    blas(cublasSetStream(arena.handle, arena.stream));
+    blas(cublasSetPointerMode(arena.handle, CUBLAS_POINTER_MODE_HOST));
+    cublasMath_t math_mode;
+    cublasAtomicsMode_t atomics_mode;
+    blas(cublasGetMathMode(arena.handle, &math_mode));
+    blas(cublasGetAtomicsMode(arena.handle, &atomics_mode));
+    std::size_t free_before, total, free_allocated;
+    check(cudaMemGetInfo(&free_before, &total));
+    check(cudaMalloc(&arena.u, std::max<std::size_t>(1, inputs) * sizeof(double)));
+    check(cudaMalloc(&arena.output, matrix * sizeof(double)));
+    check(cudaMalloc(&arena.partial, 16 * matrix * sizeof(double)));
+    if (inputs) check(cudaMemcpyAsync(arena.u, host.data(), inputs * sizeof(double), cudaMemcpyHostToDevice, arena.stream));
+    check(cudaStreamSynchronize(arena.stream));
+    check(cudaMemGetInfo(&free_allocated, &total));
+    check(cudaEventCreate(&arena.start)); check(cudaEventCreate(&arena.middle)); check(cudaEventCreate(&arena.end));
+    const std::vector<std::string> names{"syrk", "gemm", "split1", "split4", "split8", "split16"};
+    const int requested_splits[]{0, 0, 1, 4, 8, 16};
+    const auto blocks = static_cast<unsigned>((matrix + 255) / 256);
+    const double zero = 0;
+    auto product = [&](int candidate) {
+      if (!length) { check(cudaMemsetAsync(arena.output, 0, matrix * sizeof(double), arena.stream)); return; }
+      if (candidate == 0) {
+        blas(cublasDsyrk(arena.handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, length,
+                         &weight, arena.u, length, &zero, arena.output, n));
+      } else if (candidate == 1) {
+        blas(cublasDgemm(arena.handle, CUBLAS_OP_T, CUBLAS_OP_N, n, n, length,
+                         &weight, arena.u, length, arena.u, length, &zero, arena.output, n));
+      } else {
+        const int splits = std::min(length, requested_splits[candidate]);
+        const int q = length / splits, tail = length - q * (splits - 1);
+        const int equal = tail == q ? splits : splits - 1;
+        if (equal) blas(cublasDgemmStridedBatched(arena.handle, CUBLAS_OP_T, CUBLAS_OP_N,
+            n, n, q, &weight, arena.u, length, q, arena.u, length, q, &zero,
+            arena.partial, n, matrix, equal));
+        if (tail != q) {
+          const auto offset = static_cast<std::size_t>(splits - 1) * q;
+          blas(cublasDgemm(arena.handle, CUBLAS_OP_T, CUBLAS_OP_N, n, n, tail,
+              &weight, arena.u + offset, length, arena.u + offset, length,
+              &zero, arena.partial + static_cast<std::size_t>(splits - 1) * matrix, n));
+        }
+      }
+    };
+    auto finish = [&](int candidate) {
+      if (!length) return;
+      if (candidate == 0) mirror<<<blocks, 256, 0, arena.stream>>>(n, arena.output);
+      if (candidate >= 2) {
+        const int splits = std::min(length, requested_splits[candidate]);
+        reduce<<<blocks, 256, 0, arena.stream>>>(splits, matrix, arena.partial, arena.output);
+      }
+      check(cudaPeekAtLastError());
+    };
+    std::ofstream samples(out / "samples.jsonl");
+    std::size_t minimum_free = free_allocated;
+    // Untimed priming precedes each interleaved sample. CUDA event component
+    // diagnostics run only after every clean synchronized wall-time sample.
+    for (int repeat = 0; repeat < repeats; ++repeat) {
+      for (int index = 0; index < 6; ++index) {
+        const int candidate = repeat % 2 ? 5 - index : index;
+        product(candidate); finish(candidate); check(cudaStreamSynchronize(arena.stream));
+        const auto start = std::chrono::steady_clock::now();
+        product(candidate); finish(candidate); check(cudaStreamSynchronize(arena.stream));
+        const auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        samples << "{\"candidate\":\"" << names[candidate] << "\",\"repeat\":" << repeat << ",\"wall_ms\":" << ms << "}\n";
+        std::size_t free_now; check(cudaMemGetInfo(&free_now, &total));
+        minimum_free = std::min(minimum_free, free_now);
+      }
+    }
+    std::ofstream diagnostics(out / "diagnostics.jsonl");
+    for (int candidate = 0; candidate < 6; ++candidate) {
+      check(cudaEventRecord(arena.start, arena.stream)); product(candidate);
+      check(cudaEventRecord(arena.middle, arena.stream)); finish(candidate);
+      check(cudaEventRecord(arena.end, arena.stream)); check(cudaEventSynchronize(arena.end));
+      float product_ms, finish_ms;
+      check(cudaEventElapsedTime(&product_ms, arena.start, arena.middle));
+      check(cudaEventElapsedTime(&finish_ms, arena.middle, arena.end));
+      std::vector<double> result(matrix);
+      check(cudaMemcpy(result.data(), arena.output, matrix * sizeof(double), cudaMemcpyDeviceToHost));
+      std::ofstream binary(out / (names[candidate] + ".bin"), std::ios::binary);
+      binary.write(reinterpret_cast<const char*>(result.data()), matrix * sizeof(double));
+      if (!binary) throw std::runtime_error("matrix write failed");
+      diagnostics << "{\"candidate\":\"" << names[candidate] << "\",\"product_ms\":" << product_ms
+                  << ",\"finish_ms\":" << finish_ms << "}\n";
+    }
+    std::ofstream metadata(out / "metadata.json");
+    metadata << "{\"n\":" << n << ",\"length\":" << length << ",\"leading_dimension\":" << length
+             << ",\"weight\":" << weight << ",\"math_mode\":" << math_mode << ",\"atomics_mode\":" << atomics_mode
+             << ",\"owned_device_bytes\":" << owned_bytes << ",\"library_workspace_allowance\":" << workspace_allowance
+             << ",\"free_before_arrays\":" << free_before << ",\"free_after_arrays\":" << free_allocated
+             << ",\"minimum_free_after_samples\":" << minimum_free << "}\n";
+    if (!samples || !diagnostics || !metadata) throw std::runtime_error("evidence write failed");
+    return 0;
+  } catch (const std::exception& e) { std::fprintf(stderr, "%s\n", e.what()); return 1; }
+}

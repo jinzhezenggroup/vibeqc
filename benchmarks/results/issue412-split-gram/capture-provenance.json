@@ -1,0 +1,169 @@
+{
+  "rows": [
+    {
+      "capture": "captured",
+      "aos": 384,
+      "endpoint_json_sha256": "6969a840bcb29d7868277e9a655dc7a51161f4317751261e53e30c04c5b371d0",
+      "usable": false,
+      "performance_evidence": false,
+      "git_head": "079560064f1bfd1ee534a28f252f7a87d72aa7d2",
+      "library_sha256": "2b3f45f3608dbf52f573a3f8e30f16bb415e267c6e35ca92e913e63aad3e0e26",
+      "native_source_identity": "88e6e7e434c3603882d55f1f2a22a2493353354c0b9f153073b8c59b9b5cded0",
+      "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "slurm_job_id": "9815",
+      "cuda_visible_devices": "0",
+      "warm_checkpoint_sha256": "6086ddb3a156c2501a763e927a04822a626ab77b3c81de69439aa4b58c0aedda",
+      "warm_density_sha256": {
+        "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+      },
+      "controls": {
+        "VIBEQC_GRAM_CAPTURE_DIR": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/384",
+        "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+        "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+        "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue394-batch/.artifacts/issue404/baseline/libvibeqc.so",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/384/capture-journal.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/384/capture-trace.jsonl",
+        "VIBEQC_GRAM_CAPTURE_N": "384",
+        "VIBEQC_DF_FINAL_PROJECTION": "auto"
+      },
+      "sample_numerical_errors": [
+        {
+          "iterations": [
+            3
+          ],
+          "maximum_energy_error": 1.8189894035458565e-12,
+          "maximum_force_error": null
+        }
+      ]
+    },
+    {
+      "capture": "captured",
+      "aos": 768,
+      "endpoint_json_sha256": "4a8d12080d35d3bf9c68a2d2a0ee8bb1c42a48f24cc0a59b7c43e8467f401d9a",
+      "usable": false,
+      "performance_evidence": false,
+      "git_head": "079560064f1bfd1ee534a28f252f7a87d72aa7d2",
+      "library_sha256": "2b3f45f3608dbf52f573a3f8e30f16bb415e267c6e35ca92e913e63aad3e0e26",
+      "native_source_identity": "88e6e7e434c3603882d55f1f2a22a2493353354c0b9f153073b8c59b9b5cded0",
+      "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "slurm_job_id": "9815",
+      "cuda_visible_devices": "0",
+      "warm_checkpoint_sha256": "5bfada828560a2b9121988544805dd9b63b19510cb5231619b8fdfb983e8a7fe",
+      "warm_density_sha256": {
+        "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+      },
+      "controls": {
+        "VIBEQC_GRAM_CAPTURE_DIR": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/768",
+        "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+        "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+        "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue394-batch/.artifacts/issue404/baseline/libvibeqc.so",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/768/capture-journal.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured/768/capture-trace.jsonl",
+        "VIBEQC_GRAM_CAPTURE_N": "768",
+        "VIBEQC_DF_FINAL_PROJECTION": "auto"
+      },
+      "sample_numerical_errors": [
+        {
+          "iterations": [
+            3
+          ],
+          "maximum_energy_error": 8.640199666842818e-12,
+          "maximum_force_error": null
+        }
+      ]
+    },
+    {
+      "capture": "captured-v2",
+      "aos": 384,
+      "endpoint_json_sha256": "43ef3e455b8a017dfec079093314a22a01f14d7aee2dcce379f6aa798d5f35fd",
+      "usable": true,
+      "performance_evidence": false,
+      "git_head": "079560064f1bfd1ee534a28f252f7a87d72aa7d2",
+      "library_sha256": "2b3f45f3608dbf52f573a3f8e30f16bb415e267c6e35ca92e913e63aad3e0e26",
+      "native_source_identity": "88e6e7e434c3603882d55f1f2a22a2493353354c0b9f153073b8c59b9b5cded0",
+      "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "slurm_job_id": "9816",
+      "cuda_visible_devices": "0",
+      "warm_checkpoint_sha256": "6086ddb3a156c2501a763e927a04822a626ab77b3c81de69439aa4b58c0aedda",
+      "warm_density_sha256": {
+        "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+      },
+      "controls": {
+        "VIBEQC_GRAM_CAPTURE_DIR": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/384",
+        "VIBEQC_DF_FINAL_EXCHANGE": "occupied",
+        "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+        "VIBEQC_DF_EXCHANGE": "occupied",
+        "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+        "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue394-batch/.artifacts/issue404/baseline/libvibeqc.so",
+        "VIBEQC_DF_SEED_EXCHANGE": "factor",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/384/capture-journal.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/384/capture-trace.jsonl",
+        "VIBEQC_GRAM_CAPTURE_N": "384",
+        "VIBEQC_DF_FINAL_PROJECTION": "auto"
+      },
+      "sample_numerical_errors": [
+        {
+          "iterations": [
+            3
+          ],
+          "maximum_energy_error": 9.094947017729282e-13,
+          "maximum_force_error": null
+        }
+      ]
+    },
+    {
+      "capture": "captured-v2",
+      "aos": 768,
+      "endpoint_json_sha256": "d9c493df3a78cfa0880ab2262254ecd7af29725f57f162dc46b8bc5ba9d5620c",
+      "usable": true,
+      "performance_evidence": false,
+      "git_head": "079560064f1bfd1ee534a28f252f7a87d72aa7d2",
+      "library_sha256": "2b3f45f3608dbf52f573a3f8e30f16bb415e267c6e35ca92e913e63aad3e0e26",
+      "native_source_identity": "88e6e7e434c3603882d55f1f2a22a2493353354c0b9f153073b8c59b9b5cded0",
+      "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "slurm_job_id": "9816",
+      "cuda_visible_devices": "0",
+      "warm_checkpoint_sha256": "5bfada828560a2b9121988544805dd9b63b19510cb5231619b8fdfb983e8a7fe",
+      "warm_density_sha256": {
+        "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+      },
+      "controls": {
+        "VIBEQC_GRAM_CAPTURE_DIR": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/768",
+        "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+        "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+        "VIBEQC_DF_EXCHANGE": "auto",
+        "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+        "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue394-batch/.artifacts/issue404/baseline/libvibeqc.so",
+        "VIBEQC_DF_SEED_EXCHANGE": "auto",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/768/capture-journal.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/captured-v2/768/capture-trace.jsonl",
+        "VIBEQC_GRAM_CAPTURE_N": "768",
+        "VIBEQC_DF_FINAL_PROJECTION": "auto"
+      },
+      "sample_numerical_errors": [
+        {
+          "iterations": [
+            3
+          ],
+          "maximum_energy_error": 8.640199666842818e-12,
+          "maximum_force_error": null
+        }
+      ]
+    }
+  ],
+  "logs": {
+    "capture.log": {
+      "sha256": "8038d843e3b0ec7f1093df4a4a4d21e1184ad1026292ca728227be566434abe4",
+      "bytes": 123,
+      "diagnostic_lines": [
+        "Gram capture: operation not permitted when stream is capturing"
+      ]
+    },
+    "capture-v2.log": {
+      "sha256": "984a2ba41e9f31b28db81a2834218c66a3bc4d7cf72baeffec5068cf4cf7b099",
+      "bytes": 61,
+      "diagnostic_lines": []
+    }
+  },
+  "interpretation": "v1 shim attempted device-to-host copies during graph construction and reported capture errors; retain as failed instrumentation. v2 skips construction, preserving successful eager snapshots. No capture timings qualify performance."
+}

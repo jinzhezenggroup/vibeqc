@@ -1,0 +1,6 @@
+{"candidate":"syrk","product_ms":98.9217,"finish_ms":0.008192}
+{"candidate":"gemm","product_ms":99.0356,"finish_ms":0.001024}
+{"candidate":"split1","product_ms":99.0068,"finish_ms":0.006144}
+{"candidate":"split4","product_ms":86.626,"finish_ms":0.014336}
+{"candidate":"split8","product_ms":86.6213,"finish_ms":0.024576}
+{"candidate":"split16","product_ms":86.6119,"finish_ms":0.045024}

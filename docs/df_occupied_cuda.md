@@ -26,10 +26,28 @@ running auxiliary sum continues across panel boundaries in its original order;
 odd auxiliary counts have a bounded tail. The `flat` ablation instead projects
 `B_mu D` and contracts the combined `(nu,Q)` dimension, using one scratch
 tensor. Both identities preserve nonsymmetric diagnostic B and D.
-`VIBEQC_DF_RESIDENT_EXCHANGE=legacy|full|flat|auto` selects original J/K,
+`VIBEQC_DF_RESIDENT_EXCHANGE=legacy|full|flat|auto|split4` selects original J/K,
 resident full-Gram K, resident flattened dense K, or the default panel-dense
-and triangular occupied route. The plan freezes this policy; changing it
-rebuilds captured SCF work.
+and triangular occupied route. `split4` is an explicit occupied-Gram candidate;
+automatic selection remains triangular. The plan freezes this policy; changing
+it rebuilds captured SCF work.
+
+On eligible resident plans, `split4` divides the physical reduction dimension
+`L = naux * rank` into four disjoint contiguous segments. Every BLAS view retains
+the original leading dimension L. Equal segments use one strided-batched GEMM;
+an unequal final segment uses a second GEMM. The existing FP64 reduction sums
+the four complete K matrices in ascending segment order. This computes both
+triangles, approximately twice the leading FLOPs of SYRK.
+
+The four partial matrices borrow `exchange_intermediate` on the plan stream:
+`4 * nbf * nbf * sizeof(double)` bytes, or 18 MiB at 768 AOs, with zero extra
+owned allocation. The immutable raw A tensor and final U projection remain
+untouched. Insufficient charged capacity, reductions shorter than four, and
+nonresident plans retain the existing exact route; zero rank still returns
+zero K. Trace counters distinguish partial products from BLAS calls and report
+borrowed bytes, partial traffic, source-level reduction additions and finish
+launches. See the [split Gram decision note](../.agents/notes/implemented/performance/2026-09-17-split-occupied-gram.md)
+for the experiment and endpoint qualification requirements.
 
 The same plan supports resident tensors, generated panels and compatibility
 host-backed tiles. Full AO panels follow #282's capacity rebalance and reuse

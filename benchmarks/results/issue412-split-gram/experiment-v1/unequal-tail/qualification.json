@@ -1,0 +1,138 @@
+{
+  "numerical": {
+    "syrk": {
+      "max_abs": 1.354472090042691e-14,
+      "rms": 5.407278361501429e-16,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 2.0621613156687735e-15,
+      "passed": true
+    },
+    "gemm": {
+      "max_abs": 5.551115123125783e-16,
+      "rms": 3.8820922977964575e-17,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 2.660588993233526e-17,
+      "passed": true
+    },
+    "split1": {
+      "max_abs": 5.551115123125783e-16,
+      "rms": 3.8820922977964575e-17,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 2.660588993233526e-17,
+      "passed": true
+    },
+    "split4": {
+      "max_abs": 1.3322676295501878e-15,
+      "rms": 1.1320393222115587e-16,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 2.1920060157998602e-16,
+      "passed": true
+    },
+    "split8": {
+      "max_abs": 8.881784197001252e-16,
+      "rms": 6.599682037460388e-17,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 3.6306812226950613e-16,
+      "passed": true
+    },
+    "split16": {
+      "max_abs": 6.661338147750939e-16,
+      "rms": 4.6160078583371425e-17,
+      "symmetry_max_abs": 0.0,
+      "exchange_energy_abs": 2.1393653727679618e-16,
+      "passed": true
+    }
+  },
+  "median_wall_ms": {
+    "syrk": 1.65374,
+    "gemm": 0.271361,
+    "split1": 0.271371,
+    "split4": 0.917471,
+    "split8": 0.470944,
+    "split16": 0.330614
+  },
+  "ratio_to_syrk": {
+    "syrk": 1.0,
+    "gemm": 0.16408927642797538,
+    "split1": 0.16409532332772986,
+    "split4": 0.5547855164657081,
+    "split8": 0.2847751157981303,
+    "split16": 0.19991897154328978
+  },
+  "source_work": {
+    "syrk": {
+      "blas_calls": 1,
+      "finish_launches": 1,
+      "gram_flops": 67882346,
+      "reduction_additions": 0,
+      "partial_bytes": 0,
+      "partial_write_bytes": 0,
+      "reduction_read_bytes": 0,
+      "complete_output_bytes": 75272
+    },
+    "gemm": {
+      "blas_calls": 1,
+      "finish_launches": 0,
+      "gram_flops": 134379338,
+      "reduction_additions": 0,
+      "partial_bytes": 0,
+      "partial_write_bytes": 0,
+      "reduction_read_bytes": 0,
+      "complete_output_bytes": 75272
+    },
+    "split1": {
+      "blas_calls": 1,
+      "finish_launches": 1,
+      "gram_flops": 134379338,
+      "reduction_additions": 0,
+      "partial_bytes": 75272,
+      "partial_write_bytes": 75272,
+      "reduction_read_bytes": 75272,
+      "complete_output_bytes": 75272
+    },
+    "split4": {
+      "blas_calls": 2,
+      "finish_launches": 1,
+      "gram_flops": 134379338,
+      "reduction_additions": 28227,
+      "partial_bytes": 301088,
+      "partial_write_bytes": 301088,
+      "reduction_read_bytes": 301088,
+      "complete_output_bytes": 75272
+    },
+    "split8": {
+      "blas_calls": 2,
+      "finish_launches": 1,
+      "gram_flops": 134379338,
+      "reduction_additions": 65863,
+      "partial_bytes": 602176,
+      "partial_write_bytes": 602176,
+      "reduction_read_bytes": 602176,
+      "complete_output_bytes": 75272
+    },
+    "split16": {
+      "blas_calls": 2,
+      "finish_launches": 1,
+      "gram_flops": 134379338,
+      "reduction_additions": 141135,
+      "partial_bytes": 1204352,
+      "partial_write_bytes": 1204352,
+      "reduction_read_bytes": 1204352,
+      "complete_output_bytes": 75272
+    }
+  },
+  "sampled_resources": {
+    "n": 97,
+    "length": 7141,
+    "leading_dimension": 7141,
+    "weight": 1,
+    "math_mode": 0,
+    "atomics_mode": 0,
+    "owned_device_bytes": 6821040,
+    "library_workspace_allowance": 67108864,
+    "free_before_arrays": 32851230720,
+    "free_after_arrays": 32844939264,
+    "minimum_free_after_samples": 32844939264
+  },
+  "all_numerical_passed": true
+}

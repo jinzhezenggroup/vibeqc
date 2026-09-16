@@ -1,0 +1,174 @@
+"""Plan and qualify the bounded fixed-real-U Gram matrix; no SCF promotion."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+import numpy as np
+from vibeqc.resources import (
+    ResourceBudget, ResourceCandidate, ResourceEstimate, ResourceIdentity,
+    ResourceRequest, plan_resources,
+)
+
+ROOT = Path(__file__).resolve().parent
+CANDIDATES = ('syrk', 'gemm', 'split1', 'split4', 'split8', 'split16')
+
+
+def digest(path):
+    with Path(path).open('rb') as f:
+        return hashlib.file_digest(f, 'sha256').hexdigest()
+
+
+def dump(path, value):
+    path.write_text(json.dumps(value, indent=2, allow_nan=False) + '\n')
+
+
+def allocations(name, n, length, identity, budget):
+    matrix = n * n * 8
+    # All arms use one common trial arena. Each candidate's own required
+    # partial size is reported separately from the arena's maximum capacity.
+    estimates = (
+        ResourceEstimate('immutable real U', max(8, n * length * 8), 'device:0', 0, 1),
+        ResourceEstimate('complete K output', matrix, 'device:0', 0, 1),
+        ResourceEstimate('sixteen disjoint partial K matrices', 16 * matrix, 'device:0', 0, 1),
+        ResourceEstimate('cuBLAS opaque workspace allowance', 64 << 20, 'device:0', 0, 1,
+                         kind='library', accounting='runtime_allowance'),
+        ResourceEstimate('host U and K staging', n * length * 8 + matrix, 'pageable', 0, 1),
+        ResourceEstimate('independent numerical checks', 64 << 20, 'pageable', 0, 1),
+    )
+    request = ResourceRequest(name, identity, (ResourceCandidate('bounded-matrix', 'resident', estimates),),
+        scope_exclusions=('CUDA context and loaded code modules', 'host runtime and filesystem page cache'))
+    return plan_resources([request], ResourceBudget(device_bytes=budget, host_bytes=2 << 30)).require_feasible()
+
+
+def prepare(args):
+    args.output.mkdir(parents=True, exist_ok=True)
+    captures = ROOT / 'captured-v2'
+    fixtures = []
+    for size in (384, 768):
+        for index in range(4):
+            prefix = captures / str(size) / str(index)
+            meta = json.loads(prefix.with_suffix('.json').read_text())
+            fixtures.append(dict(name=f'real-{size}-{index}', metadata=meta,
+                u=str(prefix) + '-u.bin', c=str(prefix) + '-c.bin', k=str(prefix) + '-k.bin',
+                origin='eager molecular occupied build; graph construction skipped by capture shim',
+                independent_reference='retained native SYRK plus independent tractable real-U blocks'))
+    # Unequal auxiliary/AO dimensions and tails derive from actual molecular
+    # projection entries, not random/aligned matrices. Their U is explicitly
+    # re-packed only as a *new diagnostic input*, never inside a timed arm.
+    for name, source, n, auxiliary, rank in (
+        ('unequal-tail', fixtures[0], 97, 193, 37),
+        ('independent-small', fixtures[4], 13, 7, 9),
+        ('short-reduction', fixtures[4], 7, 3, 1),
+        ('rank-zero', fixtures[4], 13, 7, 0),
+    ):
+        original = source['metadata']
+        u = np.memmap(source['u'], dtype='<f8', mode='r', shape=(original['length'], original['n']), order='F')
+        physical = u.reshape((original['auxiliary'], original['rank'], original['n']), order='F')
+        block = np.array(physical[:auxiliary, :rank, :n], order='F').reshape((auxiliary * rank, n), order='F')
+        c = np.fromfile(source['c'], dtype='<f8').reshape(original['n'], original['rank'])[:n, :rank].copy()
+        weight = original['weight']
+        # NumPy's extended-precision scalar product is independent of cuBLAS.
+        extended = block.astype(np.longdouble)
+        reference = np.asarray(weight * (extended.T @ extended), dtype='<f8')
+        prefix = args.output / name
+        block.ravel(order='F').tofile(str(prefix) + '-u.bin')
+        c.tofile(str(prefix) + '-c.bin')
+        reference.ravel(order='F').tofile(str(prefix) + '-k.bin')
+        fixtures.append(dict(name=name,
+            metadata=dict(n=n, length=auxiliary * rank, leading_dimension=auxiliary * rank,
+                          auxiliary=auxiliary, rank=rank, weight=weight),
+            u=str(prefix) + '-u.bin', c=str(prefix) + '-c.bin', k=str(prefix) + '-k.bin',
+            origin=dict(source=source['name'], ao_prefix=n, auxiliary_prefix=auxiliary, occupied_prefix=rank),
+            independent_reference='NumPy longdouble matrix contraction of real-U block'))
+    for fixture in fixtures:
+        meta = fixture['metadata']
+        fixture['sha256'] = {key: digest(fixture[key]) for key in ('u', 'c', 'k')}
+        identity = ResourceIdentity('fixed-real-U Gram', 'cuBLAS FP64 bounded trial', 'cuda', 'fp64',
+            json.dumps(dict(**meta, input_sha256=fixture['sha256']['u'])), ('full K',),
+            'SYRK+mirror; GEMM; full-GEMM split B=1/4/8/16 with ascending FP64 reduction')
+        plan = allocations(fixture['name'], meta['n'], meta['length'], identity, args.budget)
+        fixture['resource_plan_identity'] = plan.identity
+        dump(args.output / (fixture['name'] + '-plan.json'), plan.to_dict())
+    document = dict(minimum_net_gram_gain=0.03, repeats=args.repeats, candidates=CANDIDATES,
+        selection_rule='Require stable >=3% net wall-time improvement over SYRK+mirror on every real 768 source; report smaller controls and all failures independently.',
+        numerical_gates=dict(K_max_abs=1e-10, K_rms=1e-11, symmetry_max_abs=1e-11, exchange_energy_abs=1e-9),
+        stage='fixed input only; no complete endpoint or production promotion',
+        executable_sha256=digest(ROOT / 'trial'), trial_source_sha256=digest(ROOT / 'trial.cu'),
+        capture_executable_sha256=digest(ROOT / 'capture-v2.so'), capture_source_sha256=digest(ROOT / 'capture.cpp'),
+        fixtures=fixtures)
+    dump(args.output / 'inputs.json', document)
+    return document
+
+
+def qualify(fixture, output):
+    m = fixture['metadata']; n, rank = m['n'], m['rank']
+    reference = np.fromfile(fixture['k'], dtype='<f8').reshape((n, n), order='F')
+    coefficients = np.fromfile(fixture['c'], dtype='<f8').reshape((n, rank))
+    density = m['weight'] * (coefficients @ coefficients.T)
+    energies = {}
+    numerical = {}
+    for name in CANDIDATES:
+        k = np.fromfile(output / (name + '.bin'), dtype='<f8').reshape((n, n), order='F')
+        delta = k - reference
+        values = dict(max_abs=float(np.max(np.abs(delta))), rms=float(np.sqrt(np.mean(delta * delta))),
+            symmetry_max_abs=float(np.max(np.abs(k-k.T))),
+            exchange_energy_abs=float(abs(-0.25 * np.sum(density * delta))))
+        values['passed'] = bool(np.all(np.isfinite(k)) and values['max_abs'] <= 1e-10 and
+            values['rms'] <= 1e-11 and values['symmetry_max_abs'] <= 1e-11 and values['exchange_energy_abs'] <= 1e-9)
+        numerical[name] = values
+    samples = [json.loads(line) for line in (output / 'samples.jsonl').read_text().splitlines()]
+    medians = {name: float(np.median([r['wall_ms'] for r in samples if r['candidate'] == name])) for name in CANDIDATES}
+    resources = {}
+    for name in CANDIDATES:
+        splits = min(m['length'], int(name[5:])) if name.startswith('split') else 0
+        blas_calls = (1 if m['length'] else 0) if not splits else (1 if m['length'] % splits == 0 else 2)
+        resources[name] = dict(blas_calls=blas_calls, finish_launches=int(bool(m['length']) and name != 'gemm'),
+            gram_flops=m['length'] * n * (n+1 if name == 'syrk' else 2*n),
+            reduction_additions=max(0,splits-1)*n*n,
+            partial_bytes=splits*n*n*8, partial_write_bytes=splits*n*n*8,
+            reduction_read_bytes=splits*n*n*8,
+            complete_output_bytes=n*n*8)
+    report = dict(numerical=numerical, median_wall_ms=medians,
+        ratio_to_syrk={name: value / medians['syrk'] for name, value in medians.items()},
+        source_work=resources, sampled_resources=json.loads((output/'metadata.json').read_text()),
+        all_numerical_passed=all(v['passed'] for v in numerical.values()))
+    dump(output/'qualification.json',report)
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--prepare-only', action='store_true')
+    parser.add_argument('--repeats', type=int, default=7)
+    parser.add_argument('--budget', type=int, default=2 << 30)
+    args = parser.parse_args()
+    if args.repeats < 5: parser.error('at least five interleaved repeats required')
+    document = prepare(args)
+    if args.prepare_only:
+        print('Prepared',len(document['fixtures']),'real/derived inputs and #203 plans')
+        return
+    if not os.environ.get('SLURM_JOB_ID'): parser.error('GPU execution requires finite Slurm allocation')
+    results = []
+    for fixture in document['fixtures']:
+        m = fixture['metadata']; output = args.output / fixture['name']
+        command = [str(ROOT/'trial'), fixture['u'], str(m['n']), str(m['length']), str(m['weight']),
+            str(output), str(args.repeats), str(args.budget)]
+        row = dict(fixture=fixture['name'], command=command)
+        with (args.output/(fixture['name']+'.log')).open('w') as log:
+            completed = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+        row['returncode'] = completed.returncode
+        if completed.returncode == 0:
+            row['qualification'] = qualify(fixture, output)
+        results.append(row)
+        dump(args.output/'results.json',dict(slurm_job=os.environ['SLURM_JOB_ID'], results=results))
+    if any(r['returncode'] or not r['qualification']['all_numerical_passed'] for r in results):
+        raise RuntimeError('one or more candidates failed; results retained per fixture')
+
+
+if __name__ == '__main__':
+    main()
