@@ -292,8 +292,12 @@ if(VIBEQC_ENABLE_CUDA)
   set(VIBEQC_DF_DERIVATIVE_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_policy.cuh")
   set(VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_schedule.cuh")
   set(VIBEQC_DF_SHELL_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_shell_derivatives.cuh")
+  set(VIBEQC_DF_RYS_HEADERS
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_rys.cuh"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_rys_policy.hpp"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_rys_shell.cuh")
   add_custom_command(
-    OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}" "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}"
+    OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}" "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}" ${VIBEQC_DF_RYS_HEADERS}
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
             --derivatives --output "${VIBEQC_DF_DERIVATIVE_HEADER}"
             --policy-output "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
@@ -301,7 +305,7 @@ if(VIBEQC_ENABLE_CUDA)
             --shell-output "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py" ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
-  target_sources(vibeqc PRIVATE "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}" "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}"
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}" "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}" ${VIBEQC_DF_RYS_HEADERS}
                  src/scf/cuda/df_derivatives.cu src/scf/cuda/df_shell_derivatives.cu src/scf/cuda/df_gradient_bridge.cu
                  src/scf/cuda/df_response_weights.cu)
 

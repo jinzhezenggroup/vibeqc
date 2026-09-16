@@ -134,8 +134,13 @@ template<unsigned A,unsigned B,unsigned C>
 struct Moments {
   static constexpr unsigned na=(A+1)*(A+2)/2,nb=(B+1)*(B+2)/2,nc=(C+1)*(C+2)/2;
   static constexpr unsigned components=na*nb*nc;
+  // Both supported public representations use CCA identity expansions for s/p.
+  // Higher Cartesian classes are injective too, but retain the general path
+  // until independently qualified alongside spherical d/f fallback semantics.
+  static constexpr bool public_weight_identity=A<2 && B<2 && C<2;
   static constexpr unsigned rows=B+1,columns=C+1;
   static constexpr unsigned axis_size=(A+2)*rows*columns*(A+B+C+3)/2;
+  static constexpr unsigned cache_coefficient_values=3*axis_size;
   static constexpr unsigned polynomial_calls=(A<2 && B<2 && C<2)?0:3*(A+2)*rows*columns;
   static constexpr unsigned specialized_axis_calls=(A<2 && B<2 && C<2)?3:0;
   /** Exact loop-body evaluations for one active component, before optimization.

@@ -1,0 +1,150 @@
+{
+  "scope": "ELF FUNC symbol sizes of complete sm_120 SASS kernel entries; includes inlined helpers and diagnostic branches",
+  "baseline": {
+    "library_sha256": "08502d7b43bc78f495a208d008b3c5ce1eff2a75abcdf779d4e20f3d8b5efc0e",
+    "library_bytes": 205371680,
+    "derivative_cubin_sha256": "34510fc5de73223805c4172cd8e7b467302487cc8ae0334f03a3f01a3824ae28",
+    "derivative_cubin_bytes": 497476712,
+    "all_shell_entry_bytes": 438439808,
+    "shell_entry_count": 384,
+    "000_entries": [
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 83840
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 85888
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 85888
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 83200
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 84864
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 84736
+      }
+    ]
+  },
+  "candidate": {
+    "library_sha256": "23a6f5a67bfcda9497e572133d68b57f77945c5795c680efe0418eb184efdb6b",
+    "library_bytes": 205785296,
+    "derivative_cubin_sha256": "71def201f62dcf66e0a3c6e4f323b925fbd14e8022142c2e227a4dbac107dd51",
+    "derivative_cubin_bytes": 498071848,
+    "all_shell_entry_bytes": 438842368,
+    "shell_entry_count": 390,
+    "000_entries": [
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 83840
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 85888
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 85888
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "rys",
+        "sass_entry_bytes": 66176
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "rys",
+        "sass_entry_bytes": 67968
+      },
+      {
+        "family": "packet",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "rys",
+        "sass_entry_bytes": 67840
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 83200
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 84864
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "polynomial",
+        "sass_entry_bytes": 84736
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 2,
+        "lowering": "rys",
+        "sass_entry_bytes": 65792
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 1,
+        "lowering": "rys",
+        "sass_entry_bytes": 67456
+      },
+      {
+        "family": "panel",
+        "angular": [0, 0, 0],
+        "variant": 0,
+        "lowering": "rys",
+        "sass_entry_bytes": 67328
+      }
+    ]
+  },
+  "library_growth_bytes": 413616
+}

@@ -37,6 +37,9 @@ enum class DfShellWork : unsigned {
   gradient_atomics_distinct_atom,
   subgroup_rendezvous,
   orbital_local_accumulations,
+  rys_evaluations,
+  rys_roots,
+  recurrence_states,
   count
 };
 inline constexpr std::array<const char*, static_cast<unsigned>(DfShellWork::count)>
@@ -66,7 +69,10 @@ inline constexpr std::array<const char*, static_cast<unsigned>(DfShellWork::coun
                         "gradient_atomics_shared_atom",
                         "gradient_atomics_distinct_atom",
                         "subgroup_rendezvous",
-                        "orbital_local_accumulations"};
+                        "orbital_local_accumulations",
+                        "rys_evaluations",
+                        "rys_roots",
+                        "recurrence_states"};
 
 /** Fixed diagnostic storage reused after each bounded signature packet.
  * Shards distribute diagnostic atomics; each owner publishes aggregated work

@@ -1,0 +1,74 @@
+{
+  "v1-384-endpoint": {
+    "polynomial": {
+      "seconds": [0.9296614609193057, 0.914768734946847, 0.9227491929195821, 0.9311432230751961, 0.9178085050079972],
+      "median_seconds": 0.9227491929195821,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 8.427383270392941e-11,
+      "scope": "clean endpoint"
+    },
+    "rys": {
+      "seconds": [0.9085439001210034, 0.8980966289527714, 0.9072091490961611, 0.9079054861795157, 0.8992963649798185],
+      "median_seconds": 0.9072091490961611,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 8.427205634709001e-11,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-384-work": {
+    "polynomial": {
+      "seconds": [0.9470748379826546],
+      "median_seconds": 0.9470748379826546,
+      "iterations": [[3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 8.4254292778696e-11,
+      "scope": "intrusive diagnostic"
+    },
+    "rys": {
+      "seconds": [0.9235342920292169],
+      "median_seconds": 0.9235342920292169,
+      "iterations": [[3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 8.4254292778696e-11,
+      "scope": "intrusive diagnostic"
+    }
+  },
+  "v1-768-endpoint": {
+    "polynomial": {
+      "seconds": [4.063320543849841, 4.061095050070435, 4.0598229467868805, 4.052963625872508, 4.047906511928886],
+      "median_seconds": 4.0598229467868805,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5922783924704476e-10,
+      "scope": "clean endpoint"
+    },
+    "rys": {
+      "seconds": [3.9780138980131596, 3.9847404160536826, 3.9854936071205884, 3.9866375930141658, 3.9684222349897027],
+      "median_seconds": 3.9847404160536826,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5921895746284775e-10,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-768-work": {
+    "polynomial": {
+      "seconds": [4.229982682969421],
+      "median_seconds": 4.229982682969421,
+      "iterations": [[3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5922073381968715e-10,
+      "scope": "intrusive diagnostic"
+    },
+    "rys": {
+      "seconds": [4.115771475946531],
+      "median_seconds": 4.115771475946531,
+      "iterations": [[3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5922339835494626e-10,
+      "scope": "intrusive diagnostic"
+    }
+  }
+}

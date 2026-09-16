@@ -2,193 +2,15 @@
   "all_handwritten_scientific_lines": 12066,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
-    "added_files": [
-      "src/dft/cuda_ks_kernels.cu",
-      "src/dft/cuda_ks_kernels.hpp",
-      "src/dft/cuda_xc.hpp",
-      "src/dft/cuda_xc_kernels.cuh",
-      "src/dft/grid_task_view.cuh",
-      "src/dft/xc_point.hpp",
-      "src/integrals/ecp_cuda.cu",
-      "src/runtime/cuda_ao_pairs.cuh",
-      "src/runtime/cuda_component_trace.hpp",
-      "src/runtime/cuda_gaussian_products.cuh",
-      "src/runtime/cuda_subgroup.cuh",
-      "src/runtime/strided_range.hpp",
-      "src/scf/cuda/basis_transform_kernels.cu",
-      "src/scf/cuda/basis_transform_kernels.hpp",
-      "src/scf/cuda/boys_table.cuh",
-      "src/scf/cuda/cartesian_angular.cuh",
-      "src/scf/cuda/coulomb_auxiliary.cuh",
-      "src/scf/cuda/device_timer.cuh",
-      "src/scf/cuda/df_jk_kernels.cu",
-      "src/scf/cuda/df_jk_kernels.hpp",
-      "src/scf/cuda/df_metric_kernels.cu",
-      "src/scf/cuda/df_metric_kernels.hpp",
-      "src/scf/cuda/df_plan_internal.hpp",
-      "src/scf/cuda/df_response_weights.cu",
-      "src/scf/cuda/df_response_weights.cuh",
-      "src/scf/cuda/df_runtime.hpp",
-      "src/scf/cuda/df_scf_kernels.cu",
-      "src/scf/cuda/df_scf_kernels.hpp",
-      "src/scf/cuda/df_shell_derivatives.cu",
-      "src/scf/cuda/df_shell_derivatives.cuh",
-      "src/scf/cuda/df_shell_diagnostics.cuh",
-      "src/scf/cuda/df_source_internal.hpp",
-      "src/scf/cuda/df_source_kernels.cu",
-      "src/scf/cuda/df_source_kernels.hpp",
-      "src/scf/cuda/direct_angular_fock.cu",
-      "src/scf/cuda/direct_angular_fock.hpp",
-      "src/scf/cuda/direct_angular_force.cu",
-      "src/scf/cuda/direct_angular_force.hpp",
-      "src/scf/cuda/direct_bounded_contraction.cuh",
-      "src/scf/cuda/direct_bounded_dddd.cu",
-      "src/scf/cuda/direct_bounded_dddd.hpp",
-      "src/scf/cuda/direct_bounded_exact_force.cu",
-      "src/scf/cuda/direct_bounded_exact_force.hpp",
-      "src/scf/cuda/direct_bounded_fallback.cu",
-      "src/scf/cuda/direct_bounded_fallback.hpp",
-      "src/scf/cuda/direct_bounded_pages.cu",
-      "src/scf/cuda/direct_bounded_pages.hpp",
-      "src/scf/cuda/direct_bounded_tasks.cu",
-      "src/scf/cuda/direct_bounded_tasks.hpp",
-      "src/scf/cuda/direct_cached_tensor_kernels.cu",
-      "src/scf/cuda/direct_cached_tensor_kernels.hpp",
-      "src/scf/cuda/direct_density_bounds.cu",
-      "src/scf/cuda/direct_density_bounds.hpp",
-      "src/scf/cuda/direct_eri_symmetry.cuh",
-      "src/scf/cuda/direct_fock_accumulation.cuh",
-      "src/scf/cuda/direct_fock_order2.cuh",
-      "src/scf/cuda/direct_fock_psss.cuh",
-      "src/scf/cuda/direct_fock_quartet.cuh",
-      "src/scf/cuda/direct_force_density.cuh",
-      "src/scf/cuda/direct_force_low_order.cuh",
-      "src/scf/cuda/direct_force_order2.cuh",
-      "src/scf/cuda/direct_force_quartet.cuh",
-      "src/scf/cuda/direct_generated_tasks.cu",
-      "src/scf/cuda/direct_generated_tasks.hpp",
-      "src/scf/cuda/direct_jk_kernels.cu",
-      "src/scf/cuda/direct_jk_kernels.hpp",
-      "src/scf/cuda/direct_jk_plan.hpp",
-      "src/scf/cuda/direct_native_cartesian.cuh",
-      "src/scf/cuda/direct_native_contraction.cuh",
-      "src/scf/cuda/direct_native_dsss_gradient.cuh",
-      "src/scf/cuda/direct_native_eri_order2.cuh",
-      "src/scf/cuda/direct_native_eri_order3.cuh",
-      "src/scf/cuda/direct_native_eri_order4.cuh",
-      "src/scf/cuda/direct_native_gradient_types.cuh",
-      "src/scf/cuda/direct_native_high_order_coulomb.cuh",
-      "src/scf/cuda/direct_native_order01_gradient.cuh",
-      "src/scf/cuda/direct_native_order2_gradient.cuh",
-      "src/scf/cuda/direct_native_order2_shell.cuh",
-      "src/scf/cuda/direct_native_order3_gradient.cuh",
-      "src/scf/cuda/direct_native_order456_gradient.cuh",
-      "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
-      "src/scf/cuda/direct_native_pair_order2.cuh",
-      "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
-      "src/scf/cuda/direct_native_pair_order3.cuh",
-      "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
-      "src/scf/cuda/direct_native_ppss_gradient.cuh",
-      "src/scf/cuda/direct_native_psps_gradient.cuh",
-      "src/scf/cuda/direct_native_psss.cuh",
-      "src/scf/cuda/direct_native_shell_class.cuh",
-      "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
-      "src/scf/cuda/direct_native_source_contraction.cuh",
-      "src/scf/cuda/direct_packed_fock_kernels.cu",
-      "src/scf/cuda/direct_packed_fock_kernels.hpp",
-      "src/scf/cuda/direct_page_screening.cuh",
-      "src/scf/cuda/direct_pair_cache.cu",
-      "src/scf/cuda/direct_pair_cache.hpp",
-      "src/scf/cuda/direct_queue_diagnostics.cu",
-      "src/scf/cuda/direct_queue_diagnostics.hpp",
-      "src/scf/cuda/direct_queue_index.cuh",
-      "src/scf/cuda/direct_queue_profile.cuh",
-      "src/scf/cuda/direct_queue_scan.cu",
-      "src/scf/cuda/direct_queue_scan.hpp",
-      "src/scf/cuda/direct_reference_force.cu",
-      "src/scf/cuda/direct_reference_force.hpp",
-      "src/scf/cuda/direct_resident_tasks.cu",
-      "src/scf/cuda/direct_resident_tasks.hpp",
-      "src/scf/cuda/direct_schwarz_kernels.cu",
-      "src/scf/cuda/direct_schwarz_kernels.hpp",
-      "src/scf/cuda/direct_screening.cuh",
-      "src/scf/cuda/direct_task_encoding.cuh",
-      "src/scf/cuda/direct_tile_compaction.cu",
-      "src/scf/cuda/direct_tile_compaction.hpp",
-      "src/scf/cuda/direct_tile_validation.cu",
-      "src/scf/cuda/direct_tile_validation.hpp",
-      "src/scf/cuda/eigensolver.hpp",
-      "src/scf/cuda/eigensolver_kernels.cu",
-      "src/scf/cuda/eigensolver_kernels.hpp",
-      "src/scf/cuda/eri_tensor_index.cuh",
-      "src/scf/cuda/gaussian_geometry.cuh",
-      "src/scf/cuda/hermite_recurrence.cuh",
-      "src/scf/cuda/matrix_index.cuh",
-      "src/scf/cuda/matrix_library.hpp",
-      "src/scf/cuda/metadata_upload.hpp",
-      "src/scf/cuda/nuclear_kernels.cu",
-      "src/scf/cuda/nuclear_kernels.hpp",
-      "src/scf/cuda/one_electron_export_kernels.hpp",
-      "src/scf/cuda/one_electron_force_reference.cu",
-      "src/scf/cuda/one_electron_force_reference.hpp",
-      "src/scf/cuda/one_electron_force_workspace.hpp",
-      "src/scf/cuda/one_electron_native_attraction.cuh",
-      "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
-      "src/scf/cuda/one_electron_native_contraction.cuh",
-      "src/scf/cuda/one_electron_native_force.cuh",
-      "src/scf/cuda/one_electron_native_overlap.cuh",
-      "src/scf/cuda/one_electron_reference.cu",
-      "src/scf/cuda/reference_export.cuh",
-      "src/scf/cuda/resources.hpp",
-      "src/scf/cuda/runtime_support.hpp",
-      "src/scf/cuda/scalar_math.cuh",
-      "src/scf/cuda/scf_convergence_kernels.cu",
-      "src/scf/cuda/scf_convergence_kernels.hpp",
-      "src/scf/cuda/scf_density_kernels.cu",
-      "src/scf/cuda/scf_density_kernels.hpp",
-      "src/scf/cuda/scf_diis_kernels.cu",
-      "src/scf/cuda/scf_diis_kernels.hpp",
-      "src/scf/cuda/scf_matrix_kernels.cu",
-      "src/scf/cuda/scf_matrix_kernels.hpp",
-      "src/scf/cuda/scf_state_kernels.cu",
-      "src/scf/cuda/scf_state_kernels.hpp",
-      "src/scf/cuda/weighted_eri_kernels.cu",
-      "src/scf/cuda/weighted_eri_kernels.hpp",
-      "src/scf/cuda_direct_jk_device.hpp",
-      "src/tensor/cuda_error.hpp"
-    ],
-    "maintained_code_lines": {
-      "fallback": 0,
-      "oracle": 10,
-      "performance_exception": 66,
-      "runtime": -5741,
-      "scientific": 1798
-    },
-    "reclassified_files": [
-      "src/dft/cuda_grid.cu",
-      "src/scf/cuda/df_derivatives.cu",
-      "src/scf/cuda/one_electron_values.cu"
-    ],
-    "removed_files": [
-      "src/scf/cuda/direct_jk.cuh",
-      "src/scf/cuda/one_electron_force_reference.cuh",
-      "src/scf/cuda/one_electron_integrals.cuh",
-      "src/scf/cuda/one_electron_reference.cuh",
-      "src/scf/cuda/weighted_eri.cuh",
-      "src/scf/cuda_density_fitting.cu",
-      "src/scf/cuda_rhf.cu"
-    ]
+    "added_files": [],
+    "maintained_code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 42, "scientific": 0},
+    "reclassified_files": [],
+    "removed_files": []
   },
   "files": [
     {
       "bytes": 5274,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 102,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 102, "scientific": 0},
       "path": "src/cc/cuda_state.cuh",
       "physical_lines": 120,
       "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
@@ -199,35 +21,13 @@
     },
     {
       "bytes": 36560,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 535,
-        "scientific": 162
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 535, "scientific": 162},
       "path": "src/dft/cuda_grid.cu",
       "physical_lines": 751,
       "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
       "regions": [
-        {
-          "code_lines": 89,
-          "first_line": 70,
-          "last_line": 164,
-          "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.",
-          "role": "scientific",
-          "start": "__global__ void ao_kernel",
-          "stop": "// Gather every local matrix element"
-        },
-        {
-          "code_lines": 73,
-          "first_line": 201,
-          "last_line": 282,
-          "reason": "Native CUDA LDA/PBE point dispatch, deterministic energy/electron integration and spin-potential matrix contraction. Scalar XC algebra is shared with the CPU implementation, but this endpoint-specific device contraction remains maintained scientific glue.",
-          "role": "scientific",
-          "start": "__device__ vibeqc::dft::point::Value evaluate_xc_point",
-          "stop": "extern \"C\" {"
-        }
+        {"code_lines": 89, "first_line": 70, "last_line": 164, "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.", "role": "scientific", "start": "__global__ void ao_kernel", "stop": "// Gather every local matrix element"},
+        {"code_lines": 73, "first_line": 201, "last_line": 282, "reason": "Native CUDA LDA/PBE point dispatch, deterministic energy/electron integration and spin-potential matrix contraction. Scalar XC algebra is shared with the CPU implementation, but this endpoint-specific device contraction remains maintained scientific glue.", "role": "scientific", "start": "__device__ vibeqc::dft::point::Value evaluate_xc_point", "stop": "extern \"C\" {"}
       ],
       "role": "runtime",
       "sha256": "c67d0ce4c23053e4fc8cf99e9f71c532f9612ea2aea645414444c59b3dcd47b2",
@@ -235,26 +35,12 @@
     },
     {
       "bytes": 4700,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 22,
-        "scientific": 57
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 22, "scientific": 57},
       "path": "src/dft/cuda_ks_kernels.cu",
       "physical_lines": 90,
       "reason": "Semilocal physical Fock/energy, per-spin diagnostics and CPU-compatible virtual-projector proposal stabilization; numerical glue remains maintained and is not claimed as retired code.",
       "regions": [
-        {
-          "code_lines": 22,
-          "first_line": 67,
-          "last_line": 90,
-          "reason": "Host launch forwarding to the numerical component kernels.",
-          "role": "runtime",
-          "start": "void assemble_fock(cudaStream_t",
-          "stop": null
-        }
+        {"code_lines": 22, "first_line": 67, "last_line": 90, "reason": "Host launch forwarding to the numerical component kernels.", "role": "runtime", "start": "void assemble_fock(cudaStream_t", "stop": null}
       ],
       "role": "scientific",
       "sha256": "ba1d720f17f3b09c0619c044b21e16e54f7715d58d71493e9dc87056e39ae17c",
@@ -262,13 +48,7 @@
     },
     {
       "bytes": 1531,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 19,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 19, "scientific": 0},
       "path": "src/dft/cuda_ks_kernels.hpp",
       "physical_lines": 29,
       "reason": "Native KS scalar diagnostic, physical-Fock and occupation-stabilization launch contracts; no mathematical bodies.",
@@ -279,13 +59,7 @@
     },
     {
       "bytes": 4209,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 66,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 66, "scientific": 0},
       "path": "src/dft/cuda_xc.hpp",
       "physical_lines": 100,
       "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
@@ -296,26 +70,12 @@
     },
     {
       "bytes": 7655,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 51,
-        "scientific": 90
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 51, "scientific": 90},
       "path": "src/dft/cuda_xc_kernels.cuh",
       "physical_lines": 159,
       "reason": "Allocation-free native semilocal XC launch adapters. Existing generated AO and ingredient policies are reused; current point coefficients use the separately counted shared XC domain algebra.",
       "regions": [
-        {
-          "code_lines": 90,
-          "first_line": 27,
-          "last_line": 125,
-          "reason": "Dense D*AO contraction, point-layout adaptation and full symmetric E/V reductions remain maintained scientific glue. No scientific-code retirement is claimed for this baseline.",
-          "role": "scientific",
-          "start": "__global__ void density_product",
-          "stop": "void enqueue(const CudaXcLayout& l"
-        }
+        {"code_lines": 90, "first_line": 27, "last_line": 125, "reason": "Dense D*AO contraction, point-layout adaptation and full symmetric E/V reductions remain maintained scientific glue. No scientific-code retirement is claimed for this baseline.", "role": "scientific", "start": "__global__ void density_product", "stop": "void enqueue(const CudaXcLayout& l"}
       ],
       "role": "runtime",
       "sha256": "ff0fbe6bc6c2a2c20b9c1f22d242dbcd24f56ab35d25275440dc14d380cebb15",
@@ -323,13 +83,7 @@
     },
     {
       "bytes": 1192,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/dft/grid_task_view.cuh",
       "physical_lines": 31,
       "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
@@ -340,13 +94,7 @@
     },
     {
       "bytes": 13435,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 246
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 246},
       "path": "src/dft/xc_point.hpp",
       "physical_lines": 312,
       "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
@@ -357,13 +105,7 @@
     },
     {
       "bytes": 4086,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 89,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 89, "scientific": 0},
       "path": "src/dft/xc_runtime.cuh",
       "physical_lines": 95,
       "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
@@ -374,13 +116,7 @@
     },
     {
       "bytes": 12271,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 272
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 272},
       "path": "src/integrals/ecp_cuda.cu",
       "physical_lines": 278,
       "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption. Native normalization metadata, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
@@ -391,13 +127,7 @@
     },
     {
       "bytes": 3566,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 57,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 57, "scientific": 0},
       "path": "src/integrals/eri_geometry.hpp",
       "physical_lines": 74,
       "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
@@ -408,13 +138,7 @@
     },
     {
       "bytes": 6113,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 84,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 84, "scientific": 0},
       "path": "src/integrals/range_moments.hpp",
       "physical_lines": 120,
       "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
@@ -425,35 +149,13 @@
     },
     {
       "bytes": 12618,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 179,
-        "scientific": 65
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 179, "scientific": 65},
       "path": "src/posthf/cuda_low_rank.cu",
       "physical_lines": 276,
       "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
       "regions": [
-        {
-          "code_lines": 5,
-          "first_line": 98,
-          "last_line": 103,
-          "reason": "Factorized Coulomb output composition.",
-          "role": "scientific",
-          "start": "__global__ void add_coulomb",
-          "stop": "__global__ void symmetric_output"
-        },
-        {
-          "code_lines": 60,
-          "first_line": 203,
-          "last_line": 265,
-          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
-          "role": "scientific",
-          "start": "int posthf_cholesky_jk_v1",
-          "stop": "int posthf_cholesky_metrics_v1"
-        }
+        {"code_lines": 5, "first_line": 98, "last_line": 103, "reason": "Factorized Coulomb output composition.", "role": "scientific", "start": "__global__ void add_coulomb", "stop": "__global__ void symmetric_output"},
+        {"code_lines": 60, "first_line": 203, "last_line": 265, "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.", "role": "scientific", "start": "int posthf_cholesky_jk_v1", "stop": "int posthf_cholesky_metrics_v1"}
       ],
       "role": "runtime",
       "sha256": "06ab3bd9f7dca92671900dd387d46d1211f7229ea87f562c8df4b8a63b72b13c",
@@ -461,13 +163,7 @@
     },
     {
       "bytes": 8075,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 181,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 181, "scientific": 0},
       "path": "src/posthf/cuda_transform.cu",
       "physical_lines": 189,
       "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
@@ -478,13 +174,7 @@
     },
     {
       "bytes": 6666,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 146,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 146, "scientific": 0},
       "path": "src/posthf/df_bridge.cu",
       "physical_lines": 156,
       "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
@@ -495,13 +185,7 @@
     },
     {
       "bytes": 5468,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 87,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 87, "scientific": 0},
       "path": "src/runtime/cuda_ao_pairs.cuh",
       "physical_lines": 114,
       "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
@@ -512,13 +196,7 @@
     },
     {
       "bytes": 3654,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 52,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 52, "scientific": 0},
       "path": "src/runtime/cuda_component_trace.hpp",
       "physical_lines": 92,
       "reason": "Opt-in CUDA event/NVTX profiling and logical work accounting; no scientific equations or provider ownership.",
@@ -529,13 +207,7 @@
     },
     {
       "bytes": 5690,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 111,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 111, "scientific": 0},
       "path": "src/runtime/cuda_gaussian_products.cuh",
       "physical_lines": 145,
       "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
@@ -546,13 +218,7 @@
     },
     {
       "bytes": 2911,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 52,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 52, "scientific": 0},
       "path": "src/runtime/cuda_runtime.cu",
       "physical_lines": 68,
       "reason": "Device availability, discovery and stable runtime ABI.",
@@ -563,13 +229,7 @@
     },
     {
       "bytes": 1032,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 17,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 17, "scientific": 0},
       "path": "src/runtime/cuda_subgroup.cuh",
       "physical_lines": 26,
       "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
@@ -580,13 +240,7 @@
     },
     {
       "bytes": 6049,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 116,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 116, "scientific": 0},
       "path": "src/runtime/resource_cuda.cuh",
       "physical_lines": 153,
       "reason": "Allocation accounting and lifetime guards.",
@@ -597,13 +251,7 @@
     },
     {
       "bytes": 799,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/runtime/strided_range.hpp",
       "physical_lines": 22,
       "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions.",
@@ -614,13 +262,7 @@
     },
     {
       "bytes": 5770,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 67,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 67, "scientific": 0},
       "path": "src/scf/aot_shell_registry.hpp",
       "physical_lines": 117,
       "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
@@ -631,13 +273,7 @@
     },
     {
       "bytes": 10461,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 163,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 163, "scientific": 0},
       "path": "src/scf/cuda/basis_transform_kernels.cu",
       "physical_lines": 181,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -648,13 +284,7 @@
     },
     {
       "bytes": 2685,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 31,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 31, "scientific": 0},
       "path": "src/scf/cuda/basis_transform_kernels.hpp",
       "physical_lines": 45,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -665,13 +295,7 @@
     },
     {
       "bytes": 3251,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 51
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 51},
       "path": "src/scf/cuda/boys_table.cuh",
       "physical_lines": 70,
       "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
@@ -682,26 +306,12 @@
     },
     {
       "bytes": 2679,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 46,
-        "scientific": 5
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 46, "scientific": 5},
       "path": "src/scf/cuda/cartesian_angular.cuh",
       "physical_lines": 69,
       "reason": "Unchanged angular indexing and packed/public AO mappings; preserve the original conservative classification of the angular record.",
       "regions": [
-        {
-          "code_lines": 5,
-          "first_line": 15,
-          "last_line": 20,
-          "reason": "Retain the original conservative scientific classification of the Cartesian powers record.",
-          "role": "scientific",
-          "start": "struct Angular {",
-          "stop": "__device__ inline unsigned angular_axis("
-        }
+        {"code_lines": 5, "first_line": 15, "last_line": 20, "reason": "Retain the original conservative scientific classification of the Cartesian powers record.", "role": "scientific", "start": "struct Angular {", "stop": "__device__ inline unsigned angular_axis("}
       ],
       "role": "runtime",
       "sha256": "f65d2108c2f0b4ebc418938630250a8dffff98340280b2e8b16616e6712166c9",
@@ -709,13 +319,7 @@
     },
     {
       "bytes": 4288,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 87
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 87},
       "path": "src/scf/cuda/coulomb_auxiliary.cuh",
       "physical_lines": 104,
       "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
@@ -726,13 +330,7 @@
     },
     {
       "bytes": 359,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 9,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 9, "scientific": 0},
       "path": "src/scf/cuda/device_timer.cuh",
       "physical_lines": 14,
       "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
@@ -743,13 +341,7 @@
     },
     {
       "bytes": 7145,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 111,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 111, "scientific": 0},
       "path": "src/scf/cuda/df_derivatives.cu",
       "physical_lines": 122,
       "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal. The explicit distributed-sink diagnostic changes only destination addressing; both specializations call the same generated derivative policy.",
@@ -760,13 +352,7 @@
     },
     {
       "bytes": 2193,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 18,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 18, "scientific": 0},
       "path": "src/scf/cuda/df_derivatives.cuh",
       "physical_lines": 39,
       "reason": "Stable derivative view and launch ABI declarations.",
@@ -777,13 +363,7 @@
     },
     {
       "bytes": 68771,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 1116
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 1116},
       "path": "src/scf/cuda/df_gradient_bridge.cu",
       "physical_lines": 1198,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations.",
@@ -794,26 +374,12 @@
     },
     {
       "bytes": 11130,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 119,
-        "scientific": 54
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 119, "scientific": 54},
       "path": "src/scf/cuda/df_jk_kernels.cu",
       "physical_lines": 195,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
       "regions": [
-        {
-          "code_lines": 54,
-          "first_line": 72,
-          "last_line": 136,
-          "reason": "Existing streamed RI J/K equations and reductions, preserved in their dedicated owner.",
-          "role": "scientific",
-          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
-          "stop": "void launch_sum_spin_density_kernel"
-        }
+        {"code_lines": 54, "first_line": 72, "last_line": 136, "reason": "Existing streamed RI J/K equations and reductions, preserved in their dedicated owner.", "role": "scientific", "start": "__global__ void accumulate_streamed_auxiliary_density_kernel", "stop": "void launch_sum_spin_density_kernel"}
       ],
       "role": "runtime",
       "sha256": "d50ad58b7e96a898cd6f7194a86c8e16423870b2715aa6994510903a6de8a311",
@@ -821,13 +387,7 @@
     },
     {
       "bytes": 4083,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 42,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 42, "scientific": 0},
       "path": "src/scf/cuda/df_jk_kernels.hpp",
       "physical_lines": 66,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -838,13 +398,7 @@
     },
     {
       "bytes": 2546,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 46,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 46, "scientific": 0},
       "path": "src/scf/cuda/df_metric_kernels.cu",
       "physical_lines": 53,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -855,13 +409,7 @@
     },
     {
       "bytes": 852,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 12,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 12, "scientific": 0},
       "path": "src/scf/cuda/df_metric_kernels.hpp",
       "physical_lines": 20,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -872,13 +420,7 @@
     },
     {
       "bytes": 4664,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 64,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 64, "scientific": 0},
       "path": "src/scf/cuda/df_plan_internal.hpp",
       "physical_lines": 104,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -889,26 +431,12 @@
     },
     {
       "bytes": 46404,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 10,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 669
-      },
+      "code_lines": {"fallback": 0, "oracle": 10, "performance_exception": 0, "runtime": 0, "scientific": 669},
       "path": "src/scf/cuda/df_response_weights.cu",
       "physical_lines": 786,
       "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
       "regions": [
-        {
-          "code_lines": 10,
-          "first_line": 122,
-          "last_line": 137,
-          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry.",
-          "role": "oracle",
-          "start": "__global__ void exchange_metric_kernel(",
-          "stop": "__global__ void metric_response_kernel("
-        }
+        {"code_lines": 10, "first_line": 122, "last_line": 137, "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry.", "role": "oracle", "start": "__global__ void exchange_metric_kernel(", "stop": "__global__ void metric_response_kernel("}
       ],
       "role": "scientific",
       "sha256": "c05b2a018bb68491a395117fb855c4997dad31807b729ae387c5246ceb8b57be",
@@ -916,13 +444,7 @@
     },
     {
       "bytes": 3480,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 26
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 26},
       "path": "src/scf/cuda/df_response_weights.cuh",
       "physical_lines": 66,
       "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
@@ -933,13 +455,7 @@
     },
     {
       "bytes": 1473,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 28,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 28, "scientific": 0},
       "path": "src/scf/cuda/df_runtime.hpp",
       "physical_lines": 38,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -950,35 +466,13 @@
     },
     {
       "bytes": 21879,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 256,
-        "scientific": 107
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 256, "scientific": 107},
       "path": "src/scf/cuda/df_scf_kernels.cu",
       "physical_lines": 392,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
       "regions": [
-        {
-          "code_lines": 33,
-          "first_line": 17,
-          "last_line": 52,
-          "reason": "Algebraic PSD density factor scaling and complete reconstruction error reduction, qualified independently against four-index RI exchange.",
-          "role": "scientific",
-          "start": "__global__ void density_exchange_factor_kernel",
-          "stop": "void launch_density_exchange_factor"
-        },
-        {
-          "code_lines": 74,
-          "first_line": 141,
-          "last_line": 219,
-          "reason": "Existing RHF/UHF Fock, density and energy equations, preserved independently of host replay control.",
-          "role": "scientific",
-          "start": "__global__ void assemble_rhf_fock_kernel",
-          "stop": "__global__ void update_device_convergence_kernel"
-        }
+        {"code_lines": 33, "first_line": 17, "last_line": 52, "reason": "Algebraic PSD density factor scaling and complete reconstruction error reduction, qualified independently against four-index RI exchange.", "role": "scientific", "start": "__global__ void density_exchange_factor_kernel", "stop": "void launch_density_exchange_factor"},
+        {"code_lines": 74, "first_line": 141, "last_line": 219, "reason": "Existing RHF/UHF Fock, density and energy equations, preserved independently of host replay control.", "role": "scientific", "start": "__global__ void assemble_rhf_fock_kernel", "stop": "__global__ void update_device_convergence_kernel"}
       ],
       "role": "runtime",
       "sha256": "eb40b2d25d93d4913e541d2fef54265a42fbf691c108c9258260f3b67db8f37d",
@@ -986,13 +480,7 @@
     },
     {
       "bytes": 7014,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 66,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 66, "scientific": 0},
       "path": "src/scf/cuda/df_scf_kernels.hpp",
       "physical_lines": 107,
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
@@ -1003,13 +491,7 @@
     },
     {
       "bytes": 35325,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 607,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 607, "scientific": 0},
       "path": "src/scf/cuda/df_shell_derivatives.cu",
       "physical_lines": 660,
       "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
@@ -1020,13 +502,7 @@
     },
     {
       "bytes": 4412,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 36,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 36, "scientific": 0},
       "path": "src/scf/cuda/df_shell_derivatives.cuh",
       "physical_lines": 75,
       "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
@@ -1037,13 +513,7 @@
     },
     {
       "bytes": 3685,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 85,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 85, "scientific": 0},
       "path": "src/scf/cuda/df_shell_diagnostics.cuh",
       "physical_lines": 98,
       "reason": "Bounded optional diagnostic counter storage, observer and operation labels; scientific operation counts are defined by the generated lowering.",
@@ -1054,13 +524,7 @@
     },
     {
       "bytes": 2451,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 39,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 39, "scientific": 0},
       "path": "src/scf/cuda/df_source_internal.hpp",
       "physical_lines": 63,
       "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
@@ -1071,35 +535,13 @@
     },
     {
       "bytes": 17094,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 105,
-        "scientific": 154
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 105, "scientific": 154},
       "path": "src/scf/cuda/df_source_kernels.cu",
       "physical_lines": 305,
       "reason": "Existing generated-policy traversal and bounded raw/public-layout DF value/response contractions, moved from cuda_rhf.cu without copying formulas.",
       "regions": [
-        {
-          "code_lines": 46,
-          "first_line": 1,
-          "last_line": 65,
-          "reason": "Includes, common basis ABI adapter and generated-policy instantiation; the generated scalar families retain scientific ownership upstream.",
-          "role": "runtime",
-          "start": "#include <cuda_runtime.h>",
-          "stop": "__global__ void build_cuda_df_integrals_kernel"
-        },
-        {
-          "code_lines": 59,
-          "first_line": 244,
-          "last_line": 305,
-          "reason": "Host-callable wrappers preserve exact specialization selection, launch geometry, stream and argument forwarding.",
-          "role": "runtime",
-          "start": "void launch_build_cuda_df_integrals_kernel",
-          "stop": null
-        }
+        {"code_lines": 46, "first_line": 1, "last_line": 65, "reason": "Includes, common basis ABI adapter and generated-policy instantiation; the generated scalar families retain scientific ownership upstream.", "role": "runtime", "start": "#include <cuda_runtime.h>", "stop": "__global__ void build_cuda_df_integrals_kernel"},
+        {"code_lines": 59, "first_line": 244, "last_line": 305, "reason": "Host-callable wrappers preserve exact specialization selection, launch geometry, stream and argument forwarding.", "role": "runtime", "start": "void launch_build_cuda_df_integrals_kernel", "stop": null}
       ],
       "role": "scientific",
       "sha256": "27749639fc13fa754867a23bde0f782a83fe687586d3ceb03d6f0bc1bbdceaa2",
@@ -1107,13 +549,7 @@
     },
     {
       "bytes": 2849,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 35,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 35, "scientific": 0},
       "path": "src/scf/cuda/df_source_kernels.hpp",
       "physical_lines": 57,
       "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
@@ -1124,13 +560,7 @@
     },
     {
       "bytes": 16003,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 251,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 251, "scientific": 0},
       "path": "src/scf/cuda/direct_angular_fock.cu",
       "physical_lines": 277,
       "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
@@ -1141,13 +571,7 @@
     },
     {
       "bytes": 1104,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 19,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 19, "scientific": 0},
       "path": "src/scf/cuda/direct_angular_fock.hpp",
       "physical_lines": 26,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1158,13 +582,7 @@
     },
     {
       "bytes": 23138,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 337,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 337, "scientific": 0},
       "path": "src/scf/cuda/direct_angular_force.cu",
       "physical_lines": 386,
       "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
@@ -1175,13 +593,7 @@
     },
     {
       "bytes": 2080,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 30,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 30, "scientific": 0},
       "path": "src/scf/cuda/direct_angular_force.hpp",
       "physical_lines": 39,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1192,13 +604,7 @@
     },
     {
       "bytes": 3470,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 76
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 76},
       "path": "src/scf/cuda/direct_bounded_contraction.cuh",
       "physical_lines": 87,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1209,13 +615,7 @@
     },
     {
       "bytes": 8803,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 163
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 163},
       "path": "src/scf/cuda/direct_bounded_dddd.cu",
       "physical_lines": 183,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -1226,13 +626,7 @@
     },
     {
       "bytes": 851,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 16,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 16, "scientific": 0},
       "path": "src/scf/cuda/direct_bounded_dddd.hpp",
       "physical_lines": 23,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1243,13 +637,7 @@
     },
     {
       "bytes": 9395,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 159
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 159},
       "path": "src/scf/cuda/direct_bounded_exact_force.cu",
       "physical_lines": 176,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -1260,13 +648,7 @@
     },
     {
       "bytes": 967,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 17,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 17, "scientific": 0},
       "path": "src/scf/cuda/direct_bounded_exact_force.hpp",
       "physical_lines": 24,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1277,13 +659,7 @@
     },
     {
       "bytes": 14758,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 239
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 239},
       "path": "src/scf/cuda/direct_bounded_fallback.cu",
       "physical_lines": 265,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -1294,13 +670,7 @@
     },
     {
       "bytes": 1094,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 18,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 18, "scientific": 0},
       "path": "src/scf/cuda/direct_bounded_fallback.hpp",
       "physical_lines": 25,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1311,26 +681,12 @@
     },
     {
       "bytes": 10698,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 44,
-        "scientific": 116
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 44, "scientific": 116},
       "path": "src/scf/cuda/direct_bounded_pages.cu",
       "physical_lines": 188,
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
       "regions": [
-        {
-          "code_lines": 44,
-          "first_line": 144,
-          "last_line": 188,
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_compact_bounded_exact_class_force_wave_kernel",
-          "stop": null
-        }
+        {"code_lines": 44, "first_line": 144, "last_line": 188, "reason": "Host forwarding preserves the resolved template policy and launch geometry.", "role": "runtime", "start": "void launch_compact_bounded_exact_class_force_wave_kernel", "stop": null}
       ],
       "role": "scientific",
       "sha256": "f43c6e956df1baafd3c77bce3c28abdc8a8167112803c1107b3d69e4b3ce5103",
@@ -1338,13 +694,7 @@
     },
     {
       "bytes": 1055,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 17,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 17, "scientific": 0},
       "path": "src/scf/cuda/direct_bounded_pages.hpp",
       "physical_lines": 24,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -1355,26 +705,12 @@
     },
     {
       "bytes": 9186,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 45,
-        "scientific": 107
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 45, "scientific": 107},
       "path": "src/scf/cuda/direct_bounded_tasks.cu",
       "physical_lines": 167,
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
       "regions": [
-        {
-          "code_lines": 45,
-          "first_line": 122,
-          "last_line": 167,
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_compact_bounded_generated_tasks_kernel",
-          "stop": null
-        }
+        {"code_lines": 45, "first_line": 122, "last_line": 167, "reason": "Host forwarding preserves the resolved template policy and launch geometry.", "role": "runtime", "start": "void launch_compact_bounded_generated_tasks_kernel", "stop": null}
       ],
       "role": "scientific",
       "sha256": "3d686876239a1623f0c927f633ff74a47759dd78dd8744b51edfb5ad4f6ad5ee",
@@ -1382,13 +718,7 @@
     },
     {
       "bytes": 1292,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 18,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 18, "scientific": 0},
       "path": "src/scf/cuda/direct_bounded_tasks.hpp",
       "physical_lines": 28,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -1399,13 +729,7 @@
     },
     {
       "bytes": 5696,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 105
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 105},
       "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
       "physical_lines": 115,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -1416,13 +740,7 @@
     },
     {
       "bytes": 1379,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 19,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 19, "scientific": 0},
       "path": "src/scf/cuda/direct_cached_tensor_kernels.hpp",
       "physical_lines": 30,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -1433,26 +751,12 @@
     },
     {
       "bytes": 11098,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 29,
-        "scientific": 156
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 29, "scientific": 156},
       "path": "src/scf/cuda/direct_density_bounds.cu",
       "physical_lines": 222,
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
       "regions": [
-        {
-          "code_lines": 29,
-          "first_line": 191,
-          "last_line": 222,
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_reduce_shell_pair_density_bounds_kernel",
-          "stop": null
-        }
+        {"code_lines": 29, "first_line": 191, "last_line": 222, "reason": "Host forwarding preserves the resolved template policy and launch geometry.", "role": "runtime", "start": "void launch_reduce_shell_pair_density_bounds_kernel", "stop": null}
       ],
       "role": "scientific",
       "sha256": "f7daab3257521e05fc14f82d181bfe75a0aec46a79223420743feb0e8cea2526",
@@ -1460,13 +764,7 @@
     },
     {
       "bytes": 1594,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 22,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 22, "scientific": 0},
       "path": "src/scf/cuda/direct_density_bounds.hpp",
       "physical_lines": 33,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -1477,13 +775,7 @@
     },
     {
       "bytes": 2000,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 74,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 74, "scientific": 0},
       "path": "src/scf/cuda/direct_eri_symmetry.cuh",
       "physical_lines": 84,
       "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
@@ -1494,13 +786,7 @@
     },
     {
       "bytes": 2504,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 58
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 58},
       "path": "src/scf/cuda/direct_fock_accumulation.cuh",
       "physical_lines": 68,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1511,26 +797,12 @@
     },
     {
       "bytes": 7874,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 18,
-        "scientific": 136
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 18, "scientific": 136},
       "path": "src/scf/cuda/direct_fock_order2.cuh",
       "physical_lines": 177,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
       "regions": [
-        {
-          "code_lines": 18,
-          "first_line": 31,
-          "last_line": 50,
-          "reason": "Unchanged component-index mapping, retaining the original runtime classification.",
-          "role": "runtime",
-          "start": "__device__ __forceinline__ unsigned order2_component_index",
-          "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task"
-        }
+        {"code_lines": 18, "first_line": 31, "last_line": 50, "reason": "Unchanged component-index mapping, retaining the original runtime classification.", "role": "runtime", "start": "__device__ __forceinline__ unsigned order2_component_index", "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task"}
       ],
       "role": "scientific",
       "sha256": "41c04a7b18968a44fa161c0d4f716413eac1d1c1c736848dd3e1ff0d84de63d0",
@@ -1538,13 +810,7 @@
     },
     {
       "bytes": 4978,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 101
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 101},
       "path": "src/scf/cuda/direct_fock_psss.cuh",
       "physical_lines": 123,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1555,13 +821,7 @@
     },
     {
       "bytes": 4953,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 90
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 90},
       "path": "src/scf/cuda/direct_fock_quartet.cuh",
       "physical_lines": 100,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1572,13 +832,7 @@
     },
     {
       "bytes": 2086,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 45
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 45},
       "path": "src/scf/cuda/direct_force_density.cuh",
       "physical_lines": 55,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1589,13 +843,7 @@
     },
     {
       "bytes": 11522,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 249
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 249},
       "path": "src/scf/cuda/direct_force_low_order.cuh",
       "physical_lines": 272,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1606,13 +854,7 @@
     },
     {
       "bytes": 16298,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 326
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 326},
       "path": "src/scf/cuda/direct_force_order2.cuh",
       "physical_lines": 353,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1623,13 +865,7 @@
     },
     {
       "bytes": 10476,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 190
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 190},
       "path": "src/scf/cuda/direct_force_quartet.cuh",
       "physical_lines": 213,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
@@ -1640,13 +876,7 @@
     },
     {
       "bytes": 10963,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 165,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 165, "scientific": 0},
       "path": "src/scf/cuda/direct_generated_tasks.cu",
       "physical_lines": 198,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -1657,13 +887,7 @@
     },
     {
       "bytes": 2922,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 36,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 36, "scientific": 0},
       "path": "src/scf/cuda/direct_generated_tasks.hpp",
       "physical_lines": 49,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -1674,26 +898,12 @@
     },
     {
       "bytes": 8737,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 33,
-        "scientific": 111
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 33, "scientific": 111},
       "path": "src/scf/cuda/direct_jk_kernels.cu",
       "physical_lines": 171,
       "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
       "regions": [
-        {
-          "code_lines": 33,
-          "first_line": 133,
-          "last_line": 171,
-          "reason": "Host launch forwarding; no scientific arithmetic.",
-          "role": "runtime",
-          "start": "namespace cuda_execution {",
-          "stop": null
-        }
+        {"code_lines": 33, "first_line": 133, "last_line": 171, "reason": "Host launch forwarding; no scientific arithmetic.", "role": "runtime", "start": "namespace cuda_execution {", "stop": null}
       ],
       "role": "scientific",
       "sha256": "64c2a4738f44dd61085e0af54792e7ceb9f78ec0ed98559bb6dfd5899031dd31",
@@ -1701,13 +911,7 @@
     },
     {
       "bytes": 2109,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 25,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 25, "scientific": 0},
       "path": "src/scf/cuda/direct_jk_kernels.hpp",
       "physical_lines": 40,
       "reason": "Borrowed direct J/K kernel ABI and shared reduction width.",
@@ -1718,13 +922,7 @@
     },
     {
       "bytes": 967,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 23,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 23, "scientific": 0},
       "path": "src/scf/cuda/direct_jk_plan.hpp",
       "physical_lines": 33,
       "reason": "Opaque direct J/K provider allocation layout; owns no integral equations.",
@@ -1735,13 +933,7 @@
     },
     {
       "bytes": 7057,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 118
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 118},
       "path": "src/scf/cuda/direct_native_cartesian.cuh",
       "physical_lines": 138,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1752,13 +944,7 @@
     },
     {
       "bytes": 9621,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 166
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 166},
       "path": "src/scf/cuda/direct_native_contraction.cuh",
       "physical_lines": 181,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1769,13 +955,7 @@
     },
     {
       "bytes": 7696,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 128
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 128},
       "path": "src/scf/cuda/direct_native_dsss_gradient.cuh",
       "physical_lines": 143,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1786,13 +966,7 @@
     },
     {
       "bytes": 7465,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 153
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 153},
       "path": "src/scf/cuda/direct_native_eri_order2.cuh",
       "physical_lines": 182,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1803,13 +977,7 @@
     },
     {
       "bytes": 6928,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 118
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 118},
       "path": "src/scf/cuda/direct_native_eri_order3.cuh",
       "physical_lines": 144,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1820,13 +988,7 @@
     },
     {
       "bytes": 13953,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 251
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 251},
       "path": "src/scf/cuda/direct_native_eri_order4.cuh",
       "physical_lines": 295,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1837,13 +999,7 @@
     },
     {
       "bytes": 951,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 21
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 21},
       "path": "src/scf/cuda/direct_native_gradient_types.cuh",
       "physical_lines": 36,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1854,13 +1010,7 @@
     },
     {
       "bytes": 3793,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 75
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 75},
       "path": "src/scf/cuda/direct_native_high_order_coulomb.cuh",
       "physical_lines": 91,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1871,13 +1021,7 @@
     },
     {
       "bytes": 13274,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 243
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 243},
       "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
       "physical_lines": 288,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1888,13 +1032,7 @@
     },
     {
       "bytes": 9745,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 179
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 179},
       "path": "src/scf/cuda/direct_native_order2_gradient.cuh",
       "physical_lines": 200,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1905,13 +1043,7 @@
     },
     {
       "bytes": 14011,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 225
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 225},
       "path": "src/scf/cuda/direct_native_order2_shell.cuh",
       "physical_lines": 250,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1922,13 +1054,7 @@
     },
     {
       "bytes": 10810,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 196
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 196},
       "path": "src/scf/cuda/direct_native_order3_gradient.cuh",
       "physical_lines": 216,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1939,13 +1065,7 @@
     },
     {
       "bytes": 21991,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 414
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 414},
       "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
       "physical_lines": 438,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1956,13 +1076,7 @@
     },
     {
       "bytes": 7713,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 139
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 139},
       "path": "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
       "physical_lines": 175,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1973,13 +1087,7 @@
     },
     {
       "bytes": 3966,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 67
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 67},
       "path": "src/scf/cuda/direct_native_pair_order2.cuh",
       "physical_lines": 97,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -1990,13 +1098,7 @@
     },
     {
       "bytes": 4165,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 83
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 83},
       "path": "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
       "physical_lines": 104,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2007,13 +1109,7 @@
     },
     {
       "bytes": 6328,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 118
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 118},
       "path": "src/scf/cuda/direct_native_pair_order3.cuh",
       "physical_lines": 146,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2024,13 +1120,7 @@
     },
     {
       "bytes": 6320,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 129
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 129},
       "path": "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
       "physical_lines": 153,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2041,13 +1131,7 @@
     },
     {
       "bytes": 9339,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 153
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 153},
       "path": "src/scf/cuda/direct_native_ppss_gradient.cuh",
       "physical_lines": 169,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2058,13 +1142,7 @@
     },
     {
       "bytes": 9283,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 151
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 151},
       "path": "src/scf/cuda/direct_native_psps_gradient.cuh",
       "physical_lines": 176,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2075,13 +1153,7 @@
     },
     {
       "bytes": 13135,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 207
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 207},
       "path": "src/scf/cuda/direct_native_psss.cuh",
       "physical_lines": 246,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2092,13 +1164,7 @@
     },
     {
       "bytes": 5002,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 78
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 78},
       "path": "src/scf/cuda/direct_native_shell_class.cuh",
       "physical_lines": 94,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2109,13 +1175,7 @@
     },
     {
       "bytes": 3407,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 67
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 67},
       "path": "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
       "physical_lines": 81,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2126,13 +1186,7 @@
     },
     {
       "bytes": 16311,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 292
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 292},
       "path": "src/scf/cuda/direct_native_source_contraction.cuh",
       "physical_lines": 324,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
@@ -2143,13 +1197,7 @@
     },
     {
       "bytes": 9081,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 164
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 164},
       "path": "src/scf/cuda/direct_packed_fock_kernels.cu",
       "physical_lines": 178,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -2160,13 +1208,7 @@
     },
     {
       "bytes": 1220,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 19,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 19, "scientific": 0},
       "path": "src/scf/cuda/direct_packed_fock_kernels.hpp",
       "physical_lines": 28,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -2177,13 +1219,7 @@
     },
     {
       "bytes": 4467,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 59
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 59},
       "path": "src/scf/cuda/direct_page_screening.cuh",
       "physical_lines": 84,
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
@@ -2194,13 +1230,7 @@
     },
     {
       "bytes": 2970,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 50
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 50},
       "path": "src/scf/cuda/direct_pair_cache.cu",
       "physical_lines": 56,
       "reason": "Existing exponent, normalization and Gaussian product geometry cached per primitive pair. Conservatively retains its scientific classification after extraction.",
@@ -2211,13 +1241,7 @@
     },
     {
       "bytes": 567,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 10,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 10, "scientific": 0},
       "path": "src/scf/cuda/direct_pair_cache.hpp",
       "physical_lines": 17,
       "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
@@ -2228,13 +1252,7 @@
     },
     {
       "bytes": 8625,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 127,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 127, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_diagnostics.cu",
       "physical_lines": 156,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2245,13 +1263,7 @@
     },
     {
       "bytes": 2577,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 31,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 31, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_diagnostics.hpp",
       "physical_lines": 46,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -2262,13 +1274,7 @@
     },
     {
       "bytes": 7229,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 132,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 132, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_index.cuh",
       "physical_lines": 152,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2279,13 +1285,7 @@
     },
     {
       "bytes": 2247,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 39,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 39, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_profile.cuh",
       "physical_lines": 46,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2296,13 +1296,7 @@
     },
     {
       "bytes": 8146,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 136,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 136, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_scan.cu",
       "physical_lines": 160,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2313,13 +1307,7 @@
     },
     {
       "bytes": 1987,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 26,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 26, "scientific": 0},
       "path": "src/scf/cuda/direct_queue_scan.hpp",
       "physical_lines": 39,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -2330,13 +1318,7 @@
     },
     {
       "bytes": 13912,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 236
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 236},
       "path": "src/scf/cuda/direct_reference_force.cu",
       "physical_lines": 255,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
@@ -2347,13 +1329,7 @@
     },
     {
       "bytes": 1954,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 26,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 26, "scientific": 0},
       "path": "src/scf/cuda/direct_reference_force.hpp",
       "physical_lines": 39,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -2364,13 +1340,7 @@
     },
     {
       "bytes": 9772,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 140,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 140, "scientific": 0},
       "path": "src/scf/cuda/direct_resident_tasks.cu",
       "physical_lines": 175,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2381,13 +1351,7 @@
     },
     {
       "bytes": 2494,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 32,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 32, "scientific": 0},
       "path": "src/scf/cuda/direct_resident_tasks.hpp",
       "physical_lines": 45,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -2398,26 +1362,12 @@
     },
     {
       "bytes": 6298,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 9,
-        "scientific": 90
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 9, "scientific": 90},
       "path": "src/scf/cuda/direct_schwarz_kernels.cu",
       "physical_lines": 128,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
       "regions": [
-        {
-          "code_lines": 9,
-          "first_line": 44,
-          "last_line": 63,
-          "reason": "Generic atomic maximum helper, retaining its original runtime classification.",
-          "role": "runtime",
-          "start": "__device__ void atomic_max_double",
-          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
-        }
+        {"code_lines": 9, "first_line": 44, "last_line": 63, "reason": "Generic atomic maximum helper, retaining its original runtime classification.", "role": "runtime", "start": "__device__ void atomic_max_double", "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"}
       ],
       "role": "scientific",
       "sha256": "7828470ba1b6ee8db555819f8ce9158379ca9c13a55369bbc3789aa5df37f7a6",
@@ -2425,13 +1375,7 @@
     },
     {
       "bytes": 951,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/scf/cuda/direct_schwarz_kernels.hpp",
       "physical_lines": 24,
       "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
@@ -2442,13 +1386,7 @@
     },
     {
       "bytes": 5233,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 82
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 82},
       "path": "src/scf/cuda/direct_screening.cuh",
       "physical_lines": 98,
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
@@ -2459,13 +1397,7 @@
     },
     {
       "bytes": 10795,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 163,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 163, "scientific": 0},
       "path": "src/scf/cuda/direct_task_encoding.cuh",
       "physical_lines": 199,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2476,26 +1408,12 @@
     },
     {
       "bytes": 13718,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 193,
-        "scientific": 10
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 193, "scientific": 10},
       "path": "src/scf/cuda/direct_tile_compaction.cu",
       "physical_lines": 241,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
       "regions": [
-        {
-          "code_lines": 10,
-          "first_line": 35,
-          "last_line": 45,
-          "reason": "Per-item FP32 contribution cutoff tied to the physical Fock error budget.",
-          "role": "scientific",
-          "start": "__device__ __forceinline__ double mixed_fock_item_cutoff",
-          "stop": "template <bool Unrestricted, DirectScreeningPurpose Purpose>"
-        }
+        {"code_lines": 10, "first_line": 35, "last_line": 45, "reason": "Per-item FP32 contribution cutoff tied to the physical Fock error budget.", "role": "scientific", "start": "__device__ __forceinline__ double mixed_fock_item_cutoff", "stop": "template <bool Unrestricted, DirectScreeningPurpose Purpose>"}
       ],
       "role": "runtime",
       "sha256": "627e875f2764d51f23830640afcf966ea59d0a6b9080506d4ed00d11aeed4453",
@@ -2503,13 +1421,7 @@
     },
     {
       "bytes": 2119,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 31,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 31, "scientific": 0},
       "path": "src/scf/cuda/direct_tile_compaction.hpp",
       "physical_lines": 42,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -2520,13 +1432,7 @@
     },
     {
       "bytes": 10628,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 176,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 176, "scientific": 0},
       "path": "src/scf/cuda/direct_tile_validation.cu",
       "physical_lines": 190,
       "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
@@ -2537,13 +1443,7 @@
     },
     {
       "bytes": 976,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/scf/cuda/direct_tile_validation.hpp",
       "physical_lines": 22,
       "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
@@ -2554,13 +1454,7 @@
     },
     {
       "bytes": 1628,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 32,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 32, "scientific": 0},
       "path": "src/scf/cuda/eigensolver.hpp",
       "physical_lines": 46,
       "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
@@ -2571,13 +1465,7 @@
     },
     {
       "bytes": 21658,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 408,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 408, "scientific": 0},
       "path": "src/scf/cuda/eigensolver_kernels.cu",
       "physical_lines": 458,
       "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
@@ -2588,13 +1476,7 @@
     },
     {
       "bytes": 3186,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 36,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 36, "scientific": 0},
       "path": "src/scf/cuda/eigensolver_kernels.hpp",
       "physical_lines": 55,
       "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
@@ -2605,13 +1487,7 @@
     },
     {
       "bytes": 574,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 14,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 14, "scientific": 0},
       "path": "src/scf/cuda/eri_tensor_index.cuh",
       "physical_lines": 22,
       "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
@@ -2622,13 +1498,7 @@
     },
     {
       "bytes": 2327,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 45,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 45, "scientific": 0},
       "path": "src/scf/cuda/gaussian_geometry.cuh",
       "physical_lines": 57,
       "reason": "Unchanged coordinate seeds, distances and Gaussian product geometry extracted from the existing runtime region.",
@@ -2639,13 +1509,7 @@
     },
     {
       "bytes": 2678,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 55
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 55},
       "path": "src/scf/cuda/hermite_recurrence.cuh",
       "physical_lines": 65,
       "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
@@ -2656,13 +1520,7 @@
     },
     {
       "bytes": 442,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 7,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 7, "scientific": 0},
       "path": "src/scf/cuda/matrix_index.cuh",
       "physical_lines": 14,
       "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
@@ -2673,13 +1531,7 @@
     },
     {
       "bytes": 1409,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 20,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 20, "scientific": 0},
       "path": "src/scf/cuda/matrix_library.hpp",
       "physical_lines": 33,
       "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
@@ -2690,13 +1542,7 @@
     },
     {
       "bytes": 2180,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 46,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 46, "scientific": 0},
       "path": "src/scf/cuda/metadata_upload.hpp",
       "physical_lines": 60,
       "reason": "Shared checked metadata upload/cleanup and CUDA status mapping used by direct and DF sources; no provider equations.",
@@ -2707,13 +1553,7 @@
     },
     {
       "bytes": 5443,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 102
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 102},
       "path": "src/scf/cuda/nuclear_kernels.cu",
       "physical_lines": 111,
       "reason": "Existing nuclear repulsion and force equations, including Dual coordinate response; preserved as native scientific arithmetic.",
@@ -2724,13 +1564,7 @@
     },
     {
       "bytes": 834,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 13,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 13, "scientific": 0},
       "path": "src/scf/cuda/nuclear_kernels.hpp",
       "physical_lines": 22,
       "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
@@ -2741,13 +1575,7 @@
     },
     {
       "bytes": 8911,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 151
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 151},
       "path": "src/scf/cuda/one_electron_derivatives.cu",
       "physical_lines": 167,
       "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
@@ -2758,13 +1586,7 @@
     },
     {
       "bytes": 1819,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 17,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 17, "scientific": 0},
       "path": "src/scf/cuda/one_electron_derivatives.cuh",
       "physical_lines": 39,
       "reason": "First-derivative views and launch declarations.",
@@ -2775,13 +1597,7 @@
     },
     {
       "bytes": 1082,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 16,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 16, "scientific": 0},
       "path": "src/scf/cuda/one_electron_export_kernels.hpp",
       "physical_lines": 25,
       "reason": "Borrowed retained-response and nuclear launch ABI; no new operator formula.",
@@ -2792,13 +1608,7 @@
     },
     {
       "bytes": 7381,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 115,
-        "runtime": 0,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 115, "runtime": 0, "scientific": 0},
       "path": "src/scf/cuda/one_electron_force_reference.cu",
       "physical_lines": 130,
       "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
@@ -2809,13 +1619,7 @@
     },
     {
       "bytes": 1576,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 21,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 21, "scientific": 0},
       "path": "src/scf/cuda/one_electron_force_reference.hpp",
       "physical_lines": 30,
       "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
@@ -2826,13 +1630,7 @@
     },
     {
       "bytes": 987,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 17
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 17},
       "path": "src/scf/cuda/one_electron_force_workspace.hpp",
       "physical_lines": 28,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2843,13 +1641,7 @@
     },
     {
       "bytes": 12469,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 238
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 238},
       "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
       "physical_lines": 259,
       "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
@@ -2860,13 +1652,7 @@
     },
     {
       "bytes": 4229,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 75
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 75},
       "path": "src/scf/cuda/one_electron_native_attraction.cuh",
       "physical_lines": 86,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2877,13 +1663,7 @@
     },
     {
       "bytes": 7315,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 126
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 126},
       "path": "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
       "physical_lines": 145,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2894,13 +1674,7 @@
     },
     {
       "bytes": 9087,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 153
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 153},
       "path": "src/scf/cuda/one_electron_native_contraction.cuh",
       "physical_lines": 164,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2911,13 +1685,7 @@
     },
     {
       "bytes": 15170,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 244
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 244},
       "path": "src/scf/cuda/one_electron_native_force.cuh",
       "physical_lines": 288,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2928,13 +1696,7 @@
     },
     {
       "bytes": 9205,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 171
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 171},
       "path": "src/scf/cuda/one_electron_native_overlap.cuh",
       "physical_lines": 198,
       "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
@@ -2945,13 +1707,7 @@
     },
     {
       "bytes": 2549,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 41,
-        "runtime": 0,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 41, "runtime": 0, "scientific": 0},
       "path": "src/scf/cuda/one_electron_reference.cu",
       "physical_lines": 47,
       "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
@@ -2962,13 +1718,7 @@
     },
     {
       "bytes": 1766,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 35,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 35, "scientific": 0},
       "path": "src/scf/cuda/one_electron_values.cu",
       "physical_lines": 41,
       "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
@@ -2979,13 +1729,7 @@
     },
     {
       "bytes": 2077,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 30,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 30, "scientific": 0},
       "path": "src/scf/cuda/one_electron_values.cuh",
       "physical_lines": 51,
       "reason": "Immutable public normalized AO view and value launch ABI.",
@@ -2996,13 +1740,7 @@
     },
     {
       "bytes": 6413,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 141,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 141, "scientific": 0},
       "path": "src/scf/cuda/reference_export.cuh",
       "physical_lines": 157,
       "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
@@ -3013,13 +1751,7 @@
     },
     {
       "bytes": 1920,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 34,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 34, "scientific": 0},
       "path": "src/scf/cuda/resources.hpp",
       "physical_lines": 55,
       "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
@@ -3030,13 +1762,7 @@
     },
     {
       "bytes": 688,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 13,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 13, "scientific": 0},
       "path": "src/scf/cuda/runtime_support.hpp",
       "physical_lines": 24,
       "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
@@ -3047,13 +1773,7 @@
     },
     {
       "bytes": 7850,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 172,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 172, "scientific": 0},
       "path": "src/scf/cuda/scalar_math.cuh",
       "physical_lines": 209,
       "reason": "Unchanged generic scalar/AD, precision traits, elementary math and order-zero Boys helper extracted from the previously classified runtime region.",
@@ -3064,26 +1784,12 @@
     },
     {
       "bytes": 20543,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 273,
-        "scientific": 39
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 273, "scientific": 39},
       "path": "src/scf/cuda/scf_convergence_kernels.cu",
       "physical_lines": 370,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
       "regions": [
-        {
-          "code_lines": 39,
-          "first_line": 11,
-          "last_line": 56,
-          "reason": "Existing RHF/UHF electronic energy contractions; convergence routing remains generic runtime.",
-          "role": "scientific",
-          "start": "__global__ void compute_energy_kernel",
-          "stop": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard"
-        }
+        {"code_lines": 39, "first_line": 11, "last_line": 56, "reason": "Existing RHF/UHF electronic energy contractions; convergence routing remains generic runtime.", "role": "scientific", "start": "__global__ void compute_energy_kernel", "stop": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard"}
       ],
       "role": "runtime",
       "sha256": "d0e3955be82c8551db646bfc9557f74921d41b1ffd66ab1f3f11a5f2c4d035f6",
@@ -3091,13 +1797,7 @@
     },
     {
       "bytes": 4442,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 49,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 49, "scientific": 0},
       "path": "src/scf/cuda/scf_convergence_kernels.hpp",
       "physical_lines": 69,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3108,35 +1808,13 @@
     },
     {
       "bytes": 18111,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 190,
-        "scientific": 123
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 190, "scientific": 123},
       "path": "src/scf/cuda/scf_density_kernels.cu",
       "physical_lines": 341,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
       "regions": [
-        {
-          "code_lines": 71,
-          "first_line": 11,
-          "last_line": 87,
-          "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations.",
-          "role": "scientific",
-          "start": "__global__ void build_density_kernel",
-          "stop": "__device__ double warm_density_block_sum"
-        },
-        {
-          "code_lines": 52,
-          "first_line": 202,
-          "last_line": 255,
-          "reason": "Existing energy-weighted density used by stationary Pulay forces.",
-          "role": "scientific",
-          "start": "__global__ void build_weighted_density_kernel",
-          "stop": "__global__ void sum_uhf_spin_matrices_kernel"
-        }
+        {"code_lines": 71, "first_line": 11, "last_line": 87, "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations.", "role": "scientific", "start": "__global__ void build_density_kernel", "stop": "__device__ double warm_density_block_sum"},
+        {"code_lines": 52, "first_line": 202, "last_line": 255, "reason": "Existing energy-weighted density used by stationary Pulay forces.", "role": "scientific", "start": "__global__ void build_weighted_density_kernel", "stop": "__global__ void sum_uhf_spin_matrices_kernel"}
       ],
       "role": "runtime",
       "sha256": "2adfc75ac1e9ef7e53bc185ba866958b8e46bbf4aa8cea2f11cbc42176db1293",
@@ -3144,13 +1822,7 @@
     },
     {
       "bytes": 4061,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 45,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 45, "scientific": 0},
       "path": "src/scf/cuda/scf_density_kernels.hpp",
       "physical_lines": 65,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3161,35 +1833,13 @@
     },
     {
       "bytes": 14450,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 34,
-        "scientific": 211
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 34, "scientific": 211},
       "path": "src/scf/cuda/scf_diis_kernels.cu",
       "physical_lines": 281,
       "reason": "Native launch wrappers select DIIS schedules; method-specific residual Gram construction, history retirement, solve and Fock extrapolation are classified below.",
       "regions": [
-        {
-          "code_lines": 35,
-          "first_line": 11,
-          "last_line": 50,
-          "reason": "DIIS-specific circular live-history selection and deterministic residual Gram partials, including substitution of the pending current residual. This is not a generic reduction API.",
-          "role": "scientific",
-          "start": "__global__ void diis_dot_partials_kernel",
-          "stop": "void launch_diis_dot_partials("
-        },
-        {
-          "code_lines": 176,
-          "first_line": 61,
-          "last_line": 259,
-          "reason": "Native DIIS Gram assembly, normalization, augmented solve, dependent-history retirement and Fock extrapolation, including local state glue. Conservatively includes pre-existing arithmetic reclassified from runtime; this is not physical code growth or retirement.",
-          "role": "scientific",
-          "start": "template <bool CooperativeDots>",
-          "stop": "void launch_update_diis_kernel("
-        }
+        {"code_lines": 35, "first_line": 11, "last_line": 50, "reason": "DIIS-specific circular live-history selection and deterministic residual Gram partials, including substitution of the pending current residual. This is not a generic reduction API.", "role": "scientific", "start": "__global__ void diis_dot_partials_kernel", "stop": "void launch_diis_dot_partials("},
+        {"code_lines": 176, "first_line": 61, "last_line": 259, "reason": "Native DIIS Gram assembly, normalization, augmented solve, dependent-history retirement and Fock extrapolation, including local state glue. Conservatively includes pre-existing arithmetic reclassified from runtime; this is not physical code growth or retirement.", "role": "scientific", "start": "template <bool CooperativeDots>", "stop": "void launch_update_diis_kernel("}
       ],
       "role": "runtime",
       "sha256": "32c327d1aec829f9874ae0b426c31fc2b849eff3847f545c09e3bf3539ba5793",
@@ -3197,13 +1847,7 @@
     },
     {
       "bytes": 2068,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 21,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 21, "scientific": 0},
       "path": "src/scf/cuda/scf_diis_kernels.hpp",
       "physical_lines": 37,
       "reason": "DIIS launch declarations and scratch/schedule interface; numerical implementation is classified in scf_diis_kernels.cu.",
@@ -3214,13 +1858,7 @@
     },
     {
       "bytes": 12524,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 194,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 194, "scientific": 0},
       "path": "src/scf/cuda/scf_matrix_kernels.cu",
       "physical_lines": 216,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3231,13 +1869,7 @@
     },
     {
       "bytes": 3881,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 42,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 42, "scientific": 0},
       "path": "src/scf/cuda/scf_matrix_kernels.hpp",
       "physical_lines": 62,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3248,13 +1880,7 @@
     },
     {
       "bytes": 5254,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 88,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 88, "scientific": 0},
       "path": "src/scf/cuda/scf_state_kernels.cu",
       "physical_lines": 102,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3265,13 +1891,7 @@
     },
     {
       "bytes": 1906,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 24,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 24, "scientific": 0},
       "path": "src/scf/cuda/scf_state_kernels.hpp",
       "physical_lines": 36,
       "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
@@ -3282,13 +1902,7 @@
     },
     {
       "bytes": 7001,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 0,
-        "scientific": 119
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 119},
       "path": "src/scf/cuda/weighted_eri_kernels.cu",
       "physical_lines": 134,
       "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
@@ -3299,13 +1913,7 @@
     },
     {
       "bytes": 1074,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/scf/cuda/weighted_eri_kernels.hpp",
       "physical_lines": 24,
       "reason": "Borrowed weighted-primitive launch ABI; public weight semantics and output layout are unchanged.",
@@ -3316,13 +1924,7 @@
     },
     {
       "bytes": 2093,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 12,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 12, "scientific": 0},
       "path": "src/scf/cuda_direct_jk_device.hpp",
       "physical_lines": 38,
       "reason": "Borrowed direct-provider stream, resident matrix and numerical-status contract; no new J/K dispatch or scientific equations.",
@@ -3333,13 +1935,7 @@
     },
     {
       "bytes": 19897,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 429,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 429, "scientific": 0},
       "path": "src/scf/cuda_eigensolver_probe.cu",
       "physical_lines": 464,
       "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
@@ -3350,26 +1946,12 @@
     },
     {
       "bytes": 6590,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 117,
-        "scientific": 26
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 117, "scientific": 26},
       "path": "src/scf/cuda_fock.cu",
       "physical_lines": 159,
       "reason": "Dense bucket owner and stable execution interface.",
       "regions": [
-        {
-          "code_lines": 26,
-          "first_line": 11,
-          "last_line": 38,
-          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
-          "role": "scientific",
-          "start": "__global__ void rhf_fock_bucket_kernel",
-          "stop": "struct CudaFockBucketHandle"
-        }
+        {"code_lines": 26, "first_line": 11, "last_line": 38, "reason": "Concrete cached-tensor RHF J/K contraction equation.", "role": "scientific", "start": "__global__ void rhf_fock_bucket_kernel", "stop": "struct CudaFockBucketHandle"}
       ],
       "role": "runtime",
       "sha256": "93330967c98637368a8c219295d170bb0af34aa64fc0229b95975f4131bd9449",
@@ -3377,13 +1959,7 @@
     },
     {
       "bytes": 16764,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 262,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 262, "scientific": 0},
       "path": "src/scf/direct_task_layout.hpp",
       "physical_lines": 343,
       "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
@@ -3394,13 +1970,7 @@
     },
     {
       "bytes": 10287,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 206,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 206, "scientific": 0},
       "path": "src/scf/weighted_eri_runtime.hpp",
       "physical_lines": 247,
       "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
@@ -3411,13 +1981,7 @@
     },
     {
       "bytes": 849,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 15,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 15, "scientific": 0},
       "path": "src/tensor/cuda_error.hpp",
       "physical_lines": 25,
       "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
@@ -3428,13 +1992,7 @@
     },
     {
       "bytes": 8064,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 159,
-        "scientific": 0
-      },
+      "code_lines": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 159, "scientific": 0},
       "path": "src/tensor/cuda_runtime.cuh",
       "physical_lines": 191,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
@@ -3446,101 +2004,108 @@
   ],
   "generated": [
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_value_policy",
-      "outputs": [
-        "generated/generated_one_electron_policy.cuh"
+      "files": [
+        {"bytes": 1687, "code_lines": 36, "path": "generated/generated_one_electron_policy.cuh", "sha256": "1b14c7b270eb4f910954877ce8e5e1a8edac24d45fef6e5ab9d94b0b6c8486f5"}
       ],
+      "measurement": "explicit build",
+      "name": "one_electron_value_policy",
+      "outputs": ["generated/generated_one_electron_policy.cuh"],
       "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_values",
-      "outputs": [
-        "generated/generated_one_electron_values.cuh"
+      "files": [
+        {"bytes": 3100335, "code_lines": 84286, "path": "generated/generated_one_electron_values.cuh", "sha256": "e169833c9d9313edaf1978d25dadea2234e45eb5541f5c573263316f4e43728f"}
       ],
+      "measurement": "explicit build",
+      "name": "one_electron_values",
+      "outputs": ["generated/generated_one_electron_values.cuh"],
       "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_derivatives",
-      "outputs": [
-        "generated/generated_one_electron_derivatives.cuh"
+      "files": [
+        {"bytes": 7647364, "code_lines": 207007, "path": "generated/generated_one_electron_derivatives.cuh", "sha256": "00d051c57ae32536ef14171fdbd09d03f504d516db36bd29e8d01d0191593b73"}
       ],
+      "measurement": "explicit build",
+      "name": "one_electron_derivatives",
+      "outputs": ["generated/generated_one_electron_derivatives.cuh"],
       "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_values",
-      "outputs": [
-        "generated/df_values.cuh"
+      "files": [
+        {"bytes": 488603, "code_lines": 6078, "path": "generated/df_values.cuh", "sha256": "c2026fce24ca75ea8973306fc6121e9f4db3aa54a2b62aa1520cede7c71d8bbd"}
       ],
+      "measurement": "explicit build",
+      "name": "df_values",
+      "outputs": ["generated/df_values.cuh"],
       "owner": "python/vibeqc_compiler/integral/df_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_derivatives",
-      "outputs": [
-        "generated/generated_df_derivatives.cuh"
+      "files": [
+        {"bytes": 716954, "code_lines": 21998, "path": "generated/generated_df_derivatives.cuh", "sha256": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd"}
       ],
+      "measurement": "explicit build",
+      "name": "df_derivatives",
+      "outputs": ["generated/generated_df_derivatives.cuh"],
       "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_shell_derivatives",
-      "outputs": [
-        "generated/generated_df_shell_derivatives.cuh"
+      "files": [
+        {"bytes": 57310, "code_lines": 1763, "path": "generated/generated_df_shell_derivatives.cuh", "sha256": "36780dfb9fae3f1625917cdb03f9316c74cd8dea4e95ef0869a97407e21b7cc9"}
       ],
+      "measurement": "explicit build",
+      "name": "df_shell_derivatives",
+      "outputs": ["generated/generated_df_shell_derivatives.cuh"],
       "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_rys_roots",
-      "outputs": [
-        "generated/generated_df_rys.cuh"
+      "files": [
+        {"bytes": 2096, "code_lines": 30, "path": "generated/generated_df_rys.cuh", "sha256": "5fd6a8c1cdaefefa464a33f2b8743585ea2fc77fe922dfb815edea245ca248d9"}
       ],
+      "measurement": "explicit build",
+      "name": "df_rys_roots",
+      "outputs": ["generated/generated_df_rys.cuh"],
       "owner": "python/vibeqc_compiler/integral/df_rys.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_rys_shell",
-      "outputs": [
-        "generated/generated_df_rys_shell.cuh",
-        "generated/generated_df_rys_policy.hpp"
+      "files": [
+        {"bytes": 2913, "code_lines": 70, "path": "generated/generated_df_rys_shell.cuh", "sha256": "99cb64c0cfea27e21eef0f9c40cb7483d0fc688b3c01f5ef19d4eb7bd5a9e613"},
+        {"bytes": 432, "code_lines": 8, "path": "generated/generated_df_rys_policy.hpp", "sha256": "d89791e9e4fde768c2a4851cca86cbdad6d2788d22898a4f425f4648b36303f5"}
       ],
+      "measurement": "explicit build",
+      "name": "df_rys_shell",
+      "outputs": ["generated/generated_df_rys_shell.cuh", "generated/generated_df_rys_policy.hpp"],
       "owner": "python/vibeqc_compiler/integral/df_rys_shell.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "weighted_eri",
-      "outputs": [
-        "generated/weighted_eri.cuh"
+      "files": [
+        {"bytes": 6976, "code_lines": 140, "path": "generated/weighted_eri.cuh", "sha256": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c"}
       ],
+      "measurement": "explicit build",
+      "name": "weighted_eri",
+      "outputs": ["generated/weighted_eri.cuh"],
       "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "aot_integrals",
-      "outputs": [
-        "generated/production_shell_kernels/**/*.cu",
-        "generated/production_shell_kernels/**/*.cuh",
-        "generated/production_shell_kernels/**/*.hpp"
+      "files": [
+        {"bytes": 5411313, "code_lines": 87485, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu", "sha256": "a5c16bb800d7932cdac9172f47e0fa5b6d5db4923dfa7aa048e7d1a7cf0636bf"},
+        {"bytes": 2538460, "code_lines": 41159, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu", "sha256": "cbe442cd1a68e9424f7008850e0056bcda3f61a78fc01e5a6381070594acd1fc"},
+        {"bytes": 1771129, "code_lines": 28991, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu", "sha256": "c6db029c35f589fd6f8c7376d047dadf1a969223f41f01b62d53ed1c7994f26a"},
+        {"bytes": 1350250, "code_lines": 21734, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu", "sha256": "f7f0fcf2c61bea04438c45de57c105c21ca9bb54680a8d1861fca3dbe04d6c46"},
+        {"bytes": 1093094, "code_lines": 17566, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu", "sha256": "c514b912fae0fab0b7c5c8c1dc5acc8dfb37a89e65e912fc1b445cd066927748"},
+        {"bytes": 1034512, "code_lines": 16847, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu", "sha256": "7be5c404b378a366e90a2a5fb9da3d557b4d61198bcd5ebc005b9b4159386fbf"},
+        {"bytes": 871861, "code_lines": 14268, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu", "sha256": "6fe5a223f9b7e2d5f27768ec5d661e93ca5b4b8bacf1f1a61955ab72689deae2"},
+        {"bytes": 979891, "code_lines": 16017, "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu", "sha256": "69883972e00d71fc9c9590aace3cdb4ba00654943f90cdd4d23c04c2f561ede9"},
+        {"bytes": 61259, "code_lines": 828, "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu", "sha256": "9d8ba1e55539f177f318569a513aad001b4bfe53be59cf1f6a5c943287581955"},
+        {"bytes": 1779, "code_lines": 48, "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp", "sha256": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9"}
       ],
+      "measurement": "explicit build",
+      "name": "aot_integrals",
+      "outputs": ["generated/production_shell_kernels/**/*.cu", "generated/production_shell_kernels/**/*.cuh", "generated/production_shell_kernels/**/*.hpp"],
       "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_tensor",
       "outputs": [],
       "owner": "python/vibeqc_compiler/tensor",
@@ -3548,7 +2113,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_xc",
       "outputs": [],
       "owner": "python/vibeqc_compiler/xc",
@@ -3556,7 +2121,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_dft",
       "outputs": [],
       "owner": "python/vibeqc_compiler/dft",
@@ -3564,61 +2129,49 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_integral",
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "ao_grid_policy",
-      "outputs": [
-        "generated/generated_grid_policy.cu"
+      "files": [
+        {"bytes": 4542, "code_lines": 174, "path": "generated/generated_grid_policy.cu", "sha256": "952d12fd6dd58e7b7121b1193aeae39e5157686bea7a3e68c12cf7c5e87d252c"}
       ],
+      "measurement": "explicit build",
+      "name": "ao_grid_policy",
+      "outputs": ["generated/generated_grid_policy.cu"],
       "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
       "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_policies",
-      "outputs": [
-        "generated/generated_df_policy.cuh",
-        "generated/generated_df_derivative_policy.cuh",
-        "generated/generated_df_derivative_schedule.cuh"
+      "files": [
+        {"bytes": 1602, "code_lines": 27, "path": "generated/generated_df_policy.cuh", "sha256": "0a6389d7c326c5a162e4768d2535433445ccb32a345ad95957191fe6a5289b20"},
+        {"bytes": 1611, "code_lines": 32, "path": "generated/generated_df_derivative_policy.cuh", "sha256": "beb7ee985095e7ace0d466be897e4dadbbd5adcbe80fbacca55e2d64dcbbd30b"},
+        {"bytes": 407, "code_lines": 9, "path": "generated/generated_df_derivative_schedule.cuh", "sha256": "5caba2a73da662358777f7640b91d5f77710b22f4ac38a8c401225f6472e89af"}
       ],
+      "measurement": "explicit build",
+      "name": "df_policies",
+      "outputs": ["generated/generated_df_policy.cuh", "generated/generated_df_derivative_policy.cuh", "generated/generated_df_derivative_schedule.cuh"],
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
     },
     {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "ecp_quadrature",
-      "outputs": [
-        "generated/generated_ecp_ao.cuh"
+      "files": [
+        {"bytes": 15768, "code_lines": 542, "path": "generated/generated_ecp_ao.cuh", "sha256": "3c80c44c94642f4bd99c1f6c5013c9ee11a34c8cff07dec86b363a20ccc815a6"}
       ],
+      "measurement": "explicit build",
+      "name": "ecp_quadrature",
+      "outputs": ["generated/generated_ecp_ao.cuh"],
       "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
     }
   ],
-  "generated_bytes": 0,
-  "maintained_code_lines": {
-    "fallback": 0,
-    "oracle": 10,
-    "performance_exception": 156,
-    "runtime": 9832,
-    "scientific": 11900
-  },
+  "generated_bytes": 27162148,
+  "maintained_code_lines": {"fallback": 0, "oracle": 10, "performance_exception": 156, "runtime": 9832, "scientific": 11900},
   "migration_ledger": {
     "ao_grid": {
       "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
-      "evidence": [
-        "docs/dft_grid.md",
-        "docs/density_sources.md",
-        "docs/spatial_tasks.md",
-        "benchmarks/results/spatial-tasks/cpu/summary.json",
-        "benchmarks/results/spatial-tasks/cuda/summary.json"
-      ],
+      "evidence": ["docs/dft_grid.md", "docs/density_sources.md", "docs/spatial_tasks.md", "benchmarks/results/spatial-tasks/cpu/summary.json", "benchmarks/results/spatial-tasks/cuda/summary.json"],
       "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules; current-source spatial diagnostic/device tasks and fixed-mask prepared E/V reuse those routes with explicit native CPU XC/scatter; the same generated feature bilinears serve the native CPU RKS occupied-factor consumer with current producer identity and exact original-D fallback; explicit current-source D/C registrations expose workload/resource/packing records through the existing autotune entry without automatic promotion",
       "missing_capability": "Whole AO traversal remains counted as scientific glue; native CPU D and XC expressions retain their existing owners. Broader execution promotion remains evidence-based; GPU SCF, complete forces and automatic D/C selection remain #162/#163/#168.",
       "owner": "ao_grid",
@@ -3627,13 +2180,7 @@
     },
     "df_derivatives": {
       "current_default": "Generated two-/three-center center derivatives on shared normalized primitive/AO traversal; bounded cooperative weighted response is the sole CUDA HF force route.",
-      "evidence": [
-        "benchmarks/results/cuda-ownership/df/publication.json",
-        "benchmarks/results/cuda-ownership/df/validation.json",
-        "benchmarks/results/cuda-ownership/df/raw-source.json",
-        "benchmarks/results/cuda-ownership/df/README.md",
-        "benchmarks/results/issue308-shell-schedules/summary.json"
-      ],
+      "evidence": ["benchmarks/results/cuda-ownership/df/publication.json", "benchmarks/results/cuda-ownership/df/validation.json", "benchmarks/results/cuda-ownership/df/raw-source.json", "benchmarks/results/cuda-ownership/df/README.md", "benchmarks/results/issue308-shell-schedules/summary.json"],
       "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction; compact scheduling defaults on for qualified resident 192--384-AO sm_120 endpoints.",
       "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
       "owner": "df_derivatives",
@@ -3642,21 +2189,7 @@
     },
     "df_response_weights": {
       "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Within that resident domain, automatic occupied-space response additionally requires rank-160 RHF, the actual RTX 5090 identity, and a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
-      "evidence": [
-        "tests/python/test_df_response_weights_cuda.py",
-        "benchmarks/results/issue206-metric-gemv/README.md",
-        "benchmarks/results/issue206-metric-gemv/summary.json",
-        "benchmarks/results/issue308-shell-schedules/summary.json",
-        "tests/python/test_df_resident_response_cuda.py",
-        "benchmarks/results/issue308-768ao-response/README.md",
-        "benchmarks/results/issue308-768ao-response/summary.json",
-        "tests/python/test_df_occupied_response_cuda.py",
-        "tests/native/test_df_occupied_response.cpp",
-        "benchmarks/results/issue377-379-df/README.md",
-        "tests/native/test_df_shell_pairs.cpp",
-        "tests/python/test_df_shell_derivatives_cuda.py",
-        "benchmarks/results/issue382-packed-df/README.md"
-      ],
+      "evidence": ["tests/python/test_df_response_weights_cuda.py", "benchmarks/results/issue206-metric-gemv/README.md", "benchmarks/results/issue206-metric-gemv/summary.json", "benchmarks/results/issue308-shell-schedules/summary.json", "tests/python/test_df_resident_response_cuda.py", "benchmarks/results/issue308-768ao-response/README.md", "benchmarks/results/issue308-768ao-response/summary.json", "tests/python/test_df_occupied_response_cuda.py", "tests/native/test_df_occupied_response.cpp", "benchmarks/results/issue377-379-df/README.md", "tests/native/test_df_shell_pairs.cpp", "tests/python/test_df_shell_derivatives_cuda.py", "benchmarks/results/issue382-packed-df/README.md"],
       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
       "owner": "scf_tensor",
@@ -3666,11 +2199,7 @@
     },
     "df_values": {
       "current_default": "Generated Rys values only; bounded transformed outputs use compiler-directed four-lane primitive groups across eight source terms per warp.",
-      "evidence": [
-        "benchmarks/results/generated-df-values-142/promotion.json",
-        "benchmarks/results/generated-df-values-142/README.md",
-        "benchmarks/results/cuda-ownership/df/publication.json"
-      ],
+      "evidence": ["benchmarks/results/generated-df-values-142/promotion.json", "benchmarks/results/generated-df-values-142/README.md", "benchmarks/results/cuda-ownership/df/publication.json"],
       "generated_capability": "All two-/three-center values through f and public spherical transforms instantiate the same rank-generic normalized traversal as derivatives.",
       "missing_capability": "None for promoted DF values; shared ERI/Dual recurrences remain for Direct and separately gated one-electron derivatives.",
       "owner": "df_values",
@@ -3679,13 +2208,7 @@
     },
     "direct_integrals": {
       "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
-      "evidence": [
-        "docs/shell_codegen.md",
-        "docs/weighted_eri.md",
-        "docs/second_integral_derivatives.md",
-        "python/vibeqc_compiler/integral/production_shell_classes.json",
-        "benchmarks/results/weighted-eri-144/README.md"
-      ],
+      "evidence": ["docs/shell_codegen.md", "docs/weighted_eri.md", "docs/second_integral_derivatives.md", "python/vibeqc_compiler/integral/production_shell_classes.json", "benchmarks/results/weighted-eri-144/README.md"],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
       "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
       "owner": "direct_integrals",
@@ -3694,11 +2217,7 @@
     },
     "ecp": {
       "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
-      "evidence": [
-        "tests/python/test_ecp.py",
-        "tests/python/test_ecp_ir.py",
-        "tests/native/test_ecp_projector.cpp"
-      ],
+      "evidence": ["tests/python/test_ecp.py", "tests/python/test_ecp_ir.py", "tests/native/test_ecp_projector.cpp"],
       "generated_capability": "Gaussian AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA.",
       "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
       "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py and src/integrals/ecp_cuda.cu",
@@ -3707,9 +2226,7 @@
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
-      "evidence": [
-        "docs/incremental_low_rank.md"
-      ],
+      "evidence": ["docs/incremental_low_rank.md"],
       "generated_capability": "no new shell/operator formula; existing raw source and shared native runtime",
       "missing_capability": "generic retained-factor J/K has no integrated TensorIR method adapter yet",
       "owner": "low_rank",
@@ -3718,12 +2235,7 @@
     },
     "one_electron_derivatives": {
       "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
-      "evidence": [
-        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
-        "docs/one_electron_derivatives.md",
-        "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
-        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"
-      ],
+      "evidence": ["benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json", "docs/one_electron_derivatives.md", "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json", "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"],
       "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
       "missing_capability": "Generated response needs schedules that remove measured complete-endpoint regressions: resident DF warm replay 4.586/5.429 ms and Direct sdf18 changed geometry 36.667/39.352 ms (native/generated, archived revisions). These measurements justify retention, not a completed derivative migration. Retained kernels now compile in one_electron_reference.cu and one_electron_force_reference.cu with bounded shared numerical headers; this decomposition does not change promotion or retirement status.",
       "owner": "one_electron_derivatives",
@@ -3732,11 +2244,7 @@
     },
     "one_electron_values": {
       "current_default": "Generated S/T/V values on shared shell-warp AO-pair schedule; thread schedule remains diagnostic",
-      "evidence": [
-        "benchmarks/results/cuda-ownership/one-electron/publication.json",
-        "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
-        "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
-      ],
+      "evidence": ["benchmarks/results/cuda-ownership/one-electron/publication.json", "benchmarks/results/one-electron-values-rtx5090/raw-summary.json", "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"],
       "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
       "missing_capability": "None for value replacement; independent derivative/force exceptions remain separately owned",
       "owner": "one_electron_values",
@@ -3745,10 +2253,7 @@
     },
     "runtime": {
       "current_default": "native shared allocation, stream, graph, ABI and library adapters",
-      "evidence": [
-        "docs/compiler_architecture.md",
-        "docs/scf_module_boundaries.md"
-      ],
+      "evidence": ["docs/compiler_architecture.md", "docs/scf_module_boundaries.md"],
       "generated_capability": "not applicable: generic runtime infrastructure",
       "missing_capability": "none; infrastructure remains native",
       "owner": "runtime",
@@ -3757,10 +2262,7 @@
     },
     "scf_tensor": {
       "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions and DIIS Gram/solve/extrapolation; direct J/K host adapters in cuda/direct_jk.cpp remain native after leaving the CUDA-only source census",
-      "evidence": [
-        "docs/architecture.md",
-        "benchmarks/results/issues388-391-df/README.md"
-      ],
+      "evidence": ["docs/architecture.md", "benchmarks/results/issues388-391-df/README.md"],
       "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
       "missing_capability": "integration of method equations into shared generated tensor execution, including DIIS circular-history Gram construction, normalization, dependent-history retirement and Fock extrapolation",
       "owner": "scf_tensor",
@@ -3769,18 +2271,7 @@
     },
     "xc": {
       "current_default": "Generated interior scalar expressions and compact CPU contractions; compiler spatial CUDA potentials enforce interior-v1. Resident native KS uses the shared scaled-domain point evaluator and ordinary-stream SCF.",
-      "evidence": [
-        "docs/xc_expressions.md",
-        "docs/xc_contractions.md",
-        "benchmarks/results/xc-contractions/README.md",
-        "docs/xc_scf_domain.md",
-        "tests/python/test_spatial_density_cuda.py",
-        "tests/python/test_dft_cuda.py",
-        "tools/validate_dft_endpoints.py",
-        "docs/xc_native_cuda.md",
-        "tests/python/test_ks_resources.py",
-        "tests/native/test_dft_api.cpp"
-      ],
+      "evidence": ["docs/xc_expressions.md", "docs/xc_contractions.md", "benchmarks/results/xc-contractions/README.md", "docs/xc_scf_domain.md", "tests/python/test_spatial_density_cuda.py", "tests/python/test_dft_cuda.py", "tools/validate_dft_endpoints.py", "docs/xc_native_cuda.md", "tests/python/test_ks_resources.py", "tests/native/test_dft_api.cpp"],
       "generated_capability": "audited scalar XC derivatives and compact native CPU LDA/GGA E/V, spin response and fixed-D geometric partials; compiler-owned AO/feature policies feed canonical prepared CUDA LDA/PBE contractions",
       "missing_capability": "Resident CPU/CUDA energy-only RKS/UKS, prepared replay, model options and resource planning are implemented. Complete timing/transport and source-bound workload evidence remain #162; stationary forces, generated device contraction replacement and performance promotion remain #163/#168.",
       "owner": "xc",
@@ -3789,90 +2280,18 @@
     }
   },
   "per_subsystem": {
-    "ao_grid": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 550,
-      "scientific": 162
-    },
-    "df_derivatives": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 718,
-      "scientific": 1116
-    },
-    "df_response_weights": {
-      "fallback": 0,
-      "oracle": 10,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 695
-    },
-    "df_values": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 179,
-      "scientific": 154
-    },
-    "direct_integrals": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 1644,
-      "scientific": 7090
-    },
-    "ecp": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 272
-    },
-    "low_rank": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 179,
-      "scientific": 65
-    },
-    "one_electron_derivatives": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 156,
-      "runtime": 0,
-      "scientific": 1277
-    },
-    "one_electron_values": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 35,
-      "scientific": 0
-    },
-    "runtime": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 4343,
-      "scientific": 5
-    },
-    "scf_tensor": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 1937,
-      "scientific": 671
-    },
-    "xc": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 247,
-      "scientific": 393
-    }
+    "ao_grid": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 550, "scientific": 162},
+    "df_derivatives": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 718, "scientific": 1116},
+    "df_response_weights": {"fallback": 0, "oracle": 10, "performance_exception": 0, "runtime": 0, "scientific": 695},
+    "df_values": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 179, "scientific": 154},
+    "direct_integrals": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 1644, "scientific": 7090},
+    "ecp": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 0, "scientific": 272},
+    "low_rank": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 179, "scientific": 65},
+    "one_electron_derivatives": {"fallback": 0, "oracle": 0, "performance_exception": 156, "runtime": 0, "scientific": 1277},
+    "one_electron_values": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 35, "scientific": 0},
+    "runtime": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 4343, "scientific": 5},
+    "scf_tensor": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 1937, "scientific": 671},
+    "xc": {"fallback": 0, "oracle": 0, "performance_exception": 0, "runtime": 247, "scientific": 393}
   },
   "schema": "vibeqc.cuda-ownership-report.v1"
 }

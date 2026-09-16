@@ -19,6 +19,7 @@ from pathlib import Path
 
 from vibeqc import Atom
 from vibeqc.calculator import _named_basis_shells
+from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model
 from vibeqc_compiler.integral.df_shell_derivatives import (
     shell_schedule,
     shell_work_model,
@@ -28,6 +29,8 @@ from benchmarks._cases import benchmark_cases
 from benchmarks.df_component_ledger import read_trace
 from benchmarks.df_policy_endpoint import CASES
 
+# Historical seven-class coverage grouping from #394. This is not an
+# availability mask: generated Rys execution currently supports only 000.
 RYS_PROTOTYPE = {
     (0, 0, 0),
     (0, 0, 1),
@@ -231,11 +234,21 @@ def reduce_work(record, shells):
         primitives = active * math.prod(signature[3:])
         if primitives != values["primitive_products"]:
             raise ValueError(f"host/device primitive count differs: {signature}")
+        roots = values.get("rys_evaluations", 0)
         if not (
-            values["geometry_preparations"] == values["boys_evaluations"] == primitives
+            values["geometry_preparations"]
+            == values["boys_evaluations"] + roots
+            == primitives
         ):
             raise ValueError("geometry/Boys counts differ from active primitive work")
-        if values["boys_order_sum"] != primitives * (sum(signature[:3]) + 1):
+        if roots and (signature[:3] != (0, 0, 0) or roots != primitives):
+            raise ValueError("Rys work must belong entirely to the generated 000 class")
+        if (
+            values.get("rys_roots", 0) != roots
+            or values.get("recurrence_states", 0) != 6 * roots
+        ):
+            raise ValueError("Rys root/recurrence counts differ from generated work")
+        if values["boys_order_sum"] != (primitives - roots) * (sum(signature[:3]) + 1):
             raise ValueError("requested Boys order disagrees with angular class")
         if (
             values["boys_evaluations"]
@@ -258,7 +271,11 @@ def reduce_work(record, shells):
     for angular, values in sorted(classes.items()):
         if dict(signature_sums[angular]) != values:
             raise ValueError(f"signature/class counts disagree: {angular}")
-        model = shell_work_model(angular)
+        model = (
+            shell_rys_work_model(angular)
+            if values.get("rys_evaluations")
+            else shell_work_model(angular)
+        )
         primitives = values["primitive_products"]
         for field in (
             "axis_polynomial_calls",
@@ -289,6 +306,7 @@ def reduce_work(record, shells):
         {
             "angular": angular,
             "work": values,
+            "lowering": "rys" if values.get("rys_evaluations") else "polynomial",
             "maximum_boys_order": sum(angular) + 1
             if values["boys_evaluations"]
             else None,

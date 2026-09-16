@@ -1,0 +1,268 @@
+{
+  "384": {
+    "scope": "Separate uninstrumented-kernel CUDA-activity windows; all repeated panels; these are not clean endpoint wall times.",
+    "profile_files": ["profiles/000.3.json", "profiles/000.4.json"],
+    "classes": [
+      {
+        "angular": [0, 0, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 24.120963,
+        "rys_policy_gpu_ms": 8.277454,
+        "rys_policy_lowering": "rys"
+      },
+      {
+        "angular": [0, 0, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 11.303659,
+        "rys_policy_gpu_ms": 11.306859,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [0, 0, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 4.042182,
+        "rys_policy_gpu_ms": 4.04391,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 22.166097,
+        "rys_policy_gpu_ms": 22.169073,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 31.534858,
+        "rys_policy_gpu_ms": 32.336305,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 11.906384,
+        "rys_policy_gpu_ms": 12.559319,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 15.678036,
+        "rys_policy_gpu_ms": 16.514172,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 15.062734,
+        "rys_policy_gpu_ms": 15.635155,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 6.190331,
+        "rys_policy_gpu_ms": 6.176379,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 7.777065,
+        "rys_policy_gpu_ms": 7.768105,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 12.462422,
+        "rys_policy_gpu_ms": 12.463093,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 3.871236,
+        "rys_policy_gpu_ms": 3.8577,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 13.105436,
+        "rys_policy_gpu_ms": 13.110972,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 11.873776,
+        "rys_policy_gpu_ms": 11.88072,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 5.123536,
+        "rys_policy_gpu_ms": 5.114864,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 0],
+        "launches": 1,
+        "polynomial_gpu_ms": 2.401751,
+        "rys_policy_gpu_ms": 2.405783,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 1],
+        "launches": 1,
+        "polynomial_gpu_ms": 2.852603,
+        "rys_policy_gpu_ms": 2.864187,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 2],
+        "launches": 1,
+        "polynomial_gpu_ms": 1.361773,
+        "rys_policy_gpu_ms": 1.360333,
+        "rys_policy_lowering": "polynomial"
+      }
+    ],
+    "total_shell_gpu_ms": [202.834842, 189.844383]
+  },
+  "768": {
+    "scope": "Separate uninstrumented-kernel CUDA-activity windows; all repeated panels; these are not clean endpoint wall times.",
+    "profile_files": ["profiles/000.1.json", "profiles/000.2.json"],
+    "classes": [
+      {
+        "angular": [0, 0, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 133.505449,
+        "rys_policy_gpu_ms": 54.970502,
+        "rys_policy_lowering": "rys"
+      },
+      {
+        "angular": [0, 0, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 60.031188,
+        "rys_policy_gpu_ms": 60.999458,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [0, 0, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 23.025465,
+        "rys_policy_gpu_ms": 23.379963,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 125.40176,
+        "rys_policy_gpu_ms": 127.274992,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 193.650302,
+        "rys_policy_gpu_ms": 195.597367,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 0, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 82.651085,
+        "rys_policy_gpu_ms": 83.69023,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 102.955592,
+        "rys_policy_gpu_ms": 104.175863,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 102.414276,
+        "rys_policy_gpu_ms": 103.359758,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [1, 1, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 44.406723,
+        "rys_policy_gpu_ms": 44.902471,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 48.773643,
+        "rys_policy_gpu_ms": 49.285873,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 85.641993,
+        "rys_policy_gpu_ms": 86.454035,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 0, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 28.082696,
+        "rys_policy_gpu_ms": 28.38401,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 91.998211,
+        "rys_policy_gpu_ms": 92.930316,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 86.263435,
+        "rys_policy_gpu_ms": 87.083896,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 1, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 38.699663,
+        "rys_policy_gpu_ms": 39.180143,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 0],
+        "launches": 13,
+        "polynomial_gpu_ms": 17.385922,
+        "rys_policy_gpu_ms": 17.598409,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 1],
+        "launches": 13,
+        "polynomial_gpu_ms": 21.288104,
+        "rys_policy_gpu_ms": 21.539913,
+        "rys_policy_lowering": "polynomial"
+      },
+      {
+        "angular": [2, 2, 2],
+        "launches": 13,
+        "polynomial_gpu_ms": 10.716135,
+        "rys_policy_gpu_ms": 10.858534,
+        "rys_policy_lowering": "polynomial"
+      }
+    ],
+    "total_shell_gpu_ms": [1296.891642, 1231.665733]
+  }
+}

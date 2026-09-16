@@ -100,6 +100,34 @@ def test_work_ledger_preserves_counts_groups_and_domain_hash(sss_record):
     assert result == reduce_work(copy.deepcopy(sss_record), [(0, 2, 0, 1)])
 
 
+def test_rys_work_conserves_primitive_domain_and_rejects_wrong_root_count(sss_record):
+    """Changing lowering must conserve tasks and explicitly account for its roots."""
+    for prefix in ("shell_000_work_", "shell_000_p2_2_2_work_"):
+        for field in (
+            "boys_evaluations",
+            "boys_order_sum",
+            "boys_series_iterations",
+            "boys_series",
+            "boys_small_argument",
+            "specialized_prepare_axis_calls",
+            "cache_coefficient_values",
+            "convolution_iterations",
+        ):
+            sss_record["counters"][prefix + field] = 0
+        for field, value in (
+            ("rys_evaluations", 8),
+            ("rys_roots", 8),
+            ("recurrence_states", 48),
+        ):
+            sss_record["counters"][prefix + field] = value
+    result = reduce_work(sss_record, [(0, 2, 0, 1)])
+    assert result["classes"][0]["lowering"] == "rys"
+    assert result["totals"]["primitive_products"] == 8
+    sss_record["counters"]["shell_000_p2_2_2_work_rys_roots"] = 16
+    with pytest.raises(ValueError, match="root/recurrence"):
+        reduce_work(sss_record, [(0, 2, 0, 1)])
+
+
 @pytest.mark.parametrize(
     "field,value,message",
     [

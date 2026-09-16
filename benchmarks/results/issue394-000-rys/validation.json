@@ -1,0 +1,131 @@
+{
+  "base_commit": "a90973d7aa43776348e0cdcb51927db01bab5cb4",
+  "source_patch_sha256": "6f444bfd9b35c15abbaec63c5cf6fc0f0cdd1997c75816a0404059f3610e11e7",
+  "library_sha256": "23a6f5a67bfcda9497e572133d68b57f77945c5795c680efe0418eb184efdb6b",
+  "native_source_identity": "f872ee40505c56033910d8ddca9388ea013608c115a30215f6352b7ef688c5d9",
+  "qualification_slurm_job_id": 9767,
+  "qualification_srun_exit_code": 0,
+  "cuda_visibility": "0",
+  "build": {
+    "result": "exit 0",
+    "preset": "cuda-release-sm120",
+    "fast_compile": false,
+    "command": "PATH=/group/software/cuda-12.9.1/bin:$PATH cmake --build --preset cuda-release-sm120 -j 8",
+    "log_sha256": "6bbc999b36f441c5747192cf9d875a99d8bd73a6e8bf3bd6fffb7517a567e4c6",
+    "cmake_cache_sha256": "5874335378c3751c5762afd35d1225b29c8567f6f22aa71e1ae1582be8dae400",
+    "full_measured_source_patch_sha256": "7a45449a96a6d5a9d83e496f2d8488d2c418cc49290fd2fc89cf2871f4242f26"
+  },
+  "generated_headers": {
+    "generated_df_rys_shell.cuh": {
+      "sha256": "99cb64c0cfea27e21eef0f9c40cb7483d0fc688b3c01f5ef19d4eb7bd5a9e613",
+      "bytes": 2913
+    },
+    "generated_df_derivatives.cuh": {
+      "sha256": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd",
+      "bytes": 716954
+    },
+    "generated_df_shell_derivatives.cuh": {
+      "sha256": "36780dfb9fae3f1625917cdb03f9316c74cd8dea4e95ef0869a97407e21b7cc9",
+      "bytes": 57310
+    },
+    "generated_df_rys.cuh": {
+      "sha256": "5fd6a8c1cdaefefa464a33f2b8743585ea2fc77fe922dfb815edea245ca248d9",
+      "bytes": 2096
+    }
+  },
+  "checks": [
+    {
+      "name": "cpu_roots_primitives_work",
+      "result": "31 passed, 1 skipped",
+      "command": "pytest -q tests/python/test_df_rys.py tests/python/test_df_rys_shell.py tests/python/test_df_shell_work_ledger.py",
+      "log_sha256": "608b4fa7a922f526f020d551d3ba0069bf5f9b92ba6d4bb75656739924c9ca23",
+      "log_bytes": 110,
+      "slurm_job_id": null
+    },
+    {
+      "name": "gpu_generated_root_grid",
+      "result": "1 passed, 6 deselected",
+      "command": "VIBEQC_RESOURCE_CUDA_TEST=1 pytest -q tests/python/test_df_rys.py -k cuda",
+      "log_sha256": "11dae7b927eebb0e8fb8010d8f227976a8f4e8445e482f1a57950f38a7a38baa",
+      "log_bytes": 204,
+      "slurm_job_id": 9766
+    },
+    {
+      "name": "cpu_compiler_derivatives_ownership_endpoint",
+      "result": "387 passed",
+      "command": "pytest -q tests/python/test_compiler_structure.py tests/python/test_df_derivatives.py tests/python/test_df_shell_derivatives.py tests/python/test_df_policy_endpoint.py tests/python/test_cuda_ownership.py tests/python/test_cuda_ownership_pairing.py tests/python/test_cuda_ownership_publication.py",
+      "log_sha256": "456a0e12073b442b36d3485eeb1aa75fb2d67ad99c9e96a940335e6ee34a9649",
+      "log_bytes": 501,
+      "slurm_job_id": null
+    },
+    {
+      "name": "gpu_response_regression",
+      "result": "140 passed",
+      "command": "VIBEQC_DF_SHELL_MATH_000=rys VIBEQC_RESOURCE_CUDA_TEST=1 pytest -q -x tests/python/test_df_shell_derivatives_cuda.py tests/python/test_df_response_weights_cuda.py tests/python/test_df_occupied_response_cuda.py tests/python/test_df_resident_response_cuda.py",
+      "log_sha256": "a6d311c6400d028468a088d4d50aa7b9dec2adc187ab7c2bf4d7babdd5f3a5b7",
+      "log_bytes": 192,
+      "slurm_job_id": 9767
+    },
+    {
+      "name": "gpu_native_memcheck",
+      "result": "ERROR SUMMARY: 0 errors",
+      "command": "VIBEQC_DF_SHELL_MATH_000=rys compute-sanitizer --tool memcheck --error-exitcode 99 build/cuda-release-sm120/vibeqc_df_shell_pairs_tests",
+      "log_sha256": "a9d061cee538182f762e132abeea7bac7bddb844338f25751bbbb043f242c425",
+      "log_bytes": 62,
+      "slurm_job_id": 9767
+    },
+    {
+      "name": "gpu_native_shell_fixture",
+      "result": "exit 0",
+      "slurm_job_id": 9767,
+      "command": "VIBEQC_DF_SHELL_MATH_000=rys build/cuda-release-sm120/vibeqc_df_shell_pairs_tests",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "gates": {
+    "independent_root_moment_relative": 5e-14,
+    "independent_primitive_contraction_atol": 8e-11,
+    "independent_primitive_contraction_rtol": 8e-11,
+    "independent_endpoint_energy_hartree": 1e-09,
+    "independent_endpoint_force_hartree_per_bohr": 1e-08,
+    "expected_scf_updates": 3
+  },
+  "limitations": [
+    "Warm fixed-density complete energy-and-force qualification; no cold-solve speed claim or automatic policy promotion.",
+    "One separate Nsight activity window per arm/size; five clean endpoint repeats per arm/size.",
+    "Occupancy is a theoretical resource limit; no achieved hardware occupancy or allocator-exact memory peak is claimed."
+  ],
+  "drivers": {
+    "endpoint.py": {
+      "executed_sha256": "1cc45827f2264ac4a1f28f428aecfb8455b6d2fab4d8108dd55b966c8632992b",
+      "retained_sha256": "5b347385c23083ab4315998ce1e9301b77840e4f93f18dd863855eb7172609a6",
+      "retention": "Formatting only; Python AST checked equal."
+    },
+    "profile.py": {
+      "executed_sha256": "d60b61b8b8fd2d847799cf4083d3a19adfa2bfb897f85998b0e78a202d3a2880",
+      "retained_sha256": "90744753fccc607d5f9f0ebe6a67df99c86bce59195e8b9080c2693363232320",
+      "retention": "Formatting only; Python AST checked equal."
+    },
+    "qualify.sh": {
+      "executed_sha256": "d5d32b2c26bc95afc9514648b5910cd88c667a3f8342c0bde62a25df55727d4b",
+      "retained_sha256": "d5d32b2c26bc95afc9514648b5910cd88c667a3f8342c0bde62a25df55727d4b",
+      "retention": "Exact bytes."
+    },
+    "profile.sh": {
+      "executed_sha256": "d4d300e8b860a5e26f470c3d6f185bacef3433e5981dadf581ae29b189e55ad4",
+      "retained_sha256": "d4d300e8b860a5e26f470c3d6f185bacef3433e5981dadf581ae29b189e55ad4",
+      "retention": "Exact bytes."
+    }
+  },
+  "profile": {
+    "slurm_job_id": 9768,
+    "srun_exit_code": 0,
+    "captures": 4,
+    "log_sha256": "7b73e20f6a37f13662bbf0d1e3cdbbd49ec52c97f3921a92315a04729f0952c4",
+    "environment": "profiles/environment.json",
+    "counters_enabled": false,
+    "component_trace_enabled": false,
+    "identical_transfer_counts": true,
+    "identical_shell_launch_domains": true
+  }
+}

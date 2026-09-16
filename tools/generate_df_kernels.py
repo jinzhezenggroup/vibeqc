@@ -65,6 +65,18 @@ def main() -> None:
         )
 
         write_if_changed(args.shell_output, emit_df_shell_derivatives_cuda())
+        from vibeqc_compiler.integral.df_rys import emit_df_rys_cuda
+        from vibeqc_compiler.integral.df_rys_shell import (
+            emit_df_rys_policy_cpp,
+            emit_df_rys_shell_cuda,
+        )
+
+        for name, emitter in (
+            ("generated_df_rys.cuh", emit_df_rys_cuda),
+            ("generated_df_rys_policy.hpp", emit_df_rys_policy_cpp),
+            ("generated_df_rys_shell.cuh", emit_df_rys_shell_cuda),
+        ):
+            write_if_changed(args.shell_output.with_name(name), emitter())
     if args.inventory:
         payload = {
             **inventory(),

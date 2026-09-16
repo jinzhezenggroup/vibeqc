@@ -10,6 +10,7 @@
 #include <iostream>
 #include <map>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "integrals/s_integrals.hpp"
@@ -283,10 +284,17 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) 
               require(primitive_count == get(Work::active_shell_tasks) * signature[3] *
                                              signature[4] * signature[5],
                       "diagnostic primitive count differs from independent host signatures");
-              require(
-                  primitive_count == get(Work::boys_evaluations) &&
-                      primitive_count == get(Work::boys_series) + get(Work::boys_large_argument),
-                  "Boys branch counts do not conserve primitive work");
+              const char* math_policy = std::getenv("VIBEQC_DF_SHELL_MATH_000");
+              const bool rys = signature[0] + signature[1] + signature[2] == 0 && math_policy &&
+                               std::string(math_policy) == "rys";
+              const auto roots = rys ? primitive_count : 0;
+              require(get(Work::rys_evaluations) == roots && get(Work::rys_roots) == roots &&
+                          get(Work::recurrence_states) == 6 * roots,
+                      "000 Rys selection/root/recurrence counts differ from primitive work");
+              require(primitive_count - roots == get(Work::boys_evaluations) &&
+                          primitive_count - roots ==
+                              get(Work::boys_series) + get(Work::boys_large_argument),
+                      "Boys/Rys branch counts do not conserve primitive work");
               require(get(Work::boys_small_argument) <= get(Work::boys_series) &&
                           get(Work::boys_series_iterations) >= get(Work::boys_series) &&
                           get(Work::boys_series_iterations) <= 179 * get(Work::boys_series),

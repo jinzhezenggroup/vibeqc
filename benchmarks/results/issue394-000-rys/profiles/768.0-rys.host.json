@@ -1,0 +1,45 @@
+{
+  "sha256": "66294c0103ec484d8ff69265b03acbf20a60500da2727efdd352ce2908fc4d85",
+  "records": [
+    {
+      "schema": "vibeqc.df_host_trace",
+      "version": 1,
+      "id": 1,
+      "valid": true,
+      "regions": [
+        {"name": "batch_execute", "reason": "unspecified", "parent": -1, "item": -1, "nbf": 0, "wall_ms": 3974.799511, "cpu_ms": 3974.358047999999, "finished": true, "failed": false},
+        {"name": "run_rhf_density_fitting_cuda_bucket_impl", "reason": "unspecified", "parent": 0, "item": -1, "nbf": 0, "wall_ms": 3974.670323, "cpu_ms": 3974.230870000042, "finished": true, "failed": false},
+        {"name": "prepare_item", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 7.398233, "cpu_ms": 7.398374999979751, "finished": true, "failed": false},
+        {"name": "prepare_initial_frame", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 8.162898, "cpu_ms": 8.162598000012622, "finished": true, "failed": false},
+        {"name": "overlap_cache_hit", "reason": "unspecified", "parent": 3, "item": 0, "nbf": 768, "wall_ms": 0.001844, "cpu_ms": 0.0012720000199806236, "finished": true, "failed": false},
+        {"name": "initial_density", "reason": "core_guess", "parent": 3, "item": 0, "nbf": 768, "wall_ms": 7.271511, "cpu_ms": 7.271828000000369, "finished": true, "failed": false},
+        {"name": "device_scf_submission_wait", "reason": "unspecified", "parent": 1, "item": -1, "nbf": 0, "wall_ms": 780.954241, "cpu_ms": 780.8843789999855, "finished": true, "failed": false},
+        {"name": "compact_eigensolve_provider", "reason": "unspecified", "parent": 6, "item": -1, "nbf": 768, "wall_ms": 13.203004, "cpu_ms": 13.201638000055027, "finished": true, "failed": false},
+        {"name": "compact_eigensolve_provider", "reason": "unspecified", "parent": 6, "item": -1, "nbf": 768, "wall_ms": 246.635942, "cpu_ms": 246.62594800003035, "finished": true, "failed": false},
+        {"name": "compact_eigensolve_provider", "reason": "unspecified", "parent": 6, "item": -1, "nbf": 768, "wall_ms": 241.643327, "cpu_ms": 241.63366599998426, "finished": true, "failed": false},
+        {"name": "compact_eigensolve_provider", "reason": "unspecified", "parent": 6, "item": -1, "nbf": 768, "wall_ms": 235.712524, "cpu_ms": 235.66596399996342, "finished": true, "failed": false},
+        {"name": "finalization", "reason": "unspecified", "parent": 1, "item": 0, "nbf": 0, "wall_ms": 3174.868604, "cpu_ms": 3174.4986429999926, "finished": true, "failed": false},
+        {"name": "final_state_read", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 0, "wall_ms": 5.833646, "cpu_ms": 5.833339999981035, "finished": true, "failed": false},
+        {"name": "final_state_fock_build", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 0, "wall_ms": 197.971491, "cpu_ms": 197.96432900000127, "finished": true, "failed": false},
+        {"name": "final_state_validation", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 768, "wall_ms": 1164.225905, "cpu_ms": 1164.0163559999905, "finished": true, "failed": false},
+        {"name": "final_state_weighted_density", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 768, "wall_ms": 90.116864, "cpu_ms": 90.1124350000373, "finished": true, "failed": false},
+        {"name": "final_state_reuse", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 768, "wall_ms": 0.001663, "cpu_ms": 0.0016529999697922904, "finished": true, "failed": false},
+        {"name": "force_response", "reason": "unspecified", "parent": 11, "item": 0, "nbf": 768, "wall_ms": 1708.175537, "cpu_ms": 1708.032478000007, "finished": true, "failed": false},
+        {"name": "df_shell_metadata", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.10951, "cpu_ms": 0.10873399997990418, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.199061, "cpu_ms": 0.19865199999458127, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.13524, "cpu_ms": 0.1352239999619087, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.132935, "cpu_ms": 0.13290999999071573, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.132875, "cpu_ms": 0.13287900003433606, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.132173, "cpu_ms": 0.1321969999708017, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.131852, "cpu_ms": 0.1319080000143913, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.132404, "cpu_ms": 0.13244799998801682, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.136512, "cpu_ms": 0.13650599998982216, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.131983, "cpu_ms": 0.1319469999998546, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.131752, "cpu_ms": 0.13176699997075048, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.134197, "cpu_ms": 0.13422199998558426, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.133085, "cpu_ms": 0.1331400000026406, "finished": true, "failed": false},
+        {"name": "df_shell_signature_dispatch", "reason": "unspecified", "parent": 17, "item": 0, "nbf": 768, "wall_ms": 0.137253, "cpu_ms": 0.13726800000313233, "finished": true, "failed": false}
+      ]
+    }
+  ]
+}

@@ -272,3 +272,28 @@ run in a finite Slurm `main` allocation with
 The [resident DF dataflow note](../.agents/notes/implemented/performance/2026-09-16-resident-df-dataflow.md)
 retains isolated arithmetic/cache ablations, the comparison with GPU4PySCF's
 Rys consumer, unchanged scientific work counters, and binary/resource costs.
+
+## Bounded 000 Rys qualification
+
+`VIBEQC_DF_SHELL_MATH_000=polynomial|rys|auto` selects the first-derivative
+lowering for the SSS class. Only 000 has a generated Rys implementation;
+all other angular classes retain polynomial lowering. Automatic selection
+remains polynomial; the Rys control is an explicit qualification path. The control is
+recorded in prepared resource/checkpoint scheduling identity.
+
+Rys uses one node `t²=F1(T)/F0(T)` and weight `F0(T)`, sharing Gaussian product
+geometry with the polynomial emitter. Raised s-Gaussian moments are lowered
+from the existing moment IR into six orbital-center derivative states; the
+existing translation identity recovers the auxiliary derivative. FP64,
+normalization, response folding, shell/primitive scheduling, panel ownership
+and gradient scattering remain common to both paths. The small-argument
+Taylor branch, ordinary erf/exp branch and `T >= 40` asymptotic branch have
+independent incomplete-gamma tests over dense/random/boundary/extreme arguments at 75-digit precision.
+
+The usual shell resource diagnostics include `shell_000_rys_selected` and
+per-class Rys evaluation/root/recurrence counts. Polynomial axis-cache and
+convolution counts become zero for selected 000 primitives. Clean endpoint
+timing must omit diagnostic counters and compare an identical SCF workload.
+
+The [000 Rys qualification note](../.agents/notes/implemented/performance/2026-09-16-000-rys-qualification.md)
+records the bounded endpoint result, retained defaults and next-slice criterion.

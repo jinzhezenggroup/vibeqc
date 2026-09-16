@@ -26,6 +26,38 @@ def df_derivative_inventory():
     }
 
 
+def emit_df_geometry_cuda(
+    name="prepare_geometry",
+    *,
+    moments="boys_values(total+1,rho*distance,g.f,work);",
+):
+    """Share primitive geometry between polynomial and Rys derivative lowering.
+
+    ``moments`` injects a compiler-owned quadrature call into the same Gaussian
+    product/decay preparation. Keep its position before the prefactor identical
+    to the existing polynomial path, including floating-point operation order.
+    The emitted function lives where Vec3, Geometry, BoysWork and component
+    already name the scalar derivative contract; no native equations are copied.
+    """
+    source = r"""__device__ __forceinline__ void prepare_geometry(double alpha,Vec3 A,double beta,Vec3 B,
+    double gamma,Vec3 C,unsigned total,Geometry& g,BoysWork* work=nullptr) {
+  const double p=alpha+beta,q=gamma,rho=p*q/(p+q);
+  g.sx=q/(p+q);g.sy=p/(p+q);g.ip=0.5/p;g.iq=0.5/q;
+  double distance=0,ab2=0;
+  for(unsigned axis=0;axis<3;++axis) {
+    const double ab=component(A,axis)-component(B,axis);
+    g.pa[axis]=-beta/p*ab;g.pb[axis]=alpha/p*ab;
+    g.dx[axis]=component(A,axis)-component(C,axis)+g.pa[axis];
+    distance+=g.dx[axis]*g.dx[axis];ab2+=ab*ab;
+  }
+  boys_values(total+1,rho*distance,g.f,work);
+  g.prefactor=34.986836655249725694/(p*q*sqrt(p+q))*exp(-alpha*beta/p*ab2);
+}"""
+    return source.replace("prepare_geometry(", name + "(", 1).replace(
+        "boys_values(total+1,rho*distance,g.f,work);", moments, 1
+    )
+
+
 def emit_df_derivatives_cuda():
     """Share base axis moments and Boys values across all independent centers.
 
@@ -110,20 +142,7 @@ __device__ double dot(unsigned da,const double* a,unsigned db,const double* b,
 struct Geometry {
   double pa[3],pb[3],dx[3],sx,sy,ip,iq,prefactor,f[11];
 };
-__device__ __forceinline__ void prepare_geometry(double alpha,Vec3 A,double beta,Vec3 B,
-    double gamma,Vec3 C,unsigned total,Geometry& g,BoysWork* work=nullptr) {
-  const double p=alpha+beta,q=gamma,rho=p*q/(p+q);
-  g.sx=q/(p+q);g.sy=p/(p+q);g.ip=0.5/p;g.iq=0.5/q;
-  double distance=0,ab2=0;
-  for(unsigned axis=0;axis<3;++axis) {
-    const double ab=component(A,axis)-component(B,axis);
-    g.pa[axis]=-beta/p*ab;g.pb[axis]=alpha/p*ab;
-    g.dx[axis]=component(A,axis)-component(C,axis)+g.pa[axis];
-    distance+=g.dx[axis]*g.dx[axis];ab2+=ab*ab;
-  }
-  boys_values(total+1,rho*distance,g.f,work);
-  g.prefactor=34.986836655249725694/(p*q*sqrt(p+q))*exp(-alpha*beta/p*ab2);
-}
+__DF_GEOMETRY_PREPARATION__
 __device__ __noinline__ Response evaluate(bool metric,double alpha,Vec3 A,Angular a,
     double beta,Vec3 B,Angular b,double gamma,Vec3 C,Angular c) {
   const double invalid=NAN;
@@ -179,4 +198,8 @@ __device__ __forceinline__ Response three_center(double alpha,Vec3 A,Angular a,
     ]
     # Raw and weighted consumers compile this same definition in separate TUs.
     # Device functions need internal linkage, including their NVCC host stubs.
-    return "\n".join(lines).replace("__device__", "static __device__")
+    return (
+        "\n".join(lines)
+        .replace("__DF_GEOMETRY_PREPARATION__", emit_df_geometry_cuda())
+        .replace("__device__", "static __device__")
+    )
