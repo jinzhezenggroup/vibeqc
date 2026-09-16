@@ -41,6 +41,12 @@ and complete endpoints belong to the combined #404 build. The per-candidate
 resource record retains shared memory, registers, stack/spills, object sizes and
 theoretical resource occupancy; it makes no achieved-occupancy claim.
 
+The subsequent selector retirement has separate [runtime validation](runtime-validation.json):
+one native shell-pair suite, five CUDA checkpoint cases and four complete
+energy/force cases pass with the retired variable deliberately set. The native
+fixtures remain polynomial outside the manifest domain. The record binds these
+checks to their source, library and finite Slurm allocation.
+
 ## Batch handoff
 
 The retained 384/768 real signature distributions are measured separately.
