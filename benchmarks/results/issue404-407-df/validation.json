@@ -1,5 +1,5 @@
 {
-  "scope": "Verification of the qualified math and explicit policies; final default confirmation is recorded separately.",
+  "scope": "Qualified math, explicit policies and final automatic configuration; final 384/768 confirmation has five interleaved repeats per arm.",
   "records": {
     "host_df_suite": {
       "log_sha256": "c0717684d937c023e3fa5c842ed8e5b3beaa00b507aef2693a2af5218895e9a7",
@@ -49,6 +49,21 @@
         "1 passed, 1 deselected in 19.74s",
         "========= ERROR SUMMARY: 0 errors"
       ]
+    },
+    "ownership_snapshot": {
+      "log_sha256": "db510cbb77bb02599d00e961dc8f4c57d973fbc2b5a5b05c6e13701e5388bd2a",
+      "conclusions": [
+        "12 passed in 0.39s"
+      ]
+    },
+    "final_gpu": {
+      "library_sha256": "5a61d4e9b906eb546bdb38158ec6944c09f4c8b2fe16c4b8cb37e432f0140339",
+      "slurm_job_id": 9793,
+      "log_sha256": "a28a1f769004e9dc49e9984c8bed11035315b86bb73e4aa26d62c4b590c32e50",
+      "conclusions": [
+        "144 passed in 144.54s (0:02:24)",
+        "100% tests passed, 0 tests failed out of 5"
+      ]
     }
   },
   "sanitizer_commands": [
@@ -64,5 +79,6 @@
     "sanitizer_time_limit": "00:20:00",
     "projection_time_limit": "00:10:00",
     "visibility": "scheduler assigned, preserved"
-  }
+  },
+  "ci_correction": "The first full Python CI run had 3441 passes and one stale docs/cuda_ownership_current.json failure. Regenerated the versioned snapshot; its 12 focused tests pass."
 }

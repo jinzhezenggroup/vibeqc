@@ -33,6 +33,11 @@ and FLOPs from 175154135040 to 61303947264, reusing the existing 754974720-byte 
 384 stayed on fallback. Strict independent force errors remained below 3e-10.
 These are individual ablations, not additive speedup claims.
 
+The final combined automatic configuration separately measures
+0.924076 → 0.910025 s at 384 AO (1.52%) and 4.059656 → 3.880987 s at 768 AO
+(4.40%), again five interleaved samples per arm with three updates throughout.
+Final-library regressions pass 144 GPU Python and five GPU native tests.
+
 Screening at 1e-4 skipped 47507808 of 55656960 SSS primitives at 768 AO, but
 the complete endpoint changed only from 3.971840 to 3.955689 s. Smaller cases
 showed noise or regressions. Four thresholds, 192/384/768 AO and a separately

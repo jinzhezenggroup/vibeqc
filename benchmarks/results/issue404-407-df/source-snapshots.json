@@ -1,0 +1,7 @@
+{
+  "reproduction/qualification-source.patch.gz": {"base": "e41c1dcd448df9cb66775dde617ceb42cf1570c4", "uncompressed_sha256": "9d67b362ab411eb9e109dbcbc209c5d5cdf264ab2015fbf1d87278dc56efa0fc", "compressed_sha256": "a2e043cd0cd60b808357d0f992aef6457ce5077e40a3ec3be6ac453779e7bb41", "uncompressed_bytes": 162874},
+  "reproduction/value-v2-source.patch.gz": {"base": "e41c1dcd448df9cb66775dde617ceb42cf1570c4", "uncompressed_sha256": "cf5221ba2ed2e8a18fec9f8cb5db0760b5507b95a2d1da495e2df3f62c4c6c22", "compressed_sha256": "aa8db8f0f844f455e458d64d8e0dc11a069ac08db7fe9425131b76dc3351b06a", "uncompressed_bytes": 242632},
+  "reproduction/value-v4-source.patch.gz": {"base": "e41c1dcd448df9cb66775dde617ceb42cf1570c4", "uncompressed_sha256": "15b28453069ccf28dab486f056ed4bf429b75df4f1fa9e811a79e7c864d6bfdc", "compressed_sha256": "88fe56eac985fc4d0bda3435d2db3b77638862c80d3e63060d1b389f759d9c31", "uncompressed_bytes": 250036},
+  "reproduction/batch-source.patch.gz": {"base": "e41c1dcd448df9cb66775dde617ceb42cf1570c4", "uncompressed_sha256": "6cdb9437db6eb0d6492a8c9a7695aea32bbc6135fb0f01049eab9b1fa07e5f97", "compressed_sha256": "03385234972525a559d8b4fdbb8c8342bf9a1c1bdbeeb5d6d0c8153f3d5bca4d", "uncompressed_bytes": 277049},
+  "reproduction/final-source.patch.gz": {"base": "e41c1dcd448df9cb66775dde617ceb42cf1570c4", "uncompressed_sha256": "dd6ba093c97b80a4990a10614de42d22eef644db455c3f6045f7cc5494d226fa", "compressed_sha256": "b75d5a8313216503e3df567021fcbff30375dd061c970a39ca7c96c9893c6169", "uncompressed_bytes": 261307}
+}

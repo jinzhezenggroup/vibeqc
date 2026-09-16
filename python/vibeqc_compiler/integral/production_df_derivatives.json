@@ -43,12 +43,13 @@
       "provenance": {
         "generator_sha256": "e74517820f3d70cf087c767350f751f202fb06eeec567d934f726f35a695ca66",
         "toolchain": "Build cuda_12.9.r12.9/compiler.36037853_0",
-        "profile_sha256": "75f264603b698d6d493e776c326d8d63fc8dc2f15a7232a37c65fd52f6e7e02f",
+        "profile_sha256": "0cfe93bf4c521830c1ce8bd2038af260b7b45375e1062ee20ce0446dda7899ce",
         "candidate_report": "benchmarks/results/issue404-407-df/derivative-batch.json",
         "endpoint_384": "benchmarks/results/issue404-407-df/384-404.json",
         "endpoint_768": "benchmarks/results/issue404-407-df/768-404.json",
         "sanitizer": "benchmarks/results/issue404-407-df/validation.json",
-        "gradient_fixtures": "benchmarks/results/issue404-407-df/derivative-batch.json"
+        "gradient_fixtures": "benchmarks/results/issue404-407-df/derivative-batch.json",
+        "profile_sha256_encoding": "SHA-256 of json.dumps(candidate_report.profiles, sort_keys=True).encode()"
       }
     }
   }

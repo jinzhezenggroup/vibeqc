@@ -7,6 +7,21 @@ diagnostic. No value acceleration is claimed: two complete cold comparisons
 rejected promotion, and the investigation was closed at the user's request
 rather than continuing to tune a losing direction.
 
+Final automatic-selector confirmation (`384-default.json`, `768-default.json`)
+uses a separately frozen final library and couples both baseline controls
+against both defaults, with five interleaved repeats per arm:
+
+| AOs | Legacy/off median (s) | Automatic median (s) | Reduction |
+| ---: | ---: | ---: | ---: |
+| 384 | 0.924076 | 0.910025 | 1.52% |
+| 768 | 4.059656 | 3.880987 | 4.40% |
+
+Every final sample takes three SCF updates. Maximum independent energy/force
+errors are 8.65e-12 Ha / 1.62e-10 Ha/bohr. The final diagnostic confirms no
+projection reuse at 384 and one successful handoff at 768, with products
+769 → 3. These combined measurements replace any estimate from adding the
+individual ablation percentages below.
+
 ## Complete clean ablations
 
 Each derivative/projection row has five interleaved samples per arm, the same
@@ -73,8 +88,10 @@ ranking nor the original ranking changes defaults automatically.
   measurements use every retained signature and independent CPU derivative
   fixtures across public representations and pair layouts.
 
-`reproduction/*-source.patch` reconstructs measured source against
-`e41c1dcd448df9cb66775dde617ceb42cf1570c4`. Qualification uses frozen library
+`reproduction/*-source.patch.gz` reconstructs measured source against
+`e41c1dcd448df9cb66775dde617ceb42cf1570c4` using `gzip -dc FILE | git apply`.
+Both compressed and exact uncompressed hashes are in `source-snapshots.json`.
+Qualification uses frozen library
 `ae09e7a2fb51edd9de67aef6584534a310a530ea1f3cd602b1ca2a89937e8821`;
 the revised value smoke uses
 `210ab54e50d47d78b5eff2def82dffdd884c9131071602382addf7acf7bc7e30`.
@@ -119,6 +136,8 @@ lower bound rather than an exact allocation peak. Native resource estimates,
 separate process-resident observations and component counters are retained in
 the endpoint JSON. `reproduction/reduce_profiles.py` documents the reduction.
 
-See `validation.json` for test/sanitizer evidence and `ownership.json` for the
+Final-library regressions pass 144 GPU Python and five GPU native tests,
+including stale/failed solve lease revocation. See `validation.json` for
+test/sanitizer evidence and `ownership.json` for the
 reviewed native CUDA delta. Mathematical assumptions, exact fallbacks and
 decisions are in the [note](../../../.agents/notes/implemented/performance/2026-09-16-df-tuning-and-projection.md).
