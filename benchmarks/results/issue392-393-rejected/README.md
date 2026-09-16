@@ -20,6 +20,14 @@ changed-geometry performance claim is made. The first direct candidate has
 native/memcheck evidence but no recorded full Python CUDA suite; the other five
 have 120-test CUDA suite records. Per-candidate validation scopes are explicit.
 
+Before publication, the archival reader was replayed using the original local
+trace, measurement, generated-header and Nsight SQLite files; its output matched
+the retained 768-AO warp class/work/profile records. Those reader inputs are not
+included in this archive, so that replay cannot be repeated from the published
+files alone. Their hashes identify the omitted inputs but cannot reconstruct
+them. The capture instructions below produce new inputs from a reconstructed
+candidate; they do not replay the historical records.
+
 The two `early-folding/*-source.patch` files instead apply to
 `c5475c49b331c989fbe0aafb3ce19685d7cb254d`. Their `conditions.json` discloses
 compilation overlapping part of the intrusive profiles; clean endpoint timing
