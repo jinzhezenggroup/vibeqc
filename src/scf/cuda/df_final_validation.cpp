@@ -156,9 +156,14 @@ void physical_fock(CudaDensityFittingJkPlan& plan, Workspace& w,
                    const solver::FinalStateIdentity& id, std::size_t spin) {
   if (!w.physical_identity || *w.physical_identity != id ||
       id.factor.basis != plan.factor_basis_identity ||
-      id.solve_epoch != plan.final_state_solve_epoch)
+      id.solve_epoch != plan.final_state_solve_epoch || !id.factor.reference ||
+      id.factor.reference > plan.batch_size)
     throw std::runtime_error("physical Fock belongs to another validation request");
-  const auto count = plan.nbf * plan.nbf, offset = (id.factor.reference - 1) * count;
+  const auto count = plan.matrix_elements;
+  // The checked reference fits size_t; plan admission bounds the full batch
+  // allocation, so this item's matrix offset fits too.
+  const auto item = static_cast<std::size_t>(id.factor.reference - 1);
+  const auto offset = item * count;
   launch_validation_fock(plan.stream, plan.nbf, w.storage + count, plan.coulomb + offset,
                          (spin ? plan.beta_exchange : plan.alpha_exchange) + offset,
                          id.model.spec.spin == FockSpin::Restricted ? .5 : 1,
@@ -218,7 +223,7 @@ ValidationPartial download(CudaDensityFittingJkPlan& plan, Workspace& w, unsigne
   auto* device = w.partial + 3 * w.blocks;
   launch_validation_finish(plan.stream, w.partial, device, stages, w.blocks);
   check(cudaPeekAtLastError(), "launch final-validation reductions");
-  ValidationPartial result;
+  ValidationPartial result{};
   Drain drain{plan.stream};
   check(cudaMemcpyAsync(&result, device, sizeof(result), cudaMemcpyDeviceToHost, plan.stream),
         "read compact final-validation diagnostics");
@@ -368,7 +373,8 @@ solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
   auto& w = prepare(*plan);
   w.physical_identity.reset();
   w.physical_hcore = nullptr;
-  const auto item = current.factor.reference - 1, count = plan->matrix_elements;
+  const auto item = static_cast<std::size_t>(current.factor.reference - 1);
+  const auto count = plan->matrix_elements;
   for (const auto& d : density)
     if (d.size() != count || !finite_values(d))
       throw std::runtime_error("invalid physical device Fock density");

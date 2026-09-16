@@ -29,6 +29,7 @@ __device__ ValidationPartial merge(ValidationPartial a, const ValidationPartial&
 }
 __device__ void store(ValidationPartial local, ValidationPartial* output) {
   __shared__ ValidationPartial shared[threads];
+  // Every lane writes a fully initialized packet before any lane reads it.
   shared[threadIdx.x] = local;
   __syncthreads();
   for (unsigned stride = threads / 2; stride; stride /= 2) {
@@ -49,7 +50,7 @@ __global__ void fock_kernel(std::size_t n, const double* h, const double* j, con
 __global__ void eigen_kernel(ValidationInputs in, const double* fc, const double* sc,
                              const double* gram, const double* canonical,
                              ValidationPartial* output) {
-  ValidationPartial r;
+  ValidationPartial r{};
   if ((in.info && *in.info != 0) || (in.generation && *in.generation != in.expected_generation))
     r.invalid = validation_input_failure;
   for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < in.n * in.n;
@@ -87,7 +88,7 @@ __global__ void eigen_kernel(ValidationInputs in, const double* fc, const double
 }
 __global__ void density_kernel(ValidationInputs in, const double* reconstructed, const double* ds,
                                const double* dsd, ValidationPartial* output) {
-  ValidationPartial r;
+  ValidationPartial r{};
   double ec = 0, tc = 0;
   for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < in.n * in.n;
        k += gridDim.x * blockDim.x) {
@@ -108,7 +109,7 @@ __global__ void density_kernel(ValidationInputs in, const double* reconstructed,
 }
 __global__ void commutator_kernel(std::size_t n, const double* fds, const double* sdf,
                                   ValidationPartial* output) {
-  ValidationPartial r;
+  ValidationPartial r{};
   for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < n * n;
        k += gridDim.x * blockDim.x) {
     const double value = fds[k] - sdf[k];
@@ -119,7 +120,7 @@ __global__ void commutator_kernel(std::size_t n, const double* fds, const double
 }
 __global__ void finish_kernel(const ValidationPartial* partial, ValidationPartial* result,
                               unsigned stages, unsigned blocks) {
-  ValidationPartial r;
+  ValidationPartial r{};
   double energy = 0, electrons = 0, ec = 0, tc = 0;
   for (unsigned k = 0; k < stages * blocks; ++k) {
     r = merge(r, partial[k]);

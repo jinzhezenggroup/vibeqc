@@ -134,7 +134,8 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
       diagnostic.density_rms = std::max(diagnostic.density_rms, drift / n);
       diagnostic.maximum_trace_error =
           std::max(diagnostic.maximum_trace_error,
-                   std::abs(static_cast<double>(electrons - weight * current.occupied[spin])));
+                   std::abs(static_cast<double>(electrons - static_cast<long double>(weight) *
+                                                                current.occupied[spin])));
       if (limits.require_canonicality) {
         // Export's absolute canonicality gate can be stricter than the scaled
         // eigen residual in an ill-conditioned AO metric. Include it in state

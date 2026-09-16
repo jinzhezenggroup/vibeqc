@@ -71,6 +71,16 @@ endpoints, separate host/device attribution, work counts and sampled memory.
 The CPU-reference switch provides the causal ablation within one binary;
 results are not cross-engine speed claims or cold-solve measurements.
 
+PR #411 review exposed CuMetal build constraints absent from the NVIDIA build:
+`size_t` and `uint64_t` differ on macOS, and shared reduction packets cannot have
+implicit member initialization. The follow-up splits identity/index declarations,
+checks references before converting to `size_t`, and keeps reduction packets
+trivial with explicitly zero-initialized local accumulators. Every lane fills its
+shared packet before the first barrier; the full-width status still avoids
+unwritten transfer padding. The CPU electron target is multiplied in the trace
+accumulator's `long double` precision. These fixes do not change the archived
+measurement source patches or claim new timings for the corrected build.
+
 Revisit the nine-matrix workspace if very large AO plans require more tiling,
 or if force consumers accept device W. Preserve the shared policy and explicit
 error/identity boundaries in either case.

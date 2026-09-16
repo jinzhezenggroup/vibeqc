@@ -164,7 +164,7 @@
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 66,
-      "runtime": -5526,
+      "runtime": -5524,
       "scientific": 2026
     },
     "reclassified_files": [
@@ -2641,7 +2641,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 7954,
+      "bytes": 8038,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -2650,13 +2650,13 @@
         "scientific": 138
       },
       "path": "src/scf/cuda/final_validation_kernels.cu",
-      "physical_lines": 167,
+      "physical_lines": 168,
       "reason": "Launch boundary for shared final-state validation products.",
       "regions": [
         {
           "code_lines": 138,
           "first_line": 8,
-          "last_line": 145,
+          "last_line": 146,
           "reason": "FP64 final-state norms, finite/generation checks, trace/energy reductions and occupied-column weighting; common acceptance policy remains in the shared solver.",
           "role": "scientific",
           "start": "__device__ void add(",
@@ -2664,24 +2664,24 @@
         }
       ],
       "role": "runtime",
-      "sha256": "f8f0ebbf32c140cfe9fb461935ccd7b3d8c3c99904c076e502f85edd1509193e",
+      "sha256": "9da4c130404223fcdd4dfb1b0fb517dddc7c6b921ab6428e451a4a4799d3ccee",
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 2861,
+      "bytes": 3071,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 44,
+        "runtime": 46,
         "scientific": 0
       },
       "path": "src/scf/cuda/final_validation_kernels.hpp",
-      "physical_lines": 55,
+      "physical_lines": 59,
       "reason": "Fixed-size device reduction payloads and launch declarations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "b4414ab51303bd0805814942151f864bff9352c59f0250c002f870491c6ac572",
+      "sha256": "ebdf9298e4630398f81bb374dd6ce35151877e125814ea4740b3993339ba414f",
       "subsystem": "scf_tensor"
     },
     {
@@ -3820,7 +3820,7 @@
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 156,
-    "runtime": 10047,
+    "runtime": 10049,
     "scientific": 12128
   },
   "migration_ledger": {
@@ -4079,7 +4079,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 2013,
+      "runtime": 2015,
       "scientific": 809
     },
     "xc": {

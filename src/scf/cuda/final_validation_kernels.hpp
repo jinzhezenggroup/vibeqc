@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace vibeqc::scf::cuda_df {
 // Fixed-size two-stage reductions keep the scratch independent of AO count.
@@ -17,13 +18,16 @@ inline unsigned validation_block_count(std::size_t n) {
 // input/identity and must abort selection without attempting correction.
 inline constexpr int validation_input_failure = 2;
 struct ValidationPartial {
-  double norm_f{}, norm_c{}, norm_rhs{}, norm_residual{}, norm_density{};
-  double eigen{}, metric{}, canonical{}, density{}, idempotency{}, commutator{};
-  double electrons{}, energy{};
+  double norm_f, norm_c, norm_rhs, norm_residual, norm_density;
+  double eigen, metric, canonical, density, idempotency, commutator;
+  double electrons, energy;
   // A full-width status word leaves no unwritten trailing padding in the
   // packet copied to the host (including under CUDA initcheck).
-  std::uint64_t invalid{};
+  std::uint64_t invalid;
 };
+// CuMetal rejects implicit initialization of shared variables. Keep the packet
+// trivial and value-initialize local accumulators at each reduction entry point.
+static_assert(std::is_trivial_v<ValidationPartial>);
 struct ValidationInputs {
   std::size_t n{}, occupied{};
   double weight{};
