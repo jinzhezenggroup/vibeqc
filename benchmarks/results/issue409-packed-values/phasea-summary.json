@@ -836,15 +836,128 @@
           "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
         }
       ]
+    },
+    {
+      "source": ".artifacts/issue409/rebuild-v2/768-cold-clean.json",
+      "sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778",
+      "phase": "cold",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 85.68592209904455,
+        "packed": 82.76805499778129
+      },
+      "packed_over_dense": 0.9659469486960707,
+      "paired_bootstrap_ratio_95": [
+        0.9651797621368345,
+        0.9667619126816382
+      ],
+      "work_distributions": {
+        "dense": {
+          "23": 7
+        },
+        "packed": {
+          "24": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.231371222995222e-11,
+      "maximum_force_error": 1.584444762892101e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 23,
+          "logical_operators": {
+            "J": 26,
+            "K": 26,
+            "eigensystems_including_density_seed": 24
+          },
+          "eager_operations": {
+            "ri_j": 26,
+            "ri_k": 2,
+            "ri_k_occupied": 24,
+            "compact_eigensolve": 24,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 3,
+            "final_eigen_solves": 2,
+            "final_density_updates": 2,
+            "final_candidate_rejections": 1
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4820256,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 31,
+            "raw_value_reused_bytes": 3623878656,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 1536,
+            "response_borrowed_jk_bytes": 10871635968,
+            "response_density_blas_products": 1536,
+            "response_metric_blas_dots": 589824,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "eb023039ee01b02ff0d89902d19c426747f37c9774c254c9cecf82340fd2080c",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 24,
+          "logical_operators": {
+            "J": 25,
+            "K": 25,
+            "eigensystems_including_density_seed": 25
+          },
+          "eager_operations": {
+            "ri_j": 25,
+            "ri_k": 0,
+            "ri_k_occupied": 25,
+            "compact_eigensolve": 25,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4823328,
+            "raw_packed_value_reused_bytes": 1814298624,
+            "raw_value_owner_identity": 33,
+            "response_borrowed_jk_bytes": 1962934272,
+            "response_final_projection_retained_bytes": 754974720,
+            "response_final_projection_reused": 1,
+            "response_occupied_projected_bytes": 157286400,
+            "response_occupied_projected_elements": 19660800,
+            "response_occupied_projection_blas_calls": 3,
+            "response_occupied_projection_flops": 61303947264,
+            "response_occupied_projection_products": 3,
+            "response_occupied_rank": 160,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "ac31190756ad1b67031d742cd57e085a3d0bf0aff47e8ac1dfed362947487d42",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
     }
   ],
   "incomplete": [
     {
-      "source": ".artifacts/issue409/rebuild-v2/768-cold-clean.json",
+      "source": ".artifacts/issue409/rebuild-v2/768-changed-clean.json",
       "failure": null,
       "counts": {
-        "dense": 5,
-        "packed": 5
+        "dense": 3,
+        "packed": 3
       }
     }
   ]

@@ -67,12 +67,20 @@
       "original_sha256": "e0ff57da898553f792a25d748b5c4abd24c88e1e0ff74ca292525d45f29c0c0e"
     },
     {
+      "path": "rebuild/768-cold.json",
+      "bytes": 555882,
+      "sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.json",
+      "original_bytes": 555882,
+      "original_sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778"
+    },
+    {
       "path": "phasea-summary.json",
-      "bytes": 30719,
-      "sha256": "7bc1a3cac3e831cda03d47d8ee166b35ff65dc0da8b69ab464fc7d3d410bcf4e",
+      "bytes": 35020,
+      "sha256": "736549ba95c81ade332dc04ecdb6347e1df2d12c1f3300f03af2a303b032d99e",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/phasea-summary.json",
-      "original_bytes": 30719,
-      "original_sha256": "7bc1a3cac3e831cda03d47d8ee166b35ff65dc0da8b69ab464fc7d3d410bcf4e"
+      "original_bytes": 35020,
+      "original_sha256": "736549ba95c81ade332dc04ecdb6347e1df2d12c1f3300f03af2a303b032d99e"
     },
     {
       "path": "clean-warm/work-reconciliation.json",
@@ -676,11 +684,27 @@
     },
     {
       "path": "collector.py.txt",
-      "bytes": 10595,
-      "sha256": "0feb6cff560b375f6d29d62c69a38a92ce5cfd1504a94bc74adc0b0dc31d6617",
+      "bytes": 10667,
+      "sha256": "8740975843cad871a07a81dad5ea02e93ac511e04b42874317fb3f6377c9c1a4",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/benchmarks/experiments/issue409-packed-values/collect.py",
-      "original_bytes": 10595,
-      "original_sha256": "0feb6cff560b375f6d29d62c69a38a92ce5cfd1504a94bc74adc0b0dc31d6617"
+      "original_bytes": 10667,
+      "original_sha256": "8740975843cad871a07a81dad5ea02e93ac511e04b42874317fb3f6377c9c1a4"
+    },
+    {
+      "path": "storage-dataflow.json",
+      "bytes": 135548,
+      "sha256": "b9df574e3d09aa7b561330a21d090ce526df7f2612c354de24328c8f886c1ff1",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/storage-dataflow.json",
+      "original_bytes": 135548,
+      "original_sha256": "b9df574e3d09aa7b561330a21d090ce526df7f2612c354de24328c8f886c1ff1"
+    },
+    {
+      "path": "reproduction/measured-account-dataflow.py.txt",
+      "bytes": 11706,
+      "sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/account-dataflow.py",
+      "original_bytes": 11706,
+      "original_sha256": "8afd5000d57b2b8d104079c967e9bccdefd310a9931302eb859f6ebab2473a9d"
     }
   ],
   "incomplete": [
@@ -689,12 +713,8 @@
       "reason": "unequal campaign not complete"
     },
     {
-      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.json",
-      "reason": "incomplete interleaving"
-    },
-    {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-clean.json",
-      "reason": "missing"
+      "reason": "incomplete interleaving"
     },
     {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/constrained-clean/768-12GiB-forces.json",

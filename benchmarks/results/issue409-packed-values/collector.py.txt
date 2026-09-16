@@ -143,6 +143,7 @@ def main():
             )
         for name in (
             "phasea-summary.json",
+            "storage-dataflow.json",
             "clean-warm/work-reconciliation.json",
             "capacity/summary.json",
         ):
@@ -238,6 +239,7 @@ def main():
             "run-constrained-clean.py",
             "summarize-phasea.py",
             "reconcile-work.py",
+            "account-dataflow.py",
             "run-tests.py",
             "run-molecular-memcheck.sh",
             "run-failed-neighbors.sh",

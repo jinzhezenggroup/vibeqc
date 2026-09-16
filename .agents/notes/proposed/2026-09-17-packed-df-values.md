@@ -326,3 +326,19 @@ adds no new physical equation or generated capability. Retire it if no complete
 endpoint/capacity domain qualifies, or replace it once compiler-owned triangular
 gathering passes the same numerical, resource and endpoint gates. The dense
 default and bounded exact fallback remain necessary under the current results.
+
+The completed 768-AO cold cell retains seven clean pairs and two separate
+diagnostics: dense 85.685922099 -> packed 82.768054998 seconds (3.4% lower
+ordinary latency), with 23 -> 24 updates. All numerical gates pass and the
+logical work counts reconcile. This result is separate from matched-work
+comparisons; changed-geometry qualification is still in progress.
+
+The storage/work audit distinguishes graph execution from counter availability.
+At 96/192/384 AO, untimed priming caches the graph before tracing is enabled;
+only the final eager J has a packed FLOP counter. The observed replay count and
+two-GEMV source contract determine logical total J FLOPs, recorded separately
+from eager counters. Multiplying nonexistent construction records would silently
+undercount the solve. The audit also charges both immutable factors and all three
+simultaneous shared scratch buffers; at 768 AO these total 5,591,531,520 bytes
+before source/metric/SCF/library allocations. Semantic transfer counters remain
+per operation, and no complete hardware traffic is inferred by adding them.

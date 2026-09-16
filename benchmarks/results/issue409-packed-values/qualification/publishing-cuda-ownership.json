@@ -41,5 +41,39 @@
     "removed_files": []
   },
   "all_handwritten_scientific_lines": 12472,
-  "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics"
+  "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
+  "physical_edit_accounting": {
+    "added": {
+      "performance_exception": 97,
+      "runtime": 20,
+      "scientific": 101
+    },
+    "definition": "Nonblank/noncomment physical code lines, SequenceMatcher(autojunk=False); unchanged lines changing role are separate from physical edits.",
+    "net_role_delta": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 97,
+      "runtime": 20,
+      "scientific": 81
+    },
+    "removed": {
+      "scientific": 20
+    },
+    "unchanged_lines_reclassified": {}
+  },
+  "physical_edit_report_sha256": "013f5826cb6d2b70f978902dc9acc6cf2948bba08ec6ee66791c1f6cc7d948b4",
+  "physical_edit_command": [
+    "python",
+    "tools/compare_cuda_ownership.py",
+    "--baseline-root",
+    ".artifacts/issue409/ownership-baseline",
+    "--baseline-report",
+    ".artifacts/issue409/ownership-baseline.json",
+    "--candidate-root",
+    ".",
+    "--candidate-report",
+    ".artifacts/issue409/ownership-current.json",
+    "--output",
+    ".artifacts/issue409/ownership-physical-lines.json"
+  ]
 }

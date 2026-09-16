@@ -23,6 +23,7 @@ independent references. These large-case gates do not relax stricter fixtures.
 | 768 warm energy | 1.013974837 | 1.676097540 | 3 / 6 |
 | 384 cold forces | 10.135832240 | 11.948631649 | 20 / 18 |
 | 384 changed-geometry forces | 9.606932915 | 11.256079176 | 12 / 12 |
+| 768 cold forces | 85.685922099 | 82.768054998 | 23 / 24 |
 
 Changed SCF branches are ordinary-latency results, not iteration-matched
 comparisons. The 192-AO force gain is about 21.2%; packed force response removes
@@ -39,6 +40,15 @@ and independent-reference errors. `clean-warm/work-reconciliation.json` and
 the per-cell diagnostics reconcile eager operations with **observed executed
 graph replays**; graph construction is never counted as work. These counts are
 logical operations, not kernel counts or estimates of GPU time.
+
+`storage-dataflow.json` derives simultaneous packed A/B and three shared scratch
+capacities from the observed shapes. At 768 AO these sum to 5,591,531,520 bytes,
+before other source/metric/SCF/library allocations. It distinguishes directly
+observed eager counters from logical J FLOPs derived using the observed replay
+count: the warm graph was cached before tracing, so there are no in-range graph
+construction counters to multiply. Transfer counters remain scoped to individual
+operations because nested semantic counters overlap. Full hardware traffic and
+raw-integral recurrence FLOPs remain explicitly unmeasured.
 
 ## Constrained memory: diagnostic evidence only
 
@@ -73,7 +83,7 @@ publishing routine logs. Stage-1 and stage-2 library identities are distinct.
 
 The draft still requires:
 
-- 768-AO cold/changed endpoints and their independent references/work counts;
+- 768-AO changed endpoints and their independent references/work counts;
 - complete-shell cc-pVDZ/cc-pVDZ-JKFIT unequal-auxiliary endpoints;
 - seven clean constrained pairs and a final domain/negative-result decision;
 - the remaining complete traffic/component/resource and compilation audit;
@@ -102,6 +112,9 @@ the measured library SHA-256 is
 Build flags and the generated identity header are retained beside that patch.
 The publishing source was subsequently clang-formatted and has not yet been
 rebuilt; frozen measurements must not be relabeled with a new binary identity.
+`qualification/format-verification.json` verifies that all 31 files in the
+pre-format snapshot produce the current bytes through clang-format 23.1.1.
+This source check does not replace validation of the final rebuilt library.
 
 `manifest.json` records retained/original hashes and explicitly lists incomplete
 cells. The collector's `--partial` permits a draft only; it is not a passing
