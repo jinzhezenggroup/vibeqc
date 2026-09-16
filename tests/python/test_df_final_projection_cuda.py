@@ -57,17 +57,8 @@ def test_final_projection_replay_and_geometry(method, monkeypatch, tmp_path):
             assert oracle.converged
             expected = -oracle.nuc_grad_method().kernel()
             answers = []
-            # Switching the Gram policy must rebuild captured nodes while
-            # preserving the final-U lease; repeat split4 to cover owner reuse.
-            for policy, gram in (
-                ("off", "full"),
-                ("reuse", "full"),
-                ("reuse", "split4"),
-                ("reuse", "split4"),
-                ("reuse", "auto"),
-            ):
+            for policy in ("off", "reuse", "reuse"):
                 monkeypatch.setenv("VIBEQC_DF_FINAL_PROJECTION", policy)
-                monkeypatch.setenv("VIBEQC_DF_RESIDENT_EXCHANGE", gram)
                 trace = tmp_path / f"{moved}-{len(answers)}.jsonl"
                 monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
                 actual = batch.execute(
@@ -76,46 +67,14 @@ def test_final_projection_replay_and_geometry(method, monkeypatch, tmp_path):
                 assert actual.energy == pytest.approx(oracle.e_tot, abs=1e-9, rel=0)
                 np.testing.assert_allclose(actual.forces, expected, atol=1e-8, rtol=0)
                 answers.append(np.asarray(actual.forces))
-                records = read_trace(trace)
-                rows = [r for r in records if r["operation"] == "force_response"]
-                products = [
-                    r["counters"]
-                    for r in records
-                    if r["operation"] == "ri_k_occupied"
-                    and r["counters"].get("occupied_rank", 0)
+                rows = [
+                    r for r in read_trace(trace) if r["operation"] == "force_response"
                 ]
-                # RHF's final physical build supplies an eager Gram record.
-                # UHF keeps dense final K; an already captured occupied body
-                # has execution provenance but no fresh per-product records.
-                if method == "rhf":
-                    assert products
-                else:
-                    provenance = [
-                        r["counters"]
-                        for r in records
-                        if r["operation"] == "occupied_scf_provenance"
-                    ]
-                    assert provenance
-                    assert all(c["occupied_iterations"] > 0 for c in provenance)
-                    assert all(
-                        c["validated_density_generations"] > 0 for c in provenance
-                    )
-                for counters in products:
-                    assert counters["occupied_exchange_split_count"] == (
-                        4 if gram == "split4" else 0
-                    )
-                    if gram == "split4":
-                        n = counters["occupied_exchange_m"]
-                        assert counters["occupied_exchange_products"] == 4
-                        assert counters["occupied_exchange_partial_borrowed_bytes"] == (
-                            4 * n * n * 8
-                        )
-                        assert counters["occupied_exchange_extra_owned_bytes"] == 0
                 assert len(rows) == 1
                 reused = rows[0]["counters"].get("response_final_projection_reused", 0)
                 if method == "uhf" or policy == "off":
                     assert reused == 0
                 elif not moved:
                     assert reused == 1
-            for answer in answers[1:]:
-                np.testing.assert_allclose(answers[0], answer, atol=1e-10, rtol=0)
+            np.testing.assert_allclose(answers[0], answers[1], atol=1e-10, rtol=0)
+            np.testing.assert_allclose(answers[1], answers[2], atol=1e-10, rtol=0)

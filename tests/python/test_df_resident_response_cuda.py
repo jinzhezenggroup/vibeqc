@@ -137,15 +137,13 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
 
 @pytest.mark.parametrize("space", ["dense", "occupied"])
 @pytest.mark.parametrize("pairs", ["full", "packed"])
-@pytest.mark.parametrize("gram", ["full", "split4"])
-@pytest.mark.parametrize("auxiliary_count", [3, 5])
 def test_jk_scratch_retains_discarded_metric_response(
-    monkeypatch, tmp_path, space, pairs, gram, auxiliary_count
+    monkeypatch, tmp_path, space, pairs
 ):
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
     monkeypatch.setenv("VIBEQC_DF_FINAL_PROJECTION", "reuse")
     monkeypatch.setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied")
-    monkeypatch.setenv("VIBEQC_DF_RESIDENT_EXCHANGE", gram)
+    monkeypatch.setenv("VIBEQC_DF_RESIDENT_EXCHANGE", "full")
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
     basis = [Shell(i, 0, (Primitive(1.0, 1.0),)) for i in range(2)]
     auxiliary = [
@@ -153,14 +151,6 @@ def test_jk_scratch_retains_discarded_metric_response(
         Shell(0, 0, (Primitive(0.601, 1.0),)),
         Shell(1, 0, (Primitive(0.8, 1.0),)),
     ]
-    if auxiliary_count == 5:
-        # Three auxiliaries exercise insufficient partial-matrix capacity;
-        # five execute split4 with an unequal tail, retaining the discarded
-        # near-duplicate metric mode in raw A in both cases.
-        auxiliary += [
-            Shell(1, 0, (Primitive(1.4, 1.0),)),
-            Shell(0, 0, (Primitive(2.0, 1.0),)),
-        ]
     common = {
         "basis": basis,
         "auxiliary_basis": auxiliary,
@@ -182,22 +172,10 @@ def test_jk_scratch_retains_discarded_metric_response(
     with calc.prepare_batch([atoms]) as batch:
         actual = batch.execute(strict=True).items[0]
         (diagnostic,) = batch.last_density_fitting_metric_diagnostics()
-        assert diagnostic.effective_rank == auxiliary_count - 1
+        assert diagnostic.effective_rank == 2
         np.testing.assert_allclose(actual.energy, reference.energy, atol=1e-9, rtol=0)
         np.testing.assert_allclose(actual.forces, reference.forces, atol=3e-9, rtol=0)
-    records = read_trace(trace)
-    products = [
-        r["counters"]
-        for r in records
-        if r["operation"] == "ri_k_occupied" and r["counters"].get("occupied_rank", 0)
-    ]
-    assert products
-    for counters in products:
-        selected = gram == "split4" and auxiliary_count == 5
-        assert counters["occupied_exchange_split_count"] == (4 if selected else 0)
-        if selected:
-            assert counters["occupied_exchange_blas_calls"] == 2
-    responses = [r for r in records if r["operation"] == "force_response"]
+    responses = [r for r in read_trace(trace) if r["operation"] == "force_response"]
     assert len(responses) == 1
     assert responses[0]["counters"].get("response_final_projection_reused", 0) == 0
     assert (responses[0]["counters"].get("response_occupied_rank", 0) > 0) == (

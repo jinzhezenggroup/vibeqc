@@ -1,0 +1,17 @@
+{
+  "reason": "Job 9825 stopped at first 768-force pair: auto 3 updates; split4 5 updates. Original fixed-work gate failed.",
+  "scope": "Intrusive diagnosis only, not a replacement qualification or additional clean sample campaign.",
+  "frozen_library_sha256": "34e2bf65208e07dbd7618434481116528eb6d6855bbe536be5760da343a43908",
+  "observables": [
+    "forces",
+    "energy"
+  ],
+  "policies": [
+    "auto",
+    "split4"
+  ],
+  "repeats": 1,
+  "controls": "Same checkpoint D, normal convergence, device final validation, full force/energy gates and post-#415 derivative mapping. Omit only the diagnostic expectation that both policies take three updates, so actual completed work can be observed.",
+  "instrumentation": "Component traces, progress journals and 200ms-plus-query-cost process GPU/RSS samples. All resulting times are excluded from performance qualification.",
+  "decision": "Keep automatic SYRK; archive candidate implementation and tests as reproducible patches, then remove its production switch/code. No search for a different density, convergence tolerance or split count to rescue this campaign."
+}

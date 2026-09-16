@@ -27,8 +27,14 @@ WORK_KEYS = {
 def extract(directory):
     """Extract each arm without dropping failed, captured or zero-rank records."""
     results = {}
-    for path in sorted(directory.glob("*-*.diagnostic-0-*.journal.jsonl")):
-        label, arm = path.name.removesuffix(".journal.jsonl").split(".diagnostic-0-")
+    for path in sorted(directory.glob("*-*.journal.jsonl")):
+        stem = path.name.removesuffix(".journal.jsonl")
+        separator = ".diagnostic-0-" if ".diagnostic-0-" in stem else ".0-"
+        if separator not in stem:
+            raise ValueError(f"unexpected diagnostic repetition: {path.name}")
+        label, arm = stem.split(separator)
+        if f"{label}-{arm}" in results:
+            raise ValueError("multiple diagnostic records for one endpoint arm")
         trace = path.with_name(path.name.replace(".journal.jsonl", ".jsonl"))
         journal_data, trace_data = path.read_bytes(), trace.read_bytes()
         journal = [json.loads(line) for line in journal_data.splitlines()]

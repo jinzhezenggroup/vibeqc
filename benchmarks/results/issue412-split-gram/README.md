@@ -1,51 +1,89 @@
-# Bounded split occupied Gram experiment (#412)
+# Bounded split occupied Gram: negative endpoint result (#412)
 
-Stage A qualifies `split4` for complete endpoint testing; it does not qualify an
-automatic production policy. The four real 768/768/rank-160 fixed-U inputs show
-12.4% net Gram savings against SYRK plus mirror. Stage B holds merged #415's
-derivative mapping fixed and measures the incremental Gram change. Independent
-derivative and Gram savings must not be added.
+The split4 candidate saves about 12.4% of net Gram time on the four real
+768/768/rank-160 fixed-U inputs, but it fails complete endpoint qualification.
+The first matched-density 768 force pair takes **three SCF updates with SYRK
+and five with split4**. The observed complete calls take 2.559862 s and 2.979252 s,
+respectively. Both pass independent energy/force gates. This single changed-work
+pair is a retained failed work gate, not a seven-pair performance estimate.
 
-`stage-a-summary.json` retains extrema and the four target ratios.
+The original runner stops at this failure. Automatic SYRK remains unchanged;
+the temporary `split4` production control and implementation are removed. No
+new density, looser convergence tolerance or wider split search is used to
+rescue the experiment. Source and validation patches retain the exact candidate
+for reproduction. #404's accepted derivative mapping remains unchanged.
+
+## Fixed-U and integrated qualification
+
+`stage-a-summary.json` records extrema and all four target ratios.
 `experiment-v1/` retains all twelve fixtures, six candidates, seven interleaved
 samples each, separate component measurements, numerical gates, true work and
 resource reservations. `inputs.json` binds binary inputs and executables to
-hashes; large U/K binaries remain local. Real capture used the standalone #404
-baseline, source `796ce85a607dfde85bf6bafd20575d7c538fdad1`, before its promoted
-derivative mapping. Capture timing is intrusive and is not performance evidence.
-The first capture attempt failed graph capture; the second skips graph
-construction and captures successful eager molecular builds.
+hashes; large U/K binaries remain local. Real capture used source
+`796ce85a607dfde85bf6bafd20575d7c538fdad1`, the standalone pre-promotion #404
+baseline. Capture timing is intrusive and is not performance evidence.
+The first capture shim reported graph-capture errors; the second skips graph
+construction and retains successful eager molecular snapshots.
 
-Original capture/trial sources are retained with `.txt` appended to preserve
-their exact measured bytes under repository formatting hooks. Restore the
-original names to compile/reproduce them; `stage-a-retention.json` records both
-names and hashes. Scripts preserve historical workstation paths as provenance;
-adapt those paths and regenerate fixtures for a new campaign. Execute every GPU
-command inside finite `srun --partition=main --gres=gpu:5090:1` allocations,
-preserving scheduler device visibility. The original trial used Slurm job 9817.
-`stage-a-sanitizers.json` records error summaries and hashes of the local raw
-logs. Its memcheck did not request full leak checking.
+Original capture/trial sources have `.txt` appended to preserve their measured
+bytes under formatting hooks. Restore the original names to reproduce them;
+`stage-a-retention.json` records names and hashes. Scripts retain historical
+workstation paths as provenance. Adapt those paths and regenerate fixtures for
+a new campaign. All GPU commands require finite Slurm allocations on `main`
+with `--gres=gpu:5090:1`, preserving scheduler device visibility. Stage A used
+job 9817. `stage-a-sanitizers.json` records local raw-log hashes and error summaries;
+that initial memcheck did not request full leak checking.
 
-Full-GEMM partials compute both triangles: roughly twice SYRK's leading FLOPs.
-Stage A reserves capacity for the largest candidate and separately reports
-candidate-specific partial storage. Stage B borrows only existing charged
+Full-GEMM partials compute both triangles, roughly twice SYRK's leading FLOPs.
+Stage A reserves capacity for the largest candidate and reports candidate-specific
+partial storage separately. The integrated candidate borrows 18 MiB from charged
 `exchange_intermediate`, preserves raw A/final U and adds no owned allocation.
 Its existing reducer starts at zero, adds four partials, then accumulates into
-zero K; the source-level addition count differs from Stage A's custom reducer.
+zero K; its source-level addition count differs from Stage A's custom reducer.
 
-`endpoint-protocol.json` was declared before endpoint measurement. It requires
-seven interleaved paired samples, >=1% complete force saving at 768 and a paired
-bootstrap upper ratio bound below one, unchanged independent scientific/work
-gates, and four-size energy/force regressions. Automatic selection is unchanged
-pending that evidence. #206 owns the fresh matched stock GPU4PySCF comparison.
+The candidate passes two CPU policy tests, the native DF suite and 68 Python GPU
+tests. Native memcheck with full leak checking and initcheck report zero errors.
+`validation.json` binds jobs 9823/9824 and actual split/tail/fallback observations.
+`validation-harness-failure.json` preserves the initial UHF assertion failure:
+an already captured occupied replay emits no new per-product records. Energy
+and force checks had passed; the corrected provenance assertion passes without
+changing native code or scientific gates.
 
-The integrated candidate is frozen by `candidate-build.json` and
-`candidate-source.patch` against merged source `25e8efe`. Before endpoint
-timing, the native density-fitting suite, two CPU policy tests and 68 Python
-GPU tests pass. Native memcheck with full leak checking and initcheck report
-zero errors. `validation.json` binds jobs 9823/9824, observed small-shape split
-and fallback counts, and raw-log hashes. An initial UHF trace assertion failed
-because an already captured occupied body emits no new per-product records;
-its energy/force checks had passed. `validation-harness-failure.json` preserves
-that failure and the corrected executed-provenance check; the UHF follow-up
-passed without a native or scientific-gate change.
+## Complete endpoint stop
+
+`endpoint-protocol.json` was declared before measurement. Job 9825 holds merged
+#415's derivative mapping fixed, restores identical checkpoint D, disables warm
+updates and primes every policy selection. It requests seven paired samples,
+>=1% complete 768 force saving with bootstrap upper ratio below one, a 3%
+regression margin and unchanged independent numerical/operator-work gates.
+
+The complete 384 force medians are 0.697501/0.697988 s (auto/split4); energy
+medians are 0.284136/0.284313 s. Both regressions pass. `endpoints/` preserves every
+completed sample, including the two 768 rows that trigger the stop. Formatting
+only compacts scalar arrays; `endpoint-raw-files.json` binds original run bytes.
+The magnitude/stability gates are not evaluated after the work gate fails.
+96/192 and qualifying 768-energy runs are not continued after that stop.
+
+`changed-work-protocol.json` declares the separate intrusive follow-up for energy,
+forces and sampled process resources. It keeps normal convergence and scientific
+gates, observing the changed iteration count instead of requiring three updates.
+Its timings are excluded from performance qualification; it cannot replace the
+missing seven matched-work pairs. `candidate-analyze.py.txt` preserves the original
+complete-campaign analysis rather than silently weakening its assertions.
+
+## Identity and reproduction
+
+`candidate-build.json` freezes Release CUDA 12.9.1/sm_120, fast compile and AOT
+off, generated files, source identity and library hash. The measured implementation
+is baseline `25e8efebb069e6067ba3649f220c37e844ecc8f6` plus
+`candidate-source.patch`; its native/compiler contents are identical to commit
+`258f76b2b9201b4690cda4a48b1c8f9a39f8aedc`. That commit is the attempted candidate,
+not an automatic promotion. `candidate-validation.patch` reconstructs its tests.
+Apply both patches to the pinned baseline in an isolated checkout and finish
+compilation before timing. `run-endpoints.sh` reproduces the original campaign
+and deliberately exits nonzero when the fixed-work requirement fails.
+
+The [decision note](../../../.agents/notes/rejected/2026-09-17-split-occupied-gram.md)
+records the rejection. #409 requires a separate packed-representation experiment;
+#206 still owns fresh matched stock GPU4PySCF comparisons. No independent savings
+are added into a combined or external performance claim.

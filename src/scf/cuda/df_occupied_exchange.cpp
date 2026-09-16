@@ -9,7 +9,6 @@
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
-#include "scf/df_exchange_policy.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
@@ -54,33 +53,8 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     if (status != CUBLAS_STATUS_SUCCESS)
       return blas_failure(status, "resident occupied DF projection", detail);
     bool triangular = false;
-    // Setup has already checked row_tile*nbf*auxiliary_tile and its byte size.
-    // The resident projection needs only U; other users of the separately
-    // allocated exchange_intermediate are ordered on this same plan stream.
-    // exchange_contributions may contain immutable raw A and is never borrowed.
-    const auto split = plan.split_occupied_exchange
-                           ? df_occupied_gram_split(plan.nbf, plan.naux, rank,
-                                                    plan.row_tile * plan.nbf * plan.auxiliary_tile)
-                           : DfOccupiedGramSplit{};
     auto* output = exchange + system * plan.matrix_elements;
     status = trace_call("ri_k_occupied_exchange_gemm", plan.stream, [&] {
-      if (split.count) {
-        // U is column-major (L, nbf), not a packed subrange. Keep lda=L
-        // while the batch stride advances only through each reduction range.
-        // Full GEMM writes both triangles, about twice SYRK's leading FLOPs.
-        const int equal = split.tail == split.segment ? split.count : split.count - 1;
-        auto partial_status = cublasDgemmStridedBatched(
-            plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, n, n, static_cast<int>(split.segment), &weight, u,
-            ar, split.segment, u, ar, split.segment, &zero, plan.exchange_intermediate, n,
-            plan.matrix_elements, equal);
-        if (partial_status != CUBLAS_STATUS_SUCCESS || split.tail == split.segment)
-          return partial_status;
-        const auto offset = (split.count - 1) * split.segment;
-        return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, n, n, static_cast<int>(split.tail),
-                           &weight, u + offset, ar, u + offset, ar, &zero,
-                           plan.exchange_intermediate + (split.count - 1) * plan.matrix_elements,
-                           n);
-      }
       // K is a Gram matrix even when the three-center fixture is not AO
       // symmetric. Reduce its product domain before BLAS, then mirror the
       // result. Providers without SYRK retain the exact full GEMM route.
@@ -102,16 +76,6 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     });
     if (status != CUBLAS_STATUS_SUCCESS)
       return blas_failure(status, "resident occupied DF K product", detail);
-    if (split.count) {
-      runtime::cuda_trace::TraceRegion reduction("ri_k_occupied_split_reduce", plan.stream);
-      // Every partial is a complete matrix. The existing reduction visits
-      // ascending segment indices, then adds into the already-zeroed K.
-      launch_reduce_exchange_tile_kernel(blocks_for(plan.matrix_elements), kThreads, 0, plan.stream,
-                                         plan.matrix_elements, split.count, system,
-                                         plan.exchange_intermediate, exchange, false);
-      error = cudaPeekAtLastError();
-      if (error != cudaSuccess) return cuda_failure(error, "reduce split occupied DF K", detail);
-    }
     if (triangular) {
       runtime::cuda_trace::TraceRegion mirror("ri_k_occupied_mirror", plan.stream);
       launch_mirror_exchange_triangle(blocks_for(plan.matrix_elements), kThreads, plan.stream,
@@ -121,23 +85,7 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     }
     trace_counter("occupied_projection_products", plan.nbf);
     trace_counter("occupied_projection_flops", 2 * plan.naux * plan.nbf * plan.nbf * rank);
-    trace_counter("occupied_exchange_products", split.count ? split.count : 1);
-    trace_counter("occupied_exchange_blas_calls",
-                  split.count && split.tail != split.segment ? 2 : 1);
-    trace_counter("occupied_exchange_split_count", split.count);
-    trace_counter("occupied_exchange_partial_borrowed_bytes",
-                  split.partial_elements * sizeof(double));
-    trace_counter("occupied_exchange_partial_write_bytes", split.partial_elements * sizeof(double));
-    trace_counter("occupied_exchange_reduction_read_bytes",
-                  split.partial_elements * sizeof(double));
-    trace_counter("occupied_exchange_extra_owned_bytes", 0);
-    trace_counter("occupied_exchange_reduction_source_additions",
-                  split.count ? split.partial_elements + plan.matrix_elements : 0);
-    trace_counter("occupied_exchange_reduction_output_read_bytes",
-                  split.count ? plan.matrix_elements * sizeof(double) : 0);
-    trace_counter("occupied_exchange_reduction_output_write_bytes",
-                  split.count ? plan.matrix_elements * sizeof(double) : 0);
-    trace_counter("occupied_exchange_finish_launches", split.count || triangular ? 1 : 0);
+    trace_counter("occupied_exchange_products", 1);
     trace_counter("occupied_exchange_flops",
                   plan.naux * rank * plan.nbf * (triangular ? plan.nbf + 1 : 2 * plan.nbf));
     trace_counter("occupied_exchange_triangular", triangular);

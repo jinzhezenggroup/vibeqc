@@ -186,8 +186,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   const char* resident_policy = std::getenv("VIBEQC_DF_RESIDENT_EXCHANGE");
   if (resident_policy && std::strcmp(resident_policy, "auto") != 0 &&
       std::strcmp(resident_policy, "full") != 0 && std::strcmp(resident_policy, "flat") != 0 &&
-      std::strcmp(resident_policy, "legacy") != 0 && std::strcmp(resident_policy, "split4") != 0) {
-    detail = "VIBEQC_DF_RESIDENT_EXCHANGE must be auto, full, flat, legacy or split4";
+      std::strcmp(resident_policy, "legacy") != 0) {
+    detail = "VIBEQC_DF_RESIDENT_EXCHANGE must be auto, full, flat or legacy";
     return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
   cudaError_t cuda_error = cudaSetDevice(device_id);
@@ -200,7 +200,6 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   candidate->occupied_scf_reserved = occupied_scf_reserved;
   candidate->resident_exchange_enabled = df_resident_exchange_requested();
   candidate->triangular_exchange = df_triangular_exchange_requested();
-  candidate->split_occupied_exchange = df_split_occupied_exchange_requested();
   candidate->flat_dense_exchange = df_flat_dense_exchange_requested();
   candidate->cooperative_diis = df_cooperative_diis_requested();
   candidate->metric_relative_threshold = relative_threshold;
