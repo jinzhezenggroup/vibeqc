@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "architecture": "sm_120",
+  "qualified": false,
+  "raw_lanes": 4,
+  "kernels": {
+    "000": "rys",
+    "001": "polynomial",
+    "002": "rys",
+    "010": "generic",
+    "011": "generic",
+    "020": "rys",
+    "100": "generic",
+    "101": "generic",
+    "110": "generic",
+    "200": "rys"
+  },
+  "provenance": {
+    "candidate_report": "benchmarks/results/issue404-407-df/initial-value-batch.json",
+    "conflict_policy": "Keep generic math for 010/100 because the retained profiles disagree.",
+    "endpoint_decision": "Rejected after initial and revised 384-AO cold regressions; auto remains generic/scalar.",
+    "followup_report": "benchmarks/results/issue404-407-df/value-batch.json"
+  }
+}

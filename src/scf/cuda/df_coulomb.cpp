@@ -22,6 +22,7 @@ using runtime::cuda_trace::TraceOperation;
 // Coulomb contraction preserves both passes over bounded source tiles.
 vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* density,
                             std::string& detail) {
+  plan.final_projection_token.reset();
   TraceOperation trace(
       "ri_j", plan.stream,
       {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});

@@ -74,6 +74,10 @@ struct CudaDfResponseBuffers {
   std::array<CudaDfOccupiedResponseFactor, 3> occupied_factors{};
   CudaDfRawTensorView resident_raw{};
   bool batch_products{true};
+  // Optional validated full-rank RHF U[mu,i,Q], Q contiguous. It aliases
+  // staging_weights and is consumed before that allocation becomes mutable
+  // response storage. occupied_factors[0] is its exact final canonical C.
+  const double* final_occupied_projection{};
 };
 /** Owned numeric staging and explicit transfers, excluding caller weights/system data. */
 struct DfGradientResources {

@@ -10,6 +10,7 @@
 #include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda/topology.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 
@@ -30,6 +31,15 @@ vibeqc_status cuda_status(cudaError_t status) {
 vibeqc_status build_cuda_density_fitting_integrals_impl(
     int device_id, const core::System& orbital_system, const core::System& auxiliary_system,
     integrals::DensityFittingIntegralData& output, std::string& detail, bool include_derivatives) {
+  unsigned value_math = 0, value_lanes = 1;
+  if (!cuda_policy::df_value_raw_lanes_requested(value_lanes)) {
+    detail = "VIBEQC_DF_VALUE_RAW_MAPPING must be auto, scalar, subgroup, warp or candidate";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!cuda_policy::df_value_math_requested(value_math)) {
+    detail = "VIBEQC_DF_VALUE_MATH must be auto, generic, polynomial rys or candidate";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   if (device_id < 0) {
     detail = "CUDA density-fitting integral generation received an invalid device";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -222,7 +232,8 @@ vibeqc_status build_cuda_density_fitting_integrals_impl(
   const unsigned blocks = static_cast<unsigned>((total_elements + threads - 1U) / threads);
   launch_build_cuda_df_integrals_kernel(
       false, blocks, threads, 0, stream, device_batch, orbital_count, auxiliary_count, dummy_index,
-      metric_elements, three_center_elements, 0, 1, -1, device_metric, device_three_center);
+      metric_elements, three_center_elements, 0, 1, -1, device_metric, device_three_center,
+      value_math, value_lanes);
   cuda_error = cudaGetLastError();
   if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
   if (cuda_error == cudaSuccess) {
@@ -239,7 +250,7 @@ vibeqc_status build_cuda_density_fitting_integrals_impl(
     launch_build_cuda_df_integrals_kernel(
         true, blocks, threads, 0, stream, device_batch, orbital_count, auxiliary_count, dummy_index,
         metric_elements, three_center_elements, 0, 1, static_cast<std::int64_t>(coordinate),
-        device_metric, device_three_center);
+        device_metric, device_three_center, value_math, value_lanes);
     cuda_error = cudaGetLastError();
     if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
     if (cuda_error == cudaSuccess) {

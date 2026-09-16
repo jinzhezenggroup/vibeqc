@@ -14,6 +14,7 @@
 
 namespace vibeqc::scf::cuda_df {
 vibeqc_status begin_scf_final_state_solve(CudaDensityFittingJkPlan& plan, std::string& detail) {
+  plan.final_projection_token.reset();
   if (auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state))
     state->final_frames_available = false;
   if (!plan.factor_basis_identity ||
@@ -173,6 +174,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
                                                     std::string& detail) {
   using namespace runtime::cuda_trace;
   used = false;
+  if (plan) plan->final_projection_token.reset();
   const char* policy = std::getenv("VIBEQC_DF_FINAL_EXCHANGE");
   if (policy && std::string(policy) != "auto" && std::string(policy) != "dense" &&
       std::string(policy) != "occupied") {
@@ -256,6 +258,13 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   if (error != cudaSuccess) return cuda_failure(error, "download final retained J/K", detail);
   trace_counter("d2h_bytes", 2 * bytes);
   trace_counter("explicit_synchronizations", 1);
+  // The projection and final coefficients refer to precisely this density
+  // generation. Publishing after the successful drain excludes partial K.
+  if (plan->resident_exchange_enabled && plan->resident_raw_valid && plan->metric_full_rank[0] &&
+      current.identity.occupied[0] &&
+      plan->naux * current.identity.occupied[0] <=
+          static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    plan->final_projection_token = current;
   trace_counter("accepted", 1);
   used = true;
   return VIBEQC_STATUS_SUCCESS;

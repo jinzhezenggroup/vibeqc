@@ -23,15 +23,25 @@ class CudaCompilerAdapter:
     target: CudaTargetInfo
     compile_timeout: float = 300.0
 
-    def compile(self, source: Path, output: Path) -> CudaCompileResult:
+    def compile(
+        self,
+        source: Path,
+        output: Path,
+        *,
+        includes: tuple[Path, ...] = (),
+        options: tuple[str, ...] = (),
+        standard: str = "c++17",
+    ) -> CudaCompileResult:
         """Compile one translation unit and terminate all NVCC children on timeout."""
 
         command = [
             str(self.nvcc),
-            "-std=c++17",
+            f"-std={standard}",
             f"-arch={self.target.architecture}",
             "-O3",
             "-Xptxas=-v",
+            *(f"-I{path}" for path in includes),
+            *options,
             "-c",
             str(source),
             "-o",
@@ -82,17 +92,22 @@ class CudaCompilerAdapter:
         executable: Path,
         *,
         timeout: float = 300.0,
+        includes: tuple[Path, ...] = (),
+        options: tuple[str, ...] = (),
+        standard: str = "c++17",
     ) -> subprocess.CompletedProcess[str]:
         """Link compiled candidates and the target-probing driver."""
 
         return subprocess.run(
             [
                 str(self.nvcc),
-                "-std=c++17",
+                f"-std={standard}",
                 f"-arch={self.target.architecture}",
                 "-O3",
+                *(f"-I{path}" for path in includes),
                 str(driver),
                 *(str(item) for item in objects),
+                *options,
                 "-o",
                 str(executable),
             ],

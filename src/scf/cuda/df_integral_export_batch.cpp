@@ -10,6 +10,7 @@
 #include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda/topology.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 
@@ -32,6 +33,15 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
     std::vector<integrals::DensityFittingIntegralData>& outputs, std::string& detail,
     std::size_t output_budget_bytes, bool include_derivatives) {
   outputs.clear();
+  unsigned value_math = 0, value_lanes = 1;
+  if (!cuda_policy::df_value_raw_lanes_requested(value_lanes)) {
+    detail = "VIBEQC_DF_VALUE_RAW_MAPPING must be auto, scalar, subgroup, warp or candidate";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!cuda_policy::df_value_math_requested(value_math)) {
+    detail = "VIBEQC_DF_VALUE_MATH must be auto, generic, polynomial rys or candidate";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   if (device_id < 0 || orbital_systems.empty() ||
       orbital_systems.size() != auxiliary_systems.size()) {
     detail = "CUDA DF integral batch dimensions are invalid";
@@ -304,12 +314,12 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
       launch_build_cuda_df_integrals_kernel(
           false, blocks, threads, 0, stream, device_batch, orbital_count, auxiliary_count,
           dummy_index, metric_elements, three_center_elements, system_base, systems_in_chunk,
-          coordinate, device_metric, device_three_center);
+          coordinate, device_metric, device_three_center, value_math, value_lanes);
     } else {
       launch_build_cuda_df_integrals_kernel(
           true, blocks, threads, 0, stream, device_batch, orbital_count, auxiliary_count,
           dummy_index, metric_elements, three_center_elements, system_base, systems_in_chunk,
-          coordinate, device_metric, device_three_center);
+          coordinate, device_metric, device_three_center, value_math, value_lanes);
     }
     cudaError_t launch_error = cudaGetLastError();
     if (launch_error == cudaSuccess) {

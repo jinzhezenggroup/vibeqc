@@ -18,6 +18,12 @@ struct DfShellBasisView {
   // Zero keeps heterogeneous per-shell bounds. A positive count is a caller
   // invariant for a homogeneous signature slice, passed uniformly at launch.
   std::size_t primitives{};
+  // Optional SSS-only force budget per primitive, allocated over the complete
+  // response domain by the owner. Zero selects the unchanged exact kernel.
+  // Optional counters: considered primitives, skipped primitives, fully skipped
+  // shell tasks. They are intrusive diagnostics, absent from clean timing.
+  double force_screen_budget{};
+  unsigned long long* force_screen_counts{};
 };
 
 /** Ordered dense reference, folded dense shell pairs, or folded packed AOs.

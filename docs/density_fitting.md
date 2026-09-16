@@ -162,8 +162,10 @@ including ragged source tails. Raw source tiles keep a full primitive-reduction
 warp. The bulk compatibility builder retains one thread per output. The
 promotion evidence is in
 [`benchmarks/results/generated-df-values-142`](../benchmarks/results/generated-df-values-142/README.md).
-`VIBEQC_DF_VALUES` is retired. Reproducing the previous Hermite evaluator requires
-the exact historical checkout recorded in that archive.
+`VIBEQC_DF_VALUES` is retired. Reproducing that historical Hermite evaluator
+requires its recorded checkout. The separate [DF tuning](df_tuning.md) harness
+offers newly generated specialized polynomial/Rys candidates; these remain
+diagnostic after cold endpoint regressions and do not change the default.
 `VIBEQC_DF_VALUE_MAPPING=auxiliary|component|primitive` compares contiguous
 auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
 output. Auxiliary/component mappings remain diagnostic overrides; the component

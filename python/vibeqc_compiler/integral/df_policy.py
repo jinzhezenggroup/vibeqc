@@ -39,14 +39,18 @@ def emit_df_policy_cuda(*, derivatives=False):
         + ("DERIVATIVE" if derivatives else "VALUE")
         + "_POLICY_CUH"
     )
-    header = "generated_df_derivatives.cuh" if derivatives else "df_values.cuh"
+    header = (
+        "generated_df_derivatives.cuh"
+        if derivatives
+        else "generated_df_value_candidates.cuh"
+    )
     value = r"""// Split a transformed output's warp across auxiliary source terms and
 // primitive products. Four lanes retain contraction parallelism while eight
 // source terms progress independently, including short and long contractions.
 struct ValueSourceSchedule {
   static constexpr unsigned primitive_lanes = 4;
 };
-struct Value {
+template<unsigned Math=0> struct ValueMath {
   using Vec3 = generated_df::Vec3;
   using Angular = generated_df::Angular;
   using Accumulator = double;
@@ -63,10 +67,11 @@ struct Value {
       out += weight * generated_df::metric(e[0],first,first_angular,e[1],second,second_angular);
     else {
       const Vec3 third=r[2]; const Angular third_angular=a[2];
-      out += weight * generated_df::three_center(e[0],first,first_angular,e[1],second,second_angular,e[2],third,third_angular);
+      out += weight * generated_df_value_candidates::three_center<Math>(e[0],first,first_angular,e[1],second,second_angular,e[2],third,third_angular);
     }
   }
 };
+using Value=ValueMath<0>;
 """
     derivative = r"""struct Derivative {
   using Vec3 = generated_df_derivatives::Vec3;

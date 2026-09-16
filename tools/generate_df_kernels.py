@@ -35,6 +35,7 @@ def main() -> None:
     parser.add_argument("--policy-output", type=Path)
     parser.add_argument("--schedule-output", type=Path)
     parser.add_argument("--shell-output", type=Path)
+    parser.add_argument("--df-production-manifest", type=Path)
     args = parser.parse_args()
     if (args.schedule_output or args.shell_output) and not args.derivatives:
         parser.error("--schedule-output/--shell-output require --derivatives")
@@ -47,6 +48,15 @@ def main() -> None:
         emitter, inventory = emit_df_derivatives_cuda, df_derivative_inventory
     else:
         emitter, inventory = emit_df_values_cuda, df_program_inventory
+    if not args.derivatives:
+        from vibeqc_compiler.integral.df_value_candidates import (
+            emit_df_value_candidates_cuda,
+        )
+
+        write_if_changed(
+            args.output.with_name("generated_df_value_candidates.cuh"),
+            emit_df_value_candidates_cuda(),
+        )
     source = emitter()
     write_if_changed(args.output, source)
     if args.policy_output:
@@ -70,7 +80,18 @@ def main() -> None:
             emit_df_rys_policy_cpp,
             emit_df_rys_shell_cuda,
         )
+        from vibeqc_compiler.integral.df_screening import emit_sss_force_screening_cuda
 
+        write_if_changed(
+            args.shell_output.with_name("generated_df_screening.cuh"),
+            emit_sss_force_screening_cuda(),
+        )
+        from vibeqc_compiler.integral.df_tuning.manifest import MANIFEST, emit_policy
+
+        write_if_changed(
+            args.shell_output.with_name("generated_df_production.hpp"),
+            emit_policy(args.df_production_manifest or MANIFEST),
+        )
         for name, emitter in (
             ("generated_df_rys.cuh", emit_df_rys_cuda),
             ("generated_df_rys_policy.hpp", emit_df_rys_policy_cpp),

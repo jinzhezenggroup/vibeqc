@@ -177,6 +177,10 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   if (!candidate) return VIBEQC_STATUS_OUT_OF_MEMORY;
   candidate->device_id = device_id;
   candidate->value_mapping = cuda_policy::df_value_mapping_requested();
+  if (!cuda_policy::df_value_math_requested(candidate->value_math)) {
+    detail = "VIBEQC_DF_VALUE_MATH must be auto, generic, polynomial rys or candidate";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   candidate->batch_size = batch_size;
   candidate->public_nbf = public_nbf;
   candidate->public_naux = public_naux;

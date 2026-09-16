@@ -67,8 +67,6 @@ def _runtime_environment(nvcc: Path) -> dict[str, str]:
     """Expose the selected CUDA runtime without changing GPU visibility."""
 
     environment = dict(os.environ)
-    if environment.get("CUDA_VISIBLE_DEVICES") == "":
-        environment.pop("CUDA_VISIBLE_DEVICES")
     library = nvcc.parent.parent / "lib64"
     previous = environment.get("LD_LIBRARY_PATH")
     environment["LD_LIBRARY_PATH"] = (

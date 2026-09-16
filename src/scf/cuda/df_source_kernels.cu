@@ -7,6 +7,7 @@
 #include "molecule/basis.hpp"
 #include "runtime/cuda_gaussian_products.cuh"
 #include "scf/cuda/df_source_kernels.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 
 namespace vibeqc::scf::cuda_execution {
 
@@ -31,14 +32,14 @@ __device__ runtime::cuda_gaussian_products::BasisView df_basis_view(const Device
  * the surrounding transformed-tile state across each Cartesian component;
  * scalar mathematical evaluators retain their own independent call boundaries.
  */
-template <bool Derivative, bool Metric>
+template <bool Derivative, bool Metric, unsigned Math = 0>
 __device__ double contracted_df(const DeviceBatch& batch, std::int32_t system, std::int32_t first,
                                 std::int32_t second, std::int32_t auxiliary, std::int32_t dummy,
                                 std::int64_t coordinate, unsigned lane = 0U, unsigned lanes = 1U) {
   (void)dummy;
   namespace products = runtime::cuda_gaussian_products;
-  using Policy =
-      std::conditional_t<Derivative, generated_df_policy::Derivative, generated_df_policy::Value>;
+  using Policy = std::conditional_t<Derivative, generated_df_policy::Derivative,
+                                    generated_df_policy::ValueMath<Math>>;
   constexpr unsigned rank = Metric ? 2 : 3;
   const auto basis = df_basis_view(batch);
   const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
@@ -62,13 +63,15 @@ __device__ double contracted_df(const DeviceBatch& batch, std::int32_t system, s
 }
 
 /** Evaluate raw Cartesian M[P,Q] and A[mu,nu,P], without pair compression. */
-template <bool Derivative>
+template <bool Derivative, unsigned Math = 0, unsigned Lanes = 1, bool ClassFiltered = false>
 __global__ void build_cuda_df_integrals_kernel(
     DeviceBatch batch, std::size_t orbital_count, std::size_t auxiliary_count,
     std::size_t dummy_index, std::size_t metric_elements, std::size_t three_center_elements,
     std::size_t system_base, std::size_t launch_batch_size, std::int64_t derivative_coordinate,
     double* metric, double* three_center) {
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const unsigned lane = threadIdx.x % Lanes;
+  const std::size_t element =
+      (static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x) / Lanes;
   const std::size_t per_system = metric_elements + three_center_elements;
   const std::size_t total = launch_batch_size * per_system;
   if (element >= total) return;
@@ -80,15 +83,18 @@ __global__ void build_cuda_df_integrals_kernel(
                                 : derivative_coordinate + batch.atom_offsets[system] * 3;
 
   if (system_local < metric_elements) {
+    if constexpr (ClassFiltered && Lanes != 1) return;
     const std::size_t first_aux = system_local / auxiliary_count;
     const std::size_t second_aux = system_local % auxiliary_count;
-    const auto value = contracted_df<Derivative, true>(
+    auto value = contracted_df<Derivative, true>(
         batch, static_cast<std::int32_t>(system),
         static_cast<std::int32_t>(orbital_count + first_aux),
         static_cast<std::int32_t>(dummy_index),
         static_cast<std::int32_t>(orbital_count + second_aux),
-        static_cast<std::int32_t>(dummy_index), system_derivative_coordinate);
-    metric[local_system * metric_elements + system_local] = value;
+        static_cast<std::int32_t>(dummy_index), system_derivative_coordinate, lane, Lanes);
+    const unsigned mask = __activemask();
+    for (unsigned d = Lanes / 2; d; d /= 2) value += __shfl_down_sync(mask, value, d, Lanes);
+    if (lane == 0) metric[local_system * metric_elements + system_local] = value;
     return;
   }
 
@@ -97,12 +103,25 @@ __global__ void build_cuda_df_integrals_kernel(
   const std::size_t auxiliary = local % auxiliary_count;
   const std::size_t first_orbital = orbital_pair / orbital_count;
   const std::size_t second_orbital = orbital_pair % orbital_count;
-  const auto value = contracted_df<Derivative, false>(
+  if constexpr (ClassFiltered) {
+    // The manifest covers total angular degree <=2. Keep the exact scalar
+    // schedule for all other classes and for M; a bounded second grid visits
+    // only their metadata, never their primitive recurrence. No task queue or
+    // unqualified high-angular cooperative schedule is introduced.
+    const auto base = system * batch.nbf;
+    const auto degree = batch.shell_angular[batch.ao_shells[base + first_orbital]] +
+                        batch.shell_angular[batch.ao_shells[base + second_orbital]] +
+                        batch.shell_angular[batch.ao_shells[base + orbital_count + auxiliary]];
+    if ((Lanes == 1) == (degree <= 2)) return;
+  }
+  auto value = contracted_df<Derivative, false, Math>(
       batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first_orbital),
       static_cast<std::int32_t>(second_orbital),
       static_cast<std::int32_t>(orbital_count + auxiliary), static_cast<std::int32_t>(dummy_index),
-      system_derivative_coordinate);
-  three_center[local_system * three_center_elements + local] = value;
+      system_derivative_coordinate, lane, Lanes);
+  const unsigned mask = __activemask();
+  for (unsigned d = Lanes / 2; d; d /= 2) value += __shfl_down_sync(mask, value, d, Lanes);
+  if (lane == 0) three_center[local_system * three_center_elements + local] = value;
 }
 
 /**
@@ -112,7 +131,7 @@ __global__ void build_cuda_df_integrals_kernel(
  * metric inverse square root.  This intentionally trades redundant arithmetic
  * for a strict O(pair_tile*aux_tile) device footprint in budgeted plans.
  */
-template <bool Derivative>
+template <bool Derivative, unsigned Math = 0>
 __global__ void build_cuda_df_transformed_tile_kernel(
     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
@@ -168,7 +187,7 @@ __global__ void build_cuda_df_transformed_tile_kernel(
         for (unsigned k = 0; k < auxiliary_expansion.count; ++k) {
           const auto cartesian_auxiliary = auxiliary_expansion.cartesian[k];
           const double auxiliary_coefficient = auxiliary_expansion.coefficients[k];
-          const double raw = contracted_df<Derivative, false>(
+          const double raw = contracted_df<Derivative, false, Math>(
               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
               static_cast<std::int32_t>(second),
               static_cast<std::int32_t>(cartesian_orbital_count + cartesian_auxiliary),
@@ -246,15 +265,50 @@ void launch_build_cuda_df_integrals_kernel(
     DeviceBatch batch, std::size_t orbital_count, std::size_t auxiliary_count,
     std::size_t dummy_index, std::size_t metric_elements, std::size_t three_center_elements,
     std::size_t system_base, std::size_t launch_batch_size, std::int64_t derivative_coordinate,
-    double* metric, double* three_center) {
+    double* metric, double* three_center, unsigned math, unsigned lanes) {
   if (derivative) {
     build_cuda_df_integrals_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, orbital_count, auxiliary_count, dummy_index, metric_elements, three_center_elements,
         system_base, launch_batch_size, derivative_coordinate, metric, three_center);
   } else {
-    build_cuda_df_integrals_kernel<false><<<grid, block, shared_bytes, stream>>>(
-        batch, orbital_count, auxiliary_count, dummy_index, metric_elements, three_center_elements,
-        system_base, launch_batch_size, derivative_coordinate, metric, three_center);
+    const auto launch = [&]<unsigned Math>() {
+      const auto schedule = [&]<unsigned Lanes>() {
+        build_cuda_df_integrals_kernel<false, Math, Lanes>
+            <<<dim3(grid.x * Lanes), block, shared_bytes, stream>>>(
+                batch, orbital_count, auxiliary_count, dummy_index, metric_elements,
+                three_center_elements, system_base, launch_batch_size, derivative_coordinate,
+                metric, three_center);
+      };
+      if (lanes == cuda_policy::kDfCandidateRawSchedule) {
+        const auto filtered = [&]<unsigned Lanes>() {
+          build_cuda_df_integrals_kernel<false, Math, Lanes, true>
+              <<<dim3(grid.x * Lanes), block, shared_bytes, stream>>>(
+                  batch, orbital_count, auxiliary_count, dummy_index, metric_elements,
+                  three_center_elements, system_base, launch_batch_size, derivative_coordinate,
+                  metric, three_center);
+        };
+        constexpr unsigned selected = generated_df_value_candidates::candidate_raw_lanes;
+        if constexpr (selected == 1) {
+          schedule.template operator()<1>();
+        } else {
+          filtered.template operator()<selected>();
+          filtered.template operator()<1>();
+        }
+      } else if (lanes == 4)
+        schedule.template operator()<4>();
+      else if (lanes == 32)
+        schedule.template operator()<32>();
+      else
+        schedule.template operator()<1>();
+    };
+    if (math == 1)
+      launch.template operator()<1>();
+    else if (math == 2)
+      launch.template operator()<2>();
+    else if (math == 3)
+      launch.template operator()<3>();
+    else
+      launch.template operator()<0>();
   }
 }
 
@@ -286,7 +340,7 @@ void launch_build_cuda_df_transformed_tile_kernel(
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
     const DfPublicAoExpansion* orbital_to_cartesian,
     const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
-    bool apply_metric_transform, double* output, unsigned mapping) {
+    bool apply_metric_transform, double* output, unsigned mapping, unsigned math) {
   if (derivative) {
     build_cuda_df_transformed_tile_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, cartesian_orbital_count, cartesian_auxiliary_count, public_nbf, public_naux,
@@ -294,11 +348,21 @@ void launch_build_cuda_df_transformed_tile_kernel(
         derivative_coordinate, orbital_to_cartesian, auxiliary_to_cartesian, inverse_square_root,
         apply_metric_transform, output, mapping);
   } else {
-    build_cuda_df_transformed_tile_kernel<false><<<grid, block, shared_bytes, stream>>>(
-        batch, cartesian_orbital_count, cartesian_auxiliary_count, public_nbf, public_naux,
-        dummy_index, system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
-        derivative_coordinate, orbital_to_cartesian, auxiliary_to_cartesian, inverse_square_root,
-        apply_metric_transform, output, mapping);
+    const auto launch = [&]<unsigned Math>() {
+      build_cuda_df_transformed_tile_kernel<false, Math><<<grid, block, shared_bytes, stream>>>(
+          batch, cartesian_orbital_count, cartesian_auxiliary_count, public_nbf, public_naux,
+          dummy_index, system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+          derivative_coordinate, orbital_to_cartesian, auxiliary_to_cartesian, inverse_square_root,
+          apply_metric_transform, output, mapping);
+    };
+    if (math == 1)
+      launch.template operator()<1>();
+    else if (math == 2)
+      launch.template operator()<2>();
+    else if (math == 3)
+      launch.template operator()<3>();
+    else
+      launch.template operator()<0>();
   }
 }
 

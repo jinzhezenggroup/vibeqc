@@ -16,6 +16,7 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
                                       const double* coefficients, std::size_t rank,
                                       bool column_major, double weight, double* exchange,
                                       std::string& detail) {
+  plan.final_projection_token.reset();
   using namespace runtime::cuda_trace;
   TraceOperation trace(
       "ri_k_occupied", plan.stream,

@@ -141,6 +141,9 @@ def test_jk_scratch_retains_discarded_metric_response(
     monkeypatch, tmp_path, space, pairs
 ):
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
+    monkeypatch.setenv("VIBEQC_DF_FINAL_PROJECTION", "reuse")
+    monkeypatch.setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied")
+    monkeypatch.setenv("VIBEQC_DF_RESIDENT_EXCHANGE", "full")
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
     basis = [Shell(i, 0, (Primitive(1.0, 1.0),)) for i in range(2)]
     auxiliary = [
@@ -174,6 +177,7 @@ def test_jk_scratch_retains_discarded_metric_response(
         np.testing.assert_allclose(actual.forces, reference.forces, atol=3e-9, rtol=0)
     responses = [r for r in read_trace(trace) if r["operation"] == "force_response"]
     assert len(responses) == 1
+    assert responses[0]["counters"].get("response_final_projection_reused", 0) == 0
     assert (responses[0]["counters"].get("response_occupied_rank", 0) > 0) == (
         space == "occupied"
     )

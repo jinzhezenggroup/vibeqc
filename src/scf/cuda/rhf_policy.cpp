@@ -285,6 +285,48 @@ unsigned df_derivative_mapping_requested() noexcept {
   return selected("VIBEQC_DF_DERIVATIVE_MAPPING", "serial") ? 1U : 0U;
 }
 
+bool df_value_math_requested(unsigned& math) noexcept {
+  math = 0;
+  const char* value = std::getenv("VIBEQC_DF_VALUE_MATH");
+  if (!value || selected("VIBEQC_DF_VALUE_MATH", "auto") ||
+      selected("VIBEQC_DF_VALUE_MATH", "generic"))
+    return true;
+  if (selected("VIBEQC_DF_VALUE_MATH", "candidate")) {
+    math = 3;
+    return true;
+  }
+  if (selected("VIBEQC_DF_VALUE_MATH", "polynomial")) {
+    math = 1;
+    return true;
+  }
+  if (selected("VIBEQC_DF_VALUE_MATH", "rys")) {
+    math = 2;
+    return true;
+  }
+  return false;
+}
+
+bool df_value_raw_lanes_requested(unsigned& lanes) noexcept {
+  lanes = 1;
+  const char* value = std::getenv("VIBEQC_DF_VALUE_RAW_MAPPING");
+  if (!value || selected("VIBEQC_DF_VALUE_RAW_MAPPING", "auto") ||
+      selected("VIBEQC_DF_VALUE_RAW_MAPPING", "scalar"))
+    return true;
+  if (selected("VIBEQC_DF_VALUE_RAW_MAPPING", "candidate")) {
+    lanes = kDfCandidateRawSchedule;
+    return true;
+  }
+  if (selected("VIBEQC_DF_VALUE_RAW_MAPPING", "subgroup")) {
+    lanes = 4;
+    return true;
+  }
+  if (selected("VIBEQC_DF_VALUE_RAW_MAPPING", "warp")) {
+    lanes = 32;
+    return true;
+  }
+  return false;
+}
+
 unsigned df_value_mapping_requested() noexcept {
   // Primitive-oriented warps won the endpoint comparisons at both budgets
   // and batch sizes. Other mappings remain explicit diagnostic candidates.

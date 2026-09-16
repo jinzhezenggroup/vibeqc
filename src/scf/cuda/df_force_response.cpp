@@ -206,7 +206,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     };
     const char* serial = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
     if (compatible("VIBEQC_DF_WEIGHTED_EXECUTION", "shell") &&
-        compatible("VIBEQC_DF_SHELL_SCHEDULE", "compact") &&
+        (compatible("VIBEQC_DF_SHELL_SCHEDULE", "compact") ||
+         compatible("VIBEQC_DF_SHELL_SCHEDULE", "auto")) &&
         compatible("VIBEQC_DF_RESPONSE_ALGEBRA", "blas") &&
         absent("VIBEQC_DF_RESPONSE_UPLOAD_PROBE") && absent("VIBEQC_DF_RESPONSE_SCATTER_PROBE") &&
         !(serial && std::string_view(serial) == "1")) {
@@ -274,6 +275,32 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                                                            maximum_bytes, buffers, detail);
     if (selected != VIBEQC_STATUS_SUCCESS) return selected;
   }
+  const char* projection_control = std::getenv("VIBEQC_DF_FINAL_PROJECTION");
+  const std::string_view projection = projection_control ? projection_control : "auto";
+  if (projection != "auto" && projection != "off" && projection != "reuse") {
+    detail = "VIBEQC_DF_FINAL_PROJECTION must be auto, off or reuse";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  // Automatic reuse is limited to the qualified 768-AO resident domain above.
+  // Full-rank M gives
+  // G_raw = G_whitened M^(1/2); discarded directions cannot be recovered and
+  // therefore keep the raw projection path, even under an explicit request.
+  if ((projection == "reuse" || (projection == "auto" && automatic_occupied)) &&
+      buffers.occupied_response && buffers.resident_raw.data && plan->batch_size == 1 &&
+      terms.size() == 1 && final_state && plan->final_projection_token &&
+      *plan->final_projection_token == *final_state && plan->metric_full_rank[0] &&
+      plan->metric_response_valid[0]) {
+    auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
+    const auto rank = buffers.occupied_factors[0].rank;
+    if (!state->unrestricted && rank && rank == final_state->identity.occupied[0] &&
+        2 * rank * rank <= buffers.elements_per_buffer / plan->naux) {
+      buffers.final_occupied_projection = plan->auxiliary_tile_values;
+      buffers.occupied_factors[0].coefficients = state->d_final_alpha_coefficients;
+    }
+  }
+  // A force attempt consumes the exclusive scratch lease. Repeated forces
+  // without another final K, errors, and incompatible consumers all fall back.
+  plan->final_projection_token.reset();
   if (plan->integral_source || !host_weights) {
     if (!plan->metric_response_valid[system]) {
       detail = "DF metric rank crossing: retained/discarded subspaces are unresolved";

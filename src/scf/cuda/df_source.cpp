@@ -118,7 +118,8 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
         source->cartesian_naux, source->public_nbf, source->public_naux, source->dummy_index,
         system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
         system_derivative_coordinate, source->orbital_to_cartesian, source->auxiliary_to_cartesian,
-        inverse_square_root, apply_metric_transform, output, source->value_mapping);
+        inverse_square_root, apply_metric_transform, output, source->value_mapping,
+        source->value_math);
   } else {
     launch_build_cuda_df_transformed_tile_kernel(
         true, blocks, source_threads, 0, stream, source->batch, source->cartesian_nbf,
@@ -228,7 +229,11 @@ CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnost
   const char* mapping = implementation.value_mapping == 1U   ? "component"
                         : implementation.value_mapping == 2U ? "primitive"
                                                              : "auxiliary";
-  return {"generated_rys", mapping, true, true};
+  const char* math = implementation.value_math == 3U   ? "manifest"
+                     : implementation.value_math == 1U ? "specialized_polynomial"
+                     : implementation.value_math == 2U ? "specialized_rys"
+                                                       : "generated_rys";
+  return {math, mapping, true, true};
 }
 
 std::size_t cuda_density_fitting_integral_source_host_bytes(

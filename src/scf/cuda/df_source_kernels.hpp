@@ -30,7 +30,7 @@ void launch_build_cuda_df_integrals_kernel(
     DeviceBatch batch, std::size_t orbital_count, std::size_t auxiliary_count,
     std::size_t dummy_index, std::size_t metric_elements, std::size_t three_center_elements,
     std::size_t system_base, std::size_t launch_batch_size, std::int64_t derivative_coordinate,
-    double* metric, double* three_center);
+    double* metric, double* three_center, unsigned math = 0U, unsigned lanes = 1U);
 
 /** Submit the selected value/coordinate-response specialization with the caller's launch geometry.
  */
@@ -52,6 +52,6 @@ void launch_build_cuda_df_transformed_tile_kernel(
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
     const DfPublicAoExpansion* orbital_to_cartesian,
     const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
-    bool apply_metric_transform, double* output, unsigned mapping = 0U);
+    bool apply_metric_transform, double* output, unsigned mapping = 0U, unsigned math = 0U);
 
 }  // namespace vibeqc::scf::cuda_execution

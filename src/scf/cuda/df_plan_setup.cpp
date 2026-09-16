@@ -410,6 +410,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     solver_info.resize(batch_size);
     diagnostics.resize(batch_size);
     candidate->metric_response_valid.assign(batch_size, 1);
+    candidate->metric_full_rank.assign(batch_size, 0);
   } catch (const std::bad_alloc&) {
     detail = "host allocation for CUDA DF metric diagnostics failed";
     return fail_plan(candidate, VIBEQC_STATUS_OUT_OF_MEMORY);
@@ -465,6 +466,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       detail = "CUDA DF metric threshold removed every auxiliary direction";
       return fail_plan(candidate, VIBEQC_STATUS_INVALID_ARGUMENT);
     }
+    candidate->metric_full_rank[system] = diagnostic.effective_rank == naux;
     diagnostic.condition_number = largest / smallest_retained;
   }
 
@@ -597,6 +599,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       static_cast<long double>(sizeof(*candidate)) + df_eigen_workspace_allowance(nbf) +
       64.0L * batch_size +  // lazy final-frame occupation/eligibility metadata
       vector_capacity_bytes(candidate->metric_response_valid) +
+      vector_capacity_bytes(candidate->metric_full_rank) +
 
       (candidate->integral_source
            ? static_cast<long double>(

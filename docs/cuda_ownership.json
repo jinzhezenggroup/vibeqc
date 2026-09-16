@@ -1414,6 +1414,13 @@
       "regions": [],
       "role": "scientific",
       "subsystem": "ecp"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_kernel.cuh",
+      "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
     }
   ],
   "generated_families": [
@@ -1461,12 +1468,17 @@
     },
     {
       "name": "df_rys_roots",
-      "outputs": ["generated/generated_df_rys.cuh"],
+      "outputs": [
+        "generated/generated_df_rys.cuh"
+      ],
       "owner": "python/vibeqc_compiler/integral/df_rys.py"
     },
     {
       "name": "df_rys_shell",
-      "outputs": ["generated/generated_df_rys_shell.cuh", "generated/generated_df_rys_policy.hpp"],
+      "outputs": [
+        "generated/generated_df_rys_shell.cuh",
+        "generated/generated_df_rys_policy.hpp"
+      ],
       "owner": "python/vibeqc_compiler/integral/df_rys_shell.py"
     },
     {
@@ -1532,6 +1544,27 @@
         "generated/generated_ecp_ao.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
+    },
+    {
+      "name": "df_derivative_production_policy",
+      "outputs": [
+        "generated/generated_df_production.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
+    },
+    {
+      "name": "df_sss_force_screening",
+      "outputs": [
+        "generated/generated_df_screening.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_screening.py"
+    },
+    {
+      "name": "df_value_candidates",
+      "outputs": [
+        "generated/generated_df_value_candidates.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",
@@ -1571,9 +1604,10 @@
       "evidence": [
         "benchmarks/results/generated-df-values-142/promotion.json",
         "benchmarks/results/generated-df-values-142/README.md",
-        "benchmarks/results/cuda-ownership/df/publication.json"
+        "benchmarks/results/cuda-ownership/df/publication.json",
+        "docs/df_tuning.md"
       ],
-      "generated_capability": "All two-/three-center values through f and public spherical transforms instantiate the same rank-generic normalized traversal as derivatives.",
+      "generated_capability": "All two-/three-center values through f and public spherical transforms instantiate the same rank-generic normalized traversal as derivatives. Diagnostic specialized polynomial/Rys values through total angular degree two and raw 1/4/32-lane schedules share the same compiler scalar IR and Direct/DF batch qualification helpers; no value candidate is promoted.",
       "missing_capability": "None for promoted DF values; shared ERI/Dual recurrences remain for Direct and separately gated one-electron derivatives.",
       "owner": "df_values",
       "retirement_condition": "Completed: legacy Hermite value selection/dispatch and parallel DF derivative recurrence/contraction are removed; retain metric factors, planning and cuBLAS/cuSOLVER runtime.",
@@ -1709,7 +1743,8 @@
         "benchmarks/results/issue377-379-df/README.md",
         "tests/native/test_df_shell_pairs.cpp",
         "tests/python/test_df_shell_derivatives_cuda.py",
-        "benchmarks/results/issue382-packed-df/README.md"
+        "benchmarks/results/issue382-packed-df/README.md",
+        "docs/df_tuning.md"
       ],
       "status": "native_baseline_with_opt_in_control"
     }

@@ -140,6 +140,16 @@ void lifecycle(bool uhf, std::size_t batch) {
                 snapshot.density.empty() && snapshot.candidate.spins.empty(),
             "stale token published a snapshot");
   }
+  // A rejected/unsupported final-K attempt must consume an old scratch lease
+  // even when no CUDA work is submitted. Otherwise a later force could see
+  // an intermediate from a preceding attempt under an apparently valid token.
+  plan->final_projection_token = tokens[0];
+  Matrix rejected_j, rejected_k;
+  bool reused = true;
+  require(try_cuda_density_fitting_final_rhf_jk(plan.get(), tokens[0], {}, rejected_j, rejected_k,
+                                                reused, detail) == VIBEQC_STATUS_SUCCESS &&
+              !reused && !plan->final_projection_token,
+          "unsupported final K preserved the old projection lease");
   // Retained device generation/info corruption fails independently of the
   // host token. Every failure must leave the output empty.
   checked(cudaMemsetAsync(state->d_final_alpha_generation, 0, sizeof(std::uint64_t), plan->stream));
@@ -147,7 +157,9 @@ void lifecycle(bool uhf, std::size_t batch) {
                   VIBEQC_STATUS_NUMERICAL_FAILURE &&
               snapshot.density.empty(),
           "corrupt device generation passed");
+  plan->final_projection_token = tokens[0];
   require(run(8) == VIBEQC_STATUS_SUCCESS, detail);
+  require(!plan->final_projection_token, "new solve preserved the old projection lease");
   require(read_cuda_density_fitting_final_state(plan.get(), tokens[0], snapshot, detail) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
           "warm replay accepted the preceding epoch");
@@ -161,7 +173,9 @@ void lifecycle(bool uhf, std::size_t batch) {
                   VIBEQC_STATUS_NUMERICAL_FAILURE &&
               snapshot.density.empty(),
           "failed active solver info passed");
+  plan->final_projection_token = recovered;
   require(run(0) == VIBEQC_STATUS_INVALID_ARGUMENT, "invalid solve request was accepted");
+  require(!plan->final_projection_token, "invalid solve preserved the old projection lease");
   require(read_cuda_density_fitting_final_state(plan.get(), recovered, snapshot, detail) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
           "invalid replay preserved previous eligibility");

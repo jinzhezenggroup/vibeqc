@@ -506,6 +506,18 @@ vibeqc_status execute_cuda_df_hf_gradient(
     DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle,
     const CudaDfResponseBuffers* borrowed) {
   detail.clear();
+  // Validate even when the selected execution path retains strict evaluation.
+  double target = 0;
+  const char* screen_control = std::getenv("VIBEQC_DF_FORCE_SCREEN_ABS");
+  if (screen_control && std::string_view(screen_control) != "off") {
+    char* end = nullptr;
+    target = std::strtod(screen_control, &end);
+    if (end == screen_control || *end || !std::isfinite(target) || target < 0) {
+      detail = "VIBEQC_DF_FORCE_SCREEN_ABS requires off or a finite nonnegative force budget";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+
   if (resources) *resources = {};
   const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
              atoms = orbital.atoms.size();
@@ -612,6 +624,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     PinnedResponsePanels raw_panels;
     // The host destination must outlive Arena's exceptional-path stream drain.
     std::array<unsigned long long, 6> observed_shell_work{};
+    std::array<unsigned long long, 3> observed_screen_work{};
+    unsigned long long* screen_counters = nullptr;
     std::vector<unsigned long long> detailed_shell_work_host;
     DfShellDiagnostics detailed_shell_work;
     DfShellDiagnostics* shell_diagnostics = nullptr;
@@ -687,9 +701,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const char* shell_schedule_control = std::getenv("VIBEQC_DF_SHELL_SCHEDULE");
     const std::string_view shell_schedule =
         shell_schedule_control ? shell_schedule_control : (promoted_default ? "compact" : "warp");
-    if (shell_schedule != "warp" && shell_schedule != "packed" && shell_schedule != "compact")
-      throw std::invalid_argument("unknown DF shell schedule (use warp, packed or compact)");
-    const unsigned shell_variant = shell_schedule == "warp"     ? 0
+    if (shell_schedule != "auto" && shell_schedule != "warp" && shell_schedule != "packed" &&
+        shell_schedule != "compact")
+      throw std::invalid_argument("unknown DF shell schedule (use auto, warp, packed or compact)");
+    const unsigned shell_variant = shell_schedule == "auto"     ? (promoted_default ? 2 : 0)
+                                   : shell_schedule == "warp"   ? 0
                                    : shell_schedule == "packed" ? 1
                                                                 : 2;
     const char* primitive_bucket_control = std::getenv("VIBEQC_DF_PRIMITIVE_BUCKETS");
@@ -770,6 +786,37 @@ vibeqc_status execute_cuda_df_hf_gradient(
             static_cast<unsigned long long*>(arena.allocate(sizeof(observed_shell_work)));
         check(cudaMemsetAsync(shell_counters, 0, sizeof(observed_shell_work), arena.stream));
         arena.stats.host_bytes += sizeof(observed_shell_work);
+      }
+      {
+        if (target > 0 && full_shell_domain) {
+          // S auxiliary shells have one AO and intersect exactly one response
+          // panel. Ordered orbital pairs bound full/symmetric/packed work;
+          // summing all primitive allowances therefore bounds every final
+          // force component independently of response weights and cancellation.
+          long double orbital_primitives = 0, auxiliary_primitives = 0;
+          for (const auto& shell : orbital.shells)
+            if (!shell.angular_momentum) orbital_primitives += shell.primitives.size();
+          for (const auto& shell : auxiliary.shells)
+            if (!shell.angular_momentum) auxiliary_primitives += shell.primitives.size();
+          const auto capacity = orbital_primitives * orbital_primitives * auxiliary_primitives;
+          if (capacity > 0 && capacity <= std::numeric_limits<unsigned long long>::max()) {
+            const double budget = std::nextafter(static_cast<double>(target / capacity), 0.0);
+            shell_o->view.force_screen_budget = shell_o->signature_view.force_screen_budget =
+                budget;
+            runtime::cuda_trace::trace_counter("screening_000_primitive_capacity",
+                                               static_cast<unsigned long long>(capacity));
+            runtime::cuda_trace::trace_counter("screening_000_enabled", budget > 0);
+            if (shell_counters && budget > 0) {
+              screen_counters =
+                  static_cast<unsigned long long*>(arena.allocate(sizeof(observed_screen_work)));
+              check(
+                  cudaMemsetAsync(screen_counters, 0, sizeof(observed_screen_work), arena.stream));
+              arena.stats.host_bytes += sizeof(observed_screen_work);
+              shell_o->view.force_screen_counts = shell_o->signature_view.force_screen_counts =
+                  screen_counters;
+            }
+          }
+        }
       }
       const char* work_control = std::getenv("VIBEQC_DF_SHELL_WORK");
       if (work_control && std::string_view(work_control) == "1") {
@@ -1145,6 +1192,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
                             cudaMemcpyDeviceToHost, arena.stream));
       arena.stats.device_to_host_bytes += sizeof(observed_shell_work);
     }
+    if (screen_counters) {
+      check(cudaMemcpyAsync(observed_screen_work.data(), screen_counters,
+                            sizeof(observed_screen_work), cudaMemcpyDeviceToHost, arena.stream));
+      arena.stats.device_to_host_bytes += sizeof(observed_screen_work);
+    }
     check(cudaMemcpyAsync(result.data(), output, result.size() * sizeof(double),
                           cudaMemcpyDeviceToHost, arena.stream));
     arena.stats.device_to_host_bytes += result.size() * sizeof(double);
@@ -1160,6 +1212,16 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                     "shell_public_weights_consumed"};
       for (unsigned i = 0; i < observed_shell_work.size(); ++i)
         runtime::cuda_trace::trace_counter(names[i], observed_shell_work[i]);
+    }
+    if (screen_counters) {
+      runtime::cuda_trace::trace_counter("screening_000_primitives_considered",
+                                         observed_screen_work[0]);
+      runtime::cuda_trace::trace_counter("screening_000_primitives_skipped",
+                                         observed_screen_work[1]);
+      runtime::cuda_trace::trace_counter("screening_000_primitives_executed",
+                                         observed_screen_work[0] - observed_screen_work[1]);
+      runtime::cuda_trace::trace_counter("screening_000_shell_tasks_skipped",
+                                         observed_screen_work[2]);
     }
     runtime::cuda_trace::trace_counter("host_to_device_bytes", arena.stats.host_to_device_bytes);
     runtime::cuda_trace::trace_counter("tensor_host_to_device_bytes",

@@ -143,6 +143,13 @@ unsigned df_derivative_mapping_requested() noexcept;
 /** 0: contiguous auxiliary outputs; 1: AO components; 2: primitive lanes. */
 unsigned df_value_mapping_requested() noexcept;
 
+/** Parse diagnostic value math before constructing an immutable source owner. */
+bool df_value_math_requested(unsigned& math) noexcept;
+/** Sentinel for the generated class-filtered schedule, rather than a lane count. */
+inline constexpr unsigned kDfCandidateRawSchedule = 0;
+/** Raw export uses 1/4/32 lanes or kDfCandidateRawSchedule; auto stays scalar. */
+bool df_value_raw_lanes_requested(unsigned& lanes) noexcept;
+
 }  // namespace vibeqc::scf::cuda_policy
 
 #endif

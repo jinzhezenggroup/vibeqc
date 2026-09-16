@@ -4,7 +4,10 @@
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 
+#include <optional>
+
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/cuda_density_fitting_final_state.hpp"
 
 namespace vibeqc::scf {
 
@@ -62,6 +65,14 @@ struct CudaDensityFittingJkPlan {
   // including discarded metric directions, from setup until destruction.
   // Never reuse it as J/K output under the resident exchange policy.
   bool resident_raw_valid{};
+  // An exclusive lease on U[mu,i,Q] in auxiliary_tile_values. Only the
+  // validated final physical RHF K publishes it. Every scratch writer and
+  // new solve revokes it before submission, including unsuccessful attempts.
+  std::optional<CudaDfFinalStateToken> final_projection_token;
+  // Reconstructing raw projections from whitened U is valid only when every
+  // metric direction survived the forward cutoff. Rank boundaries still use
+  // the existing spectral-response validity check.
+  std::vector<std::uint8_t> metric_full_rank;
   bool resident_exchange_enabled{};
   bool triangular_exchange{};
   bool flat_dense_exchange{};

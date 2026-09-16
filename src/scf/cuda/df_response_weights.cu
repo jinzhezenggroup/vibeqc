@@ -4,6 +4,7 @@
 #include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_response_weights.cuh"
+#include "scf/cuda/df_scf_kernels.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -405,9 +406,32 @@ static cudaError_t contract_occupied_response(
         terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
     {
       runtime::cuda_trace::TraceRegion products("exchange_response_occupied_products", stream);
-      if (buffers.batch_products &&
-          n * a <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
-          n * r <= (buffers.elements_per_buffer - retained) / a) {
+      if (buffers.final_occupied_projection) {
+        // U is column-major (a*r,n); right multiplication by its exact C
+        // yields G_whitened[a,i,j]. The tail is disjoint from G_raw[ij,a].
+        // No new O(n*a*r) allocation or raw/retained-subspace approximation.
+        auto* whitened = projected + buffers.elements_per_buffer - a * rr;
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(a * r), ri, ni, &one,
+                            buffers.final_occupied_projection, static_cast<int>(a * r),
+                            factor.coefficients, ni, &zero, whitened, static_cast<int>(a * r)));
+        // Reuse the existing positive-eigenvector scaling primitive. The
+        // owner admits only full rank, so Q sqrt(lambda) Q^T is M^(1/2).
+        cuda_df::launch_density_exchange_factor(stream, a, a, metric.eigenvectors,
+                                                metric.eigenvalues, metric_temp);
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ai, ai, ai, &one, metric_temp, ai,
+                            metric.eigenvectors, ai, &zero, transformed, ai));
+        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, rri, ai, ai, &one, whitened, ai,
+                            transformed, ai, &zero, projected, rri));
+        runtime::cuda_trace::trace_counter("response_final_projection_reused", 1);
+        runtime::cuda_trace::trace_counter("response_final_projection_retained_bytes",
+                                           n * r * a * sizeof(double));
+        runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 3);
+        runtime::cuda_trace::trace_counter("response_occupied_projection_products", 3);
+        runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
+                                           2 * a * n * rr + 2 * a * a * (a + rr));
+      } else if (buffers.batch_products &&
+                 n * a <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
+                 n * r <= (buffers.elements_per_buffer - retained) / a) {
         // Concatenate all raw AO slices: C^T [A_0 ... A_(a-1)] is one
         // larger GEMM. Its (r,n) slices then share C in a batched product.
         // The U destination is free until the following metric contraction;
@@ -431,8 +455,9 @@ static cudaError_t contract_occupied_response(
           runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
           runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2);
         }
-      runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
-                                         2 * a * (n * n * r + n * rr));
+      if (!buffers.final_occupied_projection)
+        runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
+                                           2 * a * (n * n * r + n * rr));
     }
     {
       runtime::cuda_trace::TraceRegion dot("exchange_response_occupied_metric_gemm", stream);

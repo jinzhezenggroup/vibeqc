@@ -25,7 +25,17 @@ def estimate_occupancy(
     exists so rejected candidates retain a complete diagnostic trail.
     """
 
-    block_threads = trial.schedule.block_threads
+    return estimate_kernel_occupancy(resources, trial.schedule.block_threads, target)
+
+
+def estimate_kernel_occupancy(
+    resources: tuple[KernelResources, ...],
+    block_threads: int,
+    target: CudaTargetInfo,
+) -> dict[str, object]:
+    """Share the resource upper bound across direct and DF kernel schedules."""
+    if type(block_threads) is not int or block_threads < 1:
+        raise ValueError("block_threads must be a positive integer")
     if not resources:
         return {
             "available": False,

@@ -277,8 +277,10 @@ Rys consumer, unchanged scientific work counters, and binary/resource costs.
 
 `VIBEQC_DF_SHELL_MATH_000=polynomial|rys|auto` selects the first-derivative
 lowering for the SSS class. Only 000 has a generated Rys implementation;
-all other angular classes retain polynomial lowering. Automatic selection
-remains polynomial; the Rys control is an explicit qualification path. The control is
+all other angular classes retain polynomial lowering. Automatic selection uses
+the qualified sm_120 class manifest for 384/768 AO with equal auxiliary dimension,
+and remains polynomial outside that domain. See [DF tuning](df_tuning.md) for
+batch qualification, per-class schedules and force screening. The control is
 recorded in prepared resource/checkpoint scheduling identity.
 
 Rys uses one node `t²=F1(T)/F0(T)` and weight `F0(T)`, sharing Gaussian product

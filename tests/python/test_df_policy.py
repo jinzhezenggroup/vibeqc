@@ -8,6 +8,7 @@ import pytest
 from vibeqc_compiler.integral.df_cuda import emit_df_values_cuda
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cuda
 from vibeqc_compiler.integral.df_policy import emit_df_policy_cuda
+from vibeqc_compiler.integral.df_value_candidates import emit_df_value_candidates_cuda
 
 
 def test_shared_df_headers_have_translation_unit_safe_linkage(tmp_path):
@@ -23,6 +24,7 @@ def test_shared_df_headers_have_translation_unit_safe_linkage(tmp_path):
     (tmp_path / "cuda_runtime.h").write_text("")
     for name, source in (
         ("df_values.cuh", emit_df_values_cuda()),
+        ("generated_df_value_candidates.cuh", emit_df_value_candidates_cuda()),
         ("generated_df_derivatives.cuh", emit_df_derivatives_cuda()),
         ("values.cuh", emit_df_policy_cuda()),
         ("derivatives.cuh", emit_df_policy_cuda(derivatives=True)),
