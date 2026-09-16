@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+test -n "${SLURM_JOB_ID:-}"
+export PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export VIBEQC_LIBRARY="$PWD/.artifacts/issue409/stage2/frozen/libvibeqc.so"
+export VIBEQC_DF_REFERENCE_FINAL_VALIDATION=0 VIBEQC_DF_FINAL_PROJECTION=auto
+export VIBEQC_DF_FORCE_SCREEN_ABS=off VIBEQC_DF_EXCHANGE=auto
+export VIBEQC_DF_SEED_EXCHANGE=auto VIBEQC_DF_FINAL_EXCHANGE=auto
+export VIBEQC_DF_RESIDENT_EXCHANGE=auto VIBEQC_DF_SHELL_POLICY=auto
+export LD_LIBRARY_PATH="/group/software/cuda-12.9.1/lib64:${LD_LIBRARY_PATH:-}"
+printf 'slurm_job_id=%s\n' "$SLURM_JOB_ID"
+/tmp/vibeqc-308-gpu4pyscf-env/bin/python .artifacts/issue206/starting-information-audit.py
+/tmp/vibeqc-pr-review-env/bin/python .artifacts/issue409/stage2/capacity-probe.py \
+ --aos 384 --storage packed --budget 3221225472 \
+ --checkpoint /home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/384-VIBEQC_DF_DIIS_DOTS.checkpoint \
+ --output .artifacts/issue409/capacity/384-smoke-packed.json
+for storage in dense packed; do
+ /tmp/vibeqc-pr-review-env/bin/python .artifacts/issue409/stage2/capacity-probe.py \
+  --aos 768 --storage "$storage" --budget 12884901888 \
+  --checkpoint /home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/768-VIBEQC_DF_DIIS_DOTS.checkpoint \
+  --output ".artifacts/issue409/capacity/768-12GiB-$storage.json"
+done

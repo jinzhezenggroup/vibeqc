@@ -1,0 +1,150 @@
+"""Physical cc-pVDZ/cc-pVDZ-JKFIT endpoints with unequal auxiliary dimensions.
+
+The reference and VibeQC arms run in separate processes so a retained stock
+allocator cannot inflate the candidate's capacity. Every original basis shell
+and contraction is passed through; no unsupported angular shell is truncated.
+Clean warm timings use one immutable native density for both representations.
+"""
+import argparse
+import ctypes
+import hashlib
+import json
+import os
+from pathlib import Path
+import time
+
+p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--case',required=True);p.add_argument('--mode',choices=('reference','measure'),required=True)
+p.add_argument('--output',type=Path,required=True);p.add_argument('--reference',type=Path)
+p.add_argument('--budget',type=int,default=0);p.add_argument('--repeats',type=int,default=7)
+a=p.parse_args()
+assert os.environ.get('SLURM_JOB_ID') and not a.output.exists()
+assert a.budget>=0 and a.repeats>0
+import numpy as np
+from pyscf import df, gto, scf
+from benchmarks._cases import benchmark_cases
+from benchmarks.compare_gpu4pyscf_batch import convergence_payload, scaled_geometries
+case=benchmark_cases()[a.case];atoms=scaled_geometries(case.atoms,1)[0]
+orbital='cc-pvdz';auxiliary='cc-pvdz-jkfit'
+bases={name:{z:gto.basis.load(name,z) for z in sorted({z for z,_ in atoms})} for name in (orbital,auxiliary)}
+mol=gto.M(atom=atoms,unit='Bohr',basis=bases[orbital],cart=False,
+    charge=case.charge,spin=case.multiplicity-1,verbose=0)
+aux=df.addons.make_auxmol(mol,bases[auxiliary])
+payload={'scope':__doc__,'case':a.case,'orbital_basis':orbital,'auxiliary_basis':auxiliary,
+    'basis_definitions':bases,'basis_representation':'spherical','atoms_bohr':atoms,
+    'aos':mol.nao,'auxiliary_count':aux.nao,'budget_bytes':a.budget,
+    'slurm_job_id':os.environ['SLURM_JOB_ID'],'cuda_visible_devices':os.environ.get('CUDA_VISIBLE_DEVICES'),
+    'runner_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+a.output.parent.mkdir(parents=True,exist_ok=True)
+def save():a.output.write_text(json.dumps(payload,indent=2)+'\n')
+try:
+    if a.mode=='reference':
+        import cupy as cp
+        import gpu4pyscf, pyscf
+        from gpu4pyscf.lib import cutensor
+        assert cutensor.cutensor is not None and cutensor.contract_engine is None
+        metric=aux.intor('int2c2e');eig=np.linalg.eigvalsh(metric)
+        engine=(scf.UHF(mol) if case.method=='uhf' else scf.RHF(mol)).density_fit(auxbasis=bases[auxiliary]).to_gpu()
+        engine.conv_tol=1e-12;engine.conv_tol_grad=1e-10;engine.direct_scf_tol=1e-14;engine.max_cycle=100
+        energy=engine.kernel()
+        # The stock analytic gradient releases CDERI, so inspect the actual
+        # prepared rank before gradient evaluation rather than rebuilding it.
+        blocks=engine.with_df._cderi
+        assert isinstance(blocks,(dict,list,tuple))
+        entries=blocks.items() if isinstance(blocks,dict) else enumerate(blocks)
+        shapes={str(k):list(v.shape) for k,v in entries};rank=sum(s[0] for s in shapes.values())
+        container=type(blocks).__name__
+        del blocks, entries
+        gradient=engine.nuc_grad_method();gradient.auxbasis_response=True
+        forces=cp.asnumpy(-gradient.kernel());cp.cuda.runtime.deviceSynchronize()
+        payload.update(energy_hartree=float(energy),forces_hartree_per_bohr=forces.tolist(),
+            converged=bool(engine.converged),stock_effective_rank=rank,stock_factor_blocks=shapes,
+            stock_factor_container=container,
+            native_reference_effective_rank=int(np.count_nonzero(eig>1e-10*eig[-1])),
+            metric_extrema=[float(eig[0]),float(eig[-1])],metric_condition=float(eig[-1]/eig[0]),
+            metric_sha256=hashlib.sha256(metric.tobytes()).hexdigest(),
+            versions={'gpu4pyscf':gpu4pyscf.__version__,'pyscf':pyscf.__version__,'cupy':cp.__version__},
+            provider='stock cuTENSOR')
+        save()
+        assert engine.converged and np.isfinite(energy) and np.isfinite(forces).all()
+        assert rank==payload['native_reference_effective_rank']==aux.nao,'unequal metric rank; comparison invalid'
+    else:
+        assert a.reference is not None
+        reference=json.loads(a.reference.read_text())
+        for key in ('case','orbital_basis','auxiliary_basis','basis_definitions','aos','auxiliary_count'):
+            assert reference[key]==payload[key],key
+        assert reference['converged'] and reference['stock_effective_rank']==reference['native_reference_effective_rank']==aux.nao
+        from vibeqc import Calculator, Primitive, Shell
+        from vibeqc.basis_capabilities import require_basis
+        def shells(name):
+            # PySCF basis records are unnormalized contraction coefficients of
+            # normalized primitives, matching the explicit native Shell API.
+            result=[]
+            for atom,(z,_) in enumerate(atoms):
+                for shell in bases[name][z]:
+                    angular= shell[0];rows=shell[1:]
+                    assert isinstance(rows[0],list),'spinor basis data is outside this experiment'
+                    for c in range(1,len(rows[0])):
+                        result.append(Shell(atom,angular,tuple(Primitive(row[0],row[c]) for row in rows)))
+            result=tuple(result)
+            require_basis(result,atoms,backend='cuda',operator='df_three_center',derivative_order=1,
+                role='auxiliary' if name==auxiliary else 'orbital',representation='spherical')
+            return result
+        options=dict(method=case.method,basis=shells(orbital),auxiliary_basis=shells(auxiliary),
+            basis_representation='spherical',device='cuda',density_fitting='cuda',
+            density_fitting_memory_budget_bytes=a.budget,screening_tolerance=1e-12,
+            energy_tolerance=1e-12,density_tolerance=1e-10,max_iterations=100)
+        calc=Calculator(**options);lib=calc._library;lib.vibeqc_get_source_identity.restype=ctypes.c_char_p
+        payload.update(native_identity=lib.vibeqc_get_source_identity().decode(),
+            library_sha256=hashlib.sha256(Path(os.environ['VIBEQC_LIBRARY']).read_bytes()).hexdigest(),
+            reference_sha256=hashlib.sha256(a.reference.read_bytes()).hexdigest(),
+            controls={k:v for k,v in os.environ.items() if k.startswith('VIBEQC_')},samples=[],diagnostics=[])
+        trace_keys=('VIBEQC_DF_TRACE','VIBEQC_DF_HOST_TRACE','VIBEQC_DF_PROGRESS_TRACE')
+        assert not any(os.environ.get(k) for k in trace_keys)
+        target=np.array(reference['forces_hartree_per_bohr'])
+        def row(result,batch,policy,repeat,seconds):
+            item=result.items[0];force=np.asarray(item.forces);delta=force-target
+            data={'policy':policy,'repeat':repeat,'seconds':seconds,'iterations':item.iterations,
+                'convergence':convergence_payload(result),'energy_hartree':item.energy,
+                'forces_hartree_per_bohr':force.tolist(),'maximum_energy_error':abs(item.energy-reference['energy_hartree']),
+                'maximum_force_error':float(np.max(np.abs(delta))),'rms_force_error':float(np.sqrt(np.mean(delta**2))),
+                'force_sum':force.sum(axis=0).tolist(),'metric':[d.to_dict() for d in batch.last_density_fitting_metric_diagnostics()]}
+            assert item.executed_backend=='cuda' and np.isfinite(force).all() and np.isfinite(item.energy)
+            assert all(d['effective_rank']==aux.nao for d in data['metric'])
+            return data
+        def gate(data):
+            assert data['maximum_energy_error']<=1e-9 and data['maximum_force_error']<=1e-8,data
+        os.environ['VIBEQC_DF_VALUE_STORAGE']='dense'
+        start=time.perf_counter()
+        with calc.prepare_batch([atoms],charges=[case.charge],multiplicities=[case.multiplicity]) as batch:
+            initial=batch.execute(strict=True);seconds=time.perf_counter()-start
+            payload['cold_dense']=row(initial,batch,'dense',-1,seconds);save();gate(payload['cold_dense'])
+            batch.set_warm_start_updates(False)
+            checkpoint=a.output.with_suffix('.checkpoint');batch.save_checkpoint(checkpoint)
+            from vibeqc.checkpoint import inspect_checkpoint
+            def hashes():
+                batch.save_checkpoint(checkpoint)
+                return {b['name']:b['sha256'] for b in inspect_checkpoint(checkpoint).blobs if b['name'].startswith('density_')}
+            frozen=hashes();payload['frozen_density_sha256']=frozen;assert frozen
+            for repeat in range(a.repeats):
+                for policy in (('dense','packed') if repeat%2==0 else ('packed','dense')):
+                    os.environ['VIBEQC_DF_VALUE_STORAGE']=policy
+                    batch.execute(strict=True) # policy replacement is outside warm timing
+                    start=time.perf_counter();result=batch.execute(strict=True);seconds=time.perf_counter()-start
+                    data=row(result,batch,policy,repeat,seconds);payload['samples'].append(data);save();gate(data)
+                    assert hashes()==frozen
+                    print(a.case,policy,repeat,seconds,data['iterations'],flush=True)
+            for policy in ('dense','packed'):
+                os.environ['VIBEQC_DF_VALUE_STORAGE']=policy;batch.execute(strict=True)
+                paths={k:a.output.with_suffix(f'.diagnostic-{policy}.{suffix}.jsonl') for k,suffix in zip(trace_keys,('cuda','host','journal'))}
+                for k,path in paths.items():assert not path.exists();os.environ[k]=str(path)
+                start=time.perf_counter();result=batch.execute(strict=True);seconds=time.perf_counter()-start
+                data=row(result,batch,policy,0,seconds)
+                for k in trace_keys:os.environ.pop(k,None)
+                from benchmarks.df_component_ledger import aggregate, read_trace
+                data['components']=aggregate(read_trace(paths['VIBEQC_DF_TRACE']))
+                data['traces']={k:str(v) for k,v in paths.items()}
+                payload['diagnostics'].append(data);save();gate(data);assert hashes()==frozen
+except Exception as error:
+    payload['failure']=repr(error);save();raise
+print(a.case,a.mode,'completed',payload['aos'],payload['auxiliary_count'],flush=True)

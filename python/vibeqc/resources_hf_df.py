@@ -31,6 +31,11 @@ def cuda_df_candidates(
     response derivatives still use bounded regeneration. The source candidate's
     ``recomputed`` mode describes that complete policy, not every forward tile.
     """
+    storage = os.environ.get("VIBEQC_DF_VALUE_STORAGE", "auto")
+    if storage not in ("auto", "dense", "packed"):
+        raise ValueError("VIBEQC_DF_VALUE_STORAGE must be auto, dense or packed")
+    packed_values = storage == "packed"
+    pair_storage = "packed" if packed_values else "dense"
     occupied_exchange = os.environ.get("VIBEQC_DF_EXCHANGE") == "occupied"
     generated_one_electron = (
         os.environ.get("VIBEQC_ONE_ELECTRON_DERIVATIVES") == "generated"
@@ -91,6 +96,7 @@ def cuda_df_candidates(
             budget_bytes=0,
             fixed_device_bytes=source_bytes + diis_bytes,
             generated_source=True,
+            pair_storage=pair_storage,
         )
         # Match the native matrix-only one-electron chunk preflight. Direct-ERI
         # task tables are omitted by this exporter, leaving quadratic metadata.
@@ -203,6 +209,11 @@ def cuda_df_candidates(
     )
     choices = [("cuda-df-resident", 0, "resident", 0)] if requested_budget == 0 else []
     choices.append(("cuda-df-source", source_budget, "recomputed", 1))
+    if packed_values:
+        # An explicit packed request must not be estimated as a dense owner or
+        # silently fall back to a different representation when its owners fail
+        # the budget. The native planner chooses its bounded Q panel first.
+        choices = [("cuda-df-packed", source_budget, "resident", 0)]
     candidates = []
     for name, sub_budget, mode, cost in choices:
         source = sub_budget > 0
@@ -238,6 +249,7 @@ def cuda_df_candidates(
                 fixed_device_bytes=(row["source_bytes"] if source else 0)
                 + row["diis_device_bytes"],
                 generated_source=source,
+                pair_storage=pair_storage,
             )
             force_tile = tile
             if source:
@@ -250,6 +262,7 @@ def cuda_df_candidates(
                     budget_bytes=max(1, sub_budget // 2),
                     fixed_device_bytes=row["source_bytes"] + row["diis_device_bytes"],
                     generated_source=True,
+                    pair_storage=pair_storage,
                 )
             pairs = (
                 min(n * n, max(n, (tile.ao_pair_tile // n) * n)) if source else n * n
@@ -289,14 +302,21 @@ def cuda_df_candidates(
             # and inverse root for force response, transferred out of setup.
             persistent_device += 2 * metric + 8 * b * aux
             persistent_device += (
-                (
-                    tensor + 3 * tile_bytes
-                    if tile.stores_full_three_center
-                    else 4 * tile_bytes
-                )
+                tile.stored_factor_bytes
+                + tile.raw_factor_bytes
+                + tile.contraction_scratch_bytes
                 + row["source_bytes"]
-                if source
-                else tensor + 3 * tile_bytes
+                if packed_values
+                else (
+                    (
+                        tensor + 3 * tile_bytes
+                        if tile.stores_full_three_center
+                        else 4 * tile_bytes
+                    )
+                    + row["source_bytes"]
+                    if source
+                    else tensor + 3 * tile_bytes
+                )
             )
             setup = metric + 8 * b * aux + solver + 4 * b
             # The promoted force consumer streams bounded weights. It owns no
@@ -449,6 +469,7 @@ def cuda_df_candidates(
                 estimates,
                 relative_cost=cost,
                 decisions=(
+                    ("df_pair_storage", pair_storage),
                     ("density_fitting_memory_budget_bytes", str(sub_budget)),
                     (
                         "batch_execution",

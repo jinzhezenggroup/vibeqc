@@ -15,6 +15,7 @@ class OverlapOrthogonalizer;
  * remains in ResolvedFockBuild::spec. These switches never authorize DF. */
 struct FockExecutionVariant {
   unsigned one_electron_value_mapping{}, df_value_mapping{}, df_derivative_mapping{};
+  DfPairStorage df_pair_storage{DfPairStorage::Dense};
   bool operator==(const FockExecutionVariant&) const = default;
 };
 

@@ -1,0 +1,54 @@
+{
+  "name": "real-768-2",
+  "independent_projection_sample_max_abs": 2.8528069663524835e-18,
+  "modes": {
+    "full": {
+      "median_wall_seconds": 0.184074483,
+      "median_projection_seconds": 0.08469475555419922,
+      "median_gram_mirror_seconds": 0.09937612915039062,
+      "max_U_abs": 0,
+      "max_K_abs": 0,
+      "passed": true
+    },
+    "unpack32": {
+      "median_wall_seconds": 0.189350939,
+      "median_projection_seconds": 0.08997151947021484,
+      "median_gram_mirror_seconds": 0.09937305450439453,
+      "max_U_abs": 2.498001805406602e-16,
+      "max_K_abs": 1.3322676295501878e-15,
+      "passed": true
+    },
+    "unpack128": {
+      "median_wall_seconds": 0.189934526,
+      "median_projection_seconds": 0.09054214477539063,
+      "median_gram_mirror_seconds": 0.09936998748779297,
+      "max_U_abs": 2.498001805406602e-16,
+      "max_K_abs": 1.3322676295501878e-15,
+      "passed": true
+    },
+    "unpack256": {
+      "median_wall_seconds": 0.189100119,
+      "median_projection_seconds": 0.08971574401855469,
+      "median_gram_mirror_seconds": 0.09937715148925781,
+      "max_U_abs": 2.498001805406602e-16,
+      "max_K_abs": 1.3322676295501878e-15,
+      "passed": true
+    },
+    "direct32x16": {
+      "median_wall_seconds": 0.174445488,
+      "median_projection_seconds": 0.07504169464111328,
+      "median_gram_mirror_seconds": 0.09939759826660156,
+      "max_U_abs": 2.498001805406602e-16,
+      "max_K_abs": 1.3322676295501878e-15,
+      "passed": true
+    },
+    "direct64x16": {
+      "median_wall_seconds": 0.174427804,
+      "median_projection_seconds": 0.07502333068847657,
+      "median_gram_mirror_seconds": 0.0993955841064453,
+      "max_U_abs": 2.498001805406602e-16,
+      "max_K_abs": 1.3322676295501878e-15,
+      "passed": true
+    }
+  }
+}

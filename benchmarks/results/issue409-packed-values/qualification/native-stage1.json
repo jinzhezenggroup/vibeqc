@@ -1,0 +1,28 @@
+{
+  "scope": "native plan/J/K/raw response and explicit resource query; no high-level selection or complete-endpoint claim",
+  "source_base": "25e8efebb069e6067ba3649f220c37e844ecc8f6",
+  "sha256": {
+    "libvibeqc.so": "331cba18484acb9b1ba50b05df5afae0340fc0ca50f1f2c47cdb73e5f286ce73",
+    "source.patch": "e496028ee6c07c4c6dfcff963031844a7a86f1033282b9aff5807f2788be225a",
+    "build_identity.hpp": "e964aeb1f15016d27b7b977d74938916abf2c5e413cc4b64658abb8a8e78fa7e"
+  },
+  "native_test_job": 9833,
+  "sanitizer_job": 9834,
+  "leak_job": 9835,
+  "resource_tests": "14 passed; no GPU context; test_df_resources.py",
+  "trace_coverage": {
+    "records": 416,
+    "invalid_records": 0,
+    "packed_physical_records": 354,
+    "path_counters": {
+      "packed_projection_launches": 22,
+      "response_final_projection_reused": 2,
+      "response_packed_raw_projection": 22,
+      "response_packed_raw_projection_slices": 100,
+      "raw_packed_unpacked_elements": 26912,
+      "raw_packed_value_reused_bytes": 36000,
+      "response_borrowed_jk_bytes": 18816
+    },
+    "scope": "intrusive branch coverage only; not performance evidence"
+  }
+}

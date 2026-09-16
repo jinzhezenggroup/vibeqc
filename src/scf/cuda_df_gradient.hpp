@@ -58,9 +58,20 @@ struct CudaDfRawTensorView {
   std::uint64_t owner_identity{};
   CudaDfMetricView metric{};
 };
+/** Immutable unit-weight [lower AO pair,Q] raw values, including discarded
+ * metric directions. This explicit type cannot masquerade as a dense strided
+ * view. The source/metric owner and stream lifetime match the dense contract.
+ */
+struct CudaDfPackedRawTensorView {
+  const double* data{};
+  std::size_t nbf{}, naux{}, pair_count{};
+  std::uint64_t owner_identity{};
+  CudaDfMetricView metric{};
+};
 /** Exclusive, stream-ordered borrow from the existing J/K tensor allocation.
- * Two buffers remain mutable response scratch. The third is immutable when
- * resident_raw is present; otherwise it receives the explicit host upload.
+ * Dense plans keep two mutable buffers; the third is immutable when resident_raw
+ * is present, or receives the explicit host upload. Packed plans retain raw
+ * values separately and lend three unequal mutable buffers, as detailed below.
  * The owner validates capacity and provenance before lending distinct buffers.
  * The plan's stream orders the last J/K use, force, and next SCF use, and the
  * synchronous bridge drains on success and failure before releasing the borrow.
@@ -78,6 +89,20 @@ struct CudaDfResponseBuffers {
   // staging_weights and is consumed before that allocation becomes mutable
   // response storage. occupied_factors[0] is its exact final canonical C.
   const double* final_occupied_projection{};
+  CudaDfPackedRawTensorView resident_packed_raw{};
+  // Packed plans lend three distinct mutable buffers with unequal capacities;
+  // raw_auxiliary_major becomes bounded unpack scratch, never the raw owner.
+  // Zero overrides preserve the legacy equal-size dense buffer contract.
+  std::size_t staging_elements{}, raw_elements{}, exchange_elements{};
+  std::size_t staging_capacity() const noexcept {
+    return staging_elements ? staging_elements : elements_per_buffer;
+  }
+  std::size_t raw_capacity() const noexcept {
+    return raw_elements ? raw_elements : elements_per_buffer;
+  }
+  std::size_t exchange_capacity() const noexcept {
+    return exchange_elements ? exchange_elements : elements_per_buffer;
+  }
 };
 /** Owned numeric staging and explicit transfers, excluding caller weights/system data. */
 struct DfGradientResources {
@@ -141,6 +166,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
     std::vector<double>& gradient, std::string& detail, DfGradientResources* resources = nullptr,
     const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr,
-    const CudaDfResponseBuffers* borrowed = nullptr);
+    const CudaDfResponseBuffers* borrowed = nullptr,
+    const CudaDfPackedRawTensorView* packed_raw = nullptr);
 }  // namespace vibeqc::scf
 #endif

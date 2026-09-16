@@ -80,11 +80,12 @@ vibeqc_status select_occupied_response_factors(CudaDensityFittingJkPlan& plan, s
         (state->unrestricted && terms[t].coulomb_coefficient != 0.0) ||
         current.identity.occupied[spin] != r)
       return VIBEQC_STATUS_SUCCESS;
+    if (r * r > buffers.exchange_capacity() / plan.naux) return VIBEQC_STATUS_SUCCESS;
     projected += r * r;
   }
   // Both spin projections coexist in one existing tensor. Saturated UHF
   // ranks that exceed this capacity keep the dense reference route.
-  if (projected > buffers.elements_per_buffer / plan.naux) return VIBEQC_STATUS_SUCCESS;
+  if (projected > buffers.staging_capacity() / plan.naux) return VIBEQC_STATUS_SUCCESS;
   try {
     std::vector<double> canonical(spins * matrix);
     std::uint32_t generations[2]{};
@@ -179,6 +180,9 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                             plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
                             plan->auxiliary_tile_values && plan->exchange_intermediate &&
                             plan->exchange_contributions;
+  const bool packed_resident = !host_weights && plan->integral_source && !plan->streamed &&
+                               plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
+                               plan->packed_raw && plan->row_tile == plan->nbf;
   const char* space_control = std::getenv("VIBEQC_DF_RESPONSE_SPACE");
   const std::string_view space = space_control ? space_control : "auto";
   if (space != "auto" && space != "dense" && space != "occupied") {
@@ -187,7 +191,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
   }
   bool borrow =
       storage == "jk-scratch" || (space == "occupied" && full_scratch && storage != "panel");
-  bool automatic_occupied = false;
+  bool automatic_occupied = packed_resident && space == "auto" && storage != "panel";
+  if (packed_resident && storage != "panel" && space != "dense") borrow = true;
   // An explicit occupied request already chose compatible borrowed storage;
   // automatic device filtering must not replace that comparison override.
   if (space != "occupied" && storage == "auto" && full_scratch && schedule == 0 &&
@@ -226,6 +231,18 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     }
   }
   CudaDfResponseBuffers buffers;
+  CudaDfPackedRawTensorView packed_raw;
+  const char* raw_reuse_control = std::getenv("VIBEQC_DF_RAW_REUSE");
+  if (packed_resident && (!raw_reuse_control || std::string_view(raw_reuse_control) == "auto")) {
+    packed_raw = {
+        plan->packed_raw + system * plan->stored_tensor_elements_per_system,
+        plan->nbf,
+        plan->naux,
+        plan->stored_pair_count,
+        plan->factor_basis_identity,
+        {plan->inverse_square_roots + offset, plan->metric_eigenvectors + offset,
+         plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold}};
+  }
   const bool matching_source =
       plan->response_host_raw && plan->response_host_raw == raw_a.data() &&
       plan->response_orbital_atoms == orbital.atoms.data() &&
@@ -250,14 +267,22 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     // Force executes after SCF on this same stream, and lends them back before
     // the next replay. Never infer capacity from retained B alone: generated
     // resident plans can retain B while their K scratch is only a small tile.
-    if (!full_scratch) {
+    if (!full_scratch && !packed_resident) {
       detail = "JK-scratch response requires a resident host-raw plan with full J/K tensors";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,
                plan->exchange_intermediate, plan->tensor_elements_per_system};
+    if (packed_resident) {
+      buffers.resident_packed_raw = packed_raw;
+      buffers.elements_per_buffer = 0;
+      buffers.staging_elements = plan->projection_capacity;
+      buffers.raw_elements = plan->panel_capacity;
+      buffers.exchange_elements = plan->panel_capacity;
+    }
     buffers.batch_products = enabled("VIBEQC_DF_RESPONSE_BATCHING");
-    if (plan->resident_raw_valid && matching_source && enabled("VIBEQC_DF_RAW_REUSE")) {
+    if (!packed_resident && plan->resident_raw_valid && matching_source &&
+        enabled("VIBEQC_DF_RAW_REUSE")) {
       buffers.resident_raw = {
           plan->exchange_contributions,
           plan->nbf,
@@ -275,6 +300,9 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                                                            maximum_bytes, buffers, detail);
     if (selected != VIBEQC_STATUS_SUCCESS) return selected;
   }
+  // Packed scratch is not a dense all-Q allocation. Invalid/stale/corrected
+  // factors retain the exact bounded raw loader instead of widening storage.
+  if (packed_resident && (!buffers.occupied_response || !packed_raw.data)) borrow = false;
   const char* projection_control = std::getenv("VIBEQC_DF_FINAL_PROJECTION");
   const std::string_view projection = projection_control ? projection_control : "auto";
   if (projection != "auto" && projection != "off" && projection != "reuse") {
@@ -286,14 +314,15 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
   // G_raw = G_whitened M^(1/2); discarded directions cannot be recovered and
   // therefore keep the raw projection path, even under an explicit request.
   if ((projection == "reuse" || (projection == "auto" && automatic_occupied)) &&
-      buffers.occupied_response && buffers.resident_raw.data && plan->batch_size == 1 &&
-      terms.size() == 1 && final_state && plan->final_projection_token &&
+      buffers.occupied_response && (buffers.resident_raw.data || packed_raw.data) &&
+      plan->batch_size == 1 && terms.size() == 1 && final_state && plan->final_projection_token &&
       *plan->final_projection_token == *final_state && plan->metric_full_rank[0] &&
       plan->metric_response_valid[0]) {
     auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
     const auto rank = buffers.occupied_factors[0].rank;
     if (!state->unrestricted && rank && rank == final_state->identity.occupied[0] &&
-        2 * rank * rank <= buffers.elements_per_buffer / plan->naux) {
+        2 * rank * rank <= buffers.exchange_capacity() / plan->naux &&
+        plan->nbf * rank <= buffers.staging_capacity() / plan->naux) {
       buffers.final_occupied_projection = plan->auxiliary_tile_values;
       buffers.occupied_factors[0].coefficients = state->d_final_alpha_coefficients;
     }
@@ -312,12 +341,13 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     // The diagnostic upload route writes the former raw scratch buffer.
     // Revoke its immutable view before submission, so an interrupted copy
     // cannot leave a previously valid cache available to the next force.
-    if (borrow && !buffers.resident_raw.data) plan->resident_raw_valid = false;
+    if (borrow && !buffers.resident_raw.data && !packed_raw.data) plan->resident_raw_valid = false;
     const auto status = execute_cuda_df_hf_gradient(
         plan->device_id, reinterpret_cast<void*>(plan->stream), plan->integral_source, system,
         orbital, auxiliary, raw_a, {}, {}, terms, plan->metric_relative_threshold, schedule,
         maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric,
-        reinterpret_cast<void*>(plan->blas), borrow ? &buffers : nullptr);
+        reinterpret_cast<void*>(plan->blas), borrow ? &buffers : nullptr,
+        packed_raw.data ? &packed_raw : nullptr);
     if (status == VIBEQC_STATUS_SUCCESS && borrow && matching_source &&
         plan->resident_exchange_enabled && plan->batch_size == 1 &&
         plan->nbf * plan->naux <= static_cast<std::size_t>(std::numeric_limits<int>::max()))

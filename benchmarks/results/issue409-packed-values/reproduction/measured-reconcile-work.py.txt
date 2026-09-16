@@ -1,0 +1,52 @@
+"""Reconcile eager operations and executed singleton RHF graph iterations.
+
+Graph construction is never execution. A successful RHF graph iteration has one
+J, K and eigensystem in df_rhf_scf.cpp::launch_iteration. Require consecutive
+single-item device readbacks and exactly one compact solve before using that
+source contract. This is a logical operator count, not a kernel launch count or
+a GPU timing inferred by multiplying eager measurements.
+"""
+import collections, hashlib, json
+from pathlib import Path
+root=Path('.artifacts/issue409/clean-warm'); rows=[]
+source=Path('src/scf/cuda/df_rhf_scf.cpp')
+for path in sorted(root.glob('*-forces.json'))+sorted(root.glob('*-energy.json')):
+    data=json.loads(path.read_text())
+    for sample in data.get('diagnostics',[]):
+        policy=sample['policy']
+        journal=path.with_suffix(f'.diagnostic-0-{policy}.journal.jsonl')
+        if not journal.exists():continue
+        begins=collections.Counter(); values=collections.defaultdict(list)
+        with journal.open() as stream:
+            for line in stream:
+                r=json.loads(line)
+                if r['event']=='BEGIN':begins[r['name']]+=1
+                if r['event']=='VALUE' and r['name'] in ('compact_rhf_scf','compact_iteration_readback','finalization','final_state_reuse'):
+                    values[r['name']+':'+r['key']].append(r['value'])
+        iterations=sample['iterations']
+        assert len(iterations)==1 and begins['compact_rhf_scf']==1
+        readbacks=values['compact_iteration_readback:device_iterations']
+        assert readbacks==list(range(1,iterations[0]+1)),readbacks
+        assert set(values['compact_iteration_readback:system'])=={0}
+        assert values['compact_iteration_readback:converged']==[0]*(iterations[0]-1)+[1]
+        replays=sum(values['compact_rhf_scf:host_graph_replay'])
+        groups={g['operation']:g for g in sample['components']['groups'] if g['execution']=='stream'}
+        eager={name:groups.get(name,{}).get('calls',0) for name in ('ri_j','ri_k','ri_k_occupied','compact_eigensolve','scf_seed_iteration')}
+        # A graph may be unavailable at large dimensions; every iteration then
+        # has ordinary operation records. Reject accidental double counting.
+        assert replays<=iterations[0]-eager['scf_seed_iteration']
+        final={key:sum(values['finalization:'+key]) for key in ('final_fock_evaluations','final_eigen_solves','final_density_updates','final_candidate_rejections')}
+        counts={'J':eager['ri_j']+replays,'K':eager['ri_k']+eager['ri_k_occupied']+replays,
+                'eigensystems_including_density_seed':eager['compact_eigensolve']+replays}
+        assert counts['J']==counts['K']==iterations[0]+final['final_fock_evaluations']
+        response=groups.get('force_response',{}); counters=response.get('counter_sums',{})
+        rows.append({'case':path.stem,'policy':policy,'iterations':iterations,
+            'graph_replays':replays,'eager_operations':eager,'logical_operator_counts':counts,
+            'finalization':final,'physical_residuals':{k:v for k,v in values.items() if k.startswith('final_state_reuse:')},
+            'force_response_ms':response.get('gpu_inclusive_ms'),
+            'force_dataflow':{k:v for k,v in counters.items() if k.startswith(('raw_','response_ao_','response_density_','response_final_projection','response_occupied','response_borrowed','host_to_device','device_to_host','tensor_host'))},
+            'journal':str(journal),'journal_sha256':hashlib.sha256(journal.read_bytes()).hexdigest(),
+            'graph_unit_source':str(source),'graph_unit_source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
+            'scope':__doc__})
+(root/'work-reconciliation.json').write_text(json.dumps(rows,indent=2)+'\n')
+for r in rows:print(r['case'],r['policy'],r['logical_operator_counts'],'final',r['finalization'])

@@ -124,6 +124,17 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
       ao_pair_tile, plan, diagnostics, detail);
 }
 
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
+    std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail, bool, DfValueStorageOptions) {
+  return create_cuda_density_fitting_jk_plan_from_source(
+      device_id, source, batch_size, nbf, naux, metrics, relative_threshold, auxiliary_tile,
+      ao_pair_tile, plan, diagnostics, detail);
+}
+
 vibeqc_status generate_cuda_density_fitting_transformed_tile(CudaDensityFittingIntegralSource*,
                                                              std::size_t, std::size_t, std::size_t,
                                                              std::size_t, std::size_t, std::int64_t,
@@ -165,6 +176,9 @@ std::size_t cuda_density_fitting_scf_value_budget(const CudaDensityFittingJkPlan
 
 bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan*) noexcept {
   return false;
+}
+DfPairStorage cuda_density_fitting_pair_storage(const CudaDensityFittingJkPlan*) noexcept {
+  return DfPairStorage::Dense;
 }
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan*, std::size_t, std::size_t,
                                           std::size_t, double) noexcept {

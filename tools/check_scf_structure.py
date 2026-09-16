@@ -143,6 +143,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "runtime/cuda_component_trace.hpp",
     "scf/cuda/df_metric_kernels.",
     "scf/cuda/df_jk_kernels.",
+    "scf/cuda/df_packed_values.",
     "scf/cuda/df_scf_kernels.",
     "scf/cuda/final_validation_kernels.",
     "scf/cuda/scf_diis_kernels.",
@@ -171,11 +172,12 @@ CUDA_ALLOWED["cuda_component_trace"] = (
 CUDA_MODULES["cuda_df_kernels"] = (
     "df_metric_kernels",
     "df_jk_kernels",
+    "df_packed_values",
     "df_scf_kernels",
 )
 CUDA_ALLOWED["cuda_df_kernels"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_df_kernels"]
-)
+) + ("scf/df_value_storage.hpp",)
 CUDA_MODULES["cuda_scf_kernels"] = (
     "scf_constants",
     "scf_state_kernels",

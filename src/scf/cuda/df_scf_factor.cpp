@@ -22,9 +22,15 @@ vibeqc_status qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& pl
                                               std::span<const std::int32_t> beta, bool& qualified,
                                               std::string& detail) {
   qualified = false;
+  const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
+                               plan.integral_source && plan.packed_raw &&
+                               plan.value_storage.rank_capacity >= 160;
   if (plan.occupied_scf_reserved && plan.nbf == 768 && plan.naux == 768 && plan.batch_size == 1 &&
-      alpha.size() == 1 && alpha[0] == 160 && beta.empty() && !plan.integral_source &&
-      !plan.streamed && plan.row_tile == plan.nbf && plan.auxiliary_tile == plan.naux) {
+      alpha.size() == 1 && alpha[0] == 160 && beta.empty() &&
+      (!plan.integral_source || packed_resident) && !plan.streamed && plan.row_tile == plan.nbf &&
+      (plan.auxiliary_tile == plan.naux || packed_resident)) {
+    // Explicit packed experiments keep the established occupied/seed/final
+    // algorithm in the same domain. This does not automatically select packing.
     cudaDeviceProp properties{};
     const auto error = cudaGetDeviceProperties(&properties, plan.device_id);
     if (error != cudaSuccess) return cuda_failure(error, "DF exchange device identity", detail);
@@ -45,9 +51,11 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
   rank = 0;
   // This first qualification uses existing singleton resident RHF workspace.
   // Unsupported plans retain dense exchange without allocating another solver.
+  const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
+                      plan.integral_source && plan.packed_raw;
   if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange || plan.streamed ||
-      plan.integral_source || plan.row_tile != plan.nbf || plan.auxiliary_tile != plan.naux ||
-      plan.nbf < 2) {
+      (plan.integral_source && !packed) || plan.row_tile != plan.nbf ||
+      (!packed && plan.auxiliary_tile != plan.naux) || plan.nbf < 2) {
     trace_counter("unsupported", 1);
     return VIBEQC_STATUS_SUCCESS;
   }

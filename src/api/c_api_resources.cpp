@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <cstdio>
 #include <exception>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 
@@ -196,6 +198,37 @@ int vibeqc_resource_df_tiles_v1(std::size_t batch, std::size_t nbf, std::size_t 
                                 std::size_t count, char* error, std::size_t error_size) {
   return vibeqc_resource_df_tiles_v2(batch, nbf, naux, occupied, budget, fixed_device_bytes, 0,
                                      output, count, error, error_size);
+}
+
+/** Explicit physical-source packed representation, without changing the dense
+ * query ABI or inferring storage from environment variables. The final four
+ * fields report one immutable factor's bytes, total mutable scratch bytes,
+ * complete-projection capacity and each bounded panel's capacity in doubles.
+ * Raw A and transformed B are distinct allocations of the same factor size.
+ * rank_capacity=0 reserves no complete U, while exact bounded K still exists.
+ */
+int vibeqc_resource_df_packed_tiles_v1(std::size_t batch, std::size_t nbf, std::size_t naux,
+                                       std::size_t rank_capacity, std::size_t budget,
+                                       std::size_t fixed_device_bytes, std::uint64_t* output,
+                                       std::size_t count, char* error, std::size_t error_size) {
+  if (!output || count != 10 || !error || !error_size) return 1;
+  try {
+    const auto plan = vibeqc::scf::plan_packed_density_fitting_tiles(
+        batch, nbf, naux, rank_capacity, budget, fixed_device_bytes);
+    const auto capacity =
+        vibeqc::scf::df_packed_value_capacity(batch, nbf, naux, rank_capacity, plan.auxiliary_tile);
+    const std::uint64_t values[]{
+        plan.batch_tile,        plan.ao_pair_tile,         plan.auxiliary_tile,
+        plan.occupied_tile,     plan.peak_workspace_bytes, 1,
+        capacity.factor_bytes,  capacity.scratch_bytes,    capacity.projection_elements,
+        capacity.panel_elements};
+    std::copy(std::begin(values), std::end(values), output);
+    error[0] = '\0';
+    return 0;
+  } catch (const std::exception& exception) {
+    std::snprintf(error, error_size, "%s", exception.what());
+    return 1;
+  }
 }
 
 int vibeqc_resource_df_source_bytes_v1(std::size_t batch, std::size_t atoms, std::size_t shells,

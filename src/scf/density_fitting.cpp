@@ -996,6 +996,58 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   return plan;
 }
 
+DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std::size_t n,
+                                                         std::size_t a, std::size_t rank,
+                                                         std::size_t budget,
+                                                         std::size_t fixed_device_bytes) {
+  // Validate capacities before forming products below, including both raw and
+  // transformed owners. This helper is shared with the actual native allocator.
+  (void)df_packed_value_capacity(batch, n, a, rank, 1);
+  std::size_t matrix{}, metric_elements{}, metric_bytes{};
+  if (!checked_multiply(n, n, matrix) || !checked_multiply(a, a, metric_elements) ||
+      !checked_multiply(metric_elements, sizeof(double), metric_bytes) ||
+      matrix > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+      a > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    throw std::overflow_error("packed DF dimensions exceed native indexing");
+  const bool occupied_exchange = df_occupied_exchange_requested(n, a, batch);
+  const auto bytes = [&](std::size_t q) {
+    const auto capacity = df_packed_value_capacity(batch, n, a, rank, q);
+    const auto legacy = workspace_bytes(matrix, q, batch, n, a, metric_bytes, fixed_device_bytes,
+                                        true, occupied_exchange, true);
+    if (legacy == std::numeric_limits<std::size_t>::max())
+      throw std::overflow_error("packed DF fixed reservation overflows size_t");
+    // Keep the same metric, library, AO, lazy SCF and final-state reservations;
+    // replace only the representation's actual simultaneous tensor allocations.
+    const long double dense = static_cast<long double>(batch) * matrix * a * sizeof(double) +
+                              3.0L * matrix * q * sizeof(double);
+    const long double packed = 2.0L * capacity.factor_bytes + capacity.scratch_bytes;
+    const long double total = static_cast<long double>(legacy) - dense + packed;
+    if (total < 0 || total >= static_cast<long double>(std::numeric_limits<std::size_t>::max()))
+      throw std::overflow_error("packed DF reservation overflows size_t");
+    return static_cast<std::size_t>(total);
+  };
+  std::size_t q = std::min<std::size_t>(a, 128);
+  if (budget && bytes(q) > budget) {
+    if (bytes(1) > budget) throw DensityFittingBudgetError();
+    std::size_t low = 1, high = q;
+    while (low < high) {
+      const auto middle = low + (high - low + 1) / 2;
+      if (bytes(middle) <= budget)
+        low = middle;
+      else
+        high = middle - 1;
+    }
+    q = low;
+  }
+  return {batch,
+          matrix,
+          q,
+          std::min<std::size_t>(rank, 32),
+          bytes(q),
+          true,
+          {DfPairStorage::SymmetricLower, rank}};
+}
+
 std::size_t density_fitting_scf_diis_device_bytes(std::size_t batch, std::size_t nbf,
                                                   unsigned history) noexcept {
   if (history < 2) return 0;

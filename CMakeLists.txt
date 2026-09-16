@@ -408,6 +408,7 @@ if(VIBEQC_ENABLE_CUDA)
     src/scf/cuda/df_force_response.cpp
     src/scf/cuda/df_jk.cpp
     src/scf/cuda/df_jk_kernels.cu
+    src/scf/cuda/df_packed_values.cu
     src/scf/cuda/df_metric_kernels.cu
     src/scf/cuda/df_plan.cpp
     src/scf/cuda/df_plan_lifetime.cpp

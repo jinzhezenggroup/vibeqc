@@ -1,0 +1,38 @@
+"""Declared seven-pair warm matrix. Builds must finish before this Slurm job."""
+import argparse, hashlib, json, os, subprocess
+from pathlib import Path
+p=argparse.ArgumentParser();p.add_argument('--aos',nargs='+',type=int,default=[96,192,384,768]); a=p.parse_args()
+assert os.environ.get('SLURM_JOB_ID')
+root=Path.cwd();out=root/'.artifacts/issue409/clean-warm';out.mkdir(exist_ok=True)
+env={k:v for k,v in os.environ.items() if not k.startswith('VIBEQC_')}
+env.update(PYTHONPATH='python:.',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',
+    LD_LIBRARY_PATH='/group/software/cuda-12.9.1/lib64:'+env.get('LD_LIBRARY_PATH',''),
+    VIBEQC_LIBRARY=str(root/'.artifacts/issue409/stage2/frozen/libvibeqc.so'),
+    VIBEQC_DF_REFERENCE_FINAL_VALIDATION='0',VIBEQC_DF_FINAL_PROJECTION='auto',
+    VIBEQC_DF_FORCE_SCREEN_ABS='off',VIBEQC_DF_EXCHANGE='auto',
+    VIBEQC_DF_SEED_EXCHANGE='auto',VIBEQC_DF_FINAL_EXCHANGE='auto',
+    VIBEQC_DF_RESIDENT_EXCHANGE='auto',VIBEQC_DF_SHELL_POLICY='auto')
+cases={96:'water-tetramer-def2-svp-spherical',192:'water-octamer-s4-def2-svp-spherical',
+    384:'water-hexadecamer-2s4-def2-svp-spherical',768:'water-32mer-4s4-def2-svp-spherical'}
+checks=[]
+for n in a.aos:
+    checkpoint=(f'/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/{n}-VIBEQC_DF_DIIS_DOTS.checkpoint' if n>=384 else f'/home/jzzeng/codes/vibeqc-issue408/.artifacts/issue408/verified/{n}.checkpoint')
+    for prop in (('forces','energy') if n>=384 else ('forces',)):
+        name=f'{n}-{prop}';target=out/f'{name}.json'
+        if target.exists(): raise RuntimeError(f'refusing to overwrite {target}')
+        command=['/tmp/vibeqc-pr-review-env/bin/python','-m','benchmarks.df_policy_endpoint',
+            '--aos',str(n),'--output',str(target),'--repeats','7','--components-after',
+            '--control','VIBEQC_DF_VALUE_STORAGE','--policies','dense','packed',
+            '--skip-cold','--warm-checkpoint-in',checkpoint,
+            '--reference',f'benchmarks/results/issue377-379-df/gpu4pyscf/{cases[n]}.json']
+        if prop=='energy':command.append('--energy-only')
+        print('starting',name,flush=True)
+        with (out/f'{name}.log').open('w') as stream:
+            run=subprocess.run(command,env=env,stdout=stream,stderr=subprocess.STDOUT)
+        checks.append({'case':name,'command':command,'exit_code':run.returncode})
+        manifest={'slurm_job_id':os.environ['SLURM_JOB_ID'],'checks':checks,
+            'runner_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            'criterion':'Seven interleaved pairs; gain >=2%, regression <=3%; paired-bootstrap 95% upper ratio <1 for a latency claim; retain work branches separately; energy <=1e-9 and max force <=1e-8. Intrusive components follow clean samples.'}
+        (out/f'checks-{os.environ["SLURM_JOB_ID"]}.json').write_text(json.dumps(manifest,indent=2)+'\n')
+        print(name,run.returncode,(out/f'{name}.log').read_text().splitlines()[-3:],flush=True)
+        if run.returncode:raise SystemExit(run.returncode)

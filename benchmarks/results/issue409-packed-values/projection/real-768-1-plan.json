@@ -1,0 +1,212 @@
+{
+  "budget": {
+    "host_bytes": 268435456,
+    "device_bytes": 12884901888,
+    "pinned_host_bytes": null,
+    "per_device_bytes": [],
+    "host_reserve_bytes": 0,
+    "device_reserve_bytes": 0,
+    "headroom_fraction": 0.0,
+    "schema_version": 1
+  },
+  "requests": [
+    {
+      "name": "real-768-1",
+      "identity": {
+        "method": "exact packed DF projection",
+        "provider": "bounded FP64 CUDA trial",
+        "backend": "cuda",
+        "precision": "fp64",
+        "topology": "{\"a\": 768, \"n\": 768, \"r\": 160, \"sha256\": {\"b\": \"b8737fd8e1b913fa7fa7a138665f881cd4eb927869162a1051d82575aac55419\", \"c\": \"80418c419394b60221195f5f94c44af9ef62c41be55e58134483384273d576e5\", \"captured_u\": \"33fafb5be755a540dade327504ab8ffa4cf821ad4c86500eb0f377cf1b7566f8\"}, \"weight\": 2}",
+        "observables": [
+          "exchange K",
+          "occupied U"
+        ],
+        "schedule": "unit-weight lower triangle; full-Q U; unchanged single SYRK",
+        "schema_version": 1
+      },
+      "candidates": [
+        {
+          "name": "common-trial-arena",
+          "mode": "resident",
+          "estimates": [
+            {
+              "name": "dense control B",
+              "bytes": 3623878656,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "lower packed B",
+              "bytes": 1814298624,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "occupied C",
+              "bytes": 983040,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "candidate U",
+              "bytes": 754974720,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "reference U",
+              "bytes": 754974720,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "candidate K",
+              "bytes": 4718592,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "reference K",
+              "bytes": 4718592,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "largest bounded unpack buffer",
+              "bytes": 1207959552,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "error reductions",
+              "bytes": 4096,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            },
+            {
+              "name": "cuBLAS workspace allowance",
+              "bytes": 67108864,
+              "space": "device:0",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "library",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "runtime_allowance"
+            },
+            {
+              "name": "bounded host upload and diagnostics",
+              "bytes": 67108864,
+              "space": "pageable",
+              "first_phase": 0,
+              "last_phase": 1,
+              "kind": "workspace",
+              "cacheable": false,
+              "recomputable": false,
+              "streamed_bytes": 0,
+              "accounting": "capacity_bound"
+            }
+          ],
+          "relative_cost": 0,
+          "decisions": []
+        }
+      ],
+      "scope_exclusions": [
+        "CUDA context and loaded modules",
+        "host runtime and file cache"
+      ],
+      "unsupported_reason": null,
+      "infeasible_reason": null
+    }
+  ],
+  "selections": [
+    [
+      "real-768-1",
+      "common-trial-arena"
+    ]
+  ],
+  "status": "feasible",
+  "diagnostic": null,
+  "schema_version": 1,
+  "peak_bytes": {
+    "host": 67108864,
+    "device": 8233619456,
+    "pinned": 0,
+    "pageable": 67108864,
+    "device:0": 8233619456
+  },
+  "resident_bytes": {
+    "host": 0,
+    "device": 67108864,
+    "pinned": 0,
+    "pageable": 0,
+    "device:0": 67108864
+  },
+  "peak_phases": {
+    "pageable": 0,
+    "device:0": 0,
+    "host": 0,
+    "device": 0
+  },
+  "limits": {
+    "host": 268435456,
+    "device": 12884901888
+  },
+  "identity": "dc393b956a9dd910810d1cb6ec5355034a570de58a65a39b4cd90aca8a3a0174"
+}

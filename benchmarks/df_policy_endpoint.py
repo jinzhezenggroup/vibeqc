@@ -98,6 +98,12 @@ def main():
     parser.add_argument("--aos", type=int, choices=CASES, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument(
+        "--df-budget",
+        type=int,
+        default=0,
+        help="Total native DF value/response budget in bytes (zero selects defaults)",
+    )
     parser.add_argument("--control", default="VIBEQC_DF_EXCHANGE")
     parser.add_argument("--policies", nargs="+", default=["dense", "occupied"])
     parser.add_argument(
@@ -145,9 +151,10 @@ def main():
     if (
         not os.environ.get("SLURM_JOB_ID")
         or args.repeats < 1
+        or args.df_budget < 0
         or (args.expected_iterations is not None and args.expected_iterations < 1)
     ):
-        parser.error("requires Slurm and positive repeats")
+        parser.error("requires Slurm, positive repeats and a nonnegative DF budget")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.output.exists():
         parser.error("refusing to overwrite evidence")
@@ -215,6 +222,7 @@ def main():
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
         "scientific_settings": {
+            "density_fitting_memory_budget_bytes": args.df_budget,
             "basis": str(case.vibeqc_basis),
             "basis_representation": case.basis_representation,
             "auxiliary_basis": "same as orbital basis",
@@ -268,7 +276,7 @@ def main():
         device="cuda",
         density_fitting="cuda",
         auxiliary_basis=case.vibeqc_basis,
-        density_fitting_memory_budget_bytes=0,
+        density_fitting_memory_budget_bytes=args.df_budget,
         screening_tolerance=1e-12,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,

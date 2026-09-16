@@ -42,6 +42,12 @@ struct CudaDensityFittingJkPlan {
   std::size_t naux{};
   std::size_t matrix_elements{};
   std::size_t tensor_elements_per_system{};
+  // Logical dense extent above preserves public contracts. Stored strides and
+  // scratch capacities below are explicit; packed views never borrow dense strides.
+  DfValueStorageOptions value_storage{};
+  std::size_t stored_pair_count{}, stored_tensor_elements_per_system{};
+  std::size_t projection_capacity{}, panel_capacity{};
+  double* packed_raw{};
   std::size_t auxiliary_tile{};
   std::size_t ao_pair_tile{};
   std::size_t row_tile{};
@@ -60,10 +66,10 @@ struct CudaDensityFittingJkPlan {
   double* auxiliary_tile_values{};
   double* exchange_intermediate{};
   double* exchange_contributions{};
-  // Resident occupied K uses one scratch tensor; dense K fits its Q panels
-  // in the other two. The former contribution buffer retains raw A[Q,mu,nu],
-  // including discarded metric directions, from setup until destruction.
-  // Never reuse it as J/K output under the resident exchange policy.
+  // Dense resident exchange preserves raw A[Q,mu,nu] in the contribution
+  // allocation and fits K into the other two buffers. Packed plans instead
+  // own immutable packed_raw separately; all three buffers remain mutable.
+  // Both raw representations retain every discarded metric direction.
   bool resident_raw_valid{};
   // An exclusive lease on U[mu,i,Q] in auxiliary_tile_values. Only the
   // validated final physical RHF K publishes it. Every scratch writer and

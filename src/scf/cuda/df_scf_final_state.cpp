@@ -182,9 +182,11 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   // Keep the final-state ablation independent of the seed control.
+  const bool packed = plan && plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
+                      plan->integral_source && plan->packed_raw;
   if ((policy && std::string(policy) == "dense") || !plan || plan->batch_size != 1 ||
-      plan->streamed || plan->integral_source || plan->row_tile != plan->nbf ||
-      plan->auxiliary_tile != plan->naux || plan->nbf < 2)
+      plan->streamed || (plan->integral_source && !packed) || plan->row_tile != plan->nbf ||
+      (!packed && plan->auxiliary_tile != plan->naux) || plan->nbf < 2)
     return VIBEQC_STATUS_SUCCESS;
   auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
   if (!state || state->unrestricted || !state->occupied_exchange ||
@@ -262,8 +264,9 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   trace_counter("explicit_synchronizations", 1);
   // The projection and final coefficients refer to precisely this density
   // generation. Publishing after the successful drain excludes partial K.
-  if (plan->resident_exchange_enabled && plan->resident_raw_valid && plan->metric_full_rank[0] &&
-      current.identity.occupied[0] &&
+  if (plan->resident_exchange_enabled && (plan->resident_raw_valid || packed) &&
+      (!packed || current.identity.occupied[0] <= plan->value_storage.rank_capacity) &&
+      plan->metric_full_rank[0] && current.identity.occupied[0] &&
       plan->naux * current.identity.occupied[0] <=
           static_cast<std::size_t>(std::numeric_limits<int>::max()))
     plan->final_projection_token = current;

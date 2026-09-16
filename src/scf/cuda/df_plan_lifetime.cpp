@@ -38,6 +38,7 @@ void release(CudaDensityFittingJkPlan& plan) noexcept {
   (void)runtime::resource_cuda_free(plan.metric_eigenvectors);
   (void)runtime::resource_cuda_free(plan.metric_eigenvalues);
   (void)runtime::resource_cuda_free(plan.three_center);
+  (void)runtime::resource_cuda_free(plan.packed_raw);
   (void)runtime::resource_cuda_free(plan.primary_density);
   (void)runtime::resource_cuda_free(plan.secondary_density);
   (void)runtime::resource_cuda_free(plan.total_density);

@@ -7,6 +7,7 @@
 #include "scf/cuda/df_generated_tiles.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
+#include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 
@@ -32,8 +33,11 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
   trace_counter("occupied_factor_bytes", plan.nbf * rank * sizeof(double));
   if (!rank) return VIBEQC_STATUS_SUCCESS;
 
+  const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
+  const bool complete_projection =
+      packed ? rank <= plan.value_storage.rank_capacity : plan.auxiliary_tile == plan.naux;
   if (plan.resident_exchange_enabled && !plan.streamed && plan.row_tile == plan.nbf &&
-      plan.auxiliary_tile == plan.naux &&
+      complete_projection &&
       plan.naux * rank <= static_cast<std::size_t>(std::numeric_limits<int>::max())) {
     // B[mu,nu,Q] is a batch of column-major (Q,nu) matrices. Project the
     // contracted AO index directly, retaining U[mu,i,Q] in one existing
@@ -42,16 +46,27 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     const auto n = static_cast<int>(plan.nbf), a = static_cast<int>(plan.naux);
     const auto r = static_cast<int>(rank), ar = a * r;
     const double one = 1, zero = 0;
-    const auto* b = plan.three_center + system * plan.tensor_elements_per_system;
+    const auto* b = plan.three_center + system * plan.stored_tensor_elements_per_system;
     auto* u = plan.auxiliary_tile_values;
-    auto status = trace_call("ri_k_occupied_projection_gemm", plan.stream, [&] {
-      return cublasDgemmStridedBatched(plan.blas, CUBLAS_OP_N,
-                                       column_major ? CUBLAS_OP_N : CUBLAS_OP_T, a, r, n, &one, b,
-                                       a, plan.naux * plan.nbf, coefficients, column_major ? n : r,
-                                       0, &zero, u, a, plan.naux * rank, n);
-    });
-    if (status != CUBLAS_STATUS_SUCCESS)
-      return blas_failure(status, "resident occupied DF projection", detail);
+    cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
+    if (packed) {
+      runtime::cuda_trace::TraceRegion projection("ri_k_occupied_packed_projection", plan.stream);
+      launch_project_packed_df(plan.stream, plan.nbf, plan.naux, rank, column_major, b,
+                               coefficients, u);
+      error = cudaPeekAtLastError();
+      if (error != cudaSuccess) return cuda_failure(error, "packed occupied DF projection", detail);
+      trace_counter("value_packed_pairs", plan.stored_pair_count);
+      trace_counter("packed_projection_launches", 1);
+    } else {
+      status = trace_call("ri_k_occupied_projection_gemm", plan.stream, [&] {
+        return cublasDgemmStridedBatched(plan.blas, CUBLAS_OP_N,
+                                         column_major ? CUBLAS_OP_N : CUBLAS_OP_T, a, r, n, &one, b,
+                                         a, plan.naux * plan.nbf, coefficients,
+                                         column_major ? n : r, 0, &zero, u, a, plan.naux * rank, n);
+      });
+      if (status != CUBLAS_STATUS_SUCCESS)
+        return blas_failure(status, "resident occupied DF projection", detail);
+    }
     bool triangular = false;
     auto* output = exchange + system * plan.matrix_elements;
     status = trace_call("ri_k_occupied_exchange_gemm", plan.stream, [&] {
@@ -137,7 +152,13 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
   const auto panel = [&](std::size_t begin, std::size_t count, std::size_t qbegin,
                          std::size_t qcount) -> vibeqc_status {
     const auto pairs = count * plan.nbf;
-    if (!plan.streamed) {
+    if (packed) {
+      runtime::cuda_trace::TraceRegion unpack("ri_k_packed_unpack", plan.stream);
+      launch_unpack_df_values(plan.stream, plan.nbf, plan.naux, begin, count, qbegin, qcount, true,
+                              plan.three_center + system * plan.stored_tensor_elements_per_system,
+                              plan.exchange_intermediate);
+      trace_counter("packed_unpack_elements", pairs * qcount);
+    } else if (!plan.streamed) {
       launch_gather_auxiliary_tile_kernel(blocks_for(pairs * qcount), kThreads, 0, plan.stream,
                                           plan.matrix_elements, plan.naux, system, qbegin, qcount,
                                           plan.three_center, plan.exchange_intermediate);

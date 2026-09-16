@@ -1,0 +1,70 @@
+{
+  "source_base": "25e8efebb069e6067ba3649f220c37e844ecc8f6",
+  "native_identity": "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133",
+  "sha256": {
+    "build_identity.hpp": "735b6a1236d59d3024712b02c1b169cba774b8216692f71731f5f0d291d4a75e",
+    "libvibeqc.so": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+    "source.patch": "2f6a66c2df15c8f8f3bbd543b9e6281bcc22840d87ccbe13ab26d06fef077474"
+  },
+  "validation": {
+    "slurm_job_id": "9836",
+    "cuda_visible_devices": "0",
+    "sha256": {
+      "build/cuda/libvibeqc.so": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+      "build/cuda/vibeqc_density_fitting_tests": "0b9a8976130683fa957ce4eb1a3c6b4b093913709fa32ffb5fc7e061ed6c0359",
+      "build/cuda/vibeqc_df_occupied_response_tests": "4cdba3083f0ae7c1fe69fb00118f99facc0e5404cda5a97d970bdb42818fa14f",
+      "build/cuda/generated/build_identity.hpp": "735b6a1236d59d3024712b02c1b169cba774b8216692f71731f5f0d291d4a75e"
+    },
+    "checks": [
+      {
+        "name": "density-tests",
+        "command": [
+          "./build/cuda/vibeqc_density_fitting_tests"
+        ],
+        "exit_code": 0,
+        "log_sha256": "597da5066523eaa0929b1f50ffece2db9a3bc07a5fa0c59a0c64387ebfbcdb57",
+        "tail": [
+          "validated density-fitting integrals, RI-J/K, and planning"
+        ]
+      },
+      {
+        "name": "response-tests",
+        "command": [
+          "./build/cuda/vibeqc_df_occupied_response_tests"
+        ],
+        "exit_code": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": []
+      },
+      {
+        "name": "molecular-tests",
+        "command": [
+          "/tmp/vibeqc-pr-review-env/bin/python",
+          "-m",
+          "pytest",
+          "-x",
+          "-vv",
+          "tests/python/test_df_packed_values_cuda.py",
+          "--basetemp",
+          "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/pytest-tmp"
+        ],
+        "exit_code": 0,
+        "log_sha256": "d2c398c2e8b52af7f7bd665592dbec01dad44c484f84337425815de5679232e4",
+        "tail": [
+          "tests/python/test_df_packed_values_cuda.py::test_packed_preparation_replay_and_representation_replacement[uhf-3-spherical-sto-3g-False-268435456-2] PASSED [ 53%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_preparation_replay_and_representation_replacement[uhf-2-spherical-def2-svp-True-0-1] PASSED [ 60%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_preparation_replay_and_representation_replacement[uhf-2-spherical-def2-svp-True-0-2] PASSED [ 66%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_preparation_replay_and_representation_replacement[uhf-2-spherical-def2-svp-True-268435456-1] PASSED [ 73%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_preparation_replay_and_representation_replacement[uhf-2-spherical-def2-svp-True-268435456-2] PASSED [ 80%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_global_ledger_and_raw_reuse_ablation PASSED [ 86%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback[restricted] PASSED [ 93%]",
+          "tests/python/test_df_packed_values_cuda.py::test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback[unrestricted] PASSED [100%]",
+          "",
+          "============================== 15 passed in 6.76s =============================="
+        ]
+      }
+    ]
+  },
+  "resource_tests": "15 passed; no GPU context",
+  "scope": "explicit high-level candidate; not automatically selected; complete-endpoint qualification pending"
+}

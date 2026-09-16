@@ -13,6 +13,7 @@
 #include "scf/cuda/df_generated_tiles.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
+#include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 
@@ -333,8 +334,9 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
         return cuda_failure(cuda_error, "transpose CUDA DF exchange density", detail);
       }
     }
+    const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
     const bool retain_raw =
-        plan.resident_exchange_enabled && plan.row_tile == plan.nbf &&
+        !packed && plan.resident_exchange_enabled && plan.row_tile == plan.nbf &&
         plan.auxiliary_tile == plan.naux &&
         plan.nbf * plan.naux <= static_cast<std::size_t>(std::numeric_limits<int>::max());
     if (retain_raw && (plan.flat_dense_exchange || plan.naux == 1)) {
@@ -376,9 +378,19 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
          auxiliary_begin += auxiliary_tile) {
       const std::size_t auxiliary_count = std::min(auxiliary_tile, plan.naux - auxiliary_begin);
       const std::size_t tile_elements = auxiliary_count * plan.matrix_elements;
-      launch_gather_auxiliary_tile_kernel(
-          blocks_for(tile_elements), kThreads, 0, plan.stream, plan.matrix_elements, plan.naux,
-          system, auxiliary_begin, auxiliary_count, plan.three_center, plan.auxiliary_tile_values);
+      if (packed) {
+        runtime::cuda_trace::TraceRegion unpack("ri_k_packed_unpack", plan.stream);
+        launch_unpack_df_values(plan.stream, plan.nbf, plan.naux, 0, plan.nbf, auxiliary_begin,
+                                auxiliary_count, true,
+                                plan.three_center + system * plan.stored_tensor_elements_per_system,
+                                plan.auxiliary_tile_values);
+        runtime::cuda_trace::trace_counter("packed_unpack_elements", tile_elements);
+      } else {
+        launch_gather_auxiliary_tile_kernel(blocks_for(tile_elements), kThreads, 0, plan.stream,
+                                            plan.matrix_elements, plan.naux, system,
+                                            auxiliary_begin, auxiliary_count, plan.three_center,
+                                            plan.auxiliary_tile_values);
+      }
       cuda_error = cudaPeekAtLastError();
       if (cuda_error != cudaSuccess) {
         return cuda_failure(cuda_error, "gather DF exchange tile", detail);
@@ -410,7 +422,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
       runtime::cuda_trace::TraceRegion reduction("ri_k_exchange_reduce", plan.stream);
       launch_reduce_exchange_tile_kernel(blocks_for(plan.matrix_elements), kThreads, 0, plan.stream,
                                          plan.matrix_elements, auxiliary_count, system,
-                                         contributions, exchange, retain_raw);
+                                         contributions, exchange, retain_raw || packed);
       cuda_error = cudaPeekAtLastError();
       if (cuda_error != cudaSuccess) {
         return cuda_failure(cuda_error, "reduce DF exchange tile", detail);

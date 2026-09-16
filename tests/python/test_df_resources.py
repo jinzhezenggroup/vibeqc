@@ -5,6 +5,62 @@ from vibeqc import Calculator
 from vibeqc.resources_df import density_fitting_tile_plan
 
 
+def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
+    """Query native allocation capacities without touching a GPU or tensor."""
+    library = Calculator()._library
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("packed shape query created a CUDA context")
+
+    monkeypatch.setattr(library, "vibeqc_context_create", forbidden)
+
+    def query(rank=160, budget=0, fixed=4096):
+        return density_fitting_tile_plan(
+            library,
+            1,
+            768,
+            768,
+            rank,
+            budget_bytes=budget,
+            fixed_device_bytes=fixed,
+            generated_source=True,
+            pair_storage="packed",
+        )
+
+    default = query()
+    constrained = query(budget=default.peak_workspace_bytes - 1)
+    assert constrained.auxiliary_tile < default.auxiliary_tile
+    assert constrained.rank_capacity == default.rank_capacity == 160
+    assert constrained.projection_capacity_elements >= 768 * 160 * 768
+    for plan in (default, constrained, query(rank=0)):
+        assert plan.pair_storage == "packed" and plan.stores_full_three_center
+        assert (
+            plan.raw_factor_bytes
+            == plan.stored_factor_bytes
+            == 8 * 768 * 769 // 2 * 768
+        )
+        assert plan.contraction_scratch_bytes == 8 * (
+            plan.projection_capacity_elements + 2 * plan.panel_capacity_elements
+        )
+        assert plan.panel_capacity_elements == 768 * 768 * plan.auxiliary_tile
+    assert query(fixed=8192).peak_workspace_bytes - default.peak_workspace_bytes == 4096
+    with pytest.raises(ValueError):
+        query(budget=1)
+    with pytest.raises(ValueError):
+        query(rank=769)
+    with pytest.raises(ValueError, match="physical generated source"):
+        density_fitting_tile_plan(
+            library,
+            1,
+            4,
+            5,
+            1,
+            budget_bytes=0,
+            fixed_device_bytes=0,
+            pair_storage="packed",
+        )
+
+
 @pytest.mark.parametrize(
     "shape",
     [(1, 768, 768, 160), (1, 384, 384, 80), (2, 768, 768, 160), (1, 768, 767, 160)],
@@ -193,6 +249,58 @@ def test_overlap_storage_is_reserved_in_every_cuda_df_candidate():
             expected = 8 * row["batch"] * (2 * row["nbf"] ** 2 + row["coordinates"])
             assert row["overlap_cache_host_bytes"] == expected
             assert row["resident_host_bytes"] >= expected
+
+
+def test_packed_inventory_charges_both_owners_and_separates_identity(monkeypatch):
+    """Representation switches change provenance before any CUDA allocation.
+
+    Compare the explicit packed inventory with the same generated-source dense
+    inventory. Every other persistent allocation is shared, so their exact
+    difference exposes a missing immutable owner or scratch reservation.
+    """
+    import json
+
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    calc = Calculator(device="cuda", density_fitting="cuda")
+    monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "dense")
+    dense = calc._resource_request([atoms] * 2)
+    if not dense.candidates:
+        pytest.skip("requires a CUDA-enabled library, no GPU execution")
+    monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "packed")
+    packed = calc._resource_request([atoms] * 2)
+    assert packed.identity != dense.identity
+    assert [candidate.name for candidate in packed.candidates] == ["cuda-df-packed"]
+    candidate = packed.candidates[0]
+    assert candidate.mode == "resident"
+    assert dict(candidate.decisions)["df_pair_storage"] == "packed"
+    dense_source = next(c for c in dense.candidates if c.name == "cuda-df-source")
+    dense_rows = json.loads(dict(dense_source.decisions)["bucket_inventory"])
+    packed_rows = json.loads(dict(candidate.decisions)["bucket_inventory"])
+    for before, after in zip(dense_rows, packed_rows, strict=True):
+        b, n, a = (after[key] for key in ("batch", "nbf", "naux"))
+        for key in ("energy_tiles", "force_tiles"):
+            plan = after[key]
+            assert plan["pair_storage"] == "packed"
+            assert (
+                plan["raw_factor_bytes"]
+                == plan["stored_factor_bytes"]
+                == b * n * (n + 1) // 2 * a * 8
+            )
+        full = before["energy_tiles"]
+        plan = after["energy_tiles"]
+        assert full["stores_full_three_center"]
+        dense_values = 8 * b * n * n * a + 24 * n * n * full["auxiliary_tile"]
+        packed_values = (
+            plan["raw_factor_bytes"]
+            + plan["stored_factor_bytes"]
+            + plan["contraction_scratch_bytes"]
+        )
+        assert after["resident_device_bytes"] - before["resident_device_bytes"] == (
+            packed_values - dense_values
+        )
+    monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "invalid")
+    with pytest.raises(ValueError, match="VIBEQC_DF_VALUE_STORAGE"):
+        calc._resource_request([atoms])
 
 
 def test_diis_reservation_precedes_retained_panel_selection():

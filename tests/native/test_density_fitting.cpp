@@ -148,9 +148,48 @@ double uhf_df_total_energy(const vibeqc::integrals::IntegralData& one_electron,
          one_electron.nuclear_repulsion;
 }
 
+void check_packed_storage_planner() {
+  using namespace vibeqc::scf;
+  const auto full_rank = plan_packed_density_fitting_tiles(1, 768, 768, 768, 0);
+  const auto occupied = plan_packed_density_fitting_tiles(1, 768, 768, 160, 0);
+  const auto unknown = plan_packed_density_fitting_tiles(1, 768, 768, 0, 0);
+  require(occupied.value_storage.pairs == DfPairStorage::SymmetricLower &&
+              occupied.value_storage.rank_capacity == 160 && occupied.stores_full_three_center,
+          "packed planner lost representation/rank identity");
+  require(occupied.peak_workspace_bytes < full_rank.peak_workspace_bytes &&
+              unknown.peak_workspace_bytes <= occupied.peak_workspace_bytes,
+          "occupied capacity did not reduce actual planned storage");
+  const auto constrained = plan_packed_density_fitting_tiles(
+      1, 768, 768, 160, occupied.peak_workspace_bytes - 128 * 768 * 768 * sizeof(double));
+  require(constrained.auxiliary_tile < occupied.auxiliary_tile &&
+              constrained.value_storage.rank_capacity == 160,
+          "packed budget shrinking discarded the complete U reservation");
+  bool rejected = false;
+  try {
+    (void)plan_packed_density_fitting_tiles(1, 768, 768, 160, 1);
+  } catch (const DensityFittingBudgetError&) {
+    rejected = true;
+  }
+  require(rejected, "packed plan accepted a budget smaller than its immutable owners");
+  rejected = false;
+  try {
+    (void)df_packed_value_capacity(1, std::numeric_limits<std::size_t>::max(), 2, 0, 1);
+  } catch (const std::overflow_error&) {
+    rejected = true;
+  }
+  require(rejected, "packed triangular extent overflow was accepted");
+  rejected = false;
+  try {
+    (void)df_packed_value_capacity(2, 7, 9, 8, 1);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "packed occupied rank larger than AO dimension was accepted");
+}
+
 #if VIBEQC_HAS_CUDA
 void check_occupied_cuda(vibeqc::scf::CudaDensityFittingJkPlan* plan, std::size_t batch,
-                         std::size_t nbf) {
+                         std::size_t nbf, unsigned steps = 1) {
   using namespace vibeqc::scf;
   for (auto spin :
        {DensityFactorSpin::Restricted, DensityFactorSpin::Alpha, DensityFactorSpin::Beta})
@@ -247,11 +286,11 @@ void check_occupied_cuda(vibeqc::scf::CudaDensityFittingJkPlan* plan, std::size_
       const std::vector<double> nuclear(batch, 0), empty_density(density.size(), 0);
       const auto status =
           uhf ? run_cuda_density_fitting_uhf_device_scf(
-                    plan, hcore, orthogonalizer, density, empty_density, alpha, beta, nuclear, 1,
-                    1e-12, 1e-10, final, final_beta, records, detail)
+                    plan, hcore, orthogonalizer, density, empty_density, alpha, beta, nuclear,
+                    steps, 1e-12, 1e-10, final, final_beta, records, detail)
               : run_cuda_density_fitting_rhf_device_scf(plan, hcore, orthogonalizer, density, alpha,
-                                                        nuclear, 1, 1e-12, 1e-10, final, records,
-                                                        detail);
+                                                        nuclear, steps, 1e-12, 1e-10, final,
+                                                        records, detail);
       if (std::string(policy) == "occupied" && !occupied_reserved) {
         // The fixed-density factor API borrows existing tile scratch, but SCF
         // owns extra factors. A dense-only plan must reject that allocation.
@@ -264,7 +303,7 @@ void check_occupied_cuda(vibeqc::scf::CudaDensityFittingJkPlan* plan, std::size_
         throw std::runtime_error(std::string("one-step seed ") + policy +
                                  (uhf ? " UHF: " : " RHF: ") + detail);
       for (const auto& record : records)
-        require(record.iterations == 1 && !record.converged,
+        require(record.iterations == steps && !record.converged,
                 "occupied seed exceeded the one-iteration limit");
       if (std::string(policy) == "dense") {
         baseline = final;
@@ -366,6 +405,7 @@ vibeqc::core::System compact_auxiliary_system() {
 
 int main() {
   try {
+    check_packed_storage_planner();
     const vibeqc::core::System orbital = orbital_system();
     const vibeqc::core::System auxiliary = auxiliary_system();
     const vibeqc::integrals::DensityFittingIntegralData integrals =
@@ -1444,6 +1484,80 @@ int main() {
                            "resident generated alpha RI-K parity");
       require_matrix_close(cuda_beta_k, uhf_jk.beta_exchange, 3e-11,
                            "resident generated beta RI-K parity");
+      // Exact packed physical sources keep their own raw A, shrink persistent
+      // factors and preserve nonsymmetric-density dense fallback. Two systems
+      // exercise source/map identity and a stale factor's unaffected neighbor.
+      const char* previous_exchange = std::getenv("VIBEQC_DF_EXCHANGE");
+      const std::string saved_exchange = previous_exchange ? previous_exchange : "";
+      (void)setenv("VIBEQC_DF_EXCHANGE", "occupied", 1);
+      CudaPlan packed_response_plan(nullptr, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+      for (std::size_t capacity : {std::size_t{0}, std::size_t{1}, source_nbf}) {
+        const std::size_t batch = capacity == 1 ? 2 : 1;
+        auto moved_orbital = orbital, moved_auxiliary = auxiliary;
+        moved_orbital.atoms[1].position[2] += .07;
+        moved_auxiliary.atoms = moved_orbital.atoms;
+        std::vector<vibeqc::core::System> orbitals{orbital}, auxiliaries{auxiliary};
+        if (batch == 2) {
+          orbitals.push_back(moved_orbital);
+          auxiliaries.push_back(moved_auxiliary);
+        }
+        vibeqc::scf::CudaDensityFittingIntegralSource* packed_source = nullptr;
+        std::vector<double> metrics;
+        std::size_t n{}, a{};
+        require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                    0, orbitals, auxiliaries, &packed_source, metrics, n, a, source_detail) ==
+                    VIBEQC_STATUS_SUCCESS,
+                source_detail.c_str());
+        const auto source_bytes =
+            vibeqc::scf::cuda_density_fitting_integral_source_device_bytes(packed_source);
+        const auto planned =
+            vibeqc::scf::plan_packed_density_fitting_tiles(batch, n, a, capacity, 0, source_bytes);
+        vibeqc::scf::CudaDensityFittingJkPlan* raw = nullptr;
+        require(
+            vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                0, &packed_source, batch, n, a, metrics, 1e-12, 3, n * n, &raw, source_diagnostics,
+                source_detail, true, planned.value_storage) == VIBEQC_STATUS_SUCCESS,
+            source_detail.c_str());
+        CudaPlan packed_plan(raw, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+        require(
+            !packed_source && source_diagnostics.size() == batch &&
+                source_diagnostics[0].pair_storage == vibeqc::scf::DfPairStorage::SymmetricLower &&
+                source_diagnostics[0].raw_factor_bytes ==
+                    batch * n * (n + 1) / 2 * a * sizeof(double) &&
+                source_diagnostics[0].stored_factor_bytes ==
+                    source_diagnostics[0].raw_factor_bytes &&
+                source_diagnostics[0].peak_device_bytes <= planned.peak_workspace_bytes,
+            "packed native allocations differ from the common reservation");
+        check_occupied_cuda(packed_plan.get(), batch, n, 2);
+        std::vector<double> d(batch * n * n), expected_j, expected_k;
+        for (std::size_t item = 0; item < batch; ++item) {
+          const auto raw_oracle =
+              vibeqc::integrals::build_density_fitting_integrals(orbitals[item], auxiliaries[item]);
+          const auto tensor = vibeqc::scf::orthonormalize_density_fitting_three_center(
+              raw_oracle.three_center, n,
+              vibeqc::scf::factor_density_fitting_metric(raw_oracle.metric, a, 1e-12));
+          std::vector<double> item_d(n * n);
+          for (std::size_t row = 0; row < n; ++row)
+            for (std::size_t column = 0; column < n; ++column)
+              item_d[row * n + column] = .13 / (1 + row + 2 * column) - (row == column ? .01 : 0);
+          std::copy(item_d.begin(), item_d.end(), d.begin() + item * n * n);
+          const auto oracle = reference_jk(tensor, item_d);
+          append_values(expected_j, oracle.first);
+          append_values(expected_k, oracle.second);
+        }
+        require(
+            vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                packed_plan.get(), d, source_j, source_k, source_detail) == VIBEQC_STATUS_SUCCESS,
+            source_detail.c_str());
+        require_matrix_close(source_j, expected_j, 3e-11, "packed nonsymmetric-density J");
+        require_matrix_close(source_k, expected_k, 3e-11, "packed nonsymmetric-density K");
+        if (capacity == source_nbf) packed_response_plan = std::move(packed_plan);
+      }
+      if (saved_exchange.empty())
+        (void)unsetenv("VIBEQC_DF_EXCHANGE");
+      else
+        (void)setenv("VIBEQC_DF_EXCHANGE", saved_exchange.c_str(), 1);
+
       const auto source_host_uhf_gradient = vibeqc::scf::build_density_fitting_uhf_gradient(
           integrals, alpha_density, beta_density, 1.0e-12);
 
@@ -1467,8 +1581,8 @@ int main() {
                                                                           {beta_density, 0.0, 0.5}}
                 : std::vector<vibeqc::scf::DensityFittingDensityResponse>{
                       {generated_rhf_density, 1.0, 0.25}};
-        for (auto* response_plan :
-             {resident_plan.get(), source_plan.get(), generated_resident.get()}) {
+        for (auto* response_plan : {resident_plan.get(), source_plan.get(),
+                                    generated_resident.get(), packed_response_plan.get()}) {
           for (std::size_t budget : {16384U, 65536U, 1048576U}) {
             std::vector<double> generated_gradient{123.0};
             std::string generated_detail;
@@ -1526,6 +1640,7 @@ int main() {
                   "nonfinite retained raw values changed caller output");
             }
             if (response_plan != resident_plan.get()) {
+              const bool packed = response_plan == packed_response_plan.get();
               const auto width = resources.auxiliary_weight_tile;
               const auto panels = (integrals.naux + width - 1) / width;
               // Charges populate the first raw panel; exchange reuses each
@@ -1533,14 +1648,16 @@ int main() {
               const auto expected_slices = (panels + 1) * integrals.naux - width;
               require(resources.value_slices == expected_slices &&
                           resources.recomputed_value_bytes ==
-                              expected_slices * integrals.nbf * integrals.nbf * sizeof(double),
+                              (packed ? 0
+                                      : expected_slices * integrals.nbf * integrals.nbf *
+                                            sizeof(double)),
                       "response cache regenerated an already retained raw slice");
               require(resources.device_response && resources.tensor_host_to_device_bytes == 0 &&
                           resources.tensor_device_to_host_bytes == 0 &&
                           resources.response_host_to_device_bytes == 0 &&
                           resources.density_host_to_device_bytes ==
                               terms.size() * rhf_density.size() * sizeof(double) &&
-                          resources.recomputed_value_bytes > 0 &&
+                          (packed || resources.recomputed_value_bytes > 0) &&
                           resources.device_response_bytes ==
                               (integrals.nbf * integrals.nbf * integrals.naux +
                                integrals.naux * integrals.naux) *

@@ -294,6 +294,10 @@ def _bind(lib):
     lib.vibeqc_fock_plan_solve.restype = ct.c_int32
     lib.vibeqc_fock_plan_diagnostic.argtypes = [ct.c_void_p, ct.POINTER(_Diagnostic)]
     lib.vibeqc_fock_plan_diagnostic.restype = ct.c_int32
+    storage = getattr(lib, "vibeqc_fock_plan_df_pair_storage_v1", None)
+    if storage is not None:
+        storage.argtypes = [ct.c_void_p]
+        storage.restype = ct.c_int
 
 
 def _check(lib, status, detail):
@@ -528,6 +532,14 @@ class FockPlan:
                 status,
                 self._library.vibeqc_fock_plan_last_error(self._handle),
             )
+            # Older libraries support only dense values. Query the prepared
+            # owner when available so an environment change cannot relabel it.
+            storage = getattr(
+                self._library, "vibeqc_fock_plan_df_pair_storage_v1", None
+            )
+            pair_storage = storage(self._handle) if storage is not None else 0
+            if pair_storage not in (0, 1):
+                raise RuntimeError("invalid prepared Fock DF storage diagnostic")
             return {
                 "requested": _spec_dict(out.requested),
                 "resolved": _spec_dict(out.resolved),
@@ -551,6 +563,11 @@ class FockPlan:
                     )
                 },
                 "df_streamed": bool(out.df_streamed),
+                "df_pair_storage": (
+                    ("packed" if pair_storage else "dense")
+                    if out.auxiliary_rank
+                    else "absent"
+                ),
                 **{
                     name: getattr(out, name).decode()
                     for name in (

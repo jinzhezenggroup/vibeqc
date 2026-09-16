@@ -48,12 +48,13 @@ std::size_t df_source_bytes(const core::System& orbital, const core::System& aux
       add_size(multiply_size(orbital_cartesian, molecule::ao_count(orbital)),
                multiply_size(auxiliary_cartesian, molecule::ao_count(auxiliary))));
 }
-FockExecutionVariant execution_variant(const ResolvedFockBuild& strategy) noexcept {
+FockExecutionVariant execution_variant(const ResolvedFockBuild& strategy) {
 #if VIBEQC_HAS_CUDA
   if (strategy.backend == FockBackend::Cpu) return {};
   FockExecutionVariant result;
   result.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
   if (needs(strategy.spec, FockApproximation::DensityFitted)) {
+    result.df_pair_storage = requested_df_pair_storage();
     result.df_value_mapping = cuda_policy::df_value_mapping_requested();
     if (strategy.spec.derivative_order)
       result.df_derivative_mapping = cuda_policy::df_derivative_mapping_requested();
@@ -194,10 +195,17 @@ struct PreparedFockPlan::Impl {
       data.df_gradient_auxiliary = *auxiliary;
       data.df_gradient_mapping = diagnostic.variant.df_derivative_mapping;
       data.df_gradient_budget = remainder - plan_budget;
+      data.value_storage = diagnostic.variant.df_pair_storage;
+      // Fixed-density/composed Fock APIs have no occupied-rank promise. An
+      // explicit packed owner reserves bounded panels and accepts arbitrary D.
+      const auto plan_values = [&](std::size_t n, std::size_t a, std::size_t fixed) {
+        return data.value_storage == DfPairStorage::SymmetricLower
+                   ? plan_packed_density_fitting_tiles(1, n, a, 0, plan_budget, fixed)
+                   : plan_density_fitting_tiles(1, n, a, n, plan_budget, fixed, true);
+      };
       // Reuse the existing tile planner before and after source metadata is
       // known. Half the available allowance is reserved for response staging.
-      (void)plan_density_fitting_tiles(1, data.raw.nbf, data.raw.naux, data.raw.nbf, plan_budget,
-                                       df_source_bytes(system, *auxiliary), true);
+      (void)plan_values(data.raw.nbf, data.raw.naux, df_source_bytes(system, *auxiliary));
       CudaDensityFittingIntegralSource* raw_source{};
       std::vector<double> metrics;
       std::size_t nbf{}, naux{};
@@ -208,16 +216,15 @@ struct PreparedFockPlan::Impl {
                       decltype(&destroy_cuda_density_fitting_integral_source)>
           source(raw_source, &destroy_cuda_density_fitting_integral_source);
       diagnostic.fitted_source = cuda_density_fitting_integral_source_diagnostic(source.get());
-      const auto tiles = plan_density_fitting_tiles(
-          1, nbf, naux, nbf, plan_budget,
-          cuda_density_fitting_integral_source_device_bytes(source.get()), true);
+      const auto tiles =
+          plan_values(nbf, naux, cuda_density_fitting_integral_source_device_bytes(source.get()));
       CudaDensityFittingJkPlan* raw_plan{};
       // from_source owns the transferred handle on both success and failure.
       raw_source = source.release();
       checked(create_cuda_density_fitting_jk_plan_from_source(
                   device, &raw_source, 1, nbf, naux, metrics, strategy.metric_relative_threshold,
                   tiles.auxiliary_tile, tiles.ao_pair_tile, &raw_plan, diagnostic.fitted, detail,
-                  tiles.stores_full_three_center),
+                  tiles.stores_full_three_center, tiles.value_storage),
               detail);
       cuda_df.reset(raw_plan);
       if (!diagnostic.fitted.empty())
@@ -316,10 +323,16 @@ bool PreparedFockPlan::matches(const core::System& orbital, const core::System* 
                                const ResolvedFockBuild& strategy, int device,
                                std::size_t budget) const noexcept {
   if (impl_->diagnostic.strategy != strategy || !same_system(impl_->orbital, orbital)) return false;
-  if (strategy.backend == FockBackend::Cuda &&
-      (device != impl_->device_id || budget != impl_->requested_budget ||
-       execution_variant(strategy) != impl_->diagnostic.variant))
+  try {
+    if (strategy.backend == FockBackend::Cuda &&
+        (device != impl_->device_id || budget != impl_->requested_budget ||
+         execution_variant(strategy) != impl_->diagnostic.variant))
+      return false;
+  } catch (...) {
+    // A malformed selector invalidates replay; fresh preparation reports the
+    // configuration error through its ordinary status/exception boundary.
     return false;
+  }
   return !impl_->auxiliary || same_system(*impl_->auxiliary, auxiliary ? *auxiliary : orbital);
 }
 }  // namespace vibeqc::scf

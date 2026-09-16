@@ -9,6 +9,7 @@
 
 #include "core/types.hpp"
 #include "scf/density_factor.hpp"
+#include "scf/df_value_storage.hpp"
 #include "scf/fock_build.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -130,6 +131,17 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail, bool retain_three_center);
 
+/** Explicit physical-source representation and occupied scratch reservation.
+ * Packed storage retains raw A and B directly, without a dense intermediate.
+ * Dense overloads retain their existing source-transfer and tensor contracts.
+ */
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
+    std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail, bool retain_three_center, DfValueStorageOptions storage);
+
 /** Generate one public-basis transformed three-center tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_transformed_tile(
     CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t pair_begin,
@@ -162,6 +174,8 @@ void set_cuda_density_fitting_scf_value_budget(CudaDensityFittingJkPlan* plan,
                                                std::size_t budget) noexcept;
 /** Read the exact value allowance that selected this cached HF plan. */
 std::size_t cuda_density_fitting_scf_value_budget(const CudaDensityFittingJkPlan* plan) noexcept;
+/** Representation frozen in this owner, independent of ambient selectors. */
+DfPairStorage cuda_density_fitting_pair_storage(const CudaDensityFittingJkPlan* plan) noexcept;
 
 /** Whether a cached plan reserved storage for the current SCF exchange policy.
  * High-level callers rebuild on mismatch; low-level SCF calls cannot enable
@@ -207,6 +221,10 @@ struct CudaDensityFittingMetricDiagnostic {
   std::size_t auxiliary_tile{};
   /** True when transformed three-center values use host-backed tile streaming. */
   bool streamed{};
+  /** Persistent representation/capacity, distinct from derivative weight packing. */
+  DfPairStorage pair_storage{DfPairStorage::Dense};
+  std::size_t stored_factor_bytes{}, raw_factor_bytes{}, contraction_scratch_bytes{};
+  std::size_t occupied_rank_capacity{};
 };
 
 /**

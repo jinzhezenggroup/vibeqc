@@ -24,6 +24,15 @@ class DensityFittingResourceTile:
     budget_bytes: int
     fixed_device_bytes: int
     generated_source: bool = False
+    # Dense v1/v2 queries retain their original fields. Explicit packed queries
+    # additionally expose the same capacities used by the native allocator.
+    pair_storage: str = "dense"
+    rank_capacity: int = 0
+    stored_factor_bytes: int = 0
+    raw_factor_bytes: int = 0
+    contraction_scratch_bytes: int = 0
+    projection_capacity_elements: int = 0
+    panel_capacity_elements: int = 0
 
 
 def density_fitting_source_bytes(
@@ -61,12 +70,15 @@ def density_fitting_tile_plan(
     budget_bytes,
     fixed_device_bytes,
     generated_source=False,
+    pair_storage="dense",
 ):
     """Compose a fixed reservation with the provider's own tiling decisions.
 
     A zero native budget means implementation defaults. The global planner
     should supply a positive sub-budget when constraining a calculation. Every
     shape/product is checked by the native implementation before allocation.
+    Packed physical sources reserve complete U only up to ``occupied``; zero
+    is an explicit bounded-only reservation. Arbitrary tensor queries stay dense.
     """
     for name, value in (
         ("batch", batch),
@@ -79,15 +91,22 @@ def density_fitting_tile_plan(
         checked_bytes(value, name)
         if value > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1:
             raise ValueError(f"{name} exceeds this host's size_t ABI")
-    if not all((batch, nbf, naux, occupied)):
+    if pair_storage not in ("dense", "packed"):
+        raise ValueError("DF pair storage must be dense or packed")
+    packed = pair_storage == "packed"
+    if not all((batch, nbf, naux)) or (not occupied and not packed):
         raise ValueError("DF planner dimensions must be positive")
     if type(generated_source) is not bool:
         raise TypeError("generated_source must be boolean")
+    if packed and not generated_source:
+        raise ValueError("packed DF storage requires a physical generated source")
     # Residency must use the same source-specific setup accounting as native
     # execution, rather than inferring the provider from reserved byte counts.
     query = getattr(
         library,
-        "vibeqc_resource_df_tiles_v2"
+        "vibeqc_resource_df_packed_tiles_v1"
+        if packed
+        else "vibeqc_resource_df_tiles_v2"
         if generated_source
         else "vibeqc_resource_df_tiles_v1",
         None,
@@ -96,7 +115,7 @@ def density_fitting_tile_plan(
         raise NotImplementedError("native library has no shape-only DF resource query")
     query.argtypes = (
         [ctypes.c_size_t] * 6
-        + ([ctypes.c_uint] if generated_source else [])
+        + ([ctypes.c_uint] if generated_source and not packed else [])
         + [
             ctypes.POINTER(ctypes.c_uint64),
             ctypes.c_size_t,
@@ -105,7 +124,7 @@ def density_fitting_tile_plan(
         ]
     )
     query.restype = ctypes.c_int
-    values = (ctypes.c_uint64 * 6)()
+    values = (ctypes.c_uint64 * (10 if packed else 6))()
     error = ctypes.create_string_buffer(2048)
     if query(
         batch,
@@ -114,7 +133,7 @@ def density_fitting_tile_plan(
         occupied,
         budget_bytes,
         fixed_device_bytes,
-        *([1] if generated_source else []),
+        *([1] if generated_source and not packed else []),
         values,
         len(values),
         error,
@@ -122,7 +141,18 @@ def density_fitting_tile_plan(
     ):
         raise ValueError(error.value.decode())
     return DensityFittingResourceTile(
-        *values[:5], bool(values[5]), budget_bytes, fixed_device_bytes, generated_source
+        *values[:5],
+        bool(values[5]),
+        budget_bytes,
+        fixed_device_bytes,
+        generated_source,
+        pair_storage=pair_storage,
+        rank_capacity=occupied if packed else 0,
+        stored_factor_bytes=values[6] if packed else 0,
+        raw_factor_bytes=values[6] if packed else 0,
+        contraction_scratch_bytes=values[7] if packed else 0,
+        projection_capacity_elements=values[8] if packed else 0,
+        panel_capacity_elements=values[9] if packed else 0,
     )
 
 

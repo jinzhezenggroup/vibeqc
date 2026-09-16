@@ -12,6 +12,7 @@
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
+#include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 
@@ -26,6 +27,41 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
   TraceOperation trace(
       "ri_j", plan.stream,
       {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
+  if (plan.value_storage.pairs == DfPairStorage::SymmetricLower) {
+    const double one = 1, zero = 0;
+    const auto a = static_cast<int>(plan.naux), pairs = static_cast<int>(plan.stored_pair_count);
+    // The packed density dies after rho=B*d. Its same scratch is then the
+    // packed J output, so no per-batch pair vectors or allocation are needed.
+    auto* packed = plan.auxiliary_tile_values;
+    for (std::size_t system = 0; system < plan.batch_size; ++system) {
+      launch_pack_df_density(plan.stream, plan.nbf, density + system * plan.matrix_elements,
+                             packed);
+      auto error = cudaPeekAtLastError();
+      if (error != cudaSuccess) return cuda_failure(error, "pack DF Coulomb density", detail);
+      const auto* b = plan.three_center + system * plan.stored_tensor_elements_per_system;
+      auto* charge = plan.auxiliary_density + system * plan.naux;
+      auto status = trace_call("ri_j_gemm", plan.stream, [&] {
+        return cublasDgemv(plan.blas, CUBLAS_OP_N, a, pairs, &one, b, a, packed, 1, &zero, charge,
+                           1);
+      });
+      if (status != CUBLAS_STATUS_SUCCESS)
+        return blas_failure(status, "packed DF charge contraction", detail);
+      status = trace_call("ri_j_gemm", plan.stream, [&] {
+        return cublasDgemv(plan.blas, CUBLAS_OP_T, a, pairs, &one, b, a, charge, 1, &zero, packed,
+                           1);
+      });
+      if (status != CUBLAS_STATUS_SUCCESS)
+        return blas_failure(status, "packed DF Coulomb contraction", detail);
+      launch_scatter_df_pairs(plan.stream, plan.nbf, packed,
+                              plan.coulomb + system * plan.matrix_elements);
+      error = cudaPeekAtLastError();
+      if (error != cudaSuccess) return cuda_failure(error, "scatter packed DF Coulomb", detail);
+    }
+    runtime::cuda_trace::trace_counter("value_packed_pairs", plan.stored_pair_count);
+    runtime::cuda_trace::trace_counter("coulomb_contraction_flops",
+                                       4 * plan.batch_size * plan.stored_pair_count * plan.naux);
+    return VIBEQC_STATUS_SUCCESS;
+  }
   if (plan.streamed) {
     cudaError_t cuda_error = cudaMemsetAsync(
         plan.auxiliary_density, 0, plan.batch_size * plan.naux * sizeof(double), plan.stream);
