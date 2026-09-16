@@ -34,36 +34,102 @@ compilation overlapping part of the intrusive profiles; clean endpoint timing
 was isolated. The register native executable was rebuilt with the subsequent
 #395 packet assertions, as recorded in `builds.json`; its library was unchanged.
 
-Reconstruct each candidate in a separate checkout of the base by applying its
-`source.patch` and `native-test.patch` (or the named early source patch), then
-apply `cuda-test.patch` when present. Use the `cuda-release-sm120` CMake
-preset to build `vibeqc` and `vibeqc_df_shell_pairs_tests`. Freeze each completed
-library before measuring. Baseline evidence and the runner's scientific
-contract are in `benchmarks/results/issue395-df-work/` and
-`benchmarks/df_policy_endpoint.py`.
+Every patch entry in `builds.json` has a `path` relative to that manifest.
+The baseline patch is already retained at
+[`../issue395-df-work/reproduction/source.patch`](../issue395-df-work/reproduction/source.patch),
+with base `23091a4575c3b2bf9288ae00bb173935a51364c3`. Its historical digest differs
+from each candidate patch; the shared `source.patch` key names the artifact
+inside each frozen build, not one common file. Binary and generated-header
+identities describe historical artifacts that are not included here.
 
-All GPU commands require a finite Slurm allocation:
+The following commands reconstruct the baseline and selected candidate, build
+them separately, and freeze their libraries and source patches. Run from this
+publication checkout's root in the configured CUDA 12.9/Python development
+environment. Use a fresh `vibeqc_repro_root`; complete all compilation before
+starting the Slurm captures. These are instructions for future reproduction,
+not additional measurements made for this publication.
 
 ```bash
-srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
-  --time=00:30:00 bash run-comparison.sh
+set -euo pipefail
+# Choose early-folding, identity-folding, serial-grouping, block-grouping,
+# or warp-grouping. early-folding prepares both direct and register variants.
+vibeqc_candidate=block-grouping
+vibeqc_archive="$PWD/benchmarks/results/issue392-393-rejected"
+vibeqc_repro_root="$PWD/.artifacts/rejected-reproduction"
+mkdir -p "$PWD/.artifacts"
+mkdir "$vibeqc_repro_root"
+export VIBEQC_WORK_CUDA=/group/software/cuda-12.9.1
+export CUDACXX="$VIBEQC_WORK_CUDA/bin/nvcc"
+export VIBEQC_WORK_PYTHON="$(command -v python)"
+
+freeze_variant() {
+  local label=$1 base=$2 source_patch=$3
+  shift 3
+  local checkout="$vibeqc_repro_root/sources/$label"
+  local frozen="$vibeqc_repro_root/frozen/$label"
+  git worktree add --detach "$checkout" "$base"
+  git -C "$checkout" apply "$source_patch"
+  for extra_patch in "$@"; do
+    git -C "$checkout" apply "$extra_patch"
+  done
+  cmake --preset cuda-release-sm120 -S "$checkout"
+  cmake --build "$checkout/build/cuda-release-sm120" \
+    --target vibeqc vibeqc_df_shell_pairs_tests --parallel 2
+  mkdir -p "$frozen"
+  cp -L "$checkout/build/cuda-release-sm120/libvibeqc.so" "$frozen/libvibeqc.so"
+  cp "$checkout/build/cuda-release-sm120/vibeqc_df_shell_pairs_tests" "$frozen/"
+  cp "$checkout/build/cuda-release-sm120/generated/generated_df_shell_derivatives.cuh" "$frozen/"
+  cp "$source_patch" "$frozen/source.patch"
+}
+
+freeze_variant baseline 23091a4575c3b2bf9288ae00bb173935a51364c3 \
+  "$vibeqc_archive/../issue395-df-work/reproduction/source.patch"
+case "$vibeqc_candidate" in
+  early-folding)
+    freeze_variant direct c5475c49b331c989fbe0aafb3ce19685d7cb254d \
+      "$vibeqc_archive/early-folding/direct-source.patch"
+    freeze_variant register c5475c49b331c989fbe0aafb3ce19685d7cb254d \
+      "$vibeqc_archive/early-folding/register-source.patch"
+    export VIBEQC_WORK_DIRECT="$vibeqc_repro_root/frozen/direct"
+    export VIBEQC_WORK_REGISTER="$vibeqc_repro_root/frozen/register"
+    capture_stage=clean-early
+    ;;
+  identity-folding|serial-grouping|block-grouping|warp-grouping)
+    extra_patches=("$vibeqc_archive/$vibeqc_candidate/native-test.patch")
+    if [[ -f "$vibeqc_archive/$vibeqc_candidate/cuda-test.patch" ]]; then
+      extra_patches+=("$vibeqc_archive/$vibeqc_candidate/cuda-test.patch")
+    fi
+    freeze_variant candidate 1c3f2ab8d6df6f06bee526b89a807511ef726301 \
+      "$vibeqc_archive/$vibeqc_candidate/source.patch" "${extra_patches[@]}"
+    export VIBEQC_WORK_CANDIDATE="$vibeqc_repro_root/frozen/candidate"
+    capture_stage=clean
+    ;;
+  *) echo "Unknown candidate: $vibeqc_candidate" >&2; exit 2 ;;
+esac
+
+export VIBEQC_WORK_BASELINE="$vibeqc_repro_root/frozen/baseline"
+export VIBEQC_WORK_OUTPUT="$vibeqc_repro_root/captures"
+export VIBEQC_WORK_CHECKPOINTS="$vibeqc_repro_root/checkpoints"
+for aos in 384 768; do
+  srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+    --time=00:30:00 bash "$vibeqc_archive/reproduction/run-comparison.sh" checkpoint "$aos"
+  srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+    --time=00:30:00 bash "$vibeqc_archive/reproduction/run-comparison.sh" "$capture_stage" "$aos"
+done
 ```
 
-Inside the job, preserve Slurm's device visibility and set `OMP_NUM_THREADS=1`,
-`OPENBLAS_NUM_THREADS=1`, `PYTHONPATH=python:.`, and `VIBEQC_LIBRARY` to the
-selected frozen binary. Generate a common post-cold checkpoint on the baseline
-with the runner's `--warm-checkpoint-out`, then pass the same checkpoint to all
-variants with `--warm-checkpoint-in` and `--skip-cold`. Use `--aos 384` or `768`,
-`--control VIBEQC_DF_SHELL_WORK --policies 0 --expected-iterations 3`, and
-`--components-after`. The independent references are
-`benchmarks/results/issue377-379-df/gpu4pyscf/water-hexadecamer-2s4-def2-svp-spherical.json`
-and `water-32mer-4s4-def2-svp-spherical.json`; pass the matching `--reference`.
-Run baseline-2, candidate-2, candidate-3, baseline-3 groups in that order, where
-the suffix is `--repeats`. The original paired early-folding run used
-baseline-2, direct-2, register-2, register-3, direct-3, baseline-3.
-Keep compilation and profiling outside clean timing.
+The versioned [capture script](reproduction/run-comparison.sh) preserves Slurm's
+device visibility and sets one CPU math thread. It selects the matching
+independent reference, creates the common post-cold checkpoint on the baseline,
+then measures every variant from that checkpoint with the unchanged three-SCF-
+update gate and a separate component pass. `clean` executes baseline-2,
+candidate-2, candidate-3, baseline-3; `clean-early` executes baseline-2, direct-2,
+register-2, register-3, direct-3, baseline-3. Each suffix is the repeat count.
+The endpoint runner refuses to overwrite existing measurements or checkpoints.
 New checkpoints have their own identities; do not claim exact historical
-density reproduction unless their retained hashes match.
+density reproduction unless their retained hashes match. Rebuilt binaries also
+have new identities until checked against the recorded manifests. Keep profiling
+and all other compilation outside clean timing.
 
 For intrusive work attribution run a separate `--policies 0 1 --repeats 1
 --trace --cuda-profile` capture under Nsight Systems with
