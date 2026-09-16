@@ -303,8 +303,11 @@ cudaError_t dispatch_lowering(unsigned architecture, unsigned& variant, double b
   const char* raw = std::getenv("VIBEQC_DF_SHELL_MATH_000");
   const std::string_view policy = raw ? raw : "auto";
   if (policy != "auto" && policy != "polynomial" && policy != "rys") return cudaErrorInvalidValue;
+  // The legacy control names only 000. Adding candidate capabilities must not
+  // implicitly force every newly available class outside its qualified policy.
+  const std::string_view class_policy = A + B + C == 0 ? policy : "auto";
   if constexpr (generated::rys_available<A, B, C>) {
-    if (policy == "rys" || (policy == "auto" && use_choice && choice.rys))
+    if (class_policy == "rys" || (class_policy == "auto" && use_choice && choice.rys))
       return dispatch_screening<A, B, C, true>(budget, launch);
   }
   return dispatch_screening<A, B, C, false>(budget, launch);
