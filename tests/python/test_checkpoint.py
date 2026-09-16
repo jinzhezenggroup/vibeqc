@@ -583,6 +583,52 @@ def test_runtime_numerical_policy_changes_require_explicit_warm_restart(
     assert source["controls"]["runtime_policy"][variable] is None
 
 
+@pytest.mark.parametrize("value", [None, "auto", "rys", "polynomial"])
+def test_retired_control_keeps_checkpoint_source_provenance(tmp_path, value):
+    """Retirement accepts old seeds without relabeling their numerical policy."""
+    variable = "VIBEQC_DF_SHELL_MATH_000"
+    path = tmp_path / "older-state"
+    expected = save(path).items[0]
+    rewrite(
+        path,
+        mutate_manifest=lambda d: d["items"][0]["controls"]["runtime_policy"].update(
+            {variable: value}
+        ),
+    )
+    assert (
+        inspect_checkpoint(path).items[0]["controls"]["runtime_policy"][variable]
+        == value
+    )
+    with calc().prepare_batch([H2]) as target:
+        with pytest.raises(CheckpointError, match="numerical controls"):
+            target.load_checkpoint(path)
+        report = target.load_checkpoint(path, allow_warm=True)
+        assert report["items"][0]["compatibility"] == "warm_start_compatible"
+        target.save_checkpoint(tmp_path / "reexport")
+        actual = target.execute(strict=True).items[0]
+    assert actual.energy == pytest.approx(expected.energy, abs=2e-10)
+    source = inspect_checkpoint(tmp_path / "reexport").items[0]
+    assert source["controls"]["runtime_policy"][variable] == value
+
+
+def test_retired_environment_control_does_not_change_checkpoint_identity(
+    tmp_path, monkeypatch
+):
+    variable = "VIBEQC_DF_SHELL_MATH_000"
+    path = tmp_path / "state"
+    monkeypatch.delenv(variable, raising=False)
+    save(path)
+    monkeypatch.setenv(variable, "rys")
+    with calc().prepare_batch([H2]) as target:
+        target.load_checkpoint(path)
+        assert (
+            target.execute(strict=True).items[0].restart_origin == "persistent_restart"
+        )
+        target.save_checkpoint(tmp_path / "reexport")
+    source = inspect_checkpoint(tmp_path / "reexport").items[0]
+    assert variable not in source["controls"]["runtime_policy"]
+
+
 def test_older_checkpoint_without_new_df_controls_keeps_source_provenance(tmp_path):
     """Adding execution controls must not make valid historical seeds corrupt."""
     from vibeqc.resources_hf import _CUDA_SCHEDULE_EXTENSION_VARIABLES

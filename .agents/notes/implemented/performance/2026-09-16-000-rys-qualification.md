@@ -102,6 +102,9 @@ schedule. This change does not promote a new automatic policy.
 
 ## References
 
+- The SSS-only runtime override was subsequently retired by the
+  [selector retirement decision](../compatibility/2026-09-16-df-math-selector-retirement.md);
+  the measurements and source-specific commands here remain historical evidence.
 - Issue #394; supersedes its original seven-class implementation scope for this slice.
 - Merged #399 / PR #402: `a90973d7aa43776348e0cdcb51927db01bab5cb4`.
 - [Retained endpoint/work/kernel evidence](../../../../benchmarks/results/issue394-000-rys/README.md).

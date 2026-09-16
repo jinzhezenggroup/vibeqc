@@ -58,7 +58,6 @@ python tools/benchmark_df_values.py \
 | --- | --- | --- |
 | `VIBEQC_DF_SHELL_POLICY` | Generated sm_120 mapping for 384/768 AO with equal auxiliary dimension; other sizes retain legacy | `legacy`, `candidate` |
 | `VIBEQC_DF_SHELL_SCHEDULE` | Class-specific manifest schedule | `warp`, `packed`, `compact` |
-| `VIBEQC_DF_SHELL_MATH_000` | Manifest choice in its qualified domain; polynomial elsewhere | `polynomial`, `rys` |
 | `VIBEQC_DF_VALUE_MATH` | Existing generic Rys | `generic`, `polynomial`, `rys`, `candidate` |
 | `VIBEQC_DF_VALUE_RAW_MAPPING` | Existing scalar raw export | `scalar`, `subgroup`, `warp`, `candidate` |
 | `VIBEQC_DF_FORCE_SCREEN_ABS` | Off | Nonnegative finite absolute force budget, or `off` |
@@ -72,6 +71,11 @@ scalar work. Source-backed value math is frozen when its owner is constructed;
 its existing source schedule remains independent. All these controls participate
 in checkpoint scheduling identity as optional extensions, preserving older
 checkpoint compatibility.
+
+Mathematical lowering is selected only through the class manifest. Historical
+checkpoints may retain retired controls as source provenance; importing their
+density requires `allow_warm=True`, and re-export preserves those controls.
+See the [selector retirement note](../.agents/notes/implemented/compatibility/2026-09-16-df-math-selector-retirement.md).
 
 ## Force screening contract
 

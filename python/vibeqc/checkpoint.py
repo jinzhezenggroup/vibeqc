@@ -35,6 +35,10 @@ _FORMAT = "ieee754-binary64-little-endian-c-order"
 _MAX_MANIFEST = 4 << 20
 _MAX_ITEMS = 10000
 
+# Accepted only as historical source metadata. Retired controls must not enter
+# current resource identity or be erased to claim exact restart compatibility.
+_RETIRED_RUNTIME_POLICY_VARIABLES = frozenset({"VIBEQC_DF_SHELL_MATH_000"})
+
 
 class CheckpointError(ValueError):
     """A checkpoint is malformed or incompatible; no seeds have been applied."""
@@ -152,10 +156,12 @@ def _validate_controls(controls):
     # fields as source provenance, so exact restart remains conservative and
     # allow_warm can still import their density. Unknown fields and missing
     # original controls remain corruption rather than silently defaulting.
+    # Retired controls are optional provenance too: retaining their keys makes
+    # a restart conservative even when the recorded value was automatic/None.
     known = set(_CUDA_SCHEDULE_VARIABLES)
     if (
         not isinstance(policy, dict)
-        or set(policy) - known
+        or set(policy) - known - _RETIRED_RUNTIME_POLICY_VARIABLES
         or known - set(policy) - set(_CUDA_SCHEDULE_EXTENSION_VARIABLES)
     ):
         raise CheckpointError("unknown or missing required runtime policy fields")

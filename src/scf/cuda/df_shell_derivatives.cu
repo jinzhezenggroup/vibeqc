@@ -300,15 +300,10 @@ cudaError_t dispatch_lowering(unsigned architecture, unsigned& variant, double b
       (choice.qualified || (mapping && std::string_view(mapping) == "candidate"));
   const char* schedule = std::getenv("VIBEQC_DF_SHELL_SCHEDULE");
   if (use_choice && (!schedule || std::string_view(schedule) == "auto")) variant = choice.variant;
-  const char* raw = std::getenv("VIBEQC_DF_SHELL_MATH_000");
-  const std::string_view policy = raw ? raw : "auto";
-  if (policy != "auto" && policy != "polynomial" && policy != "rys") return cudaErrorInvalidValue;
-  // The legacy control names only 000. Adding candidate capabilities must not
-  // implicitly force every newly available class outside its qualified policy.
-  const std::string_view class_policy = A + B + C == 0 ? policy : "auto";
+  // The manifest owns mathematical lowering for every supported class; the
+  // candidate policy admits unqualified entries for endpoint qualification.
   if constexpr (generated::rys_available<A, B, C>) {
-    if (class_policy == "rys" || (class_policy == "auto" && use_choice && choice.rys))
-      return dispatch_screening<A, B, C, true>(budget, launch);
+    if (use_choice && choice.rys) return dispatch_screening<A, B, C, true>(budget, launch);
   }
   return dispatch_screening<A, B, C, false>(budget, launch);
 }

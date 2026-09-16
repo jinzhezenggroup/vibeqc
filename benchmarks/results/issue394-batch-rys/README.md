@@ -6,9 +6,11 @@ existing production manifest remains unchanged; #404 owns combined endpoint
 qualification and #206 owns fresh GPU4PySCF comparisons.
 
 Measured implementation: `a6de84f48ad15b13512218393494f3ef9dace402`, based on
-post-#411 `ed764eb`. The batch source identity is unchanged between the measured
-source tree and this commit. FP64, normalization, response layouts, screening,
-convergence, and force semantics are preserved.
+post-#411 `ed764eb`. Source fingerprints in this bundle identify that measured
+revision. The subsequent retirement of the SSS-only runtime override changes
+native dispatch and checkpoint compatibility, not the measured candidate
+mathematics; its validation is separate. FP64, normalization, response layouts,
+screening, convergence, and force semantics are preserved.
 
 ## Qualification
 

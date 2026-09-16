@@ -190,6 +190,22 @@ def test_unavailable_cuda_hf_query_is_diagnosed_without_cpu_fallback():
     assert plan.requests[0].identity.backend == "cuda"
 
 
+def test_retired_df_math_control_does_not_change_cuda_resource_identity(monkeypatch):
+    """A removed selector cannot invalidate a prepared CUDA schedule."""
+    from types import SimpleNamespace
+
+    variable = "VIBEQC_DF_SHELL_MATH_000"
+    # Identity construction precedes the optional native inventory query; no
+    # CUDA context or real device is needed to check environment sensitivity.
+    library = SimpleNamespace()
+    monkeypatch.delenv(variable, raising=False)
+    baseline = estimate_hf_resources([H2], backend="cuda", library=library)
+    monkeypatch.setenv(variable, "rys")
+    changed = estimate_hf_resources([H2], backend="cuda", library=library)
+    assert changed.requests[0].identity == baseline.requests[0].identity
+    assert changed.identity == baseline.identity
+
+
 def test_cli_resource_dry_run_reads_real_xyz_and_reports_infeasibility(
     monkeypatch, tmp_path, capsys
 ):
