@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 12294,
+  "all_handwritten_scientific_lines": 12472,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -25,6 +25,8 @@
       "src/scf/cuda/df_jk_kernels.hpp",
       "src/scf/cuda/df_metric_kernels.cu",
       "src/scf/cuda/df_metric_kernels.hpp",
+      "src/scf/cuda/df_packed_values.cu",
+      "src/scf/cuda/df_packed_values.hpp",
       "src/scf/cuda/df_plan_internal.hpp",
       "src/scf/cuda/df_response_weights.cu",
       "src/scf/cuda/df_response_weights.cuh",
@@ -163,9 +165,9 @@
     "maintained_code_lines": {
       "fallback": 0,
       "oracle": 10,
-      "performance_exception": 66,
-      "runtime": -5526,
-      "scientific": 2026
+      "performance_exception": 163,
+      "runtime": -5506,
+      "scientific": 2107
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -779,20 +781,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 72408,
+      "bytes": 75418,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 1172
+        "scientific": 1217
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 1260,
+      "physical_lines": 1308,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations.",
       "regions": [],
       "role": "scientific",
-      "sha256": "d598b0a54ed05a92e0974515882f13379f01e80eb3ff7aaa8f0b18fc54a2830f",
+      "sha256": "ed3baa5352ccc0f3a7e5fbba7a7ef005ca78963a659a1c84b31257170d1a4d79",
       "subsystem": "df_derivatives"
     },
     {
@@ -874,39 +876,73 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 5385,
+      "bytes": 5088,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 97,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/df_packed_values.cu",
+      "physical_lines": 112,
+      "reason": "Explicit experimental exact packed-value layout and FP64 occupied projection; preserves existing DF tensor equations and has no automatic promotion. Evidence: benchmarks/results/issue409-packed-values/README.md. Retire if no complete endpoint/capacity domain qualifies, or when compiler-owned triangular gathering passes the same numerical, resource and endpoint gates.",
+      "regions": [],
+      "role": "performance_exception",
+      "sha256": "6576cfcaa78b4afa001b05bfa7b8fd94b3e90eedc210c739827ee7169f262e4e",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "bytes": 1663,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 69,
+        "runtime": 16,
         "scientific": 0
       },
-      "path": "src/scf/cuda/df_plan_internal.hpp",
-      "physical_lines": 117,
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "path": "src/scf/cuda/df_packed_values.hpp",
+      "physical_lines": 36,
+      "reason": "Checked owner-facing launch boundary for packed value density, expansion and projection.",
       "regions": [],
       "role": "runtime",
-      "sha256": "fc464c95fcd1ab1d77bbf323b64883d6d58a0bb15de969a4ff2e4dfd0fadd896",
+      "sha256": "8306c257b106450ded1b3788d7b1fb68763a883fa63ee3635cb8fdb39cff8faa",
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 48382,
+      "bytes": 5740,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 73,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/df_plan_internal.hpp",
+      "physical_lines": 123,
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "ba412750673fb7f03e7cde7acea8bab79a24c6b46fdd5127a7425fd1e5d26f61",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "bytes": 51192,
       "code_lines": {
         "fallback": 0,
         "oracle": 10,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 689
+        "scientific": 725
       },
       "path": "src/scf/cuda/df_response_weights.cu",
-      "physical_lines": 811,
+      "physical_lines": 854,
       "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
       "regions": [
         {
           "code_lines": 10,
-          "first_line": 123,
-          "last_line": 138,
+          "first_line": 124,
+          "last_line": 139,
           "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry.",
           "role": "oracle",
           "start": "__global__ void exchange_metric_kernel(",
@@ -914,7 +950,7 @@
         }
       ],
       "role": "scientific",
-      "sha256": "86d228b056a6e078eccd6dd39daff446e06fa83abbb68b79d5587d0d9a3842ef",
+      "sha256": "8a7935fae51e83c83eb0bd9d6c9d892295e33b8387a02cf7ef4668ab580ee0ad",
       "subsystem": "df_response_weights"
     },
     {
@@ -3819,9 +3855,9 @@
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 10,
-    "performance_exception": 156,
-    "runtime": 10047,
-    "scientific": 12128
+    "performance_exception": 253,
+    "runtime": 10067,
+    "scientific": 12209
   },
   "migration_ledger": {
     "ao_grid": {
@@ -4017,14 +4053,14 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 806,
-      "scientific": 1172
+      "scientific": 1217
     },
     "df_response_weights": {
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 715
+      "scientific": 751
     },
     "df_values": {
       "fallback": 0,
@@ -4078,8 +4114,8 @@
     "scf_tensor": {
       "fallback": 0,
       "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 2015,
+      "performance_exception": 97,
+      "runtime": 2035,
       "scientific": 809
     },
     "xc": {
