@@ -1,0 +1,19 @@
+{
+  "slurm_job_id": 9730,
+  "native_oracle": "passed, including exact unit s/p normalization and full/symmetric/packed mixed representation partial-panel cases",
+  "compute_sanitizer": {"tool": "memcheck", "errors": 0, "error_exitcode": 99},
+  "runtime_matches_checkout_source_identity": "e141ce4f505c40210c10dfe8c54acbdcdd40d8c7529c4f840c808e45491ffe59",
+  "cuda_python": {
+    "passed": 120,
+    "seconds": 125.95,
+    "files": [
+      "tests/python/test_df_shell_derivatives_cuda.py",
+      "tests/python/test_df_resident_response_cuda.py",
+      "tests/python/test_df_occupied_response_cuda.py"
+    ]
+  },
+  "pre_commit": "all applicable hooks passed without modifying candidate source",
+  "validation_log_sha256": "ee5ff2a3cc99e61a5f392807021b192d47f7b74c2da9e65898d03e1b2289df48",
+  "runner": ".artifacts/issue392/qualify-identity.sh validate",
+  "scope": "Correctness and resource inspection only; endpoint promotion is pending."
+}

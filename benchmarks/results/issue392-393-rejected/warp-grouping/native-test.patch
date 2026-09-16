@@ -1,0 +1,248 @@
+diff --git a/tests/native/test_df_shell_pairs.cpp b/tests/native/test_df_shell_pairs.cpp
+index a88d991..b51c714 100644
+--- a/tests/native/test_df_shell_pairs.cpp
++++ b/tests/native/test_df_shell_pairs.cpp
+@@ -23,6 +23,46 @@ void require(bool ok, const char* message) {
+ }
+ void check(cudaError_t error) { require(error == cudaSuccess, cudaGetErrorString(error)); }
+ 
++/** Prove the public expansion contract independently of generated indexing.
++ * Products of these one-to-one maps remain injective after a triangle/panel
++ * removes tuples. Spherical d/f deliberately demonstrate collisions and must
++ * keep the general folding path even when individual AOs have one term.
++ */
++void check_public_weight_ownership() {
++  for (const auto representation : {VIBEQC_BASIS_CARTESIAN, VIBEQC_BASIS_SPHERICAL})
++    for (unsigned l = 0; l < 4; ++l) {
++      const auto cartesian = molecule::cartesian_components(l);
++      const auto expansions = molecule::ao_expansions(l, representation);
++      std::vector<unsigned> owners(cartesian.size());
++      bool identity = expansions.size() == cartesian.size();
++      for (std::size_t ao = 0; ao < expansions.size(); ++ao) {
++        identity = identity && expansions[ao].size() == 1;
++        for (const auto& term : expansions[ao]) {
++          const auto found = std::find(cartesian.begin(), cartesian.end(), term.component);
++          require(found != cartesian.end(),
++                  "public expansion names an invalid Cartesian component");
++          const auto index = static_cast<std::size_t>(found - cartesian.begin());
++          ++owners[index];
++          identity = identity && index == ao && term.coefficient == 1.0;
++          if (l < 2)
++            require(
++                term.coefficient * molecule::cartesian_component_normalization(term.component) ==
++                    1.0,
++                "s/p identity weights require exact unit component normalization");
++        }
++      }
++      if (representation == VIBEQC_BASIS_CARTESIAN || l < 2) {
++        require(
++            identity && std::all_of(owners.begin(), owners.end(), [](auto n) { return n == 1; }),
++            "direct weight ownership requires the exact public CCA identity map");
++      } else {
++        require(
++            !identity && std::any_of(owners.begin(), owners.end(), [](auto n) { return n > 1; }),
++            "spherical d/f expansions must exercise the collision fallback");
++      }
++    }
++}
++
+ /** Synchronous test uploads retain every allocation until the stream is drained. */
+ struct Storage {
+   std::vector<void*> pointers;
+@@ -104,7 +144,98 @@ struct Storage {
+   }
+ };
+ 
+-void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) {
++using Signature = std::array<std::size_t, 6>;
++// A/B/C scatter counts, shared/distinct physical-atom updates, local additions,
++// and active scientific triples. Reconstruct owners from host shells and actual
++// adjoints, independently of the device packet map and diagnostic counters.
++using GradientWork = std::array<unsigned long long, 7>;
++std::map<Signature, GradientWork> gradient_work(const core::System& orbital,
++                                                const core::System& auxiliary,
++                                                const std::vector<double>& dense,
++                                                const std::vector<double>& packed, std::size_t cap,
++                                                scf::DfDerivativePairs pairs) {
++  const auto offsets = [](const core::System& system) {
++    std::vector<std::size_t> values{0};
++    for (const auto& shell : system.shells)
++      values.push_back(
++          values.back() +
++          molecule::ao_expansions(shell.angular_momentum, system.basis_representation).size());
++    return values;
++  };
++  const auto oa = offsets(orbital), ox = offsets(auxiliary);
++  const auto n = oa.back(), a = ox.back(), stride = n * (n + 1) / 2;
++  std::map<std::pair<unsigned, std::size_t>, std::vector<std::size_t>> auxiliary_groups;
++  for (std::size_t sc = 0; sc < auxiliary.shells.size(); ++sc) {
++    const auto& shell = auxiliary.shells[sc];
++    auxiliary_groups[{shell.angular_momentum, shell.primitives.size()}].push_back(sc);
++  }
++  std::map<Signature, GradientWork> result;
++  for (std::size_t sa = 0; sa < orbital.shells.size(); ++sa)
++    for (std::size_t sb = 0; sb < orbital.shells.size(); ++sb) {
++      const auto& first = orbital.shells[sa];
++      const auto& second = orbital.shells[sb];
++      const auto ka = std::pair(first.angular_momentum, first.primitives.size());
++      const auto kb = std::pair(second.angular_momentum, second.primitives.size());
++      if (pairs != scf::DfDerivativePairs::full && (ka < kb || (ka == kb && sa < sb))) continue;
++      for (const auto& [signature, shells] : auxiliary_groups) {
++        // Compact SSS/one-p owners combine four C shells; two-p owners combine
++        // two. Three-p and d/f classes require a full warp per shell and retain
++        // scalar scatter. This host oracle counts owners from public shells.
++        const auto degree = ka.first + kb.first + signature.first;
++        const bool pure_sp = ka.first <= 1 && kb.first <= 1 && signature.first <= 1;
++        const unsigned width = pure_sp && degree < 2 ? 4 : pure_sp && degree == 2 ? 2 : 1;
++        const bool grouped = width > 1;
++        auto& counts =
++            result[{ka.first, kb.first, signature.first, ka.second, kb.second, signature.second}];
++        for (std::size_t begin = 0; begin < a; begin += cap)
++          for (std::size_t group = 0; group < shells.size(); group += width) {
++            bool owner_active = false;
++            bool shared_a = first.atom_index == second.atom_index, shared_b = shared_a;
++            for (auto item = group; item < std::min(group + width, shells.size()); ++item) {
++              const auto sc = shells[item];
++              bool active = false;
++              for (auto ci = std::max(begin, ox[sc]); ci < std::min(begin + cap, ox[sc + 1]); ++ci)
++                for (auto ai = oa[sa]; ai < oa[sa + 1]; ++ai)
++                  for (auto bi = oa[sb]; bi < oa[sb + 1]; ++bi) {
++                    double weight;
++                    if (pairs == scf::DfDerivativePairs::packed) {
++                      if (sa == sb && ai < bi) continue;
++                      const auto hi = std::max(ai, bi), lo = std::min(ai, bi);
++                      weight = packed[ci * stride + hi * (hi + 1) / 2 + lo];
++                    } else {
++                      weight = dense[ci * n * n + ai * n + bi];
++                      if (pairs == scf::DfDerivativePairs::symmetric && sa != sb)
++                        weight += dense[ci * n * n + bi * n + ai];
++                    }
++                    active = active || weight != 0;
++                  }
++              if (!active) continue;
++              const auto atom_c = auxiliary.shells[sc].atom_index;
++              owner_active = true;
++              shared_a = shared_a || first.atom_index == atom_c;
++              shared_b = shared_b || second.atom_index == atom_c;
++              const unsigned shared_c =
++                  3 * unsigned(first.atom_index == atom_c || second.atom_index == atom_c);
++              counts[2] += 3;
++              counts[3] += shared_c;
++              counts[4] += 3 - shared_c;
++              counts[5] += grouped ? 6 : 0;
++              ++counts[6];
++            }
++            if (!owner_active) continue;
++            counts[0] += 3;
++            counts[1] += 3;
++            const unsigned shared = 3 * (unsigned(shared_a) + unsigned(shared_b));
++            counts[3] += shared;
++            counts[4] += 6 - shared;
++          }
++      }
++    }
++  return result;
++}
++
++void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false,
++              bool many_auxiliary = false) {
+   core::System orbital;
+   orbital.atoms = {{2, {.1, -.2, -.7}}, {1, {.3, .1, .8}}, {1, {-.5, .4, .2}}};
+   // Equal angular classes need their own triangular indexing; different
+@@ -133,6 +264,19 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+     }
+     auxiliary.shells = {{0, 0, {{.8, 1}}}, {2, 0, {{.7, .7}, {1.3, .3}}}};
+   }
++  if (many_auxiliary) {
++    // Two full four-C owners and a tail, plus P shells clipped by cap=7.
++    // Mixed atoms exercise sharing with A, B, both, and neither in one owner.
++    orbital.shells = {{0, 0, {{.8, 1}}},
++                      {1, 0, {{1.1, 1}}},
++                      {0, 1, {{.6, .8}, {1.4, .2}}},
++                      {2, 1, {{.9, .7}, {1.7, .3}}}};
++    auxiliary.shells.clear();
++    for (unsigned i = 0; i < 9; ++i) {
++      auxiliary.shells.push_back({i % 3, 0, {{.7 + .1 * i, 1}}});
++      if (i < 7) auxiliary.shells.push_back({(i + 1) % 3, 1, {{.9 + .07 * i, 1}}});
++    }
++  }
+   std::string detail;
+   for (auto* system : {&orbital, &auxiliary})
+     require(molecule::validate_and_normalize(*system, detail) == VIBEQC_STATUS_SUCCESS,
+@@ -144,7 +288,10 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+     for (std::size_t i = 0; i < n; ++i)
+       for (std::size_t j = 0; j < n; ++j) {
+         const auto k = (i * n + j) * a + p;
+-        const double w = k % 5 ? 0 : .01 * std::sin(.7 * k + .3);
++        // First four S shells form an entirely zero owner. Other sparse
++        // channels leave active owners and tails for exact atomic reconstruction.
++        const bool zero_owner = many_auxiliary && p < 16 && p % 4 == 0;
++        const double w = zero_owner || k % 5 ? 0 : .01 * std::sin(.7 * k + .3);
+         dense[p * n * n + i * n + j] = w;
+         const auto hi = std::max(i, j), lo = std::min(i, j);
+         packed[p * packed_size + hi * (hi + 1) / 2 + lo] += w;
+@@ -203,7 +350,6 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+   }
+   using Work = scf::DfShellWork;
+   using Counts = std::array<unsigned long long, scf::DfShellDiagnostics::metrics>;
+-  using Signature = std::array<std::size_t, 6>;
+   std::map<Signature, Counts> detailed;
+   std::vector<unsigned long long> diagnostic_host(scf::DfShellDiagnostics::elements);
+   scf::DfShellDiagnostics diagnostics{
+@@ -274,6 +420,8 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+                                    second.primitives.size(), third.primitives.size()}] +=
+                       (a + cap - 1) / cap;
+               }
++            const auto expected_gradient =
++                gradient_work(orbital, auxiliary, dense, packed, cap, pairs);
+             Counts totals{};
+             for (const auto& [signature, observed] : detailed) {
+               const auto get = [&](Work kind) { return observed[static_cast<unsigned>(kind)]; };
+@@ -291,15 +439,24 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+                           get(Work::boys_series_iterations) >= get(Work::boys_series) &&
+                           get(Work::boys_series_iterations) <= 179 * get(Work::boys_series),
+                       "Boys dynamic series counters are outside their exact loop bounds");
+-              require(get(Work::gradient_atomics_a) == 3 * get(Work::active_shell_tasks) &&
+-                          get(Work::gradient_atomics_b) == 3 * get(Work::active_shell_tasks) &&
+-                          get(Work::gradient_atomics_c) == 3 * get(Work::active_shell_tasks) &&
+-                          get(Work::gradient_atomics_shared_atom) +
+-                                  get(Work::gradient_atomics_distinct_atom) ==
+-                              9 * get(Work::active_shell_tasks),
+-                      "gradient atomic channels or shared-atom classification differ");
+-              require(get(Work::expansion_term_products) == get(Work::folding_shared_atomics),
+-                      "legacy folding must count one shared atomic per expansion product");
++              const std::array gradient_fields{Work::gradient_atomics_a,
++                                               Work::gradient_atomics_b,
++                                               Work::gradient_atomics_c,
++                                               Work::gradient_atomics_shared_atom,
++                                               Work::gradient_atomics_distinct_atom,
++                                               Work::orbital_local_accumulations,
++                                               Work::active_shell_tasks};
++              for (unsigned channel = 0; channel < gradient_fields.size(); ++channel)
++                require(get(gradient_fields[channel]) == expected_gradient.at(signature)[channel],
++                        "gradient work differs from independent host ownership reconstruction");
++              const bool identity = signature[0] < 2 && signature[1] < 2 && signature[2] < 2;
++              require(
++                  get(Work::expansion_term_products) ==
++                      get(identity ? Work::public_nonzero_weights : Work::folding_shared_atomics),
++                  "each expansion product must reach a register or a shared fold atomic");
++              require(get(Work::folding_direct_stores) == 0 &&
++                          (!identity || get(Work::folding_shared_atomics) == 0),
++                      "s/p identity expansions must bypass all shared weight staging");
+               for (unsigned metric = 0; metric < totals.size(); ++metric)
+                 totals[metric] += observed[metric];
+             }
+@@ -327,8 +484,12 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+ int main() {
+   if (!std::getenv("SLURM_JOB_ID")) return 77;
+   try {
++    check_public_weight_ownership();
+     for (bool spherical_o : {false, true})
+-      for (bool spherical_x : {false, true}) exercise(spherical_o, spherical_x);
++      for (bool spherical_x : {false, true}) {
++        exercise(spherical_o, spherical_x);
++        exercise(spherical_o, spherical_x, false, true);
++      }
+     exercise(false, false, true);
+   } catch (const std::exception& error) {
+     std::cerr << error.what() << '\n';
