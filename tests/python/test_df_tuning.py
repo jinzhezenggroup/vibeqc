@@ -58,7 +58,7 @@ def test_available_trials_and_identity():
         t.angular for t in trials
     }
     with pytest.raises(ValueError, match="unsupported"):
-        DfDerivativeTrial((1, 1, 1), "rys", 2)
+        DfDerivativeTrial((3, 1, 1), "rys", 2)
     trial = trials[0]
     identity = {
         "generator_sha256": "abc",
@@ -89,6 +89,33 @@ def test_profiles_remain_separate_and_conflicts_block_combination():
         "384": "000:rys:compact",
         "768": "000:polynomial:compact",
     }
+
+
+def test_explicit_high_angular_campaign_preserves_both_profiles():
+    """A hot-class campaign must not silently discard classes outside the old seven."""
+    profiles, rows = fixture()
+    for payload in profiles.values():
+        payload["classes"][0]["angular"] = [1, 1, 1]
+    for row in rows:
+        row["candidate"] = row["candidate"].replace("000:", "111:")
+    result = rank_profiles(
+        profiles,
+        rows,
+        baselines={"111": "111:polynomial:compact"},
+        angular=((1, 1, 1),),
+    )
+    assert set(result["profiles"]) == {"384", "768"}
+    assert result["proposed_mapping"] == {"111": "111:rys:compact"}
+    rows[-1]["work"]["primitive_products"] += 1
+    result = rank_profiles(
+        profiles,
+        rows,
+        baselines={"111": "111:polynomial:compact"},
+        angular=((1, 1, 1),),
+    )
+    assert result["profiles"]["768"]["111"]["rejections"][rows[-1]["candidate"]] == [
+        "work domain differs"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -251,7 +278,7 @@ def test_campaign_baseline_requires_qualified_independent_evidence(tmp_path, fau
     elif fault == "evidence":
         del baseline["provenance"]["endpoint_768"]
     else:
-        baseline["kernels"][0]["class"] = "111"
+        baseline["kernels"][0]["class"] = "311"
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps(payload))
     with pytest.raises(ValueError):

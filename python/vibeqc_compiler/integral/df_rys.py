@@ -1,4 +1,4 @@
-"""Shared one/two-root quadrature for bounded full-range DF derivatives.
+"""Shared bounded one-through-four-root quadrature for full-range DF derivatives.
 
 Nodes are t², with weight integrating exp(-T*t²) on [0,1]. The two-root
 path uses independently generated Chebyshev polynomials and an analytic large-T
@@ -9,6 +9,12 @@ The independent incomplete-gamma reference lives in the qualification tests.
 import math
 
 from .df_rys2_data import DF_RYS2_COEFFICIENTS
+from .rys import (
+    emit_rys3_roots_cuda,
+    emit_rys4_roots_cuda,
+    rys3_table_roots_weights,
+    rys4_table_roots_weights,
+)
 
 ASYMPTOTIC_ARGUMENT = 40.0
 
@@ -20,8 +26,15 @@ TAYLOR_COEFFICIENTS = tuple(
 
 def rys_roots(argument, nroots=1):
     """Evaluate ordered FP64 t² nodes; this host aid is not a runtime dependency."""
-    if not math.isfinite(argument) or argument < 0 or nroots not in (1, 2):
-        raise ValueError("DF Rys requires finite T >= 0 and one or two roots")
+    if not math.isfinite(argument) or argument < 0 or nroots not in (1, 2, 3, 4):
+        raise ValueError("DF Rys requires finite T >= 0 and one through four roots")
+    if nroots in (3, 4):
+        evaluator = (
+            rys3_table_roots_weights if nroots == 3 else rys4_table_roots_weights
+        )
+        nodes, weights = evaluator(argument, high_accuracy=True)
+        pairs = sorted(zip(nodes, weights, strict=True))
+        return tuple(p[0] for p in pairs), tuple(p[1] for p in pairs)
     if nroots == 2:
         if argument >= 48.0:
             x0, x1 = (3 - math.sqrt(6)) / 2, (3 + math.sqrt(6)) / 2
@@ -69,12 +82,21 @@ def emit_df_rys_cuda():
     two_root_coefficients = ",\n".join(
         "  {" + ",".join(map(repr, row)) + "}" for row in DF_RYS2_COEFFICIENTS
     )
+    # Reuse the common fixed-root evaluator and its qualified precision option;
+    # keep translation-unit-local storage as in the existing DF quadrature.
+    multi_root = "\n".join(
+        emit(symbol_prefix=f"df_rys{n}", high_accuracy=True).replace(
+            "__device__", "static __device__"
+        )
+        for n, emit in ((3, emit_rys3_roots_cuda), (4, emit_rys4_roots_cuda))
+    )
     return (
         (
             r"""// Generated low-order DF Rys quadrature; nodes are t^2.
 #pragma once
 #include <cmath>
 namespace vibeqc::scf::generated_df_rys {
+__MULTI_ROOT__
 static __device__ const double two_root_coefficients[96][18] = {
 __TWO_ROOT_COEFFICIENTS__
 };
@@ -85,7 +107,19 @@ static __device__ const double taylor_coefficients[2][25] = {
 };
 template<unsigned N>
 __device__ __forceinline__ void roots(double argument,double* nodes,double* weights) {
-  static_assert(N==1 || N==2, "Only bounded full-range one/two-root DF is available");
+  static_assert(N>=1 && N<=4, "Only bounded full-range one-through-four-root DF is available");
+  if constexpr(N==3 || N==4) {
+    double values[2*N];
+    if constexpr(N==3) df_rys3_roots(argument,values,1);
+    else df_rys4_roots(argument,values,1);
+    // The common tables use ascending nodes only in the tiny-T branch.
+#pragma unroll
+    for(unsigned root=0;root<N;++root) {
+      const unsigned source=argument<3e-7 ? root : N-1-root;
+      nodes[root]=values[2*source];weights[root]=values[2*source+1];
+    }
+    return;
+  }
   if constexpr(N==2) {
     if(argument>=48.0) {
       // Generalized Laguerre (alpha=-1/2) limit. At T=48 the omitted
@@ -139,4 +173,5 @@ __device__ __forceinline__ void roots(double argument,double* nodes,double* weig
         )
         .replace("ASYMPTOTIC_ARGUMENT", repr(ASYMPTOTIC_ARGUMENT))
         .replace("__TWO_ROOT_COEFFICIENTS__", two_root_coefficients)
+        .replace("__MULTI_ROOT__", multi_root)
     )

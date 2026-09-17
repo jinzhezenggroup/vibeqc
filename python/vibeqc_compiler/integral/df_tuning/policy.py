@@ -98,7 +98,7 @@ def enumerate_trials(angular=LOW_ANGULAR_CLASSES):
     )
 
 
-def read_profile(payload):
+def read_profile(payload, *, angular=LOW_ANGULAR_CLASSES):
     """Read the #398 ledger, preserving exact signature frequencies and work.
 
     A signature may have fewer active than visited tasks. Both counts are kept;
@@ -108,8 +108,8 @@ def read_profile(payload):
     """
     rows = {}
     for cls in payload["classes"]:
-        angular = tuple(cls["angular"])
-        if angular not in LOW_ANGULAR_CLASSES:
+        shell_class = tuple(cls["angular"])
+        if shell_class not in angular:
             continue
         for signature in cls["signatures"]:
             primitives = tuple(signature["primitives"])
@@ -117,7 +117,7 @@ def read_profile(payload):
                 type(x) is not int or x < 1 for x in primitives
             ):
                 raise ValueError("invalid primitive signature")
-            key = (angular, primitives)
+            key = (shell_class, primitives)
             if key in rows:
                 raise ValueError("duplicate workload signature")
             work = {
@@ -146,7 +146,9 @@ def read_profile(payload):
     return rows
 
 
-def rank_profiles(profiles, results, *, baselines, minimum_gain=0.03):
+def rank_profiles(
+    profiles, results, *, baselines, minimum_gain=0.03, angular=LOW_ANGULAR_CLASSES
+):
     """Select one trial per class only when all retained profiles agree.
 
     Each result covers one complete real signature workload. Timings are raw
@@ -166,18 +168,18 @@ def rank_profiles(profiles, results, *, baselines, minimum_gain=0.03):
         indexed[key] = row
     rankings = {}
     for name, payload in profiles.items():
-        domain = read_profile(payload)
+        domain = read_profile(payload, angular=angular)
         class_rows = {}
-        for angular in sorted({a for a, _ in domain}):
-            cls = "".join(map(str, angular))
+        for shell_class in sorted({a for a, _ in domain}):
+            cls = "".join(map(str, shell_class))
             baseline = baselines[cls]
             scores = {}
             rejections = {}
-            for trial in enumerate_trials((angular,)):
+            for trial in enumerate_trials((shell_class,)):
                 samples_total = 0.0
                 reasons = []
                 for a, primitives in domain:
-                    if a != angular:
+                    if a != shell_class:
                         continue
                     row = indexed.get((name, trial.key, primitives))
                     reference = indexed.get((name, baseline, primitives))

@@ -132,6 +132,7 @@ __device__ __forceinline__ scalar::Angular angular(unsigned i) {
 
 template<unsigned A,unsigned B,unsigned C>
 struct Moments {
+  static constexpr bool shared_root_state=false;
   static constexpr unsigned na=(A+1)*(A+2)/2,nb=(B+1)*(B+2)/2,nc=(C+1)*(C+2)/2;
   static constexpr unsigned components=na*nb*nc;
   // Both supported public representations use CCA identity expansions for s/p.

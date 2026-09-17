@@ -1,0 +1,30 @@
+{
+  "generated/generated_df_derivatives.cuh": {
+    "bytes": 716954,
+    "sha256": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd"
+  },
+  "generated/generated_df_production.hpp": {
+    "bytes": 1229,
+    "sha256": "f0eeabe66c387efbaeca9090565e47fbcd4b51a6baf3ac39dd6de59f205e6022"
+  },
+  "generated/generated_df_rys.cuh": {
+    "bytes": 196847,
+    "sha256": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6"
+  },
+  "generated/generated_df_rys_policy.hpp": {
+    "bytes": 452,
+    "sha256": "b3bc4c3b2608e2387e1db31c54b7d70f517bdba8f702efb55c7d13e48fbc4890"
+  },
+  "generated/generated_df_rys_shell.cuh": {
+    "bytes": 98504,
+    "sha256": "0916a69446038662dea2acf9006699e048425afe44cdecae6cfd3763a61e83b8"
+  },
+  "generated/generated_df_screening.cuh": {
+    "bytes": 2297,
+    "sha256": "1dca9586bb2d53479e2ba171fa3478b8239e8aab4402028419c4b692f56a5aab"
+  },
+  "generated/generated_df_shell_derivatives.cuh": {
+    "bytes": 57359,
+    "sha256": "0213de12f5b21e0c0ba40bd3edb1cf03fc7b029e42d9c51c8d1cebbf03020a3b"
+  }
+}

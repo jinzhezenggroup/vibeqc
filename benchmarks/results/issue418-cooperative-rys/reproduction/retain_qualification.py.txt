@@ -1,0 +1,58 @@
+"""Retain the complete mathematical/class campaign with byte-verified records."""
+
+import gzip
+import hashlib
+import json
+from pathlib import Path
+
+root=Path('.artifacts/issue418')
+destination=Path('benchmarks/results/issue418-cooperative-rys')
+destination.mkdir(parents=True,exist_ok=True)
+records=[]
+
+
+def retain(source, target, reason):
+    """Compress large scientific records, and verify restoration immediately."""
+    data=source.read_bytes()
+    # Pytest traceback whitespace is evidence too. Compress those records so
+    # repository text-normalization hooks cannot silently change their bytes.
+    compressed=len(data)>180000 or any(line.rstrip()!=line for line in data.splitlines())
+    output=destination/(target+('.gz' if compressed else ''))
+    if compressed and (destination/target).exists():
+        (destination/target).unlink()
+    output.parent.mkdir(parents=True,exist_ok=True)
+    encoded=gzip.compress(data,compresslevel=9,mtime=0) if compressed else data
+    assert len(encoded)<1024**2
+    output.write_bytes(encoded)
+    restored=gzip.decompress(output.read_bytes()) if compressed else output.read_bytes()
+    assert restored==data
+    records.append({'source':str(source),'retained':str(output.relative_to(destination)),
+        'reason':reason,'original_bytes':len(data),'original_sha256':hashlib.sha256(data).hexdigest(),
+        'stored_bytes':len(encoded),'stored_sha256':hashlib.sha256(encoded).hexdigest(),'encoding':'gzip' if compressed else 'identity'})
+
+
+for name in ('existing-root-audit','existing-root-audit-order-sensitive','strict-root-audit'):
+    retain(root/f'{name}.json',f'roots/{name}.json','Every root/weight/Boys-moment sample, including initial ordering-sensitive and strict-table failures.')
+for name in ('generated-headers','root-emission-identity','endpoint-protocol','baseline-production-manifest','campaign-production-manifest'):
+    retain(root/f'{name}.json',f'identity/{name}.json','Exact scientific/source identity or predeclared endpoint controls.')
+for name in ('existing-root-audit','existing-root-audit-aligned','strict-root-host-tests','strict-root-cuda-tests','cooperative-shell-host-tests','cooperative-shell-host-qualified','host-structure-tests','host-structure-qualified','coefficient-reproduction','hot-objects-v1','hot-objects-v2','hot-objects-v2-link','hot-qualification'):
+    retain(root/f'{name}.log',f'qualification/{name}.txt','Validation result or explicit failed setup/recording attempt; retained without replacing failures.')
+retain(root/'hot-qualification-v2.jsonl','qualification/hot-derivatives.jsonl','All initial hot/control candidate GPU derivative comparisons.')
+for path in sorted((root/'sanitizers-v1').iterdir()):
+    if path.suffix in ('.stdout','.stderr','.exit','.jsonl','.txt','.log'):
+        name=path.stem+'.txt' if path.suffix=='.log' else path.name
+        retain(path,f'sanitizers/{name}','Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.')
+for phase in ('hot-objects-v2','rest-objects-v1'):
+    retain(root/phase/'report.json',f'objects/{phase}.json','Every compile result, resource limit, occupancy estimate and object identity, including raw compiler diagnostics.')
+    retain(root/phase/'workload.txt',f'workloads/{phase}.txt','Exact geometry, primitive signatures and measured workload counts used for class ranking.')
+for path in sorted((root/'class-timing-v1').iterdir()):
+    if path.name=='ranking.json':
+        retain(path,'class-ranking.json','All 252 class records ranked without omitting failed work/numerical gates; not complete endpoint qualification.')
+    elif path.suffix in ('.jsonl','.exit','.txt','.json'):
+        retain(path,f'class-timing/{path.name}','All class timing samples, exit statuses and process/job provenance from Slurm 9895.')
+for path in sorted(root.iterdir()):
+    if path.suffix in ('.py','.sh'):
+        retain(path,f'reproduction/{path.name}.txt','Exact local qualification/reproduction driver; environment paths identify this machine.')
+retain(root/'candidate-source-v1.patch','source/candidate-source.patch','Reconstructs the independently qualified native/compiler source before the combined campaign manifest.')
+(destination/'manifest.json').write_text(json.dumps({'schema':'vibeqc.issue418.qualification.v1','base_commit':'f5eb8dfb696ce4304c5151670c55fec78fdddb7d','status':'Mathematical and class qualification passed; complete endpoint work remains pending.','records':records},indent=2)+'\n')
+print(f'Byte-verified {len(records)} retained records')

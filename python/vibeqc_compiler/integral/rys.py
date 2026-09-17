@@ -428,43 +428,70 @@ def rys2_table_roots_weights(
     )
 
 
+def _fixed_root_coefficients(nroots: int, high_accuracy: bool):
+    """Select interpolation precision without changing the fixed-root algorithm.
+
+    The degree-17 tables are regenerated from 90-digit moments for consumers
+    requiring a 5e-14 node/weight/moment gate. Default Direct/value consumers
+    retain their established coefficient identity until separately qualified.
+    Both choices use the same branches, table layout and Clenshaw evaluator.
+    """
+    if high_accuracy:
+        from . import rys_high_accuracy_data as data
+
+        return (
+            data.HIGH_ACCURACY_DEGREE,
+            data.RYS3_INTERVALS if nroots == 3 else data.RYS4_INTERVALS,
+            data.RYS3_RW_DATA if nroots == 3 else data.RYS4_RW_DATA,
+        )
+    if nroots == 3:
+        return RYS3_DEGREE, RYS3_INTERVALS, RYS3_RW_DATA
+    return RYS4_DEGREE, RYS4_INTERVALS, RYS4_RW_DATA
+
+
 def rys3_table_roots_weights(
     argument: float,
+    *,
+    high_accuracy: bool = False,
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
-    """Evaluate the GPU4PySCF-compatible three-root interpolation table."""
+    """Evaluate the common three-root rule at the requested table precision."""
 
+    degree, intervals, table = _fixed_root_coefficients(3, high_accuracy)
     return _table_roots_weights(
         argument,
         nroots=3,
-        degree=RYS3_DEGREE,
-        intervals=RYS3_INTERVALS,
+        degree=degree,
+        intervals=intervals,
         small_r0=RYS3_SMALLX_R0,
         small_r1=RYS3_SMALLX_R1,
         small_w0=RYS3_SMALLX_W0,
         small_w1=RYS3_SMALLX_W1,
         large_r=RYS3_LARGEX_R_DATA,
         large_w=RYS3_LARGEX_W_DATA,
-        table=RYS3_RW_DATA,
+        table=table,
     )
 
 
 def rys4_table_roots_weights(
     argument: float,
+    *,
+    high_accuracy: bool = False,
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
-    """Evaluate the GPU4PySCF-compatible four-root interpolation table."""
+    """Evaluate the common four-root rule at the requested table precision."""
 
+    degree, intervals, table = _fixed_root_coefficients(4, high_accuracy)
     return _table_roots_weights(
         argument,
         nroots=4,
-        degree=RYS4_DEGREE,
-        intervals=RYS4_INTERVALS,
+        degree=degree,
+        intervals=intervals,
         small_r0=RYS4_SMALLX_R0,
         small_r1=RYS4_SMALLX_R1,
         small_w0=RYS4_SMALLX_W0,
         small_w1=RYS4_SMALLX_W1,
         large_r=RYS4_LARGEX_R_DATA,
         large_w=RYS4_LARGEX_W_DATA,
-        table=RYS4_RW_DATA,
+        table=table,
     )
 
 
@@ -624,13 +651,18 @@ def emit_rys2_roots_cuda(*, symbol_prefix: str = "generated_low_order_rys2") -> 
     )
 
 
-def emit_rys3_roots_cuda(*, symbol_prefix: str = "generated_ppps_rys3") -> str:
-    """Emit an attributed Rys3 evaluator under a caller-owned CUDA prefix."""
+def emit_rys3_roots_cuda(
+    *,
+    symbol_prefix: str = "generated_ppps_rys3",
+    high_accuracy: bool = False,
+) -> str:
+    """Emit the common Rys3 evaluator with optional regenerated strict tables."""
 
+    degree, intervals, table = _fixed_root_coefficients(3, high_accuracy)
     return _emit_fixed_roots_cuda(
         nroots=3,
-        degree=RYS3_DEGREE,
-        intervals=RYS3_INTERVALS,
+        degree=degree,
+        intervals=intervals,
         symbol_prefix=symbol_prefix,
         description="Three-root",
         small_r0_values=RYS3_SMALLX_R0,
@@ -639,17 +671,22 @@ def emit_rys3_roots_cuda(*, symbol_prefix: str = "generated_ppps_rys3") -> str:
         small_w1_values=RYS3_SMALLX_W1,
         large_r_values=RYS3_LARGEX_R_DATA,
         large_w_values=RYS3_LARGEX_W_DATA,
-        table_values=RYS3_RW_DATA,
+        table_values=table,
     )
 
 
-def emit_rys4_roots_cuda(*, symbol_prefix: str = "generated_dppp_rys4") -> str:
-    """Emit an attributed Rys4 evaluator under a caller-owned CUDA prefix."""
+def emit_rys4_roots_cuda(
+    *,
+    symbol_prefix: str = "generated_dppp_rys4",
+    high_accuracy: bool = False,
+) -> str:
+    """Emit the common Rys4 evaluator with optional regenerated strict tables."""
 
+    degree, intervals, table = _fixed_root_coefficients(4, high_accuracy)
     return _emit_fixed_roots_cuda(
         nroots=4,
-        degree=RYS4_DEGREE,
-        intervals=RYS4_INTERVALS,
+        degree=degree,
+        intervals=intervals,
         symbol_prefix=symbol_prefix,
         description="Four-root",
         small_r0_values=RYS4_SMALLX_R0,
@@ -658,7 +695,7 @@ def emit_rys4_roots_cuda(*, symbol_prefix: str = "generated_dppp_rys4") -> str:
         small_w1_values=RYS4_SMALLX_W1,
         large_r_values=RYS4_LARGEX_R_DATA,
         large_w_values=RYS4_LARGEX_W_DATA,
-        table_values=RYS4_RW_DATA,
+        table_values=table,
     )
 
 

@@ -1,0 +1,77 @@
+"""Independent high-precision audit; retain all samples, including failures."""
+
+import hashlib
+import json
+import math
+import random
+from pathlib import Path
+
+import mpmath as mp
+from vibeqc_compiler.integral.rys import (
+    rys3_table_roots_weights,
+    rys4_table_roots_weights,
+)
+
+
+def arguments(n):
+    rng = random.Random(418)
+    grid = [0.0, math.nextafter(0.0, 1.0), 1e300, 1e308, float.fromhex('0x1.fffffffffffffp+1023')]
+    grid += [10.0 ** (-30 + k / 10) for k in range(381)]
+    grid += [rng.uniform(0, 65) for _ in range(512)]
+    for boundary in (3e-7, *(2.5 * k for k in range(1, 24))):
+        grid += [math.nextafter(boundary, 0), boundary, math.nextafter(boundary, math.inf)]
+    return sorted(set(grid))
+
+
+def reference(t, n):
+    """Use normalized, scaled gamma moments and a symmetric Jacobi problem.
+
+    Scaling y=max(1,T)*x keeps the Hankel system well conditioned even when
+    double-precision unscaled moments would underflow. No production table or
+    production Boys/recurrence evaluator participates in this oracle.
+    """
+    t = mp.mpf(t)
+    scale = max(mp.mpf(1), t)
+    moments = [mp.mpf(1)/(2*k+1) if not t else mp.gammainc(k+mp.mpf('.5'), 0, t)/(2*t**(k+mp.mpf('.5'))) for k in range(2*n)]
+    normalized = [moments[k]/moments[0]*scale**k for k in range(2*n)]
+    hankel = mp.matrix(n, n)
+    shifted = mp.matrix(n, n)
+    for i in range(n):
+        for j in range(n):
+            hankel[i,j] = normalized[i+j]
+            shifted[i,j] = normalized[i+j+1]
+    inverse = mp.cholesky(hankel)**-1
+    jacobi = inverse*shifted*inverse.T
+    nodes, vectors = mp.eigsy(jacobi)
+    return tuple(x/scale for x in nodes), tuple(moments[0]*vectors[0,i]**2 for i in range(n)), moments
+
+
+def audit(evaluate, n):
+    rows = []
+    with mp.workdps(85):
+        for t in arguments(n):
+            raw_x, raw_w = evaluate(t)
+            # The common Direct tables use decreasing order outside the tiny
+            # branch. Quadrature is permutation invariant; compare paired
+            # nodes/weights after sorting rather than rejecting that convention.
+            pairs = sorted(zip(raw_x, raw_w, strict=True))
+            x, w = tuple(p[0] for p in pairs), tuple(p[1] for p in pairs)
+            rx, rw, moments = reference(t, n)
+            errors = [float(abs(mp.mpf(a)/b-1)) for a,b in zip((*x,*w),(*rx,*rw),strict=True)]
+            moment_errors = [float(abs(mp.fsum(mp.mpf(wi)*mp.mpf(xi)**k for xi,wi in zip(x,w,strict=True))/moments[k]-1)) for k in range(2*n)]
+            valid = all(0<a<1 for a in x) and all(a>0 for a in w) and list(x)==sorted(x)
+            rows.append(dict(argument=t, raw_nodes=raw_x, raw_weights=raw_w, nodes=x, weights=w, node_weight_relative_errors=errors, moment_relative_errors=moment_errors, valid=valid, passed=valid and max(errors+moment_errors)<5e-14))
+    return dict(nroots=n, samples=len(rows), failed=sum(not r['passed'] for r in rows), max_node_weight=max(max(r['node_weight_relative_errors']) for r in rows), max_moment=max(max(r['moment_relative_errors']) for r in rows), rows=rows)
+
+
+if __name__ == '__main__':
+    root = Path(__file__).resolve().parents[2]
+    sources = [root/'python/vibeqc_compiler/integral'/name for name in ('rys.py','rys3_data.py','rys4_data.py')]
+    result = dict(gate=5e-14, precision_digits=85, source_hashes={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}, results=[])
+    for n,evaluate in ((3,rys3_table_roots_weights),(4,rys4_table_roots_weights)):
+        outcome = audit(evaluate,n)
+        result['results'].append(outcome)
+        print(json.dumps({k:v for k,v in outcome.items() if k!='rows'}),flush=True)
+    output = Path(__file__).with_name('existing-root-audit.json')
+    output.write_text(json.dumps(result,indent=2)+'\n')
+    raise SystemExit(2 if any(r['failed'] for r in result['results']) else 0)
