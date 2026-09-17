@@ -220,10 +220,12 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       // The low-rank endpoint is qualified only for this exact RHF rank and
       // device. The token is only a selection hint here; full owner, model,
       // density and device-generation validation below authorizes execution.
-      automatic_occupied = borrow && plan->nbf == 768 &&
-                           std::string_view(properties.name) == "NVIDIA GeForce RTX 5090" &&
-                           final_state && final_state->identity.occupied.size() == 1 &&
-                           final_state->identity.occupied[0] == 160;
+      const bool measured_occupied_rank =
+          final_state && final_state->identity.occupied.size() == 1 &&
+          ((plan->nbf == 384 && final_state->identity.occupied[0] == 80) ||
+           (plan->nbf == 768 && final_state->identity.occupied[0] == 160));
+      automatic_occupied = borrow && measured_occupied_rank &&
+                           std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
     }
   }
   CudaDfResponseBuffers buffers;
@@ -322,7 +324,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "VIBEQC_DF_FINAL_PROJECTION must be auto, off or reuse";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  // Automatic reuse is limited to the qualified 768-AO resident domain above.
+  // Automatic reuse is limited to the qualified 384/768-AO resident domains above.
   // Full-rank M gives
   // G_raw = G_whitened M^(1/2); discarded directions cannot be recovered and
   // therefore keep the raw projection path, even under an explicit request.

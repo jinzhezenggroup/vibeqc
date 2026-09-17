@@ -24,6 +24,7 @@ def test_auto_requires_rank_reference_residency_and_reservation(tmp_path):
 #include <stdexcept>
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
+#include "scf/df_exchange_policy.hpp"
 int main() {
   using namespace vibeqc::scf;
   CudaDensityFittingJkPlan p;
@@ -40,7 +41,15 @@ int main() {
   check(true);
   check(false, 159); check(false, 161); check(false, 160, true);
   p.naux=767; check(false); p.naux=768;
-  p.nbf=384; check(false); p.nbf=768;
+  p.nbf=384; p.naux=384; p.row_tile=384; p.auxiliary_tile=384;
+  check(true, 80);
+  check(false, 79); check(false, 81); check(false, 80, true);
+  p.naux=383; check(false, 80);
+  p.nbf=768; p.naux=768; p.row_tile=768; p.auxiliary_tile=768;
+  if (!df_occupied_exchange_requested(384, 384, 1) ||
+      df_occupied_exchange_requested(384, 383, 1) ||
+      df_occupied_exchange_requested(192, 192, 1))
+    throw std::runtime_error("automatic occupied reservation domain changed unexpectedly");
   p.batch_size=2; check(false); p.batch_size=1;
   p.row_tile=384; check(false); p.row_tile=768;
   p.auxiliary_tile=384; check(false); p.auxiliary_tile=768;

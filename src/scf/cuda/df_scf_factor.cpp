@@ -25,9 +25,11 @@ vibeqc_status qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& pl
   const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
                                plan.integral_source && plan.packed_raw &&
                                plan.value_storage.rank_capacity >= 160;
-  if (plan.occupied_scf_reserved && plan.nbf == 768 && plan.naux == 768 && plan.batch_size == 1 &&
-      alpha.size() == 1 && alpha[0] == 160 && beta.empty() &&
-      (!plan.integral_source || packed_resident) && !plan.streamed && plan.row_tile == plan.nbf &&
+  const bool measured_rank = (plan.nbf == 384 && alpha.size() == 1 && alpha[0] == 80) ||
+                             (plan.nbf == 768 && alpha.size() == 1 && alpha[0] == 160);
+  if (plan.occupied_scf_reserved && measured_rank && plan.naux == plan.nbf &&
+      plan.batch_size == 1 && beta.empty() && (!plan.integral_source || packed_resident) &&
+      !plan.streamed && plan.row_tile == plan.nbf &&
       (plan.auxiliary_tile == plan.naux || packed_resident)) {
     // Explicit packed experiments keep the established occupied/seed/final
     // algorithm in the same domain. This does not automatically select packing.
@@ -247,8 +249,9 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
     }
     bool selected = policy && std::string(policy) == "factor";
     if (!policy || std::string(policy) == "auto") {
-      // #399's matched-density endpoint qualifies the existing 768/768/160
-      // resident RTX 5090 domain only; other shapes keep their dense seeds.
+      // #399's matched-density endpoint and #439's extension qualify only the
+      // measured 384/384/80 and 768/768/160 resident RTX 5090 domains; other
+      // shapes keep their dense seeds.
       const auto status = qualified_resident_rhf_exchange(
           plan, state.factor_alpha_ranks, state.factor_beta_ranks, selected, detail);
       if (status != VIBEQC_STATUS_SUCCESS) return status;
