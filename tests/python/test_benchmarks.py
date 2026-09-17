@@ -63,6 +63,39 @@ def _results_summary_module():
     return module
 
 
+def test_batch_native_metadata_identifies_loaded_profile_library(tmp_path, monkeypatch):
+    """A replaced library must not inherit the requested base binary's identity."""
+    import hashlib
+
+    from vibeqc import profiles
+
+    base = tmp_path / "base.so"
+    selected = tmp_path / "selected.so"
+    base.write_bytes(b"generic build")
+    selected.write_bytes(b"selected AOT build")
+    monkeypatch.setenv("VIBEQC_LIBRARY", str(base))
+    library = SimpleNamespace(_name=str(selected))
+    observed = []
+
+    def probe(actual, ordinal):
+        observed.append((actual, ordinal))
+        return {
+            "source_identity": "same-source",
+            "device": {"official_profile": "sm_120"},
+        }
+
+    monkeypatch.setattr(profiles, "probe_device", probe)
+    payload = _batch_comparison_module().native_build_metadata(
+        SimpleNamespace(_library=library, _device_id=2)
+    )
+    assert observed == [(library, 2)]
+    assert payload["library_path"] == str(selected)
+    assert (
+        payload["library_sha256"] == hashlib.sha256(selected.read_bytes()).hexdigest()
+    )
+    assert payload["probe"]["device"]["official_profile"] == "sm_120"
+
+
 def _aot_shell_gate_module():
     """Load the AOT endpoint helpers without importing a GPU backend."""
 
@@ -705,6 +738,9 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert sum("--batch 1" in line for line in commands) == 2
     assert sum("--batch 4" in line for line in commands) == 2
     assert all("--repeats 5" in line for line in commands)
+    assert all(
+        "--progress-output" in line and ".progress.jsonl" in line for line in commands
+    )
     assert sum("--minimum-speedup 1.0" in line for line in commands) == 2
     assert all("--max-iterations 100" in line for line in commands)
     assert all("--energy-tolerance 1e-12" in line for line in commands)
