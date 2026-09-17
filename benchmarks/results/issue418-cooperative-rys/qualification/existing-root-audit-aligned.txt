@@ -1,0 +1,2 @@
+{"nroots": 3, "samples": 969, "failed": 158, "max_node_weight": 2.954348251374233e-12, "max_moment": 2.783310397735195e-12}
+{"nroots": 4, "samples": 969, "failed": 188, "max_node_weight": 4.694428113490664e-12, "max_moment": 4.155162199561576e-12}

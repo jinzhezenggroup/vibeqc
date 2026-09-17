@@ -1,0 +1,46 @@
+"""Freeze the production selection and require unchanged generated mathematics."""
+
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+root = Path.cwd()
+artifacts = root / ".artifacts/issue418"
+campaign = json.loads((artifacts / "campaign/build.json").read_text())
+destination = artifacts / "final-production"
+destination.mkdir(exist_ok=False)
+generated = root / "build/cuda/generated"
+headers = {
+    name: hashlib.sha256((generated / name).read_bytes()).hexdigest()
+    for name in campaign["generated_hashes"]
+}
+changed = [name for name, digest in headers.items() if campaign["generated_hashes"][name] != digest]
+assert set(changed) == {"build_identity.hpp", "generated_df_production.hpp"}, changed
+library = root / "build/cuda/libvibeqc.so"
+shutil.copyfile(library, destination / "libvibeqc.so")
+(destination / "libvibeqc.so.0").symlink_to("libvibeqc.so")
+patch = subprocess.check_output([
+    "git", "diff", "--binary", campaign["base_commit"], "--", "src", "include", "python", "tools/generate_rys_high_accuracy_tables.py"
+])
+(destination / "source.patch").write_bytes(patch)
+metadata = {
+    "base_commit": campaign["base_commit"],
+    "head_before_final_evidence_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+    "native_source_identity": re.search(r'kVibeqcSourceIdentity = "([a-f0-9]+)"', (generated / "build_identity.hpp").read_text()).group(1),
+    "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
+    "library_bytes": library.stat().st_size,
+    "source_patch_sha256": hashlib.sha256(patch).hexdigest(),
+    "production_manifest_sha256": hashlib.sha256((root / "python/vibeqc_compiler/integral/production_df_derivatives.json").read_bytes()).hexdigest(),
+    "campaign_library_sha256": campaign["library_sha256"],
+    "generated_hashes": headers,
+    "changed_generated_files": changed,
+    "generated_mathematics_byte_identical_to_campaign": True,
+    "selection": "auto now selects the independently qualified candidate; embedded baseline removed",
+    "automatic_admission_scope": "sm_120 with 384/768 orbital AOs and equal auxiliary count; unchanged from the prior production gate",
+    "build_log_sha256": hashlib.sha256((artifacts / "final-production-build.log").read_bytes()).hexdigest(),
+}
+(destination / "build.json").write_text(json.dumps(metadata, indent=2) + "\n")
+print(json.dumps({k:v for k,v in metadata.items() if k != "generated_hashes"}, indent=2))

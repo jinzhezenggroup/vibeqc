@@ -26,33 +26,87 @@
         },
         {
           "class": "101",
-          "lowering": "polynomial",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "102",
+          "lowering": "rys",
           "schedule": "compact"
         },
         {
           "class": "110",
-          "lowering": "polynomial",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "111",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "112",
+          "lowering": "rys",
           "schedule": "compact"
         },
         {
           "class": "200",
           "lowering": "rys",
           "schedule": "compact"
+        },
+        {
+          "class": "201",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "202",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "210",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "211",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "212",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "220",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "221",
+          "lowering": "rys",
+          "schedule": "compact"
+        },
+        {
+          "class": "222",
+          "lowering": "rys",
+          "schedule": "compact"
         }
       ],
       "provenance": {
-        "generator_sha256": "f435f3e7f1e2ab3428ad05a43ffc6be080bd2296a376a9b27957eabc47aa771b",
-        "toolchain": "Build cuda_12.9.r12.9/compiler.36037853_0",
-        "profile_sha256": "0f50a7f7f86920d39d6ec1ee530205796eee4769572faaded36d5730027ec9ad",
-        "profile_sha256_encoding": "SHA-256 of json.dumps(candidate_report.ranking.profiles, sort_keys=True).encode()",
-        "candidate_report": "benchmarks/results/issue394-batch-rys/candidates.json",
-        "source_commit": "a6de84f48ad15b13512218393494f3ef9dace402",
-        "endpoint_384": "benchmarks/results/issue404-combined-rys/384-forces.json",
-        "endpoint_768": "benchmarks/results/issue404-combined-rys/768-forces.json",
-        "sanitizer": "benchmarks/results/issue394-batch-rys/qualification.json",
-        "gradient_fixtures": "benchmarks/results/issue394-batch-rys/candidates.json",
-        "endpoint_decision": "benchmarks/results/issue404-combined-rys/decision.json",
-        "endpoint_summary": "benchmarks/results/issue404-combined-rys/summary.json"
+        "generator_sha256": "010ff76e3f7d1dbca21538863c6b6177a0a86ec28c113cdfecd1f00610727d0a",
+        "toolchain": "CUDA 12.9.1, nvcc 12.9.86, sm_120",
+        "profile_sha256": "36bf3aa3b59f1e80289ea306beac209a63e6fae9cbea4f2f87dca6a3f36c756f",
+        "candidate_report": "benchmarks/results/issue418-cooperative-rys/class-ranking.json",
+        "source_commit": "c1b2036bc9771857aa1330d0010299cae92bba25",
+        "endpoint_384": "benchmarks/results/issue418-cooperative-rys/endpoints/endpoints-v1/384-forces.json.gz",
+        "endpoint_768": "benchmarks/results/issue418-cooperative-rys/endpoints/endpoints-v1/768-forces.json.gz",
+        "sanitizer": "benchmarks/results/issue418-cooperative-rys/manifest.json",
+        "gradient_fixtures": "benchmarks/results/issue418-cooperative-rys/qualification/hot-derivatives.jsonl",
+        "endpoint_decision": "benchmarks/results/issue418-cooperative-rys/endpoints/endpoints-v1/analysis.json",
+        "baseline_equivalence": "benchmarks/results/issue418-cooperative-rys/endpoints/baseline-equivalence-v1/analysis.json"
       }
     }
   }

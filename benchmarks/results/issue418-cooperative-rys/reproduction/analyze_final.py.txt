@@ -1,0 +1,64 @@
+"""Verify final auto selection against the already qualified campaign arm.
+
+The retained automatic admission boundary is sm_120 with equal orbital/auxiliary
+384/768-AO spaces. Smaller automatic cases must match the old auto arm; the
+192-AO candidate timing is explicitly not an expanded default-policy claim.
+"""
+
+import hashlib
+import json
+import runpy
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+helpers = runpy.run_path(str(ROOT / "analyze_endpoints.py"))
+BUILD = json.loads((ROOT / "final-production/build.json").read_text())
+output = {"scope": __doc__, "build": BUILD, "records": []}
+for aos in (96, 192, 384, 768):
+    path = ROOT / f"final-validation-v1/{aos}-forces.json"
+    current = json.loads(path.read_text())
+    campaign = json.loads((ROOT / f"endpoints-v1/{aos}-forces.json").read_text())
+    policy = "candidate" if aos in (384, 768) else "auto"
+    qualified = next(s for s in campaign["diagnostics"] if s["policy"] == policy)
+    diagnostic = current["diagnostics"][0]
+    def resources(sample):
+        return {
+            k:v for g in sample["components"]["groups"] for k,v in g["counter_sums"].items()
+            if k.startswith("shell_") and k.endswith(("_registers", "_static_shared_bytes", "_dynamic_shared_bytes", "_resident_block_limit", "_resident_thread_limit"))
+        }
+    differences = {
+        key: max(float(np.max(np.abs(np.asarray(s[key])-np.asarray(qualified[key])))) for s in current["samples"] + current["diagnostics"])
+        for key in ("energies_hartree", "forces_hartree_per_bohr")
+    }
+    gates = {
+        "exit_zero": path.with_suffix(".exit").read_text().strip() == "0",
+        "correct_final_binary": current["library_sha256"] == BUILD["library_sha256"],
+        "correct_final_native_identity": current["native_source_identity"] == BUILD["native_source_identity"],
+        "correct_final_source_patch": current["source_patch_sha256"] == BUILD["source_patch_sha256"],
+        "automatic_policy_only": current["policies"] == ["auto"],
+        "same_frozen_density": current["warm_density_sha256"] == campaign["warm_density_sha256"],
+        "same_checkpoint": current["warm_checkpoint_sha256"] == campaign["warm_checkpoint_sha256"],
+        "same_reference": current["reference_sha256"] == campaign["reference_sha256"],
+        "same_scientific_settings": current["scientific_settings"] == campaign["scientific_settings"],
+        "energy_equivalence": differences["energies_hartree"] <= 1e-12,
+        "force_equivalence": differences["forces_hartree_per_bohr"] <= 1e-10,
+        "all_accuracy_gates": all(s["maximum_energy_error"] <= 1e-9 and s["maximum_force_error"] <= 1e-8 for s in current["samples"] + current["diagnostics"]),
+        "same_iterations": all(s["iterations"] == qualified["iterations"] and all(c["converged"] for c in s["convergence"]) for s in current["samples"] + current["diagnostics"]),
+        "same_charged_memory_and_metric": diagnostic["metric"] == qualified["metric"],
+        "same_semantic_work": helpers["semantic_groups"](diagnostic) == helpers["semantic_groups"](qualified),
+        "same_graph_and_final_work": helpers["journal_work"](path.with_suffix(".diagnostic-0-auto.journal.jsonl")) == helpers["journal_work"](ROOT / f"endpoints-v1/{aos}-forces.diagnostic-0-{policy}.journal.jsonl"),
+        "same_selected_classes": {
+            k:v for g in diagnostic["components"]["groups"] for k,v in g["counter_sums"].items() if k.endswith("_rys_selected")
+        } == {
+            k:v for g in qualified["components"]["groups"] for k,v in g["counter_sums"].items() if k.endswith("_rys_selected")
+        },
+        "same_class_resources": resources(diagnostic) == resources(qualified),
+    }
+    output["records"].append({"aos": aos, "qualified_campaign_policy": policy, "gates": gates, "all_gates_passed": all(gates.values()), "maximum_differences": differences, "class_resources": resources(diagnostic), "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+    print(aos, policy, "failed", [k for k,v in gates.items() if not v], "differences", differences)
+output["native_tests_passed"] = (ROOT / "final-validation-v1/ctest.exit").read_text().strip() == "0"
+output["all_gates_passed"] = output["native_tests_passed"] and all(r["all_gates_passed"] for r in output["records"])
+(ROOT / "final-validation-v1/analysis.json").write_text(json.dumps(output, indent=2) + "\n")
+raise SystemExit(0 if output["all_gates_passed"] else 1)

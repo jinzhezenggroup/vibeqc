@@ -15,7 +15,7 @@ from .df_values import build_df_axis_moment
 from .expr import Graph, Node
 from .shell_spec import cartesian_components
 
-RYS_SHELL_CLASSES = (
+COMPONENT_RYS_SHELL_CLASSES = (
     (0, 0, 0),
     (0, 0, 1),
     (0, 0, 2),
@@ -23,6 +23,28 @@ RYS_SHELL_CLASSES = (
     (1, 0, 1),
     (1, 1, 0),
     (2, 0, 0),
+)
+
+# The measured low-angular winners retain their delivered component lowering.
+# Controls 101/110 and all remaining canonical s/p/d classes use shared axes;
+# mathematical availability never changes the qualified production manifest.
+COOPERATIVE_RYS_SHELL_CLASSES = (
+    (1, 0, 1),
+    (1, 0, 2),
+    (1, 1, 0),
+    (1, 1, 1),
+    (1, 1, 2),
+    (2, 0, 1),
+    (2, 0, 2),
+    (2, 1, 0),
+    (2, 1, 1),
+    (2, 1, 2),
+    (2, 2, 0),
+    (2, 2, 1),
+    (2, 2, 2),
+)
+RYS_SHELL_CLASSES = tuple(
+    sorted(set(COMPONENT_RYS_SHELL_CLASSES + COOPERATIVE_RYS_SHELL_CLASSES))
 )
 
 
@@ -121,6 +143,19 @@ def shell_rys_work_model(angular):
     """Report root work and per-active-component recurrence work before CSE."""
     roots = shell_rys_roots(angular)
     components = tuple(product(*(cartesian_components(l) for l in angular)))
+    if tuple(angular) in COOPERATIVE_RYS_SHELL_CLASSES:
+        _, outputs, states = build_df_rys_shared_axis_ir(angular)
+        return {
+            "rys_roots": roots,
+            "recurrence_states": 3 * roots * states,
+            "shared_recurrence_states": 3 * roots * states,
+            "component_recurrence_states": [0] * len(components),
+            "axis_polynomial_calls": 0,
+            "specialized_prepare_axis_calls": 0,
+            "cache_coefficient_values": 0,
+            "shared_cache_values": 3 * roots * len(outputs),
+            "component_convolution_iterations": [0] * len(components),
+        }
     states = [roots * build_df_rys_component_ir(c)[2] for c in components]
     return {
         "rys_roots": roots,
@@ -151,9 +186,9 @@ inline constexpr bool rys_available=(rys_available_mask & (1ULL<<(16*A+4*B+C)))!
 def emit_df_rys_shell_cuda():
     """Emit the complete bounded family against the unchanged packet/sink ABI.
 
-    Each component owns its pruned root-dependent moments in registers. A dummy
-    cache extent keeps native declarations well-formed; no polynomial cache or
-    coefficient convolution is used. Unsupported tuples have no specialization.
+    Delivered low-angular winners retain pruned component moments in registers.
+    Higher classes share one bounded axis program per root/axis. Unsupported
+    tuples have no specialization; qualification remains separate from support.
     """
     geometry = emit_df_geometry_cuda(
         "prepare_geometry_rys",
@@ -174,6 +209,9 @@ def emit_df_rys_shell_cuda():
         "template<unsigned A,unsigned B,unsigned C> struct RysShell;",
     ]
     for angular in RYS_SHELL_CLASSES:
+        if angular in COOPERATIVE_RYS_SHELL_CLASSES:
+            lines.extend(_emit_cooperative_shell(angular))
+            continue
         parameters = ",".join(map(str, angular))
         roots = shell_rys_roots(angular)
         components = tuple(product(*(cartesian_components(l) for l in angular)))
@@ -182,6 +220,7 @@ def emit_df_rys_shell_cuda():
         lines += [
             f"template<> struct RysShell<{parameters}> : Shell<{parameters}> {{",
             f"  static constexpr unsigned nroots={roots};",
+            "  static constexpr unsigned shared_recurrence_states=0;",
             "  static constexpr unsigned axis_size=1,cache_coefficient_values=0;",
             "  static constexpr unsigned polynomial_calls=0,specialized_axis_calls=0;",
             f"  static constexpr unsigned recurrence_states_per_primitive={sum(states)};",
@@ -225,3 +264,120 @@ def emit_df_rys_shell_cuda():
         lines += ["    }", "  }", "};"]
     lines += ["} // namespace vibeqc::scf::generated_df_shell", "#endif", ""]
     return "\n".join(lines)
+
+
+def build_df_rys_shared_axis_ir(angular):
+    """Share the existing moment IR over one rectangular root/axis cache.
+
+    Raising B follows from raised A plus (A-B) times the base state, so only
+    A's bound is extended. Every requested moment and its dependencies are
+    interned in one graph; components do no recurrence work of their own.
+    The returned count excludes the constant seed and describes mathematical
+    recurrence states before CSE, matching the existing work-ledger convention.
+    """
+    if tuple(angular) not in COOPERATIVE_RYS_SHELL_CLASSES:
+        raise ValueError("cooperative Rys requires a declared canonical s/p/d class")
+    graph = Graph()
+    root = graph.variable("root")
+    pa, pb, dx, sx, sy, ip, iq = (
+        graph.variable(name) for name in ("pa", "pb", "dx", "sx", "sy", "ip", "iq")
+    )
+    replacements = {
+        "mean_0": pa - dx * sx * root,
+        "mean_1": pb - dx * sx * root,
+        "mean_2": dx * sy * root,
+        "variance_x": ip * (1 - sx * root),
+        "covariance_xy": ip * sy * root,
+        "variance_y": iq * (1 - sy * root),
+    }
+    states, outputs = set(), []
+    for powers in product(
+        range(angular[0] + 2), range(angular[1] + 1), range(angular[2] + 1)
+    ):
+        source, value = build_df_axis_moment(
+            *powers, internal_derivative=True, states=states
+        )
+        cloned = {}
+        for identifier in source.topological_order((value,)):
+            node = source.nodes[identifier]
+            if node.operation == "variable":
+                cloned[identifier] = replacements[node.payload]
+            elif node.operation == "constant":
+                cloned[identifier] = graph.clone_constant(node)
+            else:
+                cloned[identifier] = graph._intern(
+                    Node(
+                        node.operation,
+                        tuple(cloned[child].identifier for child in node.arguments),
+                        node.payload,
+                    )
+                )
+        outputs.append(cloned[value.identifier])
+    return graph, tuple(outputs), len(states)
+
+
+def _emit_cooperative_shell(angular):
+    """Lower the shared root/axis graph into the existing shell packet ABI."""
+    parameters = ",".join(map(str, angular))
+    roots = shell_rys_roots(angular)
+    graph, outputs, states = build_df_rys_shared_axis_ir(angular)
+    variables = {name: f"g.{name}" for name in ("sx", "sy", "ip", "iq")}
+    variables.update({name: f"g.{name}[axis]" for name in ("pa", "pb", "dx")})
+    variables["root"] = "g.f[root]"
+    emitter = CudaEmitter(graph, variables)
+    emitter.emit(outputs)
+    a, b, c = angular
+    return [
+        f"template<> struct RysShell<{parameters}> : Shell<{parameters}> {{",
+        f"  using Base=Shell<{parameters}>;",
+        f"  static constexpr unsigned nroots={roots},entries={len(outputs)};",
+        "  static constexpr bool shared_root_state=true;",
+        "  static constexpr unsigned axis_size=nroots*entries,cache_coefficient_values=0;",
+        "  static constexpr unsigned polynomial_calls=0,specialized_axis_calls=0;",
+        f"  static constexpr unsigned shared_recurrence_states={3 * roots * states};",
+        "  static constexpr unsigned recurrence_states_per_primitive=shared_recurrence_states;",
+        "  __device__ static unsigned recurrence_work(unsigned) { return 0; }",
+        "  __device__ static unsigned convolution_work(unsigned) { return 0; }",
+        "  __device__ __forceinline__ static unsigned offset(unsigned a,unsigned b,unsigned c) {",
+        f"    return (a*{b + 1}+b)*{c + 1}+c;",
+        "  }",
+        "  // Independent root/axis owners publish all states before the caller's rendezvous.",
+        "  __device__ static void prepare(const scalar::Geometry& g,double* cache,unsigned lane,unsigned lanes) {",
+        "    for(unsigned item=lane;item<3*nroots;item+=lanes) {",
+        "      const unsigned axis=item/nroots,root=item%nroots;",
+        "      double* values=cache+item*entries;",
+        *emitter.lines,
+        *(
+            f"      values[{i}]={emitter.reference(value)};"
+            for i, value in enumerate(outputs)
+        ),
+        "    }",
+        "  }",
+        "  __device__ static void accumulate(unsigned item,double alpha,double beta,",
+        "      const scalar::Geometry& g,const double* cache,double weight,double* out) {",
+        f"    const auto a=angular<{a}>(item/Base::nb/Base::nc);",
+        f"    const auto b=angular<{b}>(item/Base::nc%Base::nb),c=angular<{c}>(item%Base::nc);",
+        "#pragma unroll",
+        "    for(unsigned root=0;root<nroots;++root) {",
+        "      double base[3],da[3],db[3];",
+        "#pragma unroll",
+        "      for(unsigned axis=0;axis<3;++axis) {",
+        "        const unsigned x=scalar::power(a,axis),y=scalar::power(b,axis),z=scalar::power(c,axis);",
+        "        const double* values=cache+axis*axis_size+root*entries;",
+        "        base[axis]=values[offset(x,y,z)];",
+        "        const double raised=values[offset(x+1,y,z)];",
+        "        da[axis]=2*alpha*raised-(x ? x*values[offset(x-1,y,z)] : 0.0);",
+        "        const double raised_b=raised+(g.pb[axis]-g.pa[axis])*base[axis];",
+        "        db[axis]=2*beta*raised_b-(y ? y*values[offset(x,y-1,z)] : 0.0);",
+        "      }",
+        "      const double factor=weight*g.prefactor*g.f[nroots+root];",
+        "#pragma unroll",
+        "      for(unsigned axis=0;axis<3;++axis) {",
+        "        const double other=base[(axis+1)%3]*base[(axis+2)%3];",
+        "        out[axis]+=factor*da[axis]*other;",
+        "        out[axis+3]+=factor*db[axis]*other;",
+        "      }",
+        "    }",
+        "  }",
+        "};",
+    ]

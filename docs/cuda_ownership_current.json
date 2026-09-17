@@ -166,7 +166,7 @@
       "fallback": 0,
       "oracle": 10,
       "performance_exception": 163,
-      "runtime": -5506,
+      "runtime": -5504,
       "scientific": 2107
     },
     "reclassified_files": [
@@ -1092,20 +1092,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 18378,
+      "bytes": 18605,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 312,
+        "runtime": 314,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_kernel.cuh",
-      "physical_lines": 348,
+      "physical_lines": 351,
       "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
       "regions": [],
       "role": "runtime",
-      "sha256": "fb990f89412563c784674d0fdb03e3f23dfb52bc38cc664bd91587e5ce432548",
+      "sha256": "7684d4d1530e7ef58e25692d22ffcd49632e9ee6f69e1c32a454178c72118932",
       "subsystem": "df_derivatives"
     },
     {
@@ -3628,10 +3628,10 @@
     {
       "files": [
         {
-          "bytes": 57310,
-          "code_lines": 1763,
+          "bytes": 57359,
+          "code_lines": 1764,
           "path": "generated/generated_df_shell_derivatives.cuh",
-          "sha256": "36780dfb9fae3f1625917cdb03f9316c74cd8dea4e95ef0869a97407e21b7cc9"
+          "sha256": "0213de12f5b21e0c0ba40bd3edb1cf03fc7b029e42d9c51c8d1cebbf03020a3b"
         }
       ],
       "measurement": "explicit build",
@@ -3644,10 +3644,10 @@
     {
       "files": [
         {
-          "bytes": 42928,
-          "code_lines": 155,
+          "bytes": 196847,
+          "code_lines": 1699,
           "path": "generated/generated_df_rys.cuh",
-          "sha256": "103d3d65945471d2eeecaf601bf7101f088c68819bf4b5b51e170815ab9f70d3"
+          "sha256": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6"
         }
       ],
       "measurement": "explicit build",
@@ -3660,16 +3660,16 @@
     {
       "files": [
         {
-          "bytes": 76148,
-          "code_lines": 2440,
+          "bytes": 98504,
+          "code_lines": 2806,
           "path": "generated/generated_df_rys_shell.cuh",
-          "sha256": "4b4b7f1ad71b34ac58272b8ebdd84baae8d583fd4c9469839774834c535ceef5"
+          "sha256": "0916a69446038662dea2acf9006699e048425afe44cdecae6cfd3763a61e83b8"
         },
         {
-          "bytes": 449,
+          "bytes": 452,
           "code_lines": 8,
           "path": "generated/generated_df_rys_policy.hpp",
-          "sha256": "d1a83446e9943746f72348ec70821fb50c008d88687e9a8ec80e5cfa9b75c162"
+          "sha256": "b3bc4c3b2608e2387e1db31c54b7d70f517bdba8f702efb55c7d13e48fbc4890"
         }
       ],
       "measurement": "explicit build",
@@ -3697,7 +3697,68 @@
       "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
     },
     {
-      "files": [],
+      "files": [
+        {
+          "bytes": 5411313,
+          "code_lines": 87485,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+          "sha256": "a5c16bb800d7932cdac9172f47e0fa5b6d5db4923dfa7aa048e7d1a7cf0636bf"
+        },
+        {
+          "bytes": 2538460,
+          "code_lines": 41159,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+          "sha256": "cbe442cd1a68e9424f7008850e0056bcda3f61a78fc01e5a6381070594acd1fc"
+        },
+        {
+          "bytes": 1771129,
+          "code_lines": 28991,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+          "sha256": "c6db029c35f589fd6f8c7376d047dadf1a969223f41f01b62d53ed1c7994f26a"
+        },
+        {
+          "bytes": 1350250,
+          "code_lines": 21734,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu",
+          "sha256": "f7f0fcf2c61bea04438c45de57c105c21ca9bb54680a8d1861fca3dbe04d6c46"
+        },
+        {
+          "bytes": 1093094,
+          "code_lines": 17566,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu",
+          "sha256": "c514b912fae0fab0b7c5c8c1dc5acc8dfb37a89e65e912fc1b445cd066927748"
+        },
+        {
+          "bytes": 1034512,
+          "code_lines": 16847,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu",
+          "sha256": "7be5c404b378a366e90a2a5fb9da3d557b4d61198bcd5ebc005b9b4159386fbf"
+        },
+        {
+          "bytes": 871861,
+          "code_lines": 14268,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu",
+          "sha256": "6fe5a223f9b7e2d5f27768ec5d661e93ca5b4b8bacf1f1a61955ab72689deae2"
+        },
+        {
+          "bytes": 979891,
+          "code_lines": 16017,
+          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu",
+          "sha256": "69883972e00d71fc9c9590aace3cdb4ba00654943f90cdd4d23c04c2f561ede9"
+        },
+        {
+          "bytes": 61259,
+          "code_lines": 828,
+          "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
+          "sha256": "9d8ba1e55539f177f318569a513aad001b4bfe53be59cf1f6a5c943287581955"
+        },
+        {
+          "bytes": 1779,
+          "code_lines": 48,
+          "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
+          "sha256": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9"
+        }
+      ],
       "measurement": "explicit build",
       "name": "aot_integrals",
       "outputs": [
@@ -3805,10 +3866,10 @@
     {
       "files": [
         {
-          "bytes": 1229,
-          "code_lines": 24,
+          "bytes": 2349,
+          "code_lines": 46,
           "path": "generated/generated_df_production.hpp",
-          "sha256": "f0eeabe66c387efbaeca9090565e47fbcd4b51a6baf3ac39dd6de59f205e6022"
+          "sha256": "61e2f925637ae73ed8873a638000e9be73c5fd7899cddaba21296e06d107fbe7"
         }
       ],
       "measurement": "explicit build",
@@ -3851,12 +3912,12 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 12232383,
+  "generated_bytes": 27523378,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 10,
     "performance_exception": 253,
-    "runtime": 10067,
+    "runtime": 10069,
     "scientific": 12209
   },
   "migration_ledger": {
@@ -4052,7 +4113,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 806,
+      "runtime": 808,
       "scientific": 1217
     },
     "df_response_weights": {

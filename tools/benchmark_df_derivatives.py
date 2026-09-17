@@ -29,6 +29,7 @@ from vibeqc_compiler.integral.df_tuning.batch import compile_batch
 from vibeqc_compiler.integral.df_tuning.emission import API, emit_candidate, emit_driver
 from vibeqc_compiler.integral.df_tuning.manifest import MANIFEST, load_manifest
 from vibeqc_compiler.integral.df_tuning.policy import (
+    LOW_ANGULAR_CLASSES,
     enumerate_trials,
     rank_profiles,
     read_profile,
@@ -51,7 +52,7 @@ def source_identity(generated):
     return digest.hexdigest()
 
 
-def write_workloads(path, profiles):
+def write_workloads(path, profiles, *, angular=LOW_ANGULAR_CLASSES):
     """Serialize real geometries/bases and the ledger's precise panel domain.
 
     Only ordinary basis metadata is imported from the runtime package. This is
@@ -67,7 +68,7 @@ def write_workloads(path, profiles):
         atoms = [Atom.from_value(atom) for atom in case.atoms]
         shells = _named_basis_shells(case.vibeqc_basis, atoms)
         reconstruction = payload["host_reconstruction"]
-        domain = read_profile(payload)
+        domain = read_profile(payload, angular=angular)
         panels = reconstruction["panels"]
         lines.append(
             f"{name} {len(atoms)} {len(shells)} {int(case.basis_representation == 'spherical')} "
@@ -83,8 +84,10 @@ def write_workloads(path, profiles):
                 f"{p.exponent:.17g} {p.coefficient:.17g}" for p in shell.primitives
             )
         lines.extend(" ".join(map(str, p)) for p in panels)
-        for (angular, primitives), work in domain.items():
-            lines.append(" ".join(map(str, (*angular, *primitives, *work.values()))))
+        for (shell_class, primitives), work in domain.items():
+            lines.append(
+                " ".join(map(str, (*shell_class, *primitives, *work.values())))
+            )
     path.write_text("\n".join(lines) + "\n")
 
 

@@ -1,0 +1,397 @@
+{
+  "scope": "First practical cc-pVDZ/cc-pVDZ-JKFIT external campaign, no prior-cell retry.\n\nWater tetramer RHF (96/464) and OH UHF (19/93), seven interleaved pairs.\nBoth E and full-force max errors must be <=3e-11 in every pair; stock gradient\nconvergence is predeclared1e-10, native energy/density1e-12/1e-10. These are new\nmathematical models and cannot replace prior failed equal-basis acceptance.\nOrdinary latency stability: both relative MAD<=3%; only a >=2% reduction with\npaired bootstrap95% interval above2% may be called a repeatable ordinary win.\nUse10000 paired bootstrap samples, NumPy default_rng(206), before examining data.\nNo matched-work, cold/changed or complete resource coverage claim follows.\n",
+  "created_at_utc": "2026-09-17T06:56:53.821199+00:00",
+  "slurm_job_id": "9904",
+  "cuda_visible_devices": "0",
+  "git_head": "67b35f3a0a236de39ebbdb2876908a3c2da78c6c",
+  "build": {
+    "base_commit": "f5eb8dfb696ce4304c5151670c55fec78fdddb7d",
+    "head_before_final_evidence_commit": "47912854e34fab76953810c0d07ff2fa9ba823d4",
+    "native_source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d",
+    "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+    "library_bytes": 209740176,
+    "source_patch_sha256": "6d3bcbc8d8bf985619f986f876194d9637a48684fc21ead3b6e85e24693fd5da",
+    "production_manifest_sha256": "f057bacb15a052868297d5fddf90c1b9f619a8ceb9bb63caf955ace2488a3b56",
+    "campaign_library_sha256": "deefe6b2b95919628387a37c796fbb48a8b6c9609418cab946744e3c89d43d3f",
+    "generated_hashes": {
+      "build_identity.hpp": "2ed7cf46cd9685f3719455a2eb8db25bfbbae96b6c3e0deeb85a525bddb09442",
+      "df_values.cuh": "c2026fce24ca75ea8973306fc6121e9f4db3aa54a2b62aa1520cede7c71d8bbd",
+      "generated_df_derivative_policy.cuh": "beb7ee985095e7ace0d466be897e4dadbbd5adcbe80fbacca55e2d64dcbbd30b",
+      "generated_df_derivative_schedule.cuh": "5caba2a73da662358777f7640b91d5f77710b22f4ac38a8c401225f6472e89af",
+      "generated_df_derivatives.cuh": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd",
+      "generated_df_policy.cuh": "3213fbe8225e8c3bf653ff2cdfd8da97b011ef6c598ad7d184c1f1e051ceca32",
+      "generated_df_production.hpp": "61e2f925637ae73ed8873a638000e9be73c5fd7899cddaba21296e06d107fbe7",
+      "generated_df_rys.cuh": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6",
+      "generated_df_rys_policy.hpp": "b3bc4c3b2608e2387e1db31c54b7d70f517bdba8f702efb55c7d13e48fbc4890",
+      "generated_df_rys_shell.cuh": "0916a69446038662dea2acf9006699e048425afe44cdecae6cfd3763a61e83b8",
+      "generated_df_screening.cuh": "1dca9586bb2d53479e2ba171fa3478b8239e8aab4402028419c4b692f56a5aab",
+      "generated_df_shell_derivatives.cuh": "0213de12f5b21e0c0ba40bd3edb1cf03fc7b029e42d9c51c8d1cebbf03020a3b",
+      "generated_df_value_candidates.cuh": "0fd28623ed04ddc356bef47316351ef3dbe619562b4c4da7915224713dbc4c46",
+      "generated_ecp_ao.cuh": "3c80c44c94642f4bd99c1f6c5013c9ee11a34c8cff07dec86b363a20ccc815a6",
+      "generated_grid_policy.cu": "952d12fd6dd58e7b7121b1193aeae39e5157686bea7a3e68c12cf7c5e87d252c",
+      "generated_one_electron_derivatives.cuh": "00d051c57ae32536ef14171fdbd09d03f504d516db36bd29e8d01d0191593b73",
+      "generated_one_electron_policy.cuh": "1b14c7b270eb4f910954877ce8e5e1a8edac24d45fef6e5ab9d94b0b6c8486f5",
+      "generated_one_electron_values.cuh": "e169833c9d9313edaf1978d25dadea2234e45eb5541f5c573263316f4e43728f",
+      "mp2/mp2_cuda_table.cu": "3821b8a5ff46846f886b3ec65ded64736f38937a8856835fb19661ee60234e58",
+      "mp2/mp2_sm120_t1_runtime.cu": "c52a004a8af7c81a4573b14caa75710b031f960422a3d9019a494bb47fcaf6ca",
+      "mp2/mp2_sm120_t2_runtime.cu": "07fdc5514e1f1b5243685cc9190037e4b93a84d9c5bcc78fb295b2e31bf0282f",
+      "mp2/mp2_sm120_t4_runtime.cu": "4037e8b678791c775caca77010c093ff6a4c28a2335233bbc5810f4687ce274c",
+      "mp2/mp2_sm120_t8_runtime.cu": "2b87c1d194c2666e662127700e00b89dbcbfa21dab222a24a3b4c54d138f6a92",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "a5c16bb800d7932cdac9172f47e0fa5b6d5db4923dfa7aa048e7d1a7cf0636bf",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "cbe442cd1a68e9424f7008850e0056bcda3f61a78fc01e5a6381070594acd1fc",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "c6db029c35f589fd6f8c7376d047dadf1a969223f41f01b62d53ed1c7994f26a",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "f7f0fcf2c61bea04438c45de57c105c21ca9bb54680a8d1861fca3dbe04d6c46",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu": "c514b912fae0fab0b7c5c8c1dc5acc8dfb37a89e65e912fc1b445cd066927748",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu": "7be5c404b378a366e90a2a5fb9da3d557b4d61198bcd5ebc005b9b4159386fbf",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu": "6fe5a223f9b7e2d5f27768ec5d661e93ca5b4b8bacf1f1a61955ab72689deae2",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu": "69883972e00d71fc9c9590aace3cdb4ba00654943f90cdd4d23c04c2f561ede9",
+      "production_shell_kernels/vibeqc_generated_shell_registry.cu": "9d8ba1e55539f177f318569a513aad001b4bfe53be59cf1f6a5c943287581955",
+      "production_shell_kernels/vibeqc_generated_shell_registry.hpp": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9",
+      "weighted_eri.cuh": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c",
+      "xc_cpu_generated.hpp": "9c22c4136b236ee19152b820b24efd727b088be70789aca2cdd794bac3fd739d"
+    },
+    "changed_generated_files": [
+      "build_identity.hpp",
+      "generated_df_production.hpp"
+    ],
+    "generated_mathematics_byte_identical_to_campaign": true,
+    "selection": "auto now selects the independently qualified candidate; embedded baseline removed",
+    "build_log_sha256": "157be53229083c763254529ea63acb0fe1cc443741e0251f88544b283837e689",
+    "automatic_admission_scope": "sm_120 with 384/768 orbital AOs and equal auxiliary count; unchanged from the prior production gate"
+  },
+  "repeats_per_engine": 7,
+  "runner_sha256": "2d546696a3b415051a6d69f654cc39618684fc5af952e1289093696d234593ce",
+  "comparator_sha256": "f14fc58a74432d63599c9e8baeb296b38457fcd6be980ff95bdab0eb277421bc",
+  "qualifier_sha256": "ed773cd76824d2ec19c221c97fb1aae110eba6a08de8e7d30dbbe67bc69aa02a",
+  "basis_hashes": {
+    "cc-pvdz.json": "75156181a4270b6d96792875b688ead36edfc5b4f7c5931be7633243387036f4",
+    "cc-pvdz-jkfit.json": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871"
+  },
+  "predeclared_statistics": {
+    "repeats": 7,
+    "maximum_relative_mad": 0.03,
+    "minimum_reduction": 0.02,
+    "bootstrap_pairs": 10000,
+    "seed": 206,
+    "confidence": 0.95
+  },
+  "controls": {
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/final-production/libvibeqc.so",
+    "VIBEQC_DF_VALUE_STORAGE": "dense",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_SHELL_POLICY": "auto"
+  },
+  "points": [
+    [
+      "water-tetramer-def2-svp-spherical",
+      1,
+      3e-11,
+      3e-11,
+      1e-10,
+      true
+    ],
+    [
+      "oh-def2-svp-spherical-uhf",
+      1,
+      3e-11,
+      3e-11,
+      1e-10,
+      true
+    ]
+  ],
+  "checks": [
+    {
+      "name": "water-tetramer-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/qualify-stock.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-qualification.json",
+        "--orbital-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz.json",
+        "--auxiliary-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz-jkfit.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "3e-11",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--orbital-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz.json",
+        "--auxiliary-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz-jkfit.json",
+        "--maximum-force-error",
+        "3e-11"
+      ],
+      "status": "failed",
+      "exit_code": 2,
+      "all_repeat_accuracy_passed": false,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 1.409271745942533,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.6058912260923535,
+          "warm_endpoint_seconds": 0.6058912260923535
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.2711462590377778,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.4475163979292351,
+          "vibeqc_median_seconds": 0.6058912260923535
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 1.2505552149377763e-12,
+          "maximum_force_error_hartree_per_bohr": 1.7569936408556863e-09,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 1.2505552149377763e-12,
+        "maximum_force_error_hartree_per_bohr": 1.7569936408556863e-09,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.094947017729282e-13,
+            "maximum_force_error_hartree_per_bohr": 1.7551950795557936e-09,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.2505552149377763e-12,
+            "maximum_force_error_hartree_per_bohr": 1.7544459010587765e-09,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.1368683772161603e-12,
+            "maximum_force_error_hartree_per_bohr": 1.7562768808709883e-09,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.2505552149377763e-12,
+            "maximum_force_error_hartree_per_bohr": 1.755611635234633e-09,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.0231815394945443e-12,
+            "maximum_force_error_hartree_per_bohr": 1.7566623503051382e-09,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.1368683772161603e-12,
+            "maximum_force_error_hartree_per_bohr": 1.7545769073756823e-09,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.0231815394945443e-12,
+            "maximum_force_error_hartree_per_bohr": 1.7569936408556863e-09,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "d0528f278a77db319c657cbc86f8118ba9635cea4ef12250644585452d3a0118",
+      "numerically_qualified": false
+    },
+    {
+      "name": "oh-def2-svp-spherical-uhf-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/qualify-stock.py",
+        "--case",
+        "oh-def2-svp-spherical-uhf",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-qualification.json",
+        "--orbital-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz.json",
+        "--auxiliary-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz-jkfit.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "oh-def2-svp-spherical-uhf-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "oh-def2-svp-spherical-uhf",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "3e-11",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.progress.jsonl",
+        "--orbital-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz.json",
+        "--auxiliary-basis-file",
+        "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/cc-pvdz-jkfit.json",
+        "--maximum-force-error",
+        "3e-11"
+      ],
+      "status": "failed",
+      "exit_code": 2,
+      "all_repeat_accuracy_passed": false,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 0.2551073990762234,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.01785502419807017,
+          "warm_endpoint_seconds": 0.01785502419807017
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.2029471469577402,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 11.366388793786983,
+          "vibeqc_median_seconds": 0.01785502419807017
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 1.7621459846850485e-12,
+          "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 1.7621459846850485e-12,
+        "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7195134205394424e-12,
+            "maximum_force_error_hartree_per_bohr": 1.292755850285099e-10,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7337242752546445e-12,
+            "maximum_force_error_hartree_per_bohr": 1.2889278012961913e-10,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7621459846850485e-12,
+            "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7195134205394424e-12,
+            "maximum_force_error_hartree_per_bohr": 1.2871381217804956e-10,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7053025658242404e-12,
+            "maximum_force_error_hartree_per_bohr": 1.2919342852468763e-10,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7479351299698465e-12,
+            "maximum_force_error_hartree_per_bohr": 1.2910150205824866e-10,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.7195134205394424e-12,
+            "maximum_force_error_hartree_per_bohr": 1.2914147008713517e-10,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "54ca323310d449ed54f97949ed9101336f2302e4c0cf49d1c8e22c1129590732",
+      "numerically_qualified": false
+    }
+  ],
+  "prior_failures": "Retained #421 DF96-b4/changed192 failures and #427 final direct9890 failures are not waived or overwritten by this new campaign.",
+  "preflight_processes": [
+    {
+      "pid": 2656799,
+      "parent": 1,
+      "age_seconds": 1643017,
+      "name": "nsys",
+      "arguments": "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/target-linux-x64/nsys --start-agent --session-name profile-2656785 --shm-name NSys-create-agent-ae30fbe8-adf5-4141-b301-e20cac05d0ef-4026531836-2025.1.3",
+      "orphan_control_agent": true
+    },
+    {
+      "pid": 2665798,
+      "parent": 1,
+      "age_seconds": 1642376,
+      "name": "nsys",
+      "arguments": "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/target-linux-x64/nsys --start-agent --session-name profile-2665784 --shm-name NSys-create-agent-7f226d0c-272f-470e-b0d0-a52bb1d1a50b-4026531836-2025.1.3",
+      "orphan_control_agent": true
+    }
+  ]
+}

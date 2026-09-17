@@ -1,0 +1,1191 @@
+{
+  "source_identity": "010ff76e3f7d1dbca21538863c6b6177a0a86ec28c113cdfecd1f00610727d0a",
+  "classes": [
+    [
+      1,
+      1,
+      1
+    ],
+    [
+      2,
+      1,
+      0
+    ],
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      2,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      2
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "phase": "hot",
+  "precision": "FP64",
+  "schedule": "compact",
+  "compiled": [
+    {
+      "key": "111:polynomial:compact",
+      "artifact_key": "e9d9be091f60c6e470478e5b5864f97fdfc2d056d8a73b9f23f43f272a7fd874",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.2400571079924703,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__6c2e0776_28_df_111_polynomial_compact_cu_a0c22e8612shell_packetILj1ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__6c2e0776_28_df_111_polynomial_compact_cu_a0c22e8612shell_packetILj1ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 158 registers, used 0 barriers, 5120 bytes smem\nptxas info    : Compile time = 256.191 ms\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__6c2e0776_28_df_111_polynomial_compact_cu_a0c22e8612shell_packetILj1ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 158,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 5120
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__6c2e0776_28_df_111_polynomial_compact_cu_a0c22e8612shell_packetILj1ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 158,
+            "stack_bytes": 0,
+            "shared_bytes": 5120,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 20,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 396456,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "111:rys:compact",
+      "artifact_key": "c6fee3146c5d12bf28a370a5ececfc6762e05dec967fafa0b8eeb825a56aaa13",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.030442293966189,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__fdab70dc_21_df_111_rys_compact_cu_3832f28712shell_packetILj1ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__fdab70dc_21_df_111_rys_compact_cu_3832f28712shell_packetILj1ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 0 barriers, 48 bytes cumulative stack size, 5120 bytes smem\nptxas info    : Compile time = 185.335 ms\nptxas info    : Function properties for _ZN52_INTERNAL_fdab70dc_21_df_111_rys_compact_cu_3832f2876vibeqc3scf16generated_df_rys13df_rys3_rootsEdPdj\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__fdab70dc_21_df_111_rys_compact_cu_3832f28712shell_packetILj1ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 126,
+          "stack_bytes": 48,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 5120
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__fdab70dc_21_df_111_rys_compact_cu_3832f28712shell_packetILj1ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 126,
+            "stack_bytes": 48,
+            "shared_bytes": 5120,
+            "resident_blocks_per_sm": 4,
+            "active_threads_per_sm": 512,
+            "estimated_occupancy": 0.3333333333333333,
+            "limits": {
+              "threads": 12,
+              "registers": 4,
+              "shared_memory": 20,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.3333333333333333,
+        "maximum_estimated_occupancy": 0.3333333333333333
+      },
+      "source_bytes": 1252,
+      "object_bytes": 357416,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "210:polynomial:compact",
+      "artifact_key": "698fa2bf2e99d29badc3cec4fada30309b1d437eed4779e58c13759f33515762",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.7228916278108954,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__c2b05bf1_28_df_210_polynomial_compact_cu_3da02a9a12shell_packetILj2ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__c2b05bf1_28_df_210_polynomial_compact_cu_3da02a9a12shell_packetILj2ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 154 registers, used 0 barriers, 3680 bytes smem\nptxas info    : Compile time = 281.475 ms\nptxas info    : Function properties for _ZN59_INTERNAL_c2b05bf1_28_df_210_polynomial_compact_cu_3da02a9a6vibeqc3scf24generated_df_derivatives15axis_polynomialEjjjdddddddPd\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__c2b05bf1_28_df_210_polynomial_compact_cu_3da02a9a12shell_packetILj2ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 154,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3680
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__c2b05bf1_28_df_210_polynomial_compact_cu_3da02a9a12shell_packetILj2ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 154,
+            "stack_bytes": 0,
+            "shared_bytes": 3680,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 27,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 446728,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "210:rys:compact",
+      "artifact_key": "483b63da076a5a6fa2cb541f9f285bd89bb3700abcf7673943b6671e933bf081",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.0136142710689455,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__b9453c2f_21_df_210_rys_compact_cu_8959539112shell_packetILj2ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__b9453c2f_21_df_210_rys_compact_cu_8959539112shell_packetILj2ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 130 registers, used 0 barriers, 48 bytes cumulative stack size, 3680 bytes smem\nptxas info    : Compile time = 188.926 ms\nptxas info    : Function properties for _ZN52_INTERNAL_b9453c2f_21_df_210_rys_compact_cu_895953916vibeqc3scf16generated_df_rys13df_rys3_rootsEdPdj\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__b9453c2f_21_df_210_rys_compact_cu_8959539112shell_packetILj2ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 130,
+          "stack_bytes": 48,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3680
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__b9453c2f_21_df_210_rys_compact_cu_8959539112shell_packetILj2ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 130,
+            "stack_bytes": 48,
+            "shared_bytes": 3680,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 27,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1252,
+      "object_bytes": 356872,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "211:polynomial:compact",
+      "artifact_key": "accbe7d0ae27acf93a3ce5d1ea8ef211ebf17db7f036eab8d7abc7755993fb96",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.8692033749539405,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__59c3b125_28_df_211_polynomial_compact_cu_311eea7712shell_packetILj2ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__59c3b125_28_df_211_polynomial_compact_cu_311eea7712shell_packetILj2ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 154 registers, used 0 barriers, 7904 bytes smem\nptxas info    : Compile time = 359.072 ms\nptxas info    : Function properties for _ZN59_INTERNAL_59c3b125_28_df_211_polynomial_compact_cu_311eea776vibeqc3scf24generated_df_derivatives15axis_polynomialEjjjdddddddPd\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__59c3b125_28_df_211_polynomial_compact_cu_311eea7712shell_packetILj2ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 154,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 7904
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__59c3b125_28_df_211_polynomial_compact_cu_311eea7712shell_packetILj2ELj1ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 154,
+            "stack_bytes": 0,
+            "shared_bytes": 7904,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 12,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 552808,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "211:rys:compact",
+      "artifact_key": "cc83f43719bda3919017ceefd0d494ec55eefa01f12c3b603ad47a24f7250f30",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.0857896679081023,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__172dadbe_21_df_211_rys_compact_cu_fcecf68012shell_packetILj2ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__172dadbe_21_df_211_rys_compact_cu_fcecf68012shell_packetILj2ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 0 barriers, 48 bytes cumulative stack size, 7136 bytes smem\nptxas info    : Compile time = 190.571 ms\nptxas info    : Function properties for _ZN52_INTERNAL_172dadbe_21_df_211_rys_compact_cu_fcecf6806vibeqc3scf16generated_df_rys13df_rys3_rootsEdPdj\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__172dadbe_21_df_211_rys_compact_cu_fcecf68012shell_packetILj2ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 126,
+          "stack_bytes": 48,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 7136
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__172dadbe_21_df_211_rys_compact_cu_fcecf68012shell_packetILj2ELj1ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 126,
+            "stack_bytes": 48,
+            "shared_bytes": 7136,
+            "resident_blocks_per_sm": 4,
+            "active_threads_per_sm": 512,
+            "estimated_occupancy": 0.3333333333333333,
+            "limits": {
+              "threads": 12,
+              "registers": 4,
+              "shared_memory": 14,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.3333333333333333,
+        "maximum_estimated_occupancy": 0.3333333333333333
+      },
+      "source_bytes": 1252,
+      "object_bytes": 358952,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "201:polynomial:compact",
+      "artifact_key": "c666b0a0df90f8a7945c12d50af0300d48da89bec7f207f7197cdf1adfb1b8ba",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.7682862021028996,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__d8e6d402_28_df_201_polynomial_compact_cu_efa9ca7212shell_packetILj2ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__d8e6d402_28_df_201_polynomial_compact_cu_efa9ca7212shell_packetILj2ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 164 registers, used 0 barriers, 3680 bytes smem\nptxas info    : Compile time = 328.165 ms\nptxas info    : Function properties for _ZN59_INTERNAL_d8e6d402_28_df_201_polynomial_compact_cu_efa9ca726vibeqc3scf24generated_df_derivatives15axis_polynomialEjjjdddddddPd\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__d8e6d402_28_df_201_polynomial_compact_cu_efa9ca7212shell_packetILj2ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 164,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3680
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__d8e6d402_28_df_201_polynomial_compact_cu_efa9ca7212shell_packetILj2ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 164,
+            "stack_bytes": 0,
+            "shared_bytes": 3680,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 27,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 524680,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "201:rys:compact",
+      "artifact_key": "66733edffce2020bedd7f0934d0729ac872bbe5f42ac304fae871ac72d8deae3",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.0180984628386796,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__908b66fd_21_df_201_rys_compact_cu_962963d712shell_packetILj2ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__908b66fd_21_df_201_rys_compact_cu_962963d712shell_packetILj2ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 0 barriers, 48 bytes cumulative stack size, 3680 bytes smem\nptxas info    : Compile time = 182.416 ms\nptxas info    : Function properties for _ZN52_INTERNAL_908b66fd_21_df_201_rys_compact_cu_962963d76vibeqc3scf16generated_df_rys13df_rys3_rootsEdPdj\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__908b66fd_21_df_201_rys_compact_cu_962963d712shell_packetILj2ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 126,
+          "stack_bytes": 48,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3680
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__908b66fd_21_df_201_rys_compact_cu_962963d712shell_packetILj2ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 126,
+            "stack_bytes": 48,
+            "shared_bytes": 3680,
+            "resident_blocks_per_sm": 4,
+            "active_threads_per_sm": 512,
+            "estimated_occupancy": 0.3333333333333333,
+            "limits": {
+              "threads": 12,
+              "registers": 4,
+              "shared_memory": 27,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.3333333333333333,
+        "maximum_estimated_occupancy": 0.3333333333333333
+      },
+      "source_bytes": 1252,
+      "object_bytes": 354792,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "102:polynomial:compact",
+      "artifact_key": "649522d5c5346a787f757ebaca8c565ad0b954cae4b55b1d6b7ea1d464a05742",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.9045064409729093,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__9bee5b6c_28_df_102_polynomial_compact_cu_6bb64fb412shell_packetILj1ELj0ELj2ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__9bee5b6c_28_df_102_polynomial_compact_cu_6bb64fb412shell_packetILj1ELj0ELj2ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 184 registers, used 0 barriers, 3968 bytes smem\nptxas info    : Compile time = 388.409 ms\nptxas info    : Function properties for _ZN59_INTERNAL_9bee5b6c_28_df_102_polynomial_compact_cu_6bb64fb46vibeqc3scf24generated_df_derivatives15axis_polynomialEjjjdddddddPd\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__9bee5b6c_28_df_102_polynomial_compact_cu_6bb64fb412shell_packetILj1ELj0ELj2ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 184,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3968
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__9bee5b6c_28_df_102_polynomial_compact_cu_6bb64fb412shell_packetILj1ELj0ELj2ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 184,
+            "stack_bytes": 0,
+            "shared_bytes": 3968,
+            "resident_blocks_per_sm": 2,
+            "active_threads_per_sm": 256,
+            "estimated_occupancy": 0.16666666666666666,
+            "limits": {
+              "threads": 12,
+              "registers": 2,
+              "shared_memory": 25,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.16666666666666666,
+        "maximum_estimated_occupancy": 0.16666666666666666
+      },
+      "source_bytes": 1260,
+      "object_bytes": 625160,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "102:rys:compact",
+      "artifact_key": "aa535467f54bb512d594d4690375439b48e11aa1f0f6c2e987bd82b21438e948",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.008194957859814,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__53c50f6d_21_df_102_rys_compact_cu_cc2988e312shell_packetILj1ELj0ELj2ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__53c50f6d_21_df_102_rys_compact_cu_cc2988e312shell_packetILj1ELj0ELj2ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 130 registers, used 0 barriers, 48 bytes cumulative stack size, 3968 bytes smem\nptxas info    : Compile time = 181.363 ms\nptxas info    : Function properties for _ZN52_INTERNAL_53c50f6d_21_df_102_rys_compact_cu_cc2988e36vibeqc3scf16generated_df_rys13df_rys3_rootsEdPdj\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__53c50f6d_21_df_102_rys_compact_cu_cc2988e312shell_packetILj1ELj0ELj2ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 130,
+          "stack_bytes": 48,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 3968
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__53c50f6d_21_df_102_rys_compact_cu_cc2988e312shell_packetILj1ELj0ELj2ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 130,
+            "stack_bytes": 48,
+            "shared_bytes": 3968,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 25,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1252,
+      "object_bytes": 355784,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "101:polynomial:compact",
+      "artifact_key": "0dab125a831e7bf61c5584f3a0af80c3fed29918db606de13a922bb8b90b6809",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.114681459031999,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__ed0b6251_28_df_101_polynomial_compact_cu_7e750e8312shell_packetILj1ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__ed0b6251_28_df_101_polynomial_compact_cu_7e750e8312shell_packetILj1ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 142 registers, used 0 barriers, 5056 bytes smem\nptxas info    : Compile time = 228.634 ms\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__ed0b6251_28_df_101_polynomial_compact_cu_7e750e8312shell_packetILj1ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 142,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 5056
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__ed0b6251_28_df_101_polynomial_compact_cu_7e750e8312shell_packetILj1ELj0ELj1ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 142,
+            "stack_bytes": 0,
+            "shared_bytes": 5056,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 20,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 386280,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "101:rys:compact",
+      "artifact_key": "509bbd1b78d3d5ceeb31873dfeadf37dbbf6b5baaf35212d90c1716457f53cf5",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 2.958602739032358,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__7a0dbb9f_21_df_101_rys_compact_cu_52f767d012shell_packetILj1ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__7a0dbb9f_21_df_101_rys_compact_cu_52f767d012shell_packetILj1ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 0 barriers, 4480 bytes smem\nptxas info    : Compile time = 168.678 ms\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__7a0dbb9f_21_df_101_rys_compact_cu_52f767d012shell_packetILj1ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 126,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 4480
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__7a0dbb9f_21_df_101_rys_compact_cu_52f767d012shell_packetILj1ELj0ELj1ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 126,
+            "stack_bytes": 0,
+            "shared_bytes": 4480,
+            "resident_blocks_per_sm": 4,
+            "active_threads_per_sm": 512,
+            "estimated_occupancy": 0.3333333333333333,
+            "limits": {
+              "threads": 12,
+              "registers": 4,
+              "shared_memory": 22,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.3333333333333333,
+        "maximum_estimated_occupancy": 0.3333333333333333
+      },
+      "source_bytes": 1252,
+      "object_bytes": 345448,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "110:polynomial:compact",
+      "artifact_key": "f6830ca25f7d98e671eb233c6c1a47de934452c885dae39b74814c0919074459",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 3.140572907170281,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf61_GLOBAL__N__f75deda2_28_df_110_polynomial_compact_cu_ac7cee6b12shell_packetILj1ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf61_GLOBAL__N__f75deda2_28_df_110_polynomial_compact_cu_ac7cee6b12shell_packetILj1ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 142 registers, used 0 barriers, 5056 bytes smem\nptxas info    : Compile time = 231.485 ms\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf61_GLOBAL__N__f75deda2_28_df_110_polynomial_compact_cu_ac7cee6b12shell_packetILj1ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 142,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 5056
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf61_GLOBAL__N__f75deda2_28_df_110_polynomial_compact_cu_ac7cee6b12shell_packetILj1ELj1ELj0ELj2ELb0ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 142,
+            "stack_bytes": 0,
+            "shared_bytes": 5056,
+            "resident_blocks_per_sm": 3,
+            "active_threads_per_sm": 384,
+            "estimated_occupancy": 0.25,
+            "limits": {
+              "threads": 12,
+              "registers": 3,
+              "shared_memory": 20,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.25,
+        "maximum_estimated_occupancy": 0.25
+      },
+      "source_bytes": 1260,
+      "object_bytes": 388968,
+      "rejections": [],
+      "eligible": true
+    },
+    {
+      "key": "110:rys:compact",
+      "artifact_key": "119ee44e5eeb6fed058e59ab913ccd468c85cdef8e50ac794354f7f78b5f9fcf",
+      "compile": {
+        "returncode": 0,
+        "timed_out": false,
+        "duration_seconds": 2.9703476009890437,
+        "stdout": "",
+        "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(123): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"ip\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                   ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(124): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(141): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(142): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(177): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(217): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(313): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(314): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(346): warning #177-D: variable \"pb\" was declared but never referenced\n      const double pa=g.pa[axis],pb=g.pb[axis],dx=g.dx[axis];\n                                 ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(347): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"sy\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(425): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_shell_derivatives.cuh(519): warning #177-D: variable \"iq\" was declared but never referenced\n      const double sx=g.sx,sy=g.sy,ip=g.ip,iq=g.iq;\n                                           ^\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated/generated_df_screening.cuh(7): warning #177-D: variable \"rho\" was declared but never referenced\n    const double p=alpha+beta,q=gamma,rho=p*q/(p+q);\n                                      ^\n\nptxas info    : 59200 bytes gmem\nptxas info    : Compiling entry function '_ZN6vibeqc3scf54_GLOBAL__N__53c3e14d_21_df_110_rys_compact_cu_4d87579612shell_packetILj1ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_' for 'sm_120'\nptxas info    : Function properties for _ZN6vibeqc3scf54_GLOBAL__N__53c3e14d_21_df_110_rys_compact_cu_4d87579612shell_packetILj1ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 128 registers, used 0 barriers, 4480 bytes smem\nptxas info    : Compile time = 172.109 ms\n"
+      },
+      "resources": [
+        {
+          "function": "_ZN6vibeqc3scf54_GLOBAL__N__53c3e14d_21_df_110_rys_compact_cu_4d87579612shell_packetILj1ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+          "registers": 128,
+          "stack_bytes": 0,
+          "spill_store_bytes": 0,
+          "spill_load_bytes": 0,
+          "shared_bytes": 4480
+        }
+      ],
+      "occupancy": {
+        "available": true,
+        "method": "resource_upper_bound",
+        "block_threads": 128,
+        "kernels": [
+          {
+            "function": "_ZN6vibeqc3scf54_GLOBAL__N__53c3e14d_21_df_110_rys_compact_cu_4d87579612shell_packetILj1ELj1ELj0ELj2ELb1ELb0EEEvNS0_16DfShellBasisViewES3_PKdmmS5_PdPyNS0_17DfDerivativePairsENS1_15SignaturePacketES7_",
+            "registers_per_thread": 128,
+            "stack_bytes": 0,
+            "shared_bytes": 4480,
+            "resident_blocks_per_sm": 4,
+            "active_threads_per_sm": 512,
+            "estimated_occupancy": 0.3333333333333333,
+            "limits": {
+              "threads": 12,
+              "registers": 4,
+              "shared_memory": 22,
+              "blocks": 24
+            }
+          }
+        ],
+        "minimum_estimated_occupancy": 0.3333333333333333,
+        "maximum_estimated_occupancy": 0.3333333333333333
+      },
+      "source_bytes": 1252,
+      "object_bytes": 347112,
+      "rejections": [],
+      "eligible": true
+    }
+  ],
+  "root_work": {
+    "111": {
+      "rys_roots": 3,
+      "recurrence_states": 99,
+      "shared_recurrence_states": 99,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 108,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "210": {
+      "rys_roots": 3,
+      "recurrence_states": 63,
+      "shared_recurrence_states": 63,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 72,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "211": {
+      "rys_roots": 3,
+      "recurrence_states": 135,
+      "shared_recurrence_states": 135,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 144,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "201": {
+      "rys_roots": 3,
+      "recurrence_states": 63,
+      "shared_recurrence_states": 63,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 72,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "102": {
+      "rys_roots": 3,
+      "recurrence_states": 72,
+      "shared_recurrence_states": 72,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 81,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "101": {
+      "rys_roots": 2,
+      "recurrence_states": 30,
+      "shared_recurrence_states": 30,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 36,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "110": {
+      "rys_roots": 2,
+      "recurrence_states": 30,
+      "shared_recurrence_states": 30,
+      "component_recurrence_states": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "axis_polynomial_calls": 0,
+      "specialized_prepare_axis_calls": 0,
+      "cache_coefficient_values": 0,
+      "shared_cache_values": 36,
+      "component_convolution_iterations": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "limits": {
+    "registers": 255,
+    "shared_bytes": 49152,
+    "stack_bytes": 128,
+    "spill_bytes": 0,
+    "object_bytes": 2097152
+  },
+  "baselines": {
+    "111": "111:polynomial:compact",
+    "210": "210:polynomial:compact",
+    "211": "211:polynomial:compact",
+    "201": "201:polynomial:compact",
+    "102": "102:polynomial:compact",
+    "101": "101:polynomial:compact",
+    "110": "110:polynomial:compact"
+  },
+  "baseline_reason": "Existing sm_120 promoted water profile selects compact (df_gradient_bridge.cu); all selected classes use polynomial on f5eb8df.",
+  "profile_hashes": {
+    "384": "c30a9aafb4664aaee1301224a3fc026886dfdae098ae62b18d1821285ab8ffde",
+    "768": "8919354e52b0e4a28f2487f5113963d62798eba16e48b2476ae795df096ebff3"
+  },
+  "link": {
+    "command": [
+      "/group/software/cuda-12.9.1/bin/nvcc",
+      "-std=c++20",
+      "-arch=sm_120",
+      "-O3",
+      "-I/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2",
+      "-I/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/generated",
+      "-I/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/include",
+      "-I/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src",
+      "-I/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/tools/vibeqc_validation",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/driver.cu",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_111_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_111_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_210_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_210_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_211_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_211_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_201_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_201_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_102_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_102_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_101_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_101_rys_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_110_polynomial_compact.o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/df_110_rys_compact.o",
+      "-Xlinker=/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-build/libvibeqc.so",
+      "-Xlinker=-rpath=/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-build",
+      "-o",
+      "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/hot-objects-v2/benchmark"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/src/runtime/cuda_gaussian_products.cuh(31): warning #20012-D: __device__ annotation is ignored on a function(\"Factor\") that is explicitly defaulted on its first declaration\n    __attribute__((device)) Factor() = default;\n                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n"
+  },
+  "resumed_link_after_recording_failure": true,
+  "oracle_library": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-build/libvibeqc.so",
+  "oracle_library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+  "executable_sha256": "90a2b7669ea34b9f02f026d9ff02e4bef021e34bbc3fd58cf18ef9734836cc0d",
+  "executable_bytes": 6794688
+}

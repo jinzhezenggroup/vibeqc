@@ -1,0 +1,2 @@
+384 failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 9.592326932761353e-14}
+768 failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 6.750155989720952e-14}

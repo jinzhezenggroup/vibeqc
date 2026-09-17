@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# The first holdout driver omitted this suite's distinct opt-in. Preserve its
+# two skips and run only these previously unexecuted tests with the correct tier.
+set -uo pipefail
+: "${SLURM_JOB_ID:?Run inside a finite Slurm allocation}"
+output="$PWD/.artifacts/issue418/auxiliary-holdouts-v2"
+mkdir "$output" || exit 2
+printf '%s\n' "$SLURM_JOB_ID" > "$output/slurm-job.txt"
+export PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export LD_LIBRARY_PATH=/group/software/cuda-12.9.1/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VIBEQC_LIBRARY="$PWD/.artifacts/issue418/campaign/libvibeqc.so"
+export VIBEQC_DF_DERIVATIVE_CUDA_TEST=1 VIBEQC_DF_SHELL_POLICY=candidate
+export VIBEQC_DF_WEIGHTED_EXECUTION=shell VIBEQC_DF_FORCE_SCREEN_ABS=off
+/tmp/vibeqc-pr-review-env/bin/python -m pytest -q tests/python/test_df_derivatives_cuda.py \
+  -k auxiliary_only_atom_hf_energy_derivative --basetemp "$output/tmp" \
+  --junitxml "$output/auxiliary.xml" > "$output/auxiliary.txt" 2>&1
+status=$?
+printf '%s\n' "$status" > "$output/auxiliary.exit"
+exit "$status"

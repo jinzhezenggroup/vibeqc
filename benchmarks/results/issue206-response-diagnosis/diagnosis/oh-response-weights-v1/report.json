@@ -1,0 +1,183 @@
+{
+  "scope": "Probe unchanged CUDA response arithmetic using independent OH A/M inputs.\n\nThe bridge runs the published production function with its actual CUDA metric\nfactorization, holding the retained native density fixed. CPU reorganizations\nare diagnostics only: every metric direction is retained, and long-double\narithmetic separates raw-Gram rounding from the spectral reverse map.\n",
+  "slurm_job_id": "9908",
+  "cuda_visible_devices": "0",
+  "inputs": {
+    ".artifacts/issue206-auxiliary/oh-force-components-v1/fixed-weights-and-reference.npz": "e0b973d7ea7f860741bd52e187ca44685a136ce60787aa7c0a8a0848216403cf",
+    "/home/jzzeng/codes/vibeqc-issue206-auxiliary/.artifacts/issue206-auxiliary/diagnose-response-weights.py": "273c5a276c42abc5636383aa4c6750502263b9dd8cd2aaf1ab3b73441fee987a",
+    ".artifacts/issue206-auxiliary/response-diagnostic-bridge.cpp": "d513bada7bf1bac87e11f29fd956e6eaff331da612b635a60241bd2ee09825f7",
+    ".artifacts/issue206-auxiliary/response-diagnostic-bridge.so": "f7c5d24173b709fc6fa9d18e60b14c5cbdf1dc9219b1f7332d57d0e10742fdfa",
+    "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/final-production/libvibeqc.so": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be"
+  },
+  "status": "completed response-only diagnostic; original gates unchanged",
+  "rows": [
+    {
+      "label": "unchanged_cuda_response",
+      "a_weight_error": 2.6111779405368907e-10,
+      "m_weight_error": 4.673626836926292e-08,
+      "three_center_force_error": 3.9249097102375436e-11,
+      "metric_force_error": 2.4579170642007543e-10,
+      "combined_force_error": 2.8504080352245085e-10,
+      "three_center_delta": [
+        [
+          6.465879566182806e-13,
+          -3.9715991711048865e-13,
+          -3.9249097102375436e-11
+        ],
+        [
+          -6.4658795661828e-13,
+          3.9715991711048885e-13,
+          3.924909710237543e-11
+        ]
+      ],
+      "metric_delta": [
+        [
+          -6.479204673775431e-13,
+          3.961326091962715e-13,
+          -2.4579170642007543e-10
+        ],
+        [
+          6.479204673775381e-13,
+          -3.961326091962689e-13,
+          2.4579170641986367e-10
+        ]
+      ]
+    },
+    {
+      "label": "cpu_factor_first_same_cuda_eigensystem",
+      "a_weight_error": 2.314801683667156e-10,
+      "m_weight_error": 3.139741799884632e-10,
+      "three_center_force_error": 3.410440663943323e-11,
+      "metric_force_error": 3.410506111077467e-11,
+      "combined_force_error": 6.544713414485714e-16,
+      "three_center_delta": [
+        [
+          6.483598632846926e-13,
+          -3.9604597561705994e-13,
+          -3.410440663943323e-11
+        ],
+        [
+          -6.483598632846918e-13,
+          3.9604597561706014e-13,
+          3.410440663943322e-11
+        ]
+      ],
+      "metric_delta": [
+        [
+          -6.47920466983671e-13,
+          3.9613260895150215e-13,
+          3.410506111077467e-11
+        ],
+        [
+          6.479204669836663e-13,
+          -3.961326089514994e-13,
+          -3.410506111077467e-11
+        ]
+      ]
+    },
+    {
+      "label": "cpu_raw_gram_fp64",
+      "a_weight_error": 2.314801683667156e-10,
+      "m_weight_error": 5.0048981403705284e-08,
+      "three_center_force_error": 3.410440663943323e-11,
+      "metric_force_error": 9.444015901753383e-11,
+      "combined_force_error": 6.03357523781006e-11,
+      "three_center_delta": [
+        [
+          6.483598632846926e-13,
+          -3.9604597561705994e-13,
+          -3.410440663943323e-11
+        ],
+        [
+          -6.483598632846918e-13,
+          3.9604597561706014e-13,
+          3.410440663943322e-11
+        ]
+      ],
+      "metric_delta": [
+        [
+          -6.479204672962836e-13,
+          3.9613260911740124e-13,
+          9.444015901753383e-11
+        ],
+        [
+          6.479204672962788e-13,
+          -3.9613260911739866e-13,
+          -9.444015901742299e-11
+        ]
+      ]
+    },
+    {
+      "label": "cpu_rounded_gram_extended_map",
+      "a_weight_error": 2.314801683667156e-10,
+      "m_weight_error": 2.0365389289235883e-08,
+      "three_center_force_error": 3.410440663943323e-11,
+      "metric_force_error": 2.9658320033890524e-11,
+      "combined_force_error": 6.376272667332376e-11,
+      "three_center_delta": [
+        [
+          6.483598632846926e-13,
+          -3.9604597561705994e-13,
+          -3.410440663943323e-11
+        ],
+        [
+          -6.483598632846918e-13,
+          3.9604597561706014e-13,
+          3.410440663943322e-11
+        ]
+      ],
+      "metric_delta": [
+        [
+          -6.479204669740405e-13,
+          3.961326089513807e-13,
+          -2.9658320033890524e-11
+        ],
+        [
+          6.479204669740355e-13,
+          -3.9613260895137805e-13,
+          2.965832003383923e-11
+        ]
+      ]
+    },
+    {
+      "label": "cpu_raw_gram_and_map_extended",
+      "a_weight_error": 2.314801683667156e-10,
+      "m_weight_error": 3.0284734030446014e-10,
+      "three_center_force_error": 3.410440663943323e-11,
+      "metric_force_error": 3.328809313263422e-11,
+      "combined_force_error": 8.163135067991573e-13,
+      "three_center_delta": [
+        [
+          6.483598632846926e-13,
+          -3.9604597561705994e-13,
+          -3.410440663943323e-11
+        ],
+        [
+          -6.483598632846918e-13,
+          3.9604597561706014e-13,
+          3.410440663943322e-11
+        ]
+      ],
+      "metric_delta": [
+        [
+          -6.479204669823124e-13,
+          3.9613260895083365e-13,
+          3.328809313263422e-11
+        ],
+        [
+          6.479204669823075e-13,
+          -3.96132608950831e-13,
+          -3.328809313263406e-11
+        ]
+      ]
+    }
+  ],
+  "metric": {
+    "rank": 93,
+    "condition": 1696091.2373559307,
+    "eigen_residual": 9.734201477736072e-14,
+    "orthogonality_max": 2.3314683517128287e-15,
+    "inverse_root_residual": 2.8350655156827997e-11,
+    "longdouble_mantissa": 63
+  }
+}
