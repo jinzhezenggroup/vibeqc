@@ -1,17 +1,21 @@
 #include <stdexcept>
 
+#include "runtime/provider_registry.hpp"
 #include "scf/cuda_direct_jk.hpp"
 
 namespace vibeqc::scf {
 namespace {
 vibeqc_status unavailable(std::string& detail) {
-  detail = "CUDA direct J/K support is unavailable in this build";
-  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  return runtime::provider_not_implemented(
+      fock_provider_registration(FockApproximation::Exact, FockBackend::Cuda), detail,
+      "CUDA direct J/K");
 }
 }  // namespace
 std::size_t cuda_direct_jk_device_bytes(std::size_t, std::size_t, std::size_t, std::size_t,
                                         std::size_t, unsigned) {
-  throw std::runtime_error("CUDA direct J/K allocation inventory requires a CUDA build");
+  throw std::runtime_error(runtime::provider_diagnostic(
+      fock_provider_registration(FockApproximation::Exact, FockBackend::Cuda),
+      "CUDA direct J/K allocation inventory"));
 }
 vibeqc_status create_cuda_direct_jk_plan(int, const std::vector<core::System>&, unsigned, double,
                                          std::size_t, CudaDirectJkPlan** output,
