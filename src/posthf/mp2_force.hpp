@@ -36,4 +36,10 @@ ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& ref
                                                double same_space_threshold,
                                                const response::GmresOptions& response_options);
 
+/** Complete conventional canonical RHF-MP2 analytic force on CUDA. */
+ConventionalForceResult conventional_force_cuda(
+    const scf::PhysicalReference& reference, const posthf::RawSource& source,
+    std::size_t budget_bytes, double denominator_threshold, double same_space_threshold,
+    const response::GmresOptions& response_options, int device_id);
+
 }  // namespace vibeqc::mp2

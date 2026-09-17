@@ -48,6 +48,7 @@ struct GradientResourcePlan {
   std::size_t relaxed_weight_bytes{};
   std::size_t shell_cotangent_bytes{};
   std::size_t derivative_staging_bytes{};
+  std::size_t derivative_backend_staging_bytes{};
   std::size_t candidate_output_bytes{};
   std::size_t peak_bytes{};
 };
@@ -60,8 +61,8 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<con
 OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
                                           std::span<const double> hcore_mo,
                                           const posthf::NativeBlockProvider& provider,
-                                          const EnergyAdjoint& adjoint,
-                                          double same_space_threshold);
+                                          const EnergyAdjoint& adjoint, double same_space_threshold,
+                                          bool cuda = false, int device_id = 0);
 LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
                                                std::span<const double> eri_mo,
                                                const EnergyAdjoint& adjoint,
@@ -72,10 +73,12 @@ LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalRefer
                                                         const posthf::NativeBlockProvider& provider,
                                                         const EnergyAdjoint& adjoint,
                                                         std::span<const double> response,
-                                                        double same_space_threshold);
+                                                        double same_space_threshold,
+                                                        bool cuda = false, int device_id = 0);
 GradientResourcePlan conventional_gradient_plan(
     std::size_t orbitals, std::size_t occupied, std::size_t provider_bytes,
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes);
+    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes,
+    std::size_t derivative_backend_staging_bytes = 0);
 
 }  // namespace vibeqc::mp2

@@ -171,7 +171,10 @@ add_library(vibeqc SHARED
   src/methods/registry.cpp
   src/molecule/basis.cpp
   src/posthf/bridge.cpp
+  src/posthf/cuda_derivative.cpp
+  src/posthf/mp2_derivative_common.cpp
   src/posthf/mp2_derivative_cpu.cpp
+  src/posthf/mp2_derivative_cuda.cpp
   src/posthf/mp2_energy.cpp
   src/posthf/mp2_force.cpp
   src/posthf/mp2_gradient.cpp

@@ -321,6 +321,27 @@ def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
         )
 
 
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA device and native library",
+)
+def test_public_conventional_mp2_force_cuda_matches_cpu():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    cpu = Calculator(method="mp2", device="cpu").singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    cuda = Calculator(method="mp2", device="cuda").singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    assert cuda.executed_backend == "cuda"
+    np.testing.assert_allclose(cuda.forces, cpu.forces, atol=2e-9, rtol=1e-9)
+    assert cuda.correlation.derivative_workspace_bytes > 0
+    assert (
+        cuda.correlation.planned_endpoint_peak_bytes
+        <= cuda.correlation.numeric_capacity_bytes
+    )
+
+
 def test_c_api_conventional_force_is_transactional_across_repeated_execution():
     calc = Calculator(method="mp2", device="cpu")
     lib = calc._library

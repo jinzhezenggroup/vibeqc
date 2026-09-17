@@ -24,4 +24,9 @@ std::vector<double> conventional_derivative_cpu(const core::System& system,
                                                 const scf::PhysicalReference& reference,
                                                 const LagrangianWeights& weights);
 
+std::vector<double> conventional_derivative_cuda(const core::System& system,
+                                                 const scf::PhysicalReference& reference,
+                                                 const LagrangianWeights& weights, int device_id,
+                                                 std::size_t stage_budget);
+
 }  // namespace vibeqc::mp2

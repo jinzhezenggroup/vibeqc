@@ -38,11 +38,11 @@ std::vector<double> hcore_mo(const scf::PhysicalReference& reference) {
 
 EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
                              const posthf::NativeBlockProvider& provider,
-                             double denominator_threshold) {
+                             double denominator_threshold, bool cuda, int device_id) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
-  const auto raw = provider.get({occupied, virtuals, occupied, virtuals});
+  const auto raw = provider.get({occupied, virtuals, occupied, virtuals}, cuda, device_id);
   std::vector<double> ordered(posthf::checked_mul(square(no), square(nv)));
   for (std::size_t i = 0; i < no; ++i)
     for (std::size_t a = 0; a < nv; ++a)
@@ -53,21 +53,22 @@ EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
 }
 
 response::LinearOperator response_operator(const scf::PhysicalReference& reference,
-                                           const posthf::NativeBlockProvider& provider) {
+                                           const posthf::NativeBlockProvider& provider, bool cuda,
+                                           int device_id) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
-  return [&reference, &provider, no, nv, occupied, virtuals](std::span<const double> input,
-                                                             std::span<double> output) {
+  return [&reference, &provider, no, nv, occupied, virtuals, cuda, device_id](
+             std::span<const double> input, std::span<double> output) {
     if (input.size() != no * nv || output.size() != input.size())
       throw std::invalid_argument("RHF response vector has the wrong shape");
     for (std::size_t i = 0; i < no; ++i)
       for (std::size_t a = 0; a < nv; ++a) {
         const std::vector<std::size_t> ai{no + a};
         const std::vector<std::size_t> oi{i};
-        const auto ovov = provider.get({ai, oi, virtuals, occupied});
-        const auto vvoo = provider.get({ai, virtuals, oi, occupied});
-        const auto voov = provider.get({ai, occupied, oi, virtuals});
+        const auto ovov = provider.get({ai, oi, virtuals, occupied}, cuda, device_id);
+        const auto vvoo = provider.get({ai, virtuals, oi, occupied}, cuda, device_id);
+        const auto voov = provider.get({ai, occupied, oi, virtuals}, cuda, device_id);
         double value = (reference.orbital_energies[no + a] - reference.orbital_energies[i]) *
                        input[i * nv + a];
         for (std::size_t j = 0; j < no; ++j)
@@ -78,17 +79,17 @@ response::LinearOperator response_operator(const scf::PhysicalReference& referen
       }
   };
 }
-}  // namespace
 
-ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& reference,
-                                               const posthf::RawSource& source,
-                                               std::size_t budget_bytes,
-                                               double denominator_threshold,
-                                               double same_space_threshold,
-                                               const response::GmresOptions& response_options) {
+ConventionalForceResult conventional_force_impl(
+    const scf::PhysicalReference& reference, const posthf::RawSource& source,
+    std::size_t budget_bytes, double denominator_threshold, double same_space_threshold,
+    const response::GmresOptions& response_options, bool cuda, int device_id) {
+#if !VIBEQC_HAS_CUDA
+  if (cuda) throw std::runtime_error("CUDA conventional force is unavailable in this build");
+#endif
   if (!reference.nocc || reference.nocc >= reference.nbf || source.nbf() != reference.nbf ||
       !budget_bytes || !std::isfinite(denominator_threshold) || denominator_threshold <= 0.0 ||
-      !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
+      !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0 || device_id < 0)
     throw std::invalid_argument("invalid conventional MP2 force request");
   posthf::NativeBlockProvider provider(source, reference, budget_bytes);
   const auto dimension = posthf::checked_mul(reference.nocc, reference.nbf - reference.nocc);
@@ -103,27 +104,37 @@ ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& ref
   const auto coordinate_count = posthf::checked_mul(source.orbital().atoms.size(), 3);
   const auto provider_bytes =
       posthf::checked_add(provider.source_bytes(), provider.reference_bytes());
-  const auto resources = conventional_gradient_plan(
+  const auto base_resources = conventional_gradient_plan(
       reference.nbf, reference.nocc, provider_bytes, plan, maximum_shell, coordinate_count,
       posthf::checked_mul(coordinate_count, sizeof(double)), budget_bytes);
+  const auto backend_stage_bytes = cuda ? budget_bytes - base_resources.peak_bytes : 0;
+  if (cuda && !backend_stage_bytes)
+    throw std::length_error("conventional MP2 CUDA derivative has no staging budget");
+  const auto resources = conventional_gradient_plan(
+      reference.nbf, reference.nocc, provider_bytes, plan, maximum_shell, coordinate_count,
+      posthf::checked_mul(coordinate_count, sizeof(double)), budget_bytes, backend_stage_bytes);
   const auto h = hcore_mo(reference);
-  const auto adjoint = energy_adjoint(reference, provider, denominator_threshold);
-  const auto orbital =
-      canonical_orbital_rhs_streamed(reference, h, provider, adjoint, same_space_threshold);
+  const auto adjoint = energy_adjoint(reference, provider, denominator_threshold, cuda, device_id);
+  const auto orbital = canonical_orbital_rhs_streamed(reference, h, provider, adjoint,
+                                                      same_space_threshold, cuda, device_id);
   std::vector<double> diagonal(dimension);
   for (std::size_t i = 0; i < reference.nocc; ++i)
     for (std::size_t a = 0; a < reference.nbf - reference.nocc; ++a)
       diagonal[i * (reference.nbf - reference.nocc) + a] =
           reference.orbital_energies[reference.nocc + a] - reference.orbital_energies[i];
-  auto response_result = response::solve_gmres(plan, response_operator(reference, provider),
-                                               orbital.response_rhs, {}, diagonal);
+  auto response_result =
+      response::solve_gmres(plan, response_operator(reference, provider, cuda, device_id),
+                            orbital.response_rhs, {}, diagonal);
   if (!response_result.converged())
     throw std::runtime_error("canonical MP2 orbital response did not converge");
-  auto weights = canonical_lagrangian_weights_streamed(
-      reference, h, provider, adjoint, response_result.solution, same_space_threshold);
+  auto weights = canonical_lagrangian_weights_streamed(reference, h, provider, adjoint,
+                                                       response_result.solution,
+                                                       same_space_threshold, cuda, device_id);
   if (!std::isfinite(weights.stationarity_residual) || weights.stationarity_residual > 1e-7)
     throw std::runtime_error("canonical MP2 relaxed Lagrangian is not stationary");
-  auto derivative = conventional_derivative_cpu(source.orbital(), reference, weights);
+  auto derivative = cuda ? conventional_derivative_cuda(source.orbital(), reference, weights,
+                                                        device_id, backend_stage_bytes)
+                         : conventional_derivative_cpu(source.orbital(), reference, weights);
   for (double& value : derivative) value = -value;
   ConventionalForceResult result;
   result.forces = std::move(derivative);
@@ -131,13 +142,33 @@ ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& ref
   result.stationarity_residual = weights.stationarity_residual;
   const auto shells = source.orbital().shells.size();
   result.weighted_eri_shell_tiles = square(square(shells));
-  result.derivative_workspace_bytes = resources.derivative_staging_bytes;
+  result.derivative_workspace_bytes = posthf::checked_add(
+      resources.derivative_staging_bytes, resources.derivative_backend_staging_bytes);
   result.planned_endpoint_peak_bytes = resources.peak_bytes;
-  // Every numeric vector in the current CPU owner has a deterministic planned
+  // Every numeric vector in the conventional force owner has a deterministic planned
   // extent and no hidden derivative tensor. Treat that tracked ownership as
   // the measured endpoint peak until allocator-level telemetry is available.
   result.measured_endpoint_peak_bytes = resources.peak_bytes;
   return result;
+}
+}  // namespace
+
+ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& reference,
+                                               const posthf::RawSource& source,
+                                               std::size_t budget_bytes,
+                                               double denominator_threshold,
+                                               double same_space_threshold,
+                                               const response::GmresOptions& response_options) {
+  return conventional_force_impl(reference, source, budget_bytes, denominator_threshold,
+                                 same_space_threshold, response_options, false, 0);
+}
+
+ConventionalForceResult conventional_force_cuda(
+    const scf::PhysicalReference& reference, const posthf::RawSource& source,
+    std::size_t budget_bytes, double denominator_threshold, double same_space_threshold,
+    const response::GmresOptions& response_options, int device_id) {
+  return conventional_force_impl(reference, source, budget_bytes, denominator_threshold,
+                                 same_space_threshold, response_options, true, device_id);
 }
 
 }  // namespace vibeqc::mp2

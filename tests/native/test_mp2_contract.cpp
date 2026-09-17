@@ -9,6 +9,7 @@
 
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "posthf/cuda_derivative.hpp"
 #include "posthf/mp2_cpu_generated.hpp"
 #include "posthf/mp2_derivative.hpp"
 #include "posthf/mp2_energy.hpp"
@@ -167,6 +168,25 @@ void shell_local_weighted_eri_derivative() {
   }
 }
 
+void cuda_shell_derivative_stub_is_transactional() {
+  const auto system = h2();
+  const std::array<std::size_t, 4> shells{0, 1, 0, 1};
+  const std::array<double, 1> weights{0.37};
+  std::array<double, 12> center{};
+  center.fill(123.0);
+  std::string detail;
+  const auto status = vibeqc::posthf::contract_weighted_eri_shell_derivative_cuda(
+      0, system, shells, weights, 1ULL << 20, center, detail);
+#if VIBEQC_HAS_CUDA
+  require(status != VIBEQC_STATUS_SUCCESS,
+          "CUDA derivative test must not run without the explicit GPU gate");
+#else
+  require(status == VIBEQC_STATUS_NOT_IMPLEMENTED, "CPU build lost CUDA stub status");
+#endif
+  require(std::all_of(center.begin(), center.end(), [](double value) { return value == 123.0; }),
+          "failed CUDA shell derivative modified caller output");
+}
+
 void streamed_one_electron_derivative() {
   const auto system = h2();
   const auto oracle = vibeqc::integrals::build_integrals(system, true, false);
@@ -243,6 +263,15 @@ void conventional_derivative_from_mo_weights() {
     require(std::abs(derivative[coordinate] - expected) < 1e-10,
             "conventional MO-weight derivative differs from dense oracle");
   }
+#if !VIBEQC_HAS_CUDA
+  bool cuda_rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_derivative_cuda(system, ref, weights, 0, 1ULL << 20);
+  } catch (const std::runtime_error&) {
+    cuda_rejected = true;
+  }
+  require(cuda_rejected, "CPU build accepted a CUDA conventional derivative");
+#endif
 }
 
 double conventional_total_energy(vibeqc::core::System system) {
@@ -291,6 +320,16 @@ void complete_conventional_force_matches_resolved_energy() {
       (2.0 * step);
   require(std::abs(analytic.forces[2] + finite) < 2e-6,
           "complete conventional MP2 force differs from resolved finite difference");
+#if !VIBEQC_HAS_CUDA
+  bool cuda_rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_force_cuda(*hf.reference, source, 256ULL << 20, 1e-10, 1e-10,
+                                               response, 0);
+  } catch (const std::runtime_error&) {
+    cuda_rejected = true;
+  }
+  require(cuda_rejected, "CPU build accepted a CUDA conventional force owner");
+#endif
 }
 }  // namespace
 int main() {
@@ -298,6 +337,7 @@ int main() {
     generated_equations();
     provider_and_reference();
     shell_local_weighted_eri_derivative();
+    cuda_shell_derivative_stub_is_transactional();
     streamed_one_electron_derivative();
     conventional_derivative_from_mo_weights();
     complete_conventional_force_matches_resolved_energy();

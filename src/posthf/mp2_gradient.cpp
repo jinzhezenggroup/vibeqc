@@ -93,13 +93,13 @@ std::vector<std::size_t> all_orbitals(std::size_t n) {
 
 std::vector<double> streamed_fock(std::span<const double> h,
                                   const posthf::NativeBlockProvider& provider, std::size_t n,
-                                  std::size_t occupied) {
+                                  std::size_t occupied, bool cuda, int device_id) {
   auto fock = std::vector<double>(h.begin(), h.end());
   const auto all = all_orbitals(n);
   for (std::size_t i = 0; i < occupied; ++i) {
     const std::vector<std::size_t> orbital{i};
-    const auto coulomb = provider.get({all, all, orbital, orbital});
-    const auto exchange = provider.get({all, orbital, orbital, all});
+    const auto coulomb = provider.get({all, all, orbital, orbital}, cuda, device_id);
+    const auto exchange = provider.get({all, orbital, orbital, all}, cuda, device_id);
     for (std::size_t p = 0; p < n; ++p)
       for (std::size_t q = 0; q < n; ++q)
         fock[p * n + q] += 2.0 * coulomb[p * n + q] - exchange[p * n + q];
@@ -117,7 +117,7 @@ std::vector<double> rotation_gradient_streamed(std::span<const double> one,
                                                std::span<const double> two,
                                                std::span<const double> h,
                                                const posthf::NativeBlockProvider& provider,
-                                               std::size_t n) {
+                                               std::size_t n, bool cuda, int device_id) {
   std::vector<double> result(square(n), 0.0);
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q)
@@ -128,10 +128,10 @@ std::vector<double> rotation_gradient_streamed(std::span<const double> one,
   const auto all = all_orbitals(n);
   for (std::size_t t = 0; t < n; ++t) {
     const std::vector<std::size_t> orbital{t};
-    const auto first = provider.get({orbital, all, all, all});
-    const auto second = provider.get({all, orbital, all, all});
-    const auto third = provider.get({all, all, orbital, all});
-    const auto fourth = provider.get({all, all, all, orbital});
+    const auto first = provider.get({orbital, all, all, all}, cuda, device_id);
+    const auto second = provider.get({all, orbital, all, all}, cuda, device_id);
+    const auto third = provider.get({all, all, orbital, all}, cuda, device_id);
+    const auto fourth = provider.get({all, all, all, orbital}, cuda, device_id);
     for (std::size_t p = 0; p < n; ++p)
       for (std::size_t q = 0; q < n; ++q)
         for (std::size_t r = 0; r < n; ++r)
@@ -270,22 +270,22 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<con
 OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
                                           std::span<const double> hcore_mo,
                                           const posthf::NativeBlockProvider& provider,
-                                          const EnergyAdjoint& adjoint,
-                                          double same_space_threshold) {
+                                          const EnergyAdjoint& adjoint, double same_space_threshold,
+                                          bool cuda, int device_id) {
   validate_adjoint(adjoint);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
   if (&provider.reference() != &reference || reference.nbf != n || reference.nocc != occupied ||
       reference.orbital_energies.size() != n || hcore_mo.size() != square(n) || !finite(hcore_mo) ||
       !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
     throw std::invalid_argument("streamed MP2 orbital RHS reference/provider mismatch");
-  auto fock = streamed_fock(hcore_mo, provider, n, occupied);
+  auto fock = streamed_fock(hcore_mo, provider, n, occupied, cuda, device_id);
   for (std::size_t p = 0; p < n; ++p)
     if (std::abs(fock[p * n + p] - reference.orbital_energies[p]) > 1e-8)
       throw std::invalid_argument("streamed MP2 Fock spectrum differs from the reference");
   auto result = initial_orbital_weights(adjoint);
   const auto virtuals = n - occupied;
-  auto gradient =
-      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
+  auto gradient = rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo,
+                                             provider, n, cuda, device_id);
   result.energy_gradient.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -304,8 +304,8 @@ OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& referenc
   };
   correct_block(0, occupied);
   correct_block(occupied, n);
-  gradient =
-      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
+  gradient = rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo,
+                                        provider, n, cuda, device_id);
   result.response_rhs.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -354,14 +354,12 @@ LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
   return result;
 }
 
-LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalReference& reference,
-                                                        std::span<const double> hcore_mo,
-                                                        const posthf::NativeBlockProvider& provider,
-                                                        const EnergyAdjoint& adjoint,
-                                                        std::span<const double> response,
-                                                        double same_space_threshold) {
-  auto orbital =
-      canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, same_space_threshold);
+LagrangianWeights canonical_lagrangian_weights_streamed(
+    const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
+    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
+    std::span<const double> response, double same_space_threshold, bool cuda, int device_id) {
+  auto orbital = canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint,
+                                                same_space_threshold, cuda, device_id);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
   const auto virtuals = n - occupied;
   if (response.size() != posthf::checked_mul(occupied, virtuals) || !finite(response))
@@ -381,8 +379,8 @@ LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalRefer
       add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied,
                                    occupied + a, i, response[i * virtuals + a]);
   }
-  const auto gradient =
-      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
+  const auto gradient = rotation_gradient_streamed(result.one_electron, result.two_electron,
+                                                   hcore_mo, provider, n, cuda, device_id);
   result.overlap.resize(square(n));
   std::vector<double> stationarity(square(n));
   for (std::size_t p = 0; p < n; ++p)
@@ -397,7 +395,8 @@ LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalRefer
 GradientResourcePlan conventional_gradient_plan(
     std::size_t orbitals, std::size_t occupied, std::size_t provider_bytes,
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes) {
+    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes,
+    std::size_t derivative_backend_staging_bytes) {
   if (!orbitals || !occupied || occupied >= orbitals || !maximum_shell_ao_count ||
       !coordinate_count ||
       response_plan.dimension != posthf::checked_mul(occupied, orbitals - occupied))
@@ -431,11 +430,12 @@ GradientResourcePlan conventional_gradient_plan(
       posthf::checked_add(derivative_elements, posthf::checked_mul(shell3, orbitals));
   derivative_elements = posthf::checked_add(derivative_elements, coordinate_count);
   plan.derivative_staging_bytes = posthf::checked_mul(sizeof(double), derivative_elements);
+  plan.derivative_backend_staging_bytes = derivative_backend_staging_bytes;
   plan.candidate_output_bytes = candidate_output_bytes;
   plan.peak_bytes = provider_bytes;
-  for (auto bytes :
-       {plan.adjoint_bytes, plan.response_bytes, plan.relaxed_weight_bytes,
-        plan.shell_cotangent_bytes, plan.derivative_staging_bytes, plan.candidate_output_bytes})
+  for (auto bytes : {plan.adjoint_bytes, plan.response_bytes, plan.relaxed_weight_bytes,
+                     plan.shell_cotangent_bytes, plan.derivative_staging_bytes,
+                     plan.derivative_backend_staging_bytes, plan.candidate_output_bytes})
     plan.peak_bytes = posthf::checked_add(plan.peak_bytes, bytes);
   if (plan.peak_bytes > budget_bytes)
     throw std::length_error("conventional MP2 gradient exceeds numeric memory budget");

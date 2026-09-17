@@ -269,6 +269,16 @@ void streamed_provider_matches_dense_oracle() {
     rejected = true;
   }
   require(rejected, "streamed provider accepted a copied/stale reference owner");
+#if !VIBEQC_HAS_CUDA
+  rejected = false;
+  try {
+    (void)vibeqc::mp2::canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, 1e-10,
+                                                      true, 7);
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  require(rejected, "streamed orbital response ignored the requested CUDA backend");
+#endif
 }
 
 double rotated_mp2_energy(const Fixture& fixture, std::span<const double> direction, double step) {
@@ -374,6 +384,13 @@ void invalid_inputs_and_resource_boundaries() {
           "shell-quartet cotangent ownership is not isolated");
   require(probe.derivative_staging_bytes == 485 * sizeof(double),
           "derivative staging double-counts the shell-quartet cotangent");
+  const auto cuda_probe = vibeqc::mp2::conventional_gradient_plan(
+      4, 2, 4096, response, 3, 9, 9 * sizeof(double),
+      static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()), 12345);
+  require(cuda_probe.derivative_backend_staging_bytes == 12345,
+          "gradient resource plan omitted CUDA consumer staging");
+  require(cuda_probe.peak_bytes == probe.peak_bytes + 12345,
+          "CUDA consumer staging was not charged exactly once");
   const auto exact = vibeqc::mp2::conventional_gradient_plan(4, 2, 4096, response, 3, 9,
                                                              9 * sizeof(double), probe.peak_bytes);
   require(exact.peak_bytes == probe.peak_bytes, "exact resource budget changed the plan");

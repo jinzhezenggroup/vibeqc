@@ -65,9 +65,6 @@ class Mp2Prepared final : public PreparedCalculation {
       if (compute_forces && density_fitted_)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                           "RI-MP2 analytic force is C2 work and is not implemented");
-      if (compute_forces && cuda)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                          "CUDA conventional MP2 analytic force is not yet qualified");
 #if VIBEQC_HAS_CUDA
       std::unique_ptr<DeviceScope> device_scope;
       if (execution_cuda) device_scope = std::make_unique<DeviceScope>(context_.device_id);
@@ -108,7 +105,10 @@ class Mp2Prepared final : public PreparedCalculation {
         response_options.max_iterations = 200;
         response_options.max_workspace_bytes = budget_;
         force_diagnostic =
-            mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10, response_options);
+            cuda ? mp2::conventional_force_cuda(ref, source, budget_, threshold_, 1e-10,
+                                                response_options, context_.device_id)
+                 : mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10,
+                                               response_options);
         result.forces = force_diagnostic->forces;
       }
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
