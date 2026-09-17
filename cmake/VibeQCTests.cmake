@@ -53,6 +53,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_eigen_frame_tests tests/native/test_eigen_frame.cpp)
     vibeqc_native_test(vibeqc_initial_density_tests tests/native/test_initial_density.cpp)
     vibeqc_native_test(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+    vibeqc_native_test(vibeqc_native_gmres_tests tests/native/test_native_gmres.cpp)
+    vibeqc_native_test(vibeqc_mp2_gradient_tests tests/native/test_mp2_gradient.cpp)
   endif()
 
   if(VIBEQC_ENABLE_CUDA AND NOT WIN32)

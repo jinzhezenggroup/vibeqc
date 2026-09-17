@@ -172,7 +172,9 @@ add_library(vibeqc SHARED
   src/molecule/basis.cpp
   src/posthf/bridge.cpp
   src/posthf/mp2_energy.cpp
+  src/posthf/mp2_gradient.cpp
   src/posthf/native_provider.cpp
+  src/response/native_gmres.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
   src/scf/density_factor.cpp
