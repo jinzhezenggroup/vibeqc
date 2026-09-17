@@ -40,6 +40,21 @@ def test_dependency_directions():
     assert audit_structure()["errors"] == []
 
 
+def test_method_composition_is_above_xc_and_dft(tmp_path):
+    method = tmp_path / "method"
+    method.mkdir()
+    (method / "ok.py").write_text(
+        "from vibeqc_compiler.xc.spec import FunctionalSpec\n"
+    )
+    assert audit_structure(tmp_path)["errors"] == []
+
+    dft = tmp_path / "dft"
+    dft.mkdir()
+    (dft / "bad.py").write_text("import vibeqc_compiler.method\n")
+    errors = audit_structure(tmp_path)["errors"]
+    assert any("forbidden dft -> method import" in error for error in errors)
+
+
 @pytest.mark.parametrize(
     "module,target,allowed",
     [

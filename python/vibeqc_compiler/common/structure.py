@@ -8,12 +8,14 @@ from .paths import PACKAGE
 
 # Generic backend services never reach into a scientific subsystem. TensorIR
 # and IntegralIR stay independent; XC reuses scalar algebra and DFT ingredients.
+# Method composition sits above XC and records scientific composition only.
 ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
     "tensor": {"tensor", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
+    "method": {"method", "xc", "common"},
 }
 
 # These existing adapters consume the public molecular/native ABI only when

@@ -17,8 +17,8 @@ without weakening those existing capability boundaries.
 
 ## Decision
 
-Add a representation-only `MethodSpec -> MethodIR` layer under
-`vibeqc_compiler.dft`.
+Add a representation-only `MethodSpec -> MethodIR` layer under the sibling
+`vibeqc_compiler.method` front-end package.
 
 - `MethodSpec` is declarative data: audited semilocal component coefficients plus
   an explicit exact-exchange coefficient.
@@ -66,6 +66,8 @@ rejects exact exchange.
   unsupported spin domains fail before runtime allocation.
 - Provider selection, SCF policy and public energy/gradient support remain outside
   the compiler-side MethodIR.
+- The `method` owner may depend on `xc` and `common`; lower-level `dft` remains
+  independent of method/XC policy.
 
 ## Evidence
 
@@ -97,5 +99,6 @@ move from runtime identity into MethodIR.
 - Issue #396
 - Issue #161
 - Issue #163
+- `python/vibeqc_compiler/method/spec.py`
 - `python/vibeqc_compiler/xc/spec.py`
 - `python/vibeqc/ks.py`

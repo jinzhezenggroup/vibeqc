@@ -4,7 +4,7 @@ import json
 from fractions import Fraction
 
 import pytest
-from vibeqc_compiler.dft import (
+from vibeqc_compiler.method import (
     ExactExchangePrimitive,
     MethodSpec,
     SemilocalXCPrimitive,
