@@ -59,9 +59,15 @@ def native_build_metadata(calculator: Any) -> dict[str, Any]:
 
     library = calculator._library
     path = Path(library._name).resolve()
+    # Release libraries include large generated device images. Avoid a full
+    # binary-sized host allocation just to record provenance before the solve.
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
     return {
         "library_path": str(path),
-        "library_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "library_sha256": digest.hexdigest(),
         "probe": probe_device(library, calculator._device_id),
     }
 
