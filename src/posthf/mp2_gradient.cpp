@@ -420,9 +420,17 @@ GradientResourcePlan conventional_gradient_plan(
   plan.relaxed_weight_bytes = posthf::checked_mul(sizeof(double), relaxed_elements);
   plan.shell_cotangent_bytes =
       posthf::checked_mul(sizeof(double), fourth_power(maximum_shell_ao_count));
-  const auto derivative_elements = posthf::checked_add(
-      posthf::checked_mul(2, n2),
-      posthf::checked_add(fourth_power(maximum_shell_ao_count), coordinate_count));
+  const auto shell2 = square(maximum_shell_ao_count);
+  const auto shell3 = posthf::checked_mul(shell2, maximum_shell_ao_count);
+  const auto n3 = posthf::checked_mul(n2, orbitals);
+  auto derivative_elements = posthf::checked_mul(2, n2);
+  derivative_elements = posthf::checked_add(
+      derivative_elements, posthf::checked_mul(maximum_shell_ao_count, n3));
+  derivative_elements = posthf::checked_add(
+      derivative_elements, posthf::checked_mul(shell2, n2));
+  derivative_elements = posthf::checked_add(
+      derivative_elements, posthf::checked_mul(shell3, orbitals));
+  derivative_elements = posthf::checked_add(derivative_elements, coordinate_count);
   plan.derivative_staging_bytes = posthf::checked_mul(sizeof(double), derivative_elements);
   plan.candidate_output_bytes = candidate_output_bytes;
   plan.peak_bytes = provider_bytes;

@@ -370,6 +370,10 @@ void invalid_inputs_and_resource_boundaries() {
       static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()));
   require(probe.peak_bytes > probe.response_bytes && probe.shell_cotangent_bytes > 0,
           "gradient resource plan omitted a simultaneous owner");
+  require(probe.shell_cotangent_bytes == 81 * sizeof(double),
+          "shell-quartet cotangent ownership is not isolated");
+  require(probe.derivative_staging_bytes == 485 * sizeof(double),
+          "derivative staging double-counts the shell-quartet cotangent");
   const auto exact = vibeqc::mp2::conventional_gradient_plan(4, 2, 4096, response, 3, 9,
                                                              9 * sizeof(double), probe.peak_bytes);
   require(exact.peak_bytes == probe.peak_bytes, "exact resource budget changed the plan");

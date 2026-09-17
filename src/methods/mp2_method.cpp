@@ -9,6 +9,7 @@
 #include "api/handles.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/mp2_energy.hpp"
+#include "posthf/mp2_force.hpp"
 #include "scf/mean_field.hpp"
 #if VIBEQC_HAS_CUDA
 #include <cuda_runtime_api.h>
@@ -53,9 +54,6 @@ class Mp2Prepared final : public PreparedCalculation {
     last_.reset();
   }
   Result execute(bool compute_forces) override {
-    if (compute_forces) {
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "canonical MP2 implements energy only");
-    }
     std::lock_guard<std::mutex> lock(mutex_);
     last_.reset();
     try {
@@ -64,6 +62,12 @@ class Mp2Prepared final : public PreparedCalculation {
       if (!cuda && context_.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                           "MP2 requires an explicit CPU or CUDA backend");
+      if (compute_forces && density_fitted_)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "RI-MP2 analytic force is C2 work and is not implemented");
+      if (compute_forces && cuda)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "CUDA conventional MP2 analytic force is not yet qualified");
 #if VIBEQC_HAS_CUDA
       std::unique_ptr<DeviceScope> device_scope;
       if (execution_cuda) device_scope = std::make_unique<DeviceScope>(context_.device_id);
@@ -95,20 +99,34 @@ class Mp2Prepared final : public PreparedCalculation {
       Result result;
       result.energy = ref.energy + corr.opposite_spin + corr.same_spin;
       if (!std::isfinite(result.energy)) throw std::runtime_error("nonfinite MP2 total energy");
+      std::optional<mp2::ConventionalForceResult> force_diagnostic;
+      if (compute_forces) {
+        response::GmresOptions response_options;
+        response_options.relative_tolerance = 1e-10;
+        response_options.absolute_tolerance = 1e-12;
+        response_options.restart = 30;
+        response_options.max_iterations = 200;
+        response_options.max_workspace_bytes = budget_;
+        force_diagnostic = mp2::conventional_force_cpu(
+            ref, source, budget_, threshold_, 1e-10, response_options);
+        result.forces = force_diagnostic->forces;
+      }
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
       const bool executed_cuda = execution_cuda;
       result.executed_backend = executed_cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
-      last_ =
-          vibeqc_correlation_diagnostic{sizeof(vibeqc_correlation_diagnostic),
-                                        VIBEQC_ABI_VERSION,
-                                        ref.energy,
-                                        corr.opposite_spin,
-                                        corr.same_spin,
-                                        corr.minimum_denominator,
-                                        ref.commutator_residual,
-                                        std::max(reference_capacity_, corr.numeric_capacity_bytes),
-                                        corr.tiles,
-                                        executed_cuda ? 1 : 0};
+      vibeqc_correlation_diagnostic diagnostic{};
+      diagnostic.struct_size = sizeof(vibeqc_correlation_diagnostic);
+      diagnostic.abi_version = VIBEQC_ABI_VERSION;
+      diagnostic.reference_energy = ref.energy;
+      diagnostic.opposite_spin_energy = corr.opposite_spin;
+      diagnostic.same_spin_energy = corr.same_spin;
+      diagnostic.minimum_absolute_denominator = corr.minimum_denominator;
+      diagnostic.reference_residual = ref.commutator_residual;
+      diagnostic.numeric_capacity_bytes =
+          std::max(reference_capacity_, corr.numeric_capacity_bytes);
+      diagnostic.energy_tile_count = corr.tiles;
+      diagnostic.mo_host_staging = executed_cuda ? 1 : 0;
+      last_ = diagnostic;
       last_->correlation_owned_device_bytes = corr.metrics.owned_device_bytes;
       last_->correlation_provider_retained_bytes = corr.metrics.provider_retained_bytes;
       last_->mo_transfer_bytes = corr.mo_transfer_bytes;
@@ -117,6 +135,23 @@ class Mp2Prepared final : public PreparedCalculation {
       last_->transform_library_ms = corr.metrics.library_ms;
       last_->tensor_kernel_ms = corr.metrics.kernel_ms;
       std::copy_n(corr.equation_hash, 64, last_->equation_hash);
+      if (force_diagnostic) {
+        last_->response_iterations = force_diagnostic->response.iterations;
+        last_->response_restarts = force_diagnostic->response.restarts;
+        last_->response_absolute_residual = force_diagnostic->response.residual_norm;
+        last_->response_relative_residual = force_diagnostic->response.relative_residual;
+        last_->response_workspace_bytes = force_diagnostic->response.workspace_bytes;
+        last_->derivative_workspace_bytes = force_diagnostic->derivative_workspace_bytes;
+        last_->planned_endpoint_peak_bytes =
+            std::max(reference_capacity_, force_diagnostic->planned_endpoint_peak_bytes);
+        last_->measured_endpoint_peak_bytes =
+            std::max(reference_capacity_, force_diagnostic->measured_endpoint_peak_bytes);
+        last_->numeric_capacity_bytes = std::max(
+            last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
+        last_->force_provenance_flags = 0x7;
+        constexpr char response_hash[] = "rhf-canonical-response-v1";
+        std::copy_n(response_hash, sizeof(response_hash), last_->response_operator_hash);
+      }
       return result;
     } catch (const std::length_error& e) {
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, e.what());
