@@ -3,7 +3,7 @@ include(CMakeParseArguments)
 
 function(vibeqc_register_generated_sources)
   set(options ADD_TO_TARGET)
-  set(one_value_args NAME TARGET GENERATOR LANGUAGE)
+  set(one_value_args NAME TARGET GENERATOR LANGUAGE COMMENT)
   set(multi_value_args OUTPUTS BYPRODUCTS DEPENDS ARGS COMPILE_OPTIONS)
   cmake_parse_arguments(VGS "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
   if(NOT VGS_GENERATOR OR NOT VGS_OUTPUTS)
@@ -15,6 +15,7 @@ function(vibeqc_register_generated_sources)
     BYPRODUCTS ${VGS_BYPRODUCTS}
     COMMAND "${Python3_EXECUTABLE}" "${VGS_GENERATOR}" ${VGS_ARGS}
     DEPENDS "${VGS_GENERATOR}" ${VGS_DEPENDS}
+    COMMENT "${VGS_COMMENT}"
     VERBATIM)
   set_source_files_properties(${VGS_OUTPUTS} ${VGS_BYPRODUCTS} PROPERTIES GENERATED TRUE)
 
