@@ -321,6 +321,19 @@ def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
         )
 
 
+def test_public_conventional_mp2_force_accepts_zero_derivative_degenerate_subspace():
+    meta, _ = load_fixture("lih")
+    args = source_arguments(meta)
+    result = Calculator(
+        method="mp2",
+        basis=args["basis"],
+        basis_representation=args["representation"],
+        device="cpu",
+    ).singlepoint(args["atoms"], charge=args["charge"], properties=("energy", "forces"))
+    assert result.converged and np.isfinite(result.forces).all()
+    np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-8)
+
+
 @pytest.mark.skipif(
     os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
     reason="requires explicitly allocated CUDA device and native library",

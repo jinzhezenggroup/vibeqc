@@ -247,9 +247,13 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<con
     for (std::size_t p = begin; p < end; ++p)
       for (std::size_t q = p + 1; q < end; ++q) {
         const double denominator = fock[p * n + p] - fock[q * n + q];
-        if (std::abs(denominator) <= same_space_threshold)
-          throw std::invalid_argument("same-space canonical MP2 response is near-degenerate");
         const double derivative = gradient[p * n + q] - gradient[q * n + p];
+        if (std::abs(denominator) <= same_space_threshold) {
+          if (std::abs(derivative) > same_space_threshold)
+            throw std::invalid_argument(
+                "same-space canonical MP2 response has a nonstationary degenerate subspace");
+          continue;
+        }
         add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied, q, p,
                                      derivative / denominator);
       }
@@ -295,9 +299,13 @@ OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& referenc
     for (std::size_t p = begin; p < end; ++p)
       for (std::size_t q = p + 1; q < end; ++q) {
         const double denominator = reference.orbital_energies[p] - reference.orbital_energies[q];
-        if (std::abs(denominator) <= same_space_threshold)
-          throw std::invalid_argument("same-space streamed MP2 response is near-degenerate");
         const double derivative = gradient[p * n + q] - gradient[q * n + p];
+        if (std::abs(denominator) <= same_space_threshold) {
+          if (std::abs(derivative) > same_space_threshold)
+            throw std::invalid_argument(
+                "same-space streamed MP2 response has a nonstationary degenerate subspace");
+          continue;
+        }
         add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied, q, p,
                                      derivative / denominator);
       }
