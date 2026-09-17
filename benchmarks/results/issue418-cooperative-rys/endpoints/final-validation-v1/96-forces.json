@@ -1,0 +1,1210 @@
+{
+  "case": "water-tetramer-def2-svp-spherical",
+  "aos": 96,
+  "scope": "clean endpoint",
+  "native_source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d",
+  "source_patch_sha256": "6d3bcbc8d8bf985619f986f876194d9637a48684fc21ead3b6e85e24693fd5da",
+  "runner_sha256": "255780cf99e8b66441214b6606665498e92a8c036922c53cb3d344be4850afa9",
+  "controls": {
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_MP2_CUDA_TEST": "1",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/final-production/libvibeqc.so",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto"
+  },
+  "scientific_settings": {
+    "density_fitting_memory_budget_bytes": 0,
+    "basis": "def2-svp",
+    "basis_representation": "spherical",
+    "auxiliary_basis": "same as orbital basis",
+    "metric_relative_threshold": 1e-10,
+    "method": "rhf",
+    "energy_tolerance": 1e-12,
+    "density_tolerance": 1e-10,
+    "max_iterations": 100,
+    "screening_tolerance": 1e-12,
+    "geometries_bohr": [
+      [
+        "O",
+        [
+          -2.752371783770598,
+          2.432473092269104,
+          -0.013925198479684237
+        ]
+      ],
+      [
+        "H",
+        [
+          -0.931572608872366,
+          2.7962140445937926,
+          -0.018633840290105546
+        ]
+      ],
+      [
+        "H",
+        [
+          -3.4382053128951653,
+          3.3058360842199157,
+          1.4213453942554803
+        ]
+      ],
+      [
+        "O",
+        [
+          -2.432473092269104,
+          -2.752371783770598,
+          0.013925198479684237
+        ]
+      ],
+      [
+        "H",
+        [
+          -2.7962140445937926,
+          -0.931572608872366,
+          0.018633840290105546
+        ]
+      ],
+      [
+        "H",
+        [
+          -3.3058360842199157,
+          -3.4382053128951653,
+          -1.4213453942554803
+        ]
+      ],
+      [
+        "O",
+        [
+          2.752371783770598,
+          -2.432473092269104,
+          -0.013925198479684237
+        ]
+      ],
+      [
+        "H",
+        [
+          0.931572608872366,
+          -2.7962140445937926,
+          -0.018633840290105546
+        ]
+      ],
+      [
+        "H",
+        [
+          3.4382053128951653,
+          -3.3058360842199157,
+          1.4213453942554803
+        ]
+      ],
+      [
+        "O",
+        [
+          2.432473092269104,
+          2.752371783770598,
+          0.013925198479684237
+        ]
+      ],
+      [
+        "H",
+        [
+          2.7962140445937926,
+          0.931572608872366,
+          0.018633840290105546
+        ]
+      ],
+      [
+        "H",
+        [
+          3.3058360842199157,
+          3.4382053128951653,
+          -1.4213453942554803
+        ]
+      ]
+    ]
+  },
+  "git_head": "47912854e34fab76953810c0d07ff2fa9ba823d4",
+  "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+  "slurm_job_id": "9901",
+  "cuda_visible_devices": "0",
+  "control": "VIBEQC_DF_SHELL_POLICY",
+  "policies": [
+    "auto"
+  ],
+  "policy_controls": {},
+  "warm_policy": "one frozen post-cold density, prime every policy transition",
+  "measured_properties": [
+    "energy",
+    "forces"
+  ],
+  "expected_iterations": null,
+  "cold_controls": {},
+  "samples": [
+    {
+      "policy": "auto",
+      "scope": "clean endpoint",
+      "repeat": 0,
+      "seconds": 0.1205833840649575,
+      "prime_seconds": 0.12104929587803781,
+      "prime_iterations": [
+        2
+      ],
+      "iterations": [
+        2
+      ],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 2,
+          "basis_metadata": {
+            "orbital": {
+              "name": "def2-svp",
+              "role": "orbital",
+              "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {
+                "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+                "version": "Basis Set Exchange 0.11",
+                "license": "BSD-3-Clause",
+                "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+              },
+              "electrons": {
+                "atomic_numbers": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "nuclear_charges": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "ecp_core_electrons": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "ionic_charge": 0,
+                "electron_count": 40,
+                "multiplicity": 1,
+                "nalpha": 20,
+                "nbeta": 20
+              },
+              "shell_count": 48,
+              "primitive_count": 88
+            },
+            "auxiliary": {
+              "name": "def2-svp",
+              "role": "auxiliary",
+              "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {
+                "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+                "version": "Basis Set Exchange 0.11",
+                "license": "BSD-3-Clause",
+                "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+              },
+              "electrons": {
+                "atomic_numbers": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "nuclear_charges": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "ecp_core_electrons": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "ionic_charge": 0,
+                "electron_count": 40,
+                "multiplicity": 1,
+                "nalpha": 20,
+                "nbeta": 20
+              },
+              "shell_count": 48,
+              "primitive_count": 88
+            },
+            "model_identity": "033719dcd06f1e399eae50f5fc5a3e9ee80fde976ab0d6bc2c755182630089c9"
+          },
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.9041393722708703e-12,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {
+            "energy_change_hartree": 4.547473508864641e-13,
+            "density_rms": 1.9041393722708703e-12,
+            "orbital_gradient_norm": null
+          },
+          "warm_start": {
+            "used": true,
+            "fallback": false
+          }
+        }
+      ],
+      "energies_hartree": [
+        -304.77295498590274
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            0.006640384798524692,
+            0.004185594045132967,
+            0.008382557624321529
+          ],
+          [
+            -0.013725705045576003,
+            -0.004240103738472065,
+            -0.0012612979451621603
+          ],
+          [
+            0.0070551515968971116,
+            -0.0025205211746847024,
+            -0.008472235426914136
+          ],
+          [
+            -0.004185594046185778,
+            0.006640384793042782,
+            -0.008382557632425661
+          ],
+          [
+            0.004240103734792987,
+            -0.013725705042354484,
+            0.0012612979483932088
+          ],
+          [
+            0.002520521179122521,
+            0.007055151601193794,
+            0.008472235433418147
+          ],
+          [
+            -0.006640384793967525,
+            -0.004185594042359252,
+            0.008382557630377907
+          ],
+          [
+            0.013725705045317733,
+            0.004240103729464704,
+            -0.0012612979488811362
+          ],
+          [
+            -0.007055151600084817,
+            0.0025205211780766996,
+            -0.0084722354311067
+          ],
+          [
+            0.004185594042570864,
+            -0.00664038479987175,
+            -0.008382557627607907
+          ],
+          [
+            -0.004240103735284489,
+            0.013725705046213857,
+            0.0012612979495893375
+          ],
+          [
+            -0.0025205211761242328,
+            -0.007055151595502366,
+            0.008472235426175024
+          ]
+        ]
+      ],
+      "maximum_energy_error": 2.5011104298755527e-12,
+      "maximum_force_error": 1.0727864777071439e-11,
+      "metric": [
+        {
+          "bucket_id": 0,
+          "system_index": 0,
+          "effective_rank": 96,
+          "absolute_threshold": 7.527269023992967e-08,
+          "condition_number": 7451.239126400055,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "device_resident_bytes": 38846979,
+          "peak_device_bytes": 47335327,
+          "host_resident_bytes": 2229026,
+          "peak_host_bytes": 9382182,
+          "auxiliary_tile": 96,
+          "streamed": false
+        }
+      ]
+    }
+  ],
+  "prepare_seconds": 0.005332218948751688,
+  "warm_checkpoint_restore": {
+    "schema_version": 1,
+    "bytes": 78962,
+    "manifest_identity": "e37fcfad8e0b1f74a51701958aed1a8e79aa6ed780133179e9a916a27c292efe",
+    "read_seconds": 0.10531589202582836,
+    "items": [
+      {
+        "index": 0,
+        "compatibility": "warm_start_compatible",
+        "reason": "geometry or numerical controls differ",
+        "restored_fields": [
+          "density"
+        ],
+        "rejected_fields": [],
+        "source_status": 0,
+        "source_model_identity": "3c6a2fd7a95c8a1dfa3580eec0b9ed0ebc67851c004cf7e569f412ef1d627724"
+      }
+    ],
+    "target_verification": "executed",
+    "validation_backend": "cpu_source_overlap",
+    "target_results": [
+      {
+        "index": 0,
+        "converged": true,
+        "status": 0,
+        "energy": -304.77295498590274,
+        "density_rms": 1.9041393722708703e-12,
+        "restart_origin": "persistent_restart"
+      }
+    ]
+  },
+  "cold_seconds": null,
+  "complete_cold_seconds": null,
+  "cold_convergence": null,
+  "initialization": "checkpoint replay",
+  "initialization_seconds": 0.6000547669827938,
+  "initialization_convergence": [
+    {
+      "converged": true,
+      "iterations": 2,
+      "basis_metadata": {
+        "orbital": {
+          "name": "def2-svp",
+          "role": "orbital",
+          "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 48,
+          "primitive_count": 88
+        },
+        "auxiliary": {
+          "name": "def2-svp",
+          "role": "auxiliary",
+          "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 48,
+          "primitive_count": 88
+        },
+        "model_identity": "033719dcd06f1e399eae50f5fc5a3e9ee80fde976ab0d6bc2c755182630089c9"
+      },
+      "energy_change_hartree": 4.547473508864641e-13,
+      "density_rms": 1.9041393722708703e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "final_residuals": {
+        "energy_change_hartree": 4.547473508864641e-13,
+        "density_rms": 1.9041393722708703e-12,
+        "orbital_gradient_norm": null
+      },
+      "warm_start": {
+        "used": true,
+        "fallback": false
+      }
+    }
+  ],
+  "warm_checkpoint_sha256": "5906041ab95ad834bf2a0b8ba414b5a9b80547be8ed1cc1df9a1fe44dd3850b0",
+  "warm_density_sha256": {
+    "density_0": "c8f63043b4f040b548db93ab96f6a84ad2a729c96f796ae70ae24f60ef2bebba"
+  },
+  "reference_sha256": "6cc448cc449196b025b8cd0878044b021a113332990c22b1ff85e1adb08f1a0d",
+  "diagnostics": [
+    {
+      "policy": "auto",
+      "scope": "intrusive diagnostic",
+      "repeat": 0,
+      "seconds": 0.14340166002511978,
+      "prime_seconds": 0.11714118998497725,
+      "prime_iterations": [
+        2
+      ],
+      "iterations": [
+        2
+      ],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 2,
+          "basis_metadata": {
+            "orbital": {
+              "name": "def2-svp",
+              "role": "orbital",
+              "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {
+                "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+                "version": "Basis Set Exchange 0.11",
+                "license": "BSD-3-Clause",
+                "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+              },
+              "electrons": {
+                "atomic_numbers": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "nuclear_charges": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "ecp_core_electrons": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "ionic_charge": 0,
+                "electron_count": 40,
+                "multiplicity": 1,
+                "nalpha": 20,
+                "nbeta": 20
+              },
+              "shell_count": 48,
+              "primitive_count": 88
+            },
+            "auxiliary": {
+              "name": "def2-svp",
+              "role": "auxiliary",
+              "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+              "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+              "representation": "spherical",
+              "provenance": {
+                "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+                "version": "Basis Set Exchange 0.11",
+                "license": "BSD-3-Clause",
+                "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+              },
+              "electrons": {
+                "atomic_numbers": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "nuclear_charges": [
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1,
+                  8,
+                  1,
+                  1
+                ],
+                "ecp_core_electrons": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "ionic_charge": 0,
+                "electron_count": 40,
+                "multiplicity": 1,
+                "nalpha": 20,
+                "nbeta": 20
+              },
+              "shell_count": 48,
+              "primitive_count": 88
+            },
+            "model_identity": "033719dcd06f1e399eae50f5fc5a3e9ee80fde976ab0d6bc2c755182630089c9"
+          },
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.9041393722708703e-12,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {
+            "energy_change_hartree": 4.547473508864641e-13,
+            "density_rms": 1.9041393722708703e-12,
+            "orbital_gradient_norm": null
+          },
+          "warm_start": {
+            "used": true,
+            "fallback": false
+          }
+        }
+      ],
+      "energies_hartree": [
+        -304.77295498590274
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            0.006640384798563772,
+            0.004185594045125861,
+            0.008382557624323305
+          ],
+          [
+            -0.013725705045584884,
+            -0.004240103738472065,
+            -0.0012612979451612166
+          ],
+          [
+            0.007055151596879348,
+            -0.0025205211746811497,
+            -0.0084722354269319
+          ],
+          [
+            -0.004185594046185778,
+            0.006640384793074756,
+            -0.008382557632425661
+          ],
+          [
+            0.004240103734791655,
+            -0.01372570504233672,
+            0.0012612979483930423
+          ],
+          [
+            0.0025205211791349555,
+            0.0070551516012293215,
+            0.008472235433398607
+          ],
+          [
+            -0.006640384793990617,
+            -0.004185594042346818,
+            0.008382557630385012
+          ],
+          [
+            0.013725705045301746,
+            0.004240103729460707,
+            -0.0012612979488810252
+          ],
+          [
+            -0.007055151600079932,
+            0.0025205211780749233,
+            -0.008472235431108477
+          ],
+          [
+            0.004185594042580634,
+            -0.006640384799864644,
+            -0.008382557627597249
+          ],
+          [
+            -0.004240103735291594,
+            0.013725705046190764,
+            0.0012612979495895595
+          ],
+          [
+            -0.002520521176104693,
+            -0.007055151595528123,
+            0.008472235426189235
+          ]
+        ]
+      ],
+      "maximum_energy_error": 2.5011104298755527e-12,
+      "maximum_force_error": 1.0745628345465441e-11,
+      "metric": [
+        {
+          "bucket_id": 0,
+          "system_index": 0,
+          "effective_rank": 96,
+          "absolute_threshold": 7.527269023992967e-08,
+          "condition_number": 7451.239126400055,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "device_resident_bytes": 38846979,
+          "peak_device_bytes": 47335327,
+          "host_resident_bytes": 2229026,
+          "peak_host_bytes": 9382182,
+          "auxiliary_tile": 96,
+          "streamed": false
+        }
+      ],
+      "components": {
+        "groups": [
+          {
+            "execution": "stream",
+            "operation": "compact_diis_reset",
+            "calls": 1,
+            "host_completion_ms": 0.089792,
+            "final_synchronization_ms": 0.000821,
+            "gpu_inclusive_ms": 0.0588160008,
+            "host_exclusive_ms": {
+              "compact_diis_reset": 0.088971
+            },
+            "gpu_exclusive_ms": {
+              "compact_diis_reset": 0.0588160008
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_j",
+            "calls": 1,
+            "host_completion_ms": 0.175345,
+            "final_synchronization_ms": 0.000671,
+            "gpu_inclusive_ms": 0.152352005,
+            "host_exclusive_ms": {
+              "ri_j": 0.056898000000000004,
+              "ri_j_gemm": 0.11777599999999999
+            },
+            "gpu_exclusive_ms": {
+              "ri_j": 0.08342400550000001,
+              "ri_j_gemm": 0.0689279995
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_k",
+            "calls": 1,
+            "host_completion_ms": 0.696402,
+            "final_synchronization_ms": 0.000671,
+            "gpu_inclusive_ms": 0.673503995,
+            "host_exclusive_ms": {
+              "ri_k": 0.11149299999999995,
+              "ri_k_density_projection_gemm": 0.265958,
+              "ri_k_exchange_gemm": 0.247724,
+              "ri_k_exchange_reduce": 0.07055600000000001
+            },
+            "gpu_exclusive_ms": {
+              "ri_k": 0.24166399670000005,
+              "ri_k_density_projection_gemm": 0.212191999,
+              "ri_k_exchange_gemm": 0.19942399900000002,
+              "ri_k_exchange_reduce": 0.0202240003
+            },
+            "counter_sums": {
+              "dense_exchange_auxiliary_tile": 48
+            },
+            "counter_maxima": {
+              "dense_exchange_auxiliary_tile": 48
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_physical_fock",
+            "calls": 1,
+            "host_completion_ms": 1.036492,
+            "final_synchronization_ms": 0.000621,
+            "gpu_inclusive_ms": 1.01155198,
+            "host_exclusive_ms": {
+              "final_state_physical_fock": 1.035871
+            },
+            "gpu_exclusive_ms": {
+              "final_state_physical_fock": 1.01155198
+            },
+            "counter_sums": {
+              "explicit_synchronizations": 1,
+              "host_to_device_bytes": 73728
+            },
+            "counter_maxima": {
+              "explicit_synchronizations": 1,
+              "host_to_device_bytes": 73728
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_validation",
+            "calls": 1,
+            "host_completion_ms": 1.085746,
+            "final_synchronization_ms": 0.000651,
+            "gpu_inclusive_ms": 1.06169605,
+            "host_exclusive_ms": {
+              "final_state_validation": 1.085095
+            },
+            "gpu_exclusive_ms": {
+              "final_state_validation": 1.06169605
+            },
+            "counter_sums": {
+              "device_to_host_bytes": 112,
+              "explicit_synchronizations": 1,
+              "host_to_device_bytes": 221184,
+              "workspace_bytes": 688624
+            },
+            "counter_maxima": {
+              "device_to_host_bytes": 112,
+              "explicit_synchronizations": 1,
+              "host_to_device_bytes": 221184,
+              "workspace_bytes": 688624
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "final_state_weighted_density",
+            "calls": 1,
+            "host_completion_ms": 0.130799,
+            "final_synchronization_ms": 0.000651,
+            "gpu_inclusive_ms": 0.106592,
+            "host_exclusive_ms": {
+              "final_state_weighted_density": 0.130148
+            },
+            "gpu_exclusive_ms": {
+              "final_state_weighted_density": 0.106592
+            },
+            "counter_sums": {
+              "device_to_host_bytes": 73728,
+              "explicit_synchronizations": 1
+            },
+            "counter_maxima": {
+              "device_to_host_bytes": 73728,
+              "explicit_synchronizations": 1
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "force_response",
+            "calls": 1,
+            "host_completion_ms": 130.488159,
+            "final_synchronization_ms": 0.000791,
+            "gpu_inclusive_ms": 130.454178,
+            "host_exclusive_ms": {
+              "force_response": 0.2343089999999961,
+              "response_allocation_and_uploads": 0.33499,
+              "response_weights": 1.2089500000000157,
+              "metric_inverse": 0.042661,
+              "coulomb_response": 0.07731799999999822,
+              "raw_value_slice_upload": 11.068080000000004,
+              "coulomb_response_charge_dot": 37.078241000000006,
+              "coulomb_response_weights": 0.039125,
+              "exchange_response_matrix_products": 5.235673000000004,
+              "exchange_response_weights_and_metric": 2.86098,
+              "exchange_response_metric_dot": 8.021369000000002,
+              "three_center_derivative_contraction": 63.363618,
+              "metric_frechet_response": 0.077458,
+              "metric_center_derivative_contraction": 0.771015,
+              "response_output_and_synchronization": 0.073581
+            },
+            "gpu_exclusive_ms": {
+              "force_response": 0.27577099550001094,
+              "response_allocation_and_uploads": 0.311008006,
+              "response_weights": 5.88973389600001,
+              "metric_inverse": 0.017856,
+              "coulomb_response": 4.588095604499998,
+              "raw_value_slice_upload": 8.852927982499999,
+              "coulomb_response_charge_dot": 34.758752113,
+              "coulomb_response_weights": 0.0115839997,
+              "exchange_response_matrix_products": 2.9488319827000002,
+              "exchange_response_weights_and_metric": 3.0185280031999997,
+              "exchange_response_metric_dot": 5.604480009400001,
+              "three_center_derivative_contraction": 63.3336334,
+              "metric_frechet_response": 0.047327999,
+              "metric_center_derivative_contraction": 0.74496001,
+              "response_output_and_synchronization": 0.0506879985
+            },
+            "counter_sums": {
+              "atom_coordinates": 36,
+              "density_upload_bytes": 73728,
+              "device_to_host_bytes": 288,
+              "host_to_device_bytes": 7163184,
+              "metric_derivative_weight_bytes": 73728,
+              "metric_derivative_weights": 9216,
+              "raw_value_cache_hits": 192,
+              "raw_value_reuse_bytes": 14155776,
+              "raw_value_upload_bytes": 7077888,
+              "response_ao_matrix_products": 192,
+              "response_auxiliary_blocks": 1,
+              "response_charge_dot_elements": 884736,
+              "response_charge_scalar_dots": 96,
+              "response_density_scalar_products": 192,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 9216,
+              "response_probe_total_device_bytes": 14758992,
+              "response_scratch_bytes": 14758992,
+              "shell_primitive_signature_policy": 0,
+              "stream_synchronizations": 1,
+              "tensor_host_to_device_bytes": 7077888,
+              "three_center_derivative_weight_bytes": 7077888,
+              "three_center_derivative_weights": 884736
+            },
+            "counter_maxima": {
+              "atom_coordinates": 36,
+              "density_upload_bytes": 73728,
+              "device_to_host_bytes": 288,
+              "host_to_device_bytes": 7163184,
+              "metric_derivative_weight_bytes": 73728,
+              "metric_derivative_weights": 9216,
+              "raw_value_cache_hits": 192,
+              "raw_value_reuse_bytes": 14155776,
+              "raw_value_upload_bytes": 7077888,
+              "response_ao_matrix_products": 192,
+              "response_auxiliary_blocks": 1,
+              "response_charge_dot_elements": 884736,
+              "response_charge_scalar_dots": 96,
+              "response_density_scalar_products": 192,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 9216,
+              "response_probe_total_device_bytes": 14758992,
+              "response_scratch_bytes": 14758992,
+              "shell_primitive_signature_policy": 0,
+              "stream_synchronizations": 1,
+              "tensor_host_to_device_bytes": 7077888,
+              "three_center_derivative_weight_bytes": 7077888,
+              "three_center_derivative_weights": 884736
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          }
+        ],
+        "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+      },
+      "process_device_resident_bytes": 6547308544,
+      "force_stage_seconds": 0.132122826,
+      "final_state_observations": [
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 9,
+          "parent": 1,
+          "time_ns": 2083122375898890,
+          "elapsed_ms": 2.499411,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "finalization",
+          "key": "final_fock_evaluations",
+          "value": 1
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 9,
+          "parent": 1,
+          "time_ns": 2083122375904130,
+          "elapsed_ms": 2.504651,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "finalization",
+          "key": "final_eigen_solves",
+          "value": 0
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 9,
+          "parent": 1,
+          "time_ns": 2083122375909010,
+          "elapsed_ms": 2.509531,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "finalization",
+          "key": "final_density_updates",
+          "value": 0
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 9,
+          "parent": 1,
+          "time_ns": 2083122375913899,
+          "elapsed_ms": 2.51442,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "finalization",
+          "key": "final_candidate_rejections",
+          "value": 0
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 28,
+          "parent": 9,
+          "time_ns": 2083122375936833,
+          "elapsed_ms": 0.016933,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "final_state_reuse",
+          "key": "final_maximum_commutator",
+          "value": "1.5138001963066472e-11"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 28,
+          "parent": 9,
+          "time_ns": 2083122375942985,
+          "elapsed_ms": 0.023085,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "final_state_reuse",
+          "key": "final_density_rms",
+          "value": "0"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 28,
+          "parent": 9,
+          "time_ns": 2083122375948635,
+          "elapsed_ms": 0.028735,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "final_state_reuse",
+          "key": "final_maximum_idempotency_error",
+          "value": "7.1054273576010019e-15"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 28,
+          "parent": 9,
+          "time_ns": 2083122375957643,
+          "elapsed_ms": 0.037743,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "final_state_reuse",
+          "key": "final_density_generation",
+          "value": 3
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 28,
+          "parent": 9,
+          "time_ns": 2083122375962822,
+          "elapsed_ms": 0.042922,
+          "event": "VALUE",
+          "status": "observed",
+          "execution": "host",
+          "name": "final_state_reuse",
+          "key": "final_solve_epoch",
+          "value": 5
+        }
+      ]
+    }
+  ]
+}

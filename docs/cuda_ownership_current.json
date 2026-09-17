@@ -3866,10 +3866,10 @@
     {
       "files": [
         {
-          "bytes": 3215,
-          "code_lines": 60,
+          "bytes": 2349,
+          "code_lines": 46,
           "path": "generated/generated_df_production.hpp",
-          "sha256": "5612284ef66a173ed39c13ee561d0386fe1c3a50313563dcbb253f47aeb2900f"
+          "sha256": "61e2f925637ae73ed8873a638000e9be73c5fd7899cddaba21296e06d107fbe7"
         }
       ],
       "measurement": "explicit build",
@@ -3912,7 +3912,7 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 27524244,
+  "generated_bytes": 27523378,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 10,

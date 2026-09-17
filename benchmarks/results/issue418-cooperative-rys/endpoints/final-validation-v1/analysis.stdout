@@ -1,0 +1,4 @@
+96 auto failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 4.085620730620576e-14}
+192 auto failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 7.815970093361102e-14}
+384 candidate failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 6.394884621840902e-14}
+768 candidate failed [] differences {'energies_hartree': 0.0, 'forces_hartree_per_bohr': 7.105427357601002e-14}

@@ -1,6 +1,6 @@
-# Decision: qualify cooperative three/four-root DF derivatives
+# Decision: share cooperative DF Rys moments across components
 
-Status: proposed
+Status: implemented
 Date: 2026-09-17
 
 ## Problem
@@ -10,7 +10,7 @@ Eleven missing three/four-root classes account for about 643 ms; the old
 component-local two-root lowering also loses for 101/110. The retained 2.6%
 low-angular endpoint improvement remains production behavior.
 
-## Proposed decision and invariants
+## Decision and invariants
 
 Reuse the compiler-owned Rys tables and shared moment/recurrence IR to prepare
 bounded root/axis state once per primitive triple, shared by component lanes.
@@ -106,9 +106,28 @@ Every numerical, frozen-density, graph replay/finalization, metric/rank and
 semantic shell/primitive/component/response/transfer gate passes. Solve epochs
 advance between calls, and each occupied response factor is independently bound
 to its own final determinant. The binary grows 1.60%; charged memory and sampled
-device residency agree between campaign arms. Independent standalone-baseline
-equivalence and the final promoted source/library remain pending; this warm
-campaign alone makes no stock GPU4PySCF claim and keeps #206 open.
+device residency agree between campaign arms. The independent baseline and final
+production checks below preserve this qualification; the warm campaign makes no
+stock GPU4PySCF claim and keeps #206 open.
+
+Production admission retains the existing sm_120, 384/768-AO equal-auxiliary
+boundary. The positive 192-AO candidate timing is not a default-policy promotion;
+small/unequal-auxiliary/other-architecture automatic fallbacks remain unchanged.
+Slurm 9898 subsequently verifies independent old-library baseline equivalence:
+zero energy difference, maximum force difference below 1e-13, identical work and
+charged/process device memory at 384/768. Slurm 9899 passes 16 integrated shell
+and response holdouts; two auxiliary-only-center tests initially skip for a
+missing suite-specific opt-in and then pass in Slurm 9900. Both attempts remain
+retained. The qualified manifest removes the embedded campaign baseline.
+
+Slurm 9901 passes all 48 native tests on the final library and checks all four
+automatic force endpoints with separate diagnostics. At 384/768 the final default
+matches the campaign candidate; at 96/192 it matches the original auto fallback.
+Energy differences are zero and force differences remain below 1e-13. Selected
+classes, resources, semantic work, final residuals, metric and charged memory
+agree. The final library is 209,740,176 bytes and only its generated selection
+header/build identity differ; the generated mathematics is byte-identical to the
+campaign. Final single replays never replace the original five paired samples.
 
 The initial PR Python CI passed 3652 tests but found a stale versioned CUDA
 ownership snapshot. Regenerating it from the maintained source and matching

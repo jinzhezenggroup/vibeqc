@@ -39,13 +39,15 @@ def retain(path, target, reason):
     }
 
 
-for directory in ("endpoints-v1", "baseline-equivalence-v1", "candidate-holdouts-v1", "native-validation-v1"):
+for directory in ("endpoints-v1", "baseline-equivalence-v1", "candidate-holdouts-v1", "auxiliary-holdouts-v2", "native-validation-v1", "final-validation-v1"):
     source = ROOT / directory
     if not source.exists():
         continue
     if directory == "baseline-equivalence-v1" and not all((source / f"{aos}-forces.exit").exists() for aos in (384, 768)):
         continue
     if directory == "candidate-holdouts-v1" and not all((source / f"{group}.exit").exists() for group in ("shell", "replay", "auxiliary")):
+        continue
+    if directory == "final-validation-v1" and not (source / "analysis.json").exists():
         continue
     for path in sorted(source.iterdir()):
         if not path.is_file() or path.name.endswith(".source.patch"):
@@ -55,12 +57,19 @@ for directory in ("endpoints-v1", "baseline-equivalence-v1", "candidate-holdouts
         retain(path, f"endpoints/{directory}/{path.name}", "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.")
 for filename in ("build.json", "source.patch", "CMakeCache.txt"):
     retain(ROOT / "campaign" / filename, f"identity/campaign-{filename}", "Frozen campaign binary, source, generated inventory and exact build configuration.")
-for filename in ("ci-python-failed-v1.log", "ownership-regression-v2.txt"):
+if (ROOT / "final-production/build.json").exists():
+    for filename in ("build.json", "source.patch"):
+        retain(ROOT / "final-production" / filename, f"identity/final-production-{filename}", "Final production binary and source selection with byte-identical generated mathematics.")
+for filename in ("ci-python-failed-v1.log", "ownership-regression-v2.txt", "final-policy-host-tests.txt"):
     retain(ROOT / filename, f"qualification/{Path(filename).stem}.txt", "Original CI failure and repaired host regression retained: versioned CUDA ownership snapshot was stale after the native source edit.")
-for filename in ("freeze_campaign.py", "run-native-tests.sh", "run-endpoints.sh", "run-baseline-equivalence.sh", "run-candidate-holdouts.sh", "analyze_endpoints.py", "analyze_baseline.py", "retain_endpoints.py"):
+retain(ROOT / "final-qualification-protocol.json", "identity/final-qualification-protocol.json", "Predeclared final-default equivalence checks; smaller automatic domains retain their old behavior.")
+for filename in ("freeze_campaign.py", "run-native-tests.sh", "run-endpoints.sh", "run-baseline-equivalence.sh", "run-candidate-holdouts.sh", "run-auxiliary-holdouts.sh", "analyze_endpoints.py", "analyze_baseline.py", "freeze_final.py", "run-final-validation.sh", "analyze_final.py", "retain_endpoints.py"):
     retain(ROOT / filename, f"reproduction/{filename}.txt", "Actual reproduction, qualification, analysis or byte-preserving retention driver.")
 manifest["records"] = list(indexed.values())
 manifest["status"] = "Campaign endpoint qualification retained; final production source/library qualification is recorded separately before promotion."
+final_analysis = ROOT / "final-validation-v1/analysis.json"
+if final_analysis.exists() and json.loads(final_analysis.read_text())["all_gates_passed"]:
+    manifest["status"] = "All campaign, baseline-equivalence, integrated holdout and final production qualification gates passed. Automatic scope remains sm_120,384/768 AO with equal auxiliary spaces; keeps #206 open."
 MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
 for row in manifest["records"]:
     stored = (DESTINATION / row["retained"]).read_bytes()

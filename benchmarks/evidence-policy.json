@@ -40,6 +40,26 @@
       "reason": "Exact accepted/rejected/timeout phase measurements, source/input identities and complete event journals from 9538/9539. The interrupted journal is the scientific evidence locating incomplete K work; no routine build/test logs or executable products.",
       "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f"
     },
+    "benchmarks/results/issue418-cooperative-rys/endpoints/auxiliary-holdouts-v2/auxiliary.xml.gz": {
+      "owner": "issue418-cooperative-rys",
+      "reason": "Per-fixture scientific qualification receipts preserve the original named RHF/UHF, representation, response replay and auxiliary-center outcomes, including two initial suite-opt-in skips. Exact compressed bytes are bound to the campaign manifest so skipped tests cannot be mistaken for numerical validation.",
+      "sha256": "a8bdc3b6f142c26b83025bf08d2911bf0ae4212d9ba85ac689cbadd881242ef5"
+    },
+    "benchmarks/results/issue418-cooperative-rys/endpoints/candidate-holdouts-v1/auxiliary.xml.gz": {
+      "owner": "issue418-cooperative-rys",
+      "reason": "Per-fixture scientific qualification receipts preserve the original named RHF/UHF, representation, response replay and auxiliary-center outcomes, including two initial suite-opt-in skips. Exact compressed bytes are bound to the campaign manifest so skipped tests cannot be mistaken for numerical validation.",
+      "sha256": "1846bf8b38bf5f767ac975f691a7cae7c22ba9b31724e97ca57fb698e7098629"
+    },
+    "benchmarks/results/issue418-cooperative-rys/endpoints/candidate-holdouts-v1/replay.xml.gz": {
+      "owner": "issue418-cooperative-rys",
+      "reason": "Per-fixture scientific qualification receipts preserve the original named RHF/UHF, representation, response replay and auxiliary-center outcomes, including two initial suite-opt-in skips. Exact compressed bytes are bound to the campaign manifest so skipped tests cannot be mistaken for numerical validation.",
+      "sha256": "c157a85aee1eb98996d27ad3498336c8284573457aef59078e94f6d9cd68a821"
+    },
+    "benchmarks/results/issue418-cooperative-rys/endpoints/candidate-holdouts-v1/shell.xml.gz": {
+      "owner": "issue418-cooperative-rys",
+      "reason": "Per-fixture scientific qualification receipts preserve the original named RHF/UHF, representation, response replay and auxiliary-center outcomes, including two initial suite-opt-in skips. Exact compressed bytes are bound to the campaign manifest so skipped tests cannot be mistaken for numerical validation.",
+      "sha256": "eaaa1d18bc87d964dfb12f6dd8f7c54e04ff5ff085caf8fba10cdef170012e07"
+    },
     "benchmarks/results/local-spaces-182/states.npz": {
       "owner": "local-spaces-182",
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",

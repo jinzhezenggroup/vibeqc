@@ -1,9 +1,10 @@
 # Cooperative DF Rys qualification (#418)
 
-Status: mathematical, GPU derivative, sanitizer, class-workload and combined
-96/192/384/768 warm endpoint qualification passed. Independent standalone-baseline
-equivalence and the final production library remain pending. The campaign keeps
-the accepted #415 low-angular 2.6% improvement as its automatic baseline.
+Status: mathematical, GPU derivative, sanitizer, class-workload, combined warm
+endpoint, standalone-baseline equivalence, integrated holdout and final production
+qualification all passed. The five-pair campaign compares against the accepted
+#415 low-angular baseline; final production promotes the cooperative mapping
+within the existing automatic admission boundary.
 
 The candidate shares compiler-generated one-dimensional Gaussian moments across
 Cartesian components for 13 canonical classes: 101/102/110/111/112, 201/202,
@@ -94,13 +95,48 @@ library SHA-256 is `deefe6b2b95919628387a37c796fbb48a8b6c9609418cab946744e3c89d4
 The additional compiler/native/generated inventory hash in the build record is
 a different, explicitly labeled hash domain.
 
-These results qualify the warm frozen-density campaign. They do not establish
-cold/changed-geometry or stock GPU4PySCF performance, and keep #206 open. The
-final default mapping must be built and checked separately before merging.
+Automatic admission remains restricted to the existing sm_120, 384/768-AO
+equal-orbital/auxiliary domains. The 192-AO improvement above uses the explicit
+candidate selector; this change does not expand automatic selection to 192 AO,
+unequal auxiliary spaces or other architectures. The 96/192 automatic controls
+retain their existing behavior, while the candidate holdouts verify broader
+mathematical correctness.
+
+Slurm 9898 verifies the independently frozen old library against the embedded
+automatic baseline at 384/768: energy differences are zero, maximum force
+differences are 9.60e-14 / 6.76e-14, and charged memory, device residency, semantic
+work, graph replays and final validation agree. Its single replays establish
+equivalence and are not pooled into the clean timing campaign.
+
+Slurm 9899 passes four integrated RHF/UHF Cartesian/spherical shell route tests
+and 12 response replay/discarded-metric tests, including batches, changed geometry
+and bounded response storage. Two auxiliary-only-atom tests initially skip
+because their suite has a separate opt-in; both skips are retained. Slurm 9900
+enables that tier and passes both RHF/UHF tests, including unequal auxiliary
+functions, an auxiliary-only center and finite-difference force checks.
+
+Slurm 9901 passes all 48 native tests again on the final production library and
+checks one final automatic replay plus a separate diagnostic at all four sizes.
+The 384/768 automatic routes match the campaign candidate; 96/192 match the old
+automatic route. Energies are identical and all force differences are below
+1e-13. Selected classes, class resources, semantic work, final residuals, metric
+and charged memory agree. These single qualification replays do not replace the
+five-pair timing campaign.
+
+The final library is 209,740,176 bytes, SHA-256
+`ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be`, with native
+source identity `06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d`.
+Only the generated selection header and build identity change from the campaign;
+all generated mathematics is byte-identical. The embedded comparison baseline
+is removed from the qualified production manifest. All 21 policy host tests pass.
+
+These results establish the stated warm frozen-density improvement. They do not
+establish cold/changed-geometry or stock GPU4PySCF performance, and keep #206 open.
 
 ## Retention and reproduction
 
 `manifest.json` records byte/hash-verified restoration of all retained records.
+The final bundle contains 245 records, including the initial failures and skips.
 Large root audits and raw compiler records use deterministic gzip; binaries,
 routine build output and temporary generated headers remain local. Header hashes,
 source patch, compiler commands/resources, numerical failures, setup/recording
