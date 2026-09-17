@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
+#include <limits>
 #include <mutex>
 #include <optional>
 
@@ -172,6 +174,140 @@ class Mp2Prepared final : public PreparedCalculation {
   std::optional<vibeqc_correlation_diagnostic> last_;
   mutable std::mutex mutex_;
 };
+
+bool valid_positions(const std::vector<double>& coordinates, const core::System& system) {
+  return coordinates.size() == 3 * system.atoms.size() &&
+         std::all_of(coordinates.begin(), coordinates.end(),
+                     [](double value) { return std::isfinite(value); });
+}
+
+std::vector<double> positions(const core::System& system) {
+  std::vector<double> result;
+  result.reserve(3 * system.atoms.size());
+  for (const auto& atom : system.atoms)
+    result.insert(result.end(), atom.position.begin(), atom.position.end());
+  return result;
+}
+
+void set_positions(core::System& system, const std::vector<double>& coordinates) {
+  for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+    std::copy_n(coordinates.begin() + 3 * atom, 3, system.atoms[atom].position.begin());
+}
+
+vibeqc_status item_exception_status() {
+  try {
+    throw;
+  } catch (const MethodError& error) {
+    return error.status();
+  } catch (const std::bad_alloc&) {
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::invalid_argument&) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  } catch (const std::exception&) {
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  } catch (...) {
+    return VIBEQC_STATUS_INTERNAL_ERROR;
+  }
+}
+
+class Mp2PreparedBatch final : public PreparedBatch {
+ public:
+  Mp2PreparedBatch(Capabilities capabilities, core::ContextState& context,
+                   std::vector<core::System> systems, const vibeqc_method_descriptor& descriptor)
+      : capabilities_(capabilities), context_(&context), systems_(std::move(systems)) {
+    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
+    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_.density_fitting_auxiliary_basis = nullptr;
+    descriptor_.ks_options = nullptr;
+    owners_.reserve(systems_.size());
+    owner_coordinates_.reserve(systems_.size());
+    for (const auto& system : systems_) {
+      owners_.push_back(prepare_mp2_calculation(capabilities_, *context_, system, descriptor_));
+      owner_coordinates_.push_back(positions(system));
+    }
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept override { return systems_.size(); }
+
+  void invalidate_result() override {
+    for (auto& owner : owners_) owner->invalidate_result();
+  }
+
+  std::vector<BatchItemResult> execute(const Coordinates& coordinates,
+                                       bool compute_forces) override {
+    invalidate_result();
+    if (!coordinates.empty() && coordinates.size() != size())
+      throw std::invalid_argument("MP2 batch coordinates do not match system count");
+    std::vector<BatchItemResult> results(size());
+    for (std::size_t index = 0; index < size(); ++index) {
+      auto& result = results[index];
+      result.bucket_id = index;
+      result.calculation.energy = std::numeric_limits<double>::quiet_NaN();
+      result.calculation.executed_backend = context_->requested_backend;
+      try {
+        auto target = systems_[index];
+        auto target_coordinates = positions(target);
+        if (!coordinates.empty() && coordinates[index]) {
+          if (!valid_positions(*coordinates[index], target))
+            throw std::invalid_argument("invalid MP2 batch item coordinates");
+          target_coordinates = *coordinates[index];
+          set_positions(target, target_coordinates);
+        }
+        if (target_coordinates != owner_coordinates_[index]) {
+          auto candidate = prepare_mp2_calculation(capabilities_, *context_, target, descriptor_);
+          owners_[index] = std::move(candidate);
+          owner_coordinates_[index] = std::move(target_coordinates);
+        }
+        result.calculation = owners_[index]->execute(compute_forces);
+        result.status = VIBEQC_STATUS_SUCCESS;
+      } catch (...) {
+        result.status = item_exception_status();
+      }
+    }
+    return results;
+  }
+
+  void clear_warm_starts() override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  [[nodiscard]] std::size_t warm_density_size(std::size_t) const override { return 0; }
+  [[nodiscard]] const std::optional<scf::HfWarmState>& warm_state(std::size_t) const override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  void restore_warm_states(std::vector<std::optional<scf::HfWarmState>>) override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  void set_warm_start_updates(bool) override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  [[nodiscard]] std::optional<std::vector<DirectShellClassProfileEntry>>
+  last_direct_shell_class_profile() const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] std::optional<DirectPppsQueueProfile> last_direct_ppps_queue_profile()
+      const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] std::vector<EigensolverDiagnostic> last_eigensolver_diagnostics() const override {
+    return {};
+  }
+  [[nodiscard]] std::vector<scf::CudaDensityFittingMetricDiagnostic>
+  last_density_fitting_metric_diagnostics() const override {
+    return {};
+  }
+  [[nodiscard]] std::vector<InactiveEigensolverProfileEntry> last_inactive_eigensolver_profile()
+      const override {
+    return {};
+  }
+
+ private:
+  Capabilities capabilities_;
+  core::ContextState* context_{};
+  std::vector<core::System> systems_;
+  vibeqc_method_descriptor descriptor_{};
+  std::vector<std::unique_ptr<PreparedCalculation>> owners_;
+  std::vector<std::vector<double>> owner_coordinates_;
+};
 }  // namespace
 
 vibeqc_status validate_mp2_system(vibeqc_method, const core::System& system, std::string& detail) {
@@ -339,5 +475,35 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
                       "RI-MP2 DF reference state exceeds numeric memory budget");
   return std::make_unique<Mp2Prepared>(caps, context, system, std::move(auxiliary), options, budget,
                                        reference_capacity, threshold, density_fitted, fitted_cuda);
+}
+
+std::unique_ptr<PreparedBatch> prepare_mp2_batch(const Capabilities& capabilities,
+                                                 core::ContextState& context,
+                                                 std::vector<core::System> systems,
+                                                 const vibeqc_method_descriptor& descriptor,
+                                                 vibeqc_batch_flags flags) {
+  if ((flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "MP2 batch does not support warm starts");
+  constexpr vibeqc_batch_flags profiling_flags = VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING |
+                                                 VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING;
+  if ((flags & profiling_flags) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "MP2 batch does not support profiling");
+  if ((flags & ~(VIBEQC_BATCH_ENABLE_WARM_STARTS | profiling_flags)) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unsupported MP2 batch flag");
+  const auto present = [&](std::size_t end) { return descriptor.struct_size >= end; };
+  const auto density_fitting_mode =
+      present(offsetof(vibeqc_method_descriptor, density_fitting_mode) +
+              sizeof(descriptor.density_fitting_mode))
+          ? descriptor.density_fitting_mode
+          : VIBEQC_DENSITY_FITTING_NONE;
+  if (density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "MP2 batch supports conventional correlation only");
+  if (present(offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
+              sizeof(descriptor.density_fitting_auxiliary_basis)) &&
+      descriptor.density_fitting_auxiliary_basis)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                      "conventional MP2 batch does not accept an auxiliary basis");
+  return std::make_unique<Mp2PreparedBatch>(capabilities, context, std::move(systems), descriptor);
 }
 }  // namespace vibeqc::methods::detail

@@ -493,7 +493,7 @@ class PreparedBatch:
                 )
 
             if self.resource_plan is None:
-                _native.check(self._library, prepare())
+                _native.check(self._library, prepare(), context=self._context)
             else:
                 from .resources_native import check_resource_status, observe_method_call
 

@@ -29,10 +29,10 @@ struct MethodDefinition {
 constexpr vibeqc_property_flags kEnergyAndForces = VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES;
 
 const std::array<MethodDefinition, 9> kMethods{{
-    {{VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, kEnergyAndForces, true, false},
+    {{VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, kEnergyAndForces, true, true},
      detail::validate_mp2_system,
      detail::prepare_mp2_calculation,
-     nullptr},
+     detail::prepare_mp2_batch},
     {{VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, kEnergyAndForces, true, true},
      detail::validate_hf_system,
      detail::prepare_hf_calculation,

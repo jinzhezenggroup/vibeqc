@@ -508,6 +508,8 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
       const bool valid_force_buffer =
           omit_forces || (output.forces != nullptr && output.force_count >= required_forces);
       output.status = valid_force_buffer ? item.status : VIBEQC_STATUS_INVALID_ARGUMENT;
+      if (output.status != VIBEQC_STATUS_SUCCESS && output.status != VIBEQC_STATUS_NOT_CONVERGED)
+        continue;
       output.energy = item.calculation.energy;
       output.iterations = item.calculation.convergence.iterations;
       output.energy_change = item.calculation.convergence.energy_change;
@@ -517,7 +519,7 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
       output.bucket_id = static_cast<std::uint32_t>(item.bucket_id);
       output.warm_start_used = item.warm_start_used ? 1 : 0;
       output.warm_start_fallback = item.warm_start_fallback ? 1 : 0;
-      if (valid_force_buffer && !omit_forces && item.status == VIBEQC_STATUS_SUCCESS) {
+      if (!omit_forces && item.status == VIBEQC_STATUS_SUCCESS) {
         std::copy(item.calculation.forces.begin(), item.calculation.forces.end(), output.forces);
       }
     }
