@@ -13,7 +13,8 @@ from fractions import Fraction
 from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec, VERSION as XC_VERSION
+from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
+from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
@@ -148,7 +149,9 @@ class ExactExchangePrimitive:
     def __post_init__(self):
         _require_fraction(self.coefficient, "exact exchange")
         if self.coefficient <= 0:
-            raise UnsupportedMethod("exact-exchange primitive requires a positive weight")
+            raise UnsupportedMethod(
+                "exact-exchange primitive requires a positive weight"
+            )
         if self.operator != FULL_RANGE:
             raise UnsupportedMethod(
                 "only full-range exact exchange is representable in the first MethodIR slice"

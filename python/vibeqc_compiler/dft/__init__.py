@@ -16,12 +16,12 @@ from .method import (
 from .prepared import PreparedGrid, PreparedGridBatch
 
 __all__ = [
+    "METHOD_CATALOG",
     "DensitySource",
     "DensityStamp",
     "ExactExchangePrimitive",
     "ExplicitGrid",
     "GridSpec",
-    "METHOD_CATALOG",
     "MethodIR",
     "MethodSpec",
     "MolecularGrid",

@@ -68,7 +68,10 @@ def test_method_identity_is_semantic_while_manifest_identity_retains_name():
     ir_b = resolve_method(b, spin="unpolarized")
     assert ir_a.identity == ir_b.identity
     assert ir_a.manifest_identity != ir_b.manifest_identity
-    assert ir_a.primitives[0].functional.components == ir_b.primitives[0].functional.components
+    assert (
+        ir_a.primitives[0].functional.components
+        == ir_b.primitives[0].functional.components
+    )
 
 
 def test_same_family_extension_is_data_only_and_json_serializable():
