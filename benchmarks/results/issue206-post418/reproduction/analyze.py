@@ -14,6 +14,12 @@ from collections import Counter
 from pathlib import Path
 from statistics import median
 
+# This historical audit intentionally uses assertions for executable invariants.
+# Refuse optimized execution even when imported, so -O can never certify data
+# after stripping hash, convergence, numerical, or cardinality checks.
+if not __debug__:
+    raise RuntimeError("evidence audit requires assertions; do not use python -O")
+
 
 def raw_bytes(path):
     """Restore exact original bytes before checking the controller's hashes."""
@@ -60,6 +66,36 @@ def sample_statistics(samples):
         "final_residuals": [
             [c["final_residuals"] for c in s["convergence"]] for s in samples
         ],
+    }
+
+
+def matched_subset(samples):
+    """Rebuild the comparator's most-supported common branch from raw solves.
+
+    Selection maximizes the smaller engine sample count, with a lexicographic
+    tie break. The result is checked for provenance only; a one-sample stock
+    subset remains insufficient for a fixed-work performance claim.
+    """
+    groups = {}
+    for engine, values in samples.items():
+        groups[engine] = {}
+        for sample in values:
+            branch = tuple(c["iterations"] for c in sample["convergence"])
+            assert all(type(n) is int and n >= 0 for n in branch)
+            groups[engine].setdefault(branch, []).append(sample["seconds"])
+    native, stock = groups["vibeqc"], groups["gpu4pyscf"]
+    shared = native.keys() & stock.keys()
+    if not shared:
+        return None
+    branch = min(shared, key=lambda b: (-min(len(native[b]), len(stock[b])), b))
+    native_median, stock_median = median(native[branch]), median(stock[branch])
+    return {
+        "iteration_branch": list(branch),
+        "vibeqc_sample_count": len(native[branch]),
+        "gpu4pyscf_sample_count": len(stock[branch]),
+        "vibeqc_median_seconds": native_median,
+        "gpu4pyscf_median_seconds": stock_median,
+        "speedup": stock_median / native_median,
     }
 
 
@@ -163,6 +199,10 @@ def analyze(directory):
         stats = {
             engine: sample_statistics(values) for engine, values in samples.items()
         }
+        matched = matched_subset(samples)
+        assert matched == data["timing_summary"]["iteration_matched"], (
+            f"{row['name']}: recorded matched subset differs from raw samples"
+        )
         for engine in stats:
             assert (
                 stats[engine]["median_seconds"] == data[engine]["warm_median_seconds"]
@@ -195,9 +235,7 @@ def analyze(directory):
                 "paired_matching_iteration_count": sum(
                     p["iteration_branches_match"] for p in pairs
                 ),
-                "comparator_matched_subset": data["timing_summary"][
-                    "iteration_matched"
-                ],
+                "comparator_matched_subset": matched,
                 "metric_and_native_reserved_memory": metrics,
                 "stock_versions": qualifier["versions"],
                 "stock_factor_records": [
