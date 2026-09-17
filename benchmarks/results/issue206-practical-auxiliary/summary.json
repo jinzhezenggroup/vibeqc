@@ -1,0 +1,644 @@
+{
+  "schema": "vibeqc.issue206.practical-auxiliary.audit.v1",
+  "slurm_job_id": "9904",
+  "measured_head": "67b35f3a0a236de39ebbdb2876908a3c2da78c6c",
+  "native_source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d",
+  "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+  "endpoint_count": 2,
+  "paired_repeats": 14,
+  "timed_solves": 28,
+  "controller_exit_code": 1,
+  "all_required_numeric_gates_pass": false,
+  "conclusion": "Both practical-basis force cells fail the predeclared 3e-11 force gate; all14 pairs retained. Independent CPU diagnosis localizes the main force discrepancy to native results. Keeps #206 open.",
+  "statistical_scope": "Predeclared ordinary-latency criterion: both relative MAD<=3%, median reduction>=2%, and paired-bootstrap95% lower bound>2%,10000 resamples with NumPy default_rng(206). Numerical failure forbids performance admission. No fixed-work claim.",
+  "points": [
+    {
+      "name": "water-tetramer-def2-svp-spherical-b1-forces",
+      "ao_count": 96,
+      "batch_size": 1,
+      "observable": "energy_and_force",
+      "numeric_pass": false,
+      "failed_repeats": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "gates": {
+        "maximum_energy_error_hartree": 3e-11,
+        "maximum_force_error_hartree_per_bohr": 3e-11,
+        "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+        "minimum_iteration_matched_speedup": null
+      },
+      "paired_accuracy": [
+        {
+          "repeat": 0,
+          "energy_error_hartree": 9.094947017729282e-13,
+          "force_error_hartree_per_bohr": 1.7551950795557936e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 1,
+          "energy_error_hartree": 1.2505552149377763e-12,
+          "force_error_hartree_per_bohr": 1.7544459010587765e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 2,
+          "energy_error_hartree": 1.1368683772161603e-12,
+          "force_error_hartree_per_bohr": 1.7562768808709883e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 3,
+          "energy_error_hartree": 1.2505552149377763e-12,
+          "force_error_hartree_per_bohr": 1.755611635234633e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 4,
+          "energy_error_hartree": 1.0231815394945443e-12,
+          "force_error_hartree_per_bohr": 1.7566623503051382e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 5,
+          "energy_error_hartree": 1.1368683772161603e-12,
+          "force_error_hartree_per_bohr": 1.7545769073756823e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 6,
+          "energy_error_hartree": 1.0231815394945443e-12,
+          "force_error_hartree_per_bohr": 1.7569936408556863e-09,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        }
+      ],
+      "maximum_energy_error_hartree": 1.2505552149377763e-12,
+      "maximum_force_error_hartree_per_bohr": 1.7569936408556863e-09,
+      "ordinary": {
+        "vibeqc": {
+          "seconds": [
+            0.6058912260923535,
+            0.6096486251335591,
+            0.5670158418361098,
+            0.6145810929592699,
+            0.5676747930701822,
+            0.6077028920408338,
+            0.5648436958435923
+          ],
+          "median_seconds": 0.6058912260923535,
+          "minimum_seconds": 0.5648436958435923,
+          "maximum_seconds": 0.6145810929592699,
+          "relative_mad": 0.014342288669471272,
+          "branches": [
+            {
+              "iterations": [
+                2
+              ],
+              "count": 7
+            }
+          ],
+          "final_residuals": [
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 2.7587699515993282e-12,
+                "energy_change_hartree": 6.252776074688882e-13,
+                "orbital_gradient_norm": null
+              }
+            ]
+          ]
+        },
+        "gpu4pyscf": {
+          "seconds": [
+            0.27033401490189135,
+            0.273023399990052,
+            0.2711462590377778,
+            0.27304870798252523,
+            0.2688356570433825,
+            0.27291151601821184,
+            0.2689320519566536
+          ],
+          "median_seconds": 0.2711462590377778,
+          "minimum_seconds": 0.2688356570433825,
+          "maximum_seconds": 0.27304870798252523,
+          "relative_mad": 0.006922983038510844,
+          "branches": [
+            {
+              "iterations": [
+                1
+              ],
+              "count": 7
+            }
+          ],
+          "final_residuals": [
+            [
+              {
+                "density_rms": 1.5622383535492151e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9065305280264614e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622555198284105e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9066288953954786e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622499222305304e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9066795023901e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622768311799507e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.90653705691627e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622950045761633e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9064849930336017e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622644450625046e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9065003587932523e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.5622471693724874e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 4.9066533236822475e-11
+              }
+            ]
+          ]
+        }
+      },
+      "ordinary_native_reduction_fraction": -1.2345549897774433,
+      "paired_matching_iteration_count": 0,
+      "comparator_matched_subset": null,
+      "metric_and_native_reserved_memory": [
+        {
+          "absolute_threshold": 3.638717575141369e-08,
+          "auxiliary_tile": 464,
+          "bucket_id": 0,
+          "condition_number": 5434793.529461506,
+          "device_resident_bytes": 150677763,
+          "effective_rank": 464,
+          "host_resident_bytes": 2229026,
+          "peak_device_bytes": 195156511,
+          "peak_host_bytes": 38168614,
+          "solver_device_workspace_bytes": 8542872,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "stock_versions": {
+        "gpu4pyscf-cuda12x": "1.8.1",
+        "cupy-cuda12x": "14.2.0",
+        "cutensor-cu12": "2.3.1",
+        "pyscf": "2.14.0",
+        "numpy": "2.5.3"
+      },
+      "stock_factor_records": [
+        {
+          "case": "water-tetramer-def2-svp-spherical",
+          "batch": 1,
+          "slot": 0,
+          "unit": "Bohr",
+          "representation": "spherical",
+          "nbf": 96,
+          "naux": 464,
+          "reference_metric_sha256": "33b53dd926142f4668cd27f2ec58c3e6f226b477631e83e52288c11ec07604cf",
+          "reference_metric_extrema": [
+            6.695226884588835e-05,
+            363.8717575141369
+          ],
+          "reference_condition": 5434793.529577048,
+          "relative_threshold": 1e-10,
+          "reference_effective_rank": 464,
+          "gpu4pyscf_factor_blocks": {
+            "0": [
+              464,
+              4656
+            ]
+          },
+          "gpu4pyscf_effective_rank": 464,
+          "gpu4pyscf_factor_container": "list",
+          "gpu4pyscf_df_class": "gpu4pyscf.df.df.DF",
+          "gpu4pyscf_decomposition": [
+            {
+              "factorization": "cd",
+              "coefficient_shape": [
+                524,
+                464
+              ],
+              "dtype": "float64",
+              "fallback_absolute_threshold": 1e-07
+            }
+          ],
+          "gpu4pyscf_default_initial_guess": "minao",
+          "matching_full_rank": true
+        }
+      ],
+      "cold_single_observations_seconds": {
+        "vibeqc": 1.409271745942533,
+        "gpu4pyscf": 1.4278596711810678
+      },
+      "predeclared_ordinary_statistics": {
+        "bootstrap95_reduction_interval": [
+          -1.2412689217531185,
+          -1.0911807666028301
+        ],
+        "stable": true,
+        "timing_criterion_pass": false,
+        "qualified_ordinary_win": false
+      },
+      "independent_cpu_max_force_errors": {
+        "vibeqc": 1.7521712761259245e-09,
+        "gpu4pyscf": 1.7407852936912604e-11
+      }
+    },
+    {
+      "name": "oh-def2-svp-spherical-uhf-b1-forces",
+      "ao_count": 19,
+      "batch_size": 1,
+      "observable": "energy_and_force",
+      "numeric_pass": false,
+      "failed_repeats": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "gates": {
+        "maximum_energy_error_hartree": 3e-11,
+        "maximum_force_error_hartree_per_bohr": 3e-11,
+        "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+        "minimum_iteration_matched_speedup": null
+      },
+      "paired_accuracy": [
+        {
+          "repeat": 0,
+          "energy_error_hartree": 1.7195134205394424e-12,
+          "force_error_hartree_per_bohr": 1.292755850285099e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 1,
+          "energy_error_hartree": 1.7337242752546445e-12,
+          "force_error_hartree_per_bohr": 1.2889278012961913e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 2,
+          "energy_error_hartree": 1.7621459846850485e-12,
+          "force_error_hartree_per_bohr": 1.303702649307903e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 3,
+          "energy_error_hartree": 1.7195134205394424e-12,
+          "force_error_hartree_per_bohr": 1.2871381217804956e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 4,
+          "energy_error_hartree": 1.7053025658242404e-12,
+          "force_error_hartree_per_bohr": 1.2919342852468763e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 5,
+          "energy_error_hartree": 1.7479351299698465e-12,
+          "force_error_hartree_per_bohr": 1.2910150205824866e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        },
+        {
+          "repeat": 6,
+          "energy_error_hartree": 1.7195134205394424e-12,
+          "force_error_hartree_per_bohr": 1.2914147008713517e-10,
+          "iteration_branches_match": false,
+          "numerically_passed": false
+        }
+      ],
+      "maximum_energy_error_hartree": 1.7621459846850485e-12,
+      "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+      "ordinary": {
+        "vibeqc": {
+          "seconds": [
+            0.01785502419807017,
+            0.018000792944803834,
+            0.017450588988140225,
+            0.01821456104516983,
+            0.01761396205984056,
+            0.017856736900284886,
+            0.017738200025632977
+          ],
+          "median_seconds": 0.01785502419807017,
+          "minimum_seconds": 0.017450588988140225,
+          "maximum_seconds": 0.01821456104516983,
+          "relative_mad": 0.008164018436302128,
+          "branches": [
+            {
+              "iterations": [
+                2
+              ],
+              "count": 7
+            }
+          ],
+          "final_residuals": [
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ],
+            [
+              {
+                "density_rms": 3.0967438107968575e-12,
+                "energy_change_hartree": 4.263256414560601e-14,
+                "orbital_gradient_norm": null
+              }
+            ]
+          ]
+        },
+        "gpu4pyscf": {
+          "seconds": [
+            0.2025304101407528,
+            0.20261461101472378,
+            0.2029725150205195,
+            0.2029471469577402,
+            0.20296781696379185,
+            0.20278315409086645,
+            0.20316861988976598
+          ],
+          "median_seconds": 0.2029471469577402,
+          "minimum_seconds": 0.2025304101407528,
+          "maximum_seconds": 0.20316861988976598,
+          "relative_mad": 0.0008080570204216248,
+          "branches": [
+            {
+              "iterations": [
+                1
+              ],
+              "count": 7
+            }
+          ],
+          "final_residuals": [
+            [
+              {
+                "density_rms": 1.0048079315315894e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780468615471791e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048209294873194e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780492703329262e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048224852120855e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780407418840278e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048071784341453e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780452023652268e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048186797716615e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.78039664687687e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048035921389106e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780516929798244e-11
+              }
+            ],
+            [
+              {
+                "density_rms": 1.0048151487772857e-10,
+                "energy_change_hartree": null,
+                "orbital_gradient_norm": 6.780433224527503e-11
+              }
+            ]
+          ]
+        }
+      },
+      "ordinary_native_reduction_fraction": 0.9120213096575921,
+      "paired_matching_iteration_count": 0,
+      "comparator_matched_subset": null,
+      "metric_and_native_reserved_memory": [
+        {
+          "absolute_threshold": 1.1563063560204023e-08,
+          "auxiliary_tile": 93,
+          "bucket_id": 0,
+          "condition_number": 1696091.2373200064,
+          "device_resident_bytes": 3637603,
+          "effective_rank": 93,
+          "host_resident_bytes": 1095586,
+          "peak_device_bytes": 5279855,
+          "peak_host_bytes": 1434854,
+          "solver_device_workspace_bytes": 1303728,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "stock_versions": {
+        "gpu4pyscf-cuda12x": "1.8.1",
+        "cupy-cuda12x": "14.2.0",
+        "cutensor-cu12": "2.3.1",
+        "pyscf": "2.14.0",
+        "numpy": "2.5.3"
+      },
+      "stock_factor_records": [
+        {
+          "case": "oh-def2-svp-spherical-uhf",
+          "batch": 1,
+          "slot": 0,
+          "unit": "Bohr",
+          "representation": "spherical",
+          "nbf": 19,
+          "naux": 93,
+          "reference_metric_sha256": "f7fd8f67f5191d30ee70b56888ddaaafbaa2f8e69808f72002cb277e089add94",
+          "reference_metric_extrema": [
+            6.817477331318213e-05,
+            115.63063560204083
+          ],
+          "reference_condition": 1696091.2370160054,
+          "relative_threshold": 1e-10,
+          "reference_effective_rank": 93,
+          "gpu4pyscf_factor_blocks": {
+            "0": [
+              93,
+              190
+            ]
+          },
+          "gpu4pyscf_effective_rank": 93,
+          "gpu4pyscf_factor_container": "list",
+          "gpu4pyscf_df_class": "gpu4pyscf.df.df.DF",
+          "gpu4pyscf_decomposition": [
+            {
+              "factorization": "cd",
+              "coefficient_shape": [
+                106,
+                93
+              ],
+              "dtype": "float64",
+              "fallback_absolute_threshold": 1e-07
+            }
+          ],
+          "gpu4pyscf_default_initial_guess": "minao",
+          "matching_full_rank": true
+        }
+      ],
+      "cold_single_observations_seconds": {
+        "vibeqc": 0.2551073990762234,
+        "gpu4pyscf": 1.276686318218708
+      },
+      "predeclared_ordinary_statistics": {
+        "bootstrap95_reduction_interval": [
+          0.9111574784530434,
+          0.9132199644958832
+        ],
+        "stable": true,
+        "timing_criterion_pass": true,
+        "qualified_ordinary_win": false
+      },
+      "independent_cpu_max_force_errors": {
+        "vibeqc": 1.237315753327417e-10,
+        "gpu4pyscf": 6.66622312905929e-12
+      }
+    }
+  ],
+  "predeclared_statistics": {
+    "repeats": 7,
+    "maximum_relative_mad": 0.03,
+    "minimum_reduction": 0.02,
+    "bootstrap_pairs": 10000,
+    "seed": 206,
+    "confidence": 0.95
+  }
+}
