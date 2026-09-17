@@ -38,6 +38,7 @@ struct vibeqc_calculation {
 struct vibeqc_batch {
   vibeqc_context* context{};
   std::unique_ptr<vibeqc::methods::PreparedBatch> plan;
+  vibeqc_batch_flags flags{};
   std::vector<std::uint32_t> atom_counts;
   std::vector<std::uint64_t> last_fock_builds;
   /** Input-ordered completed-run records; invalid/throwing items stay unavailable. */
