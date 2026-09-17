@@ -5,6 +5,7 @@ from fractions import Fraction
 
 import pytest
 from vibeqc_compiler.method import (
+    METHOD_CATALOG,
     ExactExchangePrimitive,
     MethodSpec,
     SemilocalXCPrimitive,
@@ -72,6 +73,11 @@ def test_method_identity_is_semantic_while_manifest_identity_retains_name():
         ir_a.primitives[0].functional.components
         == ir_b.primitives[0].functional.components
     )
+
+
+def test_audited_method_catalog_is_read_only():
+    with pytest.raises(TypeError):
+        METHOD_CATALOG["PBE"] = MethodSpec("mutated", (("LDA_X", Fraction(1)),))
 
 
 def test_same_family_extension_is_data_only_and_json_serializable():

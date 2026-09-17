@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
+from types import MappingProxyType
 from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -268,21 +269,23 @@ class MethodIR:
         return canonical_hash(self.to_payload())
 
 
-METHOD_CATALOG = {
-    "LDA_XC_PW": MethodSpec(
-        "LDA_XC_PW",
-        (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
-    ),
-    "PBE": MethodSpec(
-        "PBE",
-        (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
-    ),
-    "PBE0": MethodSpec(
-        "PBE0",
-        (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
-        exact_exchange=Fraction(1, 4),
-    ),
-}
+METHOD_CATALOG = MappingProxyType(
+    {
+        "LDA_XC_PW": MethodSpec(
+            "LDA_XC_PW",
+            (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
+        ),
+        "PBE": MethodSpec(
+            "PBE",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+        ),
+        "PBE0": MethodSpec(
+            "PBE0",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+        ),
+    }
+)
 
 
 def resolve_method(method, *, spin="unpolarized"):
