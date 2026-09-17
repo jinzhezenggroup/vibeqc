@@ -1191,6 +1191,34 @@
           "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
         }
       ]
+    },
+    {
+      "source": ".artifacts/issue409/constrained-clean/768-12GiB-forces.json",
+      "sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6",
+      "phase": "warm",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 162.02327695814893,
+        "packed": 65.02855966193601
+      },
+      "packed_over_dense": 0.40135319370643935,
+      "paired_bootstrap_ratio_95": [
+        0.4010232372457141,
+        0.4017569295853055
+      ],
+      "work_distributions": {
+        "dense": {
+          "[5]": 7
+        },
+        "packed": {
+          "[6]": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.049472282640636e-11,
+      "maximum_force_error": 1.9849531393556497e-10,
+      "diagnostic_work": []
     }
   ],
   "incomplete": [

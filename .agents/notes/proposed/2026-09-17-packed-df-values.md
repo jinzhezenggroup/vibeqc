@@ -374,3 +374,28 @@ branch is retained and labeled, rather than presented as the original clean
 work distribution. Twelve CPU tests exercise accepted bindings and invalid
 provenance, pooling and numerical cases. This collector support does not itself
 complete the still-pending GPU diagnostic campaign.
+
+## Completed constrained endpoint and warm CUPTI records (2026-09-17)
+
+Job 9848 completes all seven 768-AO pairs under the same 12-GiB DF allowance.
+Dense/packed complete-force medians are 162.023276958/65.028559662 seconds;
+the paired packed/dense ratio interval is [0.401023237, 0.401756930]. Every
+sample satisfies the unchanged gates, with maximum energy/force errors of
+9.05e-11 Eh/1.99e-10 Eh/Bohr. Updates remain five versus six, so this is a
+59.86% ordinary-latency reduction with different work. The separate unprofiled
+capacity observations retain the 51.4% native allocation peak reduction,
+33.3% sampled process-device reduction and 17.2% sampled host increase. Both B
+plans remain resident. This supports a useful constrained endpoint; it does not
+erase the unconstrained warm/changed regressions or complete final qualification.
+
+Job 9850 completes six separate warm Nsight processes, explicitly tracing CUDA
+Graph nodes. SQLite/CUPTI records confirm the 192-AO raw-upload reduction of
+56,623,104 bytes. At 384 AO, total H2D bytes are unchanged while kernel launches
+grow from 1,189 to 20,106. The API account also separates the native tracer's
+own fences: progress mode adds one per eager region, and destruction adds one
+per eager operation. All 9,796 event synchronizations in the profiled 384-AO
+packed run are accounted for by those tracing fences; treating them as clean
+production synchronization work would invent a different explanation for the
+real endpoint regression. Kernel busy intervals are unioned, and nested API
+times remain separate. Nsight process-memory samples include profiler overhead;
+the unprofiled capacity measurements retain their independent acceptance role.

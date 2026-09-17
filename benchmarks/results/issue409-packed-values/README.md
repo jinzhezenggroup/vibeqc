@@ -26,6 +26,7 @@ independent references. These large-case gates do not relax stricter fixtures.
 | 768 cold forces | 85.685922099 | 82.768054998 | 23 / 24 |
 | 24/116 unequal warm forces | 0.019747868 | 0.018764724 | 2 / 2 |
 | 96/464 unequal warm forces | 0.568663857 | 0.552863172 | 2 / 2 |
+| 768 / 12-GiB warm forces | 162.023276958 | 65.028559662 | 5 / 6 |
 
 Changed SCF branches are ordinary-latency results, not iteration-matched
 comparisons. The 192-AO force gain is about 21.2%; packed force response removes
@@ -49,8 +50,10 @@ before other source/metric/SCF/library allocations. It distinguishes directly
 observed eager counters from logical J FLOPs derived using the observed replay
 count: the warm graph was cached before tracing, so there are no in-range graph
 construction counters to multiply. Transfer counters remain scoped to individual
-operations because nested semantic counters overlap. Full hardware traffic and
-raw-integral recurrence FLOPs remain explicitly unmeasured.
+operations because nested semantic counters overlap. Hardware DRAM traffic and
+raw-integral recurrence FLOPs remain explicitly unmeasured. The separately
+retained CUPTI observations now supply exact CUDA transfer bytes, as described
+below.
 
 The 768-AO changed-geometry clean series also completed all seven pairs:
 86.357965270 -> 191.511216193 seconds, with nine updates in each arm. Its
@@ -67,10 +70,20 @@ metric ranks are 1856. The campaign stops before packed or warm timing, so this
 larger case is unqualified and establishes no representation speed comparison.
 `failed/unequal/` retains its full numerical record, including the failure.
 
-## Constrained memory: diagnostic evidence only
+## Constrained memory: clean endpoints and separate diagnostics
 
-Job 9841 measures 768 AO with the same 12-GiB total DF allowance. Both arms
-retain resident B, so this is not a streamed-to-resident crossover.
+Job 9848 completes seven interleaved clean pairs at 768 AO with the same
+12-GiB total DF allowance. Dense and packed complete-force medians are
+162.023276958 and 65.028559662 seconds: packed uses 59.86% less time. The
+paired-bootstrap packed/dense ratio interval is [0.401023237, 0.401756930].
+Every sample passes the unchanged numerical gates; maximum energy/force
+errors are 9.05e-11 Eh / 1.99e-10 Eh/Bohr. SCF updates are 5 versus 6, so this
+is ordinary converged latency, with different work. Raw samples and the
+terminal successful scheduler record are retained.
+
+Separate job 9841 measures the intrusive components and unprofiled process
+memory under the same allowance. Both arms retain resident B; no
+streamed-to-resident B crossover is established.
 
 | Observation | Dense | Packed |
 | --- | ---: | ---: |
@@ -86,7 +99,35 @@ owned native buffers, not driver/library allocations, and is not large-domain
 Python inventory admission or a whole-process memory guarantee. Dense response
 generates 1,626 raw blocks and takes about 94.72 s; packed response reuses raw
 and final U and takes about 1.447 s. Both spend about 58.56 s exporting bounded
-one-electron derivatives. **Seven clean constrained pairs remain required.**
+one-electron derivatives. The clean timing above is separate from these intrusive observations.
+The useful benefit is limited to this constrained endpoint; broader automatic
+selection remains unqualified.
+
+## Warm CUDA dataflow
+
+`nsys-dataflow-summary.json` and `dataflow/` retain six completed warm profiles
+from job 9850, with exact SQLite/CUPTI transfer bytes, kernel launch shapes,
+register/shared/local declarations, API counts and source hashes. Explicit
+CUDA Graph **node** tracing includes work inside replayed graphs. Device kernel
+busy intervals are unioned; kernel/API/host durations are never added together.
+These profiles use the frozen measured library and pass the numerical gates.
+
+At 192 AO, observed H2D bytes fall from 59,302,772 to 2,679,668. The difference
+is exactly the independently recorded 56,623,104 raw-upload bytes. Kernel launches
+increase from 1,659 to 1,859 while both retain three updates. At 384 AO, H2D
+bytes remain 10,669,236 while launches increase from 1,189 to 20,106, consistent
+with the bounded packed raw-response cost. At 768 AO, both transfer 42,572,084
+H2D bytes and 4,718,592 D2D bytes; their three versus six updates remain distinct.
+Complete D2H counts are retained alongside the other directions.
+
+Native progress tracing inserts one event fence per eager region and one more
+per eager operation. The account separates these from observed API counts:
+all 9,796 event synchronizations in the profiled 384-AO packed call come from
+those tracing fences. Remaining synchronization counts are still intrusive
+observations, not certified clean-production counts. Sampled process peaks under
+Nsight include profiler overhead and do not replace the unprofiled capacity
+acceptance observations above. Cold and unequal-basis profile campaigns remain
+pending; the dataflow summary lists them explicitly.
 
 ## Qualification and remaining work
 
@@ -102,7 +143,7 @@ The draft still requires:
 
 - the separate 768-AO changed-geometry diagnostic and work counts;
 - diagnosis/domain resolution of the failed 384/1856 unequal preflight;
-- seven clean constrained pairs and a final domain/negative-result decision;
+- a final domain/policy decision using the completed constrained pairs;
 - the remaining complete traffic/component/resource and compilation audit;
 - a rebuild and required validation of the subsequently formatted native source;
 - GPU validation of the new portable warm wrapper.

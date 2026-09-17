@@ -1,0 +1,258 @@
+{
+  "scope": "Retain exact CUPTI transfer bytes and graph-node work from completed profiles.\n\nCUDA copy bytes are transfer activity, not hardware DRAM traffic. Kernel times\nmay overlap; their sum is never added to API times or treated as endpoint time.\nNative progress tracing inserts event fences. Those known fences are counted\nseparately from observed API calls; the remainder is still an intrusive result,\nnot an assertion of clean production synchronization behavior.\n",
+  "runner_sha256": "7791c9f25bb3d828b06de3614b9afe30263eb148d26d11ede42ecdec21429029",
+  "profiles": [
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-192-dense.json",
+      "sha256": "f0ac7b30944204a13a9cb17f62a98542466e8c7d4dc0e0033e44551613f561c4",
+      "campaign": "dataflow-profiles",
+      "name": "192-dense",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 1659,
+        "kernel_graph_node_launches": 258,
+        "kernel_duration_sum_ns": 133570321,
+        "kernel_device_busy_union_ns": 133570321,
+        "observed_runtime_event_synchronizations": 1042,
+        "source_derived_native_tracing_event_fences": 1032,
+        "event_synchronizations_outside_those_native_tracing_fences": 10,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 59302772,
+          "Device-to-Host": 590611,
+          "Device-to-Device": 0
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 225,
+          "bytes": 59302772,
+          "summed_activity_ns": 3233798,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 22,
+          "bytes": 590611,
+          "summed_activity_ns": 42400,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        3
+      ]
+    },
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-192-packed.json",
+      "sha256": "1e0fe34169060d561ffb4b68c6c5e99a727c46fde888f13bccd64294ad7b95dc",
+      "campaign": "dataflow-profiles",
+      "name": "192-packed",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 1859,
+        "kernel_graph_node_launches": 264,
+        "kernel_duration_sum_ns": 132846402,
+        "kernel_device_busy_union_ns": 132846402,
+        "observed_runtime_event_synchronizations": 820,
+        "source_derived_native_tracing_event_fences": 820,
+        "event_synchronizations_outside_those_native_tracing_fences": 0,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 2679668,
+          "Device-to-Host": 590611,
+          "Device-to-Device": 0
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 33,
+          "bytes": 2679668,
+          "summed_activity_ns": 155393,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 22,
+          "bytes": 590611,
+          "summed_activity_ns": 37600,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        3
+      ]
+    },
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-384-dense.json",
+      "sha256": "bc8d301f0ef681a48c68cec604439df22829f6166e4e3b005e90e3f87027726c",
+      "campaign": "dataflow-profiles",
+      "name": "384-dense",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 1189,
+        "kernel_graph_node_launches": 360,
+        "kernel_duration_sum_ns": 707588747,
+        "kernel_device_busy_union_ns": 707588747,
+        "observed_runtime_event_synchronizations": 436,
+        "source_derived_native_tracing_event_fences": 436,
+        "event_synchronizations_outside_those_native_tracing_fences": 0,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 10669236,
+          "Device-to-Host": 2360659,
+          "Device-to-Device": 0
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 35,
+          "bytes": 10669236,
+          "summed_activity_ns": 579908,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 22,
+          "bytes": 2360659,
+          "summed_activity_ns": 129474,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        3
+      ]
+    },
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-384-packed.json",
+      "sha256": "ce7178a743dccaf55c0ebefbc8b5d62ef43f6f3f1b9fc87f055c6a6611dc8411",
+      "campaign": "dataflow-profiles",
+      "name": "384-packed",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 20106,
+        "kernel_graph_node_launches": 378,
+        "kernel_duration_sum_ns": 1926105975,
+        "kernel_device_busy_union_ns": 1926105975,
+        "observed_runtime_event_synchronizations": 9796,
+        "source_derived_native_tracing_event_fences": 9796,
+        "event_synchronizations_outside_those_native_tracing_fences": 0,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 10669236,
+          "Device-to-Host": 2360659,
+          "Device-to-Device": 0
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 35,
+          "bytes": 10669236,
+          "summed_activity_ns": 579301,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 22,
+          "bytes": 2360659,
+          "summed_activity_ns": 129857,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        3
+      ]
+    },
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-768-dense.json",
+      "sha256": "bdd9ba9f69ca9969a38d1fe97e3c0882680ec89e3f91a8788abcc3532b9ce054",
+      "campaign": "dataflow-profiles",
+      "name": "768-dense",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 1091,
+        "kernel_graph_node_launches": 0,
+        "kernel_duration_sum_ns": 2374845827,
+        "kernel_device_busy_union_ns": 2374845827,
+        "observed_runtime_event_synchronizations": 347,
+        "source_derived_native_tracing_event_fences": 347,
+        "event_synchronizations_outside_those_native_tracing_fences": 0,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 42572084,
+          "Device-to-Host": 14164571,
+          "Device-to-Device": 4718592
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 35,
+          "bytes": 42572084,
+          "summed_activity_ns": 2422912,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 39,
+          "bytes": 14164571,
+          "summed_activity_ns": 911360,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Device",
+          "calls": 1,
+          "bytes": 4718592,
+          "summed_activity_ns": 2720,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        3
+      ]
+    },
+    {
+      "path": ".artifacts/issue409/dataflow-accounts/dataflow-profiles-768-packed.json",
+      "sha256": "ba30ae4d018e05b8feee05565add9fbc0113ea629436c6b148944c9abb8d95a9",
+      "campaign": "dataflow-profiles",
+      "name": "768-packed",
+      "counts": {
+        "kernel_launches_including_graph_nodes": 1646,
+        "kernel_graph_node_launches": 0,
+        "kernel_duration_sum_ns": 3062286956,
+        "kernel_device_busy_union_ns": 3062286956,
+        "observed_runtime_event_synchronizations": 392,
+        "source_derived_native_tracing_event_fences": 392,
+        "event_synchronizations_outside_those_native_tracing_fences": 0,
+        "observed_transfer_bytes_by_direction": {
+          "Host-to-Device": 42572084,
+          "Device-to-Host": 14164730,
+          "Device-to-Device": 4718592
+        }
+      },
+      "transfers": [
+        {
+          "direction": "Host-to-Device",
+          "calls": 35,
+          "bytes": 42572084,
+          "summed_activity_ns": 2437353,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Host",
+          "calls": 63,
+          "bytes": 14164730,
+          "summed_activity_ns": 934787,
+          "graph_node_calls": 0
+        },
+        {
+          "direction": "Device-to-Device",
+          "calls": 1,
+          "bytes": 4718592,
+          "summed_activity_ns": 2848,
+          "graph_node_calls": 0
+        }
+      ],
+      "iterations": [
+        6
+      ]
+    }
+  ],
+  "incomplete_campaigns": [
+    "unequal-dataflow-profiles",
+    "cold-dataflow-profiles"
+  ]
+}

@@ -91,6 +91,14 @@
       "original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c"
     },
     {
+      "path": "constrained/768-12GiB-forces.json",
+      "bytes": 426624,
+      "sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/constrained-clean/768-12GiB-forces.json",
+      "original_bytes": 426624,
+      "original_sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6"
+    },
+    {
       "path": "unequal/water-def2-svp-spherical.json",
       "bytes": 107712,
       "sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2",
@@ -116,19 +124,19 @@
     },
     {
       "path": "phasea-summary.json",
-      "bytes": 50644,
-      "sha256": "20928fe837e2205c9eee04bb7cdfac3231a0df3e590abc80c28d89ca27a7e39b",
+      "bytes": 51441,
+      "sha256": "2ea0ceff926bbc5e370d0d6050ea9225a270066d4be1507943f0c11314e0ed2f",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/phasea-summary.json",
-      "original_bytes": 50644,
-      "original_sha256": "20928fe837e2205c9eee04bb7cdfac3231a0df3e590abc80c28d89ca27a7e39b"
+      "original_bytes": 51441,
+      "original_sha256": "2ea0ceff926bbc5e370d0d6050ea9225a270066d4be1507943f0c11314e0ed2f"
     },
     {
       "path": "storage-dataflow.json",
       "bytes": 135548,
-      "sha256": "a3e66b31438e52773c3557277ae167ab7d12aab5d4095f375494fe168450094b",
+      "sha256": "bbee5d4734aba05098f7446592635d6d5b9567e9ca0090c1a65fcafffffd5a4c",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/storage-dataflow.json",
       "original_bytes": 135548,
-      "original_sha256": "a3e66b31438e52773c3557277ae167ab7d12aab5d4095f375494fe168450094b"
+      "original_sha256": "bbee5d4734aba05098f7446592635d6d5b9567e9ca0090c1a65fcafffffd5a4c"
     },
     {
       "path": "clean-warm/work-reconciliation.json",
@@ -185,6 +193,158 @@
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/terminal-9845.json",
       "original_bytes": 1622,
       "original_sha256": "2bba957d632807c7b4cb52a91f790528e582e97acfd7ad622e9669aaeed977ed"
+    },
+    {
+      "path": "campaigns/terminal-9848.json",
+      "bytes": 1987,
+      "sha256": "66b5f94e4653121f1a6e40a92e85423d3f4ee5d4d87dfdc1b335bcedf188a1b5",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9848.json",
+      "original_bytes": 1987,
+      "original_sha256": "66b5f94e4653121f1a6e40a92e85423d3f4ee5d4d87dfdc1b335bcedf188a1b5"
+    },
+    {
+      "path": "campaigns/terminal-9850.json",
+      "bytes": 1806,
+      "sha256": "c939b442a27eb26de1fdeaaf0468ebe430c94c9978d07ff8eafffd95c34af713",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9850.json",
+      "original_bytes": 1806,
+      "original_sha256": "c939b442a27eb26de1fdeaaf0468ebe430c94c9978d07ff8eafffd95c34af713"
+    },
+    {
+      "path": "nsys-dataflow-summary.json",
+      "bytes": 8676,
+      "sha256": "d3eca4f03f95ff660adca8e8a7b068c99378d6ad0ec778aafdd5d661d91ca5cb",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/nsys-dataflow-summary.json",
+      "original_bytes": 8676,
+      "original_sha256": "d3eca4f03f95ff660adca8e8a7b068c99378d6ad0ec778aafdd5d661d91ca5cb"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-192-dense.json",
+      "bytes": 65636,
+      "sha256": "f0ac7b30944204a13a9cb17f62a98542466e8c7d4dc0e0033e44551613f561c4",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-192-dense.json",
+      "original_bytes": 65636,
+      "original_sha256": "f0ac7b30944204a13a9cb17f62a98542466e8c7d4dc0e0033e44551613f561c4"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-192-dense.json",
+      "bytes": 42890,
+      "sha256": "a2b770ed262136322ef35e1dc6c215f2f0416ac0c1337c342b2bbef2a9bdce97",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/192-dense.json",
+      "original_bytes": 42890,
+      "original_sha256": "a2b770ed262136322ef35e1dc6c215f2f0416ac0c1337c342b2bbef2a9bdce97"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-192-packed.json",
+      "bytes": 67184,
+      "sha256": "1e0fe34169060d561ffb4b68c6c5e99a727c46fde888f13bccd64294ad7b95dc",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-192-packed.json",
+      "original_bytes": 67184,
+      "original_sha256": "1e0fe34169060d561ffb4b68c6c5e99a727c46fde888f13bccd64294ad7b95dc"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-192-packed.json",
+      "bytes": 42452,
+      "sha256": "0c02863ba27375dcf722f6bd2cd3e4ff4f8c1f03de11dd2bc89b01932b2a1dba",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/192-packed.json",
+      "original_bytes": 42452,
+      "original_sha256": "0c02863ba27375dcf722f6bd2cd3e4ff4f8c1f03de11dd2bc89b01932b2a1dba"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-384-dense.json",
+      "bytes": 79669,
+      "sha256": "bc8d301f0ef681a48c68cec604439df22829f6166e4e3b005e90e3f87027726c",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-384-dense.json",
+      "original_bytes": 79669,
+      "original_sha256": "bc8d301f0ef681a48c68cec604439df22829f6166e4e3b005e90e3f87027726c"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-384-dense.json",
+      "bytes": 58977,
+      "sha256": "cff54a5cdb4fef675077e520aa6fb14f5afc1319961fb4b40af2a2b1594f5674",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/384-dense.json",
+      "original_bytes": 58977,
+      "original_sha256": "cff54a5cdb4fef675077e520aa6fb14f5afc1319961fb4b40af2a2b1594f5674"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-384-packed.json",
+      "bytes": 125912,
+      "sha256": "ce7178a743dccaf55c0ebefbc8b5d62ef43f6f3f1b9fc87f055c6a6611dc8411",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-384-packed.json",
+      "original_bytes": 125912,
+      "original_sha256": "ce7178a743dccaf55c0ebefbc8b5d62ef43f6f3f1b9fc87f055c6a6611dc8411"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-384-packed.json",
+      "bytes": 61437,
+      "sha256": "7cba03a844e411d0c4334cbfc5eb1648ae1e17bed1757dd1957e7ade44e74dfb",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/384-packed.json",
+      "original_bytes": 61437,
+      "original_sha256": "7cba03a844e411d0c4334cbfc5eb1648ae1e17bed1757dd1957e7ade44e74dfb"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-768-dense.json",
+      "bytes": 160483,
+      "sha256": "bdd9ba9f69ca9969a38d1fe97e3c0882680ec89e3f91a8788abcc3532b9ce054",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-768-dense.json",
+      "original_bytes": 160483,
+      "original_sha256": "bdd9ba9f69ca9969a38d1fe97e3c0882680ec89e3f91a8788abcc3532b9ce054"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-768-dense.json",
+      "bytes": 84635,
+      "sha256": "34f1e7fce2fc8205909a7be071a6224b291abe24094b19151f8dc56a761fe890",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/768-dense.json",
+      "original_bytes": 84635,
+      "original_sha256": "34f1e7fce2fc8205909a7be071a6224b291abe24094b19151f8dc56a761fe890"
+    },
+    {
+      "path": "dataflow/dataflow-profiles-768-packed.json",
+      "bytes": 161728,
+      "sha256": "ba30ae4d018e05b8feee05565add9fbc0113ea629436c6b148944c9abb8d95a9",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-accounts/dataflow-profiles-768-packed.json",
+      "original_bytes": 161728,
+      "original_sha256": "ba30ae4d018e05b8feee05565add9fbc0113ea629436c6b148944c9abb8d95a9"
+    },
+    {
+      "path": "dataflow/observations/dataflow-profiles-768-packed.json",
+      "bytes": 85490,
+      "sha256": "dff3f957f8ff9c9762ca542fe8ccbad8764896f6f3c43e9f4acdc19655edf374",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/768-packed.json",
+      "original_bytes": 85490,
+      "original_sha256": "dff3f957f8ff9c9762ca542fe8ccbad8764896f6f3c43e9f4acdc19655edf374"
+    },
+    {
+      "path": "campaigns/dataflow-profiles.json",
+      "bytes": 11121,
+      "sha256": "aa3ec4c4cba8c77ede20601e916a297e5f380bdb5c345c67847142c2febd5260",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/dataflow-profiles/manifest.json",
+      "original_bytes": 11121,
+      "original_sha256": "aa3ec4c4cba8c77ede20601e916a297e5f380bdb5c345c67847142c2febd5260"
+    },
+    {
+      "path": "reproduction/measured-account-nsys.py.txt",
+      "bytes": 9964,
+      "sha256": "7791c9f25bb3d828b06de3614b9afe30263eb148d26d11ede42ecdec21429029",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/account-nsys.py",
+      "original_bytes": 9964,
+      "original_sha256": "7791c9f25bb3d828b06de3614b9afe30263eb148d26d11ede42ecdec21429029"
+    },
+    {
+      "path": "reproduction/measured-dataflow-probe.py.txt",
+      "bytes": 8472,
+      "sha256": "33ea9e4ccb58a9d8b3d816e3163150d4f4b996ef3e2eb2db945ba4374419ebc3",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/dataflow-probe.py",
+      "original_bytes": 8472,
+      "original_sha256": "33ea9e4ccb58a9d8b3d816e3163150d4f4b996ef3e2eb2db945ba4374419ebc3"
+    },
+    {
+      "path": "reproduction/measured-run-dataflow-profiles.py.txt",
+      "bytes": 4128,
+      "sha256": "d734bc4e06f741b6de194c28d2344f96f573aeb9d7846a24625c6e9fef19aa7f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/run-dataflow-profiles.py",
+      "original_bytes": 4128,
+      "original_sha256": "d734bc4e06f741b6de194c28d2344f96f573aeb9d7846a24625c6e9fef19aa7f"
     },
     {
       "path": "references/water-def2-svp-spherical-reference.json",
@@ -788,11 +948,11 @@
     },
     {
       "path": "collector.py.txt",
-      "bytes": 12068,
-      "sha256": "2b28d03301ee2cf223a6d75339d0e5aa68a65e5214b2f6ba5e69e70e6dbc8661",
+      "bytes": 20481,
+      "sha256": "724a4fd7e7a1b1b941e52e762d22b0b954039cdfec311b677ac87f382bec186c",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/benchmarks/experiments/issue409-packed-values/collect.py",
-      "original_bytes": 12068,
-      "original_sha256": "2b28d03301ee2cf223a6d75339d0e5aa68a65e5214b2f6ba5e69e70e6dbc8661"
+      "original_bytes": 20481,
+      "original_sha256": "724a4fd7e7a1b1b941e52e762d22b0b954039cdfec311b677ac87f382bec186c"
     }
   ],
   "incomplete": [
@@ -806,13 +966,17 @@
       "retained": "partial/rebuild/768-changed.json"
     },
     {
-      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/constrained-clean/768-12GiB-forces.json",
-      "reason": "missing"
-    },
-    {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
       "reason": "endpoint failed",
       "retained": "failed/unequal/water-hexadecamer-2s4-def2-svp-spherical.json"
+    },
+    {
+      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/nsys-dataflow-summary.json",
+      "reason": "remaining dataflow profile campaigns",
+      "campaigns": [
+        "unequal-dataflow-profiles",
+        "cold-dataflow-profiles"
+      ]
     }
   ]
 }

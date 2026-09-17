@@ -301,6 +301,71 @@ def main():
             retain(path, f"references/{path.name}")
         for path in sorted((source / "rebuild-v2").glob("terminal-*.json")):
             retain(path, f"campaigns/{path.name}")
+        for path in sorted((source / "terminal-observer").glob("terminal-*.json")):
+            retain(path, f"campaigns/{path.name}")
+        profile_summary = source / "nsys-dataflow-summary.json"
+        if profile_summary.exists():
+            profiles = json.loads(profile_summary.read_text())
+            retain(profile_summary, "nsys-dataflow-summary.json")
+            campaigns = set()
+            for item in profiles["profiles"]:
+                account = source / "dataflow-accounts" / Path(item["path"]).name
+                if hashlib.sha256(account.read_bytes()).hexdigest() != item["sha256"]:
+                    raise ValueError(f"{account}: stale Nsight account hash")
+                data = json.loads(account.read_text())
+                campaign, name = data["campaign"], data["name"]
+                if (
+                    campaign
+                    not in {
+                        "dataflow-profiles",
+                        "unequal-dataflow-profiles",
+                        "cold-dataflow-profiles",
+                    }
+                    or Path(name).name != name
+                ):
+                    raise ValueError(f"{account}: unexpected profile identity")
+                observation = source / campaign / (name + ".json")
+                if (
+                    hashlib.sha256(observation.read_bytes()).hexdigest()
+                    != data["source_record_sha256"]
+                ):
+                    raise ValueError(f"{account}: changed profiled numerical record")
+                retain(account, f"dataflow/{account.name}")
+                retain(observation, f"dataflow/observations/{campaign}-{name}.json")
+                campaigns.add(campaign)
+            for campaign in sorted(campaigns):
+                retain(
+                    source / campaign / "manifest.json", f"campaigns/{campaign}.json"
+                )
+            scripts = {"account-nsys.py"}
+            if "dataflow-profiles" in campaigns:
+                scripts.update(("dataflow-probe.py", "run-dataflow-profiles.py"))
+            if "unequal-dataflow-profiles" in campaigns:
+                scripts.update(("unequal-dataflow-probe.py", "run-unequal-dataflow.py"))
+            if "cold-dataflow-profiles" in campaigns:
+                scripts.update(
+                    (
+                        "cold-dataflow-probe.py",
+                        "unequal-cold-dataflow-probe.py",
+                        "run-cold-dataflow.py",
+                    )
+                )
+            for script in sorted(scripts):
+                retain(
+                    source / "stage2" / script, f"reproduction/measured-{script}.txt"
+                )
+            if profiles["incomplete_campaigns"]:
+                manifest["incomplete"].append(
+                    {
+                        "path": str(profile_summary),
+                        "reason": "remaining dataflow profile campaigns",
+                        "campaigns": profiles["incomplete_campaigns"],
+                    }
+                )
+        else:
+            manifest["incomplete"].append(
+                {"path": str(profile_summary), "reason": "missing dataflow accounts"}
+            )
         for path in sorted((source / "unequal-v2").glob("*-reference.json")):
             retain(path, f"references/{path.name}")
         for path in sorted(
@@ -410,6 +475,10 @@ def main():
             "reproduction/constrained-clean.derivation.json",
         )
         retain(Path(__file__), "collector.py.txt")
+        if manifest["incomplete"] and not args.partial:
+            raise ValueError(
+                "campaign is incomplete; inspect manifest before publication"
+            )
     except Exception as error:
         manifest["collection_failure"] = repr(error)
         raise
