@@ -123,6 +123,90 @@ def test_full_cartesian_finite_difference_recomputes_every_displacement():
         )
 
 
+def test_fd_displacements_preserve_full_ordered_matrix_and_input():
+    from tools.validate_mp2_public_force import _finite_difference_displacements
+
+    atoms = (("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6)))
+    records = _finite_difference_displacements(atoms, (0.004, 0.002, 0.001))
+    assert [step for step, _ in records] == [0.004, 0.002, 0.001]
+    assert all(len(rows) == 2 * 3 for _, rows in records)
+    first = records[0][1][0]
+    assert first[:2] == (0, 0)
+    np.testing.assert_allclose(first[2][0][1], (0.204, -0.1, 0.3))
+    np.testing.assert_allclose(first[3][0][1], (0.196, -0.1, 0.3))
+    assert atoms == (("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6)))
+
+
+def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(tmp_path):
+    from tools.validate_mp2_public_force import (
+        main,
+        parallel_central_finite_difference_forces,
+        validation_cases,
+    )
+
+    with pytest.raises(ValueError, match="at least two workers"):
+        parallel_central_finite_difference_forces(
+            "h2",
+            validation_cases()["h2"],
+            budget=1 << 20,
+            steps=(0.004, 0.002, 0.001),
+            workers=1,
+        )
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--backend",
+                "cuda",
+                "--output",
+                str(tmp_path / "cuda"),
+                "--fd-workers",
+                "2",
+            ]
+        )
+
+
+def test_parallel_fd_preserves_serial_force_order(monkeypatch):
+    import tools.validate_mp2_public_force as driver
+
+    class ImmediateExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            assert max_workers == 2
+            assert mp_context.get_start_method() == "spawn"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def map(self, function, tasks):
+            return tuple(function(task) for task in tasks)
+
+    def quadratic_energy(payload):
+        _, _, _, atoms = payload
+        coordinates = np.asarray([position for _, position in atoms])
+        return float(np.sum(coordinates**2))
+
+    monkeypatch.setattr(driver, "ProcessPoolExecutor", ImmediateExecutor)
+    monkeypatch.setattr(driver, "_finite_difference_energy_task", quadratic_energy)
+    case = driver.PublicForceCase(
+        atoms=(("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6))),
+        vibeqc_basis="sto-3g",
+        pyscf_basis="sto-3g",
+    )
+    records = driver.parallel_central_finite_difference_forces(
+        "h2",
+        case,
+        budget=1 << 20,
+        steps=(0.004, 0.002, 0.001),
+        workers=2,
+    )
+    for record in records:
+        np.testing.assert_allclose(
+            record["forces"], -2 * np.asarray([atom[1] for atom in case.atoms])
+        )
+
+
 def test_force_invariants_report_translation_and_torque_norms():
     from tools.validate_mp2_public_force import force_invariants
 

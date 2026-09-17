@@ -12,11 +12,13 @@ import ctypes
 import hashlib
 import json
 import math
+import multiprocessing
 import os
 import platform
 import subprocess
 import sys
 from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -251,6 +253,30 @@ def central_finite_difference_forces(
 ) -> list[dict]:
     """Fully re-solve every Cartesian displacement at every requested step."""
 
+    displacements = _finite_difference_displacements(atoms, steps)
+    records = []
+    for step, rows in displacements:
+        forces = np.zeros((len(atoms), 3), dtype=np.float64)
+        for atom_index, axis, plus_atoms, minus_atoms in rows:
+            plus_energy = calculator.singlepoint(
+                plus_atoms, charge=charge, properties=("energy",)
+            ).energy
+            minus_energy = calculator.singlepoint(
+                minus_atoms, charge=charge, properties=("energy",)
+            ).energy
+            forces[atom_index, axis] = -(float(plus_energy) - float(minus_energy)) / (
+                2 * step
+            )
+        records.append({"step_bohr": step, "forces": forces.tolist()})
+    return records
+
+
+def _finite_difference_displacements(
+    atoms: Sequence[tuple[str | int, Sequence[float]]],
+    steps: Sequence[float],
+) -> list[tuple[float, list[tuple[int, int, tuple, tuple]]]]:
+    """Materialize every ordered plus/minus geometry without evaluating it."""
+
     checked_steps = parse_fd_steps(steps)
     elements = tuple(atom[0] for atom in atoms)
     positions = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
@@ -262,7 +288,7 @@ def central_finite_difference_forces(
         raise ValueError("finite-difference atoms require finite Cartesian coordinates")
     records = []
     for step in checked_steps:
-        forces = np.zeros_like(positions)
+        rows = []
         for atom_index in range(len(positions)):
             for axis in range(3):
                 plus = positions.copy()
@@ -277,16 +303,51 @@ def central_finite_difference_forces(
                     (element, tuple(position))
                     for element, position in zip(elements, minus, strict=True)
                 )
-                plus_energy = calculator.singlepoint(
-                    plus_atoms, charge=charge, properties=("energy",)
-                ).energy
-                minus_energy = calculator.singlepoint(
-                    minus_atoms, charge=charge, properties=("energy",)
-                ).energy
-                forces[atom_index, axis] = -(
-                    float(plus_energy) - float(minus_energy)
-                ) / (2 * step)
-        records.append({"step_bohr": step, "forces": forces.tolist()})
+                rows.append((atom_index, axis, plus_atoms, minus_atoms))
+        records.append((step, rows))
+    return records
+
+
+def _finite_difference_energy_task(payload: tuple) -> float:
+    """Evaluate one fresh CPU energy in an isolated spawned worker."""
+
+    case_name, budget, charge, atoms = payload
+    case = validation_cases()[case_name]
+    calculator = _calculator(case, "cpu", budget)
+    return float(
+        calculator.singlepoint(atoms, charge=charge, properties=("energy",)).energy
+    )
+
+
+def parallel_central_finite_difference_forces(
+    name: str,
+    case: PublicForceCase,
+    *,
+    budget: int,
+    steps: Sequence[float],
+    workers: int,
+) -> list[dict]:
+    """Run the same full CPU FD matrix across isolated spawned processes."""
+
+    if type(workers) is not int or workers < 2:
+        raise ValueError("parallel finite differences require at least two workers")
+    displacements = _finite_difference_displacements(case.atoms, steps)
+    tasks = []
+    for _, rows in displacements:
+        for _, _, plus_atoms, minus_atoms in rows:
+            tasks.append((name, budget, case.charge, plus_atoms))
+            tasks.append((name, budget, case.charge, minus_atoms))
+    context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=workers, mp_context=context) as executor:
+        energies = iter(executor.map(_finite_difference_energy_task, tasks))
+        records = []
+        for step, rows in displacements:
+            forces = np.zeros((len(case.atoms), 3), dtype=np.float64)
+            for atom_index, axis, _, _ in rows:
+                plus_energy = next(energies)
+                minus_energy = next(energies)
+                forces[atom_index, axis] = -(plus_energy - minus_energy) / (2 * step)
+            records.append({"step_bohr": step, "forces": forces.tolist()})
     return records
 
 
@@ -532,6 +593,7 @@ def run_case(
     backend: str,
     fd_steps: Sequence[float],
     budget: int,
+    fd_workers: int = 1,
 ) -> dict:
     """Run one independent analytic, FD, covariance, batch and resource gate."""
 
@@ -543,8 +605,14 @@ def run_case(
     reference = _pyscf_reference(case)
     pyscf_forces = np.asarray(reference["forces"], dtype=np.float64)
     independent_error = _error_metrics(public_forces, pyscf_forces)
-    finite_records = central_finite_difference_forces(
-        calculator, case.atoms, charge=case.charge, steps=fd_steps
+    finite_records = (
+        parallel_central_finite_difference_forces(
+            name, case, budget=budget, steps=fd_steps, workers=fd_workers
+        )
+        if fd_workers > 1
+        else central_finite_difference_forces(
+            calculator, case.atoms, charge=case.charge, steps=fd_steps
+        )
     )
     finite_errors = []
     for row in finite_records:
@@ -707,6 +775,7 @@ def execute_validation(
     fd_steps: Sequence[float],
     output: Path,
     budget: int,
+    fd_workers: int,
     command: Sequence[str],
 ) -> dict:
     """Execute the B2 matrix, preserving every case result in a fresh directory."""
@@ -721,6 +790,7 @@ def execute_validation(
     )
     manifest_path = output / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["finite_difference_workers"] = fd_workers
     first_calculator = _calculator(cases[selected_cases[0]], backend, budget)
     manifest["environment"] = _environment_record(first_calculator)
     manifest["tolerances"] = {
@@ -746,6 +816,7 @@ def execute_validation(
                 backend=backend,
                 fd_steps=fd_steps,
                 budget=budget,
+                fd_workers=fd_workers,
             )
             relative = f"cases/{name}.json"
             target = output / relative
@@ -782,6 +853,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--fd-steps", default="0.004,0.002,0.001")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--budget-bytes", type=int, default=512 << 20)
+    parser.add_argument("--fd-workers", type=int, default=1)
     parser.add_argument("--list-cases", action="store_true")
     return parser
 
@@ -801,12 +873,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(f"unknown or empty case selection: {sorted(unknown)}")
     if args.budget_bytes < 1:
         parser.error("--budget-bytes must be positive")
+    if args.fd_workers < 1:
+        parser.error("--fd-workers must be positive")
+    if args.backend == "cuda" and args.fd_workers != 1:
+        parser.error("CUDA validation requires --fd-workers 1")
     execute_validation(
         backend=args.backend,
         selected_cases=selected,
         fd_steps=parse_fd_steps(args.fd_steps),
         output=args.output,
         budget=args.budget_bytes,
+        fd_workers=args.fd_workers,
         command=(sys.executable, *sys.argv),
     )
     return 0

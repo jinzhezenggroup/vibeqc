@@ -221,6 +221,9 @@ geometry energy-force identity, batch replay, CPU/CUDA parity, and explicit
 failure outcomes. The reviewed compact record is under
 `benchmarks/results/issue193-conventional-force-b2/`; complete raw runs remain
 in the persistent experiment location named by its manifest.
+CPU runs may set `--fd-workers 4` to evaluate the same ordered plus/minus
+displacements in isolated spawned processes; no displacement, step, SCF solve,
+or acceptance gate is removed. CUDA qualification requires `--fd-workers 1`.
 
 Compilation or a skipped CUDA test is not endpoint qualification. CUDA
 evidence additionally includes real-device public single/batch execution and
