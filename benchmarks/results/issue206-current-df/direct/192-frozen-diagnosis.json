@@ -1,0 +1,19 @@
+{
+  "slurm_job_id": "9861",
+  "cuda_visible_devices": "0",
+  "native_identity": "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133",
+  "library_sha256": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+  "controls": {
+    "CUDA_LAUNCH_BLOCKING": "1"
+  },
+  "context_detail": null,
+  "items": [
+    {
+      "status": 6,
+      "status_message": "CUDA runtime error",
+      "converged": false,
+      "iterations": 0,
+      "energy": 0.0
+    }
+  ]
+}

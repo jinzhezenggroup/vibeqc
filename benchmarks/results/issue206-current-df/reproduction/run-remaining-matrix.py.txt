@@ -1,0 +1,83 @@
+"""Remaining fresh stock cells with the retained 96-AO failure still unresolved.
+
+Clean timing processes start only after a separate provider/rank audit exits.
+Previously completed 96-AO cells are not repeated. Numerical failures remain
+failed while independent remaining cells may be measured; no pooled admission
+is inferred. SCF branch differences remain part of the measured endpoint result. This matrix
+does not itself establish cold/changed, memory or direct-path completion.
+"""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+assert os.environ.get('SLURM_JOB_ID')
+root=Path.cwd();out=root/'.artifacts/issue206/fresh-warm-remaining';out.mkdir(exist_ok=False)
+env={k:v for k,v in os.environ.items() if not k.startswith('VIBEQC_') and k!='CONTRACT_ENGINE'}
+env.update(PYTHONPATH='python:.',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',
+    LD_LIBRARY_PATH='/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/cutensor/lib:/group/software/cuda-12.9.1/lib64:'+env.get('LD_LIBRARY_PATH',''),
+    VIBEQC_LIBRARY=str(root/'.artifacts/issue409/stage2/frozen/libvibeqc.so'),
+    VIBEQC_DF_VALUE_STORAGE='dense',VIBEQC_DF_REFERENCE_FINAL_VALIDATION='0',
+    VIBEQC_DF_FINAL_PROJECTION='auto',VIBEQC_DF_FORCE_SCREEN_ABS='off',
+    VIBEQC_DF_EXCHANGE='auto',VIBEQC_DF_SEED_EXCHANGE='auto',
+    VIBEQC_DF_FINAL_EXCHANGE='auto',VIBEQC_DF_RESIDENT_EXCHANGE='auto',VIBEQC_DF_SHELL_POLICY='auto')
+python='/tmp/vibeqc-308-gpu4pyscf-env/bin/python'
+# Source-only import: this runner must not keep a GPU context beside timing.
+sys.path[:0]=[str(root/'python'),str(root)]
+from benchmarks._cases import density_fitting_gate_points
+points=[]
+for p in density_fitting_gate_points():
+    if p.expected_ao_count==192:
+        points.append((p.case,p.batch_size,p.maximum_energy_error,p.maximum_force_error,p.reference_gradient_tolerance,True))
+for n,name in [(384,'water-hexadecamer-2s4-def2-svp-spherical'),(768,'water-32mer-4s4-def2-svp-spherical')]:
+    for forces in (False,True):points.append((name,1,1e-9,1e-8,1e-10,forces))
+for name in ('oh-def2-svp-spherical-uhf','ammonia-def2-svp-spherical'):
+    points.append((name,1,1e-9,1e-8,1e-10,True))
+manifest={'scope':__doc__,'slurm_job_id':os.environ['SLURM_JOB_ID'],
+    'cuda_visible_devices':os.environ.get('CUDA_VISIBLE_DEVICES'),
+    'predecessor_manifest_sha256':hashlib.sha256((root/'.artifacts/issue206/fresh-warm-v2/manifest.json').read_bytes()).hexdigest(),
+    'retained_failure':'96-AO batch-4 force gate remains failed; timing is not qualified',
+    'library_sha256':hashlib.sha256(Path(env['VIBEQC_LIBRARY']).read_bytes()).hexdigest(),
+    'source_patch_sha256':hashlib.sha256(Path(env['VIBEQC_LIBRARY']).with_name('source.patch').read_bytes()).hexdigest(),
+    'runner_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    'comparator_sha256':hashlib.sha256(Path('benchmarks/compare_gpu4pyscf_batch.py').read_bytes()).hexdigest(),
+    'controls':{k:v for k,v in env.items() if k.startswith('VIBEQC_')},'checks':[]}
+def save(): (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+save();qualified=set()
+for case,batch,egate,fgate,gradient,forces in points:
+    if (case,batch) not in qualified:
+        name=f'{case}-b{batch}-qualification'
+        command=[python,'.artifacts/issue206/qualify-stock.py','--case',case,'--batch',str(batch),'--output',str(out/f'{name}.json')]
+        with (out/f'{name}.log').open('x') as stream:
+            run=subprocess.run(command,env=env,stdout=stream,stderr=subprocess.STDOUT)
+        manifest['checks'].append({'name':name,'command':command,'exit_code':run.returncode});save()
+        if run.returncode:raise SystemExit(run.returncode)
+        qualified.add((case,batch))
+    name=f'{case}-b{batch}-'+('forces' if forces else 'energy')
+    result=out/f'{name}.json'
+    command=[python,'benchmarks/compare_gpu4pyscf_batch.py','--case',case,'--batch',str(batch),
+        '--repeats','7','--density-fitting','cuda','--max-iterations','100',
+        '--energy-tolerance','1e-12','--density-tolerance','1e-10',
+        '--reference-gradient-tolerance',str(gradient),'--screening-tolerance','1e-14',
+        '--maximum-energy-error',str(egate),'--output',str(result),
+        '--progress-output',str(out/f'{name}.progress.jsonl')]
+    command+=['--maximum-force-error',str(fgate)] if forces else ['--energy-only']
+    print('starting',name,flush=True)
+    with (out/f'{name}.log').open('x') as stream:
+        run=subprocess.run(command,env=env,stdout=stream,stderr=subprocess.STDOUT)
+    row={'name':name,'command':command,'exit_code':run.returncode}
+    if result.exists():
+        data=json.loads(result.read_text());pairs=data['accuracy']['paired_warm_repeats']
+        row['all_repeat_accuracy_passed']=len(pairs)==7 and all(
+            p['maximum_energy_error_hartree']<=egate and
+            (not forces or p['maximum_force_error_hartree_per_bohr']<=fgate) for p in pairs)
+        row['timing']=data['timing_summary'];row['accuracy']=data['accuracy']
+        row['result_sha256']=hashlib.sha256(result.read_bytes()).hexdigest()
+    manifest['checks'].append(row);save()
+    print(name,run.returncode,row.get('all_repeat_accuracy_passed'),row.get('timing'),flush=True)
+    # Keep the per-cell failure visible while collecting independent cells.
+    row['qualified']=run.returncode==0 and row.get('all_repeat_accuracy_passed',False)
+    save()
+raise SystemExit(1 if any(not r.get('qualified',True) for r in manifest['checks']) else 0)

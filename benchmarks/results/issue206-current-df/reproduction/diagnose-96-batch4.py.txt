@@ -1,0 +1,189 @@
+"""Diagnose the retained strict force-gate failure without changing its verdict.
+
+Compare the saved native forces with a tighter independent CPU DF oracle, then
+observe stock GPU4PySCF at three predeclared convergence settings. These are
+accuracy diagnostics, not replacement timings or a relaxed admission gate.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.metadata
+import json
+import os
+from pathlib import Path
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    import cupy as cp
+    import numpy as np
+    from gpu4pyscf.lib import cutensor
+    from pyscf import gto, scf
+
+    from benchmarks._cases import benchmark_cases
+    from benchmarks.compare_gpu4pyscf_batch import _gpu_sample, scaled_geometries
+
+    assert cutensor.cutensor is not None and cutensor.contract_engine is None
+    root = Path.cwd()
+    prior = (
+        root
+        / ".artifacts/issue206/fresh-warm-v2/water-tetramer-def2-svp-spherical-b4-forces.json"
+    )
+    original = json.loads(prior.read_text())
+    assert not original["gate"]["passed"]
+    case = benchmark_cases()[original["workload"]["case"]]
+    systems = scaled_geometries(case.atoms, 4)
+    assert [
+        [{"element": z, "coordinates_bohr": list(r)} for z, r in atoms]
+        for atoms in systems
+    ] == original["workload"]["geometries"]
+    out = root / ".artifacts/issue206/diagnose-96-batch4"
+    out.mkdir(exist_ok=False)
+    payload = {
+        "scope": __doc__,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "source_sha256": hashlib.sha256(prior.read_bytes()).hexdigest(),
+        "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "original_gate": original["gate"],
+        "gates": original["settings"]["gates"],
+        "cpu_oracle_settings": {
+            "energy_tolerance": 1e-14,
+            "gradient_tolerance": 1e-12,
+            "max_cycle": 200,
+        },
+        "stock_gradient_tolerances": [1e-9, 1e-10, 1e-11],
+        "stock_energy_tolerance": 1e-12,
+        "versions": {
+            name: importlib.metadata.version(name)
+            for name in (
+                "gpu4pyscf-cuda12x",
+                "cupy-cuda12x",
+                "cutensor-cu12",
+                "pyscf",
+                "numpy",
+            )
+        },
+        "cpu_oracle": [],
+        "stock": [],
+    }
+
+    def save():
+        (out / "report.json").write_text(json.dumps(payload, indent=2) + "\n")
+
+    def molecule(atoms):
+        return gto.M(
+            atom=atoms,
+            unit="Bohr",
+            basis=case.pyscf_basis,
+            cart=case.basis_representation == "cartesian",
+            charge=case.charge,
+            spin=case.multiplicity - 1,
+            verbose=0,
+        )
+
+    save()
+    try:
+        for slot, atoms in enumerate(systems):
+            engine = scf.RHF(molecule(atoms)).density_fit(auxbasis=case.pyscf_basis)
+            engine.conv_tol, engine.conv_tol_grad, engine.max_cycle = 1e-14, 1e-12, 200
+            engine.direct_scf_tol = 1e-14
+            energy = engine.kernel()
+            assert engine.converged, f"CPU oracle failed at slot {slot}"
+            gradient = engine.nuc_grad_method()
+            gradient.auxbasis_response = True
+            forces = -gradient.kernel()
+            residual = float(
+                np.linalg.norm(engine.get_grad(engine.mo_coeff, engine.mo_occ))
+            )
+            row = {
+                "slot": slot,
+                "energy": float(energy),
+                "forces": forces.tolist(),
+                "orbital_gradient_norm": residual,
+                "converged": bool(engine.converged),
+            }
+            payload["cpu_oracle"].append(row)
+            save()
+            assert (
+                np.isfinite(energy) and np.isfinite(forces).all() and residual < 1e-11
+            )
+            print("CPU oracle", slot, residual, flush=True)
+
+        cpu_e = np.array([row["energy"] for row in payload["cpu_oracle"]])
+        cpu_f = np.array([row["forces"] for row in payload["cpu_oracle"]])
+
+        def errors(samples):
+            return [
+                {
+                    "energy_by_slot": np.abs(
+                        np.array(s["energies_hartree"]) - cpu_e
+                    ).tolist(),
+                    "force_max_by_slot": np.max(
+                        np.abs(np.array(s["forces_hartree_per_bohr"]) - cpu_f),
+                        axis=(1, 2),
+                    ).tolist(),
+                }
+                for s in samples
+            ]
+
+        payload["retained_native_errors_vs_cpu"] = errors(
+            original["vibeqc"]["warm_samples"]
+        )
+        payload["retained_stock_errors_vs_cpu"] = errors(
+            original["gpu4pyscf"]["warm_samples"]
+        )
+        save()
+        for tolerance in payload["stock_gradient_tolerances"]:
+            engines, densities = [], []
+            for atoms in systems:
+                engine = (
+                    scf.RHF(molecule(atoms))
+                    .density_fit(auxbasis=case.pyscf_basis)
+                    .to_gpu()
+                )
+                engine.conv_tol, engine.conv_tol_grad, engine.max_cycle = (
+                    1e-12,
+                    tolerance,
+                    200,
+                )
+                engine.direct_scf_tol = 1e-14
+                engine.kernel()
+                engine.nuc_grad_method().kernel()
+                assert engine.converged
+                engines.append(engine)
+                densities.append(engine.make_rdm1().copy())
+            # Preserve the same bare-density and priming convention as the
+            # original comparator. A tighter tolerance is a separate experiment.
+            _gpu_sample(engines, densities, cp, -1, True)
+            result = _gpu_sample(engines, densities, cp, 0, True)
+            payload["stock"].append(
+                {
+                    "gradient_tolerance": tolerance,
+                    "result": result,
+                    "errors_vs_cpu": errors([result])[0],
+                }
+            )
+            save()
+            print(
+                "stock accuracy diagnostic",
+                tolerance,
+                payload["stock"][-1]["errors_vs_cpu"],
+                flush=True,
+            )
+            assert all(s["converged"] for s in result["convergence"])
+            del engine, engines, densities
+            cp.get_default_memory_pool().free_all_blocks()
+        payload["status"] = (
+            "completed accuracy diagnosis; original admission failure unchanged"
+        )
+        save()
+    except Exception as error:
+        payload["failure"] = repr(error)
+        save()
+        raise
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,4 @@
+{
+  "scope": "Intrusive diagnostic: zero sanitizer errors does not qualify the failed native calculation.",
+  "output": "========= COMPUTE-SANITIZER\n{\n  \"slurm_job_id\": \"9862\",\n  \"cuda_visible_devices\": \"0\",\n  \"native_identity\": \"ceafaa3df32bf05154e7532fb962c19b35c5d919603a9651b94274dcf17d0356\",\n  \"library_sha256\": \"6100ffe6cf4997935ff440b91e622e37dbb8b96207894291d8ff586071320d9d\",\n  \"controls\": {\n    \"CUDA_LAUNCH_BLOCKING\": \"1\"\n  },\n  \"context_detail\": null,\n  \"items\": [\n    {\n      \"status\": 6,\n      \"status_message\": \"CUDA runtime error\",\n      \"converged\": false,\n      \"iterations\": 0,\n      \"energy\": 0.0\n    }\n  ]\n}\n========= ERROR SUMMARY: 0 errors\n"
+}
