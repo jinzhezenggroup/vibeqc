@@ -102,6 +102,13 @@ retain this identity. A source hash alone cannot distinguish builds with differe
 compiled kernel coverage; see the
 [binary provenance decision](../.agents/notes/implemented/compatibility/2026-09-17-benchmark-binary-provenance.md).
 
+Numerical acceptance uses the maximum error across every measured repeat pair.
+Matching iteration counts only classifies timing; it cannot exclude inaccurate
+samples from the energy or force gate. Energy-only runs retain absent force
+errors as `null`. Legacy integral/contraction timing field names contain complete
+endpoints and explicitly report that no component split was measured. See the
+[all-repeat acceptance decision](../.agents/notes/implemented/compatibility/2026-09-17-all-repeat-accuracy-gates.md).
+
 Before promoting a new default or auto-selection policy:
 
 1. Record the baseline endpoint and exact scientific settings.

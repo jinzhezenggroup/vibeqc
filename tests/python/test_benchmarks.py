@@ -1062,7 +1062,9 @@ def test_gpu_cycle_tracker_retains_explicit_final_residuals():
     assert tracker.orbital_gradient_norm == pytest.approx(2.0e-8)
 
 
-def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
+@pytest.mark.parametrize("last_branch_matches", [False, True])
+def test_accuracy_gate_rejects_an_earlier_failed_repeat(last_branch_matches):
+    """A passing final or matched pair cannot qualify an inaccurate median."""
     comparison = _batch_comparison_module()
     summary = comparison.accuracy_gate_summary(
         [
@@ -1072,39 +1074,35 @@ def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
                 "maximum_force_error_hartree_per_bohr": 2.0e-9,
             },
             {
-                "iteration_branches_match": True,
+                "iteration_branches_match": last_branch_matches,
                 "maximum_energy_error_hartree": 3.0e-12,
                 "maximum_force_error_hartree_per_bohr": 4.0e-12,
             },
         ]
     )
     assert summary == {
-        "selection": "iteration_matched_pairs",
-        "pair_count": 1,
-        "maximum_energy_error_hartree": 3.0e-12,
-        "maximum_force_error_hartree_per_bohr": 4.0e-12,
+        "selection": "all_measured_pairs",
+        "pair_count": 2,
+        "maximum_energy_error_hartree": 1.0e-9,
+        "maximum_force_error_hartree_per_bohr": 2.0e-9,
     }
-
-    unmatched = comparison.accuracy_gate_summary(
-        [
-            {
-                "iteration_branches_match": False,
-                "maximum_energy_error_hartree": 1.0e-9,
-                "maximum_force_error_hartree_per_bohr": 2.0e-9,
-            },
-            {
-                "iteration_branches_match": False,
-                "maximum_energy_error_hartree": 5.0e-12,
-                "maximum_force_error_hartree_per_bohr": 6.0e-12,
-            },
-        ]
+    failures = comparison.benchmark_gate_failures(
+        speedup=2.0,
+        maximum_energy_error=summary["maximum_energy_error_hartree"],
+        maximum_force_error=summary["maximum_force_error_hartree_per_bohr"],
+        vibeqc_converged=True,
+        reference_converged=True,
+        maximum_energy_error_limit=1e-10,
+        maximum_force_error_limit=1e-10,
     )
-    assert unmatched == {
-        "selection": "final_pair_unmatched_labeled",
-        "pair_count": 1,
-        "maximum_energy_error_hartree": 5.0e-12,
-        "maximum_force_error_hartree_per_bohr": 6.0e-12,
-    }
+    assert len(failures) == 2
+    assert any("energy error" in failure for failure in failures)
+    assert any("force error" in failure for failure in failures)
+
+
+def test_accuracy_gate_requires_measured_pairs():
+    with pytest.raises(ValueError, match="at least one measured pair"):
+        _batch_comparison_module().accuracy_gate_summary([])
 
 
 def test_energy_only_pairs_reject_mismatched_properties_and_nonfinite_values():

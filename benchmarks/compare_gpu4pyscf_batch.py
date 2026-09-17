@@ -343,27 +343,22 @@ def _maximum_force_error(pairs: Sequence[dict[str, Any]]) -> float | None:
 
 
 def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    """Select branch-matched accuracy rows when the engines share them.
+    """Require every measured repeat to meet the requested numerical accuracy.
 
-    Every repeat remains published. The gate uses matched rows when available
-    because a looser SCF branch can move analytic forces at the same scale as
-    the tight benchmark tolerance even though both engines report convergence.
+    Iteration branches classify timing, not correctness. Selecting only matched
+    branches or the final pair could admit a faster but inaccurate repeat into
+    the endpoint median, even when both engines report convergence.
     """
 
-    matched = [item for item in pairs if item["iteration_branches_match"]]
-    # Schema v1 gated the final warm result. Preserve that established
-    # accuracy contract when no ordinal repeat shares an iteration branch,
-    # while publishing the larger all-repeat maximum immediately beside it.
-    selected = matched or [pairs[-1]]
+    if not pairs:
+        raise ValueError("accuracy acceptance requires at least one measured pair")
     return {
-        "selection": (
-            "iteration_matched_pairs" if matched else "final_pair_unmatched_labeled"
-        ),
-        "pair_count": len(selected),
+        "selection": "all_measured_pairs",
+        "pair_count": len(pairs),
         "maximum_energy_error_hartree": max(
-            item["maximum_energy_error_hartree"] for item in selected
+            item["maximum_energy_error_hartree"] for item in pairs
         ),
-        "maximum_force_error_hartree_per_bohr": _maximum_force_error(selected),
+        "maximum_force_error_hartree_per_bohr": _maximum_force_error(pairs),
     }
 
 
@@ -923,14 +918,17 @@ def main() -> None:
             },
             "timing_summary": {
                 "integral_contraction_breakdown": {
+                    "component_split_measured": False,
                     "cold_setup_and_integral_generation_seconds": vibeqc_cold,
                     "warm_endpoint_seconds": vibeqc_warm_median,
                     "warm_contraction_and_force_seconds": vibeqc_warm_median
                     if compute_forces
                     else None,
                     "note": (
-                        "CUDA DF integral setup is included in cold timing; "
-                        "warm timings contain resident-plan contractions"
+                        "Legacy field names contain complete endpoint times: "
+                        "cold includes preparation, SCF and requested properties; "
+                        "warm includes the full resident-plan solve. "
+                        "No integral/contraction component split is measured."
                     ),
                 },
                 "ordinary": {
