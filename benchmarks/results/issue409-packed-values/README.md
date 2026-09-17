@@ -24,6 +24,7 @@ independent references. These large-case gates do not relax stricter fixtures.
 | 384 cold forces | 10.135832240 | 11.948631649 | 20 / 18 |
 | 384 changed-geometry forces | 9.606932915 | 11.256079176 | 12 / 12 |
 | 768 cold forces | 85.685922099 | 82.768054998 | 23 / 24 |
+| 768 changed-geometry forces | 86.357965270 | 191.511216193 | 9 / 9 |
 | 24/116 unequal warm forces | 0.019747868 | 0.018764724 | 2 / 2 |
 | 96/464 unequal warm forces | 0.568663857 | 0.552863172 | 2 / 2 |
 | 768 / 12-GiB warm forces | 162.023276958 | 65.028559662 | 5 / 6 |
@@ -60,8 +61,20 @@ The 768-AO changed-geometry clean series also completed all seven pairs:
 maximum energy/force differences are 5.87e-11 Eh / 1.78e-10 Eh/Bohr. Job 9845
 then timed out before completing the separate diagnostic pass. The original
 clean file and terminal scheduler record are retained under `partial/` and
-`campaigns/`; a diagnostic companion is queued, with no repeated or pooled
-clean samples. The reason for the large regression remains unconfirmed.
+`campaigns/`. Job 9851 completed only the separate diagnostics. The composed
+`rebuild/768-changed.json` verifies the original binary, geometry, reference,
+checkpoint and frozen-density identities; it repeats or pools no clean samples.
+
+Both diagnostic arms accept the occupied seed and execute 16 J/K calls: ten
+occupied K and six dense K, with six final density corrections. Response takes
+3.495 seconds for dense and 112.362 seconds for packed. Dense borrows full all-Q
+scratch, while packed uses the bounded raw fallback: 77 auxiliary blocks,
+118,272 AO response products versus 1,536, and 35,326,918,656 unpacked logical
+elements. The packed fallback also lies outside the automatic 768-AO borrowed
+shell/BLAS domain and executes scalar products and generic derivative consumption.
+`rebuild/768-changed-response-attribution.json` binds these observations to the
+separate diagnostic and relevant source. This identifies executed work and
+expensive scopes; it does not measure a counterfactual optimization saving.
 
 The unequal cases use unmodified cc-pVDZ/cc-pVDZ-JKFIT bases. At 384/1856 and
 an 8-GiB total DF allowance, the dense cold preflight fails the unchanged force
@@ -69,6 +82,12 @@ gate: 1.300395833e-8 exceeds 1e-8 Eh/Bohr (energy error 3.98e-10 Eh). Both
 metric ranks are 1856. The campaign stops before packed or warm timing, so this
 larger case is unqualified and establishes no representation speed comparison.
 `failed/unequal/` retains its full numerical record, including the failure.
+Independent CPU PySCF/libcint diagnosis in job 9854 confirms this is a native
+accuracy discrepancy: the dense force differs from the tighter CPU oracle by
+1.297054950e-8 Eh/Bohr, while the original stock reference differs by only
+1.219315759e-10. The original failure remains unchanged. The qualified unequal
+domain is limited to the passing 24/116 and 96/464 cells; 384/1856 is explicitly
+excluded pending a separate numerical fix. No packed timing exists for it.
 
 ## Constrained memory: clean endpoints and separate diagnostics
 
@@ -141,8 +160,6 @@ publishing routine logs. Stage-1 and stage-2 library identities are distinct.
 
 The draft still requires:
 
-- the separate 768-AO changed-geometry diagnostic and work counts;
-- diagnosis/domain resolution of the failed 384/1856 unequal preflight;
 - a final domain/policy decision using the completed constrained pairs;
 - the remaining complete traffic/component/resource and compilation audit;
 - a rebuild and required validation of the subsequently formatted native source;

@@ -399,3 +399,33 @@ production synchronization work would invent a different explanation for the
 real endpoint regression. Kernel busy intervals are unioned, and nested API
 times remain separate. Nsight process-memory samples include profiler overhead;
 the unprofiled capacity measurements retain their independent acceptance role.
+
+## Completed changed-geometry attribution
+
+Job 9851 supplies the missing diagnostics for job 9845's already completed seven
+clean pairs; no clean sample is rerun or pooled. The collector binds native and
+library identities, geometry, model/reference/checkpoint hashes and frozen D,
+and preserves both original process records. Both arms accept the occupied seed
+and retain occupied exchange: nine updates, sixteen J/K calls (ten occupied K,
+six dense K), and six final density corrections.
+
+The response fallback explains the observed work expansion. Dense borrows full
+all-Q scratch and takes 3.495 intrusive seconds. Packed cannot lend its bounded
+scratch without eligible occupied factors, executes 77 auxiliary blocks and
+118,272 AO products versus 1,536, and takes 112.362 seconds. Its immutable raw A
+is reused, but 35,326,918,656 logical matrix elements are unpacked. That fallback
+also falls outside automatic 768-AO borrowed shell/BLAS selection. The retained
+response-attribution record pins source and observation hashes and keeps parent
+response durations separate from exclusive child scopes. It identifies the
+executed path, without attributing a counterfactual saving to any one selector.
+
+Do not explain this result as rejection of the occupied seed or permanent loss
+of occupied SCF exchange. Repeated bounded algebra is the observed regression;
+smaller storage alone does not bound that work. Default dense remains necessary.
+
+Job 9854 independently checks the larger unequal failure using CPU
+PySCF/libcint at tighter convergence. Native dense differs by 1.297054950e-8
+Eh/Bohr, while the original stock reference differs by 1.219315759e-10. The
+384/1856 domain remains excluded; the reference is not the source of the
+failed threshold, and no packed result or speed claim exists for that cell.
+The passing 24/116 and 96/464 physical bases remain the unequal qualification.

@@ -91,6 +91,70 @@
       "original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c"
     },
     {
+      "path": "rebuild/768-changed-diagnostics.json",
+      "bytes": 147777,
+      "sha256": "671ef30186b28310a3e75b9db77db3e5b57b2dcc7456d2feff14d2d5750e7a4f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/768-changed-clean.json",
+      "original_bytes": 147777,
+      "original_sha256": "671ef30186b28310a3e75b9db77db3e5b57b2dcc7456d2feff14d2d5750e7a4f"
+    },
+    {
+      "path": "campaigns/768-changed-diagnostic-companion.json",
+      "bytes": 2504,
+      "sha256": "49ca8ebacaf36c50fe55a39482506f21b0addf4bdc2819b73965e62901e5d7f4",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/manifest.json",
+      "original_bytes": 2504,
+      "original_sha256": "49ca8ebacaf36c50fe55a39482506f21b0addf4bdc2819b73965e62901e5d7f4"
+    },
+    {
+      "path": "reproduction/measured-rebuild-diagnostic-companion.py.txt",
+      "bytes": 9129,
+      "sha256": "337932ab18ea628940c8779b446b5faae443cde5cf23f690d7b9c74c0a302403",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/rebuild-diagnostic-companion.py",
+      "original_bytes": 9129,
+      "original_sha256": "337932ab18ea628940c8779b446b5faae443cde5cf23f690d7b9c74c0a302403"
+    },
+    {
+      "path": "reproduction/measured-run-768-changed-followup.py.txt",
+      "bytes": 3831,
+      "sha256": "29959b9f1f4735e820304e6c2a810bd733147dea9708092d47f5d0eea842989f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/run-768-changed-followup.py",
+      "original_bytes": 3831,
+      "original_sha256": "29959b9f1f4735e820304e6c2a810bd733147dea9708092d47f5d0eea842989f"
+    },
+    {
+      "path": "reproduction/measured-account-changed-response.py.txt",
+      "bytes": 4355,
+      "sha256": "7fbe53d8044dd003f529714a390418903ce3e2ff294d32d645f802b2ed1a108f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/account-changed-response.py",
+      "original_bytes": 4355,
+      "original_sha256": "7fbe53d8044dd003f529714a390418903ce3e2ff294d32d645f802b2ed1a108f"
+    },
+    {
+      "path": "reproduction/rebuild-diagnostic-companion.derivation.json",
+      "bytes": 332,
+      "sha256": "418c8cd647fce7cb4358fefff0e6f09ff570d96a3bbc4b64122c09ad7630fcbc",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/rebuild-diagnostic-companion.derivation.json",
+      "original_bytes": 332,
+      "original_sha256": "418c8cd647fce7cb4358fefff0e6f09ff570d96a3bbc4b64122c09ad7630fcbc"
+    },
+    {
+      "path": "rebuild/768-changed-response-attribution.json",
+      "bytes": 8913,
+      "sha256": "63923704c8c4a51fa7b9f0c1004c73641d8024402ae65efaad85a6613ca6fccf",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/response-attribution.json",
+      "original_bytes": 8913,
+      "original_sha256": "63923704c8c4a51fa7b9f0c1004c73641d8024402ae65efaad85a6613ca6fccf"
+    },
+    {
+      "path": "rebuild/768-changed.json",
+      "bytes": 221027,
+      "sha256": "80c8dff173b47d0bb8255efeed9a5dc5cdae82994912a6c9535e8f616bafd6db",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-clean.json",
+      "original_bytes": 401967,
+      "original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c"
+    },
+    {
       "path": "constrained/768-12GiB-forces.json",
       "bytes": 426624,
       "sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6",
@@ -124,19 +188,19 @@
     },
     {
       "path": "phasea-summary.json",
-      "bytes": 51441,
-      "sha256": "2ea0ceff926bbc5e370d0d6050ea9225a270066d4be1507943f0c11314e0ed2f",
+      "bytes": 55547,
+      "sha256": "ddf71e09a6ae472d7e7a7b83aa2a8f6223522648925363297eb693d9c5a79dfb",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/phasea-summary.json",
-      "original_bytes": 51441,
-      "original_sha256": "2ea0ceff926bbc5e370d0d6050ea9225a270066d4be1507943f0c11314e0ed2f"
+      "original_bytes": 55547,
+      "original_sha256": "ddf71e09a6ae472d7e7a7b83aa2a8f6223522648925363297eb693d9c5a79dfb"
     },
     {
       "path": "storage-dataflow.json",
       "bytes": 135548,
-      "sha256": "bbee5d4734aba05098f7446592635d6d5b9567e9ca0090c1a65fcafffffd5a4c",
+      "sha256": "4bedbcfff686580f9beab77a224d97610587cb51c256a6e5e531dbe441f5fc2c",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/storage-dataflow.json",
       "original_bytes": 135548,
-      "original_sha256": "bbee5d4734aba05098f7446592635d6d5b9567e9ca0090c1a65fcafffffd5a4c"
+      "original_sha256": "4bedbcfff686580f9beab77a224d97610587cb51c256a6e5e531dbe441f5fc2c"
     },
     {
       "path": "clean-warm/work-reconciliation.json",
@@ -209,6 +273,46 @@
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9850.json",
       "original_bytes": 1806,
       "original_sha256": "c939b442a27eb26de1fdeaaf0468ebe430c94c9978d07ff8eafffd95c34af713"
+    },
+    {
+      "path": "campaigns/terminal-9851.json",
+      "bytes": 1820,
+      "sha256": "d22e41fc25509fa818eebb5e56e5f1c09d60fb7a60164bb0e3012bcc2d13de2c",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9851.json",
+      "original_bytes": 1820,
+      "original_sha256": "d22e41fc25509fa818eebb5e56e5f1c09d60fb7a60164bb0e3012bcc2d13de2c"
+    },
+    {
+      "path": "campaigns/terminal-9852.json",
+      "bytes": 1799,
+      "sha256": "e3726ae44d352db8c2e851171e6792d141fd1d255d23fa881cd04d284691e765",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9852.json",
+      "original_bytes": 1799,
+      "original_sha256": "e3726ae44d352db8c2e851171e6792d141fd1d255d23fa881cd04d284691e765"
+    },
+    {
+      "path": "campaigns/terminal-9853.json",
+      "bytes": 1809,
+      "sha256": "fe08e25154875e40729034903d9c629efaee754a8a91379c1e544a380c43dc4b",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9853.json",
+      "original_bytes": 1809,
+      "original_sha256": "fe08e25154875e40729034903d9c629efaee754a8a91379c1e544a380c43dc4b"
+    },
+    {
+      "path": "campaigns/terminal-9854.json",
+      "bytes": 1810,
+      "sha256": "3263ebafd04ee126c90f011c808006bcd3d679787c54f6aacc94b900ca2e76ac",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9854.json",
+      "original_bytes": 1810,
+      "original_sha256": "3263ebafd04ee126c90f011c808006bcd3d679787c54f6aacc94b900ca2e76ac"
+    },
+    {
+      "path": "campaigns/terminal-9855.json",
+      "bytes": 1807,
+      "sha256": "3248622a69713c4afa0d5e071da77cda92c1ddf0799fbb7ebb4cc531e430a8bf",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/terminal-observer/terminal-9855.json",
+      "original_bytes": 1807,
+      "original_sha256": "3248622a69713c4afa0d5e071da77cda92c1ddf0799fbb7ebb4cc531e430a8bf"
     },
     {
       "path": "nsys-dataflow-summary.json",
@@ -369,6 +473,22 @@
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json",
       "original_bytes": 9132,
       "original_sha256": "f9b7b8b9ca7c22521594cb4759f53c9d866ea8eebdd2680828bfdc49880fae4f"
+    },
+    {
+      "path": "failed/unequal/independent-oracle-diagnosis.json",
+      "bytes": 15829,
+      "sha256": "7d2d3c6646d8b02677a241c34c0f9bc1f1b34c1ba13e1628c87cb1382112eea5",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-reference-diagnosis/manifest.json",
+      "original_bytes": 15829,
+      "original_sha256": "7d2d3c6646d8b02677a241c34c0f9bc1f1b34c1ba13e1628c87cb1382112eea5"
+    },
+    {
+      "path": "reproduction/measured-diagnose-unequal-reference.py.txt",
+      "bytes": 6026,
+      "sha256": "2211bba706d75fa653c71060479a6f4643516af0d4a149ff29fcbbe5d05dfc2e",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/diagnose-unequal-reference.py",
+      "original_bytes": 6026,
+      "original_sha256": "2211bba706d75fa653c71060479a6f4643516af0d4a149ff29fcbbe5d05dfc2e"
     },
     {
       "path": "projection/independent-small-summary.json",
@@ -884,11 +1004,11 @@
     },
     {
       "path": "reproduction/measured-summarize-phasea.py.txt",
-      "bytes": 5265,
-      "sha256": "4a8e5b9d17e7c0550b8c84b4defc737eee0b735f2b146013753784a27df57ec8",
+      "bytes": 6027,
+      "sha256": "40603c17edd89cd3843d1ba48b3408beb04976002d47f2b5230b53c306887b8c",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/summarize-phasea.py",
-      "original_bytes": 5265,
-      "original_sha256": "4a8e5b9d17e7c0550b8c84b4defc737eee0b735f2b146013753784a27df57ec8"
+      "original_bytes": 6027,
+      "original_sha256": "40603c17edd89cd3843d1ba48b3408beb04976002d47f2b5230b53c306887b8c"
     },
     {
       "path": "reproduction/measured-reconcile-work.py.txt",
@@ -948,22 +1068,17 @@
     },
     {
       "path": "collector.py.txt",
-      "bytes": 20481,
-      "sha256": "724a4fd7e7a1b1b941e52e762d22b0b954039cdfec311b677ac87f382bec186c",
+      "bytes": 22378,
+      "sha256": "74baa7bb755771e0340dc3c986b8591cd7b470644eaf5c660f6f9712c27a47af",
       "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/benchmarks/experiments/issue409-packed-values/collect.py",
-      "original_bytes": 20481,
-      "original_sha256": "724a4fd7e7a1b1b941e52e762d22b0b954039cdfec311b677ac87f382bec186c"
+      "original_bytes": 22378,
+      "original_sha256": "74baa7bb755771e0340dc3c986b8591cd7b470644eaf5c660f6f9712c27a47af"
     }
   ],
   "incomplete": [
     {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/manifest.json",
       "reason": "unequal campaign failed; original failed cell retained"
-    },
-    {
-      "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-changed-clean.json",
-      "reason": "incomplete interleaving or diagnostics",
-      "retained": "partial/rebuild/768-changed.json"
     },
     {
       "path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",

@@ -863,7 +863,102 @@
       "same_scf_updates": true,
       "maximum_energy_error": 5.866240826435387e-11,
       "maximum_force_error": 1.7779832402371742e-10,
-      "diagnostic_work": []
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 9,
+          "logical_operators": {
+            "J": 16,
+            "K": 16,
+            "eigensystems_including_density_seed": 10
+          },
+          "eager_operations": {
+            "ri_j": 16,
+            "ri_k": 6,
+            "ri_k_occupied": 10,
+            "compact_eigensolve": 10,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 7,
+            "final_eigen_solves": 6,
+            "final_density_updates": 6,
+            "final_candidate_rejections": 6
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4820256,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 3,
+            "raw_value_reused_bytes": 3623878656,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 1536,
+            "response_borrowed_jk_bytes": 10871635968,
+            "response_density_blas_products": 1536,
+            "response_metric_blas_dots": 589824,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/768-changed-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "57cd86038e5484f2345e050c00f9d3d5d356332c83f8ad661796d87210db9058",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 9,
+          "logical_operators": {
+            "J": 16,
+            "K": 16,
+            "eigensystems_including_density_seed": 10
+          },
+          "eager_operations": {
+            "ri_j": 16,
+            "ri_k": 6,
+            "ri_k_occupied": 10,
+            "compact_eigensolve": 10,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 7,
+            "final_eigen_solves": 6,
+            "final_density_updates": 6,
+            "final_candidate_rejections": 6
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4811024,
+            "raw_packed_unpacked_elements": 35326918656,
+            "raw_packed_value_reused_bytes": 1814298624,
+            "raw_value_cache_hits": 778,
+            "raw_value_owner_identity": 7,
+            "raw_value_reuse_bytes": 3671064576,
+            "response_ao_matrix_products": 118272,
+            "response_density_scalar_products": 118272,
+            "response_metric_blas_dots": 589824,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/768-changed-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "b5977e15cb48c2c443b238b372adacc895cf999b3d561d8996b49dd80ae2e5e1",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ],
+      "diagnostic_companion": {
+        "scope": "Original seven clean pairs plus separate diagnostics; no new or pooled clean samples.",
+        "clean_original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
+        "diagnostic_original_sha256": "671ef30186b28310a3e75b9db77db3e5b57b2dcc7456d2feff14d2d5750e7a4f",
+        "diagnostic_campaign_sha256": "49ca8ebacaf36c50fe55a39482506f21b0addf4bdc2819b73965e62901e5d7f4",
+        "clean_slurm_job_id": "9845",
+        "diagnostic_slurm_job_id": "9851",
+        "diagnostic_runner_sha256": "337932ab18ea628940c8779b446b5faae443cde5cf23f690d7b9c74c0a302403",
+        "diagnostic_iterations_observed_in_clean": {
+          "dense": true,
+          "packed": true
+        }
+      }
     },
     {
       "source": ".artifacts/issue409/rebuild-v2/768-cold-clean.json",

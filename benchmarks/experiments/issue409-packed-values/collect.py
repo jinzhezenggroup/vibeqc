@@ -243,6 +243,29 @@ def main():
                         companion_directory / "manifest.json",
                         "campaigns/768-changed-diagnostic-companion.json",
                     )
+                    for script in (
+                        "rebuild-diagnostic-companion.py",
+                        "run-768-changed-followup.py",
+                        "account-changed-response.py",
+                    ):
+                        retain(
+                            source / "stage2" / script,
+                            f"reproduction/measured-{script}.txt",
+                        )
+                    retain(
+                        source / "stage2/rebuild-diagnostic-companion.derivation.json",
+                        "reproduction/rebuild-diagnostic-companion.derivation.json",
+                    )
+                    attribution = companion_directory / "response-attribution.json"
+                    if attribution.exists():
+                        if (
+                            json.loads(attribution.read_text())["binding"]
+                            != composed["diagnostic_companion"]
+                        ):
+                            raise ValueError("changed-response attribution is stale")
+                        retain(
+                            attribution, "rebuild/768-changed-response-attribution.json"
+                        )
                     data = composed
             samples = data.get("samples", [])
             if (
@@ -368,6 +391,19 @@ def main():
             )
         for path in sorted((source / "unequal-v2").glob("*-reference.json")):
             retain(path, f"references/{path.name}")
+        oracle = source / "unequal-reference-diagnosis/manifest.json"
+        if oracle.exists():
+            diagnosis = json.loads(oracle.read_text())
+            # Independent-oracle completion explains a retained failure; it
+            # never changes the original campaign's admission verdict.
+            if diagnosis.get("status") == (
+                "completed diagnosis; original GPU gate verdicts unchanged"
+            ):
+                retain(oracle, "failed/unequal/independent-oracle-diagnosis.json")
+                retain(
+                    source / "stage2/diagnose-unequal-reference.py",
+                    "reproduction/measured-diagnose-unequal-reference.py.txt",
+                )
         for path in sorted(
             (source / "projection/trials-column").glob("*-summary.json")
         ):
