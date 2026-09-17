@@ -360,3 +360,17 @@ dense cold preflight fails the 1e-8 force gate with 1.300395833e-8 Eh/Bohr;
 energy error is 3.98e-10 Eh and both metric ranks are 1856. The failure precedes
 packed execution. Preserve the complete failed record and leave this domain
 unqualified while diagnosing the independent-reference difference.
+
+## Binding separately completed diagnostics (2026-09-17)
+
+The evidence collector can attach a completed diagnostics-only companion to
+the original seven 768-AO changed-geometry pairs. It verifies the original file
+hash, companion process identity, library/source identity, both geometries,
+reference/checkpoint hashes, frozen density and controls. It rejects new clean
+samples in the companion and rejects incomplete original interleaving or failed
+diagnostic numerical gates. Both input files remain retained; the derived record
+names their hashes and separate scheduler identities. A changed diagnostic SCF
+branch is retained and labeled, rather than presented as the original clean
+work distribution. Twelve CPU tests exercise accepted bindings and invalid
+provenance, pooling and numerical cases. This collector support does not itself
+complete the still-pending GPU diagnostic campaign.

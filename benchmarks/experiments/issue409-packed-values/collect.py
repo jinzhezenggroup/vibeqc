@@ -17,6 +17,108 @@ from pathlib import Path
 LIMIT = 1 << 20
 
 
+def bind_changed_diagnostics(clean_path: Path, companion_directory: Path):
+    """Join completed clean samples to a separately completed diagnostic run.
+
+    A timeout after clean timing does not invalidate completed measurements.
+    The companion must contain no new clean samples and must prove the same
+    binary, geometry, physical model and immutable starting density. The caller
+    retains both originals; this derived record never overwrites either input.
+    """
+    campaign_path = companion_directory / "manifest.json"
+    if not campaign_path.exists():
+        return None
+    campaign = json.loads(campaign_path.read_text())
+    if campaign.get("status") != "passed":
+        return None
+    clean = json.loads(clean_path.read_text())
+    companion_path = companion_directory / "768-changed-clean.json"
+    companion = json.loads(companion_path.read_text())
+
+    def require(condition, reason):
+        if not condition:
+            raise ValueError(f"invalid changed diagnostic companion: {reason}")
+
+    def sha(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    require(campaign.get("diagnostics_only") is True, "not a diagnostics-only run")
+    require(campaign.get("exit_code") == 0, "unsuccessful companion process")
+    require(
+        campaign.get("slurm_job_id") == companion.get("slurm_job_id"),
+        "companion process identity",
+    )
+    require(campaign.get("predecessor_sha256") == sha(clean_path), "clean file hash")
+    require(not clean.get("failure") and not companion.get("failure"), "failed input")
+    order = [
+        (i, p)
+        for i in range(7)
+        for p in (("dense", "packed") if i % 2 == 0 else ("packed", "dense"))
+    ]
+    require(
+        [(s["repeat"], s["policy"]) for s in clean["samples"]] == order,
+        "incomplete original clean series",
+    )
+    require(companion.get("samples") == [], "companion contains clean repeats")
+    require(clean["phase"] == "changed" and clean["aos"] == 768, "wrong endpoint")
+    for key in (
+        "phase",
+        "aos",
+        "case",
+        "native_identity",
+        "library_sha256",
+        "source_patch_sha256",
+        "reference_sha256",
+        "checkpoint_sha256",
+        "changed_reference_sha256",
+        "frozen_density_sha256",
+        "coordinates_bohr",
+        "changed_coordinates_bohr",
+        "controls",
+    ):
+        require(key in clean and key in companion and clean[key] == companion[key], key)
+    require(bool(clean["frozen_density_sha256"]), "missing frozen density")
+    diagnostics = companion["diagnostics"]
+    require(
+        [d["policy"] for d in diagnostics] == ["dense", "packed"], "diagnostic arms"
+    )
+    require(
+        all(
+            math.isfinite(d["seconds"])
+            and d["seconds"] > 0
+            and math.isfinite(d["maximum_energy_error"])
+            and d["maximum_energy_error"] <= 1e-9
+            and math.isfinite(d["maximum_force_error"])
+            and d["maximum_force_error"] <= 1e-8
+            and len(d["convergence"]) == 1
+            and all(item["converged"] for item in d["convergence"])
+            for d in diagnostics
+        ),
+        "diagnostic numerical gate",
+    )
+    provenance = {
+        "scope": "Original seven clean pairs plus separate diagnostics; no new or pooled clean samples.",
+        "clean_original_sha256": sha(clean_path),
+        "diagnostic_original_sha256": sha(companion_path),
+        "diagnostic_campaign_sha256": sha(campaign_path),
+        "clean_slurm_job_id": clean["slurm_job_id"],
+        "diagnostic_slurm_job_id": companion["slurm_job_id"],
+        "diagnostic_runner_sha256": companion["runner_sha256"],
+        "diagnostic_iterations_observed_in_clean": {
+            d["policy"]: any(
+                s["policy"] == d["policy"] and s["iterations"] == d["iterations"]
+                for s in clean["samples"]
+            )
+            for d in diagnostics
+        },
+    }
+    return {
+        **clean,
+        "diagnostics": diagnostics,
+        "diagnostic_companion": provenance,
+    }
+
+
 def main():
     """Reject incomplete clean cells unless explicitly preparing a partial draft."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -122,6 +224,26 @@ def main():
                 manifest["incomplete"].append({"path": str(path), "reason": "missing"})
                 continue
             data = json.loads(path.read_text())
+            composed = None
+            if (
+                name == "rebuild/768-changed.json"
+                and len(data.get("diagnostics", [])) < 2
+            ):
+                companion_directory = source / "rebuild-768-changed-diagnostics"
+                composed = bind_changed_diagnostics(path, companion_directory)
+                if composed is not None:
+                    # Preserve the timed-out original exactly, including its
+                    # scheduler identity and any interrupted diagnostic work.
+                    retain(path, "partial/" + name)
+                    retain(
+                        companion_directory / "768-changed-clean.json",
+                        "rebuild/768-changed-diagnostics.json",
+                    )
+                    retain(
+                        companion_directory / "manifest.json",
+                        "campaigns/768-changed-diagnostic-companion.json",
+                    )
+                    data = composed
             samples = data.get("samples", [])
             if (
                 data.get("failure")
@@ -158,7 +280,7 @@ def main():
                 for s in samples
             ):
                 raise ValueError(f"{path}: unchanged numerical gate failed")
-            retain(path, name)
+            retain(path, name, value=composed)
         if manifest["incomplete"] and not args.partial:
             raise ValueError(
                 "campaign is incomplete; inspect manifest before publication"
