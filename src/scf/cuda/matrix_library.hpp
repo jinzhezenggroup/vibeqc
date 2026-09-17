@@ -18,10 +18,13 @@ struct MatrixLibraryResources {
 /** Use the resolved native/library route, preserving masks and column-major strides.
  * Spin products broadcast physical operands through one strided GEMM per spin.
  * The caller owns every input/output allocation and the borrowed library handles.
+ * The optional scale is applied by both the native and cuBLAS routes, allowing
+ * occupation normalization without a separate matrix pass.
  */
 vibeqc_status launch_matrix_product(MatrixLibraryResources resources, int batch_size, int nbf,
                                     const double* left, bool transpose_left, const double* right,
-                                    const std::uint8_t* active, double* output, bool use_cublas);
+                                    const std::uint8_t* active, double* output, bool use_cublas,
+                                    double scale = 1.0);
 
 vibeqc_status launch_spin_matrix_product(MatrixLibraryResources resources, int batch_size,
                                          int spin_count, int nbf, const double* left,

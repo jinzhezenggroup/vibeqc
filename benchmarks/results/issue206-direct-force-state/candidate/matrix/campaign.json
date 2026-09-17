@@ -1,0 +1,582 @@
+{
+  "scope": "Retain the unchanged direct matrix for the unqualified physical-residual/Pulay candidate.\n\nThis clean endpoint campaign must start only after the local build has finished.\nEvery original control and error gate remains authoritative. A failed gate is\nretained even if the original AOT-disabled execution failure is resolved.\n",
+  "slurm_job_id": "9890",
+  "cuda_visible_devices": "0",
+  "command": [
+    "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+    "benchmarks/real_molecule_gate.py",
+    "--density-fitting",
+    "none",
+    "--repeats",
+    "7",
+    "--output-directory",
+    "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix"
+  ],
+  "status": "failed",
+  "points": [
+    {
+      "point": {
+        "ao_count": 96,
+        "artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+        "batch_size": 1,
+        "case": "water-tetramer-def2-svp-spherical",
+        "gate": {
+          "failures": [
+            "maximum force error 4.24283e-11 Eh/bohr exceeds 3e-11 Eh/bohr"
+          ],
+          "passed": false
+        },
+        "maximum_energy_error_hartree": 3e-11,
+        "maximum_force_error_hartree_per_bohr": 3e-11,
+        "minimum_speedup": 1.0,
+        "passed": false,
+        "progress_artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.progress.jsonl",
+        "reference_gradient_tolerance": 1e-09,
+        "returncode": 2
+      },
+      "all_seven_pairs_passed": false,
+      "artifact_sha256": "477ef758ee8603836600b89498cc4d53dfaae10dd7181175d89d9e61eaf75ff4",
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/libvibeqc.so",
+        "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7"
+        }
+      },
+      "paired_accuracy": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 5.115907697472721e-13,
+          "maximum_force_error_hartree_per_bohr": 1.6444997273656892e-11,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.2737367544323206e-13,
+          "maximum_force_error_hartree_per_bohr": 1.6433148244954232e-11,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 6.252776074688882e-13,
+          "maximum_force_error_hartree_per_bohr": 1.6432659920295745e-11,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 1.7053025658242404e-13,
+          "maximum_force_error_hartree_per_bohr": 1.6435602011311e-11,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 2.7284841053187847e-12,
+          "maximum_force_error_hartree_per_bohr": 4.2428255353499367e-11,
+          "repeat": 4
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 3.979039320256561e-13,
+          "maximum_force_error_hartree_per_bohr": 1.643821103541887e-11,
+          "repeat": 5
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 1.3642420526593924e-12,
+          "maximum_force_error_hartree_per_bohr": 2.140357335811416e-11,
+          "repeat": 6
+        }
+      ],
+      "timing_summary": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 1.6282466112170368,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.20456118020229042,
+          "warm_endpoint_seconds": 0.20456118020229042
+        },
+        "iteration_matched": {
+          "gpu4pyscf_median_seconds": 1.0968161800410599,
+          "gpu4pyscf_sample_count": 1,
+          "iteration_branch": [
+            1
+          ],
+          "speedup": 5.361800215253056,
+          "vibeqc_median_seconds": 0.20456118020229042,
+          "vibeqc_sample_count": 7
+        },
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 1.6941308919340372,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 8.281780982387334,
+          "vibeqc_median_seconds": 0.20456118020229042
+        },
+        "speed_claim_uses": "iteration_matched"
+      },
+      "passed": false
+    },
+    {
+      "point": {
+        "ao_count": 96,
+        "artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+        "batch_size": 4,
+        "case": "water-tetramer-def2-svp-spherical",
+        "gate": {
+          "failures": [
+            "maximum force error 3.70581e-11 Eh/bohr exceeds 3e-11 Eh/bohr"
+          ],
+          "passed": false
+        },
+        "maximum_energy_error_hartree": 3e-11,
+        "maximum_force_error_hartree_per_bohr": 3e-11,
+        "minimum_speedup": 1.0,
+        "passed": false,
+        "progress_artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.progress.jsonl",
+        "reference_gradient_tolerance": 1e-09,
+        "returncode": 2
+      },
+      "all_seven_pairs_passed": false,
+      "artifact_sha256": "3c9794008453ba3307e6fe655bf0257b40372a8e70b68496394aaefce7029e93",
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/libvibeqc.so",
+        "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7"
+        }
+      },
+      "paired_accuracy": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.1600499167107046e-12,
+          "maximum_force_error_hartree_per_bohr": 2.3396341287951206e-11,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.1600499167107046e-12,
+          "maximum_force_error_hartree_per_bohr": 2.340322900751257e-11,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 1.3642420526593924e-12,
+          "maximum_force_error_hartree_per_bohr": 1.6960870208304613e-11,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 1.4210854715202004e-12,
+          "maximum_force_error_hartree_per_bohr": 1.7893245045363937e-11,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 1.4779288903810084e-12,
+          "maximum_force_error_hartree_per_bohr": 1.8819017524873694e-11,
+          "repeat": 4
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.1032064978498966e-12,
+          "maximum_force_error_hartree_per_bohr": 2.3395314331653427e-11,
+          "repeat": 5
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.6147972675971687e-12,
+          "maximum_force_error_hartree_per_bohr": 3.70581343389631e-11,
+          "repeat": 6
+        }
+      ],
+      "timing_summary": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 3.5593835590407252,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.45715949311852455,
+          "warm_endpoint_seconds": 0.45715949311852455
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 6.466334035852924,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 14.144590964835205,
+          "vibeqc_median_seconds": 0.45715949311852455
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "passed": false
+    },
+    {
+      "point": {
+        "ao_count": 192,
+        "artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+        "batch_size": 1,
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "gate": {
+          "failures": [],
+          "passed": true
+        },
+        "maximum_energy_error_hartree": 1e-10,
+        "maximum_force_error_hartree_per_bohr": 5e-10,
+        "minimum_speedup": null,
+        "passed": true,
+        "progress_artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
+        "reference_gradient_tolerance": 1e-08,
+        "returncode": 0
+      },
+      "all_seven_pairs_passed": true,
+      "artifact_sha256": "e87bbc03da8a15e1236ffad27c93f9de501060184853ffaf12331d6e93493e9b",
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/libvibeqc.so",
+        "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7"
+        }
+      },
+      "paired_accuracy": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.9558577807620168e-12,
+          "maximum_force_error_hartree_per_bohr": 5.302507911919552e-11,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.0463630789890885e-12,
+          "maximum_force_error_hartree_per_bohr": 3.8283767649083256e-11,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.5011104298755527e-12,
+          "maximum_force_error_hartree_per_bohr": 5.301381122285731e-11,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 5.6843418860808015e-12,
+          "maximum_force_error_hartree_per_bohr": 2.308218911145632e-10,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 5.6843418860808015e-12,
+          "maximum_force_error_hartree_per_bohr": 2.308517717264369e-10,
+          "repeat": 4
+        },
+        {
+          "iteration_branches_match": true,
+          "maximum_energy_error_hartree": 6.139089236967266e-12,
+          "maximum_force_error_hartree_per_bohr": 2.307875513959945e-10,
+          "repeat": 5
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 2.0463630789890885e-12,
+          "maximum_force_error_hartree_per_bohr": 5.2983423204366886e-11,
+          "repeat": 6
+        }
+      ],
+      "timing_summary": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 4.55213060695678,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.49101757095195353,
+          "warm_endpoint_seconds": 0.49101757095195353
+        },
+        "iteration_matched": {
+          "gpu4pyscf_median_seconds": 1.4902633170131594,
+          "gpu4pyscf_sample_count": 3,
+          "iteration_branch": [
+            1
+          ],
+          "speedup": 3.035050892626779,
+          "vibeqc_median_seconds": 0.49101757095195353,
+          "vibeqc_sample_count": 7
+        },
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 2.222033723955974,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 4.525364987749902,
+          "vibeqc_median_seconds": 0.49101757095195353
+        },
+        "speed_claim_uses": "iteration_matched"
+      },
+      "passed": true
+    },
+    {
+      "point": {
+        "ao_count": 192,
+        "artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+        "batch_size": 4,
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "gate": {
+          "failures": [],
+          "passed": true
+        },
+        "maximum_energy_error_hartree": 1e-10,
+        "maximum_force_error_hartree_per_bohr": 5e-10,
+        "minimum_speedup": null,
+        "passed": true,
+        "progress_artifact": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
+        "reference_gradient_tolerance": 1e-08,
+        "returncode": 0
+      },
+      "all_seven_pairs_passed": true,
+      "artifact_sha256": "3d58bc99863779d979c561cf298d481a78796dbb780cd72482548cb9e0a14a5a",
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-matrix/libvibeqc.so",
+        "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7"
+        }
+      },
+      "paired_accuracy": [
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 6.59383658785373e-12,
+          "maximum_force_error_hartree_per_bohr": 2.3529901378022133e-10,
+          "repeat": 0
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 5.229594535194337e-12,
+          "maximum_force_error_hartree_per_bohr": 2.1940724584390559e-10,
+          "repeat": 1
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 6.59383658785373e-12,
+          "maximum_force_error_hartree_per_bohr": 2.1935708978404467e-10,
+          "repeat": 2
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 7.275957614183426e-12,
+          "maximum_force_error_hartree_per_bohr": 2.1934189013694816e-10,
+          "repeat": 3
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 6.821210263296962e-12,
+          "maximum_force_error_hartree_per_bohr": 2.3522200767039925e-10,
+          "repeat": 4
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 5.6843418860808015e-12,
+          "maximum_force_error_hartree_per_bohr": 2.2669056128771237e-10,
+          "repeat": 5
+        },
+        {
+          "iteration_branches_match": false,
+          "maximum_energy_error_hartree": 6.139089236967266e-12,
+          "maximum_force_error_hartree_per_bohr": 2.3525016483449956e-10,
+          "repeat": 6
+        }
+      ],
+      "timing_summary": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 14.55243016895838,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 1.6330999929923564,
+          "warm_endpoint_seconds": 1.6330999929923564
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 7.800139226950705,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 4.776277790962683,
+          "vibeqc_median_seconds": 1.6330999929923564
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "passed": true
+    }
+  ],
+  "source_patch_sha256": "7bdd29bc51874f5cbfdbcdf09e3479d004d27b71b5b7baec4efa7e2c9019babf",
+  "dirty": true,
+  "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+  "cache_sha256": "3bdc495a47a1432b1733b1895f18b3e68eee10191052f3bab55525d686391b8f",
+  "runner_sha256": "2445fd171a1ed8a1110730879357aef9b340954a76173da1218db7abace911a0",
+  "build_log_sha256": "9ba91be4cadc1b82ea76bbc944c633a9ac8df82bbffed19d3286935d9ea346f2",
+  "revision": "f5eb8dfb696ce4304c5151670c55fec78fdddb7d",
+  "comparison_source_sha256": "483183ccef575c01d5cb9974aaa1011e8897502e6a943620b35a581b13dffd1d",
+  "matrix_source_sha256": "d86e4880f20036dd943621389fef072de67ee9768971df0e1633997d9d6ad7fc",
+  "matrix_exit_code": 2
+}

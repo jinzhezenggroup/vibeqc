@@ -1,0 +1,232 @@
+{
+  "scope": "Accuracy-only OH final-state checks using independent CPU products.\n\nThe frozen one-update candidate returns exactly the density used by its force\nconsumer. CPU correction steps below are diagnostic, never production work or\nreplacement numerical acceptance. Original controls and force gates are fixed.\n",
+  "slurm_job_id": "9889",
+  "cuda_visible_devices": "0",
+  "input_sha256": "27026440a746b241a5070cedf331ba08f9ed1dc92c9a3c9fd0e1f27f0ea72b3c",
+  "runner_sha256": "8619718dd0922b048681c3b21ff300ef52cb010dcdfec7e4d520c0aa13e69cfa",
+  "items": [
+    {
+      "slot": 0,
+      "reported_density_rms": 5.090998062816328e-12,
+      "iterations": 35,
+      "native_forces": [
+        [
+          -0.0,
+          -5.744626283120827e-11,
+          0.014500852947939197
+        ],
+        [
+          -0.0,
+          5.7446262831206513e-11,
+          -0.0145008529479352
+        ]
+      ],
+      "native_vs_oracle": 5.74461620868898e-11,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 5.329070518200751e-15,
+          "idempotency_max": 3.552713678800501e-15,
+          "energy_error_from_native": 1.4210854715202004e-14,
+          "commutator_max": 5.836678391683467e-11,
+          "canonical_density_rms": 4.582735048641577e-12,
+          "canonical_density_max": 3.0227571698624734e-11,
+          "forces": [
+            [
+              -0.0,
+              -5.7446262831199424e-11,
+              0.014500852947940235
+            ],
+            [
+              -0.0,
+              5.7446262831200096e-11,
+              -0.014500852947943343
+            ]
+          ],
+          "force_error_vs_oracle": 5.7446162086881624e-11,
+          "force_difference_from_native": 8.142791996235133e-15
+        }
+      ]
+    },
+    {
+      "slot": 1,
+      "reported_density_rms": 4.7476742956322446e-12,
+      "iterations": 36,
+      "native_forces": [
+        [
+          -5.3452803973606874e-11,
+          -0.0,
+          0.01645563417771366
+        ],
+        [
+          5.3452803973608476e-11,
+          -0.0,
+          -0.016455634177712772
+        ]
+      ],
+      "native_vs_oracle": 5.3452877848780463e-11,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 3.552713678800501e-15,
+          "idempotency_max": 1.1102230246251565e-15,
+          "energy_error_from_native": 8.526512829121202e-14,
+          "commutator_max": 5.441328403259335e-11,
+          "canonical_density_rms": 4.271453264064799e-12,
+          "canonical_density_max": 2.8166289863175456e-11,
+          "forces": [
+            [
+              -5.345280397360393e-11,
+              -0.0,
+              0.016455634177672707
+            ],
+            [
+              5.3452803973607274e-11,
+              -0.0,
+              -0.016455634177672707
+            ]
+          ],
+          "force_error_vs_oracle": 5.345287784877926e-11,
+          "force_difference_from_native": 4.095335182086046e-14
+        }
+      ]
+    },
+    {
+      "slot": 2,
+      "reported_density_rms": 5.4394213581205515e-12,
+      "iterations": 36,
+      "native_forces": [
+        [
+          -6.112591332581219e-11,
+          -0.0,
+          0.018384458224156585
+        ],
+        [
+          6.112591332581343e-11,
+          -0.0,
+          -0.018384458224155697
+        ]
+      ],
+      "native_vs_oracle": 6.112592535762224e-11,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 8.881784197001252e-15,
+          "idempotency_max": 1.5543122344752192e-15,
+          "energy_error_from_native": 9.947598300641403e-14,
+          "commutator_max": 6.235225875036753e-11,
+          "canonical_density_rms": 4.894138249024723e-12,
+          "canonical_density_max": 3.2260436373848226e-11,
+          "forces": [
+            [
+              -6.112591332580879e-11,
+              -0.0,
+              0.018384458224122824
+            ],
+            [
+              6.112591332580964e-11,
+              -0.0,
+              -0.01838445822411705
+            ]
+          ],
+          "force_error_vs_oracle": 6.112592535761845e-11,
+          "force_difference_from_native": 3.864616959781131e-14
+        }
+      ]
+    },
+    {
+      "slot": 3,
+      "reported_density_rms": 4.948340621244422e-12,
+      "iterations": 37,
+      "native_forces": [
+        [
+          -0.0,
+          -5.550672538325217e-11,
+          0.02028763111940536
+        ],
+        [
+          -0.0,
+          5.550672538325129e-11,
+          -0.02028763111940292
+        ]
+      ],
+      "native_vs_oracle": 5.5506813907031155e-11,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 5.329070518200751e-15,
+          "idempotency_max": 1.3322676295501878e-15,
+          "energy_error_from_native": 5.684341886080802e-14,
+          "commutator_max": 5.6753033518024984e-11,
+          "canonical_density_rms": 4.453299241719026e-12,
+          "canonical_density_max": 2.9350160189825565e-11,
+          "forces": [
+            [
+              -0.0,
+              -5.550672538324918e-11,
+              0.02028763111936982
+            ],
+            [
+              -0.0,
+              5.550672538325003e-11,
+              -0.02028763111936449
+            ]
+          ],
+          "force_error_vs_oracle": 5.5506813907029016e-11,
+          "force_difference_from_native": 3.842759443983823e-14
+        }
+      ]
+    }
+  ],
+  "status": "completed diagnostic; original gates unchanged",
+  "native_build": {
+    "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-build/libvibeqc.so",
+    "library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45",
+    "probe": {
+      "source_identity": "7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7",
+      "native_abi": 0,
+      "schema": 1,
+      "policy": {
+        "precision": "fp64",
+        "spin": [
+          "rhf",
+          "uhf"
+        ],
+        "consumers": [
+          "fock",
+          "force"
+        ]
+      },
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "libc": [
+          "glibc",
+          "2.35"
+        ]
+      },
+      "device": {
+        "name": "NVIDIA GeForce RTX 5090",
+        "official_profile": "sm_120",
+        "major": 12,
+        "minor": 0,
+        "warp_size": 32,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "maximum_blocks_per_sm": 24,
+        "registers_per_sm": 65536,
+        "maximum_registers_per_thread": 255,
+        "sm_count": 170,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "runtime_version": 12090,
+        "driver_version": 13000,
+        "toolkit_version": 12090,
+        "release_build": 1,
+        "fast_compile": 0,
+        "portable": 0
+      }
+    }
+  }
+}

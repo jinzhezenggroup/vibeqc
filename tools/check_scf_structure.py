@@ -427,6 +427,9 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     # Public ECP device consumer only; quadrature kernels remain in integrals.
     "integrals/ecp_cuda.hpp",
     "molecule/basis.hpp",
+    # The driver owns finalization work counts. The host-only journal is a
+    # leaf sink with no dependency on any scientific provider or collector.
+    "runtime/df_progress_trace.hpp",
     "runtime/resource_cuda.cuh",
     "runtime/resource_usage.hpp",
     "scf/aot_shell_registry.hpp",

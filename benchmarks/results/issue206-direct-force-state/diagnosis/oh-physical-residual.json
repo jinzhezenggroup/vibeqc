@@ -1,0 +1,600 @@
+{
+  "scope": "Accuracy-only OH final-state checks using independent CPU products.\n\nThe frozen one-update candidate returns exactly the density used by its force\nconsumer. CPU correction steps below are diagnostic, never production work or\nreplacement numerical acceptance. Original controls and force gates are fixed.\n",
+  "slurm_job_id": "9885",
+  "cuda_visible_devices": "0",
+  "input_sha256": "27026440a746b241a5070cedf331ba08f9ed1dc92c9a3c9fd0e1f27f0ea72b3c",
+  "runner_sha256": "bd0b47df445bc2706f026491a4cac12f120585f90ca019fb8ca9f2161180b6ce",
+  "items": [
+    {
+      "slot": 0,
+      "reported_density_rms": 9.040081753556176e-11,
+      "iterations": 22,
+      "native_forces": [
+        [
+          -0.0,
+          -9.49351286100474e-10,
+          0.014500852948792314
+        ],
+        [
+          -0.0,
+          9.493512861004905e-10,
+          -0.014500852948785652
+        ]
+      ],
+      "native_vs_oracle": 9.49351185356172e-10,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 4.440892098500626e-15,
+          "idempotency_max": 2.4424906541753444e-15,
+          "energy_error_from_native": 0.0,
+          "commutator_max": 9.762951542325022e-10,
+          "canonical_density_rms": 7.930051906014714e-11,
+          "canonical_density_max": 5.123504768699712e-10,
+          "forces": [
+            [
+              -0.0,
+              -9.493512861003842e-10,
+              0.014500852948795107
+            ],
+            [
+              -0.0,
+              9.493512861003842e-10,
+              -0.014500852948796883
+            ]
+          ],
+          "force_error_vs_oracle": 9.493511853560657e-10,
+          "force_difference_from_native": 1.1230599783473849e-14
+        },
+        {
+          "step": 1,
+          "electron_trace_error": 1.7763568394002505e-15,
+          "idempotency_max": 1.5543122344752192e-15,
+          "energy_error_from_native": 9.947598300641403e-14,
+          "commutator_max": 7.909690650616064e-10,
+          "canonical_density_rms": 6.358594973936615e-11,
+          "canonical_density_max": 4.1344202558886367e-10,
+          "forces": [
+            [
+              3.8974197483035464e-17,
+              -7.72069378115875e-10,
+              0.014500852946408571
+            ],
+            [
+              -3.8974197483034884e-17,
+              7.720693781158894e-10,
+              -0.014500852946411236
+            ]
+          ],
+          "force_error_vs_oracle": 7.720692773715709e-10,
+          "force_difference_from_native": 1.7728190798460107e-10
+        },
+        {
+          "step": 2,
+          "electron_trace_error": 2.6645352591003757e-15,
+          "idempotency_max": 9.992007221626409e-16,
+          "energy_error_from_native": 8.526512829121202e-14,
+          "commutator_max": 6.392100344851394e-10,
+          "canonical_density_rms": 5.1008870189605216e-11,
+          "canonical_density_max": 3.331840665290416e-10,
+          "forces": [
+            [
+              -5.320049687357236e-17,
+              -6.25569852492767e-10,
+              0.01450085294706005
+            ],
+            [
+              5.3200496873573613e-17,
+              6.255698524927682e-10,
+              -0.014500852947062715
+            ]
+          ],
+          "force_error_vs_oracle": 6.255697517484498e-10,
+          "force_difference_from_native": 3.2378143360772224e-10
+        },
+        {
+          "step": 3,
+          "electron_trace_error": 5.329070518200751e-15,
+          "idempotency_max": 1.1102230246251565e-15,
+          "energy_error_from_native": 7.105427357601002e-14,
+          "commutator_max": 5.156716528580824e-10,
+          "canonical_density_rms": 4.094525248885398e-11,
+          "canonical_density_max": 2.682637282641575e-10,
+          "forces": [
+            [
+              -5.663271608678123e-18,
+              -5.055772629672621e-10,
+              0.014500852947005871
+            ],
+            [
+              5.663271608679454e-18,
+              5.055772629672677e-10,
+              -0.01450085294700898
+            ]
+          ],
+          "force_error_vs_oracle": 5.055771622229492e-10,
+          "force_difference_from_native": 4.437740231332228e-10
+        },
+        {
+          "step": 4,
+          "electron_trace_error": 2.6645352591003757e-15,
+          "idempotency_max": 1.3322676295501878e-15,
+          "energy_error_from_native": 8.526512829121202e-14,
+          "commutator_max": 4.1550618037234903e-10,
+          "canonical_density_rms": 3.287511466682698e-11,
+          "canonical_density_max": 2.1585801203592997e-10,
+          "forces": [
+            [
+              -5.952122199974152e-17,
+              -4.078795253549619e-10,
+              0.014500852947397114
+            ],
+            [
+              5.952122199974386e-17,
+              4.07879525354968e-10,
+              -0.014500852947401999
+            ]
+          ],
+          "force_error_vs_oracle": 4.0787942461064956e-10,
+          "force_difference_from_native": 5.414717607455225e-10
+        }
+      ]
+    },
+    {
+      "slot": 1,
+      "reported_density_rms": 8.274060195894385e-11,
+      "iterations": 23,
+      "native_forces": [
+        [
+          -8.978961093319113e-10,
+          -0.0,
+          0.01645563417537051
+        ],
+        [
+          8.978961093319212e-10,
+          -0.0,
+          -0.01645563417536607
+        ]
+      ],
+      "native_vs_oracle": 8.978961832070932e-10,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 4.440892098500626e-15,
+          "idempotency_max": 8.881784197001252e-16,
+          "energy_error_from_native": 7.105427357601002e-14,
+          "commutator_max": 9.208768261213691e-10,
+          "canonical_density_rms": 7.377542492810087e-11,
+          "canonical_density_max": 4.80508396918511e-10,
+          "forces": [
+            [
+              -8.978961093318792e-10,
+              -0.0,
+              0.01645563417532836
+            ],
+            [
+              8.978961093319013e-10,
+              -0.0,
+              -0.01645563417532836
+            ]
+          ],
+          "force_error_vs_oracle": 8.978961832070733e-10,
+          "force_difference_from_native": 4.215031101928446e-14
+        },
+        {
+          "step": 1,
+          "electron_trace_error": 4.440892098500626e-15,
+          "idempotency_max": 1.1657341758564144e-15,
+          "energy_error_from_native": 4.263256414560601e-14,
+          "commutator_max": 7.435776329278695e-10,
+          "canonical_density_rms": 5.91969634323835e-11,
+          "canonical_density_max": 3.8706284331960105e-10,
+          "forces": [
+            [
+              -7.266790651200794e-10,
+              -2.363051808610554e-17,
+              0.01645563417611795
+            ],
+            [
+              7.266790651201194e-10,
+              2.3630518086107593e-17,
+              -0.016455634176118394
+            ]
+          ],
+          "force_error_vs_oracle": 7.266791389952914e-10,
+          "force_difference_from_native": 1.7121704421183183e-10
+        },
+        {
+          "step": 2,
+          "electron_trace_error": 1.7763568394002505e-15,
+          "idempotency_max": 1.1102230246251565e-15,
+          "energy_error_from_native": 4.263256414560601e-14,
+          "commutator_max": 5.99522391800075e-10,
+          "canonical_density_rms": 4.752302234913395e-11,
+          "canonical_density_max": 3.1154941998120576e-10,
+          "forces": [
+            [
+              -5.868219418804183e-10,
+              -5.0208029000296386e-17,
+              0.016455634176335554
+            ],
+            [
+              5.868219418804259e-10,
+              5.0208029000295647e-17,
+              -0.016455634176335554
+            ]
+          ],
+          "force_error_vs_oracle": 5.868220157555979e-10,
+          "force_difference_from_native": 3.110741674514953e-10
+        },
+        {
+          "step": 3,
+          "electron_trace_error": 1.7763568394002505e-15,
+          "idempotency_max": 4.440892098500626e-16,
+          "energy_error_from_native": 4.263256414560601e-14,
+          "commutator_max": 4.828737598600073e-10,
+          "canonical_density_rms": 3.815964356677825e-11,
+          "canonical_density_max": 2.506339746826799e-10,
+          "forces": [
+            [
+              -4.731604805975039e-10,
+              4.496215482878218e-18,
+              0.016455634176801848
+            ],
+            [
+              4.731604805975166e-10,
+              -4.496215482878625e-18,
+              -0.01645563417680318
+            ]
+          ],
+          "force_error_vs_oracle": 4.731605544726886e-10,
+          "force_difference_from_native": 4.2473562873440735e-10
+        },
+        {
+          "step": 4,
+          "electron_trace_error": 3.552713678800501e-15,
+          "idempotency_max": 7.216449660063518e-16,
+          "energy_error_from_native": 5.684341886080802e-14,
+          "commutator_max": 3.8863844607067634e-10,
+          "canonical_density_rms": 3.064734506333318e-11,
+          "canonical_density_max": 2.015532986573069e-10,
+          "forces": [
+            [
+              -3.811092170560216e-10,
+              -1.252321285253074e-17,
+              0.016455634177070966
+            ],
+            [
+              3.8110921705603564e-10,
+              1.2523212852525846e-17,
+              -0.016455634177075407
+            ]
+          ],
+          "force_error_vs_oracle": 3.811092909312076e-10,
+          "force_difference_from_native": 5.167868922758897e-10
+        }
+      ]
+    },
+    {
+      "slot": 2,
+      "reported_density_rms": 9.460015968349554e-11,
+      "iterations": 23,
+      "native_forces": [
+        [
+          -1.0295303655952153e-09,
+          -0.0,
+          0.018384458221260704
+        ],
+        [
+          1.029530365595202e-09,
+          -0.0,
+          -0.018384458221258927
+        ]
+      ],
+      "native_vs_oracle": 1.029530377627024e-09,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 7.105427357601002e-15,
+          "idempotency_max": 1.1657341758564144e-15,
+          "energy_error_from_native": 9.947598300641403e-14,
+          "commutator_max": 1.0573394320425978e-09,
+          "canonical_density_rms": 8.44943868129016e-11,
+          "canonical_density_max": 5.509488115774296e-10,
+          "forces": [
+            [
+              -1.0295303655951276e-09,
+              -0.0,
+              0.018384458221230027
+            ],
+            [
+              1.0295303655951644e-09,
+              -0.0,
+              -0.01838445822122603
+            ]
+          ],
+          "force_error_vs_oracle": 1.0295303776269732e-09,
+          "force_difference_from_native": 3.289729599842417e-14
+        },
+        {
+          "step": 1,
+          "electron_trace_error": 1.7763568394002505e-15,
+          "idempotency_max": 7.771561172376096e-16,
+          "energy_error_from_native": 1.5631940186722204e-13,
+          "commutator_max": 8.532465182132009e-10,
+          "canonical_density_rms": 6.780937268350754e-11,
+          "canonical_density_max": 4.43661207359384e-10,
+          "forces": [
+            [
+              -8.325101818619564e-10,
+              2.2539545538714542e-17,
+              0.01838445822204804
+            ],
+            [
+              8.325101818619648e-10,
+              -2.2539545538714715e-17,
+              -0.01838445822204493
+            ]
+          ],
+          "force_error_vs_oracle": 8.325101938937736e-10,
+          "force_difference_from_native": 1.9702018373325892e-10
+        },
+        {
+          "step": 2,
+          "electron_trace_error": 7.105427357601002e-15,
+          "idempotency_max": 1.3322676295501878e-15,
+          "energy_error_from_native": 1.4210854715202004e-13,
+          "commutator_max": 6.876518105545837e-10,
+          "canonical_density_rms": 5.444053944221686e-11,
+          "canonical_density_max": 3.570248531108912e-10,
+          "forces": [
+            [
+              -6.718915549318177e-10,
+              -7.45311446748298e-18,
+              0.018384458222524103
+            ],
+            [
+              6.718915549318505e-10,
+              7.453114467486111e-18,
+              -0.018384458222516553
+            ]
+          ],
+          "force_error_vs_oracle": 6.718915669636593e-10,
+          "force_difference_from_native": 3.576388106633976e-10
+        },
+        {
+          "step": 3,
+          "electron_trace_error": 3.552713678800501e-15,
+          "idempotency_max": 6.661338147750939e-16,
+          "energy_error_from_native": 1.5631940186722204e-13,
+          "commutator_max": 5.536897126698978e-10,
+          "canonical_density_rms": 4.3716784871073126e-11,
+          "canonical_density_max": 2.871714383301568e-10,
+          "forces": [
+            [
+              -5.415315383808982e-10,
+              -5.390113044586198e-17,
+              0.018384458223047684
+            ],
+            [
+              5.415315383808934e-10,
+              5.3901130445861094e-17,
+              -0.01838445822304413
+            ]
+          ],
+          "force_error_vs_oracle": 5.41531550412707e-10,
+          "force_difference_from_native": 4.879988272143171e-10
+        },
+        {
+          "step": 4,
+          "electron_trace_error": 4.440892098500626e-15,
+          "idempotency_max": 1.7763568394002505e-15,
+          "energy_error_from_native": 1.1368683772161603e-13,
+          "commutator_max": 4.4553944551547415e-10,
+          "canonical_density_rms": 3.511140859406535e-11,
+          "canonical_density_max": 2.309090580767746e-10,
+          "forces": [
+            [
+              -4.3605371984067187e-10,
+              -8.168745166241051e-17,
+              0.018384458223409617
+            ],
+            [
+              4.3605371984068293e-10,
+              8.168745166240915e-17,
+              -0.018384458223405176
+            ]
+          ],
+          "force_error_vs_oracle": 4.3605373187249173e-10,
+          "force_difference_from_native": 5.934766457545435e-10
+        }
+      ]
+    },
+    {
+      "slot": 3,
+      "reported_density_rms": 8.558964030977613e-11,
+      "iterations": 24,
+      "native_forces": [
+        [
+          -0.0,
+          -9.419581961490844e-10,
+          0.020287631116652605
+        ],
+        [
+          -0.0,
+          9.419581961490778e-10,
+          -0.020287631116657046
+        ]
+      ],
+      "native_vs_oracle": 9.419582846728633e-10,
+      "cpu_steps": [
+        {
+          "step": 0,
+          "electron_trace_error": 7.993605777301127e-15,
+          "idempotency_max": 2.886579864025407e-15,
+          "energy_error_from_native": 7.105427357601002e-14,
+          "commutator_max": 9.671224939826145e-10,
+          "canonical_density_rms": 7.675922872301315e-11,
+          "canonical_density_max": 5.024107894633481e-10,
+          "forces": [
+            [
+              -0.0,
+              -9.419581961490224e-10,
+              0.02028763111661247
+            ],
+            [
+              -0.0,
+              9.419581961490505e-10,
+              -0.020287631116611582
+            ]
+          ],
+          "force_error_vs_oracle": 9.419582846728294e-10,
+          "force_difference_from_native": 4.546363285840016e-14
+        },
+        {
+          "step": 1,
+          "electron_trace_error": 1.7763568394002505e-15,
+          "idempotency_max": 1.1102230246251565e-15,
+          "energy_error_from_native": 1.1368683772161603e-13,
+          "commutator_max": 7.791799232842994e-10,
+          "canonical_density_rms": 6.162864911509802e-11,
+          "canonical_density_max": 4.042321418869466e-10,
+          "forces": [
+            [
+              -2.892023634799084e-17,
+              -7.598981165158782e-10,
+              0.02028763111745624
+            ],
+            [
+              2.892023634799052e-17,
+              7.59898116515874e-10,
+              -0.020287631117453575
+            ]
+          ],
+          "force_error_vs_oracle": 7.598982050396572e-10,
+          "force_difference_from_native": 1.8206007963320623e-10
+        },
+        {
+          "step": 2,
+          "electron_trace_error": 8.881784197001252e-16,
+          "idempotency_max": 8.881784197001252e-16,
+          "energy_error_from_native": 1.2789769243681803e-13,
+          "commutator_max": 6.272469884834941e-10,
+          "canonical_density_rms": 4.9491084220466465e-11,
+          "canonical_density_max": 3.251028746497667e-10,
+          "forces": [
+            [
+              -4.304953106358146e-17,
+              -6.12280011628945e-10,
+              0.02028763111804821
+            ],
+            [
+              4.3049531063584134e-17,
+              6.122800116289631e-10,
+              -0.020287631118046434
+            ]
+          ],
+          "force_error_vs_oracle": 6.122801001527421e-10,
+          "force_difference_from_native": 3.296781845201394e-10
+        },
+        {
+          "step": 3,
+          "electron_trace_error": 8.881784197001252e-16,
+          "idempotency_max": 8.326672684688674e-16,
+          "energy_error_from_native": 8.526512829121202e-14,
+          "commutator_max": 5.046485528827611e-10,
+          "canonical_density_rms": 3.974964842754982e-11,
+          "canonical_density_max": 2.61385670414275e-10,
+          "forces": [
+            [
+              -2.3096777857418587e-17,
+              -4.929178723434608e-10,
+              0.020287631118499405
+            ],
+            [
+              2.3096777857419277e-17,
+              4.929178723434631e-10,
+              -0.020287631118496297
+            ]
+          ],
+          "force_error_vs_oracle": 4.929179608672421e-10,
+          "force_difference_from_native": 4.490403238056236e-10
+        },
+        {
+          "step": 4,
+          "electron_trace_error": 8.881784197001252e-16,
+          "idempotency_max": 1.3322676295501878e-15,
+          "energy_error_from_native": 1.2789769243681803e-13,
+          "commutator_max": 4.0584774968675777e-10,
+          "canonical_density_rms": 3.1928934360199234e-11,
+          "canonical_density_max": 2.1011277959802175e-10,
+          "forces": [
+            [
+              -4.2754345266233615e-17,
+              -3.96588129539661e-10,
+              0.020287631118821814
+            ],
+            [
+              4.2754345266235143e-17,
+              3.965881295396675e-10,
+              -0.020287631118820038
+            ]
+          ],
+          "force_error_vs_oracle": 3.965882180634465e-10,
+          "force_difference_from_native": 5.453700666094234e-10
+        }
+      ]
+    }
+  ],
+  "status": "completed diagnostic; original gates unchanged",
+  "native_build": {
+    "library_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-polish-build/libvibeqc.so",
+    "library_sha256": "44c9eb03664cfe4017993b09bb3e24846198b37a65dc0872078e033ff60bb4c8",
+    "probe": {
+      "source_identity": "2e586a71c4d7525b8c7115bbb3b50bce603e06fa126be103376911f0843be05a",
+      "native_abi": 0,
+      "schema": 1,
+      "policy": {
+        "precision": "fp64",
+        "spin": [
+          "rhf",
+          "uhf"
+        ],
+        "consumers": [
+          "fock",
+          "force"
+        ]
+      },
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "libc": [
+          "glibc",
+          "2.35"
+        ]
+      },
+      "device": {
+        "name": "NVIDIA GeForce RTX 5090",
+        "official_profile": "sm_120",
+        "major": 12,
+        "minor": 0,
+        "warp_size": 32,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "maximum_blocks_per_sm": 24,
+        "registers_per_sm": 65536,
+        "maximum_registers_per_thread": 255,
+        "sm_count": 170,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "runtime_version": 12090,
+        "driver_version": 13000,
+        "toolkit_version": 12090,
+        "release_build": 1,
+        "fast_compile": 0,
+        "portable": 0
+      }
+    }
+  }
+}

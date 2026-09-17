@@ -1,0 +1,18 @@
+{
+  "scope": "Unqualified physical maximum-residual force convergence plus determinant-consistent final update",
+  "base_commit": "646c62caa67e2b151ac97c44129724f33fe4f4d7",
+  "source_patch_sha256": "0442c3716dd9602ec16c7bddc67126c0efbf4412a6af43f4a18f52ce3b42b000",
+  "new_test_sha256": "f28dda3d03c9810ba562fc371d10afb8236e0d63482104182eaa0874f36f961a",
+  "command": [
+    "/usr/bin/time",
+    "-v",
+    "cmake",
+    "--build",
+    "build/cuda",
+    "-j",
+    "6"
+  ],
+  "status": "built",
+  "exit_code": 0,
+  "candidate_library_sha256": "6279948a27565dfa4a1ff8ce0bd7edc7b7f39b43d87953e0beb877c9e9a01118"
+}

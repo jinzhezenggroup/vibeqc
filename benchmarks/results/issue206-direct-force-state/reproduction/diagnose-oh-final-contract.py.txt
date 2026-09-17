@@ -1,0 +1,94 @@
+"""Accuracy-only OH final-state checks using independent CPU products.
+
+The frozen one-update candidate returns exactly the density used by its force
+consumer. CPU correction steps below are diagnostic, never production work or
+replacement numerical acceptance. Original controls and force gates are fixed.
+"""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+
+import numpy as np
+from pyscf import gto, scf
+
+from benchmarks.compare_gpu4pyscf_batch import native_build_metadata
+from vibeqc import Calculator
+from vibeqc.progressive import _retained_density
+
+
+def maximum(x):
+    return float(np.max(np.abs(x)))
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    source = Path(".artifacts/issue206/direct-force-polish-qualification-v3/candidate/report.json")
+    original = json.loads(source.read_text())
+    case = next(x for x in original["cases"] if x["label"] == "oh-svp-spherical")
+    atoms = case["geometries_bohr"]
+    out = Path(".artifacts/issue206/oh-final-contract-diagnosis")
+    out.mkdir(exist_ok=False)
+    report = {"scope": __doc__, "slurm_job_id": os.environ["SLURM_JOB_ID"],
+              "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+              "input_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+              "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              "items": [], "status": "running"}
+
+    def save():
+        (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+
+    calc = Calculator(method="uhf", basis="def2-svp", basis_representation="spherical",
+                      device="cuda", density_fitting="none", max_iterations=100,
+                      energy_tolerance=1e-12, density_tolerance=1e-10, screening_tolerance=1e-14)
+    report["native_build"] = native_build_metadata(calc)
+    assert report["native_build"]["library_sha256"] == original["native_build"]["library_sha256"]
+    with calc.prepare_batch(atoms, charges=[0]*len(atoms), multiplicities=[2]*len(atoms),
+                            warm_start=True) as batch:
+        result = batch.execute(strict=True)
+        densities = [_retained_density(batch, i) for i in range(len(atoms))]
+    for slot, (geometry, item, density, oracle) in enumerate(zip(atoms, result.items, densities, case["oracles"], strict=True)):
+        np.save(out / f"density-{slot}.npy", density, allow_pickle=False)
+        mol = gto.M(atom=geometry, unit="Bohr", basis="def2-svp", cart=False, spin=1, verbose=0)
+        mf = scf.UHF(mol)
+        mf.direct_scf_tol = 1e-14
+        overlap, hcore = mf.get_ovlp(), mf.get_hcore()
+        reference = np.array(oracle["forces"])
+        occ = np.zeros((2, mol.nao))
+        for s, number in enumerate(mol.nelec):
+            occ[s, :number] = 1
+        row = {"slot": slot, "reported_density_rms": item.density_rms,
+               "iterations": item.iterations, "native_forces": item.forces.tolist(),
+               "native_vs_oracle": maximum(item.forces-reference), "cpu_steps": []}
+        report["items"].append(row)
+        for step in range(5):
+            fock = hcore + mf.get_veff(mol, density)
+            eps, coeff = mf.eig(fock, overlap)
+            next_density = np.array([(c*o)@c.T for c, o in zip(coeff, occ, strict=True)])
+            energy = float(np.einsum("sij,sji", density, hcore+fock)/2 + mol.energy_nuc())
+            checks = {"electron_trace_error": maximum(np.einsum("sij,ji->s", density, overlap)-mol.nelec),
+                      "idempotency_max": maximum(density@overlap@density-density),
+                      "energy_error_from_native": abs(energy-item.energy),
+                      "commutator_max": maximum(fock@density@overlap-overlap@density@fock),
+                      "canonical_density_rms": max(float(np.linalg.norm(d)/mol.nao) for d in next_density-density),
+                      "canonical_density_max": maximum(next_density-density)}
+            assert checks["electron_trace_error"] < 1e-9 and checks["energy_error_from_native"] < 1e-9, checks
+            weighted = density@fock@density
+            mf.make_rdm1 = lambda *a, d=density, **kw: d
+            grad = mf.nuc_grad_method()
+            grad.make_rdm1e = lambda *a, w=weighted, **kw: w
+            forces = -grad.kernel(mo_energy=eps, mo_coeff=coeff, mo_occ=occ)
+            record = {"step": step, **checks, "forces": forces.tolist(),
+                      "force_error_vs_oracle": maximum(forces-reference),
+                      "force_difference_from_native": maximum(forces-item.forces)}
+            row["cpu_steps"].append(record)
+            save()
+            print(slot, step, {k:v for k,v in record.items() if k not in ("forces",)}, flush=True)
+            density = next_density
+    report["status"] = "completed diagnostic; original gates unchanged"
+    save()
+
+
+if __name__ == "__main__":
+    main()

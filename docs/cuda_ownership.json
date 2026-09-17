@@ -532,7 +532,7 @@
       "path": "src/scf/cuda/scf_convergence_kernels.cu",
       "role": "runtime",
       "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "reason": "SCF state/convergence/launch owner, including generic residual-maximum reduction, per-item target-precision routing and fail-closed force publication.",
       "regions": [
         {
           "start": "__global__ void compute_energy_kernel",

@@ -56,7 +56,7 @@ __global__ void build_orthogonalizer_kernel(std::int32_t batch_size, std::int32_
 
 __global__ void matrix_product_kernel(std::int32_t batch_size, std::int32_t nbf, const double* left,
                                       bool transpose_left, const double* right,
-                                      const std::uint8_t* active, double* output) {
+                                      const std::uint8_t* active, double* output, double scale) {
   const std::size_t n = static_cast<std::size_t>(nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -73,7 +73,7 @@ __global__ void matrix_product_kernel(std::int32_t batch_size, std::int32_t nbf,
         transpose_left ? matrix_index(k, row, n) : matrix_index(row, k, n);
     value += left[offset + left_index] * right[offset + matrix_index(k, column, n)];
   }
-  output[element] = value;
+  output[element] = scale * value;
 }
 
 __global__ void broadcast_spin_matrix_kernel(std::int32_t batch_size, std::int32_t spin_count,
@@ -171,9 +171,9 @@ void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t share
 void launch_matrix_product_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
                                   const double* left, bool transpose_left, const double* right,
-                                  const std::uint8_t* active, double* output) {
+                                  const std::uint8_t* active, double* output, double scale) {
   matrix_product_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch_size, nbf, left, transpose_left, right, active, output);
+      batch_size, nbf, left, transpose_left, right, active, output, scale);
 }
 
 void launch_broadcast_spin_matrix_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

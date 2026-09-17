@@ -1,0 +1,148 @@
+{
+  "status": "inconclusive for promotion; native precision improves but required paired gate still fails",
+  "source_identity": "a2d0bbde1f612ddf2a25ad34926373837ce17eefd691f752304104d84260f7ad",
+  "source_patch_sha256": "0b3da6cbbd434305b29d7cfb677d9c7884d47d6690150ee61035d9450f35c1fd",
+  "library_sha256": "944f41d1d11f464ba813475f82e2e3dc891e9e5f490ee82a74f679fae377e374",
+  "records": [
+    {
+      "path": "direct-weight-build/manifest.json",
+      "bytes": 585,
+      "sha256": "016a4d706d797d9e79d5d9b919163f5aac38dd264040e3472e91c0f72afec681"
+    },
+    {
+      "path": "direct-weight-build/candidate.patch",
+      "bytes": 10736,
+      "sha256": "0b3da6cbbd434305b29d7cfb677d9c7884d47d6690150ee61035d9450f35c1fd"
+    },
+    {
+      "path": "direct-weight-qualification/baseline/report.json",
+      "bytes": 94640,
+      "sha256": "14f2c1a17f5506f1d7948d23675c1d986ef2150bdee5eee7276d85c279458fa8"
+    },
+    {
+      "path": "direct-weight-qualification/candidate/report.json",
+      "bytes": 94609,
+      "sha256": "3572146b217ca54e6ea6e2264368bee5597c10597ec8c64f7d619d8141727b2e"
+    },
+    {
+      "path": "direct-weight-qualification-v2/baseline/report.json",
+      "bytes": 94430,
+      "sha256": "07ac3ef6d60fd74985b1ed83bf88e9684ad9c50e44c96fe9b443937ec529a328"
+    },
+    {
+      "path": "direct-weight-qualification-v2/candidate/report.json",
+      "bytes": 94400,
+      "sha256": "b0b847a2e10fde6c9c91ae60d6278947e8d0b2c220ba45e402d9f450f5c6ac04"
+    },
+    {
+      "path": "weighted-density-diagnosis/report.json",
+      "bytes": 93308,
+      "sha256": "26a97feba40ca80b26e3ded433fa7c6a8278e8f56deef8650ccdabc9c0f6ea01"
+    },
+    {
+      "path": "frozen-direct-weight/report.json",
+      "bytes": 44861,
+      "sha256": "2eb393be12cae4ff9bd201f5c7950feba57370bc67e7137cd182efcdeb3832f3"
+    },
+    {
+      "path": "direct-weight-native-tests/summary.json",
+      "bytes": 8294,
+      "sha256": "b4f4b7f4e15f41fcf6f03cfe990243cf9621384fd40a6156a00f1e3721e69153"
+    },
+    {
+      "path": "consistent-direct-matrix/manifest.json",
+      "bytes": 21400,
+      "sha256": "b07a9d9fddd916549756dc45c94ba76560e7a087ff698a3429fbc6e1e6586e7d"
+    },
+    {
+      "path": "qualify-direct-weight.py",
+      "bytes": 6644,
+      "sha256": "1ad070e3d2c2a67639380ac49cb0ef2c882cff2ee4768e14834f2e1c6978c995"
+    },
+    {
+      "path": "qualify-direct-weight-v2.py",
+      "bytes": 7018,
+      "sha256": "3cfa2fb8f4902abb9dbbd243fd990903955eaaa1faf990498657cb9effa92cdd"
+    },
+    {
+      "path": "diagnose-direct-weighted-density.py",
+      "bytes": 6661,
+      "sha256": "c33db81f137f29ccf92f7896ec2f557883ff16cbff02866bf42361476ad92e1f"
+    },
+    {
+      "path": "diagnose-frozen-direct-weight.py",
+      "bytes": 6103,
+      "sha256": "950fe86fe86023c8f2b3afde313894c7a2d49b35fa6d3ffb3ed8395cc7b2a2da"
+    },
+    {
+      "path": "run-native-direct-weight.py",
+      "bytes": 2610,
+      "sha256": "7d3a5ef06ce887d9100476920bffb3d3802ddf2c5861989c3b0e47be213484a1"
+    },
+    {
+      "path": "run-consistent-direct.py",
+      "bytes": 4804,
+      "sha256": "c55c37b94700715b8aa023f253596325a2d6bbf12ebafb517291659620a27ca2"
+    }
+  ],
+  "direct_matrix": [
+    {
+      "ao": 96,
+      "batch": 1,
+      "all_seven_pairs_passed": true,
+      "maximum_energy_error": 1.1368683772161603e-12,
+      "maximum_force_error": 2.8949941402456325e-11,
+      "ordinary_latency": {
+        "gpu4pyscf_median_seconds": 1.692319971974939,
+        "iteration_branches_match_for_every_pair": false,
+        "speedup": 8.450889797452554,
+        "vibeqc_median_seconds": 0.2002534659113735
+      }
+    },
+    {
+      "ao": 96,
+      "batch": 4,
+      "all_seven_pairs_passed": false,
+      "maximum_energy_error": 1.6484591469634324e-12,
+      "maximum_force_error": 3.505971814948827e-11,
+      "ordinary_latency": {
+        "gpu4pyscf_median_seconds": 7.033287181053311,
+        "iteration_branches_match_for_every_pair": false,
+        "speedup": 15.406216693196702,
+        "vibeqc_median_seconds": 0.45652267010882497
+      }
+    },
+    {
+      "ao": 192,
+      "batch": 1,
+      "all_seven_pairs_passed": true,
+      "maximum_energy_error": 4.092726157978177e-12,
+      "maximum_force_error": 4.155750049639195e-11,
+      "ordinary_latency": {
+        "gpu4pyscf_median_seconds": 2.2280767299234867,
+        "iteration_branches_match_for_every_pair": false,
+        "speedup": 4.561140270934634,
+        "vibeqc_median_seconds": 0.4884911661501974
+      }
+    },
+    {
+      "ao": 192,
+      "batch": 4,
+      "all_seven_pairs_passed": true,
+      "maximum_energy_error": 7.048583938740194e-12,
+      "maximum_force_error": 1.972960059215545e-10,
+      "ordinary_latency": {
+        "gpu4pyscf_median_seconds": 8.577308459207416,
+        "iteration_branches_match_for_every_pair": false,
+        "speedup": 5.2396097923717475,
+        "vibeqc_median_seconds": 1.6370128309354186
+      }
+    }
+  ],
+  "native_tests": "48 passed in9879 with opt-in MP2 test enabled",
+  "limits": [
+    "OH/UHF strict1e-9 accuracy probe remains failed despite improvement.",
+    "v1 tiny fixtures used mismatched named STO-3G coefficients; v2 exact explicit bases pass near1e-14; preserve both.",
+    "Scientific changes remain uncommitted and unpromoted. #206 remains open."
+  ]
+}

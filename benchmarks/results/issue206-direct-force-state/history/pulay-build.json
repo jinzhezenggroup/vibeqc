@@ -1,0 +1,18 @@
+{
+  "status": "built",
+  "scope": "Unqualified determinant-consistent direct Pulay weight candidate",
+  "base_commit": "646c62caa67e2b151ac97c44129724f33fe4f4d7",
+  "source_patch_sha256": "0b3da6cbbd434305b29d7cfb677d9c7884d47d6690150ee61035d9450f35c1fd",
+  "command": [
+    "/usr/bin/time",
+    "-v",
+    "cmake",
+    "--build",
+    "build/cuda",
+    "-j",
+    "6"
+  ],
+  "baseline_library_sha256": "7aed5066ca6de0ac8c6e700ab8571a7518f9ac88192b95b4517b2556ec24457f",
+  "exit_code": 0,
+  "candidate_library_sha256": "944f41d1d11f464ba813475f82e2e3dc891e9e5f490ee82a74f679fae377e374"
+}

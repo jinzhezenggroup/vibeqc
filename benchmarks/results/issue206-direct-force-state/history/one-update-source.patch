@@ -1,0 +1,233 @@
+diff --git a/src/scf/cuda/matrix_library.cpp b/src/scf/cuda/matrix_library.cpp
+index 797f970..8298bad 100644
+--- a/src/scf/cuda/matrix_library.cpp
++++ b/src/scf/cuda/matrix_library.cpp
+@@ -10,18 +10,20 @@ namespace vibeqc::scf::cuda_execution {
+ 
+ vibeqc_status launch_matrix_product(MatrixLibraryResources resources, int batch_size, int nbf,
+                                     const double* left, bool transpose_left, const double* right,
+-                                    const std::uint8_t* active, double* output, bool use_cublas) {
++                                    const std::uint8_t* active, double* output, bool use_cublas,
++                                    double scale) {
+   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * static_cast<std::size_t>(nbf);
+   if (!use_cublas) {
+     const std::size_t elements = static_cast<std::size_t>(batch_size) * matrix_size;
+     const unsigned blocks = static_cast<unsigned>((elements + kCaptureSafeKernelThreads - 1) /
+                                                   kCaptureSafeKernelThreads);
+     launch_matrix_product_kernel(blocks, kCaptureSafeKernelThreads, 0, resources.stream_,
+-                                 batch_size, nbf, left, transpose_left, right, active, output);
++                                 batch_size, nbf, left, transpose_left, right, active, output,
++                                 scale);
+     return cuda_status(cudaPeekAtLastError());
+   }
+ 
+-  const double alpha = 1.0;
++  const double alpha = scale;
+   const double beta = 0.0;
+   const cublasOperation_t operation = transpose_left ? CUBLAS_OP_T : CUBLAS_OP_N;
+   return blas_status(cublasDgemmStridedBatched(
+diff --git a/src/scf/cuda/matrix_library.hpp b/src/scf/cuda/matrix_library.hpp
+index ebc8547..c9f2ec4 100644
+--- a/src/scf/cuda/matrix_library.hpp
++++ b/src/scf/cuda/matrix_library.hpp
+@@ -18,10 +18,13 @@ struct MatrixLibraryResources {
+ /** Use the resolved native/library route, preserving masks and column-major strides.
+  * Spin products broadcast physical operands through one strided GEMM per spin.
+  * The caller owns every input/output allocation and the borrowed library handles.
++ * The optional scale is applied by both the native and cuBLAS routes, allowing
++ * occupation normalization without a separate matrix pass.
+  */
+ vibeqc_status launch_matrix_product(MatrixLibraryResources resources, int batch_size, int nbf,
+                                     const double* left, bool transpose_left, const double* right,
+-                                    const std::uint8_t* active, double* output, bool use_cublas);
++                                    const std::uint8_t* active, double* output, bool use_cublas,
++                                    double scale = 1.0);
+ 
+ vibeqc_status launch_spin_matrix_product(MatrixLibraryResources resources, int batch_size,
+                                          int spin_count, int nbf, const double* left,
+diff --git a/src/scf/cuda/scf_matrix_kernels.cu b/src/scf/cuda/scf_matrix_kernels.cu
+index 5216aa2..ba696ab 100644
+--- a/src/scf/cuda/scf_matrix_kernels.cu
++++ b/src/scf/cuda/scf_matrix_kernels.cu
+@@ -56,7 +56,7 @@ __global__ void build_orthogonalizer_kernel(std::int32_t batch_size, std::int32_
+ 
+ __global__ void matrix_product_kernel(std::int32_t batch_size, std::int32_t nbf, const double* left,
+                                       bool transpose_left, const double* right,
+-                                      const std::uint8_t* active, double* output) {
++                                      const std::uint8_t* active, double* output, double scale) {
+   const std::size_t n = static_cast<std::size_t>(nbf);
+   const std::size_t matrix_size = n * n;
+   const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+@@ -73,7 +73,7 @@ __global__ void matrix_product_kernel(std::int32_t batch_size, std::int32_t nbf,
+         transpose_left ? matrix_index(k, row, n) : matrix_index(row, k, n);
+     value += left[offset + left_index] * right[offset + matrix_index(k, column, n)];
+   }
+-  output[element] = value;
++  output[element] = scale * value;
+ }
+ 
+ __global__ void broadcast_spin_matrix_kernel(std::int32_t batch_size, std::int32_t spin_count,
+@@ -171,9 +171,9 @@ void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t share
+ void launch_matrix_product_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                   cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
+                                   const double* left, bool transpose_left, const double* right,
+-                                  const std::uint8_t* active, double* output) {
++                                  const std::uint8_t* active, double* output, double scale) {
+   matrix_product_kernel<<<grid, block, shared_bytes, stream>>>(
+-      batch_size, nbf, left, transpose_left, right, active, output);
++      batch_size, nbf, left, transpose_left, right, active, output, scale);
+ }
+ 
+ void launch_broadcast_spin_matrix_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+diff --git a/src/scf/cuda/scf_matrix_kernels.hpp b/src/scf/cuda/scf_matrix_kernels.hpp
+index b65c42a..b9db049 100644
+--- a/src/scf/cuda/scf_matrix_kernels.hpp
++++ b/src/scf/cuda/scf_matrix_kernels.hpp
+@@ -29,7 +29,7 @@ void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t share
+ void launch_matrix_product_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                   cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
+                                   const double* left, bool transpose_left, const double* right,
+-                                  const std::uint8_t* active, double* output);
++                                  const std::uint8_t* active, double* output, double scale = 1.0);
+ 
+ /** Preserve launch geometry, stream and per-item state routing. */
+ void launch_broadcast_spin_matrix_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+diff --git a/src/scf/cuda_rhf.cpp b/src/scf/cuda_rhf.cpp
+index d0d3ee4..07c2ed1 100644
+--- a/src/scf/cuda_rhf.cpp
++++ b/src/scf/cuda_rhf.cpp
+@@ -25,6 +25,7 @@
+ #include "molecule/basis.hpp"
+ #include "posthf/capacity.hpp"
+ #include "runtime/allocation_measurement.hpp"
++#include "runtime/df_progress_trace.hpp"
+ #include "runtime/resource_cuda.cuh"
+ #include "runtime/resource_usage.hpp"
+ #include "scf/aot_shell_registry.hpp"
+@@ -1846,10 +1847,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+     return static_cast<unsigned>((elements + threads - 1) / threads);
+   };
+   const auto multiply_matrices = [&](const double* left, bool transpose_left, const double* right,
+-                                     double* output) {
++                                     double* output, double scale = 1.0) {
+     const vibeqc_status product_status = launch_matrix_product(
+         resources.matrix_view(), static_cast<int>(batch_size), static_cast<int>(nbf), left,
+-        transpose_left, right, active, output, use_cublas);
++        transpose_left, right, active, output, use_cublas, scale);
+     if (use_cublas && product_status != VIBEQC_STATUS_SUCCESS) {
+       plan.retry_without_cublas = true;
+     }
+@@ -3382,13 +3383,36 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+       return outputs;
+     }
+   }
+-  // Keep the converged density paired with the un-extrapolated F(P) that was
+-  // just diagonalized. The canonical coefficients and eigenvalues are needed
+-  // for the Pulay weighted density, but replacing P with C_occ C_occ^T would
+-  // require a second complete J/K rebuild before energy and force evaluation.
+-  // The accepted density update has already passed the requested SCF density
+-  // tolerance, so retaining P keeps all final energy/two-electron force terms
+-  // evaluated consistently at the same P and F(P).
++  // Bounded force-state experiment: consume the already available canonical
++  // orbitals, then explicitly rebuild F at that updated determinant. The
++  // additional operator is real work, not elimination of the preceding final
++  // build. Energy-only and detached reference exports retain their old path.
++  const bool canonical_force_update = options.compute_forces && !options.export_physical_reference;
++  if (canonical_force_update) {
++    runtime::df_progress::Scope trace("direct_force_canonicalization", "cuda_submission");
++    if (unrestricted) {
++      launch_build_spin_density_kernel(blocks_for(spin_matrix_elements), threads, 0,
++                                       resources.stream_, static_cast<std::int32_t>(batch_size), 2,
++                                       static_cast<std::int32_t>(nbf), occupied, coefficients,
++                                       active, density);
++    } else {
++      launch_build_density_kernel(blocks_for(matrix_elements), threads, 0, resources.stream_,
++                                  static_cast<std::int32_t>(batch_size),
++                                  static_cast<std::int32_t>(nbf), occupied, coefficients, active,
++                                  density);
++    }
++    cuda_error = cudaGetLastError();
++    if (cuda_error == cudaSuccess) cuda_error = launch_fock_builder(density, false);
++    if (cuda_error != cudaSuccess) {
++      trace.finish("cuda_failed");
++      fill_global_failure(outputs, cuda_status(cuda_error));
++      return outputs;
++    }
++    runtime::df_progress::Scope::number("physical_fock_bucket_submissions", 1);
++    trace.finish("submitted");
++  }
++  // Energy and every force term consume this same P/F(P). In particular, the
++  // Pulay weight below cannot switch to another canonical determinant.
+   if (options.compute_forces) {
+     cuda_error = launch_direct_force_compaction();
+     if (cuda_error != cudaSuccess) {
+@@ -3418,10 +3442,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+                                      static_cast<std::int32_t>(nbf), density, hcore, fock,
+                                      nuclear_repulsion, active, energy);
+     if (options.compute_forces) {
+-      launch_build_spin_weighted_density_kernel(
+-          blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
+-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf), occupied,
+-          coefficients, eigenvalues, active, weighted_density);
++      // With unit spin occupations, W_sigma = P_sigma F_sigma P_sigma.
++      // Iteration scratch is free here; keep the selected final P/F untouched.
++      status = multiply_spin_matrices(density, true, false, fock, true, temporary);
++      if (status == VIBEQC_STATUS_SUCCESS) {
++        status = multiply_spin_matrices(temporary, true, false, density, true, weighted_density);
++      }
++      if (status != VIBEQC_STATUS_SUCCESS) {
++        fill_global_failure(outputs, status);
++        return outputs;
++      }
+       launch_sum_uhf_spin_matrices_kernel(blocks_for(matrix_elements), threads, 0,
+                                           resources.stream_, static_cast<std::int32_t>(batch_size),
+                                           static_cast<std::int32_t>(nbf), density, active,
+@@ -3437,10 +3467,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+                                  static_cast<std::int32_t>(nbf), density, hcore, fock,
+                                  nuclear_repulsion, active, energy);
+     if (options.compute_forces) {
+-      launch_build_weighted_density_kernel(blocks_for(matrix_elements), threads, 0,
+-                                           resources.stream_, static_cast<std::int32_t>(batch_size),
+-                                           static_cast<std::int32_t>(nbf), occupied, coefficients,
+-                                           eigenvalues, active, weighted_density);
++      // P = 2 C_occ C_occ^T, hence the determinant-consistent Pulay weight is
++      // W = P F(P) P / 2. At stationarity this equals the canonical expression;
++      // at finite residual it preserves the same P as the other force terms.
++      status = multiply_matrices(density, false, fock, temporary);
++      if (status == VIBEQC_STATUS_SUCCESS) {
++        status = multiply_matrices(temporary, false, density, weighted_density, 0.5);
++      }
++      if (status != VIBEQC_STATUS_SUCCESS) {
++        fill_global_failure(outputs, status);
++        return outputs;
++      }
+     }
+   }
+   if (options.export_physical_reference) {
+@@ -4197,7 +4234,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+         density, active, forces);
+   }
+ 
+-  if (reuse_converged_fock) {
++  if (reuse_converged_fock && !canonical_force_update) {
+     // The requested outputs above consumed each system's selected consistent
+     // snapshot. Advance only reused systems to the already accepted P_{n+1}
+     // for their returned warm state; rebuilt systems already contain it.
+@@ -4347,6 +4384,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+   }
+   const bool no_system_failed = std::none_of(host_failed.begin(), host_failed.end(),
+                                              [](std::uint8_t value) { return value != 0; });
++  if (canonical_force_update) {
++    runtime::df_progress::Scope trace("direct_force_canonicalization_completed", "cuda_completed");
++    std::uint64_t completed_items = 0;
++    for (std::size_t system = 0; system < batch_size; ++system)
++      if (host_converged[system] && !host_failed[system]) ++completed_items;
++    runtime::df_progress::Scope::number("additional_density_updates", completed_items);
++    runtime::df_progress::Scope::number("additional_physical_fock_builds", completed_items);
++    runtime::df_progress::Scope::number(
++        "reported_scf_updates",
++        std::accumulate(host_iterations.begin(), host_iterations.end(), std::uint64_t{0}));
++  }
+   if (no_system_failed) {
+     plan.cached_positions = host.positions;
+   } else if (geometry_changed) {

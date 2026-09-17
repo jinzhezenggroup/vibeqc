@@ -1,0 +1,120 @@
+"""Accuracy-only reconstruction of Pulay weights at retained native densities.
+
+The native library is unchanged. CPU F(P) and its canonical orbitals reconstruct
+the current Pulay convention independently; P F(P) P / 2 is a diagnostic only.
+Neither reconstructed matrix is claimed to be an exported native weighted
+density. No endpoint timing or replacement acceptance is produced.
+"""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+
+import numpy as np
+from pyscf import gto, scf
+
+from benchmarks.compare_gpu4pyscf_batch import native_build_metadata
+from vibeqc import Calculator
+from vibeqc.progressive import _retained_density
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    out = Path(".artifacts/issue206/weighted-density-diagnosis")
+    out.mkdir(exist_ok=False)
+    source = Path(".artifacts/issue206/aot-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json")
+    saved = json.loads(source.read_text())
+    atoms = [[(a["element"], a["coordinates_bohr"]) for a in g]
+             for g in saved["workload"]["geometries"]]
+    oracle_path = Path(".artifacts/issue206/cpu-force-diagnosis/report.json")
+    cpu = next(x for x in json.loads(oracle_path.read_text())["cases"]
+               if x["label"] == "direct-96-b4")
+    original = json.loads(Path(cpu["original_path"]).read_text())
+    assert saved["workload"]["geometries"] == original["workload"]["geometries"]
+    report = {"scope": __doc__, "slurm_job_id": os.environ["SLURM_JOB_ID"],
+              "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+              "input_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+              "oracle_sha256": hashlib.sha256(oracle_path.read_bytes()).hexdigest(),
+              "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              "experiments": [], "status": "running"}
+
+    def save():
+        (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+
+    def maximum(array):
+        return float(np.max(np.abs(array)))
+
+    save()
+    for density_tolerance, rebuild in ((1e-10, False), (1e-10, True), (1e-12, False)):
+        if rebuild:
+            os.environ["VIBEQC_FINAL_FOCK_REBUILD"] = "1"
+        else:
+            os.environ.pop("VIBEQC_FINAL_FOCK_REBUILD", None)
+        calc = Calculator(method="rhf", basis="def2-svp", basis_representation="spherical",
+                          device="cuda", density_fitting="none", max_iterations=100,
+                          energy_tolerance=1e-12, density_tolerance=density_tolerance,
+                          screening_tolerance=1e-14)
+        report["native_build"] = native_build_metadata(calc)
+        row = {"density_tolerance": density_tolerance, "force_final_fock_rebuild": rebuild,
+               "items": []}
+        report["experiments"].append(row)
+        with calc.prepare_batch(atoms, charges=[0]*4, multiplicities=[1]*4,
+                                warm_start=True) as batch:
+            batch.execute(strict=True)
+            batch.set_warm_start_updates(False)
+            batch.execute(strict=True)
+            # Use the same immutable post-cold input, then retain this solve's
+            # actual output density so it can be checked independently.
+            batch.set_warm_start_updates(True)
+            result = batch.execute(strict=True)
+            densities = [_retained_density(batch, i)[0] for i in range(4)]
+        for slot, (geometry, item, density) in enumerate(zip(atoms, result.items, densities, strict=True)):
+            mol = gto.M(atom=geometry, unit="Bohr", basis="def2-svp", cart=False, verbose=0)
+            mf = scf.RHF(mol)
+            mf.direct_scf_tol = 1e-14
+            overlap, hcore = mf.get_ovlp(), mf.get_hcore()
+            fock = hcore + mf.get_veff(mol, density)
+            eps, coeff = mf.eig(fock, overlap)
+            occ = np.zeros(mol.nao)
+            occ[:mol.nelectron//2] = 2
+            reconstructed_density = (coeff * occ) @ coeff.T
+            canonical = (coeff * (occ * eps)) @ coeff.T
+            consistent = density @ fock @ density / 2
+            energy = float(np.einsum("ij,ji", density, hcore+fock)/2 + mol.energy_nuc())
+            reference = np.array(cpu["oracles"][slot]["forces"])
+            checks = {"electron_trace_error": abs(float(np.einsum("ij,ji", density, overlap))-mol.nelectron),
+                      "idempotency_max": maximum(density @ overlap @ density - 2*density),
+                      "energy_error_from_native": abs(energy-item.energy),
+                      "commutator_max": maximum(fock @ density @ overlap - overlap @ density @ fock),
+                      "canonical_density_drift_max": maximum(reconstructed_density-density)}
+            assert checks["electron_trace_error"] < 1e-9 and checks["energy_error_from_native"] < 1e-9, checks
+            # Hold the native P fixed in every one-/two-electron derivative;
+            # vary only the Pulay weight in the independent libcint assembly.
+            mf.make_rdm1 = lambda *args, **kwargs: density
+            gradient = mf.nuc_grad_method()
+            forces = {}
+            for name, weighted in (("canonical", canonical), ("consistent", consistent)):
+                gradient.make_rdm1e = lambda *args, w=weighted, **kwargs: w
+                forces[name] = -gradient.kernel(mo_energy=eps, mo_coeff=coeff, mo_occ=occ)
+            entry = {"slot": slot, "iterations": item.iterations, "density_rms": item.density_rms,
+                     "state_checks": checks, "native_forces": item.forces.tolist(),
+                     "cpu_oracle_forces": reference.tolist(),
+                     "canonical_reconstructed_forces": forces["canonical"].tolist(),
+                     "consistent_reconstructed_forces": forces["consistent"].tolist(),
+                     "native_vs_oracle": maximum(item.forces-reference),
+                     "canonical_vs_native": maximum(forces["canonical"]-item.forces),
+                     "canonical_vs_oracle": maximum(forces["canonical"]-reference),
+                     "consistent_vs_oracle": maximum(forces["consistent"]-reference),
+                     "weighted_density_difference_max": maximum(canonical-consistent)}
+            row["items"].append(entry)
+            np.save(out / f"density-{density_tolerance}-{int(rebuild)}-{slot}.npy", density, allow_pickle=False)
+            save()
+            print(density_tolerance, rebuild, slot,
+                  {k:entry[k] for k in ("native_vs_oracle", "canonical_vs_native", "consistent_vs_oracle")}, flush=True)
+    report["status"] = "completed diagnostic; original gates unchanged"
+    save()
+
+
+if __name__ == "__main__":
+    main()

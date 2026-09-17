@@ -10,18 +10,20 @@ namespace vibeqc::scf::cuda_execution {
 
 vibeqc_status launch_matrix_product(MatrixLibraryResources resources, int batch_size, int nbf,
                                     const double* left, bool transpose_left, const double* right,
-                                    const std::uint8_t* active, double* output, bool use_cublas) {
+                                    const std::uint8_t* active, double* output, bool use_cublas,
+                                    double scale) {
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * static_cast<std::size_t>(nbf);
   if (!use_cublas) {
     const std::size_t elements = static_cast<std::size_t>(batch_size) * matrix_size;
     const unsigned blocks = static_cast<unsigned>((elements + kCaptureSafeKernelThreads - 1) /
                                                   kCaptureSafeKernelThreads);
     launch_matrix_product_kernel(blocks, kCaptureSafeKernelThreads, 0, resources.stream_,
-                                 batch_size, nbf, left, transpose_left, right, active, output);
+                                 batch_size, nbf, left, transpose_left, right, active, output,
+                                 scale);
     return cuda_status(cudaPeekAtLastError());
   }
 
-  const double alpha = 1.0;
+  const double alpha = scale;
   const double beta = 0.0;
   const cublasOperation_t operation = transpose_left ? CUBLAS_OP_T : CUBLAS_OP_N;
   return blas_status(cublasDgemmStridedBatched(

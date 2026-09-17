@@ -21,21 +21,38 @@ void launch_compute_uhf_energy_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       const double* fock, const double* nuclear_repulsion,
                                       const std::uint8_t* active, double* energy);
 
-/** Preserve launch geometry, stream and per-item state routing. */
+/** A supplied physical residual adds max|FPS-SPF| <= min(1e-8, density_tolerance)
+ * to the iterative stop. Null preserves energy-only/reference behavior. Each
+ * block must contain exactly one warp; residuals precede DIIS extrapolation.
+ * A nonzero per-item approximate census defers this test to target refinement;
+ * exact neighbors retain the gate. Refinement must pass a null census. */
 void launch_update_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
     double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
-    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms);
+    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual = nullptr,
+    const std::uint32_t* approximate_item_census = nullptr);
 
-/** Preserve launch geometry, stream and per-item state routing. */
+/** UHF counterpart; the physical maximum covers both spin channels. */
 void launch_update_uhf_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
     double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
-    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms);
+    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual = nullptr,
+    const std::uint32_t* approximate_item_census = nullptr);
+
+/** Validate the rebuilt force determinant, clearing convergence on a failed
+ * physical residual. One warp per item; tested_count counts all active items,
+ * including rejected ones, and must be zeroed by the caller. No host products. */
+void launch_validate_force_residual_kernel(cudaStream_t stream, std::int32_t batch_size,
+                                           std::int32_t spin_count, std::int32_t nbf,
+                                           double density_tolerance,
+                                           const double* physical_residual, std::uint8_t* active,
+                                           std::uint8_t* converged, std::uint32_t* tested_count);
 
 /** Preserve launch geometry, stream and per-item state routing. */
 void launch_tail_rhf_loop_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

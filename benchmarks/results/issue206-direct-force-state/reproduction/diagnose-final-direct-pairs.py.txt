@@ -1,0 +1,45 @@
+"""Decompose all final 96-AO pairs using independent exact-geometry CPU data.
+
+This offline audit preserves the original gates, inputs, samples and failures.
+It does not substitute a CPU comparison for the paired external acceptance.
+"""
+import hashlib
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+def main():
+    root = Path(".artifacts/issue206")
+    oracle_path = root / "cpu-force-diagnosis/report.json"
+    oracles = json.loads(oracle_path.read_text())
+    report = {"scope": __doc__, "oracle_sha256": hashlib.sha256(oracle_path.read_bytes()).hexdigest(),
+              "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "cases": []}
+    for batch in (1, 4):
+        source = root / f"direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b{batch}-none.json"
+        data = json.loads(source.read_text())
+        case = next(x for x in oracles["cases"] if x["label"] == f"direct-96-b{batch}")
+        assert data["workload"]["geometries"] == json.loads(Path(case["original_path"]).read_text())["workload"]["geometries"]
+        forces = np.array([x["forces"] for x in case["oracles"]])
+        energy = np.array([x["energy"] for x in case["oracles"]])
+        entry = {"batch": batch, "input_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                 "geometries_match_exactly": True, "paired_gate": data["gate"], "rows": []}
+        for repeat in range(7):
+            row = {"repeat": repeat}
+            for engine in ("vibeqc", "gpu4pyscf"):
+                sample = data[engine]["warm_samples"][repeat]
+                row[engine] = {
+                    "maximum_force_error_vs_cpu": float(np.max(np.abs(np.array(sample["forces_hartree_per_bohr"])-forces))),
+                    "maximum_energy_error_vs_cpu": float(np.max(np.abs(np.array(sample["energies_hartree"])-energy))),
+                    "iterations": [x["iterations"] for x in sample["convergence"]],
+                }
+            entry["rows"].append(row)
+        report["cases"].append(entry)
+        print(batch, {engine:max(x[engine]["maximum_force_error_vs_cpu"] for x in entry["rows"])
+                      for engine in ("vibeqc", "gpu4pyscf")})
+    (root / "final-direct-pair-diagnosis.json").write_text(json.dumps(report, indent=2)+"\n")
+
+
+if __name__ == "__main__":
+    main()

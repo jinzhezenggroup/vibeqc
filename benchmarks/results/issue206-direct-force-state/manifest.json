@@ -1,0 +1,390 @@
+{
+  "scope": "Retain bounded scientific evidence; binaries and routine logs stay local.",
+  "status": "local scientific candidate, not general performance qualification",
+  "original_controls_and_gates_unchanged": true,
+  "candidate_matrix_status": "failed",
+  "files": [
+    {
+      "path": "diagnosis/tight-cpu-oracles.json",
+      "source": ".artifacts/issue206/cpu-force-diagnosis/report.json",
+      "bytes": 20533,
+      "sha256": "39f4b6746961c8fced83cc57bbac6af8fb0461b5e98b3f6cbfa2861f50883288"
+    },
+    {
+      "path": "history/initial-pulay-study.json",
+      "source": ".artifacts/issue206/weighted-density-study-summary.json",
+      "bytes": 5263,
+      "sha256": "093b513159a8989dd0612cacba99112a6e13583bf2fdd5e2c861901c404e22c0"
+    },
+    {
+      "path": "diagnosis/oh-physical-residual.json",
+      "source": ".artifacts/issue206/oh-final-contract-diagnosis/report.json",
+      "bytes": 19919,
+      "sha256": "19d0795446dc82c6fdc95dec64dc0810dfe5c1a6b25f4c891e799caa2ceda173"
+    },
+    {
+      "path": "diagnosis/final-96b1-pair.json",
+      "source": ".artifacts/issue206/final-96b1-pair-diagnosis.json",
+      "bytes": 3474,
+      "sha256": "6f3466b3dc532bef70fe03ed33b7e11ca7bdfed0e9398f0dc68f268a87998fdc"
+    },
+    {
+      "path": "history/pulay-build.json",
+      "source": ".artifacts/issue206/direct-weight-build/manifest.json",
+      "bytes": 585,
+      "sha256": "016a4d706d797d9e79d5d9b919163f5aac38dd264040e3472e91c0f72afec681"
+    },
+    {
+      "path": "history/pulay-source.patch",
+      "source": ".artifacts/issue206/direct-weight-build/candidate.patch",
+      "bytes": 10736,
+      "sha256": "0b3da6cbbd434305b29d7cfb677d9c7884d47d6690150ee61035d9450f35c1fd"
+    },
+    {
+      "path": "history/baseline-accuracy.json",
+      "source": ".artifacts/issue206/direct-weight-qualification-v2/baseline/report.json",
+      "bytes": 94430,
+      "sha256": "07ac3ef6d60fd74985b1ed83bf88e9684ad9c50e44c96fe9b443937ec529a328"
+    },
+    {
+      "path": "history/pulay-accuracy.json",
+      "source": ".artifacts/issue206/direct-weight-qualification-v2/candidate/report.json",
+      "bytes": 94400,
+      "sha256": "b0b847a2e10fde6c9c91ae60d6278947e8d0b2c220ba45e402d9f450f5c6ac04"
+    },
+    {
+      "path": "history/one-update-build.json",
+      "source": ".artifacts/issue206/direct-force-polish-build/manifest.json",
+      "bytes": 604,
+      "sha256": "c41f043f4bc053cb10f42f1570739867a1fd4d4e35ccd2488f6dcc32f07f559b"
+    },
+    {
+      "path": "history/one-update-source.patch",
+      "source": ".artifacts/issue206/direct-force-polish-build/candidate.patch",
+      "bytes": 14074,
+      "sha256": "f8c6d0394d27969d553dd419d1b0d9f896dad403858a32291f0dea4b7c074477"
+    },
+    {
+      "path": "history/one-update-incomplete-v1.json",
+      "source": ".artifacts/issue206/direct-force-polish-qualification/candidate/report.json",
+      "bytes": 15151,
+      "sha256": "8bee17f6803d7cfea1d53eeec45d822d9786009d3e1748d7b7daa66f897b9522"
+    },
+    {
+      "path": "history/one-update-incomplete-v2.json",
+      "source": ".artifacts/issue206/direct-force-polish-qualification-v2/candidate/report.json",
+      "bytes": 71397,
+      "sha256": "c900ddf62883cf54354ce83e23518262c0eb6d233ce3c29a52bcd4003eca8d5c"
+    },
+    {
+      "path": "history/one-update-accuracy.json",
+      "source": ".artifacts/issue206/direct-force-polish-qualification-v3/candidate/report.json",
+      "bytes": 95607,
+      "sha256": "27026440a746b241a5070cedf331ba08f9ed1dc92c9a3c9fd0e1f27f0ea72b3c"
+    },
+    {
+      "path": "preliminary/build.json",
+      "source": ".artifacts/issue206/direct-force-residual-build/manifest.json",
+      "bytes": 609,
+      "sha256": "e495368c7292c40810e79e4abb4b4399c86529bb8c357d82beecef5d72b0d51f"
+    },
+    {
+      "path": "preliminary/measured-source.patch",
+      "source": ".artifacts/issue206/direct-force-residual-build/candidate.patch",
+      "bytes": 34002,
+      "sha256": "0442c3716dd9602ec16c7bddc67126c0efbf4412a6af43f4a18f52ce3b42b000"
+    },
+    {
+      "path": "preliminary/native-tests.json",
+      "source": ".artifacts/issue206/direct-force-residual-native-tests/summary.json",
+      "bytes": 8478,
+      "sha256": "b6ce6a5d8e1f872674462bbff770d592bc364ac416c39a62a2db824e86e1857d"
+    },
+    {
+      "path": "preliminary/accuracy.json",
+      "source": ".artifacts/issue206/direct-force-residual-qualification/candidate/report.json",
+      "bytes": 95645,
+      "sha256": "26702f96e9ed9f2596a2830b4fe40e750e0920f6b046436aff1684ac18f3c630"
+    },
+    {
+      "path": "preliminary/force-work.jsonl",
+      "source": ".artifacts/issue206/direct-force-residual-qualification/progress.jsonl",
+      "bytes": 118073,
+      "sha256": "a10679275e2f66648df59d848f7fd798d4cf8538e7f197630c8ef50a7d733580"
+    },
+    {
+      "path": "history/pulay-matrix/campaign.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/manifest.json",
+      "bytes": 21400,
+      "sha256": "b07a9d9fddd916549756dc45c94ba76560e7a087ff698a3429fbc6e1e6586e7d"
+    },
+    {
+      "path": "preliminary/matrix/campaign.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/manifest.json",
+      "bytes": 21979,
+      "sha256": "1b485d6dab78169c445ff42e125bc0d05ac664b3d39261ce7dd25e44ef94f6ce"
+    },
+    {
+      "path": "candidate/build.json",
+      "source": ".artifacts/issue206/direct-force-final-build/manifest.json",
+      "bytes": 628,
+      "sha256": "8f461ed988206fd3628f6f7e92a58bb135b7f7c635d1d8682cc408621d26892a"
+    },
+    {
+      "path": "candidate/measured-source.patch",
+      "source": ".artifacts/issue206/direct-force-final-build/candidate.patch",
+      "bytes": 40233,
+      "sha256": "8ecda14a622d1e4a05a0bfe14b34019c81b39afcf8cd4631565306f3632a67fb"
+    },
+    {
+      "path": "candidate/native-tests.json",
+      "source": ".artifacts/issue206/direct-force-final-native-tests/summary.json",
+      "bytes": 8467,
+      "sha256": "de3a6b535bb6e27f2d278e6f344c5ce72a9433b5e5b7678757027630ef2497bb"
+    },
+    {
+      "path": "candidate/validation.json",
+      "source": ".artifacts/issue206/direct-force-final-validation/summary.json",
+      "bytes": 1189,
+      "sha256": "7cd3674de1d689a65ac73545020e0ee9210dd1f95a524807d38993cd323f1415"
+    },
+    {
+      "path": "candidate/work-summary.json",
+      "source": ".artifacts/issue206/direct-force-final-work-summary.json",
+      "bytes": 734,
+      "sha256": "083d8a130cfcdfcdaf71866cba45786976b905e638278c81cfd980ea0cc85d9e"
+    },
+    {
+      "path": "candidate/accuracy.json",
+      "source": ".artifacts/issue206/direct-force-final-qualification/candidate/report.json",
+      "bytes": 95619,
+      "sha256": "3ceb203e1a55315958fae28a6591b6e5a68906fbf3e5521c56b7cd12f5ac974d"
+    },
+    {
+      "path": "candidate/force-work.jsonl",
+      "source": ".artifacts/issue206/direct-force-final-qualification/progress.jsonl",
+      "bytes": 144869,
+      "sha256": "2212cc4b3f70dfc89ab3ae502de11d42bd5beec44b64410113f2b4a1939a5ac1"
+    },
+    {
+      "path": "candidate/independent-final-state.json",
+      "source": ".artifacts/issue206/oh-final-qualified-state/report.json",
+      "bytes": 6885,
+      "sha256": "2f53c04f930e46f24b464788bb513f6659b791225dc8bfed091dc6253d190086"
+    },
+    {
+      "path": "candidate/matrix/campaign.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/manifest.json",
+      "bytes": 22707,
+      "sha256": "4ae6613f9de7f2dcb5415b76250ec5976bcaffe5a55f141467c336a91057b1e3"
+    },
+    {
+      "path": "candidate/ownership-delta.json",
+      "source": ".artifacts/issue206/direct-force-ownership/comparison.json",
+      "bytes": 406,
+      "sha256": "ce35b163e7bbe077a62318f355ee68838c432656581379308adc13807662fd94"
+    },
+    {
+      "path": "history/pulay-matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "bytes": 73397,
+      "sha256": "df0c0ba5b48711e6548dc99dfd12d9bce236979fe9692b2d3244c7a87d5957f4"
+    },
+    {
+      "path": "history/pulay-matrix/summary.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/matrix/summary.json",
+      "bytes": 3463,
+      "sha256": "310c4ae7cfd83fb55928c3717a9d029ecf80ba56edc67788e836ee8647a29917"
+    },
+    {
+      "path": "history/pulay-matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "bytes": 109957,
+      "sha256": "961a347c6fdf6d79df8618cceb13befda68a4a9208dcdd8c52bb11b5949a5a44"
+    },
+    {
+      "path": "history/pulay-matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "bytes": 394160,
+      "sha256": "331c35ee05c0a1bbcf14e7d4c022f60223090b610879d7b7e02aab725719546c"
+    },
+    {
+      "path": "history/pulay-matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/consistent-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "bytes": 247258,
+      "sha256": "b0b373f3ef3c519d9832173f1482c338df0f150db4531627fe00745af3f52747"
+    },
+    {
+      "path": "preliminary/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "bytes": 73524,
+      "sha256": "819eb404ea371795e9c054dd98be0e39e3ea0bf036e9109db82a083641094122"
+    },
+    {
+      "path": "preliminary/matrix/summary.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/matrix/summary.json",
+      "bytes": 3409,
+      "sha256": "227782532fd8c82a6dc779f0c8348b4aa6211850f09e086e93556a0618c62c16"
+    },
+    {
+      "path": "preliminary/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "bytes": 110195,
+      "sha256": "41a179243d6f6d9c0d53608d5e24c1c093040d2346e018ba5ef36d83903378f8"
+    },
+    {
+      "path": "preliminary/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "bytes": 393903,
+      "sha256": "02a58de395b34e23070926e19eb3201669ba11009d02b025587a7896334ed71e"
+    },
+    {
+      "path": "preliminary/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/direct-force-residual-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "bytes": 247720,
+      "sha256": "bb9752ca69e20bcea4ef325d2c9f92a89bc453237d2f2953f2ced623bdbca4f3"
+    },
+    {
+      "path": "candidate/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "bytes": 73829,
+      "sha256": "477ef758ee8603836600b89498cc4d53dfaae10dd7181175d89d9e61eaf75ff4"
+    },
+    {
+      "path": "candidate/matrix/summary.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/matrix/summary.json",
+      "bytes": 3556,
+      "sha256": "dc6fb4e19135ccd4c20e36b6ba6291b79802a788e790aae7ec2db3ea20a24b3c"
+    },
+    {
+      "path": "candidate/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "bytes": 110149,
+      "sha256": "e87bbc03da8a15e1236ffad27c93f9de501060184853ffaf12331d6e93493e9b"
+    },
+    {
+      "path": "candidate/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "bytes": 394061,
+      "sha256": "3d58bc99863779d979c561cf298d481a78796dbb780cd72482548cb9e0a14a5a"
+    },
+    {
+      "path": "candidate/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "source": ".artifacts/issue206/direct-force-final-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "bytes": 247431,
+      "sha256": "3c9794008453ba3307e6fe655bf0257b40372a8e70b68496394aaefce7029e93"
+    },
+    {
+      "path": "reproduction/diagnose-oh-final-contract.py.txt",
+      "source": ".artifacts/issue206/diagnose-oh-final-contract.py",
+      "bytes": 4849,
+      "sha256": "bd0b47df445bc2706f026491a4cac12f120585f90ca019fb8ca9f2161180b6ce"
+    },
+    {
+      "path": "reproduction/diagnose-direct-weighted-density.py.txt",
+      "source": ".artifacts/issue206/diagnose-direct-weighted-density.py",
+      "bytes": 6661,
+      "sha256": "c33db81f137f29ccf92f7896ec2f557883ff16cbff02866bf42361476ad92e1f"
+    },
+    {
+      "path": "reproduction/diagnose-frozen-direct-weight.py.txt",
+      "source": ".artifacts/issue206/diagnose-frozen-direct-weight.py",
+      "bytes": 6103,
+      "sha256": "950fe86fe86023c8f2b3afde313894c7a2d49b35fa6d3ffb3ed8395cc7b2a2da"
+    },
+    {
+      "path": "reproduction/qualify-direct-force-polish.py.txt",
+      "source": ".artifacts/issue206/qualify-direct-force-polish.py",
+      "bytes": 7905,
+      "sha256": "9825cba5e680a3912c460bdc1e77a214c25f4af2ed571638ab961e27756c6db3"
+    },
+    {
+      "path": "reproduction/qualify-direct-force-polish-v2.py.txt",
+      "source": ".artifacts/issue206/qualify-direct-force-polish-v2.py",
+      "bytes": 8051,
+      "sha256": "d81c62638c27efc602167e4b07e91424296a04bf4a8b1dfbc884fdca315b6368"
+    },
+    {
+      "path": "reproduction/qualify-direct-force-polish-v3.py.txt",
+      "source": ".artifacts/issue206/qualify-direct-force-polish-v3.py",
+      "bytes": 8141,
+      "sha256": "78fcf7827592a0403e27aabd725d085aa2b8dfadd877dcf4b62cfaa08aaab186"
+    },
+    {
+      "path": "reproduction/qualify-direct-force-residual.py.txt",
+      "source": ".artifacts/issue206/qualify-direct-force-residual.py",
+      "bytes": 8140,
+      "sha256": "11f122e7cec86fd749286e8cf945e42e3ee3e347562882f25909c2329360ba60"
+    },
+    {
+      "path": "reproduction/run-direct-force-residual.py.txt",
+      "source": ".artifacts/issue206/run-direct-force-residual.py",
+      "bytes": 4831,
+      "sha256": "598fdbf13d123c033195b7233396c95ab19a409a4d748f477633a8ed8947c8f8"
+    },
+    {
+      "path": "reproduction/run-native-direct-force-residual.py.txt",
+      "source": ".artifacts/issue206/run-native-direct-force-residual.py",
+      "bytes": 2626,
+      "sha256": "b71c4541d9eae2040429f7d37e57bb33f7c24c1e431393e9dd2f0ea51ad2fd93"
+    },
+    {
+      "path": "reproduction/validate-direct-force-final.py.txt",
+      "source": ".artifacts/issue206/validate-direct-force-final.py",
+      "bytes": 2460,
+      "sha256": "dc82eff360f99b53a018db3bf8dcf278b377ec2634516244fc84435e5a95ea83"
+    },
+    {
+      "path": "reproduction/run-native-direct-force-final.py.txt",
+      "source": ".artifacts/issue206/run-native-direct-force-final.py",
+      "bytes": 2620,
+      "sha256": "8ce4504f6f701cc60710541b41e0a8d61e9abaed673c3384a65682e524777ce6"
+    },
+    {
+      "path": "reproduction/qualify-direct-force-final.py.txt",
+      "source": ".artifacts/issue206/qualify-direct-force-final.py",
+      "bytes": 8137,
+      "sha256": "91f12546eb42061d39ac4643368982e7836bd21eaf2e45b310028a795ccf6c31"
+    },
+    {
+      "path": "reproduction/diagnose-oh-qualified-state.py.txt",
+      "source": ".artifacts/issue206/diagnose-oh-qualified-state.py",
+      "bytes": 4983,
+      "sha256": "8619718dd0922b048681c3b21ff300ef52cb010dcdfec7e4d520c0aa13e69cfa"
+    },
+    {
+      "path": "reproduction/run-direct-force-final.py.txt",
+      "source": ".artifacts/issue206/run-direct-force-final.py",
+      "bytes": 4822,
+      "sha256": "2445fd171a1ed8a1110730879357aef9b340954a76173da1218db7abace911a0"
+    },
+    {
+      "path": "diagnosis/final-direct-pairs.json",
+      "source": ".artifacts/issue206/final-direct-pair-diagnosis.json",
+      "bytes": 8784,
+      "sha256": "4dd15bf430923eccf2ac84f8bffd0a3887d93cc0ca1802c60f11191f6ac0d8b1"
+    },
+    {
+      "path": "reproduction/diagnose-final-direct-pairs.py.txt",
+      "source": ".artifacts/issue206/diagnose-final-direct-pairs.py",
+      "bytes": 2326,
+      "sha256": "64ee70d812986294f8eb14964716b1ca22943fe2388a25ab8c59ca09cf4ebca9"
+    },
+    {
+      "path": "reproduction/retain-direct-force-state.py.txt",
+      "source": ".artifacts/issue206/retain-direct-force-state.py",
+      "bytes": 6079,
+      "sha256": "6b6477b8dd0ce18fac5efb24f20b43742cd625efeddf2a5fbecf47b6ec78e9cb"
+    }
+  ],
+  "partial_runner_failures": {
+    "history/one-update-incomplete-v1.json": "Runner wrongly asserted zero total trace-file growth; generic batch records append even for energy-only calls.",
+    "history/one-update-incomplete-v2.json": "Runner omitted changed coordinates from the energy-only call; version three explicitly supplied them."
+  },
+  "limits": [
+    "Historical failures remain failed; partial reports retain their original running field after runner assertion aborts.",
+    "CPU correction trajectories are diagnosis only; production has no CPU/PySCF scientific dependency.",
+    "The matrix compares ordinary converged endpoints; differing iteration branches do not establish equal operator work.",
+    "#206 remains open for DF, cold/changed/energy-only, small/UHF external and resource/unequal-auxiliary coverage."
+  ]
+}

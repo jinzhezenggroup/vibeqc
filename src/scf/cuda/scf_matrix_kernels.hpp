@@ -29,7 +29,7 @@ void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t share
 void launch_matrix_product_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
                                   const double* left, bool transpose_left, const double* right,
-                                  const std::uint8_t* active, double* output);
+                                  const std::uint8_t* active, double* output, double scale = 1.0);
 
 /** Preserve launch geometry, stream and per-item state routing. */
 void launch_broadcast_spin_matrix_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

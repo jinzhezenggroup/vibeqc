@@ -1,0 +1,18 @@
+{
+  "scope": "Physical force residual criterion with per-item mixed-stage deferral, final validation and consistent Pulay density",
+  "base_commit": "f5eb8dfb696ce4304c5151670c55fec78fdddb7d",
+  "source_patch_sha256": "8ecda14a622d1e4a05a0bfe14b34019c81b39afcf8cd4631565306f3632a67fb",
+  "new_test_sha256": "5e32d3df7ae43f6a418a01b3f6abc6cf591dc421c0eaa083a7e01e2df45ea23d",
+  "command": [
+    "/usr/bin/time",
+    "-v",
+    "cmake",
+    "--build",
+    "build/cuda",
+    "-j",
+    "6"
+  ],
+  "status": "built",
+  "exit_code": 0,
+  "candidate_library_sha256": "e2e92b07f1fcfc681a88277710cbac68305b89626bc78464873853ebcadb4d45"
+}

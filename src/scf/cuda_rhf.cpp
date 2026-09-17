@@ -25,6 +25,7 @@
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "runtime/allocation_measurement.hpp"
+#include "runtime/df_progress_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/resource_usage.hpp"
 #include "scf/aot_shell_registry.hpp"
@@ -1846,10 +1847,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };
   const auto multiply_matrices = [&](const double* left, bool transpose_left, const double* right,
-                                     double* output) {
+                                     double* output, double scale = 1.0) {
     const vibeqc_status product_status = launch_matrix_product(
         resources.matrix_view(), static_cast<int>(batch_size), static_cast<int>(nbf), left,
-        transpose_left, right, active, output, use_cublas);
+        transpose_left, right, active, output, use_cublas, scale);
     if (use_cublas && product_status != VIBEQC_STATUS_SUCCESS) {
       plan.retry_without_cublas = true;
     }
@@ -2834,7 +2835,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                          unrestricted ? spin_active : active, graph_eigensolver_profile_pointer);
   };
 
-  const auto launch_iteration_post_eigensolver = [&](bool append_device_tail) -> vibeqc_status {
+  // Force accuracy also needs stationarity of the physical operator; a small
+  // DIIS density step alone can hide a much larger localized residual. Reuse
+  // the already computed F(P) commutator within the caller's iteration budget.
+  const bool canonical_force_update = options.compute_forces && !options.export_physical_reference;
+  const double* force_convergence_residual = canonical_force_update ? residual : nullptr;
+  const auto launch_iteration_post_eigensolver = [&](bool append_device_tail,
+                                                     bool allow_mixed_precision) -> vibeqc_status {
+    // Only the item's coarse mixed stage may defer stationarity. Exact peers
+    // and every FP64 refinement step must satisfy the physical force criterion.
+    const auto* approximate_census = allow_mixed_precision ? mixed_precision_item_census : nullptr;
     vibeqc_status iteration_status = VIBEQC_STATUS_SUCCESS;
     if (unrestricted) {
       launch_inspect_spin_solver_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
@@ -2853,14 +2863,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
               resources.stream_, static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance, options.density_tolerance,
               quartet_direct, energy, previous_energy, next_density, density, active, converged,
-              iterations, energy_change, density_rms);
+              iterations, energy_change, density_rms, force_convergence_residual,
+              approximate_census);
         } else {
           launch_update_uhf_convergence_kernel(
               false, static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
               resources.stream_, static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance, options.density_tolerance,
               quartet_direct, energy, previous_energy, next_density, density, active, converged,
-              iterations, energy_change, density_rms);
+              iterations, energy_change, density_rms, force_convergence_residual,
+              approximate_census);
         }
       }
     } else {
@@ -2879,14 +2891,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
               resources.stream_, static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance, options.density_tolerance,
               quartet_direct, energy, previous_energy, next_density, density, active, converged,
-              iterations, energy_change, density_rms);
+              iterations, energy_change, density_rms, force_convergence_residual,
+              approximate_census);
         } else {
           launch_update_convergence_kernel(
               false, static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
               resources.stream_, static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance, options.density_tolerance,
               quartet_direct, energy, previous_energy, next_density, density, active, converged,
-              iterations, energy_change, density_rms);
+              iterations, energy_change, density_rms, force_convergence_residual,
+              approximate_census);
         }
       }
     }
@@ -2915,7 +2929,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       status = launch_iteration_eigensolver(graph_eigensolver_family);
     }
     if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration && !split_provider_iteration) {
-      status = launch_iteration_post_eigensolver(true);
+      status = launch_iteration_post_eigensolver(true, true);
     }
     if (status != VIBEQC_STATUS_SUCCESS) {
       cudaGraph_t abandoned_graph = nullptr;
@@ -2945,7 +2959,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         cuda_error = cudaStreamBeginCapture(resources.stream_, cudaStreamCaptureModeThreadLocal);
       }
       if (cuda_error == cudaSuccess) {
-        status = launch_iteration_post_eigensolver(false);
+        status = launch_iteration_post_eigensolver(false, true);
       }
       if (cuda_error == cudaSuccess && status == VIBEQC_STATUS_SUCCESS) {
         cuda_error = cudaStreamEndCapture(resources.stream_, &resources.post_eigensolver_graph_);
@@ -3253,7 +3267,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         status = launch_iteration_eigensolver(ordinary_eigensolver_family);
       }
       if (status == VIBEQC_STATUS_SUCCESS) {
-        status = launch_iteration_post_eigensolver(false);
+        status = launch_iteration_post_eigensolver(false, false);
       }
       if (status != VIBEQC_STATUS_SUCCESS) break;
       cuda_error =
@@ -3382,13 +3396,59 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
   }
-  // Keep the converged density paired with the un-extrapolated F(P) that was
-  // just diagonalized. The canonical coefficients and eigenvalues are needed
-  // for the Pulay weighted density, but replacing P with C_occ C_occ^T would
-  // require a second complete J/K rebuild before energy and force evaluation.
-  // The accepted density update has already passed the requested SCF density
-  // tolerance, so retaining P keeps all final energy/two-electron force terms
-  // evaluated consistently at the same P and F(P).
+  // Build the force determinant from the already available canonical orbitals,
+  // then explicitly rebuild F at that updated determinant. The
+  // additional operator is real work, not elimination of the preceding final
+  // build. Energy-only and detached reference exports retain their old path.
+  std::uint32_t host_force_validation_count = 0;
+  if (canonical_force_update) {
+    runtime::df_progress::Scope trace("direct_force_canonicalization", "cuda_submission");
+    if (unrestricted) {
+      launch_build_spin_density_kernel(blocks_for(spin_matrix_elements), threads, 0,
+                                       resources.stream_, static_cast<std::int32_t>(batch_size), 2,
+                                       static_cast<std::int32_t>(nbf), occupied, coefficients,
+                                       active, density);
+    } else {
+      launch_build_density_kernel(blocks_for(matrix_elements), threads, 0, resources.stream_,
+                                  static_cast<std::int32_t>(batch_size),
+                                  static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+                                  density);
+    }
+    cuda_error = cudaGetLastError();
+    if (cuda_error == cudaSuccess) cuda_error = launch_fock_builder(density, false);
+    if (cuda_error != cudaSuccess) {
+      trace.finish("cuda_failed");
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    status = build_commutator_residual();
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      trace.finish("residual_failed");
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+    // The rebuild-selection scalar is dead after final Fock selection. Reuse
+    // it to count every tested determinant, including final-state rejections.
+    cuda_error =
+        cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      launch_validate_force_residual_kernel(
+          resources.stream_, static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count), static_cast<std::int32_t>(nbf),
+          options.density_tolerance, residual, active, converged, final_fock_rebuild_count);
+      cuda_error = cudaGetLastError();
+    }
+    if (cuda_error != cudaSuccess) {
+      trace.finish("validation_failed");
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    runtime::df_progress::Scope::number("physical_fock_bucket_submissions", 1);
+    runtime::df_progress::Scope::number("physical_residual_product_bucket_submissions", 4);
+    trace.finish("submitted");
+  }
+  // Energy and every force term consume this same P/F(P). In particular, the
+  // Pulay weight below cannot switch to another canonical determinant.
   if (options.compute_forces) {
     cuda_error = launch_direct_force_compaction();
     if (cuda_error != cudaSuccess) {
@@ -3418,10 +3478,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                      static_cast<std::int32_t>(nbf), density, hcore, fock,
                                      nuclear_repulsion, active, energy);
     if (options.compute_forces) {
-      launch_build_spin_weighted_density_kernel(
-          blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf), occupied,
-          coefficients, eigenvalues, active, weighted_density);
+      // With unit spin occupations, W_sigma = P_sigma F_sigma P_sigma.
+      // Iteration scratch is free here; keep the selected final P/F untouched.
+      status = multiply_spin_matrices(density, true, false, fock, true, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_spin_matrices(temporary, true, false, density, true, weighted_density);
+      }
+      if (status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
       launch_sum_uhf_spin_matrices_kernel(blocks_for(matrix_elements), threads, 0,
                                           resources.stream_, static_cast<std::int32_t>(batch_size),
                                           static_cast<std::int32_t>(nbf), density, active,
@@ -3437,10 +3503,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                  static_cast<std::int32_t>(nbf), density, hcore, fock,
                                  nuclear_repulsion, active, energy);
     if (options.compute_forces) {
-      launch_build_weighted_density_kernel(blocks_for(matrix_elements), threads, 0,
-                                           resources.stream_, static_cast<std::int32_t>(batch_size),
-                                           static_cast<std::int32_t>(nbf), occupied, coefficients,
-                                           eigenvalues, active, weighted_density);
+      // P = 2 C_occ C_occ^T, hence the determinant-consistent Pulay weight is
+      // W = P F(P) P / 2. At stationarity this equals the canonical expression;
+      // at finite residual it preserves the same P as the other force terms.
+      status = multiply_matrices(density, false, fock, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_matrices(temporary, false, density, weighted_density, 0.5);
+      }
+      if (status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
     }
   }
   if (options.export_physical_reference) {
@@ -4197,7 +4270,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         density, active, forces);
   }
 
-  if (reuse_converged_fock) {
+  if (reuse_converged_fock && !canonical_force_update) {
     // The requested outputs above consumed each system's selected consistent
     // snapshot. Advance only reused systems to the already accepted P_{n+1}
     // for their returned warm state; rebuilt systems already contain it.
@@ -4302,6 +4375,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
   }
+  if (canonical_force_update) {
+    // Queue stack staging only immediately before its completion fence; no
+    // intervening early return may release a pending copy's destination.
+    cuda_error = cudaMemcpyAsync(&host_force_validation_count, final_fock_rebuild_count,
+                                 sizeof(std::uint32_t), cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   cuda_error = cudaStreamSynchronize(resources.stream_);
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
@@ -4347,6 +4430,22 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   const bool no_system_failed = std::none_of(host_failed.begin(), host_failed.end(),
                                              [](std::uint8_t value) { return value != 0; });
+  if (canonical_force_update) {
+    runtime::df_progress::Scope trace("direct_force_canonicalization_completed", "cuda_completed");
+    std::uint64_t completed_items = 0;
+    for (std::size_t system = 0; system < batch_size; ++system)
+      if (host_converged[system] && !host_failed[system]) ++completed_items;
+    runtime::df_progress::Scope::number("additional_density_updates", host_force_validation_count);
+    runtime::df_progress::Scope::number("additional_physical_fock_builds",
+                                        host_force_validation_count);
+    runtime::df_progress::Scope::number("final_physical_residual_checks",
+                                        host_force_validation_count);
+    runtime::df_progress::Scope::number("final_physical_residual_rejections",
+                                        host_force_validation_count - completed_items);
+    runtime::df_progress::Scope::number(
+        "reported_scf_updates",
+        std::accumulate(host_iterations.begin(), host_iterations.end(), std::uint64_t{0}));
+  }
   if (no_system_failed) {
     plan.cached_positions = host.positions;
   } else if (geometry_changed) {

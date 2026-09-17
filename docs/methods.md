@@ -33,6 +33,32 @@ fixed implementation order. Method families will be split into independently
 testable milestones as their numerical oracles and performance baselines are
 defined.
 
+## Direct CUDA HF force state
+
+Direct RHF/UHF force solves require the maximum physical AO commutator
+`|F P S - S P F|` to meet `min(1e-8, density_tolerance)` in addition to the
+energy and density-update criteria. The maximum includes both UHF spins;
+nonfinite residuals cannot pass. Additional SCF updates remain within the
+requested iteration limit and appear in the public iteration count.
+An item's mixed-precision coarse stage keeps its previous stop; the exact FP64
+refinement and exact-precision neighbors apply the physical force criterion.
+
+Finalization projects the final physical-Fock orbitals to a determinant,
+rebuilds its physical Fock, and rechecks that determinant's commutator before
+publishing forces. Energy, forces and the returned warm state share this P/F(P).
+The Pulay weight is `P F(P) P / 2` for RHF and `P_sigma F_sigma P_sigma` for
+UHF. A failed final residual returns nonconvergence. Energy-only and detached
+physical-reference execution retain their existing finalization contracts.
+
+This force finalization adds one density projection, one physical Fock build,
+four matrix products for residual validation and two for the Pulay weight.
+Existing device scratch holds the products; a four-byte work counter is copied
+at the existing completion fence. `VIBEQC_DF_PROGRESS_TRACE` records final
+updates, physical Fock builds, residual checks and rejections separately from
+iterative SCF updates. Complete endpoint costs include all this work. The
+[decision record](../.agents/notes/proposed/2026-09-17-consistent-direct-pulay-weight.md)
+retains the independent diagnosis and qualification boundaries.
+
 ## Acceptance standard
 
 A method becomes supported only when all of the following are true:
