@@ -1,0 +1,50 @@
+"""Validate the completed AOT release separately from clean endpoint timing."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import xml.etree.ElementTree as ET
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    out = Path(".artifacts/issue206/aot-native-tests").resolve()
+    out.mkdir(exist_ok=False)
+    lib = Path("build/cuda/libvibeqc.so").resolve()
+    with lib.open("rb") as stream:
+        lib_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+    expected = json.loads(Path(".artifacts/issue206/aot-direct-matrix/manifest.json").read_text())
+    assert lib_hash == expected["library_sha256"]
+    command = ["ctest", "--test-dir", "build/cuda", "--output-on-failure", "-j", "1",
+               "--timeout", "120", "--output-junit", str(out / "tests.xml")]
+    record = {"scope": __doc__, "slurm_job_id": os.environ["SLURM_JOB_ID"],
+              "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+              "library_sha256": lib_hash, "command": command, "status": "running",
+              "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    report = out / "summary.json"
+    report.write_text(json.dumps(record, indent=2) + "\n")
+    env = {k: v for k, v in os.environ.items() if not k.startswith("VIBEQC_")}
+    env.update(OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+    with (out / "execution.log").open("x") as log:
+        run = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT)
+    record.update(returncode=run.returncode, status="passed" if run.returncode == 0 else "failed")
+    xml_path = out / "tests.xml"
+    if xml_path.exists():
+        tree = ET.parse(xml_path)
+        record["tests"] = [{"name": x.attrib["name"], "seconds": float(x.attrib["time"]),
+                            "status": x.attrib.get("status"),
+                            "failures": [f.text for f in x.findall("failure")],
+                            "skipped": len(x.findall("skipped"))}
+                           for x in tree.iter("testcase")]
+    record["transient_artifacts"] = [{"path": str(p), "bytes": p.stat().st_size,
+                                       "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+                                      for p in out.iterdir() if p != report]
+    report.write_text(json.dumps(record, indent=2) + "\n")
+    print(record["status"], len(record.get("tests", [])), flush=True)
+    raise SystemExit(run.returncode)
+
+
+if __name__ == "__main__":
+    main()

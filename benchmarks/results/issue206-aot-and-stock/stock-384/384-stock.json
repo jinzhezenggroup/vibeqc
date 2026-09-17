@@ -1,0 +1,4930 @@
+{
+  "scope": "Observe stock DF warm work in a separate intrusive process under Slurm.\n\nWrappers preserve function arguments, results and normal CDERI release. They\nsynchronize at scope boundaries and therefore cannot supply clean timings.\nPer-thread exclusive wall scopes subtract only synchronous child scopes;\ndifferent threads may overlap and must not be added into an endpoint total.\nNsight captures the same range for actual transfers, kernels and API activity.\n",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "batch": 1,
+  "slurm_job_id": "9870",
+  "cuda_visible_devices": "0",
+  "runner_sha256": "e33e009b0adb91302e4fb732cd0e6b835265636d9213fecdde3f5d90a659929c",
+  "reference_sha256": "1ab33043a33c16ee5171f751743ba466c85869001e666fd2cf5c784610e1a856",
+  "installed_wrappers": [
+    {
+      "operation": "raw_and_whitened_factor_construction",
+      "module": "gpu4pyscf.df.df",
+      "name": "_cholesky_eri",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/df.py",
+      "source_sha256": "f52963bc24aa400cf35f588a019fa1443a2bd854a558cbca3425742fdb0ce640"
+    },
+    {
+      "operation": "metric_decomposition_and_transform",
+      "module": "gpu4pyscf.df.df",
+      "name": "_decompose_j2c",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/df.py",
+      "source_sha256": "f52963bc24aa400cf35f588a019fa1443a2bd854a558cbca3425742fdb0ce640"
+    },
+    {
+      "operation": "metric_cholesky",
+      "module": "gpu4pyscf.lib.cusolver",
+      "name": "cholesky",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/lib/cusolver.py",
+      "source_sha256": "2d0701eb6defab78acdd782d2d114c73fd73e8ebe1b193653116d6c8e85a2e8b"
+    },
+    {
+      "operation": "metric_triangular_solve",
+      "module": "cupyx.scipy.linalg._solve_triangular",
+      "name": "solve_triangular",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/cupyx/scipy/linalg/_solve_triangular.py",
+      "source_sha256": "14b0d277aa9695756a8b9b7a1d3fdf6fb3630949cf72437dbdc0bc63627007bc"
+    },
+    {
+      "operation": "raw_metric",
+      "module": "gpu4pyscf.df.int3c2e_bdiv",
+      "name": "int2c2e",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/int3c2e_bdiv.py",
+      "source_sha256": "0c882b57cc3c2e9b2c51ec42b1332b15dd285c611b2a02d577de3edbc269556b"
+    },
+    {
+      "operation": "logical_jk",
+      "module": "gpu4pyscf.df.df_jk",
+      "name": "get_jk",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/df_jk.py",
+      "source_sha256": "f0dd515dc30446ec3f526df3bd7d296a1f7653689e7f54624ac4b861fee0a506"
+    },
+    {
+      "operation": "density_factorization",
+      "module": "gpu4pyscf.df.df_jk",
+      "name": "factorize_dm",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/df_jk.py",
+      "source_sha256": "f0dd515dc30446ec3f526df3bd7d296a1f7653689e7f54624ac4b861fee0a506"
+    },
+    {
+      "operation": "jk_tensor_contract",
+      "module": "gpu4pyscf.lib.cutensor",
+      "name": "contract",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/lib/cutensor.py",
+      "source_sha256": "6cefb4e6fbeb636153f7be786dc5e112ad3fb77335df1da955a999a73691b8ce"
+    },
+    {
+      "operation": "eigensystem",
+      "module": "gpu4pyscf.scf.hf",
+      "name": "SCF.eig",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/scf/hf.py",
+      "source_sha256": "c4608fb29bd6b985b17235e972dad68b11d2fca06b38e565c0ee7ebb560275e9"
+    },
+    {
+      "operation": "diis",
+      "module": "gpu4pyscf.scf.diis",
+      "name": "CDIIS.update",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/scf/diis.py",
+      "source_sha256": "4cf856a9c3e972dd34588f3b2244c121ea6cba2f5ddbc2d5cd465d241a79c7d0"
+    },
+    {
+      "operation": "one_electron_force",
+      "module": "gpu4pyscf.grad.rhf",
+      "name": "_hcore_energy",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/grad/rhf.py",
+      "source_sha256": "2f57c80c57f14137419602e832d5ac28143cefc936aee27e3160348cb87d9f4d"
+    },
+    {
+      "operation": "df_force_response",
+      "module": "gpu4pyscf.df.grad.rhf",
+      "name": "_jk_energy_per_atom",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/grad/rhf.py",
+      "source_sha256": "1b5655cf302c8f3206e7cd264d0022153592857bd34304524507a31ce50cb172"
+    },
+    {
+      "operation": "response_tensor_contract",
+      "module": "gpu4pyscf.lib.cutensor",
+      "name": "contract",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/lib/cutensor.py",
+      "source_sha256": "6cefb4e6fbeb636153f7be786dc5e112ad3fb77335df1da955a999a73691b8ce"
+    },
+    {
+      "operation": "response_metric_solver",
+      "module": "gpu4pyscf.df.grad.rhf",
+      "name": "_gen_metric_solver",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/grad/rhf.py",
+      "source_sha256": "1b5655cf302c8f3206e7cd264d0022153592857bd34304524507a31ce50cb172"
+    },
+    {
+      "operation": "response_metric_cholesky",
+      "module": "gpu4pyscf.lib.cusolver",
+      "name": "cholesky",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/lib/cusolver.py",
+      "source_sha256": "2d0701eb6defab78acdd782d2d114c73fd73e8ebe1b193653116d6c8e85a2e8b"
+    },
+    {
+      "operation": "response_metric_eigensystem",
+      "module": "gpu4pyscf.lib.cupy_helper",
+      "name": "eigh",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/lib/cupy_helper.py",
+      "source_sha256": "bb1a644014977ae2e1fb3fdb14580e9efe9619f43502a15f482a56776458c3dd"
+    },
+    {
+      "operation": "df_build",
+      "module": "gpu4pyscf.df.df",
+      "name": "DF.build",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/df.py",
+      "source_sha256": "f52963bc24aa400cf35f588a019fa1443a2bd854a558cbca3425742fdb0ce640"
+    },
+    {
+      "operation": "raw_evaluator_setup",
+      "module": "gpu4pyscf.df.int3c2e_bdiv",
+      "name": "Int3c2eOpt.int3c2e_evaluator",
+      "source": "/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/gpu4pyscf/df/int3c2e_bdiv.py",
+      "source_sha256": "0c882b57cc3c2e9b2c51ec42b1332b15dd285c611b2a02d577de3edbc269556b"
+    }
+  ],
+  "operations": [
+    {
+      "id": 0,
+      "parent": null,
+      "thread": 138580891436928,
+      "operation": "logical_jk",
+      "arguments": [
+        {
+          "type": "DF"
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        1,
+        true,
+        true
+      ],
+      "keywords": {
+        "omega": null
+      },
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "inclusive_ns": 128334138,
+      "exclusive_ns": 2506065
+    },
+    {
+      "id": 1,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "df_build",
+      "arguments": [
+        {
+          "type": "DF"
+        }
+      ],
+      "keywords": {
+        "omega": null
+      },
+      "result": {
+        "type": "DF"
+      },
+      "inclusive_ns": 94151555,
+      "exclusive_ns": 48906675
+    },
+    {
+      "id": 2,
+      "parent": 1,
+      "thread": 138580891436928,
+      "operation": "raw_and_whitened_factor_construction",
+      "arguments": [
+        {
+          "type": "Int3c2eOpt"
+        }
+      ],
+      "keywords": {
+        "omega": null,
+        "use_gpu_memory": null
+      },
+      "result": [
+        [
+          {
+            "type": "ndarray",
+            "shape": [
+              384,
+              37371
+            ],
+            "strides": [
+              8,
+              3072
+            ],
+            "dtype": "float64",
+            "bytes": 114803712,
+            "tags": []
+          }
+        ],
+        [
+          {
+            "type": "ndarray",
+            "shape": [
+              37371
+            ],
+            "strides": [
+              4
+            ],
+            "dtype": "int32",
+            "bytes": 149484,
+            "tags": []
+          },
+          {
+            "type": "ndarray",
+            "shape": [
+              1088
+            ],
+            "strides": [
+              8
+            ],
+            "dtype": "int64",
+            "bytes": 8704,
+            "tags": []
+          }
+        ]
+      ],
+      "inclusive_ns": 45244880,
+      "exclusive_ns": 16184868
+    },
+    {
+      "id": 3,
+      "parent": 2,
+      "thread": 138580891436928,
+      "operation": "raw_evaluator_setup",
+      "arguments": [
+        {
+          "type": "Int3c2eOpt"
+        }
+      ],
+      "keywords": {
+        "ao_pair_batch_size": 2026725,
+        "reorder_aux": true,
+        "pair_batch_by_l": false,
+        "return_clone_context": true,
+        "omega": null
+      },
+      "result": [
+        {
+          "type": "function"
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "int64",
+          "bytes": 3200,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            2
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "int64",
+          "bytes": 16,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            2
+          ],
+          "strides": [
+            4
+          ],
+          "dtype": "int32",
+          "bytes": 8,
+          "tags": []
+        },
+        [
+          {
+            "type": "ndarray",
+            "shape": [
+              9923
+            ],
+            "strides": [
+              4
+            ],
+            "dtype": "int32",
+            "bytes": 39692,
+            "tags": []
+          },
+          {
+            "type": "ndarray",
+            "shape": [
+              25
+            ],
+            "strides": [
+              4
+            ],
+            "dtype": "int32",
+            "bytes": 100,
+            "tags": []
+          },
+          {
+            "type": "ndarray",
+            "shape": [
+              2
+            ],
+            "strides": [
+              8
+            ],
+            "dtype": "int64",
+            "bytes": 16,
+            "tags": []
+          },
+          false,
+          {
+            "type": "ndarray",
+            "shape": [
+              7
+            ],
+            "strides": [
+              8
+            ],
+            "dtype": "int64",
+            "bytes": 56,
+            "tags": []
+          },
+          [
+            0,
+            6
+          ],
+          {
+            "type": "ndarray",
+            "shape": [
+              400
+            ],
+            "strides": [
+              8
+            ],
+            "dtype": "int64",
+            "bytes": 3200,
+            "tags": []
+          }
+        ]
+      ],
+      "inclusive_ns": 2243132,
+      "exclusive_ns": 2243132
+    },
+    {
+      "id": 4,
+      "parent": 2,
+      "thread": 138580891436928,
+      "operation": "metric_decomposition_and_transform",
+      "arguments": [
+        {
+          "type": "SortedMole"
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "int64",
+          "bytes": 3200,
+          "tags": []
+        },
+        null
+      ],
+      "keywords": {},
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1228800,
+          "tags": []
+        },
+        "cd"
+      ],
+      "inclusive_ns": 12341904,
+      "exclusive_ns": 565500
+    },
+    {
+      "id": 5,
+      "parent": 4,
+      "thread": 138580891436928,
+      "operation": "raw_metric",
+      "arguments": [
+        {
+          "type": "SortedMole"
+        }
+      ],
+      "keywords": {
+        "omega": null
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          384,
+          384
+        ],
+        "strides": [
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 10232409,
+      "exclusive_ns": 10232409
+    },
+    {
+      "id": 6,
+      "parent": 4,
+      "thread": 138580891436928,
+      "operation": "metric_cholesky",
+      "arguments": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          384,
+          384
+        ],
+        "strides": [
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 801815,
+      "exclusive_ns": 801815
+    },
+    {
+      "id": 7,
+      "parent": 4,
+      "thread": 138580891436928,
+      "operation": "metric_triangular_solve",
+      "arguments": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            400
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 1228800,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "lower": true,
+        "overwrite_b": true
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          384,
+          400
+        ],
+        "strides": [
+          8,
+          3072
+        ],
+        "dtype": "float64",
+        "bytes": 1228800,
+        "tags": []
+      },
+      "inclusive_ns": 742180,
+      "exclusive_ns": 742180
+    },
+    {
+      "id": 8,
+      "parent": 2,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [
+        0
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            14948400
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 119587200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          37371,
+          400
+        ],
+        "strides": [
+          3200,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 119587200,
+        "tags": []
+      },
+      "inclusive_ns": 14474976,
+      "exclusive_ns": 14474976
+    },
+    {
+      "id": 9,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "density_factorization",
+      "arguments": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        1
+      ],
+      "keywords": {},
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "inclusive_ns": 7779355,
+      "exclusive_ns": 7436108
+    },
+    {
+      "id": 10,
+      "parent": 9,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "i,pi->pi",
+        {
+          "type": "ndarray",
+          "shape": [
+            80
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 640,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          384,
+          80
+        ],
+        "strides": [
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 245760,
+        "tags": []
+      },
+      "inclusive_ns": 343247,
+      "exclusive_ns": 343247
+    },
+    {
+      "id": 11,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "np,Lp->nL",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 76535808,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          256
+        ],
+        "strides": [
+          2048,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 2048,
+        "tags": []
+      },
+      "inclusive_ns": 153072,
+      "exclusive_ns": 153072
+    },
+    {
+      "id": 12,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nL,Lp->np",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            256
+          ],
+          "strides": [
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 2048,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 76535808,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          37371
+        ],
+        "strides": [
+          298968,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 298968,
+        "tags": []
+      },
+      "inclusive_ns": 133986,
+      "exclusive_ns": 133986
+    },
+    {
+      "id": 13,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 301989888,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          256
+        ],
+        "strides": [
+          62914560,
+          163840,
+          2048,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 62914560,
+        "tags": []
+      },
+      "inclusive_ns": 5019535,
+      "exclusive_ns": 5019535
+    },
+    {
+      "id": 14,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 301989888,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          256
+        ],
+        "strides": [
+          62914560,
+          163840,
+          2048,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 62914560,
+        "tags": []
+      },
+      "inclusive_ns": 5001680,
+      "exclusive_ns": 5001680
+    },
+    {
+      "id": 15,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nikL,njkL->nij",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            384
+          ],
+          "strides": [
+            1179648,
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          384
+        ],
+        "strides": [
+          1179648,
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 5451431,
+      "exclusive_ns": 5451431
+    },
+    {
+      "id": 16,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "np,Lp->nL",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 38267904,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          128
+        ],
+        "strides": [
+          1024,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1024,
+        "tags": []
+      },
+      "inclusive_ns": 117986,
+      "exclusive_ns": 117986
+    },
+    {
+      "id": 17,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nL,Lp->np",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            128
+          ],
+          "strides": [
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1024,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 38267904,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          37371
+        ],
+        "strides": [
+          298968,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 298968,
+        "tags": []
+      },
+      "inclusive_ns": 114619,
+      "exclusive_ns": 114619
+    },
+    {
+      "id": 18,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 150994944,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          128
+        ],
+        "strides": [
+          31457280,
+          81920,
+          1024,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 31457280,
+        "tags": []
+      },
+      "inclusive_ns": 2559206,
+      "exclusive_ns": 2559206
+    },
+    {
+      "id": 19,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 150994944,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          128
+        ],
+        "strides": [
+          31457280,
+          81920,
+          1024,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 31457280,
+        "tags": []
+      },
+      "inclusive_ns": 2553676,
+      "exclusive_ns": 2553676
+    },
+    {
+      "id": 20,
+      "parent": 0,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nikL,njkL->nij",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            384
+          ],
+          "strides": [
+            1179648,
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          384
+        ],
+        "strides": [
+          1179648,
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 2791972,
+      "exclusive_ns": 2791972
+    },
+    {
+      "id": 21,
+      "parent": null,
+      "thread": 138580891436928,
+      "operation": "eigensystem",
+      "arguments": [
+        {
+          "type": "DFRHF"
+        },
+        {
+          "type": "CPArrayWithTag",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "x": {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      },
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 3072,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "inclusive_ns": 9450022,
+      "exclusive_ns": 9450022
+    },
+    {
+      "id": 22,
+      "parent": null,
+      "thread": 138580891436928,
+      "operation": "logical_jk",
+      "arguments": [
+        {
+          "type": "DF"
+        },
+        {
+          "type": "CPArrayWithTag",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": [
+            "mo_coeff",
+            "mo_occ",
+            "occ_coeff"
+          ]
+        },
+        1,
+        true,
+        true
+      ],
+      "keywords": {
+        "omega": null
+      },
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "inclusive_ns": 18659442,
+      "exclusive_ns": 1940512
+    },
+    {
+      "id": 23,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "density_factorization",
+      "arguments": [
+        {
+          "type": "CPArrayWithTag",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": [
+            "mo_coeff",
+            "mo_occ",
+            "occ_coeff"
+          ]
+        },
+        1
+      ],
+      "keywords": {},
+      "result": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        },
+        null
+      ],
+      "inclusive_ns": 399915,
+      "exclusive_ns": 399915
+    },
+    {
+      "id": 24,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "np,Lp->nL",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 76535808,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          256
+        ],
+        "strides": [
+          2048,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 2048,
+        "tags": []
+      },
+      "inclusive_ns": 151921,
+      "exclusive_ns": 151921
+    },
+    {
+      "id": 25,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nL,Lp->np",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            256
+          ],
+          "strides": [
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 2048,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 76535808,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          37371
+        ],
+        "strides": [
+          298968,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 298968,
+        "tags": []
+      },
+      "inclusive_ns": 133415,
+      "exclusive_ns": 133415
+    },
+    {
+      "id": 26,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            256,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 301989888,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          256
+        ],
+        "strides": [
+          62914560,
+          163840,
+          2048,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 62914560,
+        "tags": []
+      },
+      "inclusive_ns": 5008153,
+      "exclusive_ns": 5008153
+    },
+    {
+      "id": 27,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nikL,njkL->nij",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            256
+          ],
+          "strides": [
+            62914560,
+            163840,
+            2048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 62914560,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            384
+          ],
+          "strides": [
+            1179648,
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          384
+        ],
+        "strides": [
+          1179648,
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 5448806,
+      "exclusive_ns": 5448806
+    },
+    {
+      "id": 28,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "np,Lp->nL",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 38267904,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          128
+        ],
+        "strides": [
+          1024,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1024,
+        "tags": []
+      },
+      "inclusive_ns": 129267,
+      "exclusive_ns": 129267
+    },
+    {
+      "id": 29,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nL,Lp->np",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            128
+          ],
+          "strides": [
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1024,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 38267904,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            37371
+          ],
+          "strides": [
+            298968,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 298968,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          37371
+        ],
+        "strides": [
+          298968,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 298968,
+        "tags": []
+      },
+      "inclusive_ns": 108999,
+      "exclusive_ns": 108999
+    },
+    {
+      "id": 30,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "Lij,njk->nikL",
+        {
+          "type": "ndarray",
+          "shape": [
+            128,
+            384,
+            384
+          ],
+          "strides": [
+            8,
+            786432,
+            2048
+          ],
+          "dtype": "float64",
+          "bytes": 150994944,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80
+          ],
+          "strides": [
+            245760,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 245760,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          80,
+          128
+        ],
+        "strides": [
+          31457280,
+          81920,
+          1024,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 31457280,
+        "tags": []
+      },
+      "inclusive_ns": 2554738,
+      "exclusive_ns": 2554738
+    },
+    {
+      "id": 31,
+      "parent": 22,
+      "thread": 138580891436928,
+      "operation": "jk_tensor_contract",
+      "arguments": [
+        "nikL,njkL->nij",
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            80,
+            128
+          ],
+          "strides": [
+            31457280,
+            81920,
+            1024,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 31457280,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            1,
+            384,
+            384
+          ],
+          "strides": [
+            1179648,
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          1,
+          384,
+          384
+        ],
+        "strides": [
+          1179648,
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 2783716,
+      "exclusive_ns": 2783716
+    },
+    {
+      "id": 32,
+      "parent": null,
+      "thread": 138580891436928,
+      "operation": "df_force_response",
+      "arguments": [
+        {
+          "type": "Int3c2eOpt"
+        },
+        {
+          "type": "CPArrayWithTag",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": [
+            "mo_coeff",
+            "mo_occ",
+            "occ_coeff"
+          ]
+        },
+        1,
+        1
+      ],
+      "keywords": {
+        "hermi": 1,
+        "auxbasis_response": true,
+        "verbose": null
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          48,
+          3
+        ],
+        "strides": [
+          24,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1152,
+        "tags": []
+      },
+      "inclusive_ns": 303604903,
+      "exclusive_ns": 210801175
+    },
+    {
+      "id": 33,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_evaluator_setup",
+      "arguments": [
+        {
+          "type": "Int3c2eOpt"
+        }
+      ],
+      "keywords": {
+        "aux_batch_size": 400,
+        "reorder_aux": true,
+        "cart": true
+      },
+      "result": [
+        {
+          "type": "function"
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "int64",
+          "bytes": 3200,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            2
+          ],
+          "strides": [
+            8
+          ],
+          "dtype": "int64",
+          "bytes": 16,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            7
+          ],
+          "strides": [
+            4
+          ],
+          "dtype": "int32",
+          "bytes": 28,
+          "tags": []
+        }
+      ],
+      "inclusive_ns": 2230678,
+      "exclusive_ns": 2230678
+    },
+    {
+      "id": 34,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 0,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          16
+        ],
+        "strides": [
+          128,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 5168768,
+        "tags": []
+      },
+      "inclusive_ns": 12005421,
+      "exclusive_ns": 12005421
+    },
+    {
+      "id": 35,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            16
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 20480000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            16
+          ],
+          "strides": [
+            51200,
+            128,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 4096000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          16
+        ],
+        "strides": [
+          51200,
+          128,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 4096000,
+        "tags": []
+      },
+      "inclusive_ns": 557086,
+      "exclusive_ns": 557086
+    },
+    {
+      "id": 36,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            16
+          ],
+          "strides": [
+            51200,
+            128,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 4096000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            16,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 819200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          16,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 819200,
+        "tags": []
+      },
+      "inclusive_ns": 224099,
+      "exclusive_ns": 224099
+    },
+    {
+      "id": 37,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          32
+        ],
+        "strides": [
+          256,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 10337536,
+        "tags": []
+      },
+      "inclusive_ns": 14335088,
+      "exclusive_ns": 14335088
+    },
+    {
+      "id": 38,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            32
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 40960000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            32
+          ],
+          "strides": [
+            102400,
+            256,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 8192000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          32
+        ],
+        "strides": [
+          102400,
+          256,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 8192000,
+        "tags": []
+      },
+      "inclusive_ns": 1229803,
+      "exclusive_ns": 1229803
+    },
+    {
+      "id": 39,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            32
+          ],
+          "strides": [
+            102400,
+            256,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 8192000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            32,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1638400,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          32,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1638400,
+        "tags": []
+      },
+      "inclusive_ns": 469258,
+      "exclusive_ns": 469258
+    },
+    {
+      "id": 40,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 2,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          64
+        ],
+        "strides": [
+          512,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 20675072,
+        "tags": []
+      },
+      "inclusive_ns": 9903309,
+      "exclusive_ns": 9903309
+    },
+    {
+      "id": 41,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            64
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 81920000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            64
+          ],
+          "strides": [
+            204800,
+            512,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 16384000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          64
+        ],
+        "strides": [
+          204800,
+          512,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 16384000,
+        "tags": []
+      },
+      "inclusive_ns": 1964098,
+      "exclusive_ns": 1964098
+    },
+    {
+      "id": 42,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            64
+          ],
+          "strides": [
+            204800,
+            512,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 16384000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            64,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 3276800,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          64,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 3276800,
+        "tags": []
+      },
+      "inclusive_ns": 483705,
+      "exclusive_ns": 483705
+    },
+    {
+      "id": 43,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 3,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          48
+        ],
+        "strides": [
+          384,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 15506304,
+        "tags": []
+      },
+      "inclusive_ns": 8826739,
+      "exclusive_ns": 8826739
+    },
+    {
+      "id": 44,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            48
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 61440000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            48
+          ],
+          "strides": [
+            153600,
+            384,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 12288000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          48
+        ],
+        "strides": [
+          153600,
+          384,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 12288000,
+        "tags": []
+      },
+      "inclusive_ns": 1584191,
+      "exclusive_ns": 1584191
+    },
+    {
+      "id": 45,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            48
+          ],
+          "strides": [
+            153600,
+            384,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 12288000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            48,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 2457600,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          48,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 2457600,
+        "tags": []
+      },
+      "inclusive_ns": 482603,
+      "exclusive_ns": 482603
+    },
+    {
+      "id": 46,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 4,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          144
+        ],
+        "strides": [
+          1152,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 46518912,
+        "tags": []
+      },
+      "inclusive_ns": 8676451,
+      "exclusive_ns": 8676451
+    },
+    {
+      "id": 47,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            144
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 184320000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            144
+          ],
+          "strides": [
+            460800,
+            1152,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 36864000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          144
+        ],
+        "strides": [
+          460800,
+          1152,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 36864000,
+        "tags": []
+      },
+      "inclusive_ns": 4145662,
+      "exclusive_ns": 4145662
+    },
+    {
+      "id": 48,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            144
+          ],
+          "strides": [
+            460800,
+            1152,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 36864000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            144,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 7372800,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          144,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 7372800,
+        "tags": []
+      },
+      "inclusive_ns": 1221398,
+      "exclusive_ns": 1221398
+    },
+    {
+      "id": 49,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "raw_three_center_block",
+      "arguments": [],
+      "keywords": {
+        "aux_batch_id": 5,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            40381
+          ],
+          "strides": [
+            323048,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 129219200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          40381,
+          96
+        ],
+        "strides": [
+          768,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 31012608,
+        "tags": []
+      },
+      "inclusive_ns": 6461744,
+      "exclusive_ns": 6461744
+    },
+    {
+      "id": 50,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "pqr,pi->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            96
+          ],
+          "strides": [
+            1280000,
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 122880000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            96
+          ],
+          "strides": [
+            307200,
+            768,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 24576000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          96
+        ],
+        "strides": [
+          307200,
+          768,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 24576000,
+        "tags": []
+      },
+      "inclusive_ns": 3048132,
+      "exclusive_ns": 3048132
+    },
+    {
+      "id": 51,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,qj->rij",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            96
+          ],
+          "strides": [
+            307200,
+            768,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 24576000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            96,
+            80,
+            80
+          ],
+          "strides": [
+            51200,
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 4915200,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          96,
+          80,
+          80
+        ],
+        "strides": [
+          51200,
+          640,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 4915200,
+        "tags": []
+      },
+      "inclusive_ns": 838995,
+      "exclusive_ns": 838995
+    },
+    {
+      "id": 52,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_metric_solver",
+      "arguments": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        },
+        "CD"
+      ],
+      "keywords": {},
+      "result": {
+        "type": "function"
+      },
+      "inclusive_ns": 817634,
+      "exclusive_ns": 27302
+    },
+    {
+      "id": 53,
+      "parent": 52,
+      "thread": 138580891436928,
+      "operation": "response_metric_cholesky",
+      "arguments": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            384
+          ],
+          "strides": [
+            3072,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1179648,
+          "tags": []
+        }
+      ],
+      "keywords": {},
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          384,
+          384
+        ],
+        "strides": [
+          3072,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1179648,
+        "tags": []
+      },
+      "inclusive_ns": 790332,
+      "exclusive_ns": 790332
+    },
+    {
+      "id": 54,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            16,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 819200,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            16
+          ],
+          "strides": [
+            51200,
+            128,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 4096000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          16
+        ],
+        "strides": [
+          51200,
+          128,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 4096000,
+        "tags": []
+      },
+      "inclusive_ns": 292118,
+      "exclusive_ns": 292118
+    },
+    {
+      "id": 55,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            16
+          ],
+          "strides": [
+            51200,
+            128,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 4096000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            16
+          ],
+          "strides": [
+            51200,
+            128,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 20480000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          16
+        ],
+        "strides": [
+          51200,
+          128,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 20480000,
+        "tags": []
+      },
+      "inclusive_ns": 416006,
+      "exclusive_ns": 416006
+    },
+    {
+      "id": 56,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            32,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 1638400,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            32
+          ],
+          "strides": [
+            102400,
+            256,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 8192000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          32
+        ],
+        "strides": [
+          102400,
+          256,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 8192000,
+        "tags": []
+      },
+      "inclusive_ns": 287000,
+      "exclusive_ns": 287000
+    },
+    {
+      "id": 57,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            32
+          ],
+          "strides": [
+            102400,
+            256,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 8192000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            32
+          ],
+          "strides": [
+            102400,
+            256,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 40960000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          32
+        ],
+        "strides": [
+          102400,
+          256,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 40960000,
+        "tags": []
+      },
+      "inclusive_ns": 703005,
+      "exclusive_ns": 703005
+    },
+    {
+      "id": 58,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            64,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 3276800,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            64
+          ],
+          "strides": [
+            204800,
+            512,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 16384000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          64
+        ],
+        "strides": [
+          204800,
+          512,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 16384000,
+        "tags": []
+      },
+      "inclusive_ns": 427407,
+      "exclusive_ns": 427407
+    },
+    {
+      "id": 59,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            64
+          ],
+          "strides": [
+            204800,
+            512,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 16384000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            64
+          ],
+          "strides": [
+            204800,
+            512,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 81920000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          64
+        ],
+        "strides": [
+          204800,
+          512,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 81920000,
+        "tags": []
+      },
+      "inclusive_ns": 1277224,
+      "exclusive_ns": 1277224
+    },
+    {
+      "id": 60,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            48,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 2457600,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            48
+          ],
+          "strides": [
+            153600,
+            384,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 12288000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          48
+        ],
+        "strides": [
+          153600,
+          384,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 12288000,
+        "tags": []
+      },
+      "inclusive_ns": 562086,
+      "exclusive_ns": 562086
+    },
+    {
+      "id": 61,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            48
+          ],
+          "strides": [
+            153600,
+            384,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 12288000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            48
+          ],
+          "strides": [
+            153600,
+            384,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 61440000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          48
+        ],
+        "strides": [
+          153600,
+          384,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 61440000,
+        "tags": []
+      },
+      "inclusive_ns": 967361,
+      "exclusive_ns": 967361
+    },
+    {
+      "id": 62,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            144,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 7372800,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            144
+          ],
+          "strides": [
+            460800,
+            1152,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 36864000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          144
+        ],
+        "strides": [
+          460800,
+          1152,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 36864000,
+        "tags": []
+      },
+      "inclusive_ns": 745236,
+      "exclusive_ns": 745236
+    },
+    {
+      "id": 63,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            144
+          ],
+          "strides": [
+            460800,
+            1152,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 36864000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            144
+          ],
+          "strides": [
+            460800,
+            1152,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 184320000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          144
+        ],
+        "strides": [
+          460800,
+          1152,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 184320000,
+        "tags": []
+      },
+      "inclusive_ns": 3043022,
+      "exclusive_ns": 3043022
+    },
+    {
+      "id": 64,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rji,qj->iqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            96,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 4915200,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            96
+          ],
+          "strides": [
+            307200,
+            768,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 24576000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          80,
+          400,
+          96
+        ],
+        "strides": [
+          307200,
+          768,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 24576000,
+        "tags": []
+      },
+      "inclusive_ns": 591643,
+      "exclusive_ns": 591643
+    },
+    {
+      "id": 65,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "iqr,pi->pqr",
+        {
+          "type": "ndarray",
+          "shape": [
+            80,
+            400,
+            96
+          ],
+          "strides": [
+            307200,
+            768,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 24576000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80
+          ],
+          "strides": [
+            640,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 256000,
+          "tags": []
+        },
+        -0.5,
+        1
+      ],
+      "keywords": {
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400,
+            96
+          ],
+          "strides": [
+            307200,
+            768,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 122880000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400,
+          96
+        ],
+        "strides": [
+          307200,
+          768,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 122880000,
+        "tags": []
+      },
+      "inclusive_ns": 2111611,
+      "exclusive_ns": 2111611
+    },
+    {
+      "id": 66,
+      "parent": 32,
+      "thread": 138580891436928,
+      "operation": "response_tensor_contract",
+      "arguments": [
+        "rij,sij->rs",
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 20480000,
+          "tags": []
+        },
+        {
+          "type": "ndarray",
+          "shape": [
+            400,
+            80,
+            80
+          ],
+          "strides": [
+            8,
+            256000,
+            3200
+          ],
+          "dtype": "float64",
+          "bytes": 20480000,
+          "tags": []
+        }
+      ],
+      "keywords": {
+        "alpha": -0.5,
+        "beta": 1,
+        "out": {
+          "type": "ndarray",
+          "shape": [
+            400,
+            400
+          ],
+          "strides": [
+            3200,
+            8
+          ],
+          "dtype": "float64",
+          "bytes": 1280000,
+          "tags": []
+        }
+      },
+      "result": {
+        "type": "ndarray",
+        "shape": [
+          400,
+          400
+        ],
+        "strides": [
+          3200,
+          8
+        ],
+        "dtype": "float64",
+        "bytes": 1280000,
+        "tags": []
+      },
+      "inclusive_ns": 1873915,
+      "exclusive_ns": 1873915
+    }
+  ],
+  "versions": {
+    "gpu4pyscf-cuda12x": "1.8.1",
+    "cupy-cuda12x": "14.2.0",
+    "cutensor-cu12": "2.3.1",
+    "pyscf": "2.14.0",
+    "numpy": "2.5.3"
+  },
+  "factor_observations": [
+    {
+      "operation_id": 1,
+      "nbf": 384,
+      "naux": 384,
+      "blocks": [
+        {
+          "type": "ndarray",
+          "shape": [
+            384,
+            37371
+          ],
+          "strides": [
+            8,
+            3072
+          ],
+          "dtype": "float64",
+          "bytes": 114803712,
+          "tags": []
+        }
+      ]
+    }
+  ],
+  "density_sha256": [
+    "cd860107f2bbd60ce679667b07d00e9a91ccfc9e5c3b5ef504051afe503e7710"
+  ],
+  "pool_before": {
+    "used_bytes": 2434048,
+    "retained_bytes": 231709184
+  },
+  "result": {
+    "sequence_index": 0,
+    "seconds": 0.7387348779011518,
+    "component_seconds": {
+      "scf": 0.29262339090928435,
+      "force": 0.44607064011506736
+    },
+    "convergence": [
+      {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.345939120119131e-10,
+          "orbital_gradient_norm": 4.564924861729463e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      }
+    ],
+    "energies_hartree": [
+      -1219.176218800317
+    ],
+    "forces_hartree_per_bohr": [
+      [
+        [
+          1.3092164446781851e-05,
+          -0.010181732629953144,
+          -0.007359999629433567
+        ],
+        [
+          0.012253115305834283,
+          0.014816418494128625,
+          0.0019165210017403345
+        ],
+        [
+          -0.011852144161517586,
+          0.0009875283935038004,
+          0.00890609449256452
+        ],
+        [
+          -0.010380542634706683,
+          0.0005013755563645361,
+          0.007331953082988285
+        ],
+        [
+          0.0012931698302302008,
+          0.011639778974791959,
+          -0.008843581161547931
+        ],
+        [
+          0.015145066953309305,
+          -0.012522214212112748,
+          -0.001954443383204496
+        ],
+        [
+          0.00044943553353782306,
+          0.005305922088131743,
+          -0.0072530948307560905
+        ],
+        [
+          0.0034863270879939012,
+          0.0052155356576916445,
+          0.006671994397280168
+        ],
+        [
+          -0.004344864959620498,
+          -0.006035654738126173,
+          -0.002953394410594168
+        ],
+        [
+          -0.0051061527480165125,
+          0.000751661580176588,
+          0.007107448809737349
+        ],
+        [
+          -0.005201226759476818,
+          0.0034076532589224495,
+          -0.0064853820545442975
+        ],
+        [
+          0.005909077782062511,
+          -0.004403345186189123,
+          0.002964508142773159
+        ],
+        [
+          0.005373953985662094,
+          -0.0004558076120257937,
+          0.006958666503007471
+        ],
+        [
+          -0.006067646201104893,
+          0.004305594893826703,
+          0.003188732175449571
+        ],
+        [
+          0.005295534761858095,
+          -0.0034136965991464763,
+          -0.006453414444321348
+        ],
+        [
+          0.010383917119386687,
+          -0.0004372239797207911,
+          0.007304531700894401
+        ],
+        [
+          -0.014885571818140209,
+          0.012407258034393076,
+          -0.0020046920482352792
+        ],
+        [
+          -0.0013710783049878383,
+          -0.011550387902656833,
+          -0.008741095597551762
+        ],
+        [
+          0.000633278558794359,
+          0.0103791219843139,
+          -0.007592959742340533
+        ],
+        [
+          -0.012578679760209044,
+          -0.015155980972765049,
+          0.00204438015749131
+        ],
+        [
+          0.011530557989677614,
+          -0.0012992278751631225,
+          0.008870744060027302
+        ],
+        [
+          -0.0007247779436792001,
+          -0.005152783248872472,
+          -0.007498433662846082
+        ],
+        [
+          -0.003618637791306556,
+          -0.005048397235663499,
+          0.006730161170195759
+        ],
+        [
+          0.004493884908976287,
+          0.00577736347655744,
+          -0.002855244728656281
+        ],
+        [
+          -0.0006332785587410683,
+          -0.01037912198460722,
+          -0.007592959742817484
+        ],
+        [
+          0.012578679760297501,
+          0.015155980972857419,
+          0.0020443801576784937
+        ],
+        [
+          -0.011530557989877899,
+          0.0012992278752834707,
+          0.008870744060490487
+        ],
+        [
+          -0.010383917119296981,
+          0.0004372239804890654,
+          0.0073045317010560495
+        ],
+        [
+          0.001371078304976292,
+          0.01155038790226559,
+          -0.00874109559799452
+        ],
+        [
+          0.014885571818149756,
+          -0.012407258035182611,
+          -0.0020046920478246077
+        ],
+        [
+          0.0007247779438097623,
+          0.005152783247138526,
+          -0.007498433661770498
+        ],
+        [
+          0.0036186377910942813,
+          0.005048397236573632,
+          0.006730161169645532
+        ],
+        [
+          -0.004493884909066548,
+          -0.0057773634753952585,
+          -0.0028552447291858574
+        ],
+        [
+          -0.005373953987140023,
+          0.00045580761177177465,
+          0.006958666504185196
+        ],
+        [
+          -0.0052955347613030945,
+          0.00341369659930435,
+          -0.006453414445054317
+        ],
+        [
+          0.0060676462018263155,
+          -0.004305594893686759,
+          0.0031887321750330155
+        ],
+        [
+          0.005106152747952564,
+          -0.0007516615794393999,
+          0.007107448810366179
+        ],
+        [
+          -0.0059090777820514084,
+          0.004403345185923613,
+          0.002964508142493827
+        ],
+        [
+          0.005201226759502131,
+          -0.0034076532592601794,
+          -0.006485382055025468
+        ],
+        [
+          0.010380542634565226,
+          -0.0005013755544283072,
+          0.007331953083364873
+        ],
+        [
+          -0.015145066953204722,
+          0.012522214211918514,
+          -0.001954443382980564
+        ],
+        [
+          -0.0012931698300605587,
+          -0.011639778976418658,
+          -0.00884358116227979
+        ],
+        [
+          -1.3092165338512984e-05,
+          0.010181732630904383,
+          -0.0073599996294611
+        ],
+        [
+          -0.01225311530578177,
+          -0.014816418494250971,
+          0.001916521001703142
+        ],
+        [
+          0.011852144162370681,
+          -0.0009875283940782298,
+          0.008906094492562744
+        ],
+        [
+          -0.00044943553312748463,
+          -0.005305922087749604,
+          -0.007253094830623752
+        ],
+        [
+          -0.0034863270883298547,
+          -0.0052155356577072015,
+          0.006671994397221326
+        ],
+        [
+          0.0043448649595801275,
+          0.006035654737737595,
+          -0.0029533944105515353
+        ]
+      ]
+    ]
+  },
+  "process_samples": [
+    [
+      2069350812192017,
+      958398464,
+      2298654720
+    ],
+    [
+      2069351196487900,
+      958398464,
+      2299645952
+    ],
+    [
+      2069351286599966,
+      958398464,
+      2299686912
+    ],
+    [
+      2069351378120406,
+      970981376,
+      2299736064
+    ],
+    [
+      2069351468640623,
+      970981376,
+      2299834368
+    ],
+    [
+      2069351560382547,
+      855638016,
+      2299871232
+    ],
+    [
+      2069351651754855,
+      1602224128,
+      2299936768
+    ],
+    [
+      2069351743423830,
+      2116026368,
+      2299994112
+    ],
+    [
+      2069351833569460,
+      2116026368,
+      2300006400
+    ],
+    [
+      2069353510518792,
+      958398464,
+      2307153920
+    ],
+    [
+      2069353551057768,
+      958398464,
+      2307149824
+    ]
+  ],
+  "sampling_errors": [],
+  "sampled_device_peak": 2116026368,
+  "sampled_host_peak": 2307153920,
+  "pool_after": {
+    "used_bytes": 2434048,
+    "retained_bytes": 231709184
+  },
+  "clean_reference_convergence": [
+    {
+      "converged": true,
+      "final_residuals": {
+        "density_rms": 1.3458025579479056e-10,
+        "energy_change_hartree": null,
+        "orbital_gradient_norm": 4.564600419123367e-11
+      },
+      "iterations": 1,
+      "warm_start": {
+        "fallback": false,
+        "used": true
+      }
+    }
+  ],
+  "same_scf_iterations_as_clean": true,
+  "energy_error_from_clean_stock": 0.0,
+  "force_error_from_clean_stock": 2.220446049250313e-13
+}

@@ -1,0 +1,336 @@
+{
+  "scope": "Account the intrusive stock profile without treating wrappers as production work.",
+  "runner_sha256": "de8c7de751e52c30c3023afae34a72e0a3de5b319500833dc89317da1c4c8c21",
+  "source_record_sha256": "25fed34c63c01b6b4bfeb1d47f6d98a6d953b5248115f4e517cbbaf75d659fab",
+  "source_sqlite_sha256": "15b97656c47561f674d17d5e4ae1f3135d20fc56ebddabd50e26349438b77a32",
+  "logical_calls": {
+    "logical_jk": 2,
+    "df_build": 1,
+    "raw_and_whitened_factor_construction": 1,
+    "raw_evaluator_setup": 2,
+    "metric_decomposition_and_transform": 1,
+    "raw_metric": 1,
+    "metric_cholesky": 1,
+    "metric_triangular_solve": 1,
+    "raw_three_center_block": 7,
+    "density_factorization": 2,
+    "jk_tensor_contract": 28,
+    "eigensystem": 1,
+    "df_force_response": 1,
+    "response_tensor_contract": 25,
+    "response_metric_solver": 1,
+    "response_metric_cholesky": 1
+  },
+  "thread_local_scopes": [
+    {
+      "thread": 131244071765888,
+      "operation": "logical_jk",
+      "calls": 2,
+      "inclusive_ns": 690061833,
+      "exclusive_ns": 11613079
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "df_build",
+      "calls": 1,
+      "inclusive_ns": 192015395,
+      "exclusive_ns": 54665437
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "raw_and_whitened_factor_construction",
+      "calls": 1,
+      "inclusive_ns": 137349958,
+      "exclusive_ns": 73674181
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "raw_evaluator_setup",
+      "calls": 2,
+      "inclusive_ns": 4466146,
+      "exclusive_ns": 4466146
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "metric_decomposition_and_transform",
+      "calls": 1,
+      "inclusive_ns": 14406525,
+      "exclusive_ns": 568196
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "raw_metric",
+      "calls": 1,
+      "inclusive_ns": 9984935,
+      "exclusive_ns": 9984935
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "metric_cholesky",
+      "calls": 1,
+      "inclusive_ns": 2185793,
+      "exclusive_ns": 2185793
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "metric_triangular_solve",
+      "calls": 1,
+      "inclusive_ns": 1667601,
+      "exclusive_ns": 1667601
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "raw_three_center_block",
+      "calls": 7,
+      "inclusive_ns": 240951750,
+      "exclusive_ns": 240951750
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "density_factorization",
+      "calls": 2,
+      "inclusive_ns": 17033913,
+      "exclusive_ns": 16675787
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "jk_tensor_contract",
+      "calls": 28,
+      "inclusive_ns": 469757572,
+      "exclusive_ns": 469757572
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "eigensystem",
+      "calls": 1,
+      "inclusive_ns": 20707532,
+      "exclusive_ns": 20707532
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "df_force_response",
+      "calls": 1,
+      "inclusive_ns": 1240009913,
+      "exclusive_ns": 729991857
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "response_tensor_contract",
+      "calls": 25,
+      "inclusive_ns": 311741821,
+      "exclusive_ns": 311741821
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "response_metric_solver",
+      "calls": 1,
+      "inclusive_ns": 2127591,
+      "exclusive_ns": 23004
+    },
+    {
+      "thread": 131244071765888,
+      "operation": "response_metric_cholesky",
+      "calls": 1,
+      "inclusive_ns": 2104587,
+      "exclusive_ns": 2104587
+    }
+  ],
+  "scope_limit": "Exclusive scopes subtract synchronous children in the same thread. Threads may overlap; neither their sums nor API/kernel totals form clean endpoint time.",
+  "factor_observations": [
+    {
+      "operation_id": 1,
+      "nbf": 768,
+      "naux": 768,
+      "blocks": [
+        {
+          "type": "ndarray",
+          "shape": [
+            768,
+            80304
+          ],
+          "strides": [
+            8,
+            6144
+          ],
+          "dtype": "float64",
+          "bytes": 493387776,
+          "tags": []
+        }
+      ]
+    }
+  ],
+  "cuda_transfers": [
+    {
+      "direction": "Host-to-Device",
+      "calls": 565,
+      "bytes": 832636
+    },
+    {
+      "direction": "Device-to-Host",
+      "calls": 1233,
+      "bytes": 4785863
+    },
+    {
+      "direction": "Device-to-Device",
+      "calls": 86,
+      "bytes": 369408
+    }
+  ],
+  "runtime_apis": [
+    {
+      "name": "cuLaunchKernel",
+      "calls": 7196,
+      "summed_ns": 49570304
+    },
+    {
+      "name": "cudaMemcpyAsync_v3020",
+      "calls": 1884,
+      "summed_ns": 136627339
+    },
+    {
+      "name": "cudaStreamIsCapturing_v10000",
+      "calls": 1822,
+      "summed_ns": 1342719
+    },
+    {
+      "name": "cudaStreamSynchronize_v3020",
+      "calls": 1233,
+      "summed_ns": 2591003
+    },
+    {
+      "name": "cudaEventQuery_v3020",
+      "calls": 1114,
+      "summed_ns": 1500879
+    },
+    {
+      "name": "cudaLaunchKernel_v7000",
+      "calls": 836,
+      "summed_ns": 4929849
+    },
+    {
+      "name": "cudaEventRecord_v3020",
+      "calls": 576,
+      "summed_ns": 1929751
+    },
+    {
+      "name": "cudaEventDestroy_v3020",
+      "calls": 570,
+      "summed_ns": 649640
+    },
+    {
+      "name": "cudaEventCreateWithFlags_v3020",
+      "calls": 570,
+      "summed_ns": 784117
+    },
+    {
+      "name": "cudaMemsetAsync_v3020",
+      "calls": 263,
+      "summed_ns": 1964396
+    },
+    {
+      "name": "cuKernelGetFunction",
+      "calls": 180,
+      "summed_ns": 104168
+    },
+    {
+      "name": "cudaDeviceSynchronize_v3020",
+      "calls": 152,
+      "summed_ns": 1559409302
+    },
+    {
+      "name": "cuStreamGetCaptureInfo_v2",
+      "calls": 30,
+      "summed_ns": 5100
+    },
+    {
+      "name": "cuLaunchKernelEx",
+      "calls": 16,
+      "summed_ns": 184622
+    },
+    {
+      "name": "cudaFree_v3020",
+      "calls": 16,
+      "summed_ns": 213323724
+    },
+    {
+      "name": "cudaMalloc_v3020",
+      "calls": 15,
+      "summed_ns": 5478833
+    },
+    {
+      "name": "cudaMemset_v3020",
+      "calls": 7,
+      "summed_ns": 50877
+    },
+    {
+      "name": "cudaGetDeviceProperties_v2_v12000",
+      "calls": 7,
+      "summed_ns": 9790845
+    },
+    {
+      "name": "cudaMemGetInfo_v3020",
+      "calls": 7,
+      "summed_ns": 238235
+    },
+    {
+      "name": "cuMemsetD32Async",
+      "calls": 2,
+      "summed_ns": 12985
+    },
+    {
+      "name": "cuProfilerStart",
+      "calls": 1,
+      "summed_ns": 3016
+    }
+  ],
+  "kernel_launches": 8048,
+  "known_wrapper_device_synchronizations": 152,
+  "observed_device_synchronizations": 152,
+  "synchronization_limit": "Wrappers deliberately fence each call twice; observed profile counts are not clean production synchronization counts.",
+  "memory_limit": "These process samples include Nsight and component-wrapper overhead, so they are diagnostic observations, not unprofiled memory acceptance.",
+  "sampled_device_peak": 9755951104,
+  "sampled_host_peak": 2284204032,
+  "pool_before": {
+    "used_bytes": 9585152,
+    "retained_bytes": 110835712
+  },
+  "pool_after": {
+    "used_bytes": 9585152,
+    "retained_bytes": 105715712
+  },
+  "numerical_parity": {
+    "energy_error_from_clean_stock": 0.0,
+    "force_error_from_clean_stock": 8.135714324453147e-13,
+    "same_scf_iterations_as_clean": false
+  },
+  "branch_observation": {
+    "profile_iterations": [
+      1
+    ],
+    "all_clean_iterations": [
+      [
+        3
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        5
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "same_as_first_clean": false,
+    "limit": "No fixed-work timing attribution: this profile follows a different branch from the first clean sample. All seven original branches remain visible; neither samples nor counters are pooled. Equal iteration counts alone do not prove identical operator or density work."
+  }
+}
