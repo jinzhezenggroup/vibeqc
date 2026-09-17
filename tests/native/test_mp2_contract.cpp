@@ -153,13 +153,12 @@ void shell_local_weighted_eri_derivative() {
   const auto oracle = vibeqc::integrals::build_integrals(system);
   const std::array<std::size_t, 4> shells{0, 1, 0, 1};
   const std::array<double, 1> weights{0.37};
-  const auto center = vibeqc::integrals::contract_weighted_eri_shell_derivative(
-      system, shells, weights);
+  const auto center =
+      vibeqc::integrals::contract_weighted_eri_shell_derivative(system, shells, weights);
   std::array<double, 6> scattered{};
   for (std::size_t slot = 0; slot < 4; ++slot)
     for (std::size_t axis = 0; axis < 3; ++axis)
-      scattered[3 * system.shells[shells[slot]].atom_index + axis] +=
-          center[3 * slot + axis];
+      scattered[3 * system.shells[shells[slot]].atom_index + axis] += center[3 * slot + axis];
   const auto eri = ((0 * 2 + 1) * 2 + 0) * 2 + 1;
   for (std::size_t coordinate = 0; coordinate < scattered.size(); ++coordinate) {
     const double expected = weights[0] * oracle.eri_derivative[coordinate * 16 + eri];
@@ -205,8 +204,7 @@ void conventional_derivative_from_mo_weights() {
   weights.two_electron.resize(16);
   for (std::size_t i = 0; i < weights.two_electron.size(); ++i)
     weights.two_electron[i] = 0.01 * static_cast<double>(i + 1);
-  const auto derivative =
-      vibeqc::mp2::conventional_derivative_cpu(system, ref, weights);
+  const auto derivative = vibeqc::mp2::conventional_derivative_cpu(system, ref, weights);
 
   const auto oracle = vibeqc::integrals::build_integrals(system);
   std::array<double, 4> one_ao{}, overlap_ao{};
@@ -257,8 +255,8 @@ double conventional_total_energy(vibeqc::core::System system) {
   const auto hf = vibeqc::scf::run_rhf(system, options);
   require(hf.converged && hf.reference, "finite-difference MP2 reference");
   vibeqc::posthf::RawSource source(std::move(system));
-  const auto correlation = vibeqc::mp2::conventional_energy(
-      *hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
+  const auto correlation =
+      vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
   return hf.reference->energy + correlation.opposite_spin + correlation.same_spin;
 }
 
@@ -279,8 +277,8 @@ void complete_conventional_force_matches_resolved_energy() {
   response.restart = 8;
   response.max_iterations = 40;
   response.max_workspace_bytes = 64ULL << 20;
-  const auto analytic = vibeqc::mp2::conventional_force_cpu(
-      *hf.reference, source, 256ULL << 20, 1e-10, 1e-10, response);
+  const auto analytic = vibeqc::mp2::conventional_force_cpu(*hf.reference, source, 256ULL << 20,
+                                                            1e-10, 1e-10, response);
   require(analytic.response.converged(), "MP2 Z-vector did not converge");
   require(analytic.forces.size() == 6, "MP2 force shape");
   const double step = 1e-4;
@@ -289,8 +287,7 @@ void complete_conventional_force_matches_resolved_energy() {
   plus.atoms[0].position[2] += step;
   minus.atoms[0].position[2] -= step;
   const double finite =
-      (conventional_total_energy(std::move(plus)) -
-       conventional_total_energy(std::move(minus))) /
+      (conventional_total_energy(std::move(plus)) - conventional_total_energy(std::move(minus))) /
       (2.0 * step);
   require(std::abs(analytic.forces[2] + finite) < 2e-6,
           "complete conventional MP2 force differs from resolved finite difference");

@@ -424,7 +424,16 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution():
         )
         retry_forces = (ct.c_double * 6)(*([789.0] * 6))
         retry = _native.ResultDescriptor(
-            ct.sizeof(_native.ResultDescriptor), 0, 321.0, retry_forces, 6, 0, 0, 0, 0, 0
+            ct.sizeof(_native.ResultDescriptor),
+            0,
+            321.0,
+            retry_forces,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
         )
         _native.check(
             lib,

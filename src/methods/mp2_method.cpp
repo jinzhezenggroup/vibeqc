@@ -107,8 +107,8 @@ class Mp2Prepared final : public PreparedCalculation {
         response_options.restart = 30;
         response_options.max_iterations = 200;
         response_options.max_workspace_bytes = budget_;
-        force_diagnostic = mp2::conventional_force_cpu(
-            ref, source, budget_, threshold_, 1e-10, response_options);
+        force_diagnostic =
+            mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10, response_options);
         result.forces = force_diagnostic->forces;
       }
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
@@ -146,8 +146,8 @@ class Mp2Prepared final : public PreparedCalculation {
             std::max(reference_capacity_, force_diagnostic->planned_endpoint_peak_bytes);
         last_->measured_endpoint_peak_bytes =
             std::max(reference_capacity_, force_diagnostic->measured_endpoint_peak_bytes);
-        last_->numeric_capacity_bytes = std::max(
-            last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
+        last_->numeric_capacity_bytes =
+            std::max(last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
         last_->force_provenance_flags = 0x7;
         constexpr char response_hash[] = "rhf-canonical-response-v1";
         std::copy_n(response_hash, sizeof(response_hash), last_->response_operator_hash);

@@ -29,9 +29,11 @@ struct ConventionalForceResult {
  * The result is unpublished. The caller remains responsible for transactionally
  * copying it only after the full energy/force endpoint succeeds.
  */
-ConventionalForceResult conventional_force_cpu(
-    const scf::PhysicalReference& reference, const posthf::RawSource& source,
-    std::size_t budget_bytes, double denominator_threshold,
-    double same_space_threshold, const response::GmresOptions& response_options);
+ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& reference,
+                                               const posthf::RawSource& source,
+                                               std::size_t budget_bytes,
+                                               double denominator_threshold,
+                                               double same_space_threshold,
+                                               const response::GmresOptions& response_options);
 
 }  // namespace vibeqc::mp2

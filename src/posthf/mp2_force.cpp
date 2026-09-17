@@ -5,9 +5,9 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "posthf/capacity.hpp"
 #include "posthf/mp2_derivative.hpp"
 #include "posthf/mp2_gradient.hpp"
-#include "posthf/capacity.hpp"
 #include "posthf/native_provider.hpp"
 #include "posthf/raw_source.hpp"
 #include "scf/types.hpp"
@@ -31,8 +31,7 @@ std::vector<double> hcore_mo(const scf::PhysicalReference& reference) {
     for (std::size_t q = 0; q < n; ++q)
       for (std::size_t mu = 0; mu < n; ++mu)
         for (std::size_t nu = 0; nu < n; ++nu)
-          result[p * n + q] += reference.coefficients[mu * n + p] *
-                               reference.hcore[mu * n + nu] *
+          result[p * n + q] += reference.coefficients[mu * n + p] * reference.hcore[mu * n + nu] *
                                reference.coefficients[nu * n + q];
   return result;
 }
@@ -49,20 +48,17 @@ EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
     for (std::size_t a = 0; a < nv; ++a)
       for (std::size_t j = 0; j < no; ++j)
         for (std::size_t b = 0; b < nv; ++b)
-          ordered[((i * no + j) * nv + a) * nv + b] =
-              raw[((i * nv + a) * no + j) * nv + b];
-  return canonical_energy_adjoint(ordered, reference.orbital_energies, no,
-                                  denominator_threshold);
+          ordered[((i * no + j) * nv + a) * nv + b] = raw[((i * nv + a) * no + j) * nv + b];
+  return canonical_energy_adjoint(ordered, reference.orbital_energies, no, denominator_threshold);
 }
 
-response::LinearOperator response_operator(
-    const scf::PhysicalReference& reference,
-    const posthf::NativeBlockProvider& provider) {
+response::LinearOperator response_operator(const scf::PhysicalReference& reference,
+                                           const posthf::NativeBlockProvider& provider) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
-  return [&reference, &provider, no, nv, occupied, virtuals](
-             std::span<const double> input, std::span<double> output) {
+  return [&reference, &provider, no, nv, occupied, virtuals](std::span<const double> input,
+                                                             std::span<double> output) {
     if (input.size() != no * nv || output.size() != input.size())
       throw std::invalid_argument("RHF response vector has the wrong shape");
     for (std::size_t i = 0; i < no; ++i)
@@ -72,30 +68,30 @@ response::LinearOperator response_operator(
         const auto ovov = provider.get({ai, oi, virtuals, occupied});
         const auto vvoo = provider.get({ai, virtuals, oi, occupied});
         const auto voov = provider.get({ai, occupied, oi, virtuals});
-        double value = (reference.orbital_energies[no + a] -
-                        reference.orbital_energies[i]) *
+        double value = (reference.orbital_energies[no + a] - reference.orbital_energies[i]) *
                        input[i * nv + a];
         for (std::size_t j = 0; j < no; ++j)
           for (std::size_t b = 0; b < nv; ++b)
-            value += (4.0 * ovov[b * no + j] - vvoo[b * no + j] -
-                      voov[j * nv + b]) * input[j * nv + b];
+            value +=
+                (4.0 * ovov[b * no + j] - vvoo[b * no + j] - voov[j * nv + b]) * input[j * nv + b];
         output[i * nv + a] = value;
       }
   };
 }
 }  // namespace
 
-ConventionalForceResult conventional_force_cpu(
-    const scf::PhysicalReference& reference, const posthf::RawSource& source,
-    std::size_t budget_bytes, double denominator_threshold,
-    double same_space_threshold, const response::GmresOptions& response_options) {
+ConventionalForceResult conventional_force_cpu(const scf::PhysicalReference& reference,
+                                               const posthf::RawSource& source,
+                                               std::size_t budget_bytes,
+                                               double denominator_threshold,
+                                               double same_space_threshold,
+                                               const response::GmresOptions& response_options) {
   if (!reference.nocc || reference.nocc >= reference.nbf || source.nbf() != reference.nbf ||
       !budget_bytes || !std::isfinite(denominator_threshold) || denominator_threshold <= 0.0 ||
       !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
     throw std::invalid_argument("invalid conventional MP2 force request");
   posthf::NativeBlockProvider provider(source, reference, budget_bytes);
-  const auto dimension = posthf::checked_mul(reference.nocc,
-                                             reference.nbf - reference.nocc);
+  const auto dimension = posthf::checked_mul(reference.nocc, reference.nbf - reference.nocc);
   const auto plan = response::prepare_gmres(dimension, response_options);
   std::size_t maximum_shell = 0;
   for (const auto& shell : source.orbital().shells) {
@@ -108,26 +104,24 @@ ConventionalForceResult conventional_force_cpu(
   const auto provider_bytes =
       posthf::checked_add(provider.source_bytes(), provider.reference_bytes());
   const auto resources = conventional_gradient_plan(
-      reference.nbf, reference.nocc, provider_bytes, plan, maximum_shell,
-      coordinate_count, posthf::checked_mul(coordinate_count, sizeof(double)), budget_bytes);
+      reference.nbf, reference.nocc, provider_bytes, plan, maximum_shell, coordinate_count,
+      posthf::checked_mul(coordinate_count, sizeof(double)), budget_bytes);
   const auto h = hcore_mo(reference);
   const auto adjoint = energy_adjoint(reference, provider, denominator_threshold);
-  const auto orbital = canonical_orbital_rhs_streamed(
-      reference, h, provider, adjoint, same_space_threshold);
+  const auto orbital =
+      canonical_orbital_rhs_streamed(reference, h, provider, adjoint, same_space_threshold);
   std::vector<double> diagonal(dimension);
   for (std::size_t i = 0; i < reference.nocc; ++i)
     for (std::size_t a = 0; a < reference.nbf - reference.nocc; ++a)
       diagonal[i * (reference.nbf - reference.nocc) + a] =
-          reference.orbital_energies[reference.nocc + a] -
-          reference.orbital_energies[i];
-  auto response_result = response::solve_gmres(
-      plan, response_operator(reference, provider), orbital.response_rhs, {}, diagonal);
+          reference.orbital_energies[reference.nocc + a] - reference.orbital_energies[i];
+  auto response_result = response::solve_gmres(plan, response_operator(reference, provider),
+                                               orbital.response_rhs, {}, diagonal);
   if (!response_result.converged())
     throw std::runtime_error("canonical MP2 orbital response did not converge");
   auto weights = canonical_lagrangian_weights_streamed(
       reference, h, provider, adjoint, response_result.solution, same_space_threshold);
-  if (!std::isfinite(weights.stationarity_residual) ||
-      weights.stationarity_residual > 1e-7)
+  if (!std::isfinite(weights.stationarity_residual) || weights.stationarity_residual > 1e-7)
     throw std::runtime_error("canonical MP2 relaxed Lagrangian is not stationary");
   auto derivative = conventional_derivative_cpu(source.orbital(), reference, weights);
   for (double& value : derivative) value = -value;

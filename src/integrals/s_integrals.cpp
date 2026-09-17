@@ -1038,13 +1038,12 @@ std::array<double, 12> contract_weighted_eri_shell_derivative(
     if (shell_indices[slot] >= system.shells.size())
       throw std::invalid_argument("weighted ERI shell index is out of range");
     shells[slot] = &system.shells[shell_indices[slot]];
-    expansions[slot] = molecule::ao_expansions(shells[slot]->angular_momentum,
-                                                system.basis_representation);
+    expansions[slot] =
+        molecule::ao_expansions(shells[slot]->angular_momentum, system.basis_representation);
     expected = checked_product(expected, expansions[slot].size());
   }
-  if (weights.size() != expected ||
-      !std::all_of(weights.begin(), weights.end(),
-                   [](double value) { return std::isfinite(value); }))
+  if (weights.size() != expected || !std::all_of(weights.begin(), weights.end(),
+                                                 [](double value) { return std::isfinite(value); }))
     throw std::invalid_argument("weighted ERI shell weights are inconsistent or nonfinite");
 
   constexpr std::size_t coordinates = 12;
@@ -1054,8 +1053,8 @@ std::array<double, 12> contract_weighted_eri_shell_derivative(
     if (atom >= system.atoms.size())
       throw std::invalid_argument("weighted ERI shell atom is out of range");
     for (std::size_t axis = 0; axis < 3; ++axis)
-      centers[slot][axis] = Jet::variable(system.atoms[atom].position[axis], coordinates,
-                                          3 * slot + axis);
+      centers[slot][axis] =
+          Jet::variable(system.atoms[atom].position[axis], coordinates, 3 * slot + axis);
   }
 
   Jet contracted(0.0, coordinates);
@@ -1070,8 +1069,8 @@ std::array<double, 12> contract_weighted_eri_shell_derivative(
             for (const auto& ej : ao_j)
               for (const auto& ek : ao_k)
                 for (const auto& el : ao_l) {
-                  const std::array<const molecule::CartesianExpansionTerm*, 4> terms{
-                      &ei, &ej, &ek, &el};
+                  const std::array<const molecule::CartesianExpansionTerm*, 4> terms{&ei, &ej, &ek,
+                                                                                     &el};
                   double component_weight = public_weight;
                   for (const auto* term : terms)
                     component_weight *=
@@ -1081,14 +1080,15 @@ std::array<double, 12> contract_weighted_eri_shell_derivative(
                     for (const auto& pj : shells[1]->primitives)
                       for (const auto& pk : shells[2]->primitives)
                         for (const auto& pl : shells[3]->primitives) {
-                          const double primitive_weight =
-                              component_weight * pi.coefficient * pj.coefficient *
-                              pk.coefficient * pl.coefficient;
-                          contracted = contracted + primitive_weight * primitive_eri_cartesian(
-                              pi.exponent, centers[0], ei.component,
-                              pj.exponent, centers[1], ej.component,
-                              pk.exponent, centers[2], ek.component,
-                              pl.exponent, centers[3], el.component);
+                          const double primitive_weight = component_weight * pi.coefficient *
+                                                          pj.coefficient * pk.coefficient *
+                                                          pl.coefficient;
+                          contracted = contracted + primitive_weight *
+                                                        primitive_eri_cartesian(
+                                                            pi.exponent, centers[0], ei.component,
+                                                            pj.exponent, centers[1], ej.component,
+                                                            pk.exponent, centers[2], ek.component,
+                                                            pl.exponent, centers[3], el.component);
                         }
                 }
         }
@@ -1119,16 +1119,15 @@ std::vector<double> contract_weighted_one_electron_derivative(
   std::vector<Vec3> atoms(system.atoms.size());
   for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
     for (std::size_t axis = 0; axis < 3; ++axis)
-      atoms[atom][axis] =
-          Jet::variable(system.atoms[atom].position[axis], ncoord, 3 * atom + axis);
+      atoms[atom][axis] = Jet::variable(system.atoms[atom].position[axis], ncoord, 3 * atom + axis);
 
   std::vector<std::size_t> offsets(system.shells.size() + 1, 0);
   std::vector<std::vector<molecule::AoExpansion>> expansions(system.shells.size());
   for (std::size_t shell = 0; shell < system.shells.size(); ++shell) {
     if (system.shells[shell].atom_index >= system.atoms.size())
       throw std::invalid_argument("streamed one-electron shell atom is out of range");
-    expansions[shell] = molecule::ao_expansions(system.shells[shell].angular_momentum,
-                                                 system.basis_representation);
+    expansions[shell] =
+        molecule::ao_expansions(system.shells[shell].angular_momentum, system.basis_representation);
     offsets[shell + 1] = checked_sum(offsets[shell], expansions[shell].size());
   }
   if (offsets.back() != n)
@@ -1157,20 +1156,19 @@ std::vector<double> contract_weighted_one_electron_derivative(
                   const double primitive_weight =
                       component_weight * pi.coefficient * pj.coefficient;
                   if (overlap_weight != 0.0)
-                    contracted = contracted +
-                                 overlap_weight * primitive_weight *
-                                     primitive_overlap_cartesian(
-                                         pi.exponent, center_i, ei.component,
-                                         pj.exponent, center_j, ej.component);
+                    contracted = contracted + overlap_weight * primitive_weight *
+                                                  primitive_overlap_cartesian(
+                                                      pi.exponent, center_i, ei.component,
+                                                      pj.exponent, center_j, ej.component);
                   if (hcore_weight != 0.0)
-                    contracted = contracted +
-                                 hcore_weight * primitive_weight *
-                                     (primitive_kinetic_cartesian(
-                                          pi.exponent, center_i, ei.component,
-                                          pj.exponent, center_j, ej.component) +
-                                      primitive_nuclear_attraction_cartesian(
-                                          pi.exponent, center_i, ei.component,
-                                          pj.exponent, center_j, ej.component, atoms, system));
+                    contracted =
+                        contracted +
+                        hcore_weight * primitive_weight *
+                            (primitive_kinetic_cartesian(pi.exponent, center_i, ei.component,
+                                                         pj.exponent, center_j, ej.component) +
+                             primitive_nuclear_attraction_cartesian(
+                                 pi.exponent, center_i, ei.component, pj.exponent, center_j,
+                                 ej.component, atoms, system));
                 }
             }
         }
@@ -1179,11 +1177,9 @@ std::vector<double> contract_weighted_one_electron_derivative(
   if (include_nuclear_repulsion)
     for (std::size_t a = 0; a < system.atoms.size(); ++a)
       for (std::size_t b = 0; b < a; ++b)
-        contracted =
-            contracted +
-            static_cast<double>(system.atoms[a].ionic_charge() *
-                                system.atoms[b].ionic_charge()) /
-                sqrt(distance_squared(atoms[a], atoms[b]));
+        contracted = contracted + static_cast<double>(system.atoms[a].ionic_charge() *
+                                                      system.atoms[b].ionic_charge()) /
+                                      sqrt(distance_squared(atoms[a], atoms[b]));
   if (!std::isfinite(contracted.value) ||
       !std::all_of(contracted.derivative.begin(), contracted.derivative.end(),
                    [](double value) { return std::isfinite(value); }))

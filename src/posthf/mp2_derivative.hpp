@@ -20,8 +20,8 @@ namespace vibeqc::mp2 {
  * at a time and immediately consumed, so no molecular AO-rank-four cotangent
  * or coordinate-major derivative tensor exists.
  */
-std::vector<double> conventional_derivative_cpu(
-    const core::System& system, const scf::PhysicalReference& reference,
-    const LagrangianWeights& weights);
+std::vector<double> conventional_derivative_cpu(const core::System& system,
+                                                const scf::PhysicalReference& reference,
+                                                const LagrangianWeights& weights);
 
 }  // namespace vibeqc::mp2
