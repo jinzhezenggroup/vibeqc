@@ -1,0 +1,1174 @@
+{
+  "scope": "Intrusive unequal-basis warm dataflow with complete unmodified cc-pVDZ/JKFIT.\n\nThe 32-GiB numeric ledger is an observation ceiling, not the small-AO Python\ninventory or a whole-process memory guarantee. The separately supplied DF\nbudget is enforced by the actual native value/response planners. CUDA profiler\nrange excludes untimed priming, validation and output serialization. Native\nledger peaks include priming; sampled process peaks cover only the warm call.\nProcess observations under Nsight include profiler overhead and do not replace\nthe separately retained unprofiled memory-acceptance diagnostics.\n",
+  "storage": "dense",
+  "aos": 96,
+  "auxiliaries": 464,
+  "basis_definitions": {
+    "cc-pvdz": {
+      "H": [
+        [
+          0,
+          [
+            13.01,
+            0.019685
+          ],
+          [
+            1.962,
+            0.137977
+          ],
+          [
+            0.4446,
+            0.478148
+          ]
+        ],
+        [
+          0,
+          [
+            0.122,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            0.727,
+            1.0
+          ]
+        ]
+      ],
+      "O": [
+        [
+          0,
+          [
+            11720.0,
+            0.00071,
+            -0.00016
+          ],
+          [
+            1759.0,
+            0.00547,
+            -0.001263
+          ],
+          [
+            400.8,
+            0.027837,
+            -0.006267
+          ],
+          [
+            113.7,
+            0.1048,
+            -0.025716
+          ],
+          [
+            37.03,
+            0.283062,
+            -0.070924
+          ],
+          [
+            13.27,
+            0.448719,
+            -0.165411
+          ],
+          [
+            5.025,
+            0.270952,
+            -0.116955
+          ],
+          [
+            1.013,
+            0.015458,
+            0.557368
+          ]
+        ],
+        [
+          0,
+          [
+            0.3023,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            17.7,
+            0.043018
+          ],
+          [
+            3.854,
+            0.228913
+          ],
+          [
+            1.046,
+            0.508728
+          ]
+        ],
+        [
+          1,
+          [
+            0.2753,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            1.185,
+            1.0
+          ]
+        ]
+      ]
+    },
+    "cc-pvdz-jkfit": {
+      "H": [
+        [
+          0,
+          [
+            9.53024933,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            1.91745062,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            0.68424049,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            0.28413256,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            2.9133232,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            1.26212054,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            0.50199776,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            2.31353291,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            0.71290724,
+            1.0
+          ]
+        ]
+      ],
+      "O": [
+        [
+          0,
+          [
+            1517.8667506,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            489.67952008,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            176.72118665,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            63.79223314,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            25.36649913,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            9.91354912,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            4.46453066,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            1.80177437,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            0.80789711,
+            1.0
+          ]
+        ],
+        [
+          0,
+          [
+            0.33864327,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            120.16030921,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            34.40962247,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            12.58114861,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            5.06638242,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            2.03469271,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            0.86092967,
+            1.0
+          ]
+        ],
+        [
+          1,
+          [
+            0.36681357,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            19.04306281,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            5.80603811,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            2.18918416,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            0.87794614,
+            1.0
+          ]
+        ],
+        [
+          2,
+          [
+            0.35623647,
+            1.0
+          ]
+        ],
+        [
+          3,
+          [
+            2.49391479,
+            1.0
+          ]
+        ],
+        [
+          3,
+          [
+            0.82491479,
+            1.0
+          ]
+        ]
+      ]
+    }
+  },
+  "orbital_basis": "cc-pvdz",
+  "auxiliary_basis": "cc-pvdz-jkfit",
+  "df_budget_bytes": 0,
+  "slurm_job_id": "9856",
+  "cuda_visible_devices": "0",
+  "native_identity": "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133",
+  "library_sha256": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+  "checkpoint_sha256": "31f2659a94740f48f20f5ff1dd4247a818f6d22786e6770bfd95f56268b24862",
+  "reference_sha256": "f9b7b8b9ca7c22521594cb4759f53c9d866ea8eebdd2680828bfdc49880fae4f",
+  "runner_sha256": "8a26c046051a6f2fff5fe8756a748d9c27b4b18d51bf87ca9842c653f21a11d9",
+  "controls": {
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_SHELL_POLICY": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/frozen/libvibeqc.so",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_VALUE_STORAGE": "dense"
+  },
+  "restore": {
+    "schema_version": 1,
+    "bytes": 78915,
+    "manifest_identity": "44cdc4aca3def8ddf9e2cb1fac8e6060a8932ca26d059033a57798b2409bab4e",
+    "read_seconds": 0.11424892209470272,
+    "items": [
+      {
+        "index": 0,
+        "compatibility": "exact_restart",
+        "reason": "same scientific identity, geometry and controls",
+        "restored_fields": [
+          "density"
+        ],
+        "rejected_fields": [],
+        "source_status": 0,
+        "source_model_identity": "49913ee67a1bc05354eea9e68b19523eca969a52495bd659f31e4e1ae5598665"
+      }
+    ],
+    "target_verification": "executed",
+    "validation_backend": "cpu_source_overlap",
+    "target_results": [
+      {
+        "index": 0,
+        "converged": true,
+        "status": 0,
+        "energy": -304.15104061102363,
+        "density_rms": 2.7587699515993282e-12,
+        "restart_origin": "persistent_restart"
+      }
+    ]
+  },
+  "primed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 146309183,
+    "peak_bytes": 221949775,
+    "allocations": 124,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  },
+  "primed_convergence": [
+    {
+      "converged": true,
+      "iterations": 2,
+      "basis_metadata": {
+        "orbital": {
+          "name": "explicit-shells",
+          "role": "orbital",
+          "mathematical_identity": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325",
+          "basis_identity": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325",
+          "representation": "spherical",
+          "provenance": {
+            "source": "explicit native Shell input",
+            "version": "1",
+            "license": "caller-supplied",
+            "checksum": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 48,
+          "primitive_count": 128
+        },
+        "auxiliary": {
+          "name": "explicit-shells",
+          "role": "auxiliary",
+          "mathematical_identity": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c",
+          "basis_identity": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c",
+          "representation": "spherical",
+          "provenance": {
+            "source": "explicit native Shell input",
+            "version": "1",
+            "license": "caller-supplied",
+            "checksum": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 168,
+          "primitive_count": 168
+        },
+        "model_identity": "a2ae6d63c7c6d1f174880083c7223d5a49b19726f1ecb2dab16f4271c7ff239e"
+      },
+      "energy_change_hartree": 6.252776074688882e-13,
+      "density_rms": 2.7587699515993282e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "final_residuals": {
+        "energy_change_hartree": 6.252776074688882e-13,
+        "density_rms": 2.7587699515993282e-12,
+        "orbital_gradient_norm": null
+      },
+      "warm_start": {
+        "used": true,
+        "fallback": false
+      }
+    }
+  ],
+  "intrusive_seconds": 0.7496244669891894,
+  "iterations": [
+    2
+  ],
+  "convergence": [
+    {
+      "converged": true,
+      "iterations": 2,
+      "basis_metadata": {
+        "orbital": {
+          "name": "explicit-shells",
+          "role": "orbital",
+          "mathematical_identity": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325",
+          "basis_identity": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325",
+          "representation": "spherical",
+          "provenance": {
+            "source": "explicit native Shell input",
+            "version": "1",
+            "license": "caller-supplied",
+            "checksum": "e852bf4df6271b0f09d9357832847da53821fa2e9c7dbd02fbfd3e3f5064e325"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 48,
+          "primitive_count": 128
+        },
+        "auxiliary": {
+          "name": "explicit-shells",
+          "role": "auxiliary",
+          "mathematical_identity": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c",
+          "basis_identity": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c",
+          "representation": "spherical",
+          "provenance": {
+            "source": "explicit native Shell input",
+            "version": "1",
+            "license": "caller-supplied",
+            "checksum": "9da9661da8aa2b82897c73c9994652abec8696317c4cc60b9a28a8bdbffaca3c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 40,
+            "multiplicity": 1,
+            "nalpha": 20,
+            "nbeta": 20
+          },
+          "shell_count": 168,
+          "primitive_count": 168
+        },
+        "model_identity": "a2ae6d63c7c6d1f174880083c7223d5a49b19726f1ecb2dab16f4271c7ff239e"
+      },
+      "energy_change_hartree": 6.252776074688882e-13,
+      "density_rms": 2.7587699515993282e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "final_residuals": {
+        "energy_change_hartree": 6.252776074688882e-13,
+        "density_rms": 2.7587699515993282e-12,
+        "orbital_gradient_norm": null
+      },
+      "warm_start": {
+        "used": true,
+        "fallback": false
+      }
+    }
+  ],
+  "energies_hartree": [
+    -304.15104061102363
+  ],
+  "forces_hartree_per_bohr": [
+    [
+      [
+        0.011531538303665906,
+        0.011606973106566524,
+        0.010858973158433764
+      ],
+      [
+        -0.021452044894846662,
+        -0.0022888881325354477,
+        0.0009964699436951607
+      ],
+      [
+        0.007662061681580063,
+        -0.006750500420808224,
+        -0.011998807443156513
+      ],
+      [
+        -0.011606973384328846,
+        0.011531538391663633,
+        -0.010858972523308358
+      ],
+      [
+        0.0022888884532452727,
+        -0.02145204519847503,
+        -0.0009964696745526874
+      ],
+      [
+        0.006750500024163152,
+        0.00766206140683189,
+        0.011998806585164775
+      ],
+      [
+        -0.01153153800037589,
+        -0.011606974933933574,
+        0.010858975121104987
+      ],
+      [
+        0.021452046028186577,
+        0.002288888701088474,
+        0.000996469711560956
+      ],
+      [
+        -0.007662062622349359,
+        0.006750501666229378,
+        -0.011998809116293557
+      ],
+      [
+        0.011606972699101128,
+        -0.01153153747480581,
+        -0.01085897339394501
+      ],
+      [
+        -0.0022888879688581277,
+        0.021452044697463892,
+        -0.0009964698149186597
+      ],
+      [
+        -0.006750500318535378,
+        -0.007662061809868628,
+        0.011998807446235781
+      ]
+    ]
+  ],
+  "energy_error": 1.0231815394945443e-12,
+  "force_error": 1.7573089441946799e-09,
+  "metric": [
+    {
+      "bucket_id": 0,
+      "system_index": 0,
+      "effective_rank": 464,
+      "absolute_threshold": 3.638717575141369e-08,
+      "condition_number": 5434793.529461506,
+      "solver_device_workspace_bytes": 8542872,
+      "solver_host_workspace_bytes": 0,
+      "device_resident_bytes": 150677763,
+      "peak_device_bytes": 195156511,
+      "host_resident_bytes": 2229026,
+      "peak_host_bytes": 38168614,
+      "auxiliary_tile": 464,
+      "streamed": false
+    }
+  ],
+  "components": {
+    "groups": [
+      {
+        "execution": "stream",
+        "operation": "compact_diis_reset",
+        "calls": 1,
+        "host_completion_ms": 0.175205,
+        "final_synchronization_ms": 0.001763,
+        "gpu_inclusive_ms": 0.132640004,
+        "host_exclusive_ms": {
+          "compact_diis_reset": 0.173442
+        },
+        "gpu_exclusive_ms": {
+          "compact_diis_reset": 0.132640004
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_j",
+        "calls": 1,
+        "host_completion_ms": 0.247824,
+        "final_synchronization_ms": 0.001493,
+        "gpu_inclusive_ms": 0.220927998,
+        "host_exclusive_ms": {
+          "ri_j": 0.064974,
+          "ri_j_gemm": 0.181357
+        },
+        "gpu_exclusive_ms": {
+          "ri_j": 0.09670399649999999,
+          "ri_j_gemm": 0.1242240015
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_k",
+        "calls": 1,
+        "host_completion_ms": 2.070673,
+        "final_synchronization_ms": 0.001363,
+        "gpu_inclusive_ms": 2.0444479,
+        "host_exclusive_ms": {
+          "ri_k": 0.1366210000000001,
+          "ri_k_density_projection_gemm": 0.924559,
+          "ri_k_exchange_gemm": 0.8972979999999999,
+          "ri_k_exchange_reduce": 0.110832
+        },
+        "gpu_exclusive_ms": {
+          "ri_k": 0.31657586910000024,
+          "ri_k_density_projection_gemm": 0.835584015,
+          "ri_k_exchange_gemm": 0.841536015,
+          "ri_k_exchange_reduce": 0.0507520009
+        },
+        "counter_sums": {
+          "dense_exchange_auxiliary_tile": 232
+        },
+        "counter_maxima": {
+          "dense_exchange_auxiliary_tile": 232
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_physical_fock",
+        "calls": 1,
+        "host_completion_ms": 2.531465,
+        "final_synchronization_ms": 0.001373,
+        "gpu_inclusive_ms": 2.501472,
+        "host_exclusive_ms": {
+          "final_state_physical_fock": 2.530092
+        },
+        "gpu_exclusive_ms": {
+          "final_state_physical_fock": 2.501472
+        },
+        "counter_sums": {
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 73728
+        },
+        "counter_maxima": {
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 73728
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_validation",
+        "calls": 1,
+        "host_completion_ms": 1.212792,
+        "final_synchronization_ms": 0.001413,
+        "gpu_inclusive_ms": 1.18400002,
+        "host_exclusive_ms": {
+          "final_state_validation": 1.211379
+        },
+        "gpu_exclusive_ms": {
+          "final_state_validation": 1.18400002
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 221184,
+          "workspace_bytes": 688624
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 221184,
+          "workspace_bytes": 688624
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_weighted_density",
+        "calls": 1,
+        "host_completion_ms": 0.16216,
+        "final_synchronization_ms": 0.001442,
+        "gpu_inclusive_ms": 0.132704005,
+        "host_exclusive_ms": {
+          "final_state_weighted_density": 0.160718
+        },
+        "gpu_exclusive_ms": {
+          "final_state_weighted_density": 0.132704005
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 73728,
+          "explicit_synchronizations": 1
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 73728,
+          "explicit_synchronizations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "force_response",
+        "calls": 1,
+        "host_completion_ms": 722.858351,
+        "final_synchronization_ms": 0.001673,
+        "gpu_inclusive_ms": 722.813782,
+        "host_exclusive_ms": {
+          "force_response": 0.3667009999999209,
+          "response_allocation_and_uploads": 0.495448,
+          "response_weights": 6.200522999999976,
+          "metric_inverse": 0.400387,
+          "coulomb_response": 0.8752929999999992,
+          "raw_value_slice_upload": 57.065499000000024,
+          "coulomb_response_charge_dot": 187.43389100000005,
+          "coulomb_response_weights": 0.054675,
+          "exchange_response_matrix_products": 28.801178999999976,
+          "exchange_response_weights_and_metric": 17.497691999999994,
+          "exchange_response_metric_dot": 29.99489499999998,
+          "three_center_derivative_contraction": 388.628595,
+          "metric_frechet_response": 0.814669,
+          "metric_center_derivative_contraction": 4.131958,
+          "response_output_and_synchronization": 0.095273
+        },
+        "gpu_exclusive_ms": {
+          "force_response": 0.4081749902999263,
+          "response_allocation_and_uploads": 0.467808008,
+          "response_weights": 31.133478140600005,
+          "metric_inverse": 0.371264011,
+          "coulomb_response": 25.675744982499992,
+          "raw_value_slice_upload": 44.8875519305,
+          "coulomb_response_charge_dot": 174.78153608699992,
+          "coulomb_response_weights": 0.0268799998,
+          "exchange_response_matrix_products": 16.268991958099985,
+          "exchange_response_weights_and_metric": 22.862431970099994,
+          "exchange_response_metric_dot": 12.396863998399988,
+          "three_center_derivative_contraction": 388.585632,
+          "metric_frechet_response": 0.777152002,
+          "metric_center_derivative_contraction": 4.10057592,
+          "response_output_and_synchronization": 0.0696960017
+        },
+        "counter_sums": {
+          "atom_coordinates": 36,
+          "density_upload_bytes": 73728,
+          "device_to_host_bytes": 288,
+          "host_to_device_bytes": 34312432,
+          "metric_derivative_weight_bytes": 1722368,
+          "metric_derivative_weights": 215296,
+          "raw_value_cache_hits": 928,
+          "raw_value_reuse_bytes": 68419584,
+          "raw_value_upload_bytes": 34209792,
+          "response_ao_matrix_products": 928,
+          "response_auxiliary_blocks": 1,
+          "response_charge_dot_elements": 4276224,
+          "response_charge_scalar_dots": 464,
+          "response_density_scalar_products": 928,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 215296,
+          "response_probe_total_device_bytes": 75640592,
+          "response_scratch_bytes": 75640592,
+          "shell_primitive_signature_policy": 0,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 34209792,
+          "three_center_derivative_weight_bytes": 34209792,
+          "three_center_derivative_weights": 4276224
+        },
+        "counter_maxima": {
+          "atom_coordinates": 36,
+          "density_upload_bytes": 73728,
+          "device_to_host_bytes": 288,
+          "host_to_device_bytes": 34312432,
+          "metric_derivative_weight_bytes": 1722368,
+          "metric_derivative_weights": 215296,
+          "raw_value_cache_hits": 928,
+          "raw_value_reuse_bytes": 68419584,
+          "raw_value_upload_bytes": 34209792,
+          "response_ao_matrix_products": 928,
+          "response_auxiliary_blocks": 1,
+          "response_charge_dot_elements": 4276224,
+          "response_charge_scalar_dots": 464,
+          "response_density_scalar_products": 928,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 215296,
+          "response_probe_total_device_bytes": 75640592,
+          "response_scratch_bytes": 75640592,
+          "shell_primitive_signature_policy": 0,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 34209792,
+          "three_center_derivative_weight_bytes": 34209792,
+          "three_center_derivative_weights": 4276224
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      }
+    ],
+    "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+  },
+  "observed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 146309183,
+    "peak_bytes": 221949775,
+    "allocations": 144,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  },
+  "process_samples": [
+    [
+      2065263493624786,
+      6673137664,
+      1457856512
+    ],
+    [
+      2065263584385386,
+      6750732288,
+      1459527680
+    ],
+    [
+      2065263676129958,
+      6750732288,
+      1460436992
+    ],
+    [
+      2065263765580290,
+      6750732288,
+      1460998144
+    ],
+    [
+      2065263855477297,
+      6750732288,
+      1464143872
+    ],
+    [
+      2065263945890602,
+      6750732288,
+      1464168448
+    ],
+    [
+      2065264035988403,
+      6750732288,
+      1464168448
+    ],
+    [
+      2065264126184542,
+      6750732288,
+      1464168448
+    ],
+    [
+      2065264215731279,
+      6750732288,
+      1464168448
+    ],
+    [
+      2065264306518840,
+      6673137664,
+      1472217088
+    ],
+    [
+      2065264396292992,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065264486307584,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065264576155156,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065264666804382,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065264756341590,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065264845733050,
+      6673137664,
+      1471455232
+    ],
+    [
+      2065265780772539,
+      6673137664,
+      1471459328
+    ],
+    [
+      2065265870499159,
+      6673137664,
+      1471459328
+    ]
+  ],
+  "sampling_failures": [],
+  "sampled_warm_device_peak": 6750732288,
+  "sampled_warm_host_peak": 1472217088,
+  "lifetime_host_peak_bytes": 1470009344,
+  "trace_sha256": {
+    ".cuda.jsonl": "90f1b1037341c946b71c90662d60bdca670c642656aa2c1553c3b50755f87740",
+    ".host.jsonl": "36be263d0776c109455f7b8516b2863fc31e3f0d63e00477328af56bf1aa4628",
+    ".journal.jsonl": "c134c4545103721fe093907bb1129deb0bb68c95fbc5b1eda20cafcd9e229def"
+  },
+  "closed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 0,
+    "peak_bytes": 221949775,
+    "allocations": 144,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  }
+}

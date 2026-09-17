@@ -1,0 +1,2332 @@
+{
+  "scope": "Intrusive cold DF generation, whitening, SCF and complete force dataflow.\n\nThe CUDA profiler and process sampler cover fresh molecular preparation through\nsynchronized force completion, after library/driver initialization. There is no\npriming molecular solve. Event scopes remain nested, transfer totals come from\nCUPTI, and sampled memory under Nsight includes profiler overhead. These runs\nare diagnostics only and never pooled with clean cold endpoint timings. The\n32-GiB native observation ledger is not Python inventory admission or a whole-\nprocess memory bound; it must return to zero after all native owners close.\n",
+  "storage": "dense",
+  "aos": 384,
+  "df_budget_bytes": 0,
+  "slurm_job_id": "9857",
+  "cuda_visible_devices": "0",
+  "native_identity": "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133",
+  "library_sha256": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+  "reference_sha256": "cbd546f66d0b1001a805c33ec90e79eadff492d382a52ae57fb65261eccf90ad",
+  "runner_sha256": "e5288a60c60a462942301284a1edb51a65bfb10994c70e9c41d6d8ca4abee001",
+  "controls": {
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_SHELL_POLICY": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/frozen/libvibeqc.so",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_VALUE_STORAGE": "dense"
+  },
+  "endpoint": "cold preparation + converged SCF + full force",
+  "intrusive_seconds": 11.039866863982752,
+  "iterations": [
+    20
+  ],
+  "convergence": [
+    {
+      "converged": true,
+      "iterations": 20,
+      "basis_metadata": {
+        "orbital": {
+          "name": "def2-svp",
+          "role": "orbital",
+          "mathematical_identity": "c24d0fbe7443fc60ccdce94896d42e8eea5bd735714ba85b79ff3d61303a9cbf",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 160,
+            "multiplicity": 1,
+            "nalpha": 80,
+            "nbeta": 80
+          },
+          "shell_count": 192,
+          "primitive_count": 352
+        },
+        "auxiliary": {
+          "name": "def2-svp",
+          "role": "auxiliary",
+          "mathematical_identity": "c24d0fbe7443fc60ccdce94896d42e8eea5bd735714ba85b79ff3d61303a9cbf",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 160,
+            "multiplicity": 1,
+            "nalpha": 80,
+            "nbeta": 80
+          },
+          "shell_count": 192,
+          "primitive_count": 352
+        },
+        "model_identity": "fc3aacb1f94ed54b9015fdaad7ecc0a477fc031bc897532937918ec907cfff45"
+      },
+      "energy_change_hartree": 4.547473508864641e-13,
+      "density_rms": 3.3201112217148287e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "final_residuals": {
+        "energy_change_hartree": 4.547473508864641e-13,
+        "density_rms": 3.3201112217148287e-12,
+        "orbital_gradient_norm": null
+      },
+      "warm_start": {
+        "used": false,
+        "fallback": false
+      }
+    }
+  ],
+  "energies_hartree": [
+    -1219.1762188003188
+  ],
+  "forces_hartree_per_bohr": [
+    [
+      [
+        1.309215581788489e-05,
+        -0.010181732566963954,
+        -0.007359999574909209
+      ],
+      [
+        0.012253115287497014,
+        0.014816418435125532,
+        0.0019165209483929914
+      ],
+      [
+        -0.011852144106465363,
+        0.0009875283826485527,
+        0.008906094453713709
+      ],
+      [
+        -0.010380542599954634,
+        0.0005013755127633285,
+        0.00733195309902919
+      ],
+      [
+        0.0012931698430934157,
+        0.011639778989377743,
+        -0.008843581183250264
+      ],
+      [
+        0.015145066919760676,
+        -0.0125222141991033,
+        -0.0019544433626634814
+      ],
+      [
+        0.0004494354815374145,
+        0.005305922082321262,
+        -0.007253094816086139
+      ],
+      [
+        0.0034863271307009986,
+        0.00521553565899014,
+        0.00667199439921443
+      ],
+      [
+        -0.0043448649433200995,
+        -0.006035654745529356,
+        -0.0029533944407702105
+      ],
+      [
+        -0.0051061527360191745,
+        0.0007516615689269984,
+        0.0071074488486720785
+      ],
+      [
+        -0.005201226767466079,
+        0.00340765326833372,
+        -0.006485382048511909
+      ],
+      [
+        0.005909077753831135,
+        -0.004403345190323912,
+        0.0029645081291434544
+      ],
+      [
+        0.005373953972291666,
+        -0.00045580755917755346,
+        0.006958666511927075
+      ],
+      [
+        -0.006067646171726107,
+        0.004305594920625114,
+        0.0031887321703014918
+      ],
+      [
+        0.00529553475094919,
+        -0.0034136966771029674,
+        -0.006453414449173339
+      ],
+      [
+        0.010383917036121154,
+        -0.0004372238962933298,
+        0.007304531676286177
+      ],
+      [
+        -0.014885571748236778,
+        0.012407257948273737,
+        -0.0020046920432540533
+      ],
+      [
+        -0.001371078293561556,
+        -0.01155038788138155,
+        -0.008741095574995687
+      ],
+      [
+        0.0006332785394350131,
+        0.010379121938149636,
+        -0.007592959702862902
+      ],
+      [
+        -0.012578679751460316,
+        -0.015155980927395805,
+        0.00204438013583525
+      ],
+      [
+        0.011530557977977215,
+        -0.0012992278668245072,
+        0.008870744047897242
+      ],
+      [
+        -0.0007247779252889458,
+        -0.005152783286081902,
+        -0.0074984335608755896
+      ],
+      [
+        -0.00361863777949877,
+        -0.005048397251392749,
+        0.006730161122549662
+      ],
+      [
+        0.004493884863860845,
+        0.005777363542831112,
+        -0.002855244785365776
+      ],
+      [
+        -0.0006332785994996037,
+        -0.010379122013989408,
+        -0.0075929597315860554
+      ],
+      [
+        0.012578679749477165,
+        0.015155980992652371,
+        0.002044380180546879
+      ],
+      [
+        -0.011530557985934628,
+        0.0012992278738477429,
+        0.008870744045547042
+      ],
+      [
+        -0.010383917150229512,
+        0.0004372239370540295,
+        0.007304531744287149
+      ],
+      [
+        0.0013710783134583545,
+        0.011550387943392262,
+        -0.008741095627291693
+      ],
+      [
+        0.01488557183785039,
+        -0.01240725805462238,
+        -0.0020046920680494742
+      ],
+      [
+        0.0007247779271562001,
+        0.005152783253697477,
+        -0.007498433703035707
+      ],
+      [
+        0.0036186377961698133,
+        0.005048397221255218,
+        0.006730161206906353
+      ],
+      [
+        -0.004493884894796102,
+        -0.005777363458396547,
+        -0.002855244728039968
+      ],
+      [
+        -0.005373953975037973,
+        0.00045580764107663066,
+        0.006958666476110238
+      ],
+      [
+        -0.005295534749565495,
+        0.003413696590140985,
+        -0.0064534144144192005
+      ],
+      [
+        0.006067646194929723,
+        -0.004305594879538877,
+        0.0031887321663370428
+      ],
+      [
+        0.005106152790406123,
+        -0.0007516615591586904,
+        0.007107448820566438
+      ],
+      [
+        -0.005909077793925073,
+        0.004403345183870359,
+        0.002964508150030618
+      ],
+      [
+        0.005201226753489799,
+        -0.003407653293370998,
+        -0.00648538205583764
+      ],
+      [
+        0.01038054269595603,
+        -0.0005013755654176334,
+        0.007331953091970512
+      ],
+      [
+        -0.015145067010003177,
+        0.012522214220896794,
+        -0.001954443404703214
+      ],
+      [
+        -0.0012931698261157188,
+        -0.011639778990851026,
+        -0.008843581162709684
+      ],
+      [
+        -1.3092149106059005e-05,
+        0.010181732583433202,
+        -0.007359999587239955
+      ],
+      [
+        -0.012253115324000067,
+        -0.014816418465894349,
+        0.001916520939137211
+      ],
+      [
+        0.011852144160877124,
+        -0.0009875283816067552,
+        0.00890609449701221
+      ],
+      [
+        -0.0004494355692137989,
+        -0.005305922062072288,
+        -0.007253094832610848
+      ],
+      [
+        -0.003486327054315571,
+        -0.005215535638120431,
+        0.006671994396214526
+      ],
+      [
+        0.004344864973348371,
+        0.0060356547193799555,
+        -0.002953394398199015
+      ]
+    ]
+  ],
+  "energy_error": 1.8189894035458565e-12,
+  "force_error": 1.0186391140309947e-10,
+  "metric": [
+    {
+      "bucket_id": 0,
+      "system_index": 0,
+      "effective_rank": 384,
+      "absolute_threshold": 1.699097121721467e-07,
+      "condition_number": 18132.17022183579,
+      "solver_device_workspace_bytes": 6423192,
+      "solver_host_workspace_bytes": 0,
+      "device_resident_bytes": 1948584963,
+      "peak_device_bytes": 2409175711,
+      "host_resident_bytes": 19923746,
+      "peak_host_bytes": 474094374,
+      "auxiliary_tile": 384,
+      "streamed": false
+    }
+  ],
+  "components": {
+    "groups": [
+      {
+        "execution": "stream",
+        "operation": "one_electron_derivative_export",
+        "calls": 1,
+        "host_completion_ms": 6260.96736,
+        "final_synchronization_ms": 0.001493,
+        "gpu_inclusive_ms": 6260.82422,
+        "host_exclusive_ms": {
+          "one_electron_derivative_export": 2.9079940000001443,
+          "one_electron_and_nuclear_derivative_generation": 6174.552493000003,
+          "one_electron_derivative_output_and_synchronization": 83.50538300000002
+        },
+        "gpu_exclusive_ms": {
+          "one_electron_derivative_export": 12.972266641000715,
+          "one_electron_and_nuclear_derivative_generation": 6169.3860970999995,
+          "one_electron_derivative_output_and_synchronization": 78.46585625899996
+        },
+        "counter_sums": {
+          "atom_coordinates": 144,
+          "device_to_host_bytes": 368641152
+        },
+        "counter_maxima": {
+          "atom_coordinates": 144,
+          "device_to_host_bytes": 368641152
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "eigenframe_validation",
+        "calls": 2,
+        "host_completion_ms": 7.839243,
+        "final_synchronization_ms": 0.002855,
+        "gpu_inclusive_ms": 7.7837762900000005,
+        "host_exclusive_ms": {
+          "eigenframe_validation": 7.8363879999999995
+        },
+        "gpu_exclusive_ms": {
+          "eigenframe_validation": 7.7837762900000005
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 224,
+          "explicit_synchronizations": 2,
+          "host_to_device_bytes": 7084032
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 3542016
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "production_eigensolve",
+        "calls": 2,
+        "host_completion_ms": 31.404774000000003,
+        "final_synchronization_ms": 0.0029259999999999998,
+        "gpu_inclusive_ms": 31.317471500000003,
+        "host_exclusive_ms": {
+          "production_eigensolve": 10.814846000000001,
+          "workspace_setup": 0.808187,
+          "host_to_device": 0.430985,
+          "device_eigensolve": 18.249195999999998,
+          "device_to_host": 0.407792,
+          "generalized_transform": 0.460701,
+          "coefficient_backtransform": 0.230141
+        },
+        "gpu_exclusive_ms": {
+          "production_eigensolve": 11.07865539203,
+          "workspace_setup": 0.7351040089700001,
+          "host_to_device": 0.37331199699999995,
+          "device_eigensolve": 18.1613121,
+          "device_to_host": 0.355455994,
+          "generalized_transform": 0.413888007,
+          "coefficient_backtransform": 0.199744001
+        },
+        "counter_sums": {
+          "device_eigensolves": 2,
+          "device_to_host_bytes": 2365448,
+          "host_to_device_bytes": 3538944
+        },
+        "counter_maxima": {
+          "device_eigensolves": 1,
+          "device_to_host_bytes": 1182724,
+          "host_to_device_bytes": 2359296
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "compact_diis_reset",
+        "calls": 1,
+        "host_completion_ms": 0.285126,
+        "final_synchronization_ms": 0.001904,
+        "gpu_inclusive_ms": 0.236864001,
+        "host_exclusive_ms": {
+          "compact_diis_reset": 0.283222
+        },
+        "gpu_exclusive_ms": {
+          "compact_diis_reset": 0.236864001
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_j",
+        "calls": 1,
+        "host_completion_ms": 26.200253,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_j": 0.05481600000000242,
+          "ri_j_gemm": 26.145407
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_k",
+        "calls": 1,
+        "host_completion_ms": 0.349299,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_k": 0.10919000000000001,
+          "ri_k_density_projection_gemm": 0.101243,
+          "ri_k_exchange_gemm": 0.073911,
+          "ri_k_exchange_reduce": 0.064925
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "dense_exchange_auxiliary_tile": 192
+        },
+        "counter_maxima": {
+          "dense_exchange_auxiliary_tile": 192
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "compact_diis",
+        "calls": 1,
+        "host_completion_ms": 0.464519,
+        "final_synchronization_ms": 4e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "compact_diis": 0.09547300000000003,
+          "diis_residual_products": 0.061638,
+          "diis_history_update": 0.307368
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "diis_cooperative_dots": 1,
+          "diis_dot_partial_bytes": 18432
+        },
+        "counter_maxima": {
+          "diis_cooperative_dots": 1,
+          "diis_dot_partial_bytes": 18432
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "compact_eigensolve",
+        "calls": 1,
+        "host_completion_ms": 1.22297,
+        "final_synchronization_ms": 4e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "compact_eigensolve": 1.22293
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "eigensystems": 1,
+          "retained_solver_device_workspace_bytes": 6423192,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "counter_maxima": {
+          "eigensystems": 1,
+          "retained_solver_device_workspace_bytes": 6423192,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_j",
+        "calls": 1,
+        "host_completion_ms": 0.782998,
+        "final_synchronization_ms": 0.001583,
+        "gpu_inclusive_ms": 0.724831998,
+        "host_exclusive_ms": {
+          "ri_j": 0.06641600000000003,
+          "ri_j_gemm": 0.7149989999999999
+        },
+        "gpu_exclusive_ms": {
+          "ri_j": 0.07270398699999991,
+          "ri_j_gemm": 0.6521280110000001
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_k",
+        "calls": 1,
+        "host_completion_ms": 53.098442,
+        "final_synchronization_ms": 0.001423,
+        "gpu_inclusive_ms": 53.0677757,
+        "host_exclusive_ms": {
+          "ri_k": 0.1783320000000046,
+          "ri_k_density_projection_gemm": 26.874482999999998,
+          "ri_k_exchange_gemm": 25.703291999999998,
+          "ri_k_exchange_reduce": 0.340912
+        },
+        "gpu_exclusive_ms": {
+          "ri_k": 1.552447885999996,
+          "ri_k_density_projection_gemm": 25.6092796,
+          "ri_k_exchange_gemm": 25.629216200000002,
+          "ri_k_exchange_reduce": 0.276832014
+        },
+        "counter_sums": {
+          "dense_exchange_auxiliary_tile": 192
+        },
+        "counter_maxima": {
+          "dense_exchange_auxiliary_tile": 192
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_physical_fock",
+        "calls": 1,
+        "host_completion_ms": 54.180213,
+        "final_synchronization_ms": 0.001553,
+        "gpu_inclusive_ms": 54.1411858,
+        "host_exclusive_ms": {
+          "final_state_physical_fock": 54.17866
+        },
+        "gpu_exclusive_ms": {
+          "final_state_physical_fock": 54.1411858
+        },
+        "counter_sums": {
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 1179648
+        },
+        "counter_maxima": {
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 1179648
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_validation",
+        "calls": 1,
+        "host_completion_ms": 5.156589,
+        "final_synchronization_ms": 0.001513,
+        "gpu_inclusive_ms": 5.12467194,
+        "host_exclusive_ms": {
+          "final_state_validation": 5.155076
+        },
+        "gpu_exclusive_ms": {
+          "final_state_validation": 5.12467194
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 3538944,
+          "workspace_bytes": 10663024
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 3538944,
+          "workspace_bytes": 10663024
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_weighted_density",
+        "calls": 1,
+        "host_completion_ms": 0.764132,
+        "final_synchronization_ms": 0.001743,
+        "gpu_inclusive_ms": 0.728543997,
+        "host_exclusive_ms": {
+          "final_state_weighted_density": 0.762389
+        },
+        "gpu_exclusive_ms": {
+          "final_state_weighted_density": 0.728543997
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 1179648,
+          "explicit_synchronizations": 1
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 1179648,
+          "explicit_synchronizations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "force_response",
+        "calls": 1,
+        "host_completion_ms": 1037.04151,
+        "final_synchronization_ms": 0.001824,
+        "gpu_inclusive_ms": 1036.98657,
+        "host_exclusive_ms": {
+          "force_response": 0.39898599999992257,
+          "response_allocation_and_uploads": 3.6969749999999997,
+          "shell_metadata_preparation": 0.145649,
+          "response_weights": 0.4719350000000304,
+          "metric_inverse": 0.430474,
+          "coulomb_response": 0.6627879999999999,
+          "coulomb_response_charge_dot": 0.600349,
+          "exchange_response_matrix_products": 141.47362899999993,
+          "exchange_response_metric_gemm": 61.103332,
+          "exchange_response_weight_gemm": 26.318389,
+          "three_center_derivative_contraction": 616.6777910000001,
+          "shell_000_packet": 8.360351,
+          "shell_001_packet": 5.960707,
+          "shell_002_packet": 3.222527,
+          "shell_100_packet": 11.858535,
+          "shell_101_packet": 32.392244,
+          "shell_102_packet": 12.621857,
+          "shell_110_packet": 16.556938,
+          "shell_111_packet": 15.93663,
+          "shell_112_packet": 6.559423,
+          "shell_200_packet": 6.242918,
+          "shell_201_packet": 13.188551,
+          "shell_202_packet": 4.116498,
+          "shell_210_packet": 13.861258,
+          "shell_211_packet": 12.557744,
+          "shell_212_packet": 5.466081,
+          "shell_220_packet": 2.583775,
+          "shell_221_packet": 3.060066,
+          "shell_222_packet": 1.484261,
+          "metric_frechet_response": 0.640375,
+          "metric_center_derivative_contraction": 8.278684,
+          "response_output_and_synchronization": 0.10997
+        },
+        "gpu_exclusive_ms": {
+          "force_response": 0.4376198901002226,
+          "response_allocation_and_uploads": 3.701952108,
+          "shell_metadata_preparation": 0.113824002,
+          "response_weights": 11.738365096999928,
+          "metric_inverse": 0.391232014,
+          "coulomb_response": 0.6432960329999999,
+          "coulomb_response_charge_dot": 0.346879989,
+          "exchange_response_matrix_products": 130.6962238139999,
+          "exchange_response_metric_gemm": 61.0701752,
+          "exchange_response_weight_gemm": 26.2847996,
+          "three_center_derivative_contraction": 617.3232262500001,
+          "shell_000_packet": 8.30198383,
+          "shell_001_packet": 5.92630386,
+          "shell_002_packet": 3.18694401,
+          "shell_100_packet": 11.8197117,
+          "shell_101_packet": 32.3521271,
+          "shell_102_packet": 12.585248,
+          "shell_110_packet": 16.5227528,
+          "shell_111_packet": 15.8999043,
+          "shell_112_packet": 6.52127981,
+          "shell_200_packet": 6.20438385,
+          "shell_201_packet": 13.1484804,
+          "shell_202_packet": 4.08102417,
+          "shell_210_packet": 13.8237762,
+          "shell_211_packet": 12.5219517,
+          "shell_212_packet": 5.43120003,
+          "shell_220_packet": 2.54611206,
+          "shell_221_packet": 3.02489591,
+          "shell_222_packet": 1.45075202,
+          "metric_frechet_response": 0.603424013,
+          "metric_center_derivative_contraction": 8.20649624,
+          "response_output_and_synchronization": 0.0802239999
+        },
+        "counter_sums": {
+          "atom_coordinates": 144,
+          "density_upload_bytes": 1179648,
+          "device_to_host_bytes": 1152,
+          "host_to_device_bytes": 1232032,
+          "metric_derivative_weight_bytes": 1179648,
+          "metric_derivative_weights": 147456,
+          "raw_value_bulk_uploads": 0,
+          "raw_value_owner_identity": 1,
+          "raw_value_reused_bytes": 452984832,
+          "raw_value_upload_bytes": 0,
+          "response_ao_matrix_products": 768,
+          "response_auxiliary_blocks": 1,
+          "response_borrowed_jk_bytes": 1358954496,
+          "response_charge_blas_dots": 384,
+          "response_charge_dot_elements": 56623104,
+          "response_density_blas_products": 768,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 147456,
+          "response_metric_blas_gemms": 1,
+          "response_probe_total_device_bytes": 132180256,
+          "response_resident_auxiliary_tile": 384,
+          "response_resident_exchange_columns": 384,
+          "response_scratch_bytes": 132180256,
+          "response_weight_blas_gemms": 1,
+          "shell_000_dynamic_shared_bytes": 0,
+          "shell_000_p1_1_1": 133120,
+          "shell_000_p1_1_3": 66560,
+          "shell_000_p1_1_5": 33280,
+          "shell_000_p3_1_1": 131072,
+          "shell_000_p3_1_3": 65536,
+          "shell_000_p3_1_5": 32768,
+          "shell_000_p3_3_1": 33792,
+          "shell_000_p3_3_3": 16896,
+          "shell_000_p3_3_5": 8448,
+          "shell_000_p5_1_1": 65536,
+          "shell_000_p5_1_3": 32768,
+          "shell_000_p5_1_5": 16384,
+          "shell_000_p5_3_1": 32768,
+          "shell_000_p5_3_3": 16384,
+          "shell_000_p5_3_5": 8192,
+          "shell_000_p5_5_1": 8704,
+          "shell_000_p5_5_3": 4352,
+          "shell_000_p5_5_5": 2176,
+          "shell_000_registers": 109,
+          "shell_000_resident_block_limit": 4,
+          "shell_000_resident_thread_limit": 512,
+          "shell_000_rys_selected": 1,
+          "shell_000_sm_thread_limit": 1536,
+          "shell_000_static_shared_bytes": 6656,
+          "shell_001_dynamic_shared_bytes": 0,
+          "shell_001_p1_1_1": 99840,
+          "shell_001_p1_1_3": 33280,
+          "shell_001_p3_1_1": 98304,
+          "shell_001_p3_1_3": 32768,
+          "shell_001_p3_3_1": 25344,
+          "shell_001_p3_3_3": 8448,
+          "shell_001_p5_1_1": 49152,
+          "shell_001_p5_1_3": 16384,
+          "shell_001_p5_3_1": 24576,
+          "shell_001_p5_3_3": 8192,
+          "shell_001_p5_5_1": 6528,
+          "shell_001_p5_5_3": 2176,
+          "shell_001_registers": 126,
+          "shell_001_resident_block_limit": 4,
+          "shell_001_resident_thread_limit": 512,
+          "shell_001_rys_selected": 1,
+          "shell_001_sm_thread_limit": 1536,
+          "shell_001_static_shared_bytes": 7168,
+          "shell_002_dynamic_shared_bytes": 0,
+          "shell_002_p1_1_1": 33280,
+          "shell_002_p3_1_1": 32768,
+          "shell_002_p3_3_1": 8448,
+          "shell_002_p5_1_1": 16384,
+          "shell_002_p5_3_1": 8192,
+          "shell_002_p5_5_1": 2176,
+          "shell_002_registers": 128,
+          "shell_002_resident_block_limit": 4,
+          "shell_002_resident_thread_limit": 512,
+          "shell_002_rys_selected": 1,
+          "shell_002_sm_thread_limit": 1536,
+          "shell_002_static_shared_bytes": 3968,
+          "shell_100_dynamic_shared_bytes": 0,
+          "shell_100_p1_1_1": 196608,
+          "shell_100_p1_1_3": 98304,
+          "shell_100_p1_1_5": 49152,
+          "shell_100_p1_3_1": 98304,
+          "shell_100_p1_3_3": 49152,
+          "shell_100_p1_3_5": 24576,
+          "shell_100_p1_5_1": 49152,
+          "shell_100_p1_5_3": 24576,
+          "shell_100_p1_5_5": 12288,
+          "shell_100_p3_1_1": 65536,
+          "shell_100_p3_1_3": 32768,
+          "shell_100_p3_1_5": 16384,
+          "shell_100_p3_3_1": 32768,
+          "shell_100_p3_3_3": 16384,
+          "shell_100_p3_3_5": 8192,
+          "shell_100_p3_5_1": 16384,
+          "shell_100_p3_5_3": 8192,
+          "shell_100_p3_5_5": 4096,
+          "shell_100_registers": 126,
+          "shell_100_resident_block_limit": 4,
+          "shell_100_resident_thread_limit": 512,
+          "shell_100_rys_selected": 1,
+          "shell_100_sm_thread_limit": 1536,
+          "shell_100_static_shared_bytes": 7168,
+          "shell_101_dynamic_shared_bytes": 0,
+          "shell_101_p1_1_1": 147456,
+          "shell_101_p1_1_3": 49152,
+          "shell_101_p1_3_1": 73728,
+          "shell_101_p1_3_3": 24576,
+          "shell_101_p1_5_1": 36864,
+          "shell_101_p1_5_3": 12288,
+          "shell_101_p3_1_1": 49152,
+          "shell_101_p3_1_3": 16384,
+          "shell_101_p3_3_1": 24576,
+          "shell_101_p3_3_3": 8192,
+          "shell_101_p3_5_1": 12288,
+          "shell_101_p3_5_3": 4096,
+          "shell_101_registers": 142,
+          "shell_101_resident_block_limit": 3,
+          "shell_101_resident_thread_limit": 384,
+          "shell_101_rys_selected": 0,
+          "shell_101_sm_thread_limit": 1536,
+          "shell_101_static_shared_bytes": 5056,
+          "shell_102_dynamic_shared_bytes": 0,
+          "shell_102_p1_1_1": 49152,
+          "shell_102_p1_3_1": 24576,
+          "shell_102_p1_5_1": 12288,
+          "shell_102_p3_1_1": 16384,
+          "shell_102_p3_3_1": 8192,
+          "shell_102_p3_5_1": 4096,
+          "shell_102_registers": 254,
+          "shell_102_resident_block_limit": 2,
+          "shell_102_resident_thread_limit": 256,
+          "shell_102_rys_selected": 0,
+          "shell_102_sm_thread_limit": 1536,
+          "shell_102_static_shared_bytes": 3968,
+          "shell_110_dynamic_shared_bytes": 0,
+          "shell_110_p1_1_1": 75264,
+          "shell_110_p1_1_3": 37632,
+          "shell_110_p1_1_5": 18816,
+          "shell_110_p3_1_1": 49152,
+          "shell_110_p3_1_3": 24576,
+          "shell_110_p3_1_5": 12288,
+          "shell_110_p3_3_1": 8704,
+          "shell_110_p3_3_3": 4352,
+          "shell_110_p3_3_5": 2176,
+          "shell_110_registers": 142,
+          "shell_110_resident_block_limit": 3,
+          "shell_110_resident_thread_limit": 384,
+          "shell_110_rys_selected": 0,
+          "shell_110_sm_thread_limit": 1536,
+          "shell_110_static_shared_bytes": 5056,
+          "shell_111_dynamic_shared_bytes": 0,
+          "shell_111_p1_1_1": 56448,
+          "shell_111_p1_1_3": 18816,
+          "shell_111_p3_1_1": 36864,
+          "shell_111_p3_1_3": 12288,
+          "shell_111_p3_3_1": 6528,
+          "shell_111_p3_3_3": 2176,
+          "shell_111_registers": 158,
+          "shell_111_resident_block_limit": 3,
+          "shell_111_resident_thread_limit": 384,
+          "shell_111_rys_selected": 0,
+          "shell_111_sm_thread_limit": 1536,
+          "shell_111_static_shared_bytes": 5120,
+          "shell_112_dynamic_shared_bytes": 0,
+          "shell_112_p1_1_1": 18816,
+          "shell_112_p3_1_1": 12288,
+          "shell_112_p3_3_1": 2176,
+          "shell_112_registers": 246,
+          "shell_112_resident_block_limit": 2,
+          "shell_112_resident_thread_limit": 256,
+          "shell_112_rys_selected": 0,
+          "shell_112_sm_thread_limit": 1536,
+          "shell_112_static_shared_bytes": 8576,
+          "shell_200_dynamic_shared_bytes": 0,
+          "shell_200_p1_1_1": 65536,
+          "shell_200_p1_1_3": 32768,
+          "shell_200_p1_1_5": 16384,
+          "shell_200_p1_3_1": 32768,
+          "shell_200_p1_3_3": 16384,
+          "shell_200_p1_3_5": 8192,
+          "shell_200_p1_5_1": 16384,
+          "shell_200_p1_5_3": 8192,
+          "shell_200_p1_5_5": 4096,
+          "shell_200_registers": 128,
+          "shell_200_resident_block_limit": 4,
+          "shell_200_resident_thread_limit": 512,
+          "shell_200_rys_selected": 1,
+          "shell_200_sm_thread_limit": 1536,
+          "shell_200_static_shared_bytes": 3968,
+          "shell_201_dynamic_shared_bytes": 0,
+          "shell_201_p1_1_1": 49152,
+          "shell_201_p1_1_3": 16384,
+          "shell_201_p1_3_1": 24576,
+          "shell_201_p1_3_3": 8192,
+          "shell_201_p1_5_1": 12288,
+          "shell_201_p1_5_3": 4096,
+          "shell_201_registers": 254,
+          "shell_201_resident_block_limit": 2,
+          "shell_201_resident_thread_limit": 256,
+          "shell_201_rys_selected": 0,
+          "shell_201_sm_thread_limit": 1536,
+          "shell_201_static_shared_bytes": 3680,
+          "shell_202_dynamic_shared_bytes": 0,
+          "shell_202_p1_1_1": 16384,
+          "shell_202_p1_3_1": 8192,
+          "shell_202_p1_5_1": 4096,
+          "shell_202_registers": 252,
+          "shell_202_resident_block_limit": 2,
+          "shell_202_resident_thread_limit": 256,
+          "shell_202_rys_selected": 0,
+          "shell_202_sm_thread_limit": 1536,
+          "shell_202_static_shared_bytes": 5984,
+          "shell_210_dynamic_shared_bytes": 0,
+          "shell_210_p1_1_1": 49152,
+          "shell_210_p1_1_3": 24576,
+          "shell_210_p1_1_5": 12288,
+          "shell_210_p1_3_1": 16384,
+          "shell_210_p1_3_3": 8192,
+          "shell_210_p1_3_5": 4096,
+          "shell_210_registers": 254,
+          "shell_210_resident_block_limit": 2,
+          "shell_210_resident_thread_limit": 256,
+          "shell_210_rys_selected": 0,
+          "shell_210_sm_thread_limit": 1536,
+          "shell_210_static_shared_bytes": 3680,
+          "shell_211_dynamic_shared_bytes": 0,
+          "shell_211_p1_1_1": 36864,
+          "shell_211_p1_1_3": 12288,
+          "shell_211_p1_3_1": 12288,
+          "shell_211_p1_3_3": 4096,
+          "shell_211_registers": 252,
+          "shell_211_resident_block_limit": 2,
+          "shell_211_resident_thread_limit": 256,
+          "shell_211_rys_selected": 0,
+          "shell_211_sm_thread_limit": 1536,
+          "shell_211_static_shared_bytes": 7904,
+          "shell_212_dynamic_shared_bytes": 0,
+          "shell_212_p1_1_1": 12288,
+          "shell_212_p1_3_1": 4096,
+          "shell_212_registers": 246,
+          "shell_212_resident_block_limit": 2,
+          "shell_212_resident_thread_limit": 256,
+          "shell_212_rys_selected": 0,
+          "shell_212_sm_thread_limit": 1536,
+          "shell_212_static_shared_bytes": 13472,
+          "shell_220_dynamic_shared_bytes": 0,
+          "shell_220_p1_1_1": 8704,
+          "shell_220_p1_1_3": 4352,
+          "shell_220_p1_1_5": 2176,
+          "shell_220_registers": 252,
+          "shell_220_resident_block_limit": 2,
+          "shell_220_resident_thread_limit": 256,
+          "shell_220_rys_selected": 0,
+          "shell_220_sm_thread_limit": 1536,
+          "shell_220_static_shared_bytes": 5984,
+          "shell_221_dynamic_shared_bytes": 0,
+          "shell_221_p1_1_1": 6528,
+          "shell_221_p1_1_3": 2176,
+          "shell_221_registers": 246,
+          "shell_221_resident_block_limit": 2,
+          "shell_221_resident_thread_limit": 256,
+          "shell_221_rys_selected": 0,
+          "shell_221_sm_thread_limit": 1536,
+          "shell_221_static_shared_bytes": 13472,
+          "shell_222_dynamic_shared_bytes": 0,
+          "shell_222_p1_1_1": 2176,
+          "shell_222_registers": 246,
+          "shell_222_resident_block_limit": 2,
+          "shell_222_resident_thread_limit": 256,
+          "shell_222_rys_selected": 0,
+          "shell_222_sm_thread_limit": 1536,
+          "shell_222_static_shared_bytes": 23264,
+          "shell_pairs_logical": 18528,
+          "shell_primitive_signature_policy": 2,
+          "shell_resource_values_are_maxima": 1,
+          "shell_signature_groups": 12,
+          "shell_signature_host_range_bytes": 512,
+          "shell_signature_id_bytes": 1536,
+          "signature_packet_argument_bytes": 51984,
+          "signature_packet_host_view_bytes": 2112,
+          "signature_packet_payload_bytes": 2888,
+          "signature_packet_preparation_ns": 878447,
+          "signature_packet_slices": 126,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 0,
+          "three_center_derivative_weight_bytes": 452984832,
+          "three_center_derivative_weights": 56623104,
+          "three_center_shell_panels": 1,
+          "three_center_signature_packet_launches": 18
+        },
+        "counter_maxima": {
+          "atom_coordinates": 144,
+          "density_upload_bytes": 1179648,
+          "device_to_host_bytes": 1152,
+          "host_to_device_bytes": 1232032,
+          "metric_derivative_weight_bytes": 1179648,
+          "metric_derivative_weights": 147456,
+          "raw_value_bulk_uploads": 0,
+          "raw_value_owner_identity": 1,
+          "raw_value_reused_bytes": 452984832,
+          "raw_value_upload_bytes": 0,
+          "response_ao_matrix_products": 768,
+          "response_auxiliary_blocks": 1,
+          "response_borrowed_jk_bytes": 1358954496,
+          "response_charge_blas_dots": 384,
+          "response_charge_dot_elements": 56623104,
+          "response_density_blas_products": 768,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 147456,
+          "response_metric_blas_gemms": 1,
+          "response_probe_total_device_bytes": 132180256,
+          "response_resident_auxiliary_tile": 384,
+          "response_resident_exchange_columns": 384,
+          "response_scratch_bytes": 132180256,
+          "response_weight_blas_gemms": 1,
+          "shell_000_dynamic_shared_bytes": 0,
+          "shell_000_p1_1_1": 133120,
+          "shell_000_p1_1_3": 66560,
+          "shell_000_p1_1_5": 33280,
+          "shell_000_p3_1_1": 131072,
+          "shell_000_p3_1_3": 65536,
+          "shell_000_p3_1_5": 32768,
+          "shell_000_p3_3_1": 33792,
+          "shell_000_p3_3_3": 16896,
+          "shell_000_p3_3_5": 8448,
+          "shell_000_p5_1_1": 65536,
+          "shell_000_p5_1_3": 32768,
+          "shell_000_p5_1_5": 16384,
+          "shell_000_p5_3_1": 32768,
+          "shell_000_p5_3_3": 16384,
+          "shell_000_p5_3_5": 8192,
+          "shell_000_p5_5_1": 8704,
+          "shell_000_p5_5_3": 4352,
+          "shell_000_p5_5_5": 2176,
+          "shell_000_registers": 109,
+          "shell_000_resident_block_limit": 4,
+          "shell_000_resident_thread_limit": 512,
+          "shell_000_rys_selected": 1,
+          "shell_000_sm_thread_limit": 1536,
+          "shell_000_static_shared_bytes": 6656,
+          "shell_001_dynamic_shared_bytes": 0,
+          "shell_001_p1_1_1": 99840,
+          "shell_001_p1_1_3": 33280,
+          "shell_001_p3_1_1": 98304,
+          "shell_001_p3_1_3": 32768,
+          "shell_001_p3_3_1": 25344,
+          "shell_001_p3_3_3": 8448,
+          "shell_001_p5_1_1": 49152,
+          "shell_001_p5_1_3": 16384,
+          "shell_001_p5_3_1": 24576,
+          "shell_001_p5_3_3": 8192,
+          "shell_001_p5_5_1": 6528,
+          "shell_001_p5_5_3": 2176,
+          "shell_001_registers": 126,
+          "shell_001_resident_block_limit": 4,
+          "shell_001_resident_thread_limit": 512,
+          "shell_001_rys_selected": 1,
+          "shell_001_sm_thread_limit": 1536,
+          "shell_001_static_shared_bytes": 7168,
+          "shell_002_dynamic_shared_bytes": 0,
+          "shell_002_p1_1_1": 33280,
+          "shell_002_p3_1_1": 32768,
+          "shell_002_p3_3_1": 8448,
+          "shell_002_p5_1_1": 16384,
+          "shell_002_p5_3_1": 8192,
+          "shell_002_p5_5_1": 2176,
+          "shell_002_registers": 128,
+          "shell_002_resident_block_limit": 4,
+          "shell_002_resident_thread_limit": 512,
+          "shell_002_rys_selected": 1,
+          "shell_002_sm_thread_limit": 1536,
+          "shell_002_static_shared_bytes": 3968,
+          "shell_100_dynamic_shared_bytes": 0,
+          "shell_100_p1_1_1": 196608,
+          "shell_100_p1_1_3": 98304,
+          "shell_100_p1_1_5": 49152,
+          "shell_100_p1_3_1": 98304,
+          "shell_100_p1_3_3": 49152,
+          "shell_100_p1_3_5": 24576,
+          "shell_100_p1_5_1": 49152,
+          "shell_100_p1_5_3": 24576,
+          "shell_100_p1_5_5": 12288,
+          "shell_100_p3_1_1": 65536,
+          "shell_100_p3_1_3": 32768,
+          "shell_100_p3_1_5": 16384,
+          "shell_100_p3_3_1": 32768,
+          "shell_100_p3_3_3": 16384,
+          "shell_100_p3_3_5": 8192,
+          "shell_100_p3_5_1": 16384,
+          "shell_100_p3_5_3": 8192,
+          "shell_100_p3_5_5": 4096,
+          "shell_100_registers": 126,
+          "shell_100_resident_block_limit": 4,
+          "shell_100_resident_thread_limit": 512,
+          "shell_100_rys_selected": 1,
+          "shell_100_sm_thread_limit": 1536,
+          "shell_100_static_shared_bytes": 7168,
+          "shell_101_dynamic_shared_bytes": 0,
+          "shell_101_p1_1_1": 147456,
+          "shell_101_p1_1_3": 49152,
+          "shell_101_p1_3_1": 73728,
+          "shell_101_p1_3_3": 24576,
+          "shell_101_p1_5_1": 36864,
+          "shell_101_p1_5_3": 12288,
+          "shell_101_p3_1_1": 49152,
+          "shell_101_p3_1_3": 16384,
+          "shell_101_p3_3_1": 24576,
+          "shell_101_p3_3_3": 8192,
+          "shell_101_p3_5_1": 12288,
+          "shell_101_p3_5_3": 4096,
+          "shell_101_registers": 142,
+          "shell_101_resident_block_limit": 3,
+          "shell_101_resident_thread_limit": 384,
+          "shell_101_rys_selected": 0,
+          "shell_101_sm_thread_limit": 1536,
+          "shell_101_static_shared_bytes": 5056,
+          "shell_102_dynamic_shared_bytes": 0,
+          "shell_102_p1_1_1": 49152,
+          "shell_102_p1_3_1": 24576,
+          "shell_102_p1_5_1": 12288,
+          "shell_102_p3_1_1": 16384,
+          "shell_102_p3_3_1": 8192,
+          "shell_102_p3_5_1": 4096,
+          "shell_102_registers": 254,
+          "shell_102_resident_block_limit": 2,
+          "shell_102_resident_thread_limit": 256,
+          "shell_102_rys_selected": 0,
+          "shell_102_sm_thread_limit": 1536,
+          "shell_102_static_shared_bytes": 3968,
+          "shell_110_dynamic_shared_bytes": 0,
+          "shell_110_p1_1_1": 75264,
+          "shell_110_p1_1_3": 37632,
+          "shell_110_p1_1_5": 18816,
+          "shell_110_p3_1_1": 49152,
+          "shell_110_p3_1_3": 24576,
+          "shell_110_p3_1_5": 12288,
+          "shell_110_p3_3_1": 8704,
+          "shell_110_p3_3_3": 4352,
+          "shell_110_p3_3_5": 2176,
+          "shell_110_registers": 142,
+          "shell_110_resident_block_limit": 3,
+          "shell_110_resident_thread_limit": 384,
+          "shell_110_rys_selected": 0,
+          "shell_110_sm_thread_limit": 1536,
+          "shell_110_static_shared_bytes": 5056,
+          "shell_111_dynamic_shared_bytes": 0,
+          "shell_111_p1_1_1": 56448,
+          "shell_111_p1_1_3": 18816,
+          "shell_111_p3_1_1": 36864,
+          "shell_111_p3_1_3": 12288,
+          "shell_111_p3_3_1": 6528,
+          "shell_111_p3_3_3": 2176,
+          "shell_111_registers": 158,
+          "shell_111_resident_block_limit": 3,
+          "shell_111_resident_thread_limit": 384,
+          "shell_111_rys_selected": 0,
+          "shell_111_sm_thread_limit": 1536,
+          "shell_111_static_shared_bytes": 5120,
+          "shell_112_dynamic_shared_bytes": 0,
+          "shell_112_p1_1_1": 18816,
+          "shell_112_p3_1_1": 12288,
+          "shell_112_p3_3_1": 2176,
+          "shell_112_registers": 246,
+          "shell_112_resident_block_limit": 2,
+          "shell_112_resident_thread_limit": 256,
+          "shell_112_rys_selected": 0,
+          "shell_112_sm_thread_limit": 1536,
+          "shell_112_static_shared_bytes": 8576,
+          "shell_200_dynamic_shared_bytes": 0,
+          "shell_200_p1_1_1": 65536,
+          "shell_200_p1_1_3": 32768,
+          "shell_200_p1_1_5": 16384,
+          "shell_200_p1_3_1": 32768,
+          "shell_200_p1_3_3": 16384,
+          "shell_200_p1_3_5": 8192,
+          "shell_200_p1_5_1": 16384,
+          "shell_200_p1_5_3": 8192,
+          "shell_200_p1_5_5": 4096,
+          "shell_200_registers": 128,
+          "shell_200_resident_block_limit": 4,
+          "shell_200_resident_thread_limit": 512,
+          "shell_200_rys_selected": 1,
+          "shell_200_sm_thread_limit": 1536,
+          "shell_200_static_shared_bytes": 3968,
+          "shell_201_dynamic_shared_bytes": 0,
+          "shell_201_p1_1_1": 49152,
+          "shell_201_p1_1_3": 16384,
+          "shell_201_p1_3_1": 24576,
+          "shell_201_p1_3_3": 8192,
+          "shell_201_p1_5_1": 12288,
+          "shell_201_p1_5_3": 4096,
+          "shell_201_registers": 254,
+          "shell_201_resident_block_limit": 2,
+          "shell_201_resident_thread_limit": 256,
+          "shell_201_rys_selected": 0,
+          "shell_201_sm_thread_limit": 1536,
+          "shell_201_static_shared_bytes": 3680,
+          "shell_202_dynamic_shared_bytes": 0,
+          "shell_202_p1_1_1": 16384,
+          "shell_202_p1_3_1": 8192,
+          "shell_202_p1_5_1": 4096,
+          "shell_202_registers": 252,
+          "shell_202_resident_block_limit": 2,
+          "shell_202_resident_thread_limit": 256,
+          "shell_202_rys_selected": 0,
+          "shell_202_sm_thread_limit": 1536,
+          "shell_202_static_shared_bytes": 5984,
+          "shell_210_dynamic_shared_bytes": 0,
+          "shell_210_p1_1_1": 49152,
+          "shell_210_p1_1_3": 24576,
+          "shell_210_p1_1_5": 12288,
+          "shell_210_p1_3_1": 16384,
+          "shell_210_p1_3_3": 8192,
+          "shell_210_p1_3_5": 4096,
+          "shell_210_registers": 254,
+          "shell_210_resident_block_limit": 2,
+          "shell_210_resident_thread_limit": 256,
+          "shell_210_rys_selected": 0,
+          "shell_210_sm_thread_limit": 1536,
+          "shell_210_static_shared_bytes": 3680,
+          "shell_211_dynamic_shared_bytes": 0,
+          "shell_211_p1_1_1": 36864,
+          "shell_211_p1_1_3": 12288,
+          "shell_211_p1_3_1": 12288,
+          "shell_211_p1_3_3": 4096,
+          "shell_211_registers": 252,
+          "shell_211_resident_block_limit": 2,
+          "shell_211_resident_thread_limit": 256,
+          "shell_211_rys_selected": 0,
+          "shell_211_sm_thread_limit": 1536,
+          "shell_211_static_shared_bytes": 7904,
+          "shell_212_dynamic_shared_bytes": 0,
+          "shell_212_p1_1_1": 12288,
+          "shell_212_p1_3_1": 4096,
+          "shell_212_registers": 246,
+          "shell_212_resident_block_limit": 2,
+          "shell_212_resident_thread_limit": 256,
+          "shell_212_rys_selected": 0,
+          "shell_212_sm_thread_limit": 1536,
+          "shell_212_static_shared_bytes": 13472,
+          "shell_220_dynamic_shared_bytes": 0,
+          "shell_220_p1_1_1": 8704,
+          "shell_220_p1_1_3": 4352,
+          "shell_220_p1_1_5": 2176,
+          "shell_220_registers": 252,
+          "shell_220_resident_block_limit": 2,
+          "shell_220_resident_thread_limit": 256,
+          "shell_220_rys_selected": 0,
+          "shell_220_sm_thread_limit": 1536,
+          "shell_220_static_shared_bytes": 5984,
+          "shell_221_dynamic_shared_bytes": 0,
+          "shell_221_p1_1_1": 6528,
+          "shell_221_p1_1_3": 2176,
+          "shell_221_registers": 246,
+          "shell_221_resident_block_limit": 2,
+          "shell_221_resident_thread_limit": 256,
+          "shell_221_rys_selected": 0,
+          "shell_221_sm_thread_limit": 1536,
+          "shell_221_static_shared_bytes": 13472,
+          "shell_222_dynamic_shared_bytes": 0,
+          "shell_222_p1_1_1": 2176,
+          "shell_222_registers": 246,
+          "shell_222_resident_block_limit": 2,
+          "shell_222_resident_thread_limit": 256,
+          "shell_222_rys_selected": 0,
+          "shell_222_sm_thread_limit": 1536,
+          "shell_222_static_shared_bytes": 23264,
+          "shell_pairs_logical": 18528,
+          "shell_primitive_signature_policy": 2,
+          "shell_resource_values_are_maxima": 1,
+          "shell_signature_groups": 12,
+          "shell_signature_host_range_bytes": 512,
+          "shell_signature_id_bytes": 1536,
+          "signature_packet_argument_bytes": 51984,
+          "signature_packet_host_view_bytes": 2112,
+          "signature_packet_payload_bytes": 2888,
+          "signature_packet_preparation_ns": 878447,
+          "signature_packet_slices": 126,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 0,
+          "three_center_derivative_weight_bytes": 452984832,
+          "three_center_derivative_weights": 56623104,
+          "three_center_shell_panels": 1,
+          "three_center_signature_packet_launches": 18
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      }
+    ],
+    "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+  },
+  "observed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 1880291519,
+    "peak_bytes": 2283153052,
+    "allocations": 130,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  },
+  "process_samples": [
+    [
+      2065285888966875,
+      534773760,
+      891654144
+    ],
+    [
+      2065285979514859,
+      534773760,
+      981307392
+    ],
+    [
+      2065286070681707,
+      1052770304,
+      1224744960
+    ],
+    [
+      2065286161948747,
+      1052770304,
+      1549099008
+    ],
+    [
+      2065286252383474,
+      1052770304,
+      1881174016
+    ],
+    [
+      2065286342530009,
+      1054867456,
+      2065825792
+    ],
+    [
+      2065286433580264,
+      1054867456,
+      2065825792
+    ],
+    [
+      2065286524395079,
+      1054867456,
+      2065825792
+    ],
+    [
+      2065286615541678,
+      1054867456,
+      2065825792
+    ],
+    [
+      2065286708758540,
+      1054867456,
+      2065825792
+    ],
+    [
+      2065286799538147,
+      545259520,
+      1596682240
+    ],
+    [
+      2065286897670526,
+      545259520,
+      1932951552
+    ],
+    [
+      2065286988796826,
+      557842432,
+      1969897472
+    ],
+    [
+      2065287079182490,
+      6308233216,
+      1969897472
+    ],
+    [
+      2065287171270851,
+      6308233216,
+      1969897472
+    ],
+    [
+      2065287262159437,
+      6308233216,
+      1969901568
+    ],
+    [
+      2065287353195685,
+      6308233216,
+      1969901568
+    ],
+    [
+      2065287444283823,
+      6308233216,
+      1969905664
+    ],
+    [
+      2065287535845647,
+      6308233216,
+      1969905664
+    ],
+    [
+      2065287625917850,
+      6308233216,
+      1969909760
+    ],
+    [
+      2065287716932277,
+      6308233216,
+      1969913856
+    ],
+    [
+      2065287807503976,
+      6308233216,
+      1969913856
+    ],
+    [
+      2065287900606318,
+      6308233216,
+      1969917952
+    ],
+    [
+      2065287994302657,
+      6308233216,
+      1969917952
+    ],
+    [
+      2065288086556807,
+      6308233216,
+      1969922048
+    ],
+    [
+      2065288178884767,
+      6308233216,
+      1969922048
+    ],
+    [
+      2065288270715857,
+      6308233216,
+      1969926144
+    ],
+    [
+      2065288361740162,
+      6308233216,
+      1969930240
+    ],
+    [
+      2065288452711737,
+      6308233216,
+      1969934336
+    ],
+    [
+      2065288543849920,
+      6308233216,
+      1969934336
+    ],
+    [
+      2065288636398643,
+      6308233216,
+      1969938432
+    ],
+    [
+      2065288728592246,
+      6308233216,
+      1969938432
+    ],
+    [
+      2065288821531737,
+      6308233216,
+      1969942528
+    ],
+    [
+      2065288913372054,
+      6308233216,
+      1969942528
+    ],
+    [
+      2065289005504831,
+      6308233216,
+      1969946624
+    ],
+    [
+      2065289098832896,
+      6308233216,
+      1969946624
+    ],
+    [
+      2065289189369628,
+      6308233216,
+      1969950720
+    ],
+    [
+      2065289279884999,
+      6308233216,
+      1969954816
+    ],
+    [
+      2065289372457658,
+      6308233216,
+      1969958912
+    ],
+    [
+      2065289465344648,
+      6308233216,
+      1969958912
+    ],
+    [
+      2065289558045082,
+      6308233216,
+      1969963008
+    ],
+    [
+      2065289649222611,
+      6308233216,
+      1969963008
+    ],
+    [
+      2065289739963213,
+      6308233216,
+      1969971200
+    ],
+    [
+      2065289831171551,
+      6308233216,
+      1969975296
+    ],
+    [
+      2065289924408731,
+      6308233216,
+      1969975296
+    ],
+    [
+      2065290017334606,
+      6308233216,
+      1969979392
+    ],
+    [
+      2065290109294282,
+      6308233216,
+      1969979392
+    ],
+    [
+      2065290201530958,
+      6308233216,
+      1969983488
+    ],
+    [
+      2065290294296055,
+      6308233216,
+      1969983488
+    ],
+    [
+      2065290385726197,
+      6308233216,
+      1969987584
+    ],
+    [
+      2065290476902644,
+      6308233216,
+      1969987584
+    ],
+    [
+      2065290567415651,
+      6308233216,
+      1969991680
+    ],
+    [
+      2065290660540566,
+      6308233216,
+      1969991680
+    ],
+    [
+      2065290753508181,
+      6308233216,
+      1969995776
+    ],
+    [
+      2065290845820882,
+      6308233216,
+      1969995776
+    ],
+    [
+      2065290938816641,
+      6308233216,
+      1969999872
+    ],
+    [
+      2065291032664220,
+      6308233216,
+      1969999872
+    ],
+    [
+      2065291125411052,
+      6308233216,
+      1970008064
+    ],
+    [
+      2065291216595254,
+      6308233216,
+      1970008064
+    ],
+    [
+      2065291307181351,
+      6308233216,
+      1970012160
+    ],
+    [
+      2065291399186534,
+      6308233216,
+      1970016256
+    ],
+    [
+      2065291492267024,
+      6308233216,
+      1970016256
+    ],
+    [
+      2065291584453745,
+      6308233216,
+      1970020352
+    ],
+    [
+      2065291677550987,
+      6308233216,
+      1970020352
+    ],
+    [
+      2065291771566949,
+      6308233216,
+      1970024448
+    ],
+    [
+      2065291863787063,
+      6308233216,
+      1970024448
+    ],
+    [
+      2065291954381927,
+      6308233216,
+      1970028544
+    ],
+    [
+      2065292045523717,
+      6308233216,
+      1970028544
+    ],
+    [
+      2065292137770172,
+      6308233216,
+      1970032640
+    ],
+    [
+      2065292230864319,
+      6308233216,
+      1970032640
+    ],
+    [
+      2065292325049644,
+      6308233216,
+      1970036736
+    ],
+    [
+      2065292416937933,
+      6308233216,
+      1970036736
+    ],
+    [
+      2065292508972733,
+      6308233216,
+      1970044928
+    ],
+    [
+      2065292600244993,
+      6308233216,
+      1970049024
+    ],
+    [
+      2065292692236780,
+      6308233216,
+      1970049024
+    ],
+    [
+      2065292784935921,
+      6308233216,
+      1970053120
+    ],
+    [
+      2065292876695995,
+      6308233216,
+      1970053120
+    ],
+    [
+      2065292968359334,
+      6308233216,
+      1970057216
+    ],
+    [
+      2065293060813185,
+      6308233216,
+      1970057216
+    ],
+    [
+      2065293152331867,
+      6308233216,
+      1970061312
+    ],
+    [
+      2065293243909682,
+      6308233216,
+      1970061312
+    ],
+    [
+      2065293334049365,
+      6301941760,
+      2117234688
+    ],
+    [
+      2065293424161174,
+      6301941760,
+      2272190464
+    ],
+    [
+      2065293514248556,
+      6301941760,
+      2558287872
+    ],
+    [
+      2065293604897774,
+      6301941760,
+      2762928128
+    ],
+    [
+      2065293695132669,
+      6301941760,
+      2762928128
+    ],
+    [
+      2065293785238597,
+      6301941760,
+      2446635008
+    ],
+    [
+      2065293875842919,
+      6301941760,
+      2054184960
+    ],
+    [
+      2065293966489652,
+      6301941760,
+      2296893440
+    ],
+    [
+      2065294059354310,
+      8663334912,
+      2339721216
+    ],
+    [
+      2065294150266040,
+      8671723520,
+      2557145088
+    ],
+    [
+      2065294240692181,
+      8237613056,
+      2135023616
+    ],
+    [
+      2065294331286865,
+      8357150720,
+      2199101440
+    ],
+    [
+      2065294422303276,
+      8424259584,
+      2202775552
+    ],
+    [
+      2065294513328403,
+      8424259584,
+      2202787840
+    ],
+    [
+      2065294604485302,
+      8424259584,
+      2202796032
+    ],
+    [
+      2065294695474651,
+      8424259584,
+      2202808320
+    ],
+    [
+      2065294787811829,
+      8424259584,
+      2202820608
+    ],
+    [
+      2065294879245389,
+      8424259584,
+      2202828800
+    ],
+    [
+      2065294970351511,
+      8424259584,
+      2202845184
+    ],
+    [
+      2065295061873469,
+      8424259584,
+      2202861568
+    ],
+    [
+      2065295152827180,
+      8424259584,
+      2202869760
+    ],
+    [
+      2065295244216724,
+      8424259584,
+      2202877952
+    ],
+    [
+      2065295335118456,
+      8424259584,
+      2202898432
+    ],
+    [
+      2065295426536084,
+      8424259584,
+      2202906624
+    ],
+    [
+      2065295518043194,
+      8424259584,
+      2202918912
+    ],
+    [
+      2065295608715296,
+      8424259584,
+      2202927104
+    ],
+    [
+      2065295700604998,
+      8424259584,
+      2202947584
+    ],
+    [
+      2065295793233223,
+      8424259584,
+      2202955776
+    ],
+    [
+      2065295885239899,
+      8424259584,
+      2209107968
+    ],
+    [
+      2065295976725067,
+      8558477312,
+      2210619392
+    ],
+    [
+      2065296068886168,
+      8558477312,
+      2210734080
+    ],
+    [
+      2065296159371553,
+      8558477312,
+      2296438784
+    ],
+    [
+      2065296250081237,
+      8558477312,
+      2544590848
+    ],
+    [
+      2065296340948211,
+      8558477312,
+      2781609984
+    ],
+    [
+      2065296432136060,
+      8558477312,
+      3012694016
+    ],
+    [
+      2065296523303189,
+      8558477312,
+      3246514176
+    ],
+    [
+      2065296613981483,
+      8558477312,
+      3475423232
+    ],
+    [
+      2065296704532663,
+      8558477312,
+      3718983680
+    ],
+    [
+      2065296795615942,
+      8560574464,
+      3797008384
+    ],
+    [
+      2065296886703870,
+      8568963072,
+      3804495872
+    ],
+    [
+      2065296977754295,
+      8447328256,
+      3831635968
+    ],
+    [
+      2065297068276911,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065297158455208,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065297248955441,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065297338980003,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065297429520583,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065298376476355,
+      8447328256,
+      3831619584
+    ],
+    [
+      2065298467704861,
+      8447328256,
+      3831619584
+    ]
+  ],
+  "sampling_failures": [],
+  "sampled_cold_device_peak": 8671723520,
+  "sampled_cold_host_peak": 3831635968,
+  "lifetime_host_peak_bytes": 3830493184,
+  "trace_sha256": {
+    ".cuda.jsonl": "6c318f409589686fff46e7774a8b8fdfdc9e70b71b343902b30656b1b1a1282f",
+    ".host.jsonl": "10e315e0e346d3e5b2f1c592509c345bde9ec9dfed7ff673fb219e311129672f",
+    ".journal.jsonl": "7be35277a6859337d0a2d52d7019ae92ef423e651f2808012a18fcf3d4266a4b"
+  },
+  "closed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 0,
+    "peak_bytes": 2283153052,
+    "allocations": 130,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  }
+}

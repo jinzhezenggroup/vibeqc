@@ -3,6 +3,10 @@
 Status: proposed; native and high-level implementation validated, endpoint qualification pending
 Date: 2026-09-17
 
+This is the historical proposal and experimental log. The completed
+[retention decision](../implemented/performance/2026-09-17-packed-df-retention.md)
+supersedes its earlier pending states; raw observations below remain unchanged.
+
 ## Problem and experiment boundary
 
 Issue #409 changes persistent raw/transformed three-center storage. Exact

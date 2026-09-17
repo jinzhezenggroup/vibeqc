@@ -481,6 +481,98 @@ def main():
                 ),
             }
             retain(path, f"qualification/{path.stem}.json", value=totals)
+        final_directory = source / "final-qualified"
+        final_manifest = final_directory / "manifest.json"
+        if final_manifest.exists():
+            final = json.loads(final_manifest.read_text())
+            if final.get("status") == "passed":
+                if not all(
+                    c.get("status") == "passed" and c.get("exit_code") == 0
+                    for c in final["checks"]
+                ):
+                    raise ValueError(
+                        "final qualification contains an unsuccessful check"
+                    )
+                for check in final["checks"]:
+                    log_path = final_directory / (check["name"] + ".log")
+                    if (
+                        hashlib.sha256(log_path.read_bytes()).hexdigest()
+                        != check["log_sha256"]
+                    ):
+                        raise ValueError("final qualification log hash changed")
+                retain(final_manifest, "qualification/final-manifest.json")
+                retain(
+                    final_directory / "build-resources.txt",
+                    "qualification/final-incremental-build-resources.txt",
+                )
+                retain(
+                    final_directory / "compiled-kernel-resources.log",
+                    "qualification/final-compiled-kernel-resources.json",
+                    value={
+                        "scope": "Exact cuobjdump output in a JSON string preserves trailing spaces through text hooks.",
+                        "output": (
+                            final_directory / "compiled-kernel-resources.log"
+                        ).read_text(),
+                    },
+                )
+                log_summaries = []
+                for check in final["checks"]:
+                    log = (final_directory / (check["name"] + ".log")).read_text()
+                    log_summaries.append(
+                        {
+                            "name": check["name"],
+                            "exit_code": check["exit_code"],
+                            "source_log_sha256": check["log_sha256"],
+                            "error_counts": [
+                                int(n)
+                                for n in re.findall(r"ERROR SUMMARY: (\d+) errors", log)
+                            ],
+                            "leaks": [
+                                {"bytes": int(b), "allocations": int(a)}
+                                for b, a in re.findall(
+                                    r"LEAK SUMMARY: (\d+) bytes leaked in (\d+) allocations",
+                                    log,
+                                )
+                            ],
+                            "pytest_totals": re.findall(
+                                r"\d+ passed(?:, \d+ skipped)? in [\d.]+s", log
+                            ),
+                        }
+                    )
+                retain(
+                    final_manifest,
+                    "qualification/final-check-summaries.json",
+                    value=log_summaries,
+                )
+                portable = final_directory / "portable-warm-192/192-forces.json"
+                portable_data = json.loads(portable.read_text())
+                if (
+                    portable_data["library_sha256"]
+                    != final["sha256"]["build/cuda/libvibeqc.so"]
+                    or portable_data["native_source_identity"]
+                    != final["native_identity"]
+                ):
+                    raise ValueError("portable endpoint used a different final library")
+                retain(portable, "qualification/final-portable-192-forces.json")
+                retain(
+                    final_directory / "portable-warm-192/manifest.json",
+                    "qualification/final-portable-manifest.json",
+                )
+                retain(
+                    source / "stage2/final-qualification.py",
+                    "reproduction/measured-final-qualification.py.txt",
+                )
+            else:
+                manifest["incomplete"].append(
+                    {
+                        "path": str(final_manifest),
+                        "reason": "final qualification unfinished",
+                    }
+                )
+        else:
+            manifest["incomplete"].append(
+                {"path": str(final_manifest), "reason": "missing final qualification"}
+            )
         for name in (
             "rebuild-endpoints.py",
             "changed-reference.py",

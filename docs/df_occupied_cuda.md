@@ -312,5 +312,8 @@ experiments. Other generated-source exclusions remain. A final U lease is
 published only if its full projection was retained;
 the full-rank restriction and single-consumer invalidation still apply.
 
-The [packed-value proposal](../.agents/notes/proposed/2026-09-17-packed-df-values.md)
-records the experimental evidence and remaining endpoint qualification.
+Explicit packed selection is retained for the measured warm/constrained domains;
+unset and `auto` remain dense because bounded response and geometry rebuild can
+regress substantially. The 384/1856 unequal case remains numerically unqualified.
+The [retention decision](../.agents/notes/implemented/performance/2026-09-17-packed-df-retention.md)
+records domain evidence, validation and conditions for revisiting selection.

@@ -1,0 +1,7202 @@
+{
+  "scope": "Intrusive cold DF generation, whitening, SCF and complete force dataflow.\n\nThe CUDA profiler and process sampler cover fresh molecular preparation through\nsynchronized force completion, after library/driver initialization. There is no\npriming molecular solve. Event scopes remain nested, transfer totals come from\nCUPTI, and sampled memory under Nsight includes profiler overhead. These runs\nare diagnostics only and never pooled with clean cold endpoint timings. The\n32-GiB native observation ledger is not Python inventory admission or a whole-\nprocess memory bound; it must return to zero after all native owners close.\n",
+  "storage": "packed",
+  "aos": 768,
+  "df_budget_bytes": 0,
+  "slurm_job_id": "9857",
+  "cuda_visible_devices": "0",
+  "native_identity": "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133",
+  "library_sha256": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547",
+  "reference_sha256": "33164661464fc63b15e277d97755053cec3188f7063e0219624a41676b955aa6",
+  "runner_sha256": "e5288a60c60a462942301284a1edb51a65bfb10994c70e9c41d6d8ca4abee001",
+  "controls": {
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_SHELL_POLICY": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/frozen/libvibeqc.so",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_VALUE_STORAGE": "packed"
+  },
+  "endpoint": "cold preparation + converged SCF + full force",
+  "intrusive_seconds": 84.19370700092986,
+  "iterations": [
+    24
+  ],
+  "convergence": [
+    {
+      "converged": true,
+      "iterations": 24,
+      "basis_metadata": {
+        "orbital": {
+          "name": "def2-svp",
+          "role": "orbital",
+          "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 320,
+            "multiplicity": 1,
+            "nalpha": 160,
+            "nbeta": 160
+          },
+          "shell_count": 384,
+          "primitive_count": 704
+        },
+        "auxiliary": {
+          "name": "def2-svp",
+          "role": "auxiliary",
+          "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+          "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+          "representation": "spherical",
+          "provenance": {
+            "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            "version": "Basis Set Exchange 0.11",
+            "license": "BSD-3-Clause",
+            "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "nuclear_charges": [
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1,
+              8,
+              1,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "ionic_charge": 0,
+            "electron_count": 320,
+            "multiplicity": 1,
+            "nalpha": 160,
+            "nbeta": 160
+          },
+          "shell_count": 384,
+          "primitive_count": 704
+        },
+        "model_identity": "653fd1314a6c99386498a78be80922455e1fe02194d7a7672e5207683859589b"
+      },
+      "energy_change_hartree": 0.0,
+      "density_rms": 1.770826429418756e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "final_residuals": {
+        "energy_change_hartree": 0.0,
+        "density_rms": 1.770826429418756e-12,
+        "orbital_gradient_norm": null
+      },
+      "warm_start": {
+        "used": false,
+        "fallback": false
+      }
+    }
+  ],
+  "energies_hartree": [
+    -2438.3541410542102
+  ],
+  "forces_hartree_per_bohr": [
+    [
+      [
+        9.41455854088111e-05,
+        -0.010193079905563038,
+        -0.0072209062165474935
+      ],
+      [
+        0.012271576607350744,
+        0.014852200125327232,
+        0.0018455105672567332
+      ],
+      [
+        -0.01190411179077878,
+        0.00099688440752963,
+        0.008919813171081604
+      ],
+      [
+        -0.01038944551462166,
+        0.0005350476200352843,
+        0.007440095987596262
+      ],
+      [
+        0.0013226120751351927,
+        0.011597423762195342,
+        -0.008881678701682218
+      ],
+      [
+        0.01516326822160016,
+        -0.012593224898549967,
+        -0.001962836812707924
+      ],
+      [
+        0.0003737241489051806,
+        0.005399314212946853,
+        -0.007015335877280996
+      ],
+      [
+        0.0034369999978034298,
+        0.005276622075251577,
+        0.006488286162390111
+      ],
+      [
+        -0.004247375784177093,
+        -0.006060904584856747,
+        -0.003157244731549639
+      ],
+      [
+        -0.005128679101273105,
+        0.000675165711024404,
+        0.007163770796243182
+      ],
+      [
+        -0.005193074423861569,
+        0.0034228562100276933,
+        -0.006526153800179669
+      ],
+      [
+        0.00590501984402715,
+        -0.004356232490818431,
+        0.0029342673067428732
+      ],
+      [
+        0.005244409570158344,
+        -0.0006319755183687878,
+        0.007244512667306734
+      ],
+      [
+        -0.005806053841341747,
+        0.004381029173266576,
+        0.0030801688823527207
+      ],
+      [
+        0.005128771400535937,
+        -0.003563036351946787,
+        -0.0065549808584010865
+      ],
+      [
+        0.010190402554842376,
+        0.00014931570581280964,
+        0.007203923595336639
+      ],
+      [
+        -0.014583812759829326,
+        0.012155434299108602,
+        -0.001918533571349884
+      ],
+      [
+        -0.0010693157398957908,
+        -0.011805604278217047,
+        -0.008815544009673278
+      ],
+      [
+        0.0004750679211098082,
+        0.010381571378482023,
+        -0.007409194489891857
+      ],
+      [
+        -0.012479076251619618,
+        -0.014904780536876317,
+        0.0020066929012822546
+      ],
+      [
+        0.01150880198724286,
+        -0.0013968017395736792,
+        0.008782211148136656
+      ],
+      [
+        -0.0009580735488346237,
+        -0.004967525970754402,
+        -0.007380789252987249
+      ],
+      [
+        -0.0035553054565585175,
+        -0.005020877031611256,
+        0.006572007379167609
+      ],
+      [
+        0.0045041290121200115,
+        0.0056440760934097665,
+        -0.0028375960580699377
+      ],
+      [
+        0.0001493157640107202,
+        -0.010190402633019244,
+        -0.007203923702847066
+      ],
+      [
+        0.012155434365492986,
+        0.014583812823431946,
+        0.0019185336047485666
+      ],
+      [
+        -0.011805604348350445,
+        0.0010693157403414038,
+        0.0088155440576588
+      ],
+      [
+        -0.010193079754180602,
+        -9.414564359084932e-05,
+        0.007220906204246025
+      ],
+      [
+        0.0009968843888494739,
+        0.011904111732769727,
+        -0.008919813099730502
+      ],
+      [
+        0.014852200001776356,
+        -0.012271576541703019,
+        -0.0018455106476696734
+      ],
+      [
+        0.0006751657345109287,
+        0.005128679167527925,
+        -0.007163770811391266
+      ],
+      [
+        0.0034228563052304296,
+        0.005193074436424726,
+        0.006526153870488059
+      ],
+      [
+        -0.004356232565213804,
+        -0.005905019897521651,
+        -0.0029342673537165772
+      ],
+      [
+        -0.004967525865621953,
+        0.0009580733957806422,
+        0.007380789444081045
+      ],
+      [
+        -0.005020877034996193,
+        0.003555305562368754,
+        -0.0065720074878070685
+      ],
+      [
+        0.005644075949888836,
+        -0.004504129009133714,
+        0.0028375959814748676
+      ],
+      [
+        0.005399314162027409,
+        -0.0003737241155482891,
+        0.00701533605379536
+      ],
+      [
+        -0.006060904479316913,
+        0.0042473758354309365,
+        0.00315724461202376
+      ],
+      [
+        0.005276621974514732,
+        -0.0034370000842495595,
+        -0.006488286248051074
+      ],
+      [
+        0.010381571422314289,
+        -0.0004750679649744658,
+        0.007409194473058782
+      ],
+      [
+        -0.014904780586181356,
+        0.012479076285954514,
+        -0.0020066929143053103
+      ],
+      [
+        -0.0013968017225803263,
+        -0.011508801974994742,
+        -0.008782211120315332
+      ],
+      [
+        0.0005350476609793707,
+        0.010389445627530582,
+        -0.007440095998452663
+      ],
+      [
+        -0.01259322494539951,
+        -0.015163268290522593,
+        0.001962836915190138
+      ],
+      [
+        0.011597423723183356,
+        -0.0013226120680243177,
+        0.008881678668195168
+      ],
+      [
+        -0.0006319755872912947,
+        -0.00524440960147017,
+        -0.007244512537482177
+      ],
+      [
+        -0.0035630362855276964,
+        -0.005128771392183912,
+        0.006554980817516895
+      ],
+      [
+        0.004381029159916076,
+        0.0058060539049947,
+        -0.0030801689809673446
+      ],
+      [
+        -0.0005350476525139411,
+        -0.010389445642196904,
+        -0.007440096052748696
+      ],
+      [
+        0.012593224920195744,
+        0.015163268311570239,
+        0.0019628369576799682
+      ],
+      [
+        -0.011597423710428746,
+        0.0013226120781129123,
+        0.00888167866662256
+      ],
+      [
+        -0.010381571485028397,
+        0.00047506801128912473,
+        0.007409194492478913
+      ],
+      [
+        0.001396801734261614,
+        0.011508802048142721,
+        -0.008782211196880338
+      ],
+      [
+        0.014904780645792946,
+        -0.012479076328071265,
+        -0.002006692925807797
+      ],
+      [
+        0.0006319755521122938,
+        0.005244409499716504,
+        -0.007244512578735066
+      ],
+      [
+        0.00356303634769352,
+        0.0051287713834685545,
+        0.00655498082997328
+      ],
+      [
+        -0.004381029177060214,
+        -0.00580605384098645,
+        -0.003080168939941486
+      ],
+      [
+        -0.00539931422451309,
+        0.00037372414260161864,
+        0.007015336016748757
+      ],
+      [
+        -0.005276622045929434,
+        0.00343700009091212,
+        -0.00648828626743162
+      ],
+      [
+        0.00606090456583433,
+        -0.004247375750257843,
+        0.0031572447446790693
+      ],
+      [
+        0.004967526029273644,
+        -0.0009580735756350309,
+        0.007380789282642223
+      ],
+      [
+        -0.005644076090884937,
+        0.004504129012801537,
+        0.0028375960121271217
+      ],
+      [
+        0.005020877007418466,
+        -0.0035553054175901724,
+        -0.00657200739479307
+      ],
+      [
+        0.01019307987531669,
+        9.414561666552104e-05,
+        0.00722090626732867
+      ],
+      [
+        -0.014852200033597622,
+        0.01227157656564808,
+        -0.001845510595242275
+      ],
+      [
+        -0.0009968844222948041,
+        -0.011904111821756224,
+        -0.008919813168409884
+      ],
+      [
+        -0.00014931577145357047,
+        0.010190402612826627,
+        -0.007203923722519442
+      ],
+      [
+        -0.012155434369560294,
+        -0.014583812846064175,
+        0.00191853360705292
+      ],
+      [
+        0.011805604365088996,
+        -0.0010693157735752765,
+        0.008815544089076744
+      ],
+      [
+        -0.0006751658020516964,
+        -0.005128679150988891,
+        -0.007163770778955592
+      ],
+      [
+        -0.0034228562616640756,
+        -0.005193074461739757,
+        0.0065261538414320384
+      ],
+      [
+        0.004356232530156139,
+        0.005905019917588631,
+        -0.002934267385797622
+      ],
+      [
+        -0.00047506800600171414,
+        -0.010381571627400034,
+        -0.007409194551118162
+      ],
+      [
+        0.012479076375047516,
+        0.014904780771680991,
+        0.0020066929510728724
+      ],
+      [
+        -0.011508802060335107,
+        0.0013968017514068118,
+        0.008782211219224057
+      ],
+      [
+        -0.010190402565619401,
+        -0.00014931580616929778,
+        0.007203923704420598
+      ],
+      [
+        0.0010693157586240667,
+        0.01180560429197707,
+        -0.008815544085377387
+      ],
+      [
+        0.0145838127926765,
+        -0.01215543426009057,
+        -0.0019185335263960637
+      ],
+      [
+        0.0009580734618482964,
+        0.004967526000634546,
+        -0.007380789326353521
+      ],
+      [
+        0.0035553054760784587,
+        0.005020876974653196,
+        0.006572007432404351
+      ],
+      [
+        -0.004504128995752166,
+        -0.005644076063716515,
+        -0.0028375960153047635
+      ],
+      [
+        -0.0052444094482475626,
+        0.000631975458336838,
+        0.007244512711481653
+      ],
+      [
+        -0.005128771353942475,
+        0.0035630363220752206,
+        -0.006554980909270515
+      ],
+      [
+        0.005806053736558209,
+        -0.004381029101663006,
+        0.0030801688501903143
+      ],
+      [
+        0.00512867912472969,
+        -0.0006751657245722381,
+        0.007163770734290182
+      ],
+      [
+        -0.005905019781272659,
+        0.004356232471904511,
+        0.002934267297959794
+      ],
+      [
+        0.005193074428117871,
+        -0.0034228561975516753,
+        -0.006526153724667128
+      ],
+      [
+        0.010389445760704647,
+        -0.0005350477096703336,
+        0.007440096053988093
+      ],
+      [
+        -0.015163268418984022,
+        0.012593224966148633,
+        -0.0019628369454046373
+      ],
+      [
+        -0.0013226120654721211,
+        -0.011597423709319946,
+        -0.00888167866981831
+      ],
+      [
+        -9.41457245215622e-05,
+        0.010193079755325553,
+        -0.007220906195732
+      ],
+      [
+        -0.012271576562495196,
+        -0.014852199930148796,
+        0.0018455105142414234
+      ],
+      [
+        0.011904111814189853,
+        -0.0009968844326528792,
+        0.008919813160308928
+      ],
+      [
+        -0.0003737240838271869,
+        -0.005399314185665362,
+        -0.007015336010162539
+      ],
+      [
+        -0.0034370001007765698,
+        -0.0052766220297870625,
+        0.006488286240975622
+      ],
+      [
+        0.00424737576497751,
+        0.006060904570447623,
+        -0.0031572446968485524
+      ]
+    ]
+  ],
+  "energy_error": 9.231371222995222e-11,
+  "force_error": 1.5616137723217793e-10,
+  "metric": [
+    {
+      "bucket_id": 0,
+      "system_index": 0,
+      "effective_rank": 768,
+      "absolute_threshold": 2.399433028951598e-07,
+      "condition_number": 25786.99621344979,
+      "solver_device_workspace_bytes": 19918488,
+      "solver_host_workspace_bytes": 0,
+      "device_resident_bytes": 6141266649,
+      "peak_device_bytes": 6165909877,
+      "host_resident_bytes": 76547594,
+      "peak_host_bytes": 117911851,
+      "auxiliary_tile": 128,
+      "streamed": false
+    }
+  ],
+  "components": {
+    "groups": [
+      {
+        "execution": "stream",
+        "operation": "one_electron_derivative_export",
+        "calls": 1,
+        "host_completion_ms": 58749.0143,
+        "final_synchronization_ms": 0.001513,
+        "gpu_inclusive_ms": 58748.4727,
+        "host_exclusive_ms": {
+          "one_electron_derivative_export": 7.997423999993771,
+          "one_electron_and_nuclear_derivative_generation": 58071.91652099998,
+          "one_electron_derivative_output_and_synchronization": 669.0988550000003
+        },
+        "gpu_exclusive_ms": {
+          "one_electron_derivative_export": 46.76079192000179,
+          "one_electron_and_nuclear_derivative_generation": 58057.38208199999,
+          "one_electron_derivative_output_and_synchronization": 644.3298260800001
+        },
+        "counter_sums": {
+          "atom_coordinates": 288,
+          "device_to_host_bytes": 2949122304
+        },
+        "counter_maxima": {
+          "atom_coordinates": 288,
+          "device_to_host_bytes": 2949122304
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "resident_three_center_materialization",
+        "calls": 1,
+        "host_completion_ms": 13039.6331,
+        "final_synchronization_ms": 0.001373,
+        "gpu_inclusive_ms": 13039.5068,
+        "host_exclusive_ms": {
+          "resident_three_center_materialization": 19.651252999999997,
+          "raw_three_center_generation": 12815.714758999971,
+          "resident_metric_transform": 204.265688
+        },
+        "gpu_exclusive_ms": {
+          "resident_three_center_materialization": 45.533464069998445,
+          "raw_three_center_generation": 12789.74651393001,
+          "resident_metric_transform": 204.226822
+        },
+        "counter_sums": {
+          "packed_raw_generation_calls": 768,
+          "raw_tile_productions": 768,
+          "raw_value_bytes": 1814298624,
+          "resident_raw_bytes": 1814298624,
+          "resident_transformed_bytes": 1814298624,
+          "value_packed_pairs": 295296
+        },
+        "counter_maxima": {
+          "packed_raw_generation_calls": 768,
+          "raw_tile_productions": 768,
+          "raw_value_bytes": 1814298624,
+          "resident_raw_bytes": 1814298624,
+          "resident_transformed_bytes": 1814298624,
+          "value_packed_pairs": 295296
+        },
+        "logical_tiles": 768,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "eigenframe_validation",
+        "calls": 2,
+        "host_completion_ms": 39.832936000000004,
+        "final_synchronization_ms": 0.002785,
+        "gpu_inclusive_ms": 39.7656631,
+        "host_exclusive_ms": {
+          "eigenframe_validation": 39.830151
+        },
+        "gpu_exclusive_ms": {
+          "eigenframe_validation": 39.7656631
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 224,
+          "explicit_synchronizations": 2,
+          "host_to_device_bytes": 28323840
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 14161920
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "production_eigensolve",
+        "calls": 2,
+        "host_completion_ms": 102.172921,
+        "final_synchronization_ms": 0.0027660000000000002,
+        "gpu_inclusive_ms": 102.0463677,
+        "host_exclusive_ms": {
+          "production_eigensolve": 60.759067,
+          "workspace_setup": 0.39595800000000003,
+          "host_to_device": 1.148208,
+          "device_eigensolve": 36.653893,
+          "device_to_host": 0.890714,
+          "generalized_transform": 1.563733,
+          "coefficient_backtransform": 0.758582
+        },
+        "gpu_exclusive_ms": {
+          "production_eigensolve": 61.051102773020006,
+          "workspace_setup": 0.32684798598,
+          "host_to_device": 1.018336028,
+          "device_eigensolve": 36.5667209,
+          "device_to_host": 0.831488014,
+          "generalized_transform": 1.52563202,
+          "coefficient_backtransform": 0.726239979
+        },
+        "counter_sums": {
+          "device_eigensolves": 2,
+          "device_to_host_bytes": 9449480,
+          "host_to_device_bytes": 14155776
+        },
+        "counter_maxima": {
+          "device_eigensolves": 1,
+          "device_to_host_bytes": 4724740,
+          "host_to_device_bytes": 9437184
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "compact_diis_reset",
+        "calls": 1,
+        "host_completion_ms": 0.725579,
+        "final_synchronization_ms": 0.001894,
+        "gpu_inclusive_ms": 0.675360024,
+        "host_exclusive_ms": {
+          "compact_diis_reset": 0.723685
+        },
+        "gpu_exclusive_ms": {
+          "compact_diis_reset": 0.675360024
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "compact_eigensolve",
+        "calls": 25,
+        "host_completion_ms": 469.71150800000004,
+        "final_synchronization_ms": 0.044973000000000006,
+        "gpu_inclusive_ms": 437.52560050000005,
+        "host_exclusive_ms": {
+          "compact_eigensolve": 469.66653500000007
+        },
+        "gpu_exclusive_ms": {
+          "compact_eigensolve": 437.52560050000005
+        },
+        "counter_sums": {
+          "eigensystems": 25,
+          "retained_solver_device_workspace_bytes": 497962200,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "counter_maxima": {
+          "eigensystems": 1,
+          "retained_solver_device_workspace_bytes": 19918488,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "density_exchange_seed",
+        "calls": 1,
+        "host_completion_ms": 23.351934,
+        "final_synchronization_ms": 0.001473,
+        "gpu_inclusive_ms": 23.3045444,
+        "host_exclusive_ms": {
+          "density_exchange_seed": 23.092397,
+          "density_seed_reconstruction": 0.258064
+        },
+        "gpu_exclusive_ms": {
+          "density_exchange_seed": 23.096928399,
+          "density_seed_reconstruction": 0.207616001
+        },
+        "counter_sums": {
+          "accepted": 1,
+          "candidate_rank": 160,
+          "d2h_bytes": 6164,
+          "explicit_synchronizations": 2
+        },
+        "counter_maxima": {
+          "accepted": 1,
+          "candidate_rank": 160,
+          "d2h_bytes": 6164,
+          "explicit_synchronizations": 2
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_j",
+        "calls": 25,
+        "host_completion_ms": 80.201071,
+        "final_synchronization_ms": 0.038184,
+        "gpu_inclusive_ms": 79.49302501999999,
+        "host_exclusive_ms": {
+          "ri_j": 2.706047000000001,
+          "ri_j_gemm": 77.45684
+        },
+        "gpu_exclusive_ms": {
+          "ri_j": 3.754657110000001,
+          "ri_j_gemm": 75.73836791000002
+        },
+        "counter_sums": {
+          "coulomb_contraction_flops": 22678732800,
+          "value_packed_pairs": 7382400
+        },
+        "counter_maxima": {
+          "coulomb_contraction_flops": 907149312,
+          "value_packed_pairs": 295296
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_k_occupied",
+        "calls": 25,
+        "host_completion_ms": 4448.481599999999,
+        "final_synchronization_ms": 0.03821399999999999,
+        "gpu_inclusive_ms": 4447.691024000001,
+        "host_exclusive_ms": {
+          "ri_k_occupied": 4.422795000000093,
+          "ri_k_occupied_packed_projection": 1905.7202310000002,
+          "ri_k_occupied_exchange_gemm": 2536.924906,
+          "ri_k_occupied_mirror": 1.375454
+        },
+        "gpu_exclusive_ms": {
+          "ri_k_occupied": 6.318406600699916,
+          "ri_k_occupied_packed_projection": 1904.8419877000001,
+          "ri_k_occupied_exchange_gemm": 2535.9246137000005,
+          "ri_k_occupied_mirror": 0.6060159993000002
+        },
+        "counter_sums": {
+          "occupied_exchange_flops": 1814298624000,
+          "occupied_exchange_k": 3072000,
+          "occupied_exchange_m": 19200,
+          "occupied_exchange_n": 19200,
+          "occupied_exchange_products": 25,
+          "occupied_exchange_triangular": 25,
+          "occupied_factor_bytes": 24576000,
+          "occupied_intermediate_bytes": 18874368000,
+          "occupied_projection_batch": 19200,
+          "occupied_projection_flops": 3623878656000,
+          "occupied_projection_k": 19200,
+          "occupied_projection_m": 19200,
+          "occupied_projection_n": 4000,
+          "occupied_projection_products": 19200,
+          "occupied_rank": 4000,
+          "packed_projection_launches": 25,
+          "value_packed_pairs": 7382400
+        },
+        "counter_maxima": {
+          "occupied_exchange_flops": 72571944960,
+          "occupied_exchange_k": 122880,
+          "occupied_exchange_m": 768,
+          "occupied_exchange_n": 768,
+          "occupied_exchange_products": 1,
+          "occupied_exchange_triangular": 1,
+          "occupied_factor_bytes": 983040,
+          "occupied_intermediate_bytes": 754974720,
+          "occupied_projection_batch": 768,
+          "occupied_projection_flops": 144955146240,
+          "occupied_projection_k": 768,
+          "occupied_projection_m": 768,
+          "occupied_projection_n": 160,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160,
+          "packed_projection_launches": 1,
+          "value_packed_pairs": 295296
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "compact_diis",
+        "calls": 24,
+        "host_completion_ms": 794.1415979999999,
+        "final_synchronization_ms": 0.034776,
+        "gpu_inclusive_ms": 621.4088394999999,
+        "host_exclusive_ms": {
+          "compact_diis": 2.1703780000000172,
+          "diis_residual_products": 232.54687299999998,
+          "diis_history_update": 559.389571
+        },
+        "gpu_exclusive_ms": {
+          "compact_diis": 1.673285179999981,
+          "diis_residual_products": 61.17760057,
+          "diis_history_update": 558.5579537500001
+        },
+        "counter_sums": {
+          "diis_cooperative_dots": 24,
+          "diis_dot_partial_bytes": 1769472
+        },
+        "counter_maxima": {
+          "diis_cooperative_dots": 1,
+          "diis_dot_partial_bytes": 73728
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "scf_seed_iteration",
+        "calls": 1,
+        "host_completion_ms": 295.338805,
+        "final_synchronization_ms": 0.001553,
+        "gpu_inclusive_ms": 295.275116,
+        "host_exclusive_ms": {
+          "scf_seed_iteration": 295.337252
+        },
+        "gpu_exclusive_ms": {
+          "scf_seed_iteration": 295.275116
+        },
+        "counter_sums": {
+          "factorized": 1
+        },
+        "counter_maxima": {
+          "factorized": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_j",
+        "calls": 1,
+        "host_completion_ms": 6.522293,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_j": 0.09787799999999969,
+          "ri_j_gemm": 6.424385
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "coulomb_contraction_flops": 907149312,
+          "value_packed_pairs": 295296
+        },
+        "counter_maxima": {
+          "coulomb_contraction_flops": 907149312,
+          "value_packed_pairs": 295296
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_k_occupied",
+        "calls": 1,
+        "host_completion_ms": 0.25589,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_k_occupied": 0.15313199999999996,
+          "ri_k_occupied_packed_projection": 0.037893,
+          "ri_k_occupied_exchange_gemm": 0.043534,
+          "ri_k_occupied_mirror": 0.021301
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "occupied_exchange_flops": 72571944960,
+          "occupied_exchange_k": 122880,
+          "occupied_exchange_m": 768,
+          "occupied_exchange_n": 768,
+          "occupied_exchange_products": 1,
+          "occupied_exchange_triangular": 1,
+          "occupied_factor_bytes": 983040,
+          "occupied_intermediate_bytes": 754974720,
+          "occupied_projection_batch": 768,
+          "occupied_projection_flops": 144955146240,
+          "occupied_projection_k": 768,
+          "occupied_projection_m": 768,
+          "occupied_projection_n": 160,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160,
+          "packed_projection_launches": 1,
+          "value_packed_pairs": 295296
+        },
+        "counter_maxima": {
+          "occupied_exchange_flops": 72571944960,
+          "occupied_exchange_k": 122880,
+          "occupied_exchange_m": 768,
+          "occupied_exchange_n": 768,
+          "occupied_exchange_products": 1,
+          "occupied_exchange_triangular": 1,
+          "occupied_factor_bytes": 983040,
+          "occupied_intermediate_bytes": 754974720,
+          "occupied_projection_batch": 768,
+          "occupied_projection_flops": 144955146240,
+          "occupied_projection_k": 768,
+          "occupied_projection_m": 768,
+          "occupied_projection_n": 160,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160,
+          "packed_projection_launches": 1,
+          "value_packed_pairs": 295296
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "compact_diis",
+        "calls": 1,
+        "host_completion_ms": 0.166639,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "compact_diis": 0.07411100000000001,
+          "diis_residual_products": 0.057751,
+          "diis_history_update": 0.034747
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "diis_cooperative_dots": 1,
+          "diis_dot_partial_bytes": 73728
+        },
+        "counter_maxima": {
+          "diis_cooperative_dots": 1,
+          "diis_dot_partial_bytes": 73728
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "compact_eigensolve",
+        "calls": 1,
+        "host_completion_ms": 0.647349,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "compact_eigensolve": 0.647319
+        },
+        "gpu_exclusive_ms": {},
+        "counter_sums": {
+          "eigensystems": 1,
+          "retained_solver_device_workspace_bytes": 19918488,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "counter_maxima": {
+          "eigensystems": 1,
+          "retained_solver_device_workspace_bytes": 19918488,
+          "retained_solver_host_workspace_bytes": 0
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "occupied_scf_provenance",
+        "calls": 1,
+        "host_completion_ms": 0.150959,
+        "final_synchronization_ms": 0.001453,
+        "gpu_inclusive_ms": 0.109375998,
+        "host_exclusive_ms": {
+          "occupied_scf_provenance": 0.149506
+        },
+        "gpu_exclusive_ms": {
+          "occupied_scf_provenance": 0.109375998
+        },
+        "counter_sums": {
+          "dense_seed_iterations": 0,
+          "density_seed_rank": 160,
+          "factor_seed_iterations": 1,
+          "occupied_iterations": 23,
+          "occupied_state_bytes": 983048,
+          "validated_density_generations": 1
+        },
+        "counter_maxima": {
+          "dense_seed_iterations": 0,
+          "density_seed_rank": 160,
+          "factor_seed_iterations": 1,
+          "occupied_iterations": 23,
+          "occupied_state_bytes": 983048,
+          "validated_density_generations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_retained_jk",
+        "calls": 1,
+        "host_completion_ms": 181.723013,
+        "final_synchronization_ms": 0.001372,
+        "gpu_inclusive_ms": 181.684387,
+        "host_exclusive_ms": {
+          "final_state_retained_jk": 181.721641
+        },
+        "gpu_exclusive_ms": {
+          "final_state_retained_jk": 181.684387
+        },
+        "counter_sums": {
+          "accepted": 1,
+          "d2h_bytes": 28,
+          "explicit_synchronizations": 2,
+          "h2d_bytes": 4718592
+        },
+        "counter_maxima": {
+          "accepted": 1,
+          "d2h_bytes": 28,
+          "explicit_synchronizations": 2,
+          "h2d_bytes": 4718592
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_physical_fock",
+        "calls": 1,
+        "host_completion_ms": 184.135861,
+        "final_synchronization_ms": 0.001392,
+        "gpu_inclusive_ms": 184.088669,
+        "host_exclusive_ms": {
+          "final_state_physical_fock": 184.134469
+        },
+        "gpu_exclusive_ms": {
+          "final_state_physical_fock": 184.088669
+        },
+        "counter_sums": {},
+        "counter_maxima": {},
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_validation",
+        "calls": 1,
+        "host_completion_ms": 24.890467,
+        "final_synchronization_ms": 0.001482,
+        "gpu_inclusive_ms": 24.8299522,
+        "host_exclusive_ms": {
+          "final_state_validation": 24.888985
+        },
+        "gpu_exclusive_ms": {
+          "final_state_validation": 24.8299522
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 14155776,
+          "workspace_bytes": 42516592
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 112,
+          "explicit_synchronizations": 1,
+          "host_to_device_bytes": 14155776,
+          "workspace_bytes": 42516592
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_weighted_density",
+        "calls": 1,
+        "host_completion_ms": 6.224643,
+        "final_synchronization_ms": 0.001733,
+        "gpu_inclusive_ms": 6.18796778,
+        "host_exclusive_ms": {
+          "final_state_weighted_density": 6.22291
+        },
+        "gpu_exclusive_ms": {
+          "final_state_weighted_density": 6.18796778
+        },
+        "counter_sums": {
+          "device_to_host_bytes": 4718592,
+          "explicit_synchronizations": 1
+        },
+        "counter_maxima": {
+          "device_to_host_bytes": 4718592,
+          "explicit_synchronizations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "occupied_response_provenance",
+        "calls": 1,
+        "host_completion_ms": 1.043066,
+        "final_synchronization_ms": 0.001583,
+        "gpu_inclusive_ms": 1.00134397,
+        "host_exclusive_ms": {
+          "occupied_response_provenance": 1.041483
+        },
+        "gpu_exclusive_ms": {
+          "occupied_response_provenance": 1.00134397
+        },
+        "counter_sums": {
+          "density_generation": 25,
+          "factor_validation_download_bytes": 4718596,
+          "solve_epoch": 1,
+          "validated_density_generations": 1
+        },
+        "counter_maxima": {
+          "density_generation": 25,
+          "factor_validation_download_bytes": 4718596,
+          "solve_epoch": 1,
+          "validated_density_generations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "force_response",
+        "calls": 1,
+        "host_completion_ms": 2135.79735,
+        "final_synchronization_ms": 0.001943,
+        "gpu_inclusive_ms": 2135.7417,
+        "host_exclusive_ms": {
+          "force_response": 0.3502760000001217,
+          "response_allocation_and_uploads": 1.8964699999999999,
+          "shell_metadata_preparation": 0.170516,
+          "response_weights": 0.7976800000001276,
+          "coulomb_response_charge_dot": 3.022074,
+          "exchange_response_occupied_products": 37.287736,
+          "exchange_response_occupied_metric_gemm": 23.502692,
+          "exchange_response_occupied_weight_gemm": 20.060214,
+          "exchange_response_pseudo_density_products": 93.48924199999999,
+          "three_center_derivative_contraction": 680.7092429999999,
+          "shell_000_packet": 59.28056000000001,
+          "shell_001_packet": 42.857507,
+          "shell_002_packet": 24.559952,
+          "shell_100_packet": 86.68421799999999,
+          "shell_101_packet": 210.32815300000001,
+          "shell_102_packet": 90.466365,
+          "shell_110_packet": 112.79518200000001,
+          "shell_111_packet": 112.11231599999999,
+          "shell_112_packet": 48.889381,
+          "shell_200_packet": 47.679966,
+          "shell_201_packet": 93.709196,
+          "shell_202_packet": 31.129973000000007,
+          "shell_210_packet": 100.82365000000001,
+          "shell_211_packet": 94.32401,
+          "shell_212_packet": 42.697275000000005,
+          "shell_220_packet": 19.515119,
+          "shell_221_packet": 23.793449000000006,
+          "shell_222_packet": 12.2427,
+          "metric_frechet_response": 3.973875,
+          "metric_center_derivative_contraction": 16.537552,
+          "response_output_and_synchronization": 0.108868
+        },
+        "gpu_exclusive_ms": {
+          "force_response": 0.3974981010001102,
+          "response_allocation_and_uploads": 1.900703905,
+          "shell_metadata_preparation": 0.138303995,
+          "response_weights": 8.663178379999863,
+          "coulomb_response_charge_dot": 1.21241605,
+          "exchange_response_occupied_products": 37.253376,
+          "exchange_response_occupied_metric_gemm": 23.4652481,
+          "exchange_response_occupied_weight_gemm": 20.0185604,
+          "exchange_response_pseudo_density_products": 88.00771237000001,
+          "three_center_derivative_contraction": 688.0952311890002,
+          "shell_000_packet": 58.82000016,
+          "shell_001_packet": 42.430911423,
+          "shell_002_packet": 24.125919944999996,
+          "shell_100_packet": 86.25097574,
+          "shell_101_packet": 209.87619229999999,
+          "shell_102_packet": 90.02515077999999,
+          "shell_110_packet": 112.35120119,
+          "shell_111_packet": 111.67660730000001,
+          "shell_112_packet": 48.46169625999999,
+          "shell_200_packet": 47.240799832,
+          "shell_201_packet": 93.27068815999998,
+          "shell_202_packet": 30.717120044999998,
+          "shell_210_packet": 100.39430486000003,
+          "shell_211_packet": 93.88969566,
+          "shell_212_packet": 42.27878369,
+          "shell_220_packet": 19.086207800999997,
+          "shell_221_packet": 23.376127801999996,
+          "shell_222_packet": 11.839296162999998,
+          "metric_frechet_response": 3.9408319,
+          "metric_center_derivative_contraction": 16.4588165,
+          "response_output_and_synchronization": 0.078143999
+        },
+        "counter_sums": {
+          "atom_coordinates": 288,
+          "density_upload_bytes": 4718592,
+          "device_to_host_bytes": 2304,
+          "host_to_device_bytes": 4823328,
+          "metric_derivative_weight_bytes": 4718592,
+          "metric_derivative_weights": 589824,
+          "raw_packed_value_reused_bytes": 1814298624,
+          "raw_value_owner_identity": 1,
+          "response_auxiliary_blocks": 13,
+          "response_borrowed_jk_bytes": 1962934272,
+          "response_dense_weight_panel_elements": 0,
+          "response_final_projection_retained_bytes": 754974720,
+          "response_final_projection_reused": 1,
+          "response_full_packed_weight_tensor_elements": 0,
+          "response_full_weight_tensor_elements": 0,
+          "response_host_to_device_bytes": 0,
+          "response_occupied_projected_bytes": 157286400,
+          "response_occupied_projected_elements": 19660800,
+          "response_occupied_projection_blas_calls": 3,
+          "response_occupied_projection_flops": 61303947264,
+          "response_occupied_projection_products": 3,
+          "response_occupied_rank": 160,
+          "response_packed_pairs": 1,
+          "response_probe_total_device_bytes": 37868064,
+          "response_pseudo_density_batched_panels": 13,
+          "response_pseudo_density_blas_calls": 52,
+          "response_pseudo_density_block_peak_elements": 12582912,
+          "response_pseudo_density_block_rows": 256,
+          "response_pseudo_density_capacity_elements": 18898944,
+          "response_pseudo_density_flops": 126835752960,
+          "response_pseudo_density_peak_bytes": 151191552,
+          "response_pseudo_density_peak_elements": 18898944,
+          "response_pseudo_density_products": 2317,
+          "response_pseudo_density_rectangular_elements": 301989888,
+          "response_resident_auxiliary_tile": 64,
+          "response_scratch_bytes": 37868064,
+          "shell_000_dynamic_shared_bytes": 0,
+          "shell_000_p1_1_1": 1056768,
+          "shell_000_p1_1_3": 528384,
+          "shell_000_p1_1_5": 264192,
+          "shell_000_p3_1_1": 1048576,
+          "shell_000_p3_1_3": 524288,
+          "shell_000_p3_1_5": 262144,
+          "shell_000_p3_3_1": 266240,
+          "shell_000_p3_3_3": 133120,
+          "shell_000_p3_3_5": 66560,
+          "shell_000_p5_1_1": 524288,
+          "shell_000_p5_1_3": 262144,
+          "shell_000_p5_1_5": 131072,
+          "shell_000_p5_3_1": 262144,
+          "shell_000_p5_3_3": 131072,
+          "shell_000_p5_3_5": 65536,
+          "shell_000_p5_5_1": 67584,
+          "shell_000_p5_5_3": 33792,
+          "shell_000_p5_5_5": 16896,
+          "shell_000_registers": 109,
+          "shell_000_resident_block_limit": 4,
+          "shell_000_resident_thread_limit": 512,
+          "shell_000_rys_selected": 1,
+          "shell_000_sm_thread_limit": 1536,
+          "shell_000_static_shared_bytes": 6656,
+          "shell_001_dynamic_shared_bytes": 0,
+          "shell_001_p1_1_1": 792576,
+          "shell_001_p1_1_3": 264192,
+          "shell_001_p3_1_1": 786432,
+          "shell_001_p3_1_3": 262144,
+          "shell_001_p3_3_1": 199680,
+          "shell_001_p3_3_3": 66560,
+          "shell_001_p5_1_1": 393216,
+          "shell_001_p5_1_3": 131072,
+          "shell_001_p5_3_1": 196608,
+          "shell_001_p5_3_3": 65536,
+          "shell_001_p5_5_1": 50688,
+          "shell_001_p5_5_3": 16896,
+          "shell_001_registers": 126,
+          "shell_001_resident_block_limit": 4,
+          "shell_001_resident_thread_limit": 512,
+          "shell_001_rys_selected": 1,
+          "shell_001_sm_thread_limit": 1536,
+          "shell_001_static_shared_bytes": 7168,
+          "shell_002_dynamic_shared_bytes": 0,
+          "shell_002_p1_1_1": 264192,
+          "shell_002_p3_1_1": 262144,
+          "shell_002_p3_3_1": 66560,
+          "shell_002_p5_1_1": 131072,
+          "shell_002_p5_3_1": 65536,
+          "shell_002_p5_5_1": 16896,
+          "shell_002_registers": 128,
+          "shell_002_resident_block_limit": 4,
+          "shell_002_resident_thread_limit": 512,
+          "shell_002_rys_selected": 1,
+          "shell_002_sm_thread_limit": 1536,
+          "shell_002_static_shared_bytes": 3968,
+          "shell_100_dynamic_shared_bytes": 0,
+          "shell_100_p1_1_1": 1572864,
+          "shell_100_p1_1_3": 786432,
+          "shell_100_p1_1_5": 393216,
+          "shell_100_p1_3_1": 786432,
+          "shell_100_p1_3_3": 393216,
+          "shell_100_p1_3_5": 196608,
+          "shell_100_p1_5_1": 393216,
+          "shell_100_p1_5_3": 196608,
+          "shell_100_p1_5_5": 98304,
+          "shell_100_p3_1_1": 524288,
+          "shell_100_p3_1_3": 262144,
+          "shell_100_p3_1_5": 131072,
+          "shell_100_p3_3_1": 262144,
+          "shell_100_p3_3_3": 131072,
+          "shell_100_p3_3_5": 65536,
+          "shell_100_p3_5_1": 131072,
+          "shell_100_p3_5_3": 65536,
+          "shell_100_p3_5_5": 32768,
+          "shell_100_registers": 126,
+          "shell_100_resident_block_limit": 4,
+          "shell_100_resident_thread_limit": 512,
+          "shell_100_rys_selected": 1,
+          "shell_100_sm_thread_limit": 1536,
+          "shell_100_static_shared_bytes": 7168,
+          "shell_101_dynamic_shared_bytes": 0,
+          "shell_101_p1_1_1": 1179648,
+          "shell_101_p1_1_3": 393216,
+          "shell_101_p1_3_1": 589824,
+          "shell_101_p1_3_3": 196608,
+          "shell_101_p1_5_1": 294912,
+          "shell_101_p1_5_3": 98304,
+          "shell_101_p3_1_1": 393216,
+          "shell_101_p3_1_3": 131072,
+          "shell_101_p3_3_1": 196608,
+          "shell_101_p3_3_3": 65536,
+          "shell_101_p3_5_1": 98304,
+          "shell_101_p3_5_3": 32768,
+          "shell_101_registers": 142,
+          "shell_101_resident_block_limit": 3,
+          "shell_101_resident_thread_limit": 384,
+          "shell_101_rys_selected": 0,
+          "shell_101_sm_thread_limit": 1536,
+          "shell_101_static_shared_bytes": 5056,
+          "shell_102_dynamic_shared_bytes": 0,
+          "shell_102_p1_1_1": 393216,
+          "shell_102_p1_3_1": 196608,
+          "shell_102_p1_5_1": 98304,
+          "shell_102_p3_1_1": 131072,
+          "shell_102_p3_3_1": 65536,
+          "shell_102_p3_5_1": 32768,
+          "shell_102_registers": 254,
+          "shell_102_resident_block_limit": 2,
+          "shell_102_resident_thread_limit": 256,
+          "shell_102_rys_selected": 0,
+          "shell_102_sm_thread_limit": 1536,
+          "shell_102_static_shared_bytes": 3968,
+          "shell_110_dynamic_shared_bytes": 0,
+          "shell_110_p1_1_1": 595968,
+          "shell_110_p1_1_3": 297984,
+          "shell_110_p1_1_5": 148992,
+          "shell_110_p3_1_1": 393216,
+          "shell_110_p3_1_3": 196608,
+          "shell_110_p3_1_5": 98304,
+          "shell_110_p3_3_1": 67584,
+          "shell_110_p3_3_3": 33792,
+          "shell_110_p3_3_5": 16896,
+          "shell_110_registers": 142,
+          "shell_110_resident_block_limit": 3,
+          "shell_110_resident_thread_limit": 384,
+          "shell_110_rys_selected": 0,
+          "shell_110_sm_thread_limit": 1536,
+          "shell_110_static_shared_bytes": 5056,
+          "shell_111_dynamic_shared_bytes": 0,
+          "shell_111_p1_1_1": 446976,
+          "shell_111_p1_1_3": 148992,
+          "shell_111_p3_1_1": 294912,
+          "shell_111_p3_1_3": 98304,
+          "shell_111_p3_3_1": 50688,
+          "shell_111_p3_3_3": 16896,
+          "shell_111_registers": 158,
+          "shell_111_resident_block_limit": 3,
+          "shell_111_resident_thread_limit": 384,
+          "shell_111_rys_selected": 0,
+          "shell_111_sm_thread_limit": 1536,
+          "shell_111_static_shared_bytes": 5120,
+          "shell_112_dynamic_shared_bytes": 0,
+          "shell_112_p1_1_1": 148992,
+          "shell_112_p3_1_1": 98304,
+          "shell_112_p3_3_1": 16896,
+          "shell_112_registers": 246,
+          "shell_112_resident_block_limit": 2,
+          "shell_112_resident_thread_limit": 256,
+          "shell_112_rys_selected": 0,
+          "shell_112_sm_thread_limit": 1536,
+          "shell_112_static_shared_bytes": 8576,
+          "shell_200_dynamic_shared_bytes": 0,
+          "shell_200_p1_1_1": 524288,
+          "shell_200_p1_1_3": 262144,
+          "shell_200_p1_1_5": 131072,
+          "shell_200_p1_3_1": 262144,
+          "shell_200_p1_3_3": 131072,
+          "shell_200_p1_3_5": 65536,
+          "shell_200_p1_5_1": 131072,
+          "shell_200_p1_5_3": 65536,
+          "shell_200_p1_5_5": 32768,
+          "shell_200_registers": 128,
+          "shell_200_resident_block_limit": 4,
+          "shell_200_resident_thread_limit": 512,
+          "shell_200_rys_selected": 1,
+          "shell_200_sm_thread_limit": 1536,
+          "shell_200_static_shared_bytes": 3968,
+          "shell_201_dynamic_shared_bytes": 0,
+          "shell_201_p1_1_1": 393216,
+          "shell_201_p1_1_3": 131072,
+          "shell_201_p1_3_1": 196608,
+          "shell_201_p1_3_3": 65536,
+          "shell_201_p1_5_1": 98304,
+          "shell_201_p1_5_3": 32768,
+          "shell_201_registers": 254,
+          "shell_201_resident_block_limit": 2,
+          "shell_201_resident_thread_limit": 256,
+          "shell_201_rys_selected": 0,
+          "shell_201_sm_thread_limit": 1536,
+          "shell_201_static_shared_bytes": 3680,
+          "shell_202_dynamic_shared_bytes": 0,
+          "shell_202_p1_1_1": 131072,
+          "shell_202_p1_3_1": 65536,
+          "shell_202_p1_5_1": 32768,
+          "shell_202_registers": 252,
+          "shell_202_resident_block_limit": 2,
+          "shell_202_resident_thread_limit": 256,
+          "shell_202_rys_selected": 0,
+          "shell_202_sm_thread_limit": 1536,
+          "shell_202_static_shared_bytes": 5984,
+          "shell_210_dynamic_shared_bytes": 0,
+          "shell_210_p1_1_1": 393216,
+          "shell_210_p1_1_3": 196608,
+          "shell_210_p1_1_5": 98304,
+          "shell_210_p1_3_1": 131072,
+          "shell_210_p1_3_3": 65536,
+          "shell_210_p1_3_5": 32768,
+          "shell_210_registers": 254,
+          "shell_210_resident_block_limit": 2,
+          "shell_210_resident_thread_limit": 256,
+          "shell_210_rys_selected": 0,
+          "shell_210_sm_thread_limit": 1536,
+          "shell_210_static_shared_bytes": 3680,
+          "shell_211_dynamic_shared_bytes": 0,
+          "shell_211_p1_1_1": 294912,
+          "shell_211_p1_1_3": 98304,
+          "shell_211_p1_3_1": 98304,
+          "shell_211_p1_3_3": 32768,
+          "shell_211_registers": 252,
+          "shell_211_resident_block_limit": 2,
+          "shell_211_resident_thread_limit": 256,
+          "shell_211_rys_selected": 0,
+          "shell_211_sm_thread_limit": 1536,
+          "shell_211_static_shared_bytes": 7904,
+          "shell_212_dynamic_shared_bytes": 0,
+          "shell_212_p1_1_1": 98304,
+          "shell_212_p1_3_1": 32768,
+          "shell_212_registers": 246,
+          "shell_212_resident_block_limit": 2,
+          "shell_212_resident_thread_limit": 256,
+          "shell_212_rys_selected": 0,
+          "shell_212_sm_thread_limit": 1536,
+          "shell_212_static_shared_bytes": 13472,
+          "shell_220_dynamic_shared_bytes": 0,
+          "shell_220_p1_1_1": 67584,
+          "shell_220_p1_1_3": 33792,
+          "shell_220_p1_1_5": 16896,
+          "shell_220_registers": 252,
+          "shell_220_resident_block_limit": 2,
+          "shell_220_resident_thread_limit": 256,
+          "shell_220_rys_selected": 0,
+          "shell_220_sm_thread_limit": 1536,
+          "shell_220_static_shared_bytes": 5984,
+          "shell_221_dynamic_shared_bytes": 0,
+          "shell_221_p1_1_1": 50688,
+          "shell_221_p1_1_3": 16896,
+          "shell_221_registers": 246,
+          "shell_221_resident_block_limit": 2,
+          "shell_221_resident_thread_limit": 256,
+          "shell_221_rys_selected": 0,
+          "shell_221_sm_thread_limit": 1536,
+          "shell_221_static_shared_bytes": 13472,
+          "shell_222_dynamic_shared_bytes": 0,
+          "shell_222_p1_1_1": 16896,
+          "shell_222_registers": 246,
+          "shell_222_resident_block_limit": 2,
+          "shell_222_resident_thread_limit": 256,
+          "shell_222_rys_selected": 0,
+          "shell_222_sm_thread_limit": 1536,
+          "shell_222_static_shared_bytes": 23264,
+          "shell_pairs_logical": 73920,
+          "shell_primitive_signature_policy": 2,
+          "shell_resource_values_are_maxima": 1,
+          "shell_signature_groups": 12,
+          "shell_signature_host_range_bytes": 512,
+          "shell_signature_id_bytes": 3072,
+          "signature_packet_argument_bytes": 675792,
+          "signature_packet_host_view_bytes": 2112,
+          "signature_packet_payload_bytes": 2888,
+          "signature_packet_preparation_ns": 10580447,
+          "signature_packet_slices": 1596,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 0,
+          "three_center_derivative_weight_bytes": 1814298624,
+          "three_center_derivative_weights": 226787328,
+          "three_center_shell_panels": 13,
+          "three_center_signature_packet_launches": 234
+        },
+        "counter_maxima": {
+          "atom_coordinates": 288,
+          "density_upload_bytes": 4718592,
+          "device_to_host_bytes": 2304,
+          "host_to_device_bytes": 4823328,
+          "metric_derivative_weight_bytes": 4718592,
+          "metric_derivative_weights": 589824,
+          "raw_packed_value_reused_bytes": 1814298624,
+          "raw_value_owner_identity": 1,
+          "response_auxiliary_blocks": 13,
+          "response_borrowed_jk_bytes": 1962934272,
+          "response_dense_weight_panel_elements": 0,
+          "response_final_projection_retained_bytes": 754974720,
+          "response_final_projection_reused": 1,
+          "response_full_packed_weight_tensor_elements": 0,
+          "response_full_weight_tensor_elements": 0,
+          "response_host_to_device_bytes": 0,
+          "response_occupied_projected_bytes": 157286400,
+          "response_occupied_projected_elements": 19660800,
+          "response_occupied_projection_blas_calls": 3,
+          "response_occupied_projection_flops": 61303947264,
+          "response_occupied_projection_products": 3,
+          "response_occupied_rank": 160,
+          "response_packed_pairs": 1,
+          "response_probe_total_device_bytes": 37868064,
+          "response_pseudo_density_batched_panels": 13,
+          "response_pseudo_density_blas_calls": 52,
+          "response_pseudo_density_block_peak_elements": 12582912,
+          "response_pseudo_density_block_rows": 256,
+          "response_pseudo_density_capacity_elements": 18898944,
+          "response_pseudo_density_flops": 126835752960,
+          "response_pseudo_density_peak_bytes": 151191552,
+          "response_pseudo_density_peak_elements": 18898944,
+          "response_pseudo_density_products": 2317,
+          "response_pseudo_density_rectangular_elements": 301989888,
+          "response_resident_auxiliary_tile": 64,
+          "response_scratch_bytes": 37868064,
+          "shell_000_dynamic_shared_bytes": 0,
+          "shell_000_p1_1_1": 1056768,
+          "shell_000_p1_1_3": 528384,
+          "shell_000_p1_1_5": 264192,
+          "shell_000_p3_1_1": 1048576,
+          "shell_000_p3_1_3": 524288,
+          "shell_000_p3_1_5": 262144,
+          "shell_000_p3_3_1": 266240,
+          "shell_000_p3_3_3": 133120,
+          "shell_000_p3_3_5": 66560,
+          "shell_000_p5_1_1": 524288,
+          "shell_000_p5_1_3": 262144,
+          "shell_000_p5_1_5": 131072,
+          "shell_000_p5_3_1": 262144,
+          "shell_000_p5_3_3": 131072,
+          "shell_000_p5_3_5": 65536,
+          "shell_000_p5_5_1": 67584,
+          "shell_000_p5_5_3": 33792,
+          "shell_000_p5_5_5": 16896,
+          "shell_000_registers": 109,
+          "shell_000_resident_block_limit": 4,
+          "shell_000_resident_thread_limit": 512,
+          "shell_000_rys_selected": 1,
+          "shell_000_sm_thread_limit": 1536,
+          "shell_000_static_shared_bytes": 6656,
+          "shell_001_dynamic_shared_bytes": 0,
+          "shell_001_p1_1_1": 792576,
+          "shell_001_p1_1_3": 264192,
+          "shell_001_p3_1_1": 786432,
+          "shell_001_p3_1_3": 262144,
+          "shell_001_p3_3_1": 199680,
+          "shell_001_p3_3_3": 66560,
+          "shell_001_p5_1_1": 393216,
+          "shell_001_p5_1_3": 131072,
+          "shell_001_p5_3_1": 196608,
+          "shell_001_p5_3_3": 65536,
+          "shell_001_p5_5_1": 50688,
+          "shell_001_p5_5_3": 16896,
+          "shell_001_registers": 126,
+          "shell_001_resident_block_limit": 4,
+          "shell_001_resident_thread_limit": 512,
+          "shell_001_rys_selected": 1,
+          "shell_001_sm_thread_limit": 1536,
+          "shell_001_static_shared_bytes": 7168,
+          "shell_002_dynamic_shared_bytes": 0,
+          "shell_002_p1_1_1": 264192,
+          "shell_002_p3_1_1": 262144,
+          "shell_002_p3_3_1": 66560,
+          "shell_002_p5_1_1": 131072,
+          "shell_002_p5_3_1": 65536,
+          "shell_002_p5_5_1": 16896,
+          "shell_002_registers": 128,
+          "shell_002_resident_block_limit": 4,
+          "shell_002_resident_thread_limit": 512,
+          "shell_002_rys_selected": 1,
+          "shell_002_sm_thread_limit": 1536,
+          "shell_002_static_shared_bytes": 3968,
+          "shell_100_dynamic_shared_bytes": 0,
+          "shell_100_p1_1_1": 1572864,
+          "shell_100_p1_1_3": 786432,
+          "shell_100_p1_1_5": 393216,
+          "shell_100_p1_3_1": 786432,
+          "shell_100_p1_3_3": 393216,
+          "shell_100_p1_3_5": 196608,
+          "shell_100_p1_5_1": 393216,
+          "shell_100_p1_5_3": 196608,
+          "shell_100_p1_5_5": 98304,
+          "shell_100_p3_1_1": 524288,
+          "shell_100_p3_1_3": 262144,
+          "shell_100_p3_1_5": 131072,
+          "shell_100_p3_3_1": 262144,
+          "shell_100_p3_3_3": 131072,
+          "shell_100_p3_3_5": 65536,
+          "shell_100_p3_5_1": 131072,
+          "shell_100_p3_5_3": 65536,
+          "shell_100_p3_5_5": 32768,
+          "shell_100_registers": 126,
+          "shell_100_resident_block_limit": 4,
+          "shell_100_resident_thread_limit": 512,
+          "shell_100_rys_selected": 1,
+          "shell_100_sm_thread_limit": 1536,
+          "shell_100_static_shared_bytes": 7168,
+          "shell_101_dynamic_shared_bytes": 0,
+          "shell_101_p1_1_1": 1179648,
+          "shell_101_p1_1_3": 393216,
+          "shell_101_p1_3_1": 589824,
+          "shell_101_p1_3_3": 196608,
+          "shell_101_p1_5_1": 294912,
+          "shell_101_p1_5_3": 98304,
+          "shell_101_p3_1_1": 393216,
+          "shell_101_p3_1_3": 131072,
+          "shell_101_p3_3_1": 196608,
+          "shell_101_p3_3_3": 65536,
+          "shell_101_p3_5_1": 98304,
+          "shell_101_p3_5_3": 32768,
+          "shell_101_registers": 142,
+          "shell_101_resident_block_limit": 3,
+          "shell_101_resident_thread_limit": 384,
+          "shell_101_rys_selected": 0,
+          "shell_101_sm_thread_limit": 1536,
+          "shell_101_static_shared_bytes": 5056,
+          "shell_102_dynamic_shared_bytes": 0,
+          "shell_102_p1_1_1": 393216,
+          "shell_102_p1_3_1": 196608,
+          "shell_102_p1_5_1": 98304,
+          "shell_102_p3_1_1": 131072,
+          "shell_102_p3_3_1": 65536,
+          "shell_102_p3_5_1": 32768,
+          "shell_102_registers": 254,
+          "shell_102_resident_block_limit": 2,
+          "shell_102_resident_thread_limit": 256,
+          "shell_102_rys_selected": 0,
+          "shell_102_sm_thread_limit": 1536,
+          "shell_102_static_shared_bytes": 3968,
+          "shell_110_dynamic_shared_bytes": 0,
+          "shell_110_p1_1_1": 595968,
+          "shell_110_p1_1_3": 297984,
+          "shell_110_p1_1_5": 148992,
+          "shell_110_p3_1_1": 393216,
+          "shell_110_p3_1_3": 196608,
+          "shell_110_p3_1_5": 98304,
+          "shell_110_p3_3_1": 67584,
+          "shell_110_p3_3_3": 33792,
+          "shell_110_p3_3_5": 16896,
+          "shell_110_registers": 142,
+          "shell_110_resident_block_limit": 3,
+          "shell_110_resident_thread_limit": 384,
+          "shell_110_rys_selected": 0,
+          "shell_110_sm_thread_limit": 1536,
+          "shell_110_static_shared_bytes": 5056,
+          "shell_111_dynamic_shared_bytes": 0,
+          "shell_111_p1_1_1": 446976,
+          "shell_111_p1_1_3": 148992,
+          "shell_111_p3_1_1": 294912,
+          "shell_111_p3_1_3": 98304,
+          "shell_111_p3_3_1": 50688,
+          "shell_111_p3_3_3": 16896,
+          "shell_111_registers": 158,
+          "shell_111_resident_block_limit": 3,
+          "shell_111_resident_thread_limit": 384,
+          "shell_111_rys_selected": 0,
+          "shell_111_sm_thread_limit": 1536,
+          "shell_111_static_shared_bytes": 5120,
+          "shell_112_dynamic_shared_bytes": 0,
+          "shell_112_p1_1_1": 148992,
+          "shell_112_p3_1_1": 98304,
+          "shell_112_p3_3_1": 16896,
+          "shell_112_registers": 246,
+          "shell_112_resident_block_limit": 2,
+          "shell_112_resident_thread_limit": 256,
+          "shell_112_rys_selected": 0,
+          "shell_112_sm_thread_limit": 1536,
+          "shell_112_static_shared_bytes": 8576,
+          "shell_200_dynamic_shared_bytes": 0,
+          "shell_200_p1_1_1": 524288,
+          "shell_200_p1_1_3": 262144,
+          "shell_200_p1_1_5": 131072,
+          "shell_200_p1_3_1": 262144,
+          "shell_200_p1_3_3": 131072,
+          "shell_200_p1_3_5": 65536,
+          "shell_200_p1_5_1": 131072,
+          "shell_200_p1_5_3": 65536,
+          "shell_200_p1_5_5": 32768,
+          "shell_200_registers": 128,
+          "shell_200_resident_block_limit": 4,
+          "shell_200_resident_thread_limit": 512,
+          "shell_200_rys_selected": 1,
+          "shell_200_sm_thread_limit": 1536,
+          "shell_200_static_shared_bytes": 3968,
+          "shell_201_dynamic_shared_bytes": 0,
+          "shell_201_p1_1_1": 393216,
+          "shell_201_p1_1_3": 131072,
+          "shell_201_p1_3_1": 196608,
+          "shell_201_p1_3_3": 65536,
+          "shell_201_p1_5_1": 98304,
+          "shell_201_p1_5_3": 32768,
+          "shell_201_registers": 254,
+          "shell_201_resident_block_limit": 2,
+          "shell_201_resident_thread_limit": 256,
+          "shell_201_rys_selected": 0,
+          "shell_201_sm_thread_limit": 1536,
+          "shell_201_static_shared_bytes": 3680,
+          "shell_202_dynamic_shared_bytes": 0,
+          "shell_202_p1_1_1": 131072,
+          "shell_202_p1_3_1": 65536,
+          "shell_202_p1_5_1": 32768,
+          "shell_202_registers": 252,
+          "shell_202_resident_block_limit": 2,
+          "shell_202_resident_thread_limit": 256,
+          "shell_202_rys_selected": 0,
+          "shell_202_sm_thread_limit": 1536,
+          "shell_202_static_shared_bytes": 5984,
+          "shell_210_dynamic_shared_bytes": 0,
+          "shell_210_p1_1_1": 393216,
+          "shell_210_p1_1_3": 196608,
+          "shell_210_p1_1_5": 98304,
+          "shell_210_p1_3_1": 131072,
+          "shell_210_p1_3_3": 65536,
+          "shell_210_p1_3_5": 32768,
+          "shell_210_registers": 254,
+          "shell_210_resident_block_limit": 2,
+          "shell_210_resident_thread_limit": 256,
+          "shell_210_rys_selected": 0,
+          "shell_210_sm_thread_limit": 1536,
+          "shell_210_static_shared_bytes": 3680,
+          "shell_211_dynamic_shared_bytes": 0,
+          "shell_211_p1_1_1": 294912,
+          "shell_211_p1_1_3": 98304,
+          "shell_211_p1_3_1": 98304,
+          "shell_211_p1_3_3": 32768,
+          "shell_211_registers": 252,
+          "shell_211_resident_block_limit": 2,
+          "shell_211_resident_thread_limit": 256,
+          "shell_211_rys_selected": 0,
+          "shell_211_sm_thread_limit": 1536,
+          "shell_211_static_shared_bytes": 7904,
+          "shell_212_dynamic_shared_bytes": 0,
+          "shell_212_p1_1_1": 98304,
+          "shell_212_p1_3_1": 32768,
+          "shell_212_registers": 246,
+          "shell_212_resident_block_limit": 2,
+          "shell_212_resident_thread_limit": 256,
+          "shell_212_rys_selected": 0,
+          "shell_212_sm_thread_limit": 1536,
+          "shell_212_static_shared_bytes": 13472,
+          "shell_220_dynamic_shared_bytes": 0,
+          "shell_220_p1_1_1": 67584,
+          "shell_220_p1_1_3": 33792,
+          "shell_220_p1_1_5": 16896,
+          "shell_220_registers": 252,
+          "shell_220_resident_block_limit": 2,
+          "shell_220_resident_thread_limit": 256,
+          "shell_220_rys_selected": 0,
+          "shell_220_sm_thread_limit": 1536,
+          "shell_220_static_shared_bytes": 5984,
+          "shell_221_dynamic_shared_bytes": 0,
+          "shell_221_p1_1_1": 50688,
+          "shell_221_p1_1_3": 16896,
+          "shell_221_registers": 246,
+          "shell_221_resident_block_limit": 2,
+          "shell_221_resident_thread_limit": 256,
+          "shell_221_rys_selected": 0,
+          "shell_221_sm_thread_limit": 1536,
+          "shell_221_static_shared_bytes": 13472,
+          "shell_222_dynamic_shared_bytes": 0,
+          "shell_222_p1_1_1": 16896,
+          "shell_222_registers": 246,
+          "shell_222_resident_block_limit": 2,
+          "shell_222_resident_thread_limit": 256,
+          "shell_222_rys_selected": 0,
+          "shell_222_sm_thread_limit": 1536,
+          "shell_222_static_shared_bytes": 23264,
+          "shell_pairs_logical": 73920,
+          "shell_primitive_signature_policy": 2,
+          "shell_resource_values_are_maxima": 1,
+          "shell_signature_groups": 12,
+          "shell_signature_host_range_bytes": 512,
+          "shell_signature_id_bytes": 3072,
+          "signature_packet_argument_bytes": 675792,
+          "signature_packet_host_view_bytes": 2112,
+          "signature_packet_payload_bytes": 2888,
+          "signature_packet_preparation_ns": 10580447,
+          "signature_packet_slices": 1596,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 0,
+          "three_center_derivative_weight_bytes": 1814298624,
+          "three_center_derivative_weights": 226787328,
+          "three_center_shell_panels": 13,
+          "three_center_signature_packet_launches": 234
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      }
+    ],
+    "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+  },
+  "observed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 5854400401,
+    "peak_bytes": 5892268465,
+    "allocations": 135,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  },
+  "process_samples": [
+    [
+      2065410183489149,
+      534773760,
+      891817984
+    ],
+    [
+      2065410275271761,
+      553648128,
+      1063620608
+    ],
+    [
+      2065410366716867,
+      553648128,
+      1380397056
+    ],
+    [
+      2065410457515376,
+      553648128,
+      1683066880
+    ],
+    [
+      2065410548539306,
+      553648128,
+      1986707456
+    ],
+    [
+      2065410639538017,
+      553648128,
+      2297200640
+    ],
+    [
+      2065410730427540,
+      553648128,
+      2617843712
+    ],
+    [
+      2065410821518568,
+      553648128,
+      2938941440
+    ],
+    [
+      2065410912303461,
+      553648128,
+      3265654784
+    ],
+    [
+      2065411002524454,
+      553648128,
+      3590754304
+    ],
+    [
+      2065411092190415,
+      553648128,
+      3908698112
+    ],
+    [
+      2065411182292822,
+      566231040,
+      3984359424
+    ],
+    [
+      2065411272198121,
+      566231040,
+      3984359424
+    ],
+    [
+      2065411362222027,
+      566231040,
+      3984359424
+    ],
+    [
+      2065411452291139,
+      566231040,
+      3984359424
+    ],
+    [
+      2065411542478999,
+      566231040,
+      3984359424
+    ],
+    [
+      2065411635248670,
+      6316621824,
+      3994316800
+    ],
+    [
+      2065411727781939,
+      6316621824,
+      3994316800
+    ],
+    [
+      2065411818816870,
+      6316621824,
+      3994316800
+    ],
+    [
+      2065411911393362,
+      6316621824,
+      3994320896
+    ],
+    [
+      2065412003630644,
+      6316621824,
+      3994320896
+    ],
+    [
+      2065412095349273,
+      6316621824,
+      3994324992
+    ],
+    [
+      2065412187659375,
+      6316621824,
+      3994324992
+    ],
+    [
+      2065412280371286,
+      6316621824,
+      3994329088
+    ],
+    [
+      2065412372712888,
+      6316621824,
+      3994329088
+    ],
+    [
+      2065412466127273,
+      6316621824,
+      3994337280
+    ],
+    [
+      2065412558476600,
+      6316621824,
+      3994337280
+    ],
+    [
+      2065412651934849,
+      6316621824,
+      3994341376
+    ],
+    [
+      2065412742666590,
+      6316621824,
+      3994341376
+    ],
+    [
+      2065412833902014,
+      6316621824,
+      3994341376
+    ],
+    [
+      2065412925410452,
+      6316621824,
+      3994341376
+    ],
+    [
+      2065413017646161,
+      6316621824,
+      3994341376
+    ],
+    [
+      2065413108509404,
+      6316621824,
+      3994345472
+    ],
+    [
+      2065413201017634,
+      6316621824,
+      3994345472
+    ],
+    [
+      2065413294178164,
+      6316621824,
+      3994353664
+    ],
+    [
+      2065413385223866,
+      6316621824,
+      3994353664
+    ],
+    [
+      2065413476896868,
+      6316621824,
+      3994357760
+    ],
+    [
+      2065413569359562,
+      6316621824,
+      3994361856
+    ],
+    [
+      2065413660704707,
+      6316621824,
+      3994365952
+    ],
+    [
+      2065413752410331,
+      6316621824,
+      3994365952
+    ],
+    [
+      2065413843717173,
+      6316621824,
+      3994365952
+    ],
+    [
+      2065413935916152,
+      6316621824,
+      3994365952
+    ],
+    [
+      2065414027719344,
+      6316621824,
+      3994365952
+    ],
+    [
+      2065414120672276,
+      6316621824,
+      3994370048
+    ],
+    [
+      2065414211357598,
+      6316621824,
+      3994370048
+    ],
+    [
+      2065414303605981,
+      6316621824,
+      3994378240
+    ],
+    [
+      2065414395321785,
+      6316621824,
+      3994378240
+    ],
+    [
+      2065414487777786,
+      6316621824,
+      3994378240
+    ],
+    [
+      2065414580406518,
+      6316621824,
+      3994378240
+    ],
+    [
+      2065414673487305,
+      6316621824,
+      3994382336
+    ],
+    [
+      2065414766342660,
+      6316621824,
+      3994382336
+    ],
+    [
+      2065414856547613,
+      6316621824,
+      3994382336
+    ],
+    [
+      2065414948550857,
+      6316621824,
+      3994394624
+    ],
+    [
+      2065415040762230,
+      6316621824,
+      3994394624
+    ],
+    [
+      2065415132786755,
+      6316621824,
+      3994394624
+    ],
+    [
+      2065415224501267,
+      6316621824,
+      3994394624
+    ],
+    [
+      2065415317289103,
+      6316621824,
+      3994398720
+    ],
+    [
+      2065415409168511,
+      6316621824,
+      3994398720
+    ],
+    [
+      2065415501235387,
+      6316621824,
+      3994402816
+    ],
+    [
+      2065415593599542,
+      6316621824,
+      3994402816
+    ],
+    [
+      2065415686303949,
+      6316621824,
+      3994406912
+    ],
+    [
+      2065415778720534,
+      6316621824,
+      3994406912
+    ],
+    [
+      2065415869667868,
+      6316621824,
+      3994406912
+    ],
+    [
+      2065415961080622,
+      6316621824,
+      3994411008
+    ],
+    [
+      2065416051717892,
+      6316621824,
+      3994411008
+    ],
+    [
+      2065416143643278,
+      6316621824,
+      3994415104
+    ],
+    [
+      2065416235379982,
+      6316621824,
+      3994415104
+    ],
+    [
+      2065416327484240,
+      6316621824,
+      3994415104
+    ],
+    [
+      2065416418469917,
+      6316621824,
+      3994415104
+    ],
+    [
+      2065416510312213,
+      6316621824,
+      3994423296
+    ],
+    [
+      2065416602265092,
+      6316621824,
+      3994423296
+    ],
+    [
+      2065416692969240,
+      6316621824,
+      3994427392
+    ],
+    [
+      2065416784587427,
+      6316621824,
+      3994427392
+    ],
+    [
+      2065416878641116,
+      6316621824,
+      3994427392
+    ],
+    [
+      2065416971783832,
+      6316621824,
+      3994431488
+    ],
+    [
+      2065417063061558,
+      6316621824,
+      3994431488
+    ],
+    [
+      2065417154407294,
+      6316621824,
+      3994431488
+    ],
+    [
+      2065417247772505,
+      6316621824,
+      3994431488
+    ],
+    [
+      2065417340508462,
+      6316621824,
+      3994439680
+    ],
+    [
+      2065417432148652,
+      6316621824,
+      3994439680
+    ],
+    [
+      2065417523983664,
+      6316621824,
+      3994447872
+    ],
+    [
+      2065417616284889,
+      6316621824,
+      3994447872
+    ],
+    [
+      2065417708511802,
+      6316621824,
+      3994447872
+    ],
+    [
+      2065417800921815,
+      6316621824,
+      3994447872
+    ],
+    [
+      2065417890397021,
+      6316621824,
+      3994447872
+    ],
+    [
+      2065417982026821,
+      6316621824,
+      3994451968
+    ],
+    [
+      2065418073346647,
+      6316621824,
+      3994451968
+    ],
+    [
+      2065418164220861,
+      6316621824,
+      3994460160
+    ],
+    [
+      2065418255817527,
+      6316621824,
+      3994460160
+    ],
+    [
+      2065418347831352,
+      6316621824,
+      3994468352
+    ],
+    [
+      2065418440032676,
+      6316621824,
+      3994468352
+    ],
+    [
+      2065418532927727,
+      6316621824,
+      3994472448
+    ],
+    [
+      2065418625475624,
+      6316621824,
+      3994472448
+    ],
+    [
+      2065418716257872,
+      6316621824,
+      3994472448
+    ],
+    [
+      2065418808461360,
+      6316621824,
+      3994472448
+    ],
+    [
+      2065418902466616,
+      6316621824,
+      3994472448
+    ],
+    [
+      2065418995187664,
+      6316621824,
+      3994480640
+    ],
+    [
+      2065419087250203,
+      6316621824,
+      3994480640
+    ],
+    [
+      2065419180420230,
+      6316621824,
+      3994484736
+    ],
+    [
+      2065419273197997,
+      6316621824,
+      3994484736
+    ],
+    [
+      2065419365504793,
+      6316621824,
+      3994484736
+    ],
+    [
+      2065419457299358,
+      6316621824,
+      3994484736
+    ],
+    [
+      2065419550201233,
+      6316621824,
+      3994488832
+    ],
+    [
+      2065419641789383,
+      6316621824,
+      3994488832
+    ],
+    [
+      2065419732530983,
+      6316621824,
+      3994488832
+    ],
+    [
+      2065419824779978,
+      6316621824,
+      3994497024
+    ],
+    [
+      2065419919190229,
+      6316621824,
+      3994497024
+    ],
+    [
+      2065420012159643,
+      6316621824,
+      3994501120
+    ],
+    [
+      2065420103092249,
+      6316621824,
+      3994501120
+    ],
+    [
+      2065420193937116,
+      6316621824,
+      3994501120
+    ],
+    [
+      2065420285328570,
+      6316621824,
+      3994501120
+    ],
+    [
+      2065420376289580,
+      6316621824,
+      3994505216
+    ],
+    [
+      2065420466783656,
+      6316621824,
+      3994505216
+    ],
+    [
+      2065420557743774,
+      6316621824,
+      3994513408
+    ],
+    [
+      2065420649030117,
+      6316621824,
+      3994513408
+    ],
+    [
+      2065420739821953,
+      6316621824,
+      3994513408
+    ],
+    [
+      2065420831491359,
+      6316621824,
+      3994513408
+    ],
+    [
+      2065420924063873,
+      6316621824,
+      3994513408
+    ],
+    [
+      2065421015344936,
+      6316621824,
+      3994517504
+    ],
+    [
+      2065421106674801,
+      6316621824,
+      3994517504
+    ],
+    [
+      2065421198526386,
+      6316621824,
+      3994521600
+    ],
+    [
+      2065421290440871,
+      6316621824,
+      3994521600
+    ],
+    [
+      2065421382571279,
+      6316621824,
+      3994521600
+    ],
+    [
+      2065421474691447,
+      6316621824,
+      3994521600
+    ],
+    [
+      2065421565654892,
+      6316621824,
+      3994521600
+    ],
+    [
+      2065421657504122,
+      6316621824,
+      3994529792
+    ],
+    [
+      2065421748904082,
+      6316621824,
+      3994529792
+    ],
+    [
+      2065421840784922,
+      6316621824,
+      3994533888
+    ],
+    [
+      2065421932147822,
+      6316621824,
+      3994533888
+    ],
+    [
+      2065422024871545,
+      6316621824,
+      3994537984
+    ],
+    [
+      2065422116664397,
+      6316621824,
+      3994537984
+    ],
+    [
+      2065422208750210,
+      6316621824,
+      3994537984
+    ],
+    [
+      2065422299973332,
+      6316621824,
+      3994537984
+    ],
+    [
+      2065422390444053,
+      6316621824,
+      3994546176
+    ],
+    [
+      2065422483324457,
+      6316621824,
+      3994546176
+    ],
+    [
+      2065422574032372,
+      6316621824,
+      3994546176
+    ],
+    [
+      2065422666178400,
+      6316621824,
+      3994550272
+    ],
+    [
+      2065422759266401,
+      6316621824,
+      3994550272
+    ],
+    [
+      2065422851950269,
+      6316621824,
+      3994550272
+    ],
+    [
+      2065422944948548,
+      6316621824,
+      3994550272
+    ],
+    [
+      2065423036170588,
+      6316621824,
+      3994554368
+    ],
+    [
+      2065423127490715,
+      6316621824,
+      3994554368
+    ],
+    [
+      2065423219929764,
+      6316621824,
+      3994562560
+    ],
+    [
+      2065423311374750,
+      6316621824,
+      3994562560
+    ],
+    [
+      2065423401599802,
+      6316621824,
+      3994562560
+    ],
+    [
+      2065423493381031,
+      6316621824,
+      3994562560
+    ],
+    [
+      2065423585900815,
+      6316621824,
+      3994562560
+    ],
+    [
+      2065423677694298,
+      6316621824,
+      3994566656
+    ],
+    [
+      2065423770030440,
+      6316621824,
+      3994566656
+    ],
+    [
+      2065423861290613,
+      6316621824,
+      3994570752
+    ],
+    [
+      2065423952458509,
+      6316621824,
+      3994570752
+    ],
+    [
+      2065424044282360,
+      6316621824,
+      3994583040
+    ],
+    [
+      2065424135668905,
+      6316621824,
+      3994583040
+    ],
+    [
+      2065424226297168,
+      6316621824,
+      3994583040
+    ],
+    [
+      2065424317508447,
+      6316621824,
+      3994583040
+    ],
+    [
+      2065424408539391,
+      6316621824,
+      3994583040
+    ],
+    [
+      2065424500396015,
+      6316621824,
+      3994587136
+    ],
+    [
+      2065424592067896,
+      6316621824,
+      3994587136
+    ],
+    [
+      2065424684294648,
+      6316621824,
+      3994599424
+    ],
+    [
+      2065424776455024,
+      6316621824,
+      3994599424
+    ],
+    [
+      2065424869102792,
+      6316621824,
+      3994603520
+    ],
+    [
+      2065424967412717,
+      6316621824,
+      3994603520
+    ],
+    [
+      2065425061656330,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425153711965,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425244695979,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425336826458,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425428899877,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425520886550,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425613166124,
+      6316621824,
+      3994607616
+    ],
+    [
+      2065425706281377,
+      6316621824,
+      3994615808
+    ],
+    [
+      2065425797969378,
+      6316621824,
+      3994615808
+    ],
+    [
+      2065425890558985,
+      6316621824,
+      3994619904
+    ],
+    [
+      2065425982299377,
+      6316621824,
+      3994619904
+    ],
+    [
+      2065426074808611,
+      6316621824,
+      3994619904
+    ],
+    [
+      2065426166565173,
+      6316621824,
+      3994619904
+    ],
+    [
+      2065426257757226,
+      6316621824,
+      3994619904
+    ],
+    [
+      2065426349760130,
+      6316621824,
+      3994624000
+    ],
+    [
+      2065426441317361,
+      6316621824,
+      3994624000
+    ],
+    [
+      2065426533950452,
+      6316621824,
+      3994636288
+    ],
+    [
+      2065426625812246,
+      6316621824,
+      3994636288
+    ],
+    [
+      2065426718160601,
+      6316621824,
+      3994636288
+    ],
+    [
+      2065426810372255,
+      6316621824,
+      3994636288
+    ],
+    [
+      2065426902914692,
+      6316621824,
+      3994640384
+    ],
+    [
+      2065426994577305,
+      6316621824,
+      3994640384
+    ],
+    [
+      2065427086528340,
+      6316621824,
+      3994644480
+    ],
+    [
+      2065427178722250,
+      6316621824,
+      3994644480
+    ],
+    [
+      2065427269382414,
+      6316621824,
+      3994644480
+    ],
+    [
+      2065427360586670,
+      6316621824,
+      3994652672
+    ],
+    [
+      2065427452432764,
+      6316621824,
+      3994652672
+    ],
+    [
+      2065427545060414,
+      6316621824,
+      3994652672
+    ],
+    [
+      2065427636938449,
+      6316621824,
+      3994652672
+    ],
+    [
+      2065427728419715,
+      6316621824,
+      3994656768
+    ],
+    [
+      2065427820701503,
+      6316621824,
+      3994656768
+    ],
+    [
+      2065427914348704,
+      6316621824,
+      3994660864
+    ],
+    [
+      2065428006702891,
+      6316621824,
+      3994660864
+    ],
+    [
+      2065428098147958,
+      6316621824,
+      3994664960
+    ],
+    [
+      2065428189146289,
+      6316621824,
+      3994664960
+    ],
+    [
+      2065428282538843,
+      6316621824,
+      3994664960
+    ],
+    [
+      2065428375072664,
+      6316621824,
+      3994669056
+    ],
+    [
+      2065428466355720,
+      6316621824,
+      3994669056
+    ],
+    [
+      2065428557549125,
+      6316621824,
+      3994673152
+    ],
+    [
+      2065428649620972,
+      6316621824,
+      3994673152
+    ],
+    [
+      2065428742233022,
+      6316621824,
+      3994677248
+    ],
+    [
+      2065428835178871,
+      6316621824,
+      3994677248
+    ],
+    [
+      2065428927690849,
+      6316621824,
+      3994681344
+    ],
+    [
+      2065429020697214,
+      6316621824,
+      3994681344
+    ],
+    [
+      2065429112352273,
+      6316621824,
+      3994685440
+    ],
+    [
+      2065429203995759,
+      6316621824,
+      3994685440
+    ],
+    [
+      2065429294849154,
+      6316621824,
+      3994685440
+    ],
+    [
+      2065429388043769,
+      6316621824,
+      3994689536
+    ],
+    [
+      2065429481134265,
+      6316621824,
+      3994689536
+    ],
+    [
+      2065429573285814,
+      6316621824,
+      3994689536
+    ],
+    [
+      2065429665540400,
+      6316621824,
+      3994689536
+    ],
+    [
+      2065429757545238,
+      6316621824,
+      3994697728
+    ],
+    [
+      2065429849966573,
+      6316621824,
+      3994697728
+    ],
+    [
+      2065429939757073,
+      6316621824,
+      3994701824
+    ],
+    [
+      2065430031562369,
+      6316621824,
+      3994701824
+    ],
+    [
+      2065430122976967,
+      6316621824,
+      3994701824
+    ],
+    [
+      2065430216444495,
+      6316621824,
+      3994701824
+    ],
+    [
+      2065430307928516,
+      6316621824,
+      3994701824
+    ],
+    [
+      2065430400515428,
+      6316621824,
+      3994705920
+    ],
+    [
+      2065430493413676,
+      6316621824,
+      3994705920
+    ],
+    [
+      2065430585609730,
+      6316621824,
+      3994718208
+    ],
+    [
+      2065430677465263,
+      6316621824,
+      3994718208
+    ],
+    [
+      2065430769140590,
+      6316621824,
+      3994722304
+    ],
+    [
+      2065430860903084,
+      6316621824,
+      3994722304
+    ],
+    [
+      2065430954837245,
+      6316621824,
+      3994722304
+    ],
+    [
+      2065431047405021,
+      6316621824,
+      3994722304
+    ],
+    [
+      2065431138788129,
+      6316621824,
+      3994722304
+    ],
+    [
+      2065431230521598,
+      6316621824,
+      3994730496
+    ],
+    [
+      2065431320756218,
+      6316621824,
+      3994730496
+    ],
+    [
+      2065431412511759,
+      6316621824,
+      3994738688
+    ],
+    [
+      2065431506116689,
+      6316621824,
+      3994738688
+    ],
+    [
+      2065431597158244,
+      6316621824,
+      3994738688
+    ],
+    [
+      2065431688740693,
+      6316621824,
+      3994738688
+    ],
+    [
+      2065431780955974,
+      6316621824,
+      3994742784
+    ],
+    [
+      2065431873080782,
+      6316621824,
+      3994742784
+    ],
+    [
+      2065431963914689,
+      6316621824,
+      3994746880
+    ],
+    [
+      2065432056373045,
+      6316621824,
+      3994746880
+    ],
+    [
+      2065432147593693,
+      6316621824,
+      3994746880
+    ],
+    [
+      2065432239327783,
+      6316621824,
+      3994750976
+    ],
+    [
+      2065432331220456,
+      6316621824,
+      3994750976
+    ],
+    [
+      2065432423489510,
+      6316621824,
+      3994755072
+    ],
+    [
+      2065432515217117,
+      6316621824,
+      3994755072
+    ],
+    [
+      2065432606853390,
+      6316621824,
+      3994759168
+    ],
+    [
+      2065432698313606,
+      6316621824,
+      3994759168
+    ],
+    [
+      2065432789157562,
+      6316621824,
+      3994763264
+    ],
+    [
+      2065432880547363,
+      6316621824,
+      3994763264
+    ],
+    [
+      2065432972804114,
+      6316621824,
+      3994763264
+    ],
+    [
+      2065433064697218,
+      6316621824,
+      3994767360
+    ],
+    [
+      2065433156288234,
+      6316621824,
+      3994767360
+    ],
+    [
+      2065433248226285,
+      6316621824,
+      3994771456
+    ],
+    [
+      2065433338915254,
+      6316621824,
+      3994771456
+    ],
+    [
+      2065433430156261,
+      6316621824,
+      3994775552
+    ],
+    [
+      2065433520725020,
+      6316621824,
+      3994775552
+    ],
+    [
+      2065433613259212,
+      6316621824,
+      3994775552
+    ],
+    [
+      2065433704932996,
+      6316621824,
+      3994775552
+    ],
+    [
+      2065433797113250,
+      6316621824,
+      3994783744
+    ],
+    [
+      2065433889338350,
+      6316621824,
+      3994783744
+    ],
+    [
+      2065433979759938,
+      6316621824,
+      3994783744
+    ],
+    [
+      2065434071232828,
+      6316621824,
+      3994787840
+    ],
+    [
+      2065434163954188,
+      6316621824,
+      3994787840
+    ],
+    [
+      2065434255651778,
+      6316621824,
+      3994787840
+    ],
+    [
+      2065434347694348,
+      6316621824,
+      3994787840
+    ],
+    [
+      2065434440737564,
+      6316621824,
+      3994791936
+    ],
+    [
+      2065434533422103,
+      6316621824,
+      3994791936
+    ],
+    [
+      2065434626064161,
+      6316621824,
+      3994800128
+    ],
+    [
+      2065434717985008,
+      6316621824,
+      3994800128
+    ],
+    [
+      2065434807903253,
+      6316621824,
+      3994800128
+    ],
+    [
+      2065434899608508,
+      6316621824,
+      3994812416
+    ],
+    [
+      2065434991448942,
+      6316621824,
+      3994812416
+    ],
+    [
+      2065435082378923,
+      6316621824,
+      3994812416
+    ],
+    [
+      2065435174682413,
+      6316621824,
+      3994812416
+    ],
+    [
+      2065435265934771,
+      6316621824,
+      3994816512
+    ],
+    [
+      2065435358136536,
+      6316621824,
+      3994816512
+    ],
+    [
+      2065435449726801,
+      6316621824,
+      3994824704
+    ],
+    [
+      2065435540417494,
+      6316621824,
+      3994824704
+    ],
+    [
+      2065435630237601,
+      6316621824,
+      3994824704
+    ],
+    [
+      2065435723029576,
+      6316621824,
+      3994824704
+    ],
+    [
+      2065435814426631,
+      6316621824,
+      3994824704
+    ],
+    [
+      2065435905548299,
+      6316621824,
+      3994828800
+    ],
+    [
+      2065435996696607,
+      6316621824,
+      3994828800
+    ],
+    [
+      2065436088667280,
+      6316621824,
+      3994832896
+    ],
+    [
+      2065436180449042,
+      6316621824,
+      3994832896
+    ],
+    [
+      2065436273082814,
+      6316621824,
+      3994841088
+    ],
+    [
+      2065436365714993,
+      6316621824,
+      3994841088
+    ],
+    [
+      2065436458612740,
+      6316621824,
+      3994841088
+    ],
+    [
+      2065436550624341,
+      6316621824,
+      3994841088
+    ],
+    [
+      2065436640457834,
+      6316621824,
+      3994841088
+    ],
+    [
+      2065436731602927,
+      6316621824,
+      3994845184
+    ],
+    [
+      2065436823464350,
+      6316621824,
+      3994845184
+    ],
+    [
+      2065436915135099,
+      6316621824,
+      3994849280
+    ],
+    [
+      2065437007914761,
+      6316621824,
+      3994849280
+    ],
+    [
+      2065437099587063,
+      6316621824,
+      3994857472
+    ],
+    [
+      2065437191482001,
+      6316621824,
+      3994857472
+    ],
+    [
+      2065437283661223,
+      6316621824,
+      3994861568
+    ],
+    [
+      2065437376167110,
+      6316621824,
+      3994861568
+    ],
+    [
+      2065437466163675,
+      6316621824,
+      3994861568
+    ],
+    [
+      2065437558488315,
+      6316621824,
+      3994865664
+    ],
+    [
+      2065437650487833,
+      6316621824,
+      3994865664
+    ],
+    [
+      2065437742085262,
+      6316621824,
+      3994890240
+    ],
+    [
+      2065437833180449,
+      6316621824,
+      3994890240
+    ],
+    [
+      2065437925042194,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438017853496,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438109270850,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438201851821,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438292860573,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438383959627,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438475797476,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438568541329,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438661575527,
+      6316621824,
+      3994894336
+    ],
+    [
+      2065438754142672,
+      6316621824,
+      3994898432
+    ],
+    [
+      2065438845396593,
+      6316621824,
+      3994898432
+    ],
+    [
+      2065438938444348,
+      6316621824,
+      3994902528
+    ],
+    [
+      2065439029830422,
+      6316621824,
+      3994902528
+    ],
+    [
+      2065439120369565,
+      6316621824,
+      3994902528
+    ],
+    [
+      2065439212335429,
+      6316621824,
+      3994902528
+    ],
+    [
+      2065439303680014,
+      6316621824,
+      3994902528
+    ],
+    [
+      2065439395111956,
+      6316621824,
+      3994906624
+    ],
+    [
+      2065439487415917,
+      6316621824,
+      3994906624
+    ],
+    [
+      2065439579016922,
+      6316621824,
+      3994910720
+    ],
+    [
+      2065439670166894,
+      6316621824,
+      3994910720
+    ],
+    [
+      2065439762222049,
+      6316621824,
+      3994914816
+    ],
+    [
+      2065439853628081,
+      6316621824,
+      3994914816
+    ],
+    [
+      2065439943695893,
+      6316621824,
+      3994914816
+    ],
+    [
+      2065440038868654,
+      6316621824,
+      3994918912
+    ],
+    [
+      2065440130877450,
+      6316621824,
+      3994918912
+    ],
+    [
+      2065440222997319,
+      6316621824,
+      3994918912
+    ],
+    [
+      2065440314653760,
+      6316621824,
+      3994918912
+    ],
+    [
+      2065440405396062,
+      6316621824,
+      3994927104
+    ],
+    [
+      2065440496615097,
+      6316621824,
+      3994927104
+    ],
+    [
+      2065440588877418,
+      6316621824,
+      3994931200
+    ],
+    [
+      2065440681443922,
+      6316621824,
+      3994931200
+    ],
+    [
+      2065440772892014,
+      6316621824,
+      3994935296
+    ],
+    [
+      2065440864813373,
+      6316621824,
+      3994935296
+    ],
+    [
+      2065440956211030,
+      6316621824,
+      3994935296
+    ],
+    [
+      2065441048194317,
+      6316621824,
+      3994935296
+    ],
+    [
+      2065441140419036,
+      6316621824,
+      3994935296
+    ],
+    [
+      2065441232753896,
+      6316621824,
+      3994943488
+    ],
+    [
+      2065441324673802,
+      6316621824,
+      3994943488
+    ],
+    [
+      2065441415672585,
+      6316621824,
+      3994947584
+    ],
+    [
+      2065441506377596,
+      6316621824,
+      3994947584
+    ],
+    [
+      2065441598345424,
+      6316621824,
+      3994947584
+    ],
+    [
+      2065441690617935,
+      6316621824,
+      3994947584
+    ],
+    [
+      2065441781636014,
+      6316621824,
+      3994947584
+    ],
+    [
+      2065441873116078,
+      6316621824,
+      3994951680
+    ],
+    [
+      2065441965020565,
+      6316621824,
+      3994951680
+    ],
+    [
+      2065442056399886,
+      6316621824,
+      3994963968
+    ],
+    [
+      2065442147553927,
+      6316621824,
+      3994963968
+    ],
+    [
+      2065442240457375,
+      6316621824,
+      3994963968
+    ],
+    [
+      2065442331369091,
+      6316621824,
+      3994963968
+    ],
+    [
+      2065442423477558,
+      6316621824,
+      3994968064
+    ],
+    [
+      2065442514415996,
+      6316621824,
+      3994968064
+    ],
+    [
+      2065442604653251,
+      6316621824,
+      3994968064
+    ],
+    [
+      2065442695835305,
+      6316621824,
+      3994972160
+    ],
+    [
+      2065442786433161,
+      6316621824,
+      3994972160
+    ],
+    [
+      2065442877689336,
+      6316621824,
+      3994980352
+    ],
+    [
+      2065442969452502,
+      6316621824,
+      3994980352
+    ],
+    [
+      2065443060102498,
+      6316621824,
+      3994980352
+    ],
+    [
+      2065443151081283,
+      6316621824,
+      3994980352
+    ],
+    [
+      2065443242728868,
+      6316621824,
+      3994984448
+    ],
+    [
+      2065443334694331,
+      6316621824,
+      3994984448
+    ],
+    [
+      2065443425017992,
+      6316621824,
+      3994984448
+    ],
+    [
+      2065443515995274,
+      6316621824,
+      3994988544
+    ],
+    [
+      2065443607096222,
+      6316621824,
+      3994988544
+    ],
+    [
+      2065443698234111,
+      6316621824,
+      3994996736
+    ],
+    [
+      2065443790039037,
+      6316621824,
+      3994996736
+    ],
+    [
+      2065443881476951,
+      6316621824,
+      3995000832
+    ],
+    [
+      2065443973494193,
+      6316621824,
+      3995000832
+    ],
+    [
+      2065444064152575,
+      6316621824,
+      3995004928
+    ],
+    [
+      2065444155930209,
+      6316621824,
+      3995004928
+    ],
+    [
+      2065444248715040,
+      6316621824,
+      3995004928
+    ],
+    [
+      2065444340940892,
+      6316621824,
+      3995004928
+    ],
+    [
+      2065444431746726,
+      6316621824,
+      3995004928
+    ],
+    [
+      2065444524485469,
+      6316621824,
+      3995013120
+    ],
+    [
+      2065444615746694,
+      6316621824,
+      3995013120
+    ],
+    [
+      2065444708330090,
+      6316621824,
+      3995017216
+    ],
+    [
+      2065444799394509,
+      6316621824,
+      3995017216
+    ],
+    [
+      2065444891715713,
+      6316621824,
+      3995021312
+    ],
+    [
+      2065444984682823,
+      6316621824,
+      3995021312
+    ],
+    [
+      2065445076906671,
+      6316621824,
+      3995021312
+    ],
+    [
+      2065445167887079,
+      6316621824,
+      3995021312
+    ],
+    [
+      2065445259399134,
+      6316621824,
+      3995029504
+    ],
+    [
+      2065445350643818,
+      6316621824,
+      3995029504
+    ],
+    [
+      2065445441610049,
+      6316621824,
+      3995029504
+    ],
+    [
+      2065445534063206,
+      6316621824,
+      3995033600
+    ],
+    [
+      2065445624921951,
+      6316621824,
+      3995033600
+    ],
+    [
+      2065445715977693,
+      6316621824,
+      3995033600
+    ],
+    [
+      2065445806833553,
+      6316621824,
+      3995033600
+    ],
+    [
+      2065445898411544,
+      6316621824,
+      3995037696
+    ],
+    [
+      2065445990972097,
+      6316621824,
+      3995037696
+    ],
+    [
+      2065446082692811,
+      6316621824,
+      3995045888
+    ],
+    [
+      2065446173408182,
+      6316621824,
+      3995045888
+    ],
+    [
+      2065446263138468,
+      6316621824,
+      3995045888
+    ],
+    [
+      2065446354251359,
+      6316621824,
+      3995045888
+    ],
+    [
+      2065446445356125,
+      6316621824,
+      3995045888
+    ],
+    [
+      2065446538271657,
+      6316621824,
+      3995049984
+    ],
+    [
+      2065446629640228,
+      6316621824,
+      3995049984
+    ],
+    [
+      2065446720648309,
+      6316621824,
+      3995058176
+    ],
+    [
+      2065446813183192,
+      6316621824,
+      3995058176
+    ],
+    [
+      2065446904655501,
+      6316621824,
+      3995062272
+    ],
+    [
+      2065446995446196,
+      6316621824,
+      3995070464
+    ],
+    [
+      2065447085675306,
+      6316621824,
+      3995070464
+    ],
+    [
+      2065447177706005,
+      6316621824,
+      3995074560
+    ],
+    [
+      2065447268619424,
+      6316621824,
+      3995074560
+    ],
+    [
+      2065447360707152,
+      6316621824,
+      3995078656
+    ],
+    [
+      2065447453967604,
+      6316621824,
+      3995078656
+    ],
+    [
+      2065447547391198,
+      6316621824,
+      3995082752
+    ],
+    [
+      2065447638322472,
+      6316621824,
+      3995082752
+    ],
+    [
+      2065447729749494,
+      6316621824,
+      3995082752
+    ],
+    [
+      2065447821803357,
+      6316621824,
+      3995082752
+    ],
+    [
+      2065447914504639,
+      6316621824,
+      3995090944
+    ],
+    [
+      2065448005702683,
+      6316621824,
+      3995090944
+    ],
+    [
+      2065448096540458,
+      6316621824,
+      3995090944
+    ],
+    [
+      2065448187825910,
+      6316621824,
+      3995095040
+    ],
+    [
+      2065448278931027,
+      6316621824,
+      3995095040
+    ],
+    [
+      2065448369816574,
+      6316621824,
+      3995099136
+    ],
+    [
+      2065448460656873,
+      6316621824,
+      3995099136
+    ],
+    [
+      2065448552228112,
+      6316621824,
+      3995099136
+    ],
+    [
+      2065448643679943,
+      6316621824,
+      3995099136
+    ],
+    [
+      2065448735086667,
+      6316621824,
+      3995107328
+    ],
+    [
+      2065448826133592,
+      6316621824,
+      3995107328
+    ],
+    [
+      2065448915927229,
+      6316621824,
+      3995107328
+    ],
+    [
+      2065449007295048,
+      6316621824,
+      3995111424
+    ],
+    [
+      2065449098623843,
+      6316621824,
+      3995111424
+    ],
+    [
+      2065449190238075,
+      6316621824,
+      3995111424
+    ],
+    [
+      2065449281425158,
+      6316621824,
+      3995111424
+    ],
+    [
+      2065449373541090,
+      6316621824,
+      3995115520
+    ],
+    [
+      2065449465498698,
+      6316621824,
+      3995115520
+    ],
+    [
+      2065449557452800,
+      6316621824,
+      3995123712
+    ],
+    [
+      2065449649089604,
+      6316621824,
+      3995123712
+    ],
+    [
+      2065449739601836,
+      6316621824,
+      3995123712
+    ],
+    [
+      2065449832117803,
+      6316621824,
+      3995123712
+    ],
+    [
+      2065449923335596,
+      6316621824,
+      3995123712
+    ],
+    [
+      2065450015491744,
+      6316621824,
+      3995127808
+    ],
+    [
+      2065450109796284,
+      6316621824,
+      3995127808
+    ],
+    [
+      2065450201553339,
+      6316621824,
+      3995136000
+    ],
+    [
+      2065450294508567,
+      6316621824,
+      3995136000
+    ],
+    [
+      2065450387081583,
+      6316621824,
+      3995144192
+    ],
+    [
+      2065450479028721,
+      6316621824,
+      3995144192
+    ],
+    [
+      2065450572500538,
+      6316621824,
+      3995144192
+    ],
+    [
+      2065450664502872,
+      6316621824,
+      3995144192
+    ],
+    [
+      2065450755769898,
+      6316621824,
+      3995144192
+    ],
+    [
+      2065450848683957,
+      6316621824,
+      3995148288
+    ],
+    [
+      2065450940772587,
+      6316621824,
+      3995148288
+    ],
+    [
+      2065451033437529,
+      6316621824,
+      3995152384
+    ],
+    [
+      2065451125605169,
+      6316621824,
+      3995152384
+    ],
+    [
+      2065451218047586,
+      6316621824,
+      3995156480
+    ],
+    [
+      2065451309674030,
+      6316621824,
+      3995156480
+    ],
+    [
+      2065451397534066,
+      6316621824,
+      3995164672
+    ],
+    [
+      2065451490576741,
+      6316621824,
+      3995164672
+    ],
+    [
+      2065451583057150,
+      6316621824,
+      3995168768
+    ],
+    [
+      2065451675493535,
+      6316621824,
+      3995168768
+    ],
+    [
+      2065451766586118,
+      6316621824,
+      3995168768
+    ],
+    [
+      2065451858094818,
+      6316621824,
+      3995168768
+    ],
+    [
+      2065451950262268,
+      6316621824,
+      3995168768
+    ],
+    [
+      2065452041741992,
+      6316621824,
+      3995176960
+    ],
+    [
+      2065452133783250,
+      6316621824,
+      3995176960
+    ],
+    [
+      2065452225477795,
+      6316621824,
+      3995181056
+    ],
+    [
+      2065452317144547,
+      6316621824,
+      3995181056
+    ],
+    [
+      2065452409318139,
+      6316621824,
+      3995185152
+    ],
+    [
+      2065452501582945,
+      6316621824,
+      3995185152
+    ],
+    [
+      2065452594752794,
+      6316621824,
+      3995185152
+    ],
+    [
+      2065452686923049,
+      6316621824,
+      3995185152
+    ],
+    [
+      2065452777356791,
+      6316621824,
+      3995185152
+    ],
+    [
+      2065452869370537,
+      6316621824,
+      3995193344
+    ],
+    [
+      2065452960466567,
+      6316621824,
+      3995193344
+    ],
+    [
+      2065453052718248,
+      6316621824,
+      3995197440
+    ],
+    [
+      2065453144350935,
+      6316621824,
+      3995197440
+    ],
+    [
+      2065453235832612,
+      6316621824,
+      3995197440
+    ],
+    [
+      2065453326722848,
+      6316621824,
+      3995197440
+    ],
+    [
+      2065453420384217,
+      6316621824,
+      3995201536
+    ],
+    [
+      2065453511052819,
+      6316621824,
+      3995201536
+    ],
+    [
+      2065453602362217,
+      6316621824,
+      3995201536
+    ],
+    [
+      2065453694173906,
+      6316621824,
+      3995209728
+    ],
+    [
+      2065453785595599,
+      6316621824,
+      3995209728
+    ],
+    [
+      2065453878858185,
+      6316621824,
+      3995213824
+    ],
+    [
+      2065453970524276,
+      6316621824,
+      3995213824
+    ],
+    [
+      2065454063180341,
+      6316621824,
+      3995213824
+    ],
+    [
+      2065454154809631,
+      6316621824,
+      3995213824
+    ],
+    [
+      2065454246549253,
+      6316621824,
+      3995217920
+    ],
+    [
+      2065454337776383,
+      6316621824,
+      3995217920
+    ],
+    [
+      2065454430577225,
+      6316621824,
+      3995226112
+    ],
+    [
+      2065454522411197,
+      6316621824,
+      3995226112
+    ],
+    [
+      2065454613512176,
+      6316621824,
+      3995226112
+    ],
+    [
+      2065454704531930,
+      6316621824,
+      3995226112
+    ],
+    [
+      2065454796092749,
+      6316621824,
+      3995226112
+    ],
+    [
+      2065454888810573,
+      6316621824,
+      3995230208
+    ],
+    [
+      2065454981013491,
+      6316621824,
+      3995230208
+    ],
+    [
+      2065455072678700,
+      6316621824,
+      3995234304
+    ],
+    [
+      2065455170250674,
+      6316621824,
+      3995234304
+    ],
+    [
+      2065455262709181,
+      6316621824,
+      3995238400
+    ],
+    [
+      2065455355808515,
+      6316621824,
+      3995238400
+    ],
+    [
+      2065455446284658,
+      6316621824,
+      3995238400
+    ],
+    [
+      2065455538358920,
+      6316621824,
+      3995242496
+    ],
+    [
+      2065455631155695,
+      6316621824,
+      3995242496
+    ],
+    [
+      2065455723677513,
+      6316621824,
+      3995246592
+    ],
+    [
+      2065455814816625,
+      6316621824,
+      3995246592
+    ],
+    [
+      2065455907441852,
+      6316621824,
+      3995250688
+    ],
+    [
+      2065455999361307,
+      6316621824,
+      3995250688
+    ],
+    [
+      2065456090408062,
+      6316621824,
+      3995254784
+    ],
+    [
+      2065456182055257,
+      6316621824,
+      3995254784
+    ],
+    [
+      2065456274640146,
+      6316621824,
+      3995262976
+    ],
+    [
+      2065456366511670,
+      6316621824,
+      3995262976
+    ],
+    [
+      2065456457468784,
+      6316621824,
+      3995262976
+    ],
+    [
+      2065456550594829,
+      6316621824,
+      3995267072
+    ],
+    [
+      2065456642668940,
+      6316621824,
+      3995267072
+    ],
+    [
+      2065456734401929,
+      6316621824,
+      3995271168
+    ],
+    [
+      2065456825739591,
+      6316621824,
+      3995271168
+    ],
+    [
+      2065456916653883,
+      6316621824,
+      3995279360
+    ],
+    [
+      2065457008866069,
+      6316621824,
+      3995279360
+    ],
+    [
+      2065457102358214,
+      6316621824,
+      3995283456
+    ],
+    [
+      2065457193370243,
+      6316621824,
+      3995283456
+    ],
+    [
+      2065457283541493,
+      6316621824,
+      3995283456
+    ],
+    [
+      2065457374900877,
+      6316621824,
+      3995283456
+    ],
+    [
+      2065457466427300,
+      6316621824,
+      3995283456
+    ],
+    [
+      2065457557602962,
+      6316621824,
+      3995287552
+    ],
+    [
+      2065457648463562,
+      6316621824,
+      3995287552
+    ],
+    [
+      2065457740434145,
+      6316621824,
+      3995295744
+    ],
+    [
+      2065457832580274,
+      6316621824,
+      3995295744
+    ],
+    [
+      2065457924422001,
+      6316621824,
+      3995299840
+    ],
+    [
+      2065458015261650,
+      6316621824,
+      3995299840
+    ],
+    [
+      2065458107435954,
+      6316621824,
+      3995299840
+    ],
+    [
+      2065458199772598,
+      6316621824,
+      3995299840
+    ],
+    [
+      2065458291160126,
+      6316621824,
+      3995299840
+    ],
+    [
+      2065458382214385,
+      6316621824,
+      3995303936
+    ],
+    [
+      2065458474553103,
+      6316621824,
+      3995303936
+    ],
+    [
+      2065458565742893,
+      6316621824,
+      3995312128
+    ],
+    [
+      2065458657566004,
+      6316621824,
+      3995312128
+    ],
+    [
+      2065458750800707,
+      6316621824,
+      3995312128
+    ],
+    [
+      2065458842935545,
+      6316621824,
+      3995312128
+    ],
+    [
+      2065458935536224,
+      6316621824,
+      3995316224
+    ],
+    [
+      2065459028334402,
+      6316621824,
+      3995316224
+    ],
+    [
+      2065459117957733,
+      6316621824,
+      3995316224
+    ],
+    [
+      2065459209738143,
+      6316621824,
+      3995320320
+    ],
+    [
+      2065459300803423,
+      6316621824,
+      3995320320
+    ],
+    [
+      2065459392914626,
+      6316621824,
+      3995324416
+    ],
+    [
+      2065459484319727,
+      6316621824,
+      3995324416
+    ],
+    [
+      2065459575434653,
+      6316621824,
+      3995328512
+    ],
+    [
+      2065459666722530,
+      6316621824,
+      3995328512
+    ],
+    [
+      2065459758918535,
+      6316621824,
+      3995332608
+    ],
+    [
+      2065459850289491,
+      6316621824,
+      3995332608
+    ],
+    [
+      2065459941831795,
+      6316621824,
+      3995336704
+    ],
+    [
+      2065460034100579,
+      6316621824,
+      3995336704
+    ],
+    [
+      2065460124544782,
+      6316621824,
+      3995336704
+    ],
+    [
+      2065460215869459,
+      6316621824,
+      3995340800
+    ],
+    [
+      2065460307093504,
+      6316621824,
+      3995340800
+    ],
+    [
+      2065460398418782,
+      6316621824,
+      3995344896
+    ],
+    [
+      2065460490144077,
+      6316621824,
+      3995344896
+    ],
+    [
+      2065460582534734,
+      6316621824,
+      3995348992
+    ],
+    [
+      2065460673814235,
+      6316621824,
+      3995348992
+    ],
+    [
+      2065460765676842,
+      6316621824,
+      3995348992
+    ],
+    [
+      2065460858721862,
+      6316621824,
+      3995348992
+    ],
+    [
+      2065460950622953,
+      6316621824,
+      3995348992
+    ],
+    [
+      2065461042313661,
+      6316621824,
+      3995357184
+    ],
+    [
+      2065461133895420,
+      6316621824,
+      3995357184
+    ],
+    [
+      2065461225439397,
+      6316621824,
+      3995361280
+    ],
+    [
+      2065461317397497,
+      6316621824,
+      3995361280
+    ],
+    [
+      2065461409734081,
+      6316621824,
+      3995365376
+    ],
+    [
+      2065461500898151,
+      6316621824,
+      3995365376
+    ],
+    [
+      2065461592928760,
+      6316621824,
+      3995365376
+    ],
+    [
+      2065461684916336,
+      6316621824,
+      3995365376
+    ],
+    [
+      2065461775667025,
+      6316621824,
+      3995373568
+    ],
+    [
+      2065461866760810,
+      6316621824,
+      3995373568
+    ],
+    [
+      2065461958484311,
+      6316621824,
+      3995373568
+    ],
+    [
+      2065462050638316,
+      6316621824,
+      3995377664
+    ],
+    [
+      2065462142485433,
+      6316621824,
+      3995377664
+    ],
+    [
+      2065462235336372,
+      6316621824,
+      3995377664
+    ],
+    [
+      2065462326997734,
+      6316621824,
+      3995377664
+    ],
+    [
+      2065462418984879,
+      6316621824,
+      3995385856
+    ],
+    [
+      2065462510856022,
+      6316621824,
+      3995385856
+    ],
+    [
+      2065462602485042,
+      6316621824,
+      3995394048
+    ],
+    [
+      2065462694693040,
+      6316621824,
+      3995394048
+    ],
+    [
+      2065462785939278,
+      6316621824,
+      3995394048
+    ],
+    [
+      2065462877655665,
+      6316621824,
+      3995394048
+    ],
+    [
+      2065462968653026,
+      6316621824,
+      3995394048
+    ],
+    [
+      2065463059624487,
+      6316621824,
+      3995398144
+    ],
+    [
+      2065463150452575,
+      6316621824,
+      3995398144
+    ],
+    [
+      2065463242899219,
+      6316621824,
+      3995406336
+    ],
+    [
+      2065463334731789,
+      6316621824,
+      3995406336
+    ],
+    [
+      2065463424869875,
+      6316621824,
+      3995414528
+    ],
+    [
+      2065463516035789,
+      6316621824,
+      3995414528
+    ],
+    [
+      2065463606651059,
+      6316621824,
+      3995414528
+    ],
+    [
+      2065463697779521,
+      6316621824,
+      3995414528
+    ],
+    [
+      2065463789317326,
+      6316621824,
+      3995414528
+    ],
+    [
+      2065463880834312,
+      6316621824,
+      3995463680
+    ],
+    [
+      2065463973900322,
+      6316621824,
+      3995463680
+    ],
+    [
+      2065464065851940,
+      6316621824,
+      3995463680
+    ],
+    [
+      2065464157131661,
+      6316621824,
+      3995463680
+    ],
+    [
+      2065464248236498,
+      6316621824,
+      3995463680
+    ],
+    [
+      2065464339032003,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464430398089,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464521752043,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464614276567,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464706506677,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464798232843,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464889985420,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065464981403216,
+      6316621824,
+      3995467776
+    ],
+    [
+      2065465072982039,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465165493088,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465256692075,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465348549883,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465440664282,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465533137998,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465625579824,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465718081685,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465810617631,
+      6316621824,
+      3995471872
+    ],
+    [
+      2065465902256299,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065465993771952,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466084248677,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466177106298,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466269696528,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466365229450,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466456806541,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466548072546,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466641031872,
+      6316621824,
+      3995475968
+    ],
+    [
+      2065466733420606,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065466825113759,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065466916926812,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065467007877403,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065467098235220,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065467189268841,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065467280449984,
+      6316621824,
+      3995484160
+    ],
+    [
+      2065467372484199,
+      6316621824,
+      3995488256
+    ],
+    [
+      2065467463844355,
+      6316621824,
+      3995488256
+    ],
+    [
+      2065467555393723,
+      6316621824,
+      3995496448
+    ],
+    [
+      2065467647396749,
+      6316621824,
+      3995496448
+    ],
+    [
+      2065467738932370,
+      6316621824,
+      3995496448
+    ],
+    [
+      2065467830940396,
+      6316621824,
+      3995496448
+    ],
+    [
+      2065467920963562,
+      6316621824,
+      3995500544
+    ],
+    [
+      2065468012593464,
+      6316621824,
+      3995500544
+    ],
+    [
+      2065468103472348,
+      6316621824,
+      3995500544
+    ],
+    [
+      2065468195260734,
+      6316621824,
+      3995508736
+    ],
+    [
+      2065468287431280,
+      6316621824,
+      3995508736
+    ],
+    [
+      2065468379693182,
+      6316621824,
+      3995512832
+    ],
+    [
+      2065468472489446,
+      6316621824,
+      3995512832
+    ],
+    [
+      2065468564726129,
+      6316621824,
+      3995516928
+    ],
+    [
+      2065468655354654,
+      6316621824,
+      3995516928
+    ],
+    [
+      2065468746654104,
+      6316621824,
+      3995521024
+    ],
+    [
+      2065468837971708,
+      6316621824,
+      3995521024
+    ],
+    [
+      2065468930362276,
+      6316621824,
+      3995521024
+    ],
+    [
+      2065469021911543,
+      6316621824,
+      3995525120
+    ],
+    [
+      2065469113344298,
+      6316621824,
+      3995525120
+    ],
+    [
+      2065469204719332,
+      6316621824,
+      3995529216
+    ],
+    [
+      2065469295492644,
+      6316621824,
+      3995529216
+    ],
+    [
+      2065469386441813,
+      6316621824,
+      3995533312
+    ],
+    [
+      2065469477684474,
+      6316621824,
+      3995533312
+    ],
+    [
+      2065469569410740,
+      6316621824,
+      3995537408
+    ],
+    [
+      2065469660079713,
+      6316621824,
+      3995537408
+    ],
+    [
+      2065469750639517,
+      6316621824,
+      3995541504
+    ],
+    [
+      2065469843385475,
+      6316621824,
+      3995541504
+    ],
+    [
+      2065469934507244,
+      6316621824,
+      3995541504
+    ],
+    [
+      2065470026663473,
+      6316621824,
+      3995545600
+    ],
+    [
+      2065470118613869,
+      6316621824,
+      3995545600
+    ],
+    [
+      2065470210342610,
+      6316621824,
+      3995553792
+    ],
+    [
+      2065470302028399,
+      6316621824,
+      3995553792
+    ],
+    [
+      2065470393621400,
+      6299844608,
+      4013473792
+    ],
+    [
+      2065470484521385,
+      6299844608,
+      4163940352
+    ],
+    [
+      2065470574804569,
+      6299844608,
+      4314935296
+    ],
+    [
+      2065470665366577,
+      6299844608,
+      4465930240
+    ],
+    [
+      2065470755214529,
+      6299844608,
+      4614905856
+    ],
+    [
+      2065470844382168,
+      6299844608,
+      4762832896
+    ],
+    [
+      2065470933735543,
+      6299844608,
+      4909477888
+    ],
+    [
+      2065471023575419,
+      6299844608,
+      5060472832
+    ],
+    [
+      2065471113841471,
+      6299844608,
+      5211467776
+    ],
+    [
+      2065471203887080,
+      6299844608,
+      5362462720
+    ],
+    [
+      2065471294171708,
+      6299844608,
+      5513457664
+    ],
+    [
+      2065471384498465,
+      6299844608,
+      5666033664
+    ],
+    [
+      2065471474468661,
+      6299844608,
+      5817806848
+    ],
+    [
+      2065471564551832,
+      6299844608,
+      5971447808
+    ],
+    [
+      2065471655161442,
+      6299844608,
+      6126874624
+    ],
+    [
+      2065471744503395,
+      6299844608,
+      6274715648
+    ],
+    [
+      2065471834054708,
+      6299844608,
+      6427115520
+    ],
+    [
+      2065471924832409,
+      6299844608,
+      6579863552
+    ],
+    [
+      2065472014779781,
+      6299844608,
+      6349148160
+    ],
+    [
+      2065472104235061,
+      6299844608,
+      4750495744
+    ],
+    [
+      2065472194081079,
+      6308233216,
+      3829760000
+    ],
+    [
+      2065472285037963,
+      12058624000,
+      3954266112
+    ],
+    [
+      2065472374523030,
+      12060721152,
+      4067463168
+    ],
+    [
+      2065472464748363,
+      12060721152,
+      4067536896
+    ],
+    [
+      2065472557293086,
+      12060721152,
+      4067590144
+    ],
+    [
+      2065472646771851,
+      12060721152,
+      4067631104
+    ],
+    [
+      2065472735816044,
+      12060721152,
+      4067659776
+    ],
+    [
+      2065472827207270,
+      12060721152,
+      4067700736
+    ],
+    [
+      2065472917268189,
+      12060721152,
+      4067729408
+    ],
+    [
+      2065473008153325,
+      12060721152,
+      4067753984
+    ],
+    [
+      2065473099710017,
+      12060721152,
+      4067782656
+    ],
+    [
+      2065473190241256,
+      12060721152,
+      4067803136
+    ],
+    [
+      2065473279746732,
+      12060721152,
+      4067831808
+    ],
+    [
+      2065473369946327,
+      12060721152,
+      4067856384
+    ],
+    [
+      2065473461530902,
+      12060721152,
+      4067880960
+    ],
+    [
+      2065473551475930,
+      12060721152,
+      4067901440
+    ],
+    [
+      2065473641312409,
+      12060721152,
+      4067917824
+    ],
+    [
+      2065473732452003,
+      12060721152,
+      4067938304
+    ],
+    [
+      2065473822811383,
+      12060721152,
+      4067962880
+    ],
+    [
+      2065473912607044,
+      12060721152,
+      4067971072
+    ],
+    [
+      2065474003465871,
+      12060721152,
+      4067995648
+    ],
+    [
+      2065474093627623,
+      12060721152,
+      4068028416
+    ],
+    [
+      2065474184589897,
+      12060721152,
+      4068036608
+    ],
+    [
+      2065474275342781,
+      12060721152,
+      4068048896
+    ],
+    [
+      2065474366129910,
+      12060721152,
+      4068065280
+    ],
+    [
+      2065474456471386,
+      12060721152,
+      4068077568
+    ],
+    [
+      2065474547485790,
+      12060721152,
+      4068093952
+    ],
+    [
+      2065474637534395,
+      12060721152,
+      4068110336
+    ],
+    [
+      2065474728436465,
+      12060721152,
+      4068126720
+    ],
+    [
+      2065474819648557,
+      12060721152,
+      4068134912
+    ],
+    [
+      2065474910976711,
+      12060721152,
+      4068151296
+    ],
+    [
+      2065475001431044,
+      12060721152,
+      4068159488
+    ],
+    [
+      2065475092679325,
+      12060721152,
+      4068171776
+    ],
+    [
+      2065475184455898,
+      12060721152,
+      4068184064
+    ],
+    [
+      2065475274581301,
+      12060721152,
+      4068204544
+    ],
+    [
+      2065475364513223,
+      12060721152,
+      4068212736
+    ],
+    [
+      2065475456090555,
+      12060721152,
+      4068225024
+    ],
+    [
+      2065475546845442,
+      12060721152,
+      4068233216
+    ],
+    [
+      2065475637186958,
+      12060721152,
+      4068245504
+    ],
+    [
+      2065475727164257,
+      12060721152,
+      4068261888
+    ],
+    [
+      2065475816945691,
+      12060721152,
+      4068274176
+    ],
+    [
+      2065475907088808,
+      12060721152,
+      4068278272
+    ],
+    [
+      2065475996821679,
+      12060721152,
+      4068294656
+    ],
+    [
+      2065476086691383,
+      12060721152,
+      4068302848
+    ],
+    [
+      2065476177999649,
+      12060721152,
+      4068315136
+    ],
+    [
+      2065476268257325,
+      12060721152,
+      4068327424
+    ],
+    [
+      2065476357956612,
+      12060721152,
+      4068331520
+    ],
+    [
+      2065476449227627,
+      12060721152,
+      4068343808
+    ],
+    [
+      2065476540043712,
+      12060721152,
+      4068356096
+    ],
+    [
+      2065476629874450,
+      12060721152,
+      4068364288
+    ],
+    [
+      2065476721020547,
+      12060721152,
+      4068376576
+    ],
+    [
+      2065476812531231,
+      12060721152,
+      4068380672
+    ],
+    [
+      2065476904420138,
+      12060721152,
+      4068401152
+    ],
+    [
+      2065476995556606,
+      12060721152,
+      4068409344
+    ],
+    [
+      2065477087075476,
+      12060721152,
+      4068421632
+    ],
+    [
+      2065477179264478,
+      12060721152,
+      4068429824
+    ],
+    [
+      2065477270190132,
+      12060721152,
+      4068433920
+    ],
+    [
+      2065477360627733,
+      12060721152,
+      4068446208
+    ],
+    [
+      2065477450685776,
+      12060721152,
+      4068450304
+    ],
+    [
+      2065477541553179,
+      12060721152,
+      4068466688
+    ],
+    [
+      2065477632041476,
+      12060721152,
+      4068470784
+    ],
+    [
+      2065477723171171,
+      12060721152,
+      4068478976
+    ],
+    [
+      2065477814737381,
+      12060721152,
+      4068487168
+    ],
+    [
+      2065477905488121,
+      12060721152,
+      4068495360
+    ],
+    [
+      2065477996277003,
+      12060721152,
+      4068507648
+    ],
+    [
+      2065478085999124,
+      12060721152,
+      4068519936
+    ],
+    [
+      2065478177311238,
+      12060721152,
+      4068524032
+    ],
+    [
+      2065478268535133,
+      12060721152,
+      4068532224
+    ],
+    [
+      2065478359688824,
+      12060721152,
+      4068581376
+    ],
+    [
+      2065478450035270,
+      12060721152,
+      4068585472
+    ],
+    [
+      2065478540605574,
+      12060721152,
+      4068585472
+    ],
+    [
+      2065478631357486,
+      12060721152,
+      4068589568
+    ],
+    [
+      2065478721377567,
+      12060721152,
+      4068589568
+    ],
+    [
+      2065478811233925,
+      12060721152,
+      4068593664
+    ],
+    [
+      2065478902113621,
+      12060721152,
+      4068593664
+    ],
+    [
+      2065478993776647,
+      12060721152,
+      4068601856
+    ],
+    [
+      2065479085041811,
+      12060721152,
+      4068605952
+    ],
+    [
+      2065479175915295,
+      12060721152,
+      4068618240
+    ],
+    [
+      2065479267579243,
+      12060721152,
+      4068622336
+    ],
+    [
+      2065479358676125,
+      12060721152,
+      4068630528
+    ],
+    [
+      2065479449903977,
+      12060721152,
+      4068638720
+    ],
+    [
+      2065479539898169,
+      12060721152,
+      4068651008
+    ],
+    [
+      2065479629879717,
+      12060721152,
+      4068659200
+    ],
+    [
+      2065479719763928,
+      12060721152,
+      4068667392
+    ],
+    [
+      2065479809168882,
+      12060721152,
+      4068675584
+    ],
+    [
+      2065479898939545,
+      12060721152,
+      4068679680
+    ],
+    [
+      2065479989013299,
+      12060721152,
+      4068683776
+    ],
+    [
+      2065480079922993,
+      12060721152,
+      4068691968
+    ],
+    [
+      2065480170474341,
+      12060721152,
+      4068696064
+    ],
+    [
+      2065480259850199,
+      12060721152,
+      4068708352
+    ],
+    [
+      2065480349287455,
+      12060721152,
+      4068716544
+    ],
+    [
+      2065480439731688,
+      12060721152,
+      4068728832
+    ],
+    [
+      2065480530595113,
+      12060721152,
+      4068732928
+    ],
+    [
+      2065480620877246,
+      12060721152,
+      4068741120
+    ],
+    [
+      2065480710728093,
+      12060721152,
+      4068745216
+    ],
+    [
+      2065480801446932,
+      12060721152,
+      4068749312
+    ],
+    [
+      2065480891891856,
+      12060721152,
+      4068761600
+    ],
+    [
+      2065480981831163,
+      12060721152,
+      4068765696
+    ],
+    [
+      2065481072609655,
+      12060721152,
+      4068773888
+    ],
+    [
+      2065481162392643,
+      12060721152,
+      4068777984
+    ],
+    [
+      2065481252836515,
+      12060721152,
+      4068790272
+    ],
+    [
+      2065481342386397,
+      12060721152,
+      4068794368
+    ],
+    [
+      2065481432174664,
+      12060721152,
+      4068802560
+    ],
+    [
+      2065481524038875,
+      12060721152,
+      4068810752
+    ],
+    [
+      2065481614664104,
+      12060721152,
+      4068823040
+    ],
+    [
+      2065481705434191,
+      12060721152,
+      4068827136
+    ],
+    [
+      2065481797371061,
+      12060721152,
+      4068835328
+    ],
+    [
+      2065481888494614,
+      12060721152,
+      4068839424
+    ],
+    [
+      2065481978785343,
+      12060721152,
+      4068847616
+    ],
+    [
+      2065482069653137,
+      12060721152,
+      4068855808
+    ],
+    [
+      2065482161020276,
+      12060721152,
+      4068859904
+    ],
+    [
+      2065482252855281,
+      12060721152,
+      4068872192
+    ],
+    [
+      2065482344301933,
+      12060721152,
+      4068872192
+    ],
+    [
+      2065482435517652,
+      12060721152,
+      4068884480
+    ],
+    [
+      2065482526261880,
+      12060721152,
+      4068884480
+    ],
+    [
+      2065482617585456,
+      12060721152,
+      4068892672
+    ],
+    [
+      2065482708600581,
+      12060721152,
+      4068900864
+    ],
+    [
+      2065482799146830,
+      12060721152,
+      4068904960
+    ],
+    [
+      2065482889480411,
+      12060721152,
+      4068913152
+    ],
+    [
+      2065482979115716,
+      12060721152,
+      4068929536
+    ],
+    [
+      2065483069483973,
+      12060721152,
+      4068929536
+    ],
+    [
+      2065483160022216,
+      12060721152,
+      4068933632
+    ],
+    [
+      2065483250794067,
+      12060721152,
+      4068941824
+    ],
+    [
+      2065483340431876,
+      12060721152,
+      4068945920
+    ],
+    [
+      2065483430635900,
+      12060721152,
+      4068950016
+    ],
+    [
+      2065483519826844,
+      12060721152,
+      4068962304
+    ],
+    [
+      2065483610798196,
+      12060721152,
+      4068966400
+    ],
+    [
+      2065483701503048,
+      12060721152,
+      4068974592
+    ],
+    [
+      2065483793115797,
+      12060721152,
+      4068978688
+    ],
+    [
+      2065483883197977,
+      12060721152,
+      4068978688
+    ],
+    [
+      2065483973793680,
+      12060721152,
+      4068986880
+    ],
+    [
+      2065484063466337,
+      12060721152,
+      4068995072
+    ],
+    [
+      2065484152840131,
+      12060721152,
+      4068999168
+    ],
+    [
+      2065484243574429,
+      12060721152,
+      4069007360
+    ],
+    [
+      2065484333735230,
+      12060721152,
+      4069011456
+    ],
+    [
+      2065484424989473,
+      12060721152,
+      4069023744
+    ],
+    [
+      2065484515679697,
+      12060721152,
+      4069027840
+    ],
+    [
+      2065484606529547,
+      12060721152,
+      4069031936
+    ],
+    [
+      2065484696338995,
+      12060721152,
+      4069031936
+    ],
+    [
+      2065484787048566,
+      12060721152,
+      4069044224
+    ],
+    [
+      2065484878947624,
+      12060721152,
+      4069048320
+    ],
+    [
+      2065484970185435,
+      12060721152,
+      4069048320
+    ],
+    [
+      2065485061742679,
+      12060721152,
+      4069064704
+    ],
+    [
+      2065485151676134,
+      12060721152,
+      4069068800
+    ],
+    [
+      2065485242705748,
+      12060721152,
+      4069072896
+    ],
+    [
+      2065485334691531,
+      12060721152,
+      4069072896
+    ],
+    [
+      2065485426546915,
+      12117344256,
+      4093292544
+    ],
+    [
+      2065485517067054,
+      12117344256,
+      4093902848
+    ],
+    [
+      2065485607224037,
+      12117344256,
+      4093902848
+    ],
+    [
+      2065485696963311,
+      12117344256,
+      4093902848
+    ],
+    [
+      2065485786503454,
+      12117344256,
+      4093902848
+    ],
+    [
+      2065485877057167,
+      12117344256,
+      4108062720
+    ],
+    [
+      2065485968237008,
+      12348030976,
+      4109709312
+    ],
+    [
+      2065486060237129,
+      12381585408,
+      4154253312
+    ],
+    [
+      2065486152172816,
+      12383682560,
+      4158300160
+    ],
+    [
+      2065486242454819,
+      12383682560,
+      4159459328
+    ],
+    [
+      2065486333949122,
+      12383682560,
+      4175310848
+    ],
+    [
+      2065486425543537,
+      12383682560,
+      4175400960
+    ],
+    [
+      2065486516048376,
+      12383682560,
+      4175400960
+    ],
+    [
+      2065486607418180,
+      12383682560,
+      4175409152
+    ],
+    [
+      2065486698098445,
+      12383682560,
+      4175409152
+    ],
+    [
+      2065486788715970,
+      12383682560,
+      4175425536
+    ],
+    [
+      2065486880606431,
+      12383682560,
+      4175425536
+    ],
+    [
+      2065486970782331,
+      12383682560,
+      4175429632
+    ],
+    [
+      2065487061656808,
+      12383682560,
+      4175446016
+    ],
+    [
+      2065487153927948,
+      12383682560,
+      4175446016
+    ],
+    [
+      2065487244168822,
+      12383682560,
+      4175466496
+    ],
+    [
+      2065487335429738,
+      12383682560,
+      4175470592
+    ],
+    [
+      2065487425434019,
+      12383682560,
+      4175470592
+    ],
+    [
+      2065487516164600,
+      12383682560,
+      4175482880
+    ],
+    [
+      2065487608314217,
+      12383682560,
+      4175486976
+    ],
+    [
+      2065487699628726,
+      12383682560,
+      4175495168
+    ],
+    [
+      2065487793023507,
+      12383682560,
+      4175511552
+    ],
+    [
+      2065487884431043,
+      12383682560,
+      4175511552
+    ],
+    [
+      2065487975907723,
+      12383682560,
+      4175532032
+    ],
+    [
+      2065488067381206,
+      12383682560,
+      4175532032
+    ],
+    [
+      2065488157548559,
+      12383682560,
+      4175536128
+    ],
+    [
+      2065488248238132,
+      12383682560,
+      4175548416
+    ],
+    [
+      2065488339551288,
+      12383682560,
+      4175552512
+    ],
+    [
+      2065488429734492,
+      12383682560,
+      4175556608
+    ],
+    [
+      2065488520386182,
+      12383682560,
+      4175568896
+    ],
+    [
+      2065488612696076,
+      12383682560,
+      4175572992
+    ],
+    [
+      2065488704154991,
+      12383682560,
+      4175589376
+    ],
+    [
+      2065488794793577,
+      12383682560,
+      4175589376
+    ],
+    [
+      2065488884662529,
+      12383682560,
+      4175593472
+    ],
+    [
+      2065488975146739,
+      12383682560,
+      4175613952
+    ],
+    [
+      2065489067441724,
+      12383682560,
+      4175618048
+    ],
+    [
+      2065489159086916,
+      12383682560,
+      4175626240
+    ],
+    [
+      2065489251135309,
+      12383682560,
+      4175634432
+    ],
+    [
+      2065489341773544,
+      12383682560,
+      4175638528
+    ],
+    [
+      2065489434252291,
+      12383682560,
+      4175659008
+    ],
+    [
+      2065489524756429,
+      12383682560,
+      4175659008
+    ],
+    [
+      2065489615818144,
+      12383682560,
+      4175663104
+    ],
+    [
+      2065489706686549,
+      12383682560,
+      4175679488
+    ],
+    [
+      2065489797410408,
+      12383682560,
+      4175679488
+    ],
+    [
+      2065489888234218,
+      12383682560,
+      4175683584
+    ],
+    [
+      2065489979742417,
+      12383682560,
+      4175695872
+    ],
+    [
+      2065490070372196,
+      12383682560,
+      4175699968
+    ],
+    [
+      2065490162031545,
+      12383682560,
+      4175716352
+    ],
+    [
+      2065490254680828,
+      12383682560,
+      4175720448
+    ],
+    [
+      2065490346350507,
+      12383682560,
+      4175724544
+    ],
+    [
+      2065490437813771,
+      12383682560,
+      4175740928
+    ],
+    [
+      2065490528797106,
+      12383682560,
+      4175740928
+    ],
+    [
+      2065490620037393,
+      12383682560,
+      4175761408
+    ],
+    [
+      2065490710720824,
+      12383682560,
+      4175765504
+    ],
+    [
+      2065490801295617,
+      12383682560,
+      4175765504
+    ],
+    [
+      2065490892138133,
+      12383682560,
+      4175781888
+    ],
+    [
+      2065490982525758,
+      12383682560,
+      4175785984
+    ],
+    [
+      2065491073651676,
+      12383682560,
+      4175790080
+    ],
+    [
+      2065491164853058,
+      12383682560,
+      4175802368
+    ],
+    [
+      2065491256869450,
+      12383682560,
+      4175802368
+    ],
+    [
+      2065491347966333,
+      12383682560,
+      4175818752
+    ],
+    [
+      2065491439730563,
+      12383682560,
+      4175822848
+    ],
+    [
+      2065491531994218,
+      12383682560,
+      4175822848
+    ],
+    [
+      2065491623944915,
+      12383682560,
+      4175839232
+    ],
+    [
+      2065491715536484,
+      12383682560,
+      4175843328
+    ],
+    [
+      2065491807237302,
+      12383682560,
+      4175847424
+    ],
+    [
+      2065491898397917,
+      12383682560,
+      4190019584
+    ],
+    [
+      2065491988582153,
+      12383682560,
+      4190023680
+    ],
+    [
+      2065492082477201,
+      12383682560,
+      4204417024
+    ],
+    [
+      2065492173018710,
+      12423528448,
+      4204486656
+    ],
+    [
+      2065492263634832,
+      12423528448,
+      4440457216
+    ],
+    [
+      2065492355254375,
+      12423528448,
+      4681211904
+    ],
+    [
+      2065492445208140,
+      12423528448,
+      4904984576
+    ],
+    [
+      2065492535046353,
+      12423528448,
+      5125513216
+    ],
+    [
+      2065492624592328,
+      12423528448,
+      5339197440
+    ],
+    [
+      2065492714941078,
+      12423528448,
+      5576323072
+    ],
+    [
+      2065492805423625,
+      12423528448,
+      5783535616
+    ],
+    [
+      2065492896458950,
+      12431917056,
+      5792473088
+    ],
+    [
+      2065492987581712,
+      12442402816,
+      5798424576
+    ],
+    [
+      2065493078745222,
+      12442402816,
+      5798457344
+    ],
+    [
+      2065493169926396,
+      12442402816,
+      5798506496
+    ],
+    [
+      2065493261736032,
+      12442402816,
+      5798531072
+    ],
+    [
+      2065493353790167,
+      12442402816,
+      5798559744
+    ],
+    [
+      2065493444545746,
+      12442402816,
+      5798588416
+    ],
+    [
+      2065493536386663,
+      12442402816,
+      5798658048
+    ],
+    [
+      2065493627525946,
+      12442402816,
+      5798682624
+    ],
+    [
+      2065493719835650,
+      12442402816,
+      5798711296
+    ],
+    [
+      2065493811242616,
+      12442402816,
+      5798731776
+    ],
+    [
+      2065493903403515,
+      12442402816,
+      5798776832
+    ],
+    [
+      2065493993956327,
+      12442402816,
+      5798805504
+    ],
+    [
+      2065494085546413,
+      12442402816,
+      5798838272
+    ],
+    [
+      2065494177560641,
+      12442402816,
+      5798903808
+    ],
+    [
+      2065494268384431,
+      12404654080,
+      5813997568
+    ],
+    [
+      2065494358913828,
+      12404654080,
+      5813997568
+    ],
+    [
+      2065494449175141,
+      12404654080,
+      5825961984
+    ],
+    [
+      2065494543856584,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065494635273509,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065494725718624,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065494817339890,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065494908415422,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065494998858423,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065495088969399,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065496005366494,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065496096045547,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065496187105199,
+      12404654080,
+      5825867776
+    ],
+    [
+      2065496278731515,
+      12404654080,
+      5825867776
+    ]
+  ],
+  "sampling_failures": [],
+  "sampled_cold_device_peak": 12442402816,
+  "sampled_cold_host_peak": 6579863552,
+  "lifetime_host_peak_bytes": 6708494336,
+  "trace_sha256": {
+    ".cuda.jsonl": "fff4b17da9201838f3ea47facdaf920a05c9ac47d98b54d31bed9d6591ef8447",
+    ".host.jsonl": "82f56663cf2d82ea43f91edb7be221db716e7a1fa63df2933061059c4d8477f1",
+    ".journal.jsonl": "0e027458dbf2967d8e90bb0ab627c63ca77cf80797d954fa0722674adfb7d2ed"
+  },
+  "closed_ledger": {
+    "device": 0,
+    "limit_bytes": 34359738368,
+    "live_bytes": 0,
+    "peak_bytes": 5892268465,
+    "allocations": 135,
+    "rejected_allocations": 0,
+    "owner": "hf",
+    "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+  }
+}

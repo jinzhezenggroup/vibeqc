@@ -1,0 +1,143 @@
+"""Profile the passing unequal 96/464 physical-basis cell without a rebuild.
+
+Each representation runs in a fresh child process. CUPTI transfers and sampled
+process memory are intrusive diagnostics, never additional clean samples.
+"""
+
+import hashlib
+import json
+import os
+import subprocess
+from pathlib import Path
+
+assert os.environ.get("SLURM_JOB_ID")
+root = Path.cwd()
+out = root / ".artifacts/issue409/unequal-dataflow-profiles"
+out.mkdir(exist_ok=False)
+env = {key: value for key, value in os.environ.items() if not key.startswith("VIBEQC_")}
+env.update(
+    PYTHONPATH="python:.",
+    OMP_NUM_THREADS="1",
+    OPENBLAS_NUM_THREADS="1",
+    LD_LIBRARY_PATH="/group/software/cuda-12.9.1/lib64:"
+    + env.get("LD_LIBRARY_PATH", ""),
+    VIBEQC_LIBRARY=str(root / ".artifacts/issue409/stage2/frozen/libvibeqc.so"),
+    VIBEQC_DF_REFERENCE_FINAL_VALIDATION="0",
+    VIBEQC_DF_FINAL_PROJECTION="auto",
+    VIBEQC_DF_FORCE_SCREEN_ABS="off",
+    VIBEQC_DF_EXCHANGE="auto",
+    VIBEQC_DF_SEED_EXCHANGE="auto",
+    VIBEQC_DF_FINAL_EXCHANGE="auto",
+    VIBEQC_DF_RESIDENT_EXCHANGE="auto",
+    VIBEQC_DF_SHELL_POLICY="auto",
+)
+nsys = "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys"
+manifest = {
+    "scope": __doc__,
+    "slurm_job_id": os.environ["SLURM_JOB_ID"],
+    "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "checks": [],
+}
+
+
+def run(name, command):
+    check = {"name": name, "command": command, "status": "running"}
+    manifest["checks"].append(check)
+    save()
+    with (out / (name + ".log")).open("x") as log:
+        result = subprocess.run(
+            command, env=env, stdout=log, stderr=subprocess.STDOUT, check=False
+        )
+    check.update(
+        exit_code=result.returncode,
+        status="passed" if not result.returncode else "failed",
+    )
+    check["log_sha256"] = hashlib.sha256(
+        (out / (name + ".log")).read_bytes()
+    ).hexdigest()
+    save()
+    print(name, result.returncode, flush=True)
+    if result.returncode:
+        raise SystemExit(result.returncode)
+
+
+def save():
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+for aos in (96,):
+    case = "water-tetramer-def2-svp-spherical"
+    inputs = root / ".artifacts/issue409/unequal-v2"
+    checkpoint = inputs / f"{case}-measure.checkpoint"
+    reference_path = inputs / f"{case}-reference.json"
+    clean_path = inputs / f"{case}-measure.json"
+    clean = json.loads(clean_path.read_text())
+    reference = json.loads(reference_path.read_text())
+    assert clean["aos"] == 96 and clean["auxiliary_count"] == 464
+    assert (
+        clean["reference_sha256"]
+        == hashlib.sha256(reference_path.read_bytes()).hexdigest()
+    )
+    assert (
+        reference["stock_effective_rank"]
+        == reference["native_reference_effective_rank"]
+        == 464
+    )
+    assert len(clean["samples"]) == 14 and not clean.get("failure")
+    assert all(
+        s["maximum_energy_error"] <= 1e-9 and s["maximum_force_error"] <= 1e-8
+        for s in clean["samples"]
+    )
+    manifest["admitted_clean_sha256"] = hashlib.sha256(
+        clean_path.read_bytes()
+    ).hexdigest()
+    manifest["independent_reference_sha256"] = hashlib.sha256(
+        reference_path.read_bytes()
+    ).hexdigest()
+    for storage in ("dense", "packed"):
+        name = f"{aos}-464-{storage}"
+        prefix = str(out / name)
+        run(
+            name,
+            [
+                nsys,
+                "profile",
+                "--trace=cuda,nvtx",
+                "--cuda-graph-trace=node",
+                "--cuda-event-trace=false",
+                "--sample=none",
+                "--cpuctxsw=none",
+                "--capture-range=cudaProfilerApi",
+                "--capture-range-end=stop",
+                "--force-overwrite=false",
+                "--output",
+                prefix,
+                "/tmp/vibeqc-pr-review-env/bin/python",
+                ".artifacts/issue409/stage2/unequal-dataflow-probe.py",
+                "--reference",
+                str(reference_path),
+                "--storage",
+                storage,
+                "--budget",
+                "0",
+                "--checkpoint",
+                str(checkpoint),
+                "--output",
+                prefix + ".json",
+            ],
+        )
+        run(
+            name + "-stats",
+            [
+                nsys,
+                "stats",
+                "--report",
+                "cuda_api_sum,cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,cuda_gpu_mem_size_sum,nvtx_sum",
+                "--format=csv",
+                "--output",
+                prefix,
+                prefix + ".nsys-rep",
+            ],
+        )
+manifest["status"] = "passed"
+save()

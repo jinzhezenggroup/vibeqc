@@ -1,8 +1,11 @@
-# Exact packed DF values: partial Phase-A evidence
+# Exact packed DF values: scoped Phase-A qualification
 
-This draft retains the experimental implementation and completed measurements
-for #409. **Qualification is incomplete; unset/auto still selects dense.**
-It does not close #409 or establish superiority over stock GPU4PySCF (#206).
+This retains the implementation and completed measurements for #409.
+**Keep explicit packed selection for measured domains; unset/auto stays dense.**
+The useful domains are 192-AO warm forces and the measured 768-AO/12-GiB
+endpoint. Large warm and changed-geometry regressions remain visible, and the
+failed 384/1856 unequal cell is excluded. This establishes no general
+superiority over stock GPU4PySCF (#206).
 All timings below are seconds on the RTX 5090, in finite Slurm jobs.
 
 ## Completed clean endpoints
@@ -122,7 +125,7 @@ one-electron derivatives. The clean timing above is separate from these intrusiv
 The useful benefit is limited to this constrained endpoint; broader automatic
 selection remains unqualified.
 
-## Warm CUDA dataflow
+## CUDA dataflow
 
 `nsys-dataflow-summary.json` and `dataflow/` retain six completed warm profiles
 from job 9850, with exact SQLite/CUPTI transfer bytes, kernel launch shapes,
@@ -145,10 +148,19 @@ all 9,796 event synchronizations in the profiled 384-AO packed call come from
 those tracing fences. Remaining synchronization counts are still intrusive
 observations, not certified clean-production counts. Sampled process peaks under
 Nsight include profiler overhead and do not replace the unprofiled capacity
-acceptance observations above. Cold and unequal-basis profile campaigns remain
-pending; the dataflow summary lists them explicitly.
+acceptance observations above.
 
-## Qualification and remaining work
+Jobs 9856/9857 complete the two unequal warm and eight cold profiles, bringing
+the total to sixteen passing profiles. For 96/464 warm forces, H2D falls from
+34,902,276 to 692,484 bytes, while launches rise from 3,328 to 3,819. Cold
+768-AO H2D falls from 3,863,338,950 to 93,193,158 bytes and D2H from
+7,107,709,859 to 2,987,702,524 bytes; updates remain 23 versus 24. All exact
+per-case directions and shapes are retained. The later profiles explicitly
+disable optional CUDA event-completion tracing, while retaining CUDA API and
+graph-node activity. Job 9850 used its original default event tracing. These
+control differences are preserved; profiled timings are not pooled.
+
+## Final qualification and limits
 
 Native density-fitting/occupied-response tests and memcheck/initcheck/synccheck
 passed in jobs 9833–9835. Stage-2 job 9836 passed both native suites and 15
@@ -158,12 +170,26 @@ initially skipped by a missing tier flag, then passed separately in job 9839.
 `qualification/` retains observed summaries and original log hashes without
 publishing routine logs. Stage-1 and stage-2 library identities are distinct.
 
-The draft still requires:
+Job 9859 rebuilt the publishing source after all clean campaigns finished. Both
+native suites, 17 molecular/failed-neighbor cases, 15 resource cases, density and
+response memcheck, response initcheck/synccheck and the portable warm wrapper
+pass. The final library's independent seven-pair 192-AO check gives
+0.165593741 -> 0.130891700 seconds, three updates in both arms, with all energy
+and force gates passing. It is a separate fresh-seed series, never pooled with
+the frozen measurements above.
 
-- a final domain/policy decision using the completed constrained pairs;
-- the remaining complete traffic/component/resource and compilation audit;
-- a rebuild and required validation of the subsequently formatted native source;
-- GPU validation of the new portable warm wrapper.
+The cached incremental rebuild took 8.68 seconds and peaked at 367,900 KiB host
+RSS. This is not a clean-build or baseline compilation-cost comparison. Static
+sm_120 declarations report 40 registers and 21,632 shared bytes for either packed
+projection layout, with zero stack/local bytes. Actual launches and declarations
+are also retained in the CUPTI accounts. Hardware DRAM traffic and raw-integral
+recurrence FLOPs remain unmeasured and are not inferred from tensor sizes.
+
+The retention decision is explicit opt-in, supported by the measured warm and
+constrained endpoints. It makes no automatic-selection or general capacity
+crossover claim. The two incomplete manifest entries preserve the failed larger
+unequal campaign and its preflight; that domain requires a separate numerical
+fix. Optional screening and external #206 acceptance remain separate work.
 
 Practical unequal auxiliary coverage uses unmodified basis definitions. The
 def2 universal fitting basis has unsupported g shells for O/N/C on this backend;
@@ -185,11 +211,15 @@ The frozen measured source starts at
 the measured library SHA-256 is
 `c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547`.
 Build flags and the generated identity header are retained beside that patch.
-The publishing source was subsequently clang-formatted and has not yet been
-rebuilt; frozen measurements must not be relabeled with a new binary identity.
+The publishing source was subsequently clang-formatted; frozen measurements
+must not be relabeled with a new binary identity.
 `qualification/format-verification.json` verifies that all 31 files in the
 pre-format snapshot produce the current bytes through clang-format 23.1.1.
-This source check does not replace validation of the final rebuilt library.
+The final rebuilt library is separately validated in
+`qualification/final-manifest.json`, with native identity
+`ceafaa3df32bf05154e7532fb962c19b35c5d919603a9651b94274dcf17d0356`
+and library SHA-256
+`6100ffe6cf4997935ff440b91e622e37dbb8b96207894291d8ff586071320d9d`.
 
 `manifest.json` records retained/original hashes and explicitly lists incomplete
 cells. The collector's `--partial` permits a draft only; it is not a passing
@@ -208,5 +238,5 @@ checkout at the pinned base before rebuilding, never over an existing dirty tree
 `projection/` retains fixed-input plans, raw samples and candidate summaries;
 `producer/` retains independent raw/J/truncated-metric/unequal-size checks.
 Neither isolated projection wins nor smaller factor arrays qualify complete
-SCF/force latency. The [Agent Note](../../../.agents/notes/proposed/2026-09-17-packed-df-values.md)
+SCF/force latency. The [Agent Note](../../../.agents/notes/implemented/performance/2026-09-17-packed-df-retention.md)
 records the exact representation, fallback boundaries and retirement conditions.
