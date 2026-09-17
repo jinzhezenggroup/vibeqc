@@ -20,13 +20,12 @@ void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 
-std::size_t eri_index(std::size_t n, std::size_t p, std::size_t q, std::size_t r,
-                      std::size_t s) {
+std::size_t eri_index(std::size_t n, std::size_t p, std::size_t q, std::size_t r, std::size_t s) {
   return ((p * n + q) * n + r) * n + s;
 }
 
-std::size_t g_index(std::size_t no, std::size_t nv, std::size_t i, std::size_t j,
-                    std::size_t a, std::size_t b) {
+std::size_t g_index(std::size_t no, std::size_t nv, std::size_t i, std::size_t j, std::size_t a,
+                    std::size_t b) {
   return ((i * no + j) * nv + a) * nv + b;
 }
 
@@ -59,14 +58,13 @@ std::vector<double> symmetric_eri(std::size_t n) {
   return values;
 }
 
-std::vector<double> fock(std::span<const double> h, std::span<const double> eri,
-                         std::size_t n, std::size_t no) {
+std::vector<double> fock(std::span<const double> h, std::span<const double> eri, std::size_t n,
+                         std::size_t no) {
   std::vector<double> result(h.begin(), h.end());
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q)
       for (std::size_t i = 0; i < no; ++i)
-        result[p * n + q] += 2.0 * eri[eri_index(n, p, q, i, i)] -
-                             eri[eri_index(n, p, i, i, q)];
+        result[p * n + q] += 2.0 * eri[eri_index(n, p, q, i, i)] - eri[eri_index(n, p, i, i, q)];
   return result;
 }
 
@@ -75,8 +73,7 @@ std::vector<double> multiply(std::span<const double> left, std::span<const doubl
   std::vector<double> result(n * n);
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k)
-        result[i * n + j] += left[i * n + k] * right[k * n + j];
+      for (std::size_t k = 0; k < n; ++k) result[i * n + j] += left[i * n + k] * right[k * n + j];
   return result;
 }
 
@@ -97,8 +94,7 @@ std::vector<double> inverse(std::span<const double> matrix, std::size_t n) {
   for (std::size_t column = 0; column < n; ++column) {
     std::size_t pivot = column;
     for (std::size_t row = column + 1; row < n; ++row)
-      if (std::abs(augmented[row * stride + column]) >
-          std::abs(augmented[pivot * stride + column]))
+      if (std::abs(augmented[row * stride + column]) > std::abs(augmented[pivot * stride + column]))
         pivot = row;
     require(std::abs(augmented[pivot * stride + column]) > 1e-14, "singular test matrix");
     for (std::size_t j = 0; j < stride; ++j)
@@ -129,9 +125,9 @@ std::vector<double> rotated_eri(std::span<const double> eri, std::span<const dou
             for (std::size_t q = 0; q < n; ++q)
               for (std::size_t r = 0; r < n; ++r)
                 for (std::size_t s = 0; s < n; ++s)
-                  result[eri_index(n, i, j, k, l)] +=
-                      eri[eri_index(n, p, q, r, s)] * rotation[p * n + i] *
-                      rotation[q * n + j] * rotation[r * n + k] * rotation[s * n + l];
+                  result[eri_index(n, i, j, k, l)] += eri[eri_index(n, p, q, r, s)] *
+                                                      rotation[p * n + i] * rotation[q * n + j] *
+                                                      rotation[r * n + k] * rotation[s * n + l];
   return result;
 }
 
@@ -156,18 +152,17 @@ void energy_adjoint_matches_independent_finite_difference() {
       plus_e[i] += step * de[i];
       minus_e[i] -= step * de[i];
     }
-    const double error = std::abs((mp2_energy(plus_g, plus_e, no) -
-                                   mp2_energy(minus_g, minus_e, no)) /
-                                      (2.0 * step) -
-                                  reverse);
+    const double error = std::abs(
+        (mp2_energy(plus_g, plus_e, no) - mp2_energy(minus_g, minus_e, no)) / (2.0 * step) -
+        reverse);
     require(error < previous, "energy-adjoint finite difference did not improve");
     previous = error;
   }
   require(previous < 1e-9, "energy adjoint failed the independent directional derivative");
   const auto a01 = g_index(no, nv, 0, 0, 0, 1);
   const double d01 = eps[0] + eps[0] - eps[1] - eps[2];
-  const double expected = (4.0 * g[a01] - g[g_index(no, nv, 0, 0, 1, 0)]) / d01 -
-                          g[g_index(no, nv, 0, 0, 1, 0)] / d01;
+  const double expected =
+      (4.0 * g[a01] - g[g_index(no, nv, 0, 0, 1, 0)]) / d01 - g[g_index(no, nv, 0, 0, 1, 0)] / d01;
   require(std::abs(adjoint.integrals_iajb[a01] - expected) < 1e-14,
           "exchange cotangent was not transposed back and accumulated");
 }
@@ -194,12 +189,10 @@ vibeqc::core::System h2() {
   vibeqc::core::System system;
   system.atoms = {{1, {0, 0, -0.7}}, {1, {0, 0, 0.7}}};
   const std::vector<vibeqc::core::Primitive> primitives{
-      {3.42525091, 0.1543289673}, {0.62391373, 0.5353281423},
-      {0.1688554, 0.4446345422}};
+      {3.42525091, 0.1543289673}, {0.62391373, 0.5353281423}, {0.1688554, 0.4446345422}};
   system.shells = {{0, 0, primitives}, {1, 0, primitives}};
   std::string detail;
-  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
-              VIBEQC_STATUS_SUCCESS,
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
           "H2 setup failed");
   return system;
 }
@@ -225,10 +218,9 @@ void streamed_provider_matches_dense_oracle() {
     for (std::size_t q = 0; q < reference.nbf; ++q)
       for (std::size_t mu = 0; mu < reference.nbf; ++mu)
         for (std::size_t nu = 0; nu < reference.nbf; ++nu)
-          hcore_mo[p * reference.nbf + q] +=
-              reference.coefficients[mu * reference.nbf + p] *
-              reference.hcore[mu * reference.nbf + nu] *
-              reference.coefficients[nu * reference.nbf + q];
+          hcore_mo[p * reference.nbf + q] += reference.coefficients[mu * reference.nbf + p] *
+                                             reference.hcore[mu * reference.nbf + nu] *
+                                             reference.coefficients[nu * reference.nbf + q];
   const auto virtuals = reference.nbf - reference.nocc;
   std::vector<double> g(reference.nocc * reference.nocc * virtuals * virtuals);
   for (std::size_t i = 0; i < reference.nocc; ++i)
@@ -236,14 +228,12 @@ void streamed_provider_matches_dense_oracle() {
       for (std::size_t a = 0; a < virtuals; ++a)
         for (std::size_t b = 0; b < virtuals; ++b)
           g[g_index(reference.nocc, virtuals, i, j, a, b)] =
-              eri[eri_index(reference.nbf, i, reference.nocc + a, j,
-                            reference.nocc + b)];
-  const auto adjoint = vibeqc::mp2::canonical_energy_adjoint(
-      g, reference.orbital_energies, reference.nocc, 1e-10);
-  const auto dense =
-      vibeqc::mp2::canonical_orbital_rhs(hcore_mo, eri, adjoint, 1e-10);
-  const auto streamed = vibeqc::mp2::canonical_orbital_rhs_streamed(
-      reference, hcore_mo, provider, adjoint, 1e-10);
+              eri[eri_index(reference.nbf, i, reference.nocc + a, j, reference.nocc + b)];
+  const auto adjoint =
+      vibeqc::mp2::canonical_energy_adjoint(g, reference.orbital_energies, reference.nocc, 1e-10);
+  const auto dense = vibeqc::mp2::canonical_orbital_rhs(hcore_mo, eri, adjoint, 1e-10);
+  const auto streamed =
+      vibeqc::mp2::canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, 1e-10);
   auto close = [](std::span<const double> first, std::span<const double> second) {
     if (first.size() != second.size()) return false;
     for (std::size_t i = 0; i < first.size(); ++i)
@@ -257,14 +247,12 @@ void streamed_provider_matches_dense_oracle() {
           "streamed native provider path differs from the dense oracle");
   const double response_denominator =
       reference.orbital_energies[reference.nocc] - reference.orbital_energies[0] +
-      4.0 * eri[eri_index(reference.nbf, reference.nocc, 0,
-                          reference.nocc, 0)] -
+      4.0 * eri[eri_index(reference.nbf, reference.nocc, 0, reference.nocc, 0)] -
       eri[eri_index(reference.nbf, reference.nocc, reference.nocc, 0, 0)] -
       eri[eri_index(reference.nbf, reference.nocc, 0, 0, reference.nocc)];
-  const std::array<double, 1> response{streamed.response_rhs[0] /
-                                       response_denominator};
-  const auto dense_weights = vibeqc::mp2::canonical_lagrangian_weights(
-      hcore_mo, eri, adjoint, response, 1e-10);
+  const std::array<double, 1> response{streamed.response_rhs[0] / response_denominator};
+  const auto dense_weights =
+      vibeqc::mp2::canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, 1e-10);
   const auto streamed_weights = vibeqc::mp2::canonical_lagrangian_weights_streamed(
       reference, hcore_mo, provider, adjoint, response, 1e-10);
   require(close(streamed_weights.one_electron, dense_weights.one_electron) &&
@@ -276,16 +264,14 @@ void streamed_provider_matches_dense_oracle() {
   auto stale = reference;
   bool rejected = false;
   try {
-    (void)vibeqc::mp2::canonical_orbital_rhs_streamed(
-        stale, hcore_mo, provider, adjoint, 1e-10);
+    (void)vibeqc::mp2::canonical_orbital_rhs_streamed(stale, hcore_mo, provider, adjoint, 1e-10);
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
   require(rejected, "streamed provider accepted a copied/stale reference owner");
 }
 
-double rotated_mp2_energy(const Fixture& fixture, std::span<const double> direction,
-                          double step) {
+double rotated_mp2_energy(const Fixture& fixture, std::span<const double> direction, double step) {
   const auto n = fixture.n, no = fixture.no;
   std::vector<double> generator(n * n), left(n * n), right(n * n);
   for (std::size_t p = 0; p < n; ++p) left[p * n + p] = right[p * n + p] = 1.0;
@@ -305,8 +291,7 @@ double rotated_mp2_energy(const Fixture& fixture, std::span<const double> direct
   for (std::size_t p = 0; p < n; ++p) eps[p] = transformed_fock[p * n + p];
   for (std::size_t a = 0; a < n - no; ++a)
     for (std::size_t b = 0; b < n - no; ++b)
-      g[g_index(no, n - no, 0, 0, a, b)] =
-          transformed_eri[eri_index(n, 0, no + a, 0, no + b)];
+      g[g_index(no, n - no, 0, 0, a, b)] = transformed_eri[eri_index(n, 0, no + a, 0, no + b)];
   return mp2_energy(g, eps, no);
 }
 
@@ -314,8 +299,7 @@ void orbital_rhs_and_relaxed_weights_match_independent_oracles() {
   const Fixture fixture;
   const auto adjoint =
       vibeqc::mp2::canonical_energy_adjoint(fixture.g, fixture.eps, fixture.no, 1e-10);
-  const auto orbital =
-      vibeqc::mp2::canonical_orbital_rhs(fixture.h, fixture.eri, adjoint, 1e-10);
+  const auto orbital = vibeqc::mp2::canonical_orbital_rhs(fixture.h, fixture.eri, adjoint, 1e-10);
   const std::array<double, 2> direction{0.31, -0.27};
   double reverse = 0.0;
   for (std::size_t i = 0; i < direction.size(); ++i)
@@ -338,25 +322,23 @@ void orbital_rhs_and_relaxed_weights_match_independent_oracles() {
     for (std::size_t b = 0; b < nv; ++b)
       response_matrix[a * nv + b] =
           (fixture.eps[fixture.no + a] - fixture.eps[0]) * (a == b) +
-          4.0 * fixture.eri[eri_index(fixture.n, fixture.no + a, 0,
-                                     fixture.no + b, 0)] -
+          4.0 * fixture.eri[eri_index(fixture.n, fixture.no + a, 0, fixture.no + b, 0)] -
           fixture.eri[eri_index(fixture.n, fixture.no + a, fixture.no + b, 0, 0)] -
-          fixture.eri[eri_index(fixture.n, fixture.no + a, 0, 0,
-                                     fixture.no + b)];
+          fixture.eri[eri_index(fixture.n, fixture.no + a, 0, 0, fixture.no + b)];
   const auto response_inverse = inverse(response_matrix, nv);
   std::vector<double> z(nv);
   for (std::size_t a = 0; a < nv; ++a)
     for (std::size_t b = 0; b < nv; ++b)
       z[a] += response_inverse[a * nv + b] * orbital.response_rhs[b];
-  const auto weights = vibeqc::mp2::canonical_lagrangian_weights(
-      fixture.h, fixture.eri, adjoint, z, 1e-10);
+  const auto weights =
+      vibeqc::mp2::canonical_lagrangian_weights(fixture.h, fixture.eri, adjoint, z, 1e-10);
   require(weights.stationarity_residual < 1e-10,
           "relaxed weights are not stationary with the independent Z-vector");
   for (std::size_t p = 0; p < fixture.n; ++p)
     for (std::size_t q = 0; q < fixture.n; ++q)
-      require(std::abs(weights.overlap[p * fixture.n + q] -
-                       weights.overlap[q * fixture.n + p]) < 1e-14,
-              "overlap weight is not symmetric");
+      require(
+          std::abs(weights.overlap[p * fixture.n + q] - weights.overlap[q * fixture.n + p]) < 1e-14,
+          "overlap weight is not symmetric");
 }
 
 void invalid_inputs_and_resource_boundaries() {
@@ -370,12 +352,10 @@ void invalid_inputs_and_resource_boundaries() {
   }
   require(rejected, "near-zero MP2 denominator was accepted");
   rejected = false;
-  const std::array<double, 1> nonfinite_integral{
-      std::numeric_limits<double>::quiet_NaN()};
+  const std::array<double, 1> nonfinite_integral{std::numeric_limits<double>::quiet_NaN()};
   const std::array<double, 2> separated_energies{-1.0, 1.0};
   try {
-    (void)vibeqc::mp2::canonical_energy_adjoint(nonfinite_integral,
-                                                separated_energies, 1, 1e-10);
+    (void)vibeqc::mp2::canonical_energy_adjoint(nonfinite_integral, separated_energies, 1, 1e-10);
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
@@ -390,22 +370,22 @@ void invalid_inputs_and_resource_boundaries() {
       static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()));
   require(probe.peak_bytes > probe.response_bytes && probe.shell_cotangent_bytes > 0,
           "gradient resource plan omitted a simultaneous owner");
-  const auto exact = vibeqc::mp2::conventional_gradient_plan(
-      4, 2, 4096, response, 3, 9, 9 * sizeof(double), probe.peak_bytes);
+  const auto exact = vibeqc::mp2::conventional_gradient_plan(4, 2, 4096, response, 3, 9,
+                                                             9 * sizeof(double), probe.peak_bytes);
   require(exact.peak_bytes == probe.peak_bytes, "exact resource budget changed the plan");
   rejected = false;
   try {
-    (void)vibeqc::mp2::conventional_gradient_plan(
-        4, 2, 4096, response, 3, 9, 9 * sizeof(double), probe.peak_bytes - 1);
+    (void)vibeqc::mp2::conventional_gradient_plan(4, 2, 4096, response, 3, 9, 9 * sizeof(double),
+                                                  probe.peak_bytes - 1);
   } catch (const std::length_error&) {
     rejected = true;
   }
   require(rejected, "one-byte-short gradient budget was accepted");
   rejected = false;
   try {
-    (void)vibeqc::mp2::conventional_gradient_plan(
-        4, 2, 1, response, std::numeric_limits<std::size_t>::max(), 3, 24,
-        std::numeric_limits<std::size_t>::max());
+    (void)vibeqc::mp2::conventional_gradient_plan(4, 2, 1, response,
+                                                  std::numeric_limits<std::size_t>::max(), 3, 24,
+                                                  std::numeric_limits<std::size_t>::max());
   } catch (const std::overflow_error&) {
     rejected = true;
   }

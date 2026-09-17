@@ -54,14 +54,12 @@ struct GmresResult {
   }
 };
 
-using LinearOperator =
-    std::function<void(std::span<const double> input, std::span<double> output)>;
+using LinearOperator = std::function<void(std::span<const double> input, std::span<double> output)>;
 
 double stable_norm(std::span<const double> values);
 GmresPlan prepare_gmres(std::size_t dimension, const GmresOptions& options);
 GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
-                        std::span<const double> rhs,
-                        std::span<const double> initial_guess = {},
+                        std::span<const double> rhs, std::span<const double> initial_guess = {},
                         std::span<const double> diagonal_preconditioner = {});
 
 }  // namespace vibeqc::response

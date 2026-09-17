@@ -54,28 +54,28 @@ struct GradientResourcePlan {
 
 EnergyAdjoint canonical_energy_adjoint(std::span<const double> integrals_iajb,
                                        std::span<const double> orbital_energies,
-                                       std::size_t occupied,
-                                       double denominator_threshold);
-OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo,
-                                 std::span<const double> eri_mo,
-                                 const EnergyAdjoint& adjoint,
-                                 double same_space_threshold);
-OrbitalRhs canonical_orbital_rhs_streamed(
-    const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
-    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
-    double same_space_threshold);
-LagrangianWeights canonical_lagrangian_weights(
-    std::span<const double> hcore_mo, std::span<const double> eri_mo,
-    const EnergyAdjoint& adjoint, std::span<const double> response,
-    double same_space_threshold);
-LagrangianWeights canonical_lagrangian_weights_streamed(
-    const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
-    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
-    std::span<const double> response, double same_space_threshold);
+                                       std::size_t occupied, double denominator_threshold);
+OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<const double> eri_mo,
+                                 const EnergyAdjoint& adjoint, double same_space_threshold);
+OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
+                                          std::span<const double> hcore_mo,
+                                          const posthf::NativeBlockProvider& provider,
+                                          const EnergyAdjoint& adjoint,
+                                          double same_space_threshold);
+LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
+                                               std::span<const double> eri_mo,
+                                               const EnergyAdjoint& adjoint,
+                                               std::span<const double> response,
+                                               double same_space_threshold);
+LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalReference& reference,
+                                                        std::span<const double> hcore_mo,
+                                                        const posthf::NativeBlockProvider& provider,
+                                                        const EnergyAdjoint& adjoint,
+                                                        std::span<const double> response,
+                                                        double same_space_threshold);
 GradientResourcePlan conventional_gradient_plan(
     std::size_t orbitals, std::size_t occupied, std::size_t provider_bytes,
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes,
-    std::size_t budget_bytes);
+    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes);
 
 }  // namespace vibeqc::mp2

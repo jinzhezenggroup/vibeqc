@@ -17,20 +17,18 @@ std::size_t square(std::size_t value) { return posthf::checked_mul(value, value)
 
 std::size_t fourth_power(std::size_t value) { return square(square(value)); }
 
-std::size_t eri_index(std::size_t n, std::size_t p, std::size_t q, std::size_t r,
-                      std::size_t s) {
+std::size_t eri_index(std::size_t n, std::size_t p, std::size_t q, std::size_t r, std::size_t s) {
   return ((p * n + q) * n + r) * n + s;
 }
 
-std::size_t g_index(std::size_t no, std::size_t nv, std::size_t i, std::size_t j,
-                    std::size_t a, std::size_t b) {
+std::size_t g_index(std::size_t no, std::size_t nv, std::size_t i, std::size_t j, std::size_t a,
+                    std::size_t b) {
   return ((i * no + j) * nv + a) * nv + b;
 }
 
 bool finite(std::span<const double> values) {
-  return std::all_of(values.begin(), values.end(), [](double value) {
-    return std::isfinite(value);
-  });
+  return std::all_of(values.begin(), values.end(),
+                     [](double value) { return std::isfinite(value); });
 }
 
 void validate_adjoint(const EnergyAdjoint& adjoint) {
@@ -39,15 +37,13 @@ void validate_adjoint(const EnergyAdjoint& adjoint) {
   const auto virtuals = adjoint.orbitals - adjoint.occupied;
   const auto expected = posthf::checked_mul(square(adjoint.occupied), square(virtuals));
   if (adjoint.integrals_iajb.size() != expected ||
-      adjoint.orbital_energies.size() != adjoint.orbitals ||
-      !finite(adjoint.integrals_iajb) || !finite(adjoint.orbital_energies))
+      adjoint.orbital_energies.size() != adjoint.orbitals || !finite(adjoint.integrals_iajb) ||
+      !finite(adjoint.orbital_energies))
     throw std::invalid_argument("inconsistent or nonfinite canonical MP2 adjoint");
 }
 
-std::vector<double> rotation_gradient(std::span<const double> one,
-                                      std::span<const double> two,
-                                      std::span<const double> h,
-                                      std::span<const double> eri,
+std::vector<double> rotation_gradient(std::span<const double> one, std::span<const double> two,
+                                      std::span<const double> h, std::span<const double> eri,
                                       std::size_t n) {
   std::vector<double> result(square(n), 0.0);
   for (std::size_t p = 0; p < n; ++p)
@@ -73,15 +69,13 @@ std::vector<double> rotation_gradient(std::span<const double> one,
   return result;
 }
 
-std::vector<double> canonical_fock(std::span<const double> h,
-                                   std::span<const double> eri, std::size_t n,
-                                   std::size_t occupied) {
+std::vector<double> canonical_fock(std::span<const double> h, std::span<const double> eri,
+                                   std::size_t n, std::size_t occupied) {
   std::vector<double> fock(h.begin(), h.end());
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q)
       for (std::size_t i = 0; i < occupied; ++i)
-        fock[p * n + q] += 2.0 * eri[eri_index(n, p, q, i, i)] -
-                           eri[eri_index(n, p, i, i, q)];
+        fock[p * n + q] += 2.0 * eri[eri_index(n, p, q, i, i)] - eri[eri_index(n, p, i, i, q)];
   double off_diagonal = 0.0;
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q)
@@ -98,8 +92,8 @@ std::vector<std::size_t> all_orbitals(std::size_t n) {
 }
 
 std::vector<double> streamed_fock(std::span<const double> h,
-                                  const posthf::NativeBlockProvider& provider,
-                                  std::size_t n, std::size_t occupied) {
+                                  const posthf::NativeBlockProvider& provider, std::size_t n,
+                                  std::size_t occupied) {
   auto fock = std::vector<double>(h.begin(), h.end());
   const auto all = all_orbitals(n);
   for (std::size_t i = 0; i < occupied; ++i) {
@@ -119,10 +113,11 @@ std::vector<double> streamed_fock(std::span<const double> h,
   return fock;
 }
 
-std::vector<double> rotation_gradient_streamed(
-    std::span<const double> one, std::span<const double> two,
-    std::span<const double> h, const posthf::NativeBlockProvider& provider,
-    std::size_t n) {
+std::vector<double> rotation_gradient_streamed(std::span<const double> one,
+                                               std::span<const double> two,
+                                               std::span<const double> h,
+                                               const posthf::NativeBlockProvider& provider,
+                                               std::size_t n) {
   std::vector<double> result(square(n), 0.0);
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q)
@@ -178,9 +173,8 @@ OrbitalRhs initial_orbital_weights(const EnergyAdjoint& adjoint) {
   return result;
 }
 
-void add_negative_fock_multiplier(std::vector<double>& one, std::vector<double>& two,
-                                  std::size_t n, std::size_t occupied,
-                                  std::size_t row, std::size_t column,
+void add_negative_fock_multiplier(std::vector<double>& one, std::vector<double>& two, std::size_t n,
+                                  std::size_t occupied, std::size_t row, std::size_t column,
                                   double value) {
   one[row * n + column] -= value;
   for (std::size_t j = 0; j < occupied; ++j) {
@@ -192,11 +186,9 @@ void add_negative_fock_multiplier(std::vector<double>& one, std::vector<double>&
 
 EnergyAdjoint canonical_energy_adjoint(std::span<const double> integrals_iajb,
                                        std::span<const double> orbital_energies,
-                                       std::size_t occupied,
-                                       double denominator_threshold) {
-  if (!occupied || occupied >= orbital_energies.size() ||
-      !std::isfinite(denominator_threshold) || denominator_threshold <= 0.0 ||
-      !finite(integrals_iajb) || !finite(orbital_energies))
+                                       std::size_t occupied, double denominator_threshold) {
+  if (!occupied || occupied >= orbital_energies.size() || !std::isfinite(denominator_threshold) ||
+      denominator_threshold <= 0.0 || !finite(integrals_iajb) || !finite(orbital_energies))
     throw std::invalid_argument("invalid canonical MP2 adjoint inputs");
   const auto n = orbital_energies.size(), virtuals = n - occupied;
   const auto expected = posthf::checked_mul(square(occupied), square(virtuals));
@@ -235,21 +227,17 @@ EnergyAdjoint canonical_energy_adjoint(std::span<const double> integrals_iajb,
   return result;
 }
 
-OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo,
-                                 std::span<const double> eri_mo,
-                                 const EnergyAdjoint& adjoint,
-                                 double same_space_threshold) {
+OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<const double> eri_mo,
+                                 const EnergyAdjoint& adjoint, double same_space_threshold) {
   validate_adjoint(adjoint);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
-  if (hcore_mo.size() != square(n) || eri_mo.size() != fourth_power(n) ||
-      !finite(hcore_mo) || !finite(eri_mo) || !std::isfinite(same_space_threshold) ||
-      same_space_threshold <= 0.0)
+  if (hcore_mo.size() != square(n) || eri_mo.size() != fourth_power(n) || !finite(hcore_mo) ||
+      !finite(eri_mo) || !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
     throw std::invalid_argument("canonical orbital RHS inputs must be finite and consistent");
   auto fock = canonical_fock(hcore_mo, eri_mo, n, occupied);
   auto result = initial_orbital_weights(adjoint);
   const auto virtuals = n - occupied;
-  auto gradient = rotation_gradient(result.one_electron, result.two_electron,
-                                    hcore_mo, eri_mo, n);
+  auto gradient = rotation_gradient(result.one_electron, result.two_electron, hcore_mo, eri_mo, n);
   result.energy_gradient.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -262,14 +250,13 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo,
         if (std::abs(denominator) <= same_space_threshold)
           throw std::invalid_argument("same-space canonical MP2 response is near-degenerate");
         const double derivative = gradient[p * n + q] - gradient[q * n + p];
-        add_negative_fock_multiplier(result.one_electron, result.two_electron, n,
-                                     occupied, q, p, derivative / denominator);
+        add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied, q, p,
+                                     derivative / denominator);
       }
   };
   correct_block(0, occupied);
   correct_block(occupied, n);
-  gradient = rotation_gradient(result.one_electron, result.two_electron,
-                               hcore_mo, eri_mo, n);
+  gradient = rotation_gradient(result.one_electron, result.two_electron, hcore_mo, eri_mo, n);
   result.response_rhs.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -280,15 +267,15 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo,
   return result;
 }
 
-OrbitalRhs canonical_orbital_rhs_streamed(
-    const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
-    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
-    double same_space_threshold) {
+OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
+                                          std::span<const double> hcore_mo,
+                                          const posthf::NativeBlockProvider& provider,
+                                          const EnergyAdjoint& adjoint,
+                                          double same_space_threshold) {
   validate_adjoint(adjoint);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
-  if (&provider.reference() != &reference || reference.nbf != n ||
-      reference.nocc != occupied || reference.orbital_energies.size() != n ||
-      hcore_mo.size() != square(n) || !finite(hcore_mo) ||
+  if (&provider.reference() != &reference || reference.nbf != n || reference.nocc != occupied ||
+      reference.orbital_energies.size() != n || hcore_mo.size() != square(n) || !finite(hcore_mo) ||
       !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
     throw std::invalid_argument("streamed MP2 orbital RHS reference/provider mismatch");
   auto fock = streamed_fock(hcore_mo, provider, n, occupied);
@@ -297,8 +284,8 @@ OrbitalRhs canonical_orbital_rhs_streamed(
       throw std::invalid_argument("streamed MP2 Fock spectrum differs from the reference");
   auto result = initial_orbital_weights(adjoint);
   const auto virtuals = n - occupied;
-  auto gradient = rotation_gradient_streamed(result.one_electron, result.two_electron,
-                                             hcore_mo, provider, n);
+  auto gradient =
+      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
   result.energy_gradient.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -307,19 +294,18 @@ OrbitalRhs canonical_orbital_rhs_streamed(
   auto correct_block = [&](std::size_t begin, std::size_t end) {
     for (std::size_t p = begin; p < end; ++p)
       for (std::size_t q = p + 1; q < end; ++q) {
-        const double denominator = reference.orbital_energies[p] -
-                                   reference.orbital_energies[q];
+        const double denominator = reference.orbital_energies[p] - reference.orbital_energies[q];
         if (std::abs(denominator) <= same_space_threshold)
           throw std::invalid_argument("same-space streamed MP2 response is near-degenerate");
         const double derivative = gradient[p * n + q] - gradient[q * n + p];
-        add_negative_fock_multiplier(result.one_electron, result.two_electron, n,
-                                     occupied, q, p, derivative / denominator);
+        add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied, q, p,
+                                     derivative / denominator);
       }
   };
   correct_block(0, occupied);
   correct_block(occupied, n);
-  gradient = rotation_gradient_streamed(result.one_electron, result.two_electron,
-                                        hcore_mo, provider, n);
+  gradient =
+      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
   result.response_rhs.resize(occupied * virtuals);
   for (std::size_t i = 0; i < occupied; ++i)
     for (std::size_t a = 0; a < virtuals; ++a)
@@ -330,12 +316,12 @@ OrbitalRhs canonical_orbital_rhs_streamed(
   return result;
 }
 
-LagrangianWeights canonical_lagrangian_weights(
-    std::span<const double> hcore_mo, std::span<const double> eri_mo,
-    const EnergyAdjoint& adjoint, std::span<const double> response,
-    double same_space_threshold) {
-  auto orbital =
-      canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, same_space_threshold);
+LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
+                                               std::span<const double> eri_mo,
+                                               const EnergyAdjoint& adjoint,
+                                               std::span<const double> response,
+                                               double same_space_threshold) {
+  auto orbital = canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, same_space_threshold);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
   const auto virtuals = n - occupied;
   if (response.size() != occupied * virtuals || !finite(response))
@@ -352,30 +338,30 @@ LagrangianWeights canonical_lagrangian_weights(
       result.two_electron[eri_index(n, i, j, j, i)] -= 1.0;
     }
     for (std::size_t a = 0; a < virtuals; ++a)
-      add_negative_fock_multiplier(result.one_electron, result.two_electron, n,
-                                   occupied, occupied + a, i,
-                                   response[i * virtuals + a]);
+      add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied,
+                                   occupied + a, i, response[i * virtuals + a]);
   }
-  const auto gradient = rotation_gradient(result.one_electron, result.two_electron,
-                                          hcore_mo, eri_mo, n);
+  const auto gradient =
+      rotation_gradient(result.one_electron, result.two_electron, hcore_mo, eri_mo, n);
   result.overlap.resize(square(n));
   std::vector<double> stationarity(square(n));
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q) {
-      result.overlap[p * n + q] =
-          -0.25 * (gradient[p * n + q] + gradient[q * n + p]);
+      result.overlap[p * n + q] = -0.25 * (gradient[p * n + q] + gradient[q * n + p]);
       stationarity[p * n + q] = gradient[p * n + q] - gradient[q * n + p];
     }
   result.stationarity_residual = response::stable_norm(stationarity);
   return result;
 }
 
-LagrangianWeights canonical_lagrangian_weights_streamed(
-    const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
-    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
-    std::span<const double> response, double same_space_threshold) {
-  auto orbital = canonical_orbital_rhs_streamed(reference, hcore_mo, provider,
-                                                adjoint, same_space_threshold);
+LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalReference& reference,
+                                                        std::span<const double> hcore_mo,
+                                                        const posthf::NativeBlockProvider& provider,
+                                                        const EnergyAdjoint& adjoint,
+                                                        std::span<const double> response,
+                                                        double same_space_threshold) {
+  auto orbital =
+      canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, same_space_threshold);
   const auto n = adjoint.orbitals, occupied = adjoint.occupied;
   const auto virtuals = n - occupied;
   if (response.size() != posthf::checked_mul(occupied, virtuals) || !finite(response))
@@ -392,18 +378,16 @@ LagrangianWeights canonical_lagrangian_weights_streamed(
       result.two_electron[eri_index(n, i, j, j, i)] -= 1.0;
     }
     for (std::size_t a = 0; a < virtuals; ++a)
-      add_negative_fock_multiplier(result.one_electron, result.two_electron, n,
-                                   occupied, occupied + a, i,
-                                   response[i * virtuals + a]);
+      add_negative_fock_multiplier(result.one_electron, result.two_electron, n, occupied,
+                                   occupied + a, i, response[i * virtuals + a]);
   }
-  const auto gradient = rotation_gradient_streamed(
-      result.one_electron, result.two_electron, hcore_mo, provider, n);
+  const auto gradient =
+      rotation_gradient_streamed(result.one_electron, result.two_electron, hcore_mo, provider, n);
   result.overlap.resize(square(n));
   std::vector<double> stationarity(square(n));
   for (std::size_t p = 0; p < n; ++p)
     for (std::size_t q = 0; q < n; ++q) {
-      result.overlap[p * n + q] =
-          -0.25 * (gradient[p * n + q] + gradient[q * n + p]);
+      result.overlap[p * n + q] = -0.25 * (gradient[p * n + q] + gradient[q * n + p]);
       stationarity[p * n + q] = gradient[p * n + q] - gradient[q * n + p];
     }
   result.stationarity_residual = response::stable_norm(stationarity);
@@ -413,8 +397,7 @@ LagrangianWeights canonical_lagrangian_weights_streamed(
 GradientResourcePlan conventional_gradient_plan(
     std::size_t orbitals, std::size_t occupied, std::size_t provider_bytes,
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes,
-    std::size_t budget_bytes) {
+    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes) {
   if (!orbitals || !occupied || occupied >= orbitals || !maximum_shell_ao_count ||
       !coordinate_count ||
       response_plan.dimension != posthf::checked_mul(occupied, orbitals - occupied))
@@ -425,14 +408,15 @@ GradientResourcePlan conventional_gradient_plan(
   const auto amplitudes = posthf::checked_mul(square(occupied), square(virtuals));
   GradientResourcePlan plan;
   plan.provider_bytes = provider_bytes;
-  plan.adjoint_bytes = posthf::checked_mul(sizeof(double),
-      posthf::checked_add(amplitudes, orbitals));
-  plan.response_bytes = posthf::checked_add(response_plan.workspace_bytes,
-      posthf::checked_mul(sizeof(double), posthf::checked_add(posthf::checked_mul(6, rotations), n2)));
-  auto relaxed_elements = posthf::checked_add(posthf::checked_mul(2, n4),
-                                               posthf::checked_mul(3, n2));
-  relaxed_elements = posthf::checked_add(relaxed_elements,
-                                         posthf::checked_mul(2, rotations));
+  plan.adjoint_bytes =
+      posthf::checked_mul(sizeof(double), posthf::checked_add(amplitudes, orbitals));
+  plan.response_bytes = posthf::checked_add(
+      response_plan.workspace_bytes,
+      posthf::checked_mul(sizeof(double),
+                          posthf::checked_add(posthf::checked_mul(6, rotations), n2)));
+  auto relaxed_elements =
+      posthf::checked_add(posthf::checked_mul(2, n4), posthf::checked_mul(3, n2));
+  relaxed_elements = posthf::checked_add(relaxed_elements, posthf::checked_mul(2, rotations));
   plan.relaxed_weight_bytes = posthf::checked_mul(sizeof(double), relaxed_elements);
   plan.shell_cotangent_bytes =
       posthf::checked_mul(sizeof(double), fourth_power(maximum_shell_ao_count));
@@ -442,9 +426,9 @@ GradientResourcePlan conventional_gradient_plan(
   plan.derivative_staging_bytes = posthf::checked_mul(sizeof(double), derivative_elements);
   plan.candidate_output_bytes = candidate_output_bytes;
   plan.peak_bytes = provider_bytes;
-  for (auto bytes : {plan.adjoint_bytes, plan.response_bytes, plan.relaxed_weight_bytes,
-                     plan.shell_cotangent_bytes, plan.derivative_staging_bytes,
-                     plan.candidate_output_bytes})
+  for (auto bytes :
+       {plan.adjoint_bytes, plan.response_bytes, plan.relaxed_weight_bytes,
+        plan.shell_cotangent_bytes, plan.derivative_staging_bytes, plan.candidate_output_bytes})
     plan.peak_bytes = posthf::checked_add(plan.peak_bytes, bytes);
   if (plan.peak_bytes > budget_bytes)
     throw std::length_error("conventional MP2 gradient exceeds numeric memory budget");

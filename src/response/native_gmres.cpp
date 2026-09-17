@@ -20,9 +20,8 @@ std::size_t checked_multiply(std::size_t first, std::size_t second) {
 }
 
 bool finite(std::span<const double> values) {
-  return std::all_of(values.begin(), values.end(), [](double value) {
-    return std::isfinite(value);
-  });
+  return std::all_of(values.begin(), values.end(),
+                     [](double value) { return std::isfinite(value); });
 }
 
 double relative_residual(double residual, double rhs) {
@@ -30,10 +29,9 @@ double relative_residual(double residual, double rhs) {
   return residual == 0.0 ? 0.0 : std::numeric_limits<double>::infinity();
 }
 
-GmresResult result_for(const GmresPlan& plan, std::vector<double> solution,
-                       GmresStatus status, double residual, double rhs_norm,
-                       std::size_t iterations, std::size_t restarts,
-                       std::size_t operator_actions,
+GmresResult result_for(const GmresPlan& plan, std::vector<double> solution, GmresStatus status,
+                       double residual, double rhs_norm, std::size_t iterations,
+                       std::size_t restarts, std::size_t operator_actions,
                        std::size_t preconditioner_actions) {
   GmresResult result;
   result.solution = std::move(solution);
@@ -49,8 +47,8 @@ GmresResult result_for(const GmresPlan& plan, std::vector<double> solution,
 }
 
 bool solve_upper(std::span<const double> hessenberg, std::size_t stride,
-                 std::span<const double> transformed_rhs, std::size_t count,
-                 double tolerance, std::span<double> solution) {
+                 std::span<const double> transformed_rhs, std::size_t count, double tolerance,
+                 std::span<double> solution) {
   std::fill(solution.begin(), solution.end(), 0.0);
   for (std::size_t reverse = count; reverse > 0; --reverse) {
     const auto row = reverse - 1;
@@ -85,9 +83,8 @@ double stable_norm(std::span<const double> values) {
 }
 
 GmresPlan prepare_gmres(std::size_t dimension, const GmresOptions& options) {
-  if (!dimension || !options.restart || !options.max_iterations ||
-      !options.max_workspace_bytes || !options.reorthogonalize ||
-      !options.true_residual_every || !options.stagnation_window ||
+  if (!dimension || !options.restart || !options.max_iterations || !options.max_workspace_bytes ||
+      !options.reorthogonalize || !options.true_residual_every || !options.stagnation_window ||
       !std::isfinite(options.relative_tolerance) || options.relative_tolerance < 0.0 ||
       options.relative_tolerance >= 1.0 || !std::isfinite(options.absolute_tolerance) ||
       options.absolute_tolerance < 0.0 || !std::isfinite(options.breakdown_tolerance) ||
@@ -100,8 +97,8 @@ GmresPlan prepare_gmres(std::size_t dimension, const GmresOptions& options) {
   std::size_t elements = checked_multiply(restart_plus_one, dimension);
   elements = checked_add(elements, checked_multiply(4, checked_multiply(dimension, restart)));
   elements = checked_add(elements, checked_multiply(20, dimension));
-  elements = checked_add(
-      elements, checked_multiply(8, checked_multiply(restart_plus_one, restart_plus_one)));
+  elements = checked_add(elements,
+                         checked_multiply(8, checked_multiply(restart_plus_one, restart_plus_one)));
   elements = checked_add(elements, checked_multiply(4, iterations_plus_two));
   return {dimension, restart, checked_multiply(elements, sizeof(double)), options};
 }
@@ -157,8 +154,8 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
   if (!initial_guess.empty()) {
     if (!apply_checked(x, image))
       return result_for(plan, std::move(x), GmresStatus::nonfinite_operator,
-                        std::numeric_limits<double>::infinity(), rhs_norm, 0, 0,
-                        operator_actions, preconditioner_actions);
+                        std::numeric_limits<double>::infinity(), rhs_norm, 0, 0, operator_actions,
+                        preconditioner_actions);
     for (std::size_t index = 0; index < n; ++index) residual[index] -= image[index];
   }
   double beta = 0.0;
@@ -166,8 +163,8 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
     beta = stable_norm(residual);
   } catch (const std::exception&) {
     return result_for(plan, std::move(x), GmresStatus::nonfinite_input,
-                      std::numeric_limits<double>::infinity(), rhs_norm, 0, 0,
-                      operator_actions, preconditioner_actions);
+                      std::numeric_limits<double>::infinity(), rhs_norm, 0, 0, operator_actions,
+                      preconditioner_actions);
   }
   if (beta <= target)
     return result_for(plan, std::move(x), GmresStatus::initial_residual, beta, rhs_norm, 0, 0,
@@ -192,34 +189,29 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
     double best_norm = beta;
     bool completed_cycle = false;
 
-    for (std::size_t column = 0;
-         column < restart && iterations < plan.options.max_iterations; ++column) {
-      const auto basis_column =
-          std::span<const double>(basis.data() + column * n, n);
+    for (std::size_t column = 0; column < restart && iterations < plan.options.max_iterations;
+         ++column) {
+      const auto basis_column = std::span<const double>(basis.data() + column * n, n);
       auto z_column = std::span<double>(preconditioned.data() + column * n, n);
       precondition(basis_column, z_column);
       if (!apply_checked(z_column, work))
-        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator,
-                          best_norm, rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator, best_norm,
+                          rhs_norm, iterations, restarts, operator_actions, preconditioner_actions);
       for (unsigned pass = 0; pass < plan.options.reorthogonalize; ++pass) {
         for (std::size_t row = 0; row <= column; ++row) {
           const auto prior = std::span<const double>(basis.data() + row * n, n);
           double projection = 0.0;
-          for (std::size_t index = 0; index < n; ++index)
-            projection += prior[index] * work[index];
+          for (std::size_t index = 0; index < n; ++index) projection += prior[index] * work[index];
           hessenberg[row * restart + column] += projection;
-          for (std::size_t index = 0; index < n; ++index)
-            work[index] -= projection * prior[index];
+          for (std::size_t index = 0; index < n; ++index) work[index] -= projection * prior[index];
         }
       }
       double next_norm = 0.0;
       try {
         next_norm = stable_norm(work);
       } catch (const std::exception&) {
-        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator,
-                          best_norm, rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator, best_norm,
+                          rhs_norm, iterations, restarts, operator_actions, preconditioner_actions);
       }
       hessenberg[(column + 1) * restart + column] = next_norm;
       const bool broke_down = next_norm <= plan.options.breakdown_tolerance;
@@ -231,8 +223,7 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
         const double upper = hessenberg[row * restart + column];
         const double lower = hessenberg[(row + 1) * restart + column];
         hessenberg[row * restart + column] = cosine[row] * upper + sine[row] * lower;
-        hessenberg[(row + 1) * restart + column] =
-            -sine[row] * upper + cosine[row] * lower;
+        hessenberg[(row + 1) * restart + column] = -sine[row] * upper + cosine[row] * lower;
       }
       const double upper = hessenberg[column * restart + column];
       const double lower = hessenberg[(column + 1) * restart + column];
@@ -244,8 +235,7 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
         cosine[column] = 1.0;
         sine[column] = 0.0;
       }
-      hessenberg[column * restart + column] =
-          cosine[column] * upper + sine[column] * lower;
+      hessenberg[column * restart + column] = cosine[column] * upper + sine[column] * lower;
       hessenberg[(column + 1) * restart + column] = 0.0;
       const double transformed_upper = transformed[column];
       transformed[column] = cosine[column] * transformed_upper;
@@ -265,40 +255,34 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
           for (std::size_t index = 0; index < n; ++index)
             candidate[index] += preconditioned[vector * n + index] * coefficients[vector];
       if (!apply_checked(candidate, candidate_image))
-        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator,
-                          best_norm, rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator, best_norm,
+                          rhs_norm, iterations, restarts, operator_actions, preconditioner_actions);
       for (std::size_t index = 0; index < n; ++index)
         candidate_residual[index] = rhs[index] - candidate_image[index];
       double candidate_norm = 0.0;
       try {
         candidate_norm = stable_norm(candidate_residual);
       } catch (const std::exception&) {
-        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator,
-                          best_norm, rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::nonfinite_operator, best_norm,
+                          rhs_norm, iterations, restarts, operator_actions, preconditioner_actions);
       }
       if (candidate_norm < best_norm) {
         best_norm = candidate_norm;
         best_x = candidate;
         best_residual_vector = candidate_residual;
         stagnation = 0;
-      } else if (candidate_norm >=
-                 best_norm * (1.0 - plan.options.stagnation_tolerance)) {
+      } else if (candidate_norm >= best_norm * (1.0 - plan.options.stagnation_tolerance)) {
         ++stagnation;
       }
       if (candidate_norm <= target)
-        return result_for(plan, std::move(candidate), GmresStatus::converged,
-                          candidate_norm, rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(candidate), GmresStatus::converged, candidate_norm,
+                          rhs_norm, iterations, restarts, operator_actions, preconditioner_actions);
       if (broke_down || !solvable)
-        return result_for(plan, std::move(best_x), GmresStatus::breakdown, best_norm,
-                          rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::breakdown, best_norm, rhs_norm,
+                          iterations, restarts, operator_actions, preconditioner_actions);
       if (stagnation >= plan.options.stagnation_window)
-        return result_for(plan, std::move(best_x), GmresStatus::stagnation, best_norm,
-                          rhs_norm, iterations, restarts, operator_actions,
-                          preconditioner_actions);
+        return result_for(plan, std::move(best_x), GmresStatus::stagnation, best_norm, rhs_norm,
+                          iterations, restarts, operator_actions, preconditioner_actions);
       if (column + 1 == restart || iterations == plan.options.max_iterations) {
         completed_cycle = true;
         break;

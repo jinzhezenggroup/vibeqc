@@ -60,8 +60,7 @@ void exact_solve_and_true_residual() {
   const auto result = vibeqc::response::solve_gmres(
       plan, [&](auto input, auto output) { matrix(input, output); }, rhs);
   require(result.status == GmresStatus::converged, "2x2 solve did not converge");
-  require(std::abs(result.solution[0] - 0.1) < 1e-12 &&
-              std::abs(result.solution[1] - 0.6) < 1e-12,
+  require(std::abs(result.solution[0] - 0.1) < 1e-12 && std::abs(result.solution[1] - 0.6) < 1e-12,
           "2x2 solution is wrong");
   const auto residual = explicit_residual(matrix, result.solution, rhs);
   require(std::abs(result.residual_norm - residual) < 1e-15,
@@ -106,11 +105,10 @@ void restarted_and_exhausted_paths() {
   const auto failed = vibeqc::response::solve_gmres(
       vibeqc::response::prepare_gmres(3, exhausted),
       [&](auto input, auto output) { limited(input, output); }, rhs);
-  require(failed.status == GmresStatus::max_iterations && !failed.converged() &&
-              failed.iterations == 1,
-          "iteration exhaustion claimed success or returned the wrong status");
-  require(std::abs(failed.residual_norm -
-                   explicit_residual(limited, failed.solution, rhs)) < 1e-14,
+  require(
+      failed.status == GmresStatus::max_iterations && !failed.converged() && failed.iterations == 1,
+      "iteration exhaustion claimed success or returned the wrong status");
+  require(std::abs(failed.residual_norm - explicit_residual(limited, failed.solution, rhs)) < 1e-14,
           "exhausted solve did not publish its true residual");
 }
 
@@ -118,8 +116,8 @@ void breakdown_and_nonfinite_paths() {
   DenseOperator zero{2, {0.0, 0.0, 0.0, 0.0}};
   const std::array<double, 2> rhs{1.0, 1.0};
   const auto broken = vibeqc::response::solve_gmres(
-      vibeqc::response::prepare_gmres(2, {}),
-      [&](auto input, auto output) { zero(input, output); }, rhs);
+      vibeqc::response::prepare_gmres(2, {}), [&](auto input, auto output) { zero(input, output); },
+      rhs);
   require(broken.status == GmresStatus::breakdown && !broken.converged(),
           "singular operator did not report breakdown");
   require(std::abs(broken.relative_residual - 1.0) < 1e-15,
@@ -167,8 +165,7 @@ void options_and_workspace_boundaries() {
     options.restart = std::numeric_limits<std::size_t>::max();
     options.max_iterations = std::numeric_limits<std::size_t>::max();
     options.max_workspace_bytes = std::numeric_limits<std::size_t>::max();
-    (void)vibeqc::response::prepare_gmres(std::numeric_limits<std::size_t>::max(),
-                                         options);
+    (void)vibeqc::response::prepare_gmres(std::numeric_limits<std::size_t>::max(), options);
   } catch (const std::overflow_error&) {
     rejected = true;
   }
@@ -204,10 +201,8 @@ void options_and_workspace_boundaries() {
 void stable_norm_extremes() {
   const std::array<double, 2> tiny{1e-200, 0.0};
   const std::array<double, 2> large{1e200, 0.0};
-  require(vibeqc::response::stable_norm(tiny) == 1e-200,
-          "stable norm underflowed a finite vector");
-  require(vibeqc::response::stable_norm(large) == 1e200,
-          "stable norm overflowed a finite vector");
+  require(vibeqc::response::stable_norm(tiny) == 1e-200, "stable norm underflowed a finite vector");
+  require(vibeqc::response::stable_norm(large) == 1e200, "stable norm overflowed a finite vector");
   bool rejected = false;
   try {
     const std::array<double, 2> impossible{std::numeric_limits<double>::max(),
