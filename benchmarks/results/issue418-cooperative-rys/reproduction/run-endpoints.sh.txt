@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -uo pipefail
+: "${SLURM_JOB_ID:?Run inside a finite Slurm allocation}"
+output_root="$PWD/.artifacts/issue418/endpoints-v1"
+mkdir "$output_root" || exit 2
+printf '%s\n' "$SLURM_JOB_ID" > "$output_root/slurm-job.txt"
+export PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export LD_LIBRARY_PATH=/group/software/cuda-12.9.1/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VIBEQC_LIBRARY="$PWD/.artifacts/issue418/campaign/libvibeqc.so"
+export VIBEQC_DF_REFERENCE_FINAL_VALIDATION=0 VIBEQC_DF_FINAL_PROJECTION=auto
+export VIBEQC_DF_FORCE_SCREEN_ABS=off VIBEQC_DF_EXCHANGE=auto
+export VIBEQC_DF_SEED_EXCHANGE=auto VIBEQC_DF_FINAL_EXCHANGE=auto
+export VIBEQC_DF_RESIDENT_EXCHANGE=auto
+if [[ ! -f "$VIBEQC_LIBRARY" ]]; then exit 3; fi
+python - <<'PY'
+import json,subprocess
+from pathlib import Path
+names={'nvcc','cicc','ptxas','nsys','ncu','compute-sanitizer','cmake','ninja','make','cc1plus','clang','clang++','gcc','g++','cc1','ccache'}
+rows=[]
+for line in subprocess.check_output(['ps','-eo','pid=,ppid=,etimes=,comm=,args='],text=True).splitlines():
+    pid,parent,age,name,args=line.split(None,4)
+    if name not in names: continue
+    orphan=name=='nsys' and '--start-agent' in args and parent=='1' and int(age)>86400
+    rows.append({'pid':int(pid),'parent':int(parent),'age_seconds':int(age),'name':name,'args':args,'orphan_control_agent':orphan})
+Path('.artifacts/issue418/endpoints-v1/process-scan.json').write_text(json.dumps(rows,indent=2)+'\n')
+raise SystemExit(1 if any(not r['orphan_control_agent'] for r in rows) else 0)
+PY
+if [[ "$?" != 0 ]]; then exit 4; fi
+status=0
+for aos in 96 192 384 768; do
+  case "$aos" in
+    96) case_name=water-tetramer-def2-svp-spherical ;;
+    192) case_name=water-octamer-s4-def2-svp-spherical ;;
+    384) case_name=water-hexadecamer-2s4-def2-svp-spherical ;;
+    768) case_name=water-32mer-4s4-def2-svp-spherical ;;
+  esac
+  extra=()
+  if [[ "$aos" -ge 384 ]]; then
+    checkpoint="/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/$aos-VIBEQC_DF_DIIS_DOTS.checkpoint"
+    extra+=(--expected-iterations 3)
+  else
+    checkpoint="/home/jzzeng/codes/vibeqc-issue408/.artifacts/issue408/verified/$aos.checkpoint"
+  fi
+  for observable in forces energy; do
+    properties=()
+    if [[ "$observable" == energy ]]; then properties+=(--energy-only); fi
+    /tmp/vibeqc-pr-review-env/bin/python -m benchmarks.df_policy_endpoint \
+      --aos "$aos" --output "$output_root/$aos-$observable.json" --repeats 5 \
+      --control VIBEQC_DF_SHELL_POLICY --policies auto candidate --components-after \
+      --source-patch .artifacts/issue418/campaign/source.patch --skip-cold \
+      --warm-checkpoint-in "$checkpoint" "${extra[@]}" "${properties[@]}" \
+      --reference "benchmarks/results/issue377-379-df/gpu4pyscf/$case_name.json" \
+      > "$output_root/$aos-$observable.stdout" 2> "$output_root/$aos-$observable.stderr"
+    rc=$?
+    printf '%s\n' "$rc" > "$output_root/$aos-$observable.exit"
+    if [[ "$rc" != 0 ]]; then status=1; fi
+  done
+done
+exit "$status"

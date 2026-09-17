@@ -1,9 +1,9 @@
 # Cooperative DF Rys qualification (#418)
 
-Status: mathematical, GPU derivative, sanitizer and class-workload qualification
-passed. The combined library and complete 96/192/384/768 endpoint checks are
-pending. These records do not establish an endpoint speedup or promote a mapping.
-The accepted #415 low-angular 2.6% improvement remains the automatic baseline.
+Status: mathematical, GPU derivative, sanitizer, class-workload and combined
+96/192/384/768 warm endpoint qualification passed. Independent standalone-baseline
+equivalence and the final production library remain pending. The campaign keeps
+the accepted #415 low-angular 2.6% improvement as its automatic baseline.
 
 The candidate shares compiler-generated one-dimensional Gaussian moments across
 Cartesian components for 13 canonical classes: 101/102/110/111/112, 201/202,
@@ -57,11 +57,46 @@ classes, SCF, response production and final endpoint work. Every class improves
 on both distributions, including the old 101/110 negative controls. Their old
 component-local results remain in `../issue394-batch-rys/`.
 
-The combined campaign must still demonstrate >=0.20 s clean 768-AO complete
-warm energy+force improvement, or >=15% complete shell-derivative improvement
-with a clean endpoint win, using at least five interleaved pairs and identical
-frozen starting density/operator work. It also requires the 384 control and
-96/192 correctness checks. No class timing substitutes for that decision.
+## Complete warm endpoint campaign
+
+Slurm 9896 passes all 48 native tests, with the GPU MP2 tests explicitly enabled.
+Slurm 9897 then measures five interleaved auto/candidate pairs at each size and
+property selection. Every pair starts from the same frozen checkpoint density.
+No builds or profilers overlap this clean campaign. Separate component/journal
+passes follow the clean samples; their times never enter these medians.
+
+| AO | Baseline energy+force (s) | Candidate energy+force (s) | Improvement | Baseline energy (s) | Candidate energy (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 96 | 0.108953 | 0.109003 | -0.046% | 0.009817 | 0.009833 |
+| 192 | 0.164843 | 0.130135 | 21.06% | 0.039649 | 0.039216 |
+| 384 | 0.694017 | 0.622889 | 10.25% | 0.269893 | 0.269855 |
+| 768 | 2.557756 | 2.000895 | 21.77% | 1.014737 | 1.015030 |
+
+The 768-AO complete endpoint saves **0.556861 s** and passes the predeclared
+>=0.20-s gate. The complete shell derivative component also falls from
+1192.641 to 661.702 ms (**44.52%**), passing the alternative >=15% component gate
+with a clean endpoint win. At 384 it falls from 172.039 to 89.284 ms. The
+inclusive force stage falls from 1.631963 to 1.101979 s at 768. These diagnostic
+times each describe one separate intrusive replay, not repeated clean medians.
+
+All 80 clean samples and 16 diagnostics pass the unchanged energy/force gates
+(1e-9 Eh / 1e-8 Eh/bohr). Maximum observed errors are 1.501e-11 / 1.620e-10.
+Iterations, captured-SCF replay counts, explicit final Fock/eigensolve/density
+work, final residuals, metric/rank, shell/primitive/component/public-weight work,
+response contractions and transfers agree. Consecutive solves have distinct
+epochs; each occupied factor is checked against its own final determinant.
+Charged host/device memory and sampled device residency agree between arms.
+
+The frozen campaign library is 209,746,608 bytes versus 206,443,312 for the
+standalone baseline: +3,303,296 bytes (1.60%). Its native identity is
+`de2f49cc07be2ab6f273504dd4ac2718274013873c91262c9fe18d585c039d7b` and its
+library SHA-256 is `deefe6b2b95919628387a37c796fbb48a8b6c9609418cab946744e3c89d43d3f`.
+The additional compiler/native/generated inventory hash in the build record is
+a different, explicitly labeled hash domain.
+
+These results qualify the warm frozen-density campaign. They do not establish
+cold/changed-geometry or stock GPU4PySCF performance, and keep #206 open. The
+final default mapping must be built and checked separately before merging.
 
 ## Retention and reproduction
 
@@ -77,4 +112,5 @@ audit, so ordering differences are not misreported as physical errors.
 CUDA 12.9.1 and frozen CPU-oracle library used on this machine. Run every GPU
 driver through finite `srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1
 --time=...`, preserving scheduler visibility. `identity/endpoint-protocol.json`
-declares the next complete-endpoint experiment; its results are still pending.
+declares the complete-endpoint experiment. `endpoints/endpoints-v1/analysis.json`
+(compressed where indicated by the manifest) audits every sample and work gate.

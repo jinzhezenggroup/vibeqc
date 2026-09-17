@@ -94,7 +94,26 @@ isolated dense-weight class timings exclude SCF, response production and the
 other five classes. They select one combined candidate; they are not an endpoint
 claim. The experimental manifest keeps the qualified old mapping for automatic
 execution and exposes the new mapping only through the existing candidate arm.
-Complete endpoint qualification remains pending.
+Slurm 9896 passes all 48 native tests; Slurm 9897 passes all 80 clean endpoint
+samples and 16 separate diagnostics. Complete energy+force medians are
+0.108953/0.109003 s (96), 0.164843/0.130135 s (192), 0.694017/0.622889 s (384),
+and 2.557756/2.000895 s (768), baseline/candidate. The 768 saving is 0.556861 s
+(21.77%), passing the predeclared gate. Its complete shell derivative component
+also falls 44.52%, from 1192.641 to 661.702 ms, in separate intrusive replays.
+Energy-only medians remain effectively unchanged at 384/768.
+
+Every numerical, frozen-density, graph replay/finalization, metric/rank and
+semantic shell/primitive/component/response/transfer gate passes. Solve epochs
+advance between calls, and each occupied response factor is independently bound
+to its own final determinant. The binary grows 1.60%; charged memory and sampled
+device residency agree between campaign arms. Independent standalone-baseline
+equivalence and the final promoted source/library remain pending; this warm
+campaign alone makes no stock GPU4PySCF claim and keeps #206 open.
+
+The initial PR Python CI passed 3652 tests but found a stale versioned CUDA
+ownership snapshot. Regenerating it from the maintained source and matching
+generated build fixes the 12-test ownership suite; the original CI failure is
+retained with the campaign evidence.
 
 `benchmarks/results/issue418-cooperative-rys/` retains the independently checked
 records, failures, resource reports, workloads and reproduction drivers.
