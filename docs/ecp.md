@@ -127,9 +127,52 @@ explicitly rejected pending its own complete force/budget gates. Complete
 canonical MP2 with ECP is also rejected until its reference/provider gates are
 validated. The all-electron accuracy-model schema cannot represent an ECP
 Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
-DFT SCF/gradients remain dependent on #162/#163, so DFT/ECP completion is not
-claimed. No broad heavy-element validation follows from support for the
-parameter format.
+LDA/PBE RKS/UKS energy-only calculations use the same ECP Hamiltonian, as
+described below. Complete DFT gradients remain dependent on #163 and force
+requests are rejected. No broad heavy-element validation follows from support
+for the parameter format.
+
+## Semilocal DFT energies
+
+`lda-rks`, `pbe-rks`, `lda-uks` and `pbe-uks` accept supported scalar ECP
+basis records on CPU/CUDA for the energy observable. The shared one-electron
+provider supplies kinetic energy, effective-charge Coulomb attraction and
+the local/nonlocal ECP residual exactly once. Electron populations and nuclear
+repulsion use effective ionic charges. XC evaluates the valence density in the
+ordinary Gaussian AO basis; it does not reconstruct a core density or apply a
+nonlinear core correction. Atomic number still determines grid element identity.
+
+AO capability checks permit values and first spatial jets needed by LDA/GGA
+energies. They still validate ECP metadata and angular limits. Higher AO jets,
+complete nuclear forces, DF/ECP and other DFT methods do not inherit support.
+
+```python
+result = Calculator(method="pbe-rks", basis=basis, device="cuda").singlepoint(
+    atoms, properties=("energy",)
+)
+assert result.forces is None
+```
+
+The bounded qualification uses installed PySCF 2.14.0 LANL2DZ Na and STO-3G H:
+neutral NaH RKS and the +1 doublet UKS cation, Cartesian/spherical s/p orbitals,
+and the declared default GridSpec. Independent Libcint/Libxc solves on identical
+grid points and weights check total energy, nuclear/one-electron/Hartree/XC
+components, spin electron counts and physical residuals. Different reference
+initial guesses must reach the same energy. This is a matched-discretization
+gate, not a claim of convergence to the continuum XC integral or validation
+of arbitrary ECP/functional combinations.
+
+Exact-budget mixed ECP/all-electron batches check cold/warm execution,
+changed-geometry rebuilding, independent displaced energies, failed-item
+isolation and restoration. Existing KS resource plans include ECP setup
+workspace and preserve ECP parameter/core identity.
+
+Run `pytest tests/python/test_ecp_dft.py`; enable GPU cases only with
+`VIBEQC_ECP_CUDA_TEST=1`. `tools/qualify_ecp_dft.py --device cpu --output result.json`
+(or `--device cuda`) records source/library identities and eight independently
+checked energy endpoints. See the
+[decision note](../.agents/notes/implemented/numerics/2026-09-18-ecp-dft-energy.md)
+and [retained evidence](../benchmarks/results/ecp-dft-171/README.md).
 
 ## Bounded heavy-element parameter qualification
 

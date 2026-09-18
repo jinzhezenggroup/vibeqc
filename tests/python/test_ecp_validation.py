@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import pytest
 from vibeqc import Atom, BasisProvenance, BasisSet, BasisShell, ElementBasis
+from vibeqc.basis_capabilities import basis_capability
 from vibeqc.ecp import resolve_ecp
 
 
@@ -34,6 +35,33 @@ def resolve(record):
         BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
     )
     return resolve_ecp(basis, (Atom(11, (0.0, 0.0, 0.0)),))
+
+
+@pytest.mark.parametrize("backend", ("cpu", "cuda"))
+@pytest.mark.parametrize("order", (0, 1, 2, 3))
+def test_ecp_ao_values_and_first_jets_have_separate_capabilities(backend, order):
+    basis = BasisSet(
+        "synthetic scalar ECP",
+        (element([potential()]),),
+        BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
+    )
+    report = basis_capability(
+        basis,
+        [("Na", (0, 0, 0))],
+        backend=backend,
+        operator="ao",
+        derivative_order=order,
+    )
+    assert report["eligible"] == (order <= 1)
+
+
+def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata():
+    basis = BasisSet(
+        "unsupported scalar ECP",
+        (element([potential(angular_momentum=[4])]),),
+        BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
+    )
+    assert not basis_capability(basis, [("Na", (0, 0, 0))], operator="ao")["eligible"]
 
 
 @pytest.mark.parametrize(
