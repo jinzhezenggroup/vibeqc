@@ -2,8 +2,8 @@
 
 Run after a VIBEQC_DF_SHELL_WORK=1 component capture. Counts describe emitted
 source operations, not hardware instructions or elapsed-time percentages.
-The supported headline cases share orbital/auxiliary bases; general sparse
-counter correctness is tested by the native shell-pair oracle.
+Explicit unequal auxiliary bases retain separate orbital/auxiliary shell
+domains; sparse counter correctness is tested by the native shell-pair oracle.
 """
 
 from __future__ import annotations
@@ -26,11 +26,12 @@ from vibeqc_compiler.integral.df_shell_derivatives import (
 )
 
 from benchmarks._cases import benchmark_cases
+from benchmarks.compare_gpu4pyscf_batch import load_comparison_basis
 from benchmarks.df_component_ledger import read_trace
 from benchmarks.df_policy_endpoint import CASES
 
 # Historical seven-class coverage grouping from #394. This is not an
-# availability mask: generated Rys execution currently supports only 000.
+# availability mask: availability is owned by the compiler, not this report.
 RYS_PROTOTYPE = {
     (0, 0, 0),
     (0, 0, 1),
@@ -74,7 +75,7 @@ WORK_FIELDS = (
 )
 
 
-def reconstruct_domain(shells, panels, pair_mode):
+def reconstruct_domain(shells, panels, pair_mode, auxiliary_shells=None):
     """Count implicit signature products using only public host shell metadata.
 
     Each shell row is (angular, primitives, public AO offset, public AO count).
@@ -84,6 +85,7 @@ def reconstruct_domain(shells, panels, pair_mode):
     """
     if pair_mode not in (0, 1, 2):
         raise ValueError("unknown public pair mode")
+    auxiliary_shells = shells if auxiliary_shells is None else auxiliary_shells
     groups = Counter((row[0], row[1]) for row in shells)
     result = Counter()
     for first, nfirst in sorted(groups.items()):
@@ -98,7 +100,7 @@ def reconstruct_domain(shells, panels, pair_mode):
             for begin, count, repetitions in panels:
                 third_groups = Counter(
                     (angular, primitives)
-                    for angular, primitives, offset, width in shells
+                    for angular, primitives, offset, width in auxiliary_shells
                     if offset < begin + count and offset + width > begin
                 )
                 for third, nthird in third_groups.items():
@@ -112,6 +114,38 @@ def reconstruct_domain(shells, panels, pair_mode):
                     )
                     result[signature] += pairs * nthird * repetitions
     return result
+
+
+def _primitive_work_domains(expected, signature_policy):
+    """Map host signatures to the actual trace grouping, retaining exact costs.
+
+    Angular-only launches report the documented p0_0_0 sentinel: they do not
+    claim that their primitives have zero length. A sparse angular group only
+    reports how many shell tasks were active, so its possible primitive work
+    is bounded by the cheapest/most expensive host tasks with that count.
+    """
+    if signature_policy not in (0, 1, 2):
+        raise ValueError("unknown primitive signature policy")
+    domains = defaultdict(Counter)
+    for signature, tasks in expected.items():
+        key = signature[:3] + (0, 0, 0) if signature_policy == 0 else signature
+        domains[key][math.prod(signature[3:])] += tasks
+    return domains
+
+
+def _active_primitive_bounds(costs, active):
+    if active < 0 or active > sum(costs.values()):
+        raise ValueError("active shell count exceeds visited shells")
+
+    def bound(reverse):
+        remaining, work = active, 0
+        for cost, count in sorted(costs.items(), reverse=reverse):
+            used = min(remaining, count)
+            work += cost * used
+            remaining -= used
+        return work
+
+    return bound(False), bound(True)
 
 
 def kernel_activity(database_path, record):
@@ -192,7 +226,7 @@ def kernel_activity(database_path, record):
     }
 
 
-def reduce_work(record, shells):
+def reduce_work(record, shells, auxiliary_shells=None):
     """Require complete class/signature counters and conserved primitive work."""
     counters = record["counters"]
     if counters.get("shell_work_diagnostics_enabled") != 1:
@@ -213,8 +247,13 @@ def reduce_work(record, shells):
             classes[tuple(map(int, match.groups()[:3]))][match[4]] = value
     if not panels or not signatures:
         raise ValueError("missing panel/signature diagnostics")
-    expected = reconstruct_domain(shells, panels, counters["shell_work_pair_mode"])
-    if set(expected) != set(signatures):
+    expected = reconstruct_domain(
+        shells, panels, counters["shell_work_pair_mode"], auxiliary_shells
+    )
+    work_domains = _primitive_work_domains(
+        expected, counters.get("shell_primitive_signature_policy", 1)
+    )
+    if set(work_domains) != set(signatures):
         raise ValueError("device signature domain differs from the host reconstruction")
     if set(classes) != {signature[:3] for signature in signatures}:
         raise ValueError("device class domain differs from its signatures")
@@ -225,14 +264,16 @@ def reduce_work(record, shells):
             raise ValueError(f"incomplete signature work counters: {signature}")
         if any(type(value) is not int or value < 0 for value in values.values()):
             raise ValueError("work counters must be nonnegative integers")
-        tasks = expected[signature]
+        costs = work_domains[signature]
+        tasks = sum(costs.values())
         if values["shell_tasks"] != tasks:
             raise ValueError(f"host/device shell count differs: {signature}")
         active = values["active_shell_tasks"]
         if active > tasks:
             raise ValueError("active shell count exceeds visited shells")
-        primitives = active * math.prod(signature[3:])
-        if primitives != values["primitive_products"]:
+        lower, upper = _active_primitive_bounds(costs, active)
+        primitives = values["primitive_products"]
+        if not lower <= primitives <= upper:
             raise ValueError(f"host/device primitive count differs: {signature}")
         roots = values.get("rys_evaluations", 0)
         if not (
@@ -247,15 +288,18 @@ def reduce_work(record, shells):
         states = values.get("recurrence_states", 0)
         if rys_model:
             component_states = rys_model["component_recurrence_states"]
+            component_work = states - primitives * rys_model.get(
+                "shared_recurrence_states", 0
+            )
             products = values["active_component_products"]
             # Zero folded components skip their moments. The aggregate ledger
             # cannot identify which sparse components survived, so enforce the
             # exact dense count or the documented bounds for a sparse domain.
             valid_states = (
-                states == primitives * sum(component_states)
+                component_work == primitives * sum(component_states)
                 if products == primitives * len(component_states)
                 else min(component_states) * products
-                <= states
+                <= component_work
                 <= max(component_states) * products
             )
         else:
@@ -355,6 +399,7 @@ def reduce_work(record, shells):
     for label, predicate in (
         ("pure_sp", lambda a: max(a) <= 1),
         ("d_containing", lambda a: max(a) == 2),
+        ("auxiliary_f", lambda a: a[2] == 3),
         ("rys_prototype", lambda a: a in RYS_PROTOTYPE),
     ):
         selected = [row for row in rows if predicate(tuple(row["angular"]))]
@@ -369,6 +414,7 @@ def reduce_work(record, shells):
         }
     reconstruction = {
         "shells": shells,
+        "auxiliary_shells": shells if auxiliary_shells is None else auxiliary_shells,
         "panels": sorted(panels),
         "signature_tasks": [
             {"signature": key, "tasks": value}
@@ -391,6 +437,8 @@ def main():
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--measurement", type=Path, required=True)
     parser.add_argument("--generated-header", type=Path, required=True)
+    parser.add_argument("--orbital-basis-file", type=Path)
+    parser.add_argument("--auxiliary-basis-file", type=Path)
     parser.add_argument(
         "--nsys",
         type=Path,
@@ -408,22 +456,40 @@ def main():
         raise ValueError("select one complete force-call trace")
     aos = records[0]["nbf"]
     case = benchmark_cases()[CASES[aos]]
-    metadata = _named_basis_shells(
-        case.vibeqc_basis, [Atom.from_value(atom) for atom in case.atoms]
+    atoms = [Atom.from_value(atom) for atom in case.atoms]
+
+    def shell_rows(path, role, default=None):
+        if path is None:
+            metadata = (
+                _named_basis_shells(case.vibeqc_basis, atoms)
+                if default is None
+                else default
+            )
+        else:
+            expected_hash = measurement.get("basis_file_sha256", {}).get(role)
+            if expected_hash != hashlib.sha256(path.read_bytes()).hexdigest():
+                raise ValueError(f"{role} basis does not match the measured snapshot")
+            basis, _ = load_comparison_basis(path, case, role=role, compute_forces=True)
+            metadata = basis.shells_for(atoms)
+        rows, offset = [], 0
+        for shell in metadata:
+            angular = shell.angular_momentum
+            width = (
+                2 * angular + 1
+                if case.basis_representation == "spherical"
+                else (angular + 1) * (angular + 2) // 2
+            )
+            rows.append((angular, len(shell.primitives), offset, width))
+            offset += width
+        return rows, offset, metadata
+
+    shells, nbf, metadata = shell_rows(args.orbital_basis_file, "orbital")
+    auxiliary_shells, naux, _ = shell_rows(
+        args.auxiliary_basis_file, "auxiliary", metadata
     )
-    shells, offset = [], 0
-    for shell in metadata:
-        angular = shell.angular_momentum
-        width = (
-            2 * angular + 1
-            if case.basis_representation == "spherical"
-            else (angular + 1) * (angular + 2) // 2
-        )
-        shells.append((angular, len(shell.primitives), offset, width))
-        offset += width
-    if offset != aos or measurement["aos"] != aos or records[0]["naux"] != aos:
+    if nbf != aos or measurement["aos"] != aos or records[0]["naux"] != naux:
         raise ValueError("headline basis/model shape mismatch")
-    result = reduce_work(records[0], shells)
+    result = reduce_work(records[0], shells, auxiliary_shells)
     if args.nsys:
         activities = kernel_activity(args.nsys, records[0])
         for row in result["classes"]:
@@ -431,6 +497,7 @@ def main():
         for label, predicate in (
             ("pure_sp", lambda a: max(a) <= 1),
             ("d_containing", lambda a: max(a) == 2),
+            ("auxiliary_f", lambda a: a[2] == 3),
             ("rys_prototype", lambda a: a in RYS_PROTOTYPE),
         ):
             result["groups"][label]["nsys_gpu_ms"] = sum(

@@ -1,0 +1,20 @@
+{
+  "source_base": "4168e93978d3df5f686bda6ac67e6e3a229f3fa8",
+  "patch_sha256": "f7bf6e1204aacdfb5ca6f9ca07270d0165119184435783f5f03b87a5501321ad",
+  "library_sha256": "05ba2fd4c7e5996dc2405928a3c3b939d85e0594644c14a70e71bca823e639e5",
+  "library_bytes": 169370512,
+  "source_files": {
+    "python/vibeqc_compiler/integral/df_rys_shell.py": "9fda0f9e733525b16022a8bada712e9c35622e6e8fc06e2df3ea8c8871c18d64",
+    "python/vibeqc_compiler/integral/production_df_derivatives.json": "bcaa8052335194d990b288f78f862aead2e73ee276d9b48e6c8b83622dd220d9",
+    "src/runtime/cuda_architecture.hpp": "71701673971c6e272304b7802af76a2beea17ce166609d5cef0c2856d7c4dc99",
+    "src/scf/df_derivative_policy.hpp": "641a9d98ed28b6297db2fe28c9f0f2b99587597679bbe67910743794c7e15b35",
+    "src/scf/cuda/df_gradient_bridge.cu": "dbec74cc7b71f9d7e6c2fd7fb957955a8cc5259e9455c95d3d3a0d1542ae2b2b",
+    "src/scf/cuda/df_shell_derivatives.cu": "600ce1de21e3ef2a8b0c8a7adac0bb8b03db31092726f4d11f7dcd4f8dd9ae0e"
+  },
+  "generated_files": {
+    "build/generated/generated_df_rys_shell.cuh": "72a5b8a4c9b4e0d5f7b8b33d1d7ed5f97c3c2d5abbbfab9f9846a9d76f62dc46",
+    "build/generated/generated_df_rys_policy.hpp": "27d6d5ead78eb04926b0db31e564ae9141688a183fedfc221482fed93043162a",
+    "build/generated/generated_df_production.hpp": "f45d2277579f49598259ea79a1e2e772028961625e4097f145f39c0d17078a2c"
+  },
+  "native_source_identity": "b028248591d664fd4aff1751b90c951e03f89bf1fb3da90b5bfcdd44327e3a23"
+}
