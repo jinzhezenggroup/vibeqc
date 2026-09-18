@@ -37,6 +37,20 @@ def _fraction(pair) -> Fraction:
     return value
 
 
+def _execution_power_exponent(pair, dtype):
+    """The exact binary exponent executed by this dtype, before AD algebra."""
+    exponent = _fraction(pair)
+    try:
+        rounded = float(exponent)
+        if dtype == "float32":
+            rounded = unpack("f", pack("f", rounded))[0]
+    except (OverflowError, ValueError) as exc:
+        raise ValueError("power exponent is not representable") from exc
+    if not isfinite(rounded) or (exponent and rounded == 0):
+        raise ValueError("power exponent is not representable")
+    return Fraction(rounded)
+
+
 def _freeze(value):
     """Only JSON data can enter attributes; executable objects cannot."""
     if isinstance(value, (list, tuple)):
@@ -183,15 +197,7 @@ def _infer(
         if len(inputs) != 1:
             raise ValueError(f"{op} requires exactly one operand")
         if op == "power":
-            exponent = _fraction(a["exponent"])
-            try:
-                rounded = float(exponent)
-                if base.dtype == "float32":
-                    rounded = unpack("f", pack("f", rounded))[0]
-            except (OverflowError, ValueError) as exc:
-                raise ValueError("power exponent is not representable") from exc
-            if not isfinite(rounded) or (exponent and rounded == 0):
-                raise ValueError("power exponent is not representable")
+            _execution_power_exponent(a["exponent"], base.dtype)
         # Nonlinear scalar functions preserve permutation symmetry, not sign.
         return _result(
             inputs, symmetries=tuple(s for s in base.symmetries if s.sign == 1)

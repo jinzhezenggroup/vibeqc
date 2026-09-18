@@ -37,6 +37,7 @@ from .autodiff import _input_groups, _input_nodes
 from .ir import (
     TRANSCENDENTALS,
     Node,
+    _execution_power_exponent,
     add,
     broadcast,
     constant,
@@ -247,7 +248,7 @@ def _transcendental_partial(node: Node, weight: Node) -> Node:
     guard = _zero_like(node)
     if node.op == "log":
         return add(guard, divide(weight, x))
-    p = _coefficient(node.attrs["exponent"])
+    p = _execution_power_exponent(node.attrs["exponent"], node.spec.dtype)
     if p == 0:
         return add(guard, _zero_like(weight))
     if p == 1:

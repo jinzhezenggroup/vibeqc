@@ -27,7 +27,7 @@ from types import MappingProxyType
 import numpy as np
 
 from .interpreter import evaluate_nodes
-from .ir import Node
+from .ir import Node, _execution_power_exponent
 from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
@@ -327,7 +327,7 @@ def _transcendental_partial(node: Node, values, weight) -> np.ndarray:
         if np.any(x == 0):
             raise ValueError("tensor sqrt derivative requires strictly positive input")
         return weight / (np.dtype(node.spec.dtype).type(2) * np.sqrt(x))
-    p = Fraction(*node.attrs["exponent"])
+    p = _execution_power_exponent(node.attrs["exponent"], node.spec.dtype)
     if p == 0:
         return np.zeros_like(weight)
     if p == 1:

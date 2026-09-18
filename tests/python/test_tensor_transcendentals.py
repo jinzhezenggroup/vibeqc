@@ -304,3 +304,32 @@ def test_cuda_emission_and_dtype_gate_without_a_device(op, exponent):
         plan_cuda(
             Program({"out": _operation(op, _input(dtype="float32"), exponent)}), target
         )
+
+
+@pytest.mark.parametrize(
+    "exponent,value",
+    [
+        (Fraction(2**24 + 1), np.float32(1 + 2**-20)),
+        (Fraction(1) + Fraction(1, 2**25), np.float32(1e-35)),
+        (Fraction(1) - Fraction(1, 2**26), np.float32(1e-35)),
+    ],
+)
+def test_power_ad_uses_dtype_rounded_execution_exponent(exponent, value):
+    x = _input(dtype="float32")
+    program = Program({"out": power(x, exponent)})
+    feeds = {"x": np.asarray(value)}
+    seed = np.asarray(0.75, dtype=np.float32)
+    p_exec = Fraction(float(np.float32(float(exponent))))
+    expected = np.float32(_oracle("power", value, p_exec, order=1, weight=0.75))
+    candidates = [
+        jvp(program, feeds, {"x": seed}).output_tangents["out"],
+        vjp(program, feeds, {"out": seed}).input_cotangents["x"],
+    ]
+    for derivative, name, output in (
+        (linearize(program, ["x"]).program, "d_x", "d_out"),
+        (transpose_program(program, ["out"]).program, "bar_out", "bar_x"),
+    ):
+        for replay in (derivative, optimize(Program.loads(derivative.dumps()))):
+            candidates.append(execute(replay, {**feeds, name: seed}).outputs[output])
+    for actual in candidates:
+        np.testing.assert_allclose(actual, expected, rtol=2e-7, atol=0)
