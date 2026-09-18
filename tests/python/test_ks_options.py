@@ -16,7 +16,7 @@ from vibeqc import (
 )
 from vibeqc.ks import resolve_ks_options
 from vibeqc_compiler.dft.grid import MolecularGrid
-from vibeqc_compiler.method import SemilocalXCPrimitive, resolve_method
+from vibeqc_compiler.method import MethodSpec, SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import functional
 
 H2 = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -62,6 +62,82 @@ def test_method_ir_capability_gate_rejects_non_semilocal_graph(monkeypatch):
     monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: hybrid)
     with pytest.raises(NotImplementedError, match="exactly one supported semilocal"):
         ks_module.resolve_ks_options("pbe-rks")
+
+
+@pytest.mark.parametrize(
+    "method, identifier, spin",
+    (
+        ("lda-rks", "LDA_XC_PW", "unpolarized"),
+        ("lda-uks", "LDA_XC_PW", "polarized"),
+        ("pbe-rks", "PBE", "unpolarized"),
+        ("pbe-uks", "PBE", "polarized"),
+    ),
+)
+def test_method_ir_projection_preserves_catalog_identity(method, identifier, spin):
+    options = resolve_ks_options(method)
+    expected = functional(identifier, spin=spin)
+    assert options.functional.identity == expected.identity
+    assert options.method_ir.spin == spin
+    assert options.method_ir.primitives[0].semantic_payload() == (
+        SemilocalXCPrimitive(expected).semantic_payload()
+    )
+    assert options.to_payload()["method_ir"] == options.method_ir.to_payload()
+
+
+@pytest.mark.parametrize(
+    "graph",
+    (
+        resolve_method(
+            MethodSpec(
+                "PBE",
+                (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            )
+        ),
+        resolve_method(MethodSpec("PBE", (("GGA_X_PBE", Fraction(1)),))),
+        resolve_method(
+            MethodSpec(
+                "PBE",
+                (
+                    ("GGA_X_PBE", Fraction(1)),
+                    ("GGA_C_PBE", Fraction(1)),
+                    ("LDA_X", Fraction(1)),
+                ),
+            )
+        ),
+        resolve_method("LDA_XC_PW"),
+        resolve_method("PBE", spin="polarized"),
+    ),
+    ids=("coefficient", "missing-component", "extra-component", "family", "spin"),
+)
+@pytest.mark.parametrize("consumer", ("options", "calculator", "resources"))
+def test_method_ir_mismatch_fails_before_native_load(monkeypatch, graph, consumer):
+    import vibeqc.ks as ks_module
+    from vibeqc import _native
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("inconsistent MethodIR reached native loading")
+
+    # The common resolver is authoritative for composition, but native selectors
+    # still execute fixed LDA/PBE mathematics. Any drift must fail at the boundary.
+    monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: graph)
+    monkeypatch.setattr(_native, "load_library", forbidden)
+    with pytest.raises(RuntimeError, match="disagrees with native KS XC catalog"):
+        if consumer == "options":
+            resolve_ks_options("pbe-rks")
+        elif consumer == "calculator":
+            Calculator(method="pbe-rks")
+        else:
+            estimate_ks_resources([H2], method="pbe-rks")
+
+
+def test_method_ir_projection_treats_identifiers_as_descriptive(monkeypatch):
+    import vibeqc.ks as ks_module
+
+    graph = replace(resolve_method("PBE"), identifier="descriptive-pbe-alias")
+    monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: graph)
+    options = resolve_ks_options("pbe-rks")
+    assert options.method_ir is graph
+    assert options.functional.identity == functional("PBE", spin="unpolarized").identity
 
 
 def test_unsupported_compositions_and_policy_fail_before_native_load(monkeypatch):

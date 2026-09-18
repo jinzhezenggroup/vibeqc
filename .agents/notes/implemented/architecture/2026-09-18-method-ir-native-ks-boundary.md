@@ -35,10 +35,12 @@ Resolve each currently executable native LDA/PBE RKS/UKS method through the comm
   still select the already-validated native numerical path.
 
 For compatibility, the runtime uses the established audited XC catalog
-`FunctionalSpec` identity only after checking that replacing the MethodIR node's
-descriptive identifier and canonical component ordering reproduces that catalog
-identity exactly. This keeps historical snapshot/cache identity stable while
-making MethodIR the semantic authority.
+`FunctionalSpec` identity only after comparing the MethodIR node's semantic payload
+with an independently canonicalized catalog primitive for the requested native
+selector. This checks the original coefficients, component set, spin, and
+provenance before restoring declaration order. Graph identifiers remain
+descriptive. This keeps historical snapshot/cache identity stable while making
+MethodIR the semantic authority.
 
 ## Rejected alternatives
 
@@ -73,6 +75,10 @@ With a fresh CPU-only Release build from the same source tree:
   `tests/python/test_dft_stationary_gradient.py`: 72 passed, 8 skipped.
 - The new negative gate substitutes a PBE0 MethodIR graph and verifies that native
   KS rejects it before execution.
+- Review regression tests reject changed coefficients, missing/extra components,
+  the wrong family, and the wrong spin through option resolution, Calculator
+  construction, and resource planning before native loading. All four native
+  mappings retain their catalog identity, including descriptively renamed graphs.
 - Ruff and whitespace checks pass on the touched Python files.
 
 ## Consequences

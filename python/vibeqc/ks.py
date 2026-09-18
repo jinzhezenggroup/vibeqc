@@ -101,16 +101,15 @@ def resolve_ks_method(method):
         )
     # MethodIR canonicalizes component order for semantic/cache identity, while
     # the established native KS FunctionalSpec identity retains audited declaration
-    # order. Project back to that representation only after proving that identifier
-    # and ordering are the sole differences; all scientific fields still originate
-    # from and must agree with the resolved MethodIR node.
-    runtime_functional = functional(method_ir.identifier, spin=method_ir.spin)
-    projected = replace(
-        method_ir.primitives[0].functional,
-        identifier=runtime_functional.identifier,
-        components=runtime_functional.components,
-    )
-    if projected.identity != runtime_functional.identity:
+    # order. Compare both compositions in canonical form before returning the
+    # catalog representation; overwriting the node's components would hide changed
+    # coefficients or missing terms. Bind the catalog to the requested native
+    # selector, whose fixed kernels cannot execute a different family or spin.
+    runtime_functional = functional(identifier, spin=spin)
+    if (
+        method_ir.primitives[0].semantic_payload()
+        != SemilocalXCPrimitive(runtime_functional).semantic_payload()
+    ):
         raise RuntimeError(
             "MethodIR semilocal node disagrees with native KS XC catalog"
         )
