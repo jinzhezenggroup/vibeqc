@@ -23,8 +23,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-import numpy as np
-
 from .triples import _check_denominators, _validate
 from .triples_tiles import TriplesTileEnumerator, build_tile_triples_program
 
@@ -153,6 +151,15 @@ class CudaTriplesTiles:
         _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
         _check_denominators(eps_o, eps_v, 1e-10)
 
+        # The (T) tile kernel has two kinds of virtual axes:
+        #   label axes (a,b,c): identify which W/V seed; sliced to the tile's
+        #     a-range by the TensorIR program itself (gathers on [0, a_end)).
+        #   summation axes (f in W1, m in W2): run over the FULL space; f is
+        #     the 4th axis of ovvv and t2, m is the 4th axis of ovoo.
+        # The program declares full-nvir inputs and gathers the tile's label
+        # indices, so feeds stay full-shape (no slicing) and the resident
+        # owner reuses one plan shape across all tiles.
+
         enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
         tiles = list(enumerator)
 
@@ -175,30 +182,15 @@ class CudaTriplesTiles:
         t0_total = time.perf_counter()
 
         for tile in tiles:
-            a_end = tile.a_end
-
-            # 1. Extract tile-sized sub-blocks (host, O(a_end³) memory)
-            #
-            # The (T) tile kernel has two kinds of virtual axes:
-            #   label axes (a,b,c): identify which W/V seed; safe to slice to
-            #     the tile's a-range.
-            #   summation axes (f in W1, m in W2): run over the FULL space;
-            #     f is the 4th axis of ovvv and the 4th axis of t2, m is the
-            #     4th axis of ovoo.  Truncating f changes the result (verified
-            #     on nh3: 4.7e-6 error), so ovvv and t2 keep their full last
-            #     axis.
-            # t2's 4th axis is also the b label in V2 (t2T[a,b,i,j]), so it
-            # must stay full anyway.  t2's 3rd axis is the c/a label (sliced).
-            # ovov/ovoo/fov/t1 carry only label axes; eps_v is kept full so
-            # denominators can reference any (a,b,c) without reindexing.
+            # 1. Full-shape feeds; the program gathers the tile's a-range.
             t0 = time.perf_counter()
             sub_feeds = {
-                "ovvv": np.ascontiguousarray(ovvv[:, :a_end, :a_end, :]),
-                "ovoo": np.ascontiguousarray(ovoo[:, :a_end, :, :]),
-                "ovov": np.ascontiguousarray(ovov[:, :a_end, :, :a_end]),
-                "fov": np.ascontiguousarray(fov[:, :a_end]),
-                "t1": np.ascontiguousarray(t1[:, :a_end]),
-                "t2": np.ascontiguousarray(t2[:, :, :a_end, :]),
+                "ovvv": ovvv,
+                "ovoo": ovoo,
+                "ovov": ovov,
+                "fov": fov,
+                "t1": t1,
+                "t2": t2,
                 "eps_o": eps_o,
                 "eps_v": eps_v,
             }
