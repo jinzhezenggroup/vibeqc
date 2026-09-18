@@ -64,7 +64,9 @@ python tools/benchmark_df_values.py \
 | `VIBEQC_DF_FINAL_PROJECTION` | Reuse under the shared resident RHF work/capacity policy | `off`, `reuse` |
 
 The qualified sm_120 derivative manifest chooses cooperative Rys/compact for
-its 18 s/p/d entries. Missing architectures/classes retain polynomial execution;
+its 18 s/p/d entries and auxiliary-f `003/103/113/203/213`. These five
+classes require only the qualified three/four-root DF quadrature. The five-root
+`223` class and missing architectures/classes retain polynomial execution;
 availability alone never qualifies a new entry. Lowering selection does not
 change the separate consumer, weight-layout or primitive-packet admission rules.
 See the [cooperative lowering qualification](../.agents/notes/implemented/performance/2026-09-17-cooperative-df-rys.md)
@@ -192,3 +194,8 @@ product-name whitelist.
 Qualification and rejected alternatives are retained in the
 [decision note](../.agents/notes/implemented/performance/2026-09-16-df-tuning-and-projection.md)
 and [evidence bundle](../benchmarks/results/issue404-407-df/README.md).
+
+The [auxiliary-f qualification](../.agents/notes/implemented/performance/2026-09-19-df-auxiliary-f-rys.md)
+adds these classes without changing the separate workload-based consumer or
+primitive-packet policy. Candidate availability is not itself a promotion;
+independent derivative and full-endpoint evidence remains mandatory.

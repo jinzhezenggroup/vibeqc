@@ -170,7 +170,10 @@ PYTHONPATH=python:. python -m benchmarks.df_shell_work_ledger \
 The reducer validates executed shell/signature counts against public basis
 metadata and recorded panels, checks generated work and counter conservation,
 and retains reconstruction/source/library hashes. It groups pure s/p,
-d-containing and the seven Rys-prototype classes separately. The optional
+d-containing, auxiliary-f and the seven historical Rys-prototype classes
+separately. Explicit `--orbital-basis-file` and `--auxiliary-basis-file` inputs
+are checked against the measured snapshot hashes; their shell domains and
+partial auxiliary-panel visits are reconstructed independently. The optional
 Nsight SQLite export must cover the same capture: its per-class kernel launch
 counts must match the component trace. Nsight kernel durations and resource
 rows remain separate from CUDA event intervals. A packet shares one duration;
@@ -274,8 +277,10 @@ Rys consumer, unchanged scientific work counters, and binary/resource costs.
 
 Mathematical lowering comes from the generated architecture/class manifest,
 without an AO-count or equal-auxiliary-dimension whitelist. The qualified sm_120
-profile selects cooperative Rys/compact for its 18 s/p/d entries. Missing targets
-and classes, including auxiliary f classes, retain the polynomial fallback.
+profile selects Rys/compact for 18 s/p/d entries and the five auxiliary-f
+classes `003/103/113/203/213`. The latter use the existing cooperative shared-axis
+IR and qualified three/four-root evaluators. Missing targets/classes, including
+five-root `223`, retain the polynomial fallback.
 Additional mathematical availability does not promote an unqualified entry.
 `VIBEQC_DF_SHELL_POLICY=legacy` forces the fallback; `candidate` admits candidate
 manifest entries for complete endpoint qualification. Consumer, packet and
@@ -298,7 +303,8 @@ high-precision differentiation oracles.
 The usual shell resource diagnostics include `shell_000_rys_selected` and
 per-class Rys evaluation/root/recurrence counts. Polynomial axis-cache and
 convolution counts become zero for selected Rys primitives. Recurrence counts
-include only active nonzero folded components. Clean endpoint
+include shared-axis work once per active primitive plus the work of active
+nonzero folded components. Clean endpoint
 timing must omit diagnostic counters and compare an identical SCF workload.
 
 The [Rys family note](../.agents/notes/implemented/numerics/2026-09-16-batch-df-rys.md)
@@ -307,3 +313,12 @@ records evaluator decisions and qualification boundaries. The
 retains historical endpoint evidence, and the
 [selector retirement note](../.agents/notes/implemented/compatibility/2026-09-16-df-math-selector-retirement.md)
 explains compatibility for checkpoints recording the former SSS override.
+
+The [auxiliary-f qualification note](../.agents/notes/implemented/performance/2026-09-19-df-auxiliary-f-rys.md)
+records the independent mathematics, complete endpoints and five-root fallback.
+For practical paired qualification, `benchmarks.df_policy_endpoint` accepts
+`--cpu-reference`, `--orbital-basis-file` and `--auxiliary-basis-file`. The fresh
+reference includes auxiliary-basis response; explicit practical inputs retain
+the 3e-11 Eh / 3e-11 Eh/Bohr gates for initialization, priming and measurements.
+`--shell-work --components-after` captures a separate intrusive ledger after
+all clean samples, never inside the promoted timing intervals.
