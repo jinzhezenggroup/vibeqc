@@ -62,10 +62,18 @@ def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "shape",
-    [(1, 768, 768, 160), (1, 384, 384, 80), (2, 768, 768, 160), (1, 768, 767, 160)],
+    "shape,expected",
+    [
+        ((1, 768, 768, 160), 2 * 768 * 768 * 8 + 12),
+        ((1, 384, 384, 80), 2 * 384 * 384 * 8 + 12),
+        ((2, 768, 768, 160), 0),
+        ((1, 768, 767, 160), 0),
+        ((2, 384, 384, 80), 0),
+        ((1, 384, 383, 80), 0),
+        ((1, 192, 192, 40), 0),
+    ],
 )
-def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape):
+def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape, expected):
     """Reservation precedes device/rank admission and never removes dense capacity."""
     library = Calculator()._library
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
@@ -76,7 +84,8 @@ def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape):
     automatic = density_fitting_tile_plan(
         library, *shape, budget_bytes=0, fixed_device_bytes=0
     )
-    expected = 2 * 768 * 768 * 8 + 12 if shape[:3] == (1, 768, 768) else 0
+    # Both measured endpoints reserve two full AO factors, two generation words
+    # and an error word. Rank/device admission happens after this shape query.
     assert automatic.peak_workspace_bytes - dense.peak_workspace_bytes == expected
 
 
