@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 namespace vibeqc::scf {
 
@@ -37,17 +38,33 @@ inline bool df_occupied_exchange_auto_requested() noexcept {
   return !value || std::strcmp(value, "auto") == 0;
 }
 
-/** CPU-safe conservative reservation before device, rank and plan admission.
- * Only the measured potential 384/384 and 768/768 batch-one domains reserve in auto mode.
- * Runtime additionally checks reference, occupied rank, full resident shape
- * and the exact measured device. Reservation alone never authorizes factors.
+/** Backend-independent work policy for the resident FP64 occupied algorithm.
+ * Dense K costs 4*a*n^3 products; occupied projection plus a full Gram costs
+ * at most 4*a*n^2*r (SYRK can reduce this further). Require a twofold arithmetic
+ * reduction to leave headroom for factor validation and smaller BLAS shapes.
+ * This is a conservative work heuristic, not a device latency prediction.
+ * Division keeps both the work comparison and native BLAS bounds overflow-safe.
+ * Residency, storage, RHF provenance and density validity are separate gates.
+ */
+inline bool df_occupied_exchange_preferred(std::size_t nbf, std::size_t naux, std::size_t batch,
+                                           std::size_t rank) noexcept {
+  constexpr auto blas_limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  return batch == 1 && nbf >= 2 && nbf <= blas_limit / nbf && naux > 0 &&
+         naux <= blas_limit / nbf && rank > 0 && rank <= nbf / 2;
+}
+
+/** CPU-safe reservation before rank/reference and resident-plan admission.
+ * Reserve for any shape that could benefit at rank one under the shared work
+ * policy. The API does not know the eventual spin ranks; the resource planner
+ * charges both full AO factors and runtime allocates only the actual ranks.
+ * Reservation alone never authorizes factors or exceeds the memory budget.
  */
 inline bool df_occupied_exchange_requested(std::size_t nbf = 0, std::size_t naux = 0,
                                            std::size_t batch = 0) noexcept {
   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
   return (value && std::strcmp(value, "occupied") == 0) ||
-         (df_occupied_exchange_auto_requested() && (nbf == 384 || nbf == 768) && naux == nbf &&
-          batch == 1);
+         (df_occupied_exchange_auto_requested() &&
+          df_occupied_exchange_preferred(nbf, naux, batch, 1));
 }
 
 }  // namespace vibeqc::scf

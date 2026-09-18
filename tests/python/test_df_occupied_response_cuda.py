@@ -103,7 +103,13 @@ def test_occupied_response_replay_and_zero_rank_spin(
             assert len(responses) == batch_size
             for response in responses:
                 counters = response["counters"]
-                if space == "occupied" and not rebuild:
+                automatic = (
+                    space == "auto"
+                    and method == "rhf"
+                    and batch_size == 1
+                    and pairs != "generic"
+                )
+                if (space == "occupied" or automatic) and not rebuild:
                     assert counters["response_occupied_projection_products"] > 0
                     n, a = response["nbf"], response["naux"]
                     stride = n * (n + 1) // 2 if pairs == "packed" else n * n

@@ -67,13 +67,16 @@ def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
         ((1, 768, 768, 160), 2 * 768 * 768 * 8 + 12),
         ((1, 384, 384, 80), 2 * 384 * 384 * 8 + 12),
         ((2, 768, 768, 160), 0),
-        ((1, 768, 767, 160), 0),
+        ((1, 768, 767, 160), 2 * 768 * 768 * 8 + 12),
         ((2, 384, 384, 80), 0),
-        ((1, 384, 383, 80), 0),
-        ((1, 192, 192, 40), 0),
+        ((1, 384, 383, 80), 2 * 384 * 384 * 8 + 12),
+        ((1, 192, 192, 40), 2 * 192 * 192 * 8 + 12),
+        ((1, 512, 700, 100), 2 * 512 * 512 * 8 + 12),
+        ((1, 8, 13, 8), 2 * 8 * 8 * 8 + 12),
+        ((1, 1, 1, 1), 0),
     ],
 )
-def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape, expected):
+def test_auto_reserves_potential_work_policy_candidates(monkeypatch, shape, expected):
     """Reservation precedes device/rank admission and never removes dense capacity."""
     library = Calculator()._library
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
@@ -84,15 +87,15 @@ def test_auto_reserves_only_the_potential_measured_domain(monkeypatch, shape, ex
     automatic = density_fitting_tile_plan(
         library, *shape, budget_bytes=0, fixed_device_bytes=0
     )
-    # Both measured endpoints reserve two full AO factors, two generation words
-    # and an error word. Rank/device admission happens after this shape query.
+    # Reservation cannot assume the final RHF rank. All candidate shapes charge
+    # two full AO factors, two generation words and an error word.
     assert automatic.peak_workspace_bytes - dense.peak_workspace_bytes == expected
 
 
 @pytest.mark.parametrize("generated,full_bytes", [(False, 1104943), (True, 1100847)])
-@pytest.mark.parametrize("dense_policy", [None, "dense"])
+@pytest.mark.parametrize("occupied_policy", [None, "auto", "occupied"])
 def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
-    monkeypatch, generated, full_bytes, dense_policy
+    monkeypatch, generated, full_bytes, occupied_policy
 ):
     """All solver owners shift dense/occupied boundaries equally.
 
@@ -109,10 +112,7 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     solver_reserve += (9 * 8 * 8 + 8) * 8 + (3 * 1 + 1) * 128
     full_bytes += solver_reserve
     minimum_bytes = 1084719 + solver_reserve
-    if dense_policy is None:
-        monkeypatch.delenv("VIBEQC_DF_EXCHANGE", raising=False)
-    else:
-        monkeypatch.setenv("VIBEQC_DF_EXCHANGE", dense_policy)
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
 
     def query(budget):
         return density_fitting_tile_plan(
@@ -133,7 +133,10 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     with pytest.raises(ValueError, match="cannot hold the metric"):
         query(minimum_bytes - 1)
 
-    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
+    if occupied_policy is None:
+        monkeypatch.delenv("VIBEQC_DF_EXCHANGE", raising=False)
+    else:
+        monkeypatch.setenv("VIBEQC_DF_EXCHANGE", occupied_policy)
     # Two full 8x8 factors, two generation words and an error word per item.
     reserve = 2 * 8 * 8 * 8 + 12
     assert query(0).peak_workspace_bytes == full_bytes + reserve

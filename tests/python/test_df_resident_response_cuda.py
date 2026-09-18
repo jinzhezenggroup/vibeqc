@@ -19,6 +19,9 @@ def select_response(monkeypatch, storage):
     """Explicit selectors keep this experiment independent of size promotion."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_STORAGE", storage)
+    # This test measures dense response storage/transfer counts. Automatic
+    # occupied response has its own independent numerical and route checks.
+    monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", "dense")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_ALGEBRA", "blas")
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "shell")
     monkeypatch.setenv("VIBEQC_DF_SHELL_SCHEDULE", "compact")

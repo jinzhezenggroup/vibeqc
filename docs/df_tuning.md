@@ -61,7 +61,7 @@ python tools/benchmark_df_values.py \
 | `VIBEQC_DF_VALUE_MATH` | Existing generic Rys | `generic`, `polynomial`, `rys`, `candidate` |
 | `VIBEQC_DF_VALUE_RAW_MAPPING` | Existing scalar raw export | `scalar`, `subgroup`, `warp`, `candidate` |
 | `VIBEQC_DF_FORCE_SCREEN_ABS` | Off | Nonnegative finite absolute force budget, or `off` |
-| `VIBEQC_DF_FINAL_PROJECTION` | Reuse only in the qualified resident 768-AO RHF domain | `off`, `reuse` |
+| `VIBEQC_DF_FINAL_PROJECTION` | Reuse under the shared resident RHF work/capacity policy | `off`, `reuse` |
 
 The derivative manifest chooses Rys/compact for 000/001/002/100/200 and
 polynomial/compact for 101/110. The automatic sm_120 domain remains 384/768 AO
@@ -144,8 +144,10 @@ revokes it. Only successfully drained final physical RHF K publishes it; force
 consumes it once. Source owner identity, full metric rank, buffer capacity and
 singleton RHF eligibility must all match. UHF, batches, source-backed or
 constrained plans and stale tokens fall back. No extra full-sized U allocation
-or D2D copy is introduced. Automatic reuse additionally requires the existing
-RTX 5090, 768-AO, 160-occupied resident response admission.
+or D2D copy is introduced. Automatic reuse additionally requires the shared
+[occupied work/capacity policy](df_occupied_cuda.md). This policy is independent
+of the derivative schedule/packet tuning tables and uses no endpoint or GPU
+product-name whitelist.
 
 Qualification and rejected alternatives are retained in the
 [decision note](../.agents/notes/implemented/performance/2026-09-16-df-tuning-and-projection.md)
