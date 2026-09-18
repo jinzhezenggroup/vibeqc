@@ -4,7 +4,6 @@ These tests run locally (numpy only, no PySCF, no CUDA).  GPU validation
 tests are run manually on qz and record their results as JSON evidence.
 """
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -12,8 +11,6 @@ import pytest
 
 from tools.vibeqc_cc.triples import (
     triples_energy,
-    triples_energy_tensorir,
-    triples_fullsum,
 )
 from tools.vibeqc_cc.triples_tiles import (
     TileSpec,
@@ -97,13 +94,16 @@ def test_tile_enumerator_covers_all_virtual_triples(o, v, chunk):
     assert len(seen) == expected
 
 
-@pytest.mark.parametrize("o,v,seed,chunk", [
-    (2, 3, 101, 1),
-    (2, 3, 101, 2),
-    (2, 3, 101, 3),
-    (3, 4, 102, 2),
-    (3, 4, 102, 3),
-])
+@pytest.mark.parametrize(
+    "o,v,seed,chunk",
+    [
+        (2, 3, 101, 1),
+        (2, 3, 101, 2),
+        (2, 3, 101, 3),
+        (3, 4, 102, 2),
+        (3, 4, 102, 3),
+    ],
+)
 def test_tile_sum_equals_full_reference(o, v, seed, chunk):
     """Sum of per-tile energies equals the full reference to 1e-10.
 
@@ -121,11 +121,14 @@ def test_tile_sum_equals_full_reference(o, v, seed, chunk):
     np.testing.assert_allclose(total, ref, atol=1e-10, rtol=1e-10)
 
 
-@pytest.mark.parametrize("o,v,seed,chunk", [
-    (2, 3, 103, 1),
-    (2, 3, 103, 2),
-    (3, 4, 104, 3),
-])
+@pytest.mark.parametrize(
+    "o,v,seed,chunk",
+    [
+        (2, 3, 103, 1),
+        (2, 3, 103, 2),
+        (3, 4, 104, 3),
+    ],
+)
 def test_masked_tile_sum_equals_full_reference(o, v, seed, chunk):
     """Sum of masked per-tile energies equals the full reference to 1e-10."""
     arrays = _random_case(o, v, seed)
@@ -165,7 +168,8 @@ def test_tile_energy_matches_enumeration():
 @pytest.mark.parametrize("o,v,seed", [(1, 1, 201), (2, 2, 202), (2, 3, 203)])
 def test_tile_tensorir_program_roundtrip(o, v, seed):
     """The tile TensorIR program produces the same output after JSON roundtrip."""
-    from vibeqc_compiler.tensor import Program, execute as tensor_execute
+    from vibeqc_compiler.tensor import Program
+    from vibeqc_compiler.tensor import execute as tensor_execute
 
     arrays = _random_case(o, v, seed)
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
@@ -190,7 +194,9 @@ def test_tile_tensorir_vs_cpu_reference(o, v, seed):
         enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=chunk_size)
         for tile in enumerator:
             cpu = tile_triples_energy(tile, o, *arrays)
-            prog = build_tile_triples_program(o, v, vir_chunk=(tile.a_start, tile.a_end))
+            prog = build_tile_triples_program(
+                o, v, vir_chunk=(tile.a_start, tile.a_end)
+            )
             tir = tensor_execute(prog, feeds).outputs["triples_energy"]
             np.testing.assert_allclose(tir, cpu, atol=1e-11, rtol=1e-10)
 
@@ -218,9 +224,11 @@ def test_deterministic_same_order_bitwise():
     """Same tile order produces identical results across two runs."""
     o, v = 2, 3
     arrays = _random_case(o, v, 300)
+
     def run():
         enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=1)
         return [tile_triples_energy(t, o, *arrays) for t in enumerator]
+
     r1, r2 = run(), run()
     for i, (a, b) in enumerate(zip(r1, r2, strict=True)):
         assert a == b, f"tile {i}: values differ"
@@ -307,7 +315,9 @@ def test_endpoint_multi_tile_coverage(name, chunk):
     # TensorIR tile programs
     tir_total = 0.0
     for t in tiles:
-        tir_total += tile_triples_energy_tensorir(nocc, nvir, *feeds[2:], vir_chunk=(t.a_start, t.a_end))
+        tir_total += tile_triples_energy_tensorir(
+            nocc, nvir, *feeds[2:], vir_chunk=(t.a_start, t.a_end)
+        )
     np.testing.assert_allclose(tir_total, ref, atol=1e-11, rtol=1e-10)
 
 

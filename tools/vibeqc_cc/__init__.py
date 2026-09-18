@@ -26,19 +26,19 @@ from .triples import (
     triples_energy_tensorir,
     triples_fullsum,
 )
-from .triples_tiles import (
-    TriplesTileEnumerator,
-    TileSpec,
-    build_tile_triples_program,
-    tile_triples_energy,
-    tile_triples_energy_masked,
-    tile_triples_energy_tensorir,
-)
 from .triples_cuda import (
     CudaTriplesResult,
     CudaTriplesTiles,
     TriplesTileConfig,
     cpu_triples_tiles,
+)
+from .triples_tiles import (
+    TileSpec,
+    TriplesTileEnumerator,
+    build_tile_triples_program,
+    tile_triples_energy,
+    tile_triples_energy_masked,
+    tile_triples_energy_tensorir,
 )
 
 __all__ = [

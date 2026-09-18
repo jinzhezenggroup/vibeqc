@@ -28,25 +28,20 @@ from vibeqc_compiler.tensor import (
     transpose,
 )
 
-from tools.vibeqc_validation.schema import canonical_hash
-
 from .triples import (
-    DEGENERACY_DESCRIPTION,
+    _LABELS,
     INVENTORY_HASH,
     OP,
     R3,
     SLOW_TABLE,
     VERSION,
     VP,
-    V_TERMS,
-    W_TERMS,
-    _LABELS,
     _check_denominators,
     _degeneracy,
     _permuted,
+    _v,
     _validate,
     _views,
-    _v,
     _w,
     r3,
 )
@@ -55,9 +50,7 @@ from .triples import (
 # Tile descriptor and enumerator
 # ---------------------------------------------------------------------------
 
-DESCRIPTION = (
-    "bounded triples tiles: vir chunk by a-range, occ full within each tile"
-)
+DESCRIPTION = "bounded triples tiles: vir chunk by a-range, occ full within each tile"
 
 
 class TileSpec:
@@ -68,13 +61,11 @@ class TileSpec:
     but the triangular loops only process a in [a_start, a_end).
     """
 
-    __slots__ = ("a_start", "a_end", "nvir")
+    __slots__ = ("a_end", "a_start", "nvir")
 
     def __init__(self, a_start, a_end, nvir):
         if not (0 <= a_start < a_end <= nvir):
-            raise ValueError(
-                f"invalid a-chunk [{a_start}, {a_end}) for nvir={nvir}"
-            )
+            raise ValueError(f"invalid a-chunk [{a_start}, {a_end}) for nvir={nvir}")
         self.a_start = a_start
         self.a_end = a_end
         self.nvir = nvir
@@ -198,14 +189,8 @@ def tile_triples_energy(
                     if np.min(np.abs(d3_val)) <= denominator_threshold:
                         raise ValueError("near-zero (T) denominator in tile")
                 d3 = d3_val * _degeneracy(a, b, c)
-                ws = {
-                    lbl: _w(views, *_permuted((a, b, c), VP[lbl]))
-                    for lbl in _LABELS
-                }
-                vs = {
-                    lbl: _v(views, *_permuted((a, b, c), VP[lbl]))
-                    for lbl in _LABELS
-                }
+                ws = {lbl: _w(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
+                vs = {lbl: _v(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
                 zs = {lbl: r3(ws[lbl] + 0.5 * vs[lbl]) / d3 for lbl in _LABELS}
                 for zlbl, row in SLOW_TABLE.items():
                     for wlbl, ost in row:
@@ -259,14 +244,8 @@ def tile_triples_energy_masked(
                     continue  # zero-out: skip this triple
                 d3_val = eijk - eps_v[a] - eps_v[b] - eps_v[c]
                 d3 = d3_val * _degeneracy(a, b, c)
-                ws = {
-                    lbl: _w(views, *_permuted((a, b, c), VP[lbl]))
-                    for lbl in _LABELS
-                }
-                vs = {
-                    lbl: _v(views, *_permuted((a, b, c), VP[lbl]))
-                    for lbl in _LABELS
-                }
+                ws = {lbl: _w(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
+                vs = {lbl: _v(views, *_permuted((a, b, c), VP[lbl])) for lbl in _LABELS}
                 zs = {lbl: r3(ws[lbl] + 0.5 * vs[lbl]) / d3 for lbl in _LABELS}
                 for zlbl, row in SLOW_TABLE.items():
                     for wlbl, ost in row:
@@ -469,7 +448,5 @@ def tile_triples_energy_tensorir(
         "eps_o": eps_o,
         "eps_v": eps_v,
     }
-    result = execute(
-        build_tile_triples_program(nocc, nvir, vir_chunk=vir_chunk), feeds
-    )
+    result = execute(build_tile_triples_program(nocc, nvir, vir_chunk=vir_chunk), feeds)
     return float(result.outputs["triples_energy"])

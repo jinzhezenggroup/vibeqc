@@ -86,9 +86,7 @@ class CudaTriplesTiles:
 
         self.config = config
         # Build the tile program once — shape is fixed.
-        tile_program = build_tile_triples_program(
-            config.nocc, config.nvir
-        )
+        tile_program = build_tile_triples_program(config.nocc, config.nvir)
         schedule = TensorSchedule()
         self.plan = plan_cuda(
             tile_program,
@@ -215,9 +213,7 @@ class CudaTriplesTiles:
             timing["run_s"] += time.perf_counter() - t0
 
             t0 = time.perf_counter()
-            et_tile = float(
-                resident.download(leases["triples_energy"])[()]
-            )
+            et_tile = float(resident.download(leases["triples_energy"])[()])
             timing["download_s"] += time.perf_counter() - t0
 
             per_tile.append(et_tile)
@@ -225,8 +221,16 @@ class CudaTriplesTiles:
 
             # CPU masked reference for per-tile comparison
             cpu_masked = tile_triples_energy_masked(
-                tile, nocc,
-                ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v,
+                tile,
+                nocc,
+                ovvv,
+                ovoo,
+                ovov,
+                fov,
+                t1,
+                t2,
+                eps_o,
+                eps_v,
             )
             per_tile_masked_cpu.append(cpu_masked)
 
@@ -275,7 +279,9 @@ class CudaTriplesTiles:
 # ---------------------------------------------------------------------------
 
 
-def cpu_triples_tiles(nocc, nvir, arrays, *, vir_chunk_size=1, denominator_threshold=1e-10):
+def cpu_triples_tiles(
+    nocc, nvir, arrays, *, vir_chunk_size=1, denominator_threshold=1e-10
+):
     """CPU-only tile loop; mirror of :meth:`CudaTriplesTiles.run_tiles`.
 
     Returns the same :class:`CudaTriplesResult` shape (``peak_device_bytes=0``,
@@ -300,16 +306,32 @@ def cpu_triples_tiles(nocc, nvir, arrays, *, vir_chunk_size=1, denominator_thres
         from .triples_tiles import tile_triples_energy, tile_triples_energy_masked
 
         et_tile = tile_triples_energy(
-            tile, nocc,
-            ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v,
+            tile,
+            nocc,
+            ovvv,
+            ovoo,
+            ovov,
+            fov,
+            t1,
+            t2,
+            eps_o,
+            eps_v,
             denominator_threshold=denominator_threshold,
         )
         per_tile.append(et_tile)
         et += et_tile
 
         cpu_masked = tile_triples_energy_masked(
-            tile, nocc,
-            ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v,
+            tile,
+            nocc,
+            ovvv,
+            ovoo,
+            ovov,
+            fov,
+            t1,
+            t2,
+            eps_o,
+            eps_v,
         )
         per_tile_masked_cpu.append(cpu_masked)
 
