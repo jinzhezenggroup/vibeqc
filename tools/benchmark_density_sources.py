@@ -29,6 +29,7 @@ sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 import numpy as np
 from vibeqc.autotune import source_identity
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.evidence import (
     block_error,
     new_evidence,
@@ -466,13 +467,26 @@ def main():
     args = parser.parse_args()
     if args.workload_matrix and args.spatial:
         raise ValueError("workload matrix already declares its dense/local modes")
-    if (
-        not os.environ.get("SLURM_JOB_ID")
-        or os.environ.get("SLURM_JOB_PARTITION") != "main"
-        or not os.environ.get("CUDA_VISIBLE_DEVICES")
+    execution_profile = resolve_cuda_execution_profile(
+        default_slurm_time="00:30:00" if args.workload_matrix else "00:10:00"
+    )
+    slurm_job_id = os.environ.get("SLURM_JOB_ID")
+    assigned_partition = os.environ.get("SLURM_JOB_PARTITION")
+    if not execution_profile.local and (
+        not slurm_job_id or not os.environ.get("CUDA_VISIBLE_DEVICES")
     ):
         raise RuntimeError(
-            "run through finite srun main --gres=gpu:5090:1; preserve assigned visibility"
+            "run through the configured finite CUDA benchmark allocation; "
+            "preserve assigned visibility"
+        )
+    if (
+        not execution_profile.local
+        and execution_profile.partition is not None
+        and assigned_partition
+        and assigned_partition != execution_profile.partition
+    ):
+        raise RuntimeError(
+            "assigned Slurm partition does not match the configured benchmark profile"
         )
     if args.samples < 5 or capture(["git", "status", "--porcelain"]):
         raise ValueError("at least five samples and a clean checkout required")
@@ -530,11 +544,13 @@ def main():
     report["device"] = {
         **probe_gpu(nvcc),
         "host": platform.platform(),
-        "slurm_job_id": os.environ["SLURM_JOB_ID"],
-        "slurm_job": capture(
-            ["scontrol", "show", "job", os.environ["SLURM_JOB_ID"], "--oneliner"]
+        "slurm_job_id": slurm_job_id,
+        "slurm_job": (
+            capture(["scontrol", "show", "job", slurm_job_id, "--oneliner"])
+            if slurm_job_id
+            else None
         ),
-        "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
     }
     report["hardware"] = outcome("pass", probe="validated assigned RTX 5090 allocation")
     report["toolchain"] = {
@@ -549,6 +565,7 @@ def main():
     }
     report["settings"] = {
         "device": "cuda",
+        "execution_profile": execution_profile.to_dict(),
         "fast_compile": False,
         "samples_per_route": args.samples,
         "collocation_backend": "cuda",
@@ -675,21 +692,17 @@ def main():
         "reason": "native arena observations and conservative composed numeric capacities are recorded per case; no measured whole-process peak",
     }
     report["reproduction"] = {
-        "command": [
-            "srun",
-            "--partition=main",
-            "--gres=gpu:5090:1",
-            "--nodes=1",
-            "--ntasks=1",
-            "--time=00:30:00" if args.workload_matrix else "--time=00:10:00",
-            "env",
-            "OMP_NUM_THREADS=1",
-            "OPENBLAS_NUM_THREADS=1",
-            "VIBEQC_NVCC=" + str(nvcc),
-            sys.executable,
-            "tools/benchmark_density_sources.py",
-            *sys.argv[1:],
-        ]
+        "command": execution_profile.wrap(
+            [
+                "env",
+                "OMP_NUM_THREADS=1",
+                "OPENBLAS_NUM_THREADS=1",
+                "VIBEQC_NVCC=" + str(nvcc),
+                sys.executable,
+                "tools/benchmark_density_sources.py",
+                *sys.argv[1:],
+            ]
+        )
     }
     write_evidence(args.output / "evidence.json", report)
     specification = {
