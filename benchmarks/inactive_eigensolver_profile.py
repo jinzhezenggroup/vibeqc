@@ -20,7 +20,12 @@ from typing import Any
 
 import numpy as np
 from _cases import benchmark_cases
-from _support import cuda_accelerator_metadata, environment_metadata, write_result
+from _support import (
+    cuda_accelerator_metadata,
+    environment_metadata,
+    raw_output_path,
+    write_result,
+)
 from vibeqc import BatchResult, Calculator, InactiveEigensolverProfileEntry
 
 
@@ -320,7 +325,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-10)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-8)
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-14)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument(
         "--comparison-baseline",
         type=Path,
