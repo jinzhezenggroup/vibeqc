@@ -17,27 +17,21 @@
 
 namespace vibeqc::scf::cuda_df {
 
-vibeqc_status qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
-                                              std::span<const std::int32_t> alpha,
-                                              std::span<const std::int32_t> beta, bool& qualified,
-                                              std::string& detail) {
-  qualified = false;
+bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
+                                     std::size_t rank) noexcept {
+  if (!df_occupied_exchange_preferred(plan.nbf, plan.naux, plan.batch_size, rank) ||
+      !plan.occupied_scf_reserved || !plan.resident_exchange_enabled || plan.streamed ||
+      plan.row_tile != plan.nbf || !plan.three_center || !plan.auxiliary_tile_values ||
+      rank > plan.projection_capacity / plan.nbf / plan.naux)
+    return false;
+  // A packed source retains its full occupied projection even with a bounded
+  // Q panel. Dense generated sources do not have that storage contract.
   const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
                                plan.integral_source && plan.packed_raw &&
-                               plan.value_storage.rank_capacity >= 160;
-  if (plan.occupied_scf_reserved && plan.nbf == 768 && plan.naux == 768 && plan.batch_size == 1 &&
-      alpha.size() == 1 && alpha[0] == 160 && beta.empty() &&
-      (!plan.integral_source || packed_resident) && !plan.streamed && plan.row_tile == plan.nbf &&
-      (plan.auxiliary_tile == plan.naux || packed_resident)) {
-    // Explicit packed experiments keep the established occupied/seed/final
-    // algorithm in the same domain. This does not automatically select packing.
-    cudaDeviceProp properties{};
-    const auto error = cudaGetDeviceProperties(&properties, plan.device_id);
-    if (error != cudaSuccess) return cuda_failure(error, "DF exchange device identity", detail);
-    qualified = properties.major == 12 && properties.minor == 0 &&
-                std::strcmp(properties.name, "NVIDIA GeForce RTX 5090") == 0;
-  }
-  return VIBEQC_STATUS_SUCCESS;
+                               rank <= plan.value_storage.rank_capacity;
+  return packed_resident ||
+         (!plan.integral_source && plan.value_storage.pairs == DfPairStorage::Dense &&
+          plan.auxiliary_tile == plan.naux);
 }
 
 vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
@@ -160,10 +154,8 @@ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& en
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (df_occupied_exchange_auto_requested()) {
-    // This qualification is deliberately an exact measured domain, including
-    // rank/reference and backend identity, rather than an AO-only threshold.
-    const auto status = qualified_resident_rhf_exchange(plan, alpha, beta, enabled, detail);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    enabled = alpha.size() == 1 && beta.empty() && alpha[0] > 0 &&
+              qualified_resident_rhf_exchange(plan, static_cast<std::size_t>(alpha[0]));
   }
   if (enabled && !plan.occupied_scf_reserved) {
     detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
@@ -247,11 +239,11 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
     }
     bool selected = policy && std::string(policy) == "factor";
     if (!policy || std::string(policy) == "auto") {
-      // #399's matched-density endpoint qualifies the existing 768/768/160
-      // resident RTX 5090 domain only; other shapes keep their dense seeds.
-      const auto status = qualified_resident_rhf_exchange(
-          plan, state.factor_alpha_ranks, state.factor_beta_ranks, selected, detail);
-      if (status != VIBEQC_STATUS_SUCCESS) return status;
+      // The same cost/capacity policy selects the seed; the eigenspectrum and
+      // full reconstruction below still decide whether its factor is exact.
+      selected = state.factor_alpha_ranks.size() == 1 && state.factor_beta_ranks.empty() &&
+                 state.factor_alpha_ranks[0] > 0 &&
+                 qualified_resident_rhf_exchange(plan, state.factor_alpha_ranks[0]);
     }
     if (selected) {
       const auto status = factor_density_for_exchange(plan, state, alpha, seed, seed_rank, detail);

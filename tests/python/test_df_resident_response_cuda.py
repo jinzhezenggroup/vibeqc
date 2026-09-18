@@ -19,6 +19,9 @@ def select_response(monkeypatch, storage):
     """Explicit selectors keep this experiment independent of size promotion."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_STORAGE", storage)
+    # This test measures dense response storage/transfer counts. Automatic
+    # occupied response has its own independent numerical and route checks.
+    monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", "dense")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_ALGEBRA", "blas")
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "shell")
     monkeypatch.setenv("VIBEQC_DF_SHELL_SCHEDULE", "compact")
@@ -79,6 +82,7 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
         for step, (storage, force, changed) in enumerate(
             (
                 ("panel", True, False),
+                ("auto", True, False),
                 ("jk-scratch", True, False),
                 ("jk-scratch", False, False),
                 ("jk-scratch", True, False),
@@ -111,7 +115,9 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
                     counters = response["counters"]
                     n, a = response["nbf"], response["naux"]
                     assert counters["response_scratch_bytes"] <= 4 << 20
-                    if storage == "jk-scratch":
+                    if storage == "jk-scratch" or (
+                        storage == "auto" and batch_size == 1 and case.method == "rhf"
+                    ):
                         assert (
                             counters["response_borrowed_jk_bytes"] == 3 * n * n * a * 8
                         )

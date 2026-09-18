@@ -134,13 +134,16 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
 /** Explicit physical-source representation and occupied scratch reservation.
  * Packed storage retains raw A and B directly, without a dense intermediate.
  * Dense overloads retain their existing source-transfer and tensor contracts.
+ * automatic_rhf_rank is a method-authorized reservation hint; zero means no
+ * automatic SCF storage. Explicit occupied mode retains its own reservation.
  */
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
     std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail, bool retain_three_center, DfValueStorageOptions storage);
+    std::string& detail, bool retain_three_center, DfValueStorageOptions storage,
+    std::size_t automatic_rhf_rank = 0);
 
 /** Generate one public-basis transformed three-center tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_transformed_tile(
@@ -246,7 +249,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, CudaDensityFittingJkPlan** plan,
-    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics, std::string& detail);
+    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics, std::string& detail,
+    std::size_t automatic_rhf_rank = 0);
 
 /**
  * Planner-aware variant that also bounds the staged AO-pair tile.  The
@@ -259,7 +263,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail);
+    std::string& detail, std::size_t automatic_rhf_rank = 0);
 
 /**
  * Build batched RHF RI-J/K matrices on the plan's non-blocking CUDA stream.

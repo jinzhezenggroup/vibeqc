@@ -1,11 +1,23 @@
 # Occupied-factor CUDA exchange and force response
 
-`VIBEQC_DF_EXCHANGE=auto` (also the unset default) selects occupied RI-K for
-the qualified resident RHF domain: one system, 768 orbital and auxiliary AOs,
-occupied rank 160, full host-raw J/K scratch, and NVIDIA GeForce RTX 5090
-(`sm_120`). Other domains retain dense exchange. `dense` and `occupied` remain
-explicit comparison overrides. This changes execution of the existing DF
-exchange and complete analytic force model without changing its approximation.
+`VIBEQC_DF_EXCHANGE=auto` (also the unset default) selects occupied RI-K
+using the shared work policy in `src/scf/df_exchange_policy.hpp`. For `n`
+orbital AOs, `a` auxiliary AOs and occupied rank `r`, dense exchange requires
+`4*a*n^3` FLOPs and occupied projection plus a full Gram requires at most
+`4*a*n^2*r`. Auto requires at least a twofold arithmetic reduction (`0 < r <=
+floor(n/2)`). This margin is a workload heuristic, not a promise of a twofold
+latency improvement on every device. It uses the ordinary FP64 BLAS backend
+and has no GPU product-name, architecture, exact AO/rank or equal-basis gate.
+
+Execution additionally requires a single RHF system, a non-streamed resident
+plan, full AO rows, reserved factors, native BLAS index bounds and sufficient
+actual projection capacity. Host-raw plans need full auxiliary scratch;
+explicit packed-source plans need retained raw storage and enough rank capacity.
+Other generated-source layouts, UHF, batches, zero/high rank and insufficient
+storage retain their checked fallback. `dense` and `occupied` remain explicit
+comparison overrides. All factor, density and final-state checks still apply.
+The [selection decision](../.agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md)
+records the work model, validation and performance limitations.
 
 For one spin, `D = w C C^T` with canonical occupation w=2 (RHF) or w=1 (UHF).
 On a full resident plan, project the existing pair-major tensor directly:
@@ -54,8 +66,8 @@ the existing density-transpose staging; no allocation is needed for host B.
 Every device SCF invocation starts with one seed iteration. Imported and warm
 densities have no trustworthy orbital factor, but a checked algebraic factor
 can replace its dense K. `VIBEQC_DF_SEED_EXCHANGE=dense|factor|auto` controls this
-choice; `factor` enables guarded factorization and `auto` selects it only in the
-qualified RTX 5090 RHF domain: 768 AOs, 768 auxiliaries and 160 occupied orbitals.
+choice; `factor` enables guarded factorization and `auto` uses the same
+resident capacity and occupied-work policy as SCF.
 Factorization requires an occupied-SCF singleton resident RHF plan
 with full AO/auxiliary tiles and existing factor capacity. The experimental
 packed resident constructor below also supports the explicit `factor` override.
@@ -78,7 +90,7 @@ validation must be disabled for clean endpoint timing.
 
 `VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
 physical Fock evaluation; `occupied` enables retained-factor qualification,
-while `auto` uses the same qualified 768/768/160 RTX 5090 domain as the seed.
+while `auto` uses the same resident capacity and work policy as the seed.
 The singleton resident RHF route requires
 an exact current final-state token, matching device generation/solver status,
 and entry-for-entry equality of the supplied and retained densities. It uses
@@ -98,10 +110,16 @@ caller's established numerical recovery. Force evaluation receives only the
 validated converged density and keeps its full metric/center/Pulay response.
 
 Native and common resource ledgers reserve two full AO matrices for spin
-factors plus generation flags for explicit occupied selection or a potential
-768/768 batch-one automatic domain; actual
-allocation uses the bucket's occupied ranks. Dense mode retains its previous
-minimum-budget and residency boundaries. A native plan freezes this reservation
+factors plus generation flags only for explicit occupied selection or a known
+RHF occupation accepted by the shared work policy. Unknown references, UHF,
+zero/high rank and ineligible generated layouts keep dense reservation.
+The method passes this occupation through the shape planner and native plan
+constructor; the versioned Python query accepts `rhf_occupied` explicitly.
+If optional factors would force a host-raw plan into streaming or make the
+budget infeasible, auto retains the original dense plan. Packed plans can also
+drop the optional SCF charge while retaining their explicitly requested U
+capacity. Runtime allocation uses the actual occupied ranks. Dense mode retains
+its previous minimum-budget and residency boundaries. A native plan freezes this reservation
 at creation and rejects occupied SCF before allocation if it reserved only dense
 storage. Ordinary prepared batches rebuild the value/SCF plan on policy changes,
 retaining their geometry response cache. Batches with a global `ResourceBudget`
@@ -144,23 +162,25 @@ Matching warm resident calls perform zero raw-tensor H2D copies or transposes.
 validity before submission and restores it only after successful response
 from the matching immutable source, including failure/retry handling.
 
-`VIBEQC_DF_RESPONSE_STORAGE=auto` borrows this capacity for the qualified
-384/384 and 768/768 batch-one RHF shell/BLAS endpoints on RTX 5090. The
-384 case keeps dense response algebra while evaluating its expensive all-Q
-projections only once. `panel` preserves bounded execution; `jk-scratch`
-requests validated borrowing explicitly. Batch and source-backed plans retain
-their existing bounded/upload contracts. Borrowed capacity is reported once
-alongside owned scratch and transfers; reuse is never inferred from dimensions
-or a small component-local budget alone.
+`VIBEQC_DF_RESPONSE_STORAGE=auto` borrows full J/K capacity for singleton RHF
+responses with default shell/BLAS controls. Dense response also benefits from
+projecting each auxiliary only once, so unavailable occupied factors do not
+force repeated panel projections. Occupied algebra additionally requires the
+shared work/capacity policy and validated final-state factors. Packed storage
+can only lend its smaller scratch to a qualified occupied response.
+`panel` preserves bounded execution;
+`jk-scratch` requests validated borrowing explicitly. Borrowed capacity is
+reported once alongside owned scratch and transfers; reuse is never inferred
+from dimensions or a small component-local budget alone.
 
 ## Exact occupied force response
 
-`VIBEQC_DF_RESPONSE_SPACE=auto` (also unset) selects occupied response in the
-same measured 768/768 RHF rank-160 device domain, with automatic resident
-storage and the default generated shell schedule. Explicit panel storage and
-diagnostic schedules preserve their original route. `dense` retains the full-AO
-comparison; `occupied` requests factor validation on compatible resident plans.
-The 384-AO borrowed path and smaller systems keep dense automatic response.
+`VIBEQC_DF_RESPONSE_SPACE=auto` (also unset) shares SCF's rank/work and resident
+capacity selector. Explicit panel storage and diagnostic schedules preserve
+their original route. `dense` retains the full-AO comparison; `occupied` requests
+factor validation on compatible resident plans, including explicit UHF/batch
+experiments. Neither the work model nor a token used as a selection hint
+supplies execution authority.
 
 The method passes its verified final-state token. The response owner checks
 source identity, solve epoch, system, model, occupations, exact canonical device
@@ -225,10 +245,12 @@ The [derivation and lifetime note](../.agents/notes/implemented/performance/2026
 records RHF/UHF coefficients, metric response and rejected schedules.
 The [qualification evidence](../benchmarks/results/issue377-379-df/README.md)
 retains frozen-density policy comparisons, independent strict force gates,
-component/work counters, reservation and priming costs. The automatic selector
-is deliberately limited to that measured domain; it establishes no TZ/QZ,
-other-device or COSX crossover. Memory diagnostics report charged capacity,
-not a measured global GPU peak.
+component/work counters, reservation and priming costs. These are historical
+validation points for the shared work policy, not runtime admission branches.
+They establish no universal device latency or COSX crossover. Memory diagnostics
+report charged capacity, not a measured global GPU peak. The derivative schedule,
+pair-layout and primitive-packet selectors below remain separate policies;
+their existing endpoint restrictions do not restrict occupied SCF admission.
 
 The [packed derivative note](../.agents/notes/implemented/performance/2026-09-15-packed-df-derivative-pairs.md)
 documents symmetry, diagonal-shell treatment, the block-size tradeoff and
@@ -309,9 +331,10 @@ capacities for occupied response. Missing/stale factors or insufficient
 rank-squared storage use the bounded raw loader. Neither route regenerates raw
 integrals or constructs a persistent full raw tensor. `VIBEQC_DF_RAW_REUSE=off`
 instead selects bounded source regeneration for diagnosis. Explicit seed/final
-occupied overrides admit this resident source; the automatic 768/768/rank160
-singleton policy retains its device and rank restrictions during packed
-experiments. Other generated-source exclusions remain. A final U lease is
+occupied overrides admit this resident source; automatic selection uses the
+same resident work policy and checks the selected rank against both logical
+rank capacity and actual retained projection storage. Other generated-source
+exclusions remain. A final U lease is
 published only if its full projection was retained;
 the full-rank restriction and single-consumer invalidation still apply.
 

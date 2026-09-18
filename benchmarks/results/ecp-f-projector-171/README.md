@@ -36,6 +36,24 @@ require this archive: the public base, patch, fixtures/tests and drivers suffice
 The repository copies of Python drivers are formatted and bind immediate loop
 callbacks explicitly; the archive retains the exact original executed scripts.
 
+## Merge-source reconciliation
+
+`merge-source-match.json` records the reconciliation with upstream after the
+merge-readiness review. The sole conflict was the generated
+`docs/cuda_ownership_current.json`; it was regenerated from the combined source
+and semantic ledger, retaining both upstream DF ownership and this ECP extension.
+All 16 qualified ECP source/test files still match the retained measurement
+hashes. Regenerating the ECP header also reproduces the qualified CPU/CUDA bytes.
+
+The resolved tree passes 85 local IR/input/ownership/publication/build-structure
+tests. One CMake command-execution test needs the CMake executable absent from
+the Windows host and is left to Linux CI. Existing publication fixtures were
+restored to their unchanged canonical Git bytes locally to remove CRLF-induced
+hash failures. Compiler/SCF dependency and ownership checks also pass.
+Incoming upstream CMake refactoring is exercised by the new-head CI build/tests;
+the earlier hardware measurements below retain their original source identity
+and are not presented as a fresh numerical run of the merged tree.
+
 ## Validation
 
 - CPU CTest: **31/31**.

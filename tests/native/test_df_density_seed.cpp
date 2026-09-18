@@ -173,7 +173,11 @@ int main() {
     (void)setenv("VIBEQC_DF_FINAL_EXCHANGE", "auto", 1);
     check(try_cuda_density_fitting_final_rhf_jk(raw, token, d, actual_j, actual_k, used, detail),
           detail);
-    require(!used, "automatic final K escaped its qualified workload domain");
+    require(used, "automatic final K rejected a profitable resident RHF workload");
+    (void)setenv("VIBEQC_DF_FINAL_EXCHANGE", "dense", 1);
+    check(try_cuda_density_fitting_final_rhf_jk(raw, token, d, actual_j, actual_k, used, detail),
+          detail);
+    require(!used, "explicit dense final K reused an occupied factor");
     (void)setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied", 1);
     auto changed = d;
     changed[0] += 1e-14;

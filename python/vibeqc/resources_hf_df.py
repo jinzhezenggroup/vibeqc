@@ -86,6 +86,7 @@ def cuda_df_candidates(
             transforms=b * (n * c + aux * ac),
         )
         occupied = max(first["electrons"]["nalpha"], first["electrons"]["nbeta"], 1)
+        rhf_occupied = first["electrons"]["nalpha"] if first["spins"] == 1 else None
         diis_bytes = density_fitting_diis_bytes(library, b, n, diis_history)
         default_tile = density_fitting_tile_plan(
             library,
@@ -97,6 +98,7 @@ def cuda_df_candidates(
             fixed_device_bytes=source_bytes + diis_bytes,
             generated_source=True,
             pair_storage=pair_storage,
+            rhf_occupied=rhf_occupied,
         )
         # Match the native matrix-only one-electron chunk preflight. Direct-ERI
         # task tables are omitted by this exporter, leaving quadratic metadata.
@@ -158,6 +160,7 @@ def cuda_df_candidates(
                 "source_bytes": source_bytes,
                 "diis_device_bytes": diis_bytes,
                 "occupied": occupied,
+                "rhf_occupied": rhf_occupied,
                 "host_metadata": metadata,
                 "preparation_minimum": preparation_metadata
                 + preparation_retained
@@ -250,6 +253,7 @@ def cuda_df_candidates(
                 + row["diis_device_bytes"],
                 generated_source=source,
                 pair_storage=pair_storage,
+                rhf_occupied=row["rhf_occupied"],
             )
             force_tile = tile
             if source:
@@ -263,6 +267,7 @@ def cuda_df_candidates(
                     fixed_device_bytes=row["source_bytes"] + row["diis_device_bytes"],
                     generated_source=True,
                     pair_storage=pair_storage,
+                    rhf_occupied=row["rhf_occupied"],
                 )
             pairs = (
                 min(n * n, max(n, (tile.ao_pair_tile // n) * n)) if source else n * n
@@ -281,8 +286,9 @@ def cuda_df_candidates(
             # Dense keeps its original capacity. Occupied mode reserves both
             # spin factors at full rank; actual factors use nbf*max_occupied.
             # Generation controls fit in the existing 1024-byte item allowance.
+            factors_reserved = occupied_exchange or bool(tile.automatic_rhf_rank)
             persistent_device = (
-                (34 if occupied_exchange else 32) * matrix
+                (34 if factors_reserved else 32) * matrix
                 + 16 * b * aux
                 + solver
                 + 1024 * b
@@ -391,6 +397,26 @@ def cuda_df_candidates(
             host_work.append(checked_bytes(host_temporary))
             # Reserve one additional complete item for existing cold numerical
             # recovery. This is independent of allocation-failure retries.
+            # A batched RHF solve can retry a singleton. Query that method-aware
+            # plan separately instead of guessing eligibility from the batch.
+            retry_tile = density_fitting_tile_plan(
+                library,
+                1,
+                n,
+                aux,
+                row["occupied"],
+                budget_bytes=sub_budget if source else 0,
+                fixed_device_bytes=(row["source_bytes"] // b if source else 0)
+                + density_fitting_diis_bytes(library, 1, n, diis_history),
+                generated_source=source,
+                pair_storage=pair_storage,
+                rhf_occupied=row["rhf_occupied"],
+            )
+            retry_factor_extra = (
+                2 * matrix // b
+                if retry_tile.automatic_rhf_rank and not factors_reserved
+                else 0
+            )
             device_work.append(
                 checked_bytes(
                     max(setup, force, generation)
@@ -400,6 +426,7 @@ def cuda_df_candidates(
                     # down with the original batch's item count.
                     + ordinary_eigen_device
                     + solver
+                    + retry_factor_extra
                 )
             )
             inventories.append(

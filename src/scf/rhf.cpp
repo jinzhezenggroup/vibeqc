@@ -1156,7 +1156,8 @@ using CudaDensityFittingPlanPtr =
  * enter the ordinary numerical retry. Malformed shapes retain their status. */
 DensityFittingTilePlan plan_cuda_density_fitting_tiles(
     std::size_t batch, std::size_t nbf, std::size_t naux, std::size_t occupied, std::size_t budget,
-    std::size_t fixed_device_bytes = 0, bool generated_source = false, unsigned diis_history = 0) {
+    std::size_t fixed_device_bytes = 0, bool generated_source = false, unsigned diis_history = 0,
+    std::size_t automatic_rhf_rank = 0) {
   const auto diis_bytes = density_fitting_scf_diis_device_bytes(batch, nbf, diis_history);
   if (diis_bytes == std::numeric_limits<std::size_t>::max() ||
       diis_bytes > std::numeric_limits<std::size_t>::max() - fixed_device_bytes)
@@ -1165,9 +1166,9 @@ DensityFittingTilePlan plan_cuda_density_fitting_tiles(
   try {
     if (generated_source && requested_df_pair_storage() == DfPairStorage::SymmetricLower)
       return plan_packed_density_fitting_tiles(batch, nbf, naux, occupied, budget,
-                                               fixed_device_bytes);
+                                               fixed_device_bytes, automatic_rhf_rank);
     return plan_density_fitting_tiles(batch, nbf, naux, occupied, budget, fixed_device_bytes,
-                                      generated_source);
+                                      generated_source, automatic_rhf_rank);
   } catch (const DensityFittingBudgetError&) {
     throw std::bad_alloc();
   }
@@ -1207,9 +1208,10 @@ unsigned cuda_df_iteration_diis_history(const ScfOptions& options) {
 
 CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     const DensityFittingScfData& data, const ScfOptions& options, int device_id,
-    std::size_t occupied,
+    std::size_t occupied, bool unrestricted,
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const core::System* orbital_system = nullptr, const core::System* auxiliary_system = nullptr) {
+  std::size_t automatic_rhf_rank = unrestricted ? 0 : occupied;
   const auto planning_budget =
       df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces);
 
@@ -1223,12 +1225,13 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
   // reinterpret an arbitrary public tensor when its source is unavailable.
   if (packed && (!orbital_system || !auxiliary_system))
     throw std::invalid_argument("packed DF values require a physical integral source");
-  if (planning_budget != 0 && !packed) {
+  if (planning_budget != 0 && !packed && (!orbital_system || !auxiliary_system)) {
     const DensityFittingTilePlan tile_plan = plan_cuda_density_fitting_tiles(
         1, data.raw.nbf, data.raw.naux, std::max<std::size_t>(occupied, 1), planning_budget, 0,
-        false, options.diis_history);
+        false, options.diis_history, automatic_rhf_rank);
     auxiliary_tile = tile_plan.auxiliary_tile;
     ao_pair_tile = tile_plan.ao_pair_tile;
+    automatic_rhf_rank = tile_plan.automatic_rhf_rank;
   }
   if ((planning_budget != 0 || packed) && orbital_system != nullptr &&
       auxiliary_system != nullptr) {
@@ -1248,7 +1251,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     try {
       source_tile_plan = plan_cuda_density_fitting_tiles(
           1, source_nbf, source_naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history);
+          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history,
+          automatic_rhf_rank);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -1259,7 +1263,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
         device_id, &source, 1, source_nbf, source_naux, source_metrics,
         options.density_fitting_relative_threshold, auxiliary_tile, ao_pair_tile, &raw_plan,
         diagnostics, detail, source_tile_plan.stores_full_three_center,
-        source_tile_plan.value_storage);
+        source_tile_plan.value_storage, source_tile_plan.automatic_rhf_rank);
     destroy_cuda_density_fitting_integral_source(source);
     if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
       throw std::bad_alloc();
@@ -1273,10 +1277,11 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
             ? create_cuda_density_fitting_jk_plan_tiled(
                   device_id, 1, data.raw.nbf, data.raw.naux, data.raw.metric, data.raw.three_center,
                   options.density_fitting_relative_threshold, auxiliary_tile, ao_pair_tile,
-                  &raw_plan, diagnostics, detail)
+                  &raw_plan, diagnostics, detail, automatic_rhf_rank)
             : create_cuda_density_fitting_jk_plan(
                   device_id, 1, data.raw.nbf, data.raw.naux, data.raw.metric, data.raw.three_center,
-                  options.density_fitting_relative_threshold, 0, &raw_plan, diagnostics, detail);
+                  options.density_fitting_relative_threshold, 0, &raw_plan, diagnostics, detail,
+                  automatic_rhf_rank);
     if (status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
       throw std::bad_alloc();
     if (status != VIBEQC_STATUS_SUCCESS) {
@@ -1312,10 +1317,11 @@ ScfResult run_cuda_independent_fock_strategy(const core::System& system,
 
 CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     const std::vector<DensityFittingScfData>& data, const ScfOptions& options, int device_id,
-    std::size_t occupied,
+    std::size_t occupied, bool unrestricted,
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const std::vector<core::System>* orbital_systems = nullptr,
     const std::vector<core::System>* auxiliary_systems = nullptr) {
+  std::size_t automatic_rhf_rank = unrestricted ? 0 : occupied;
   const auto planning_budget =
       df_value_budget(options.density_fitting_memory_budget_bytes, options.compute_forces);
 
@@ -1352,7 +1358,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     try {
       tile_plan = plan_cuda_density_fitting_tiles(
           data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history);
+          cuda_density_fitting_integral_source_device_bytes(source), true, options.diis_history,
+          automatic_rhf_rank);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -1363,7 +1370,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
         device_id, &source, data.size(), source_nbf, source_naux, metrics,
         options.density_fitting_relative_threshold, tile_plan.auxiliary_tile,
         tile_plan.ao_pair_tile, &raw_plan, diagnostics, detail, tile_plan.stores_full_three_center,
-        tile_plan.value_storage);
+        tile_plan.value_storage, tile_plan.automatic_rhf_rank);
     destroy_cuda_density_fitting_integral_source(source);
     if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
       throw std::bad_alloc();
@@ -1395,21 +1402,22 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   std::size_t auxiliary_tile = 0;
   std::size_t ao_pair_tile = 0;
   if (planning_budget != 0) {
-    const DensityFittingTilePlan tile_plan =
-        plan_cuda_density_fitting_tiles(data.size(), nbf, naux, std::max<std::size_t>(occupied, 1),
-                                        planning_budget, 0, false, options.diis_history);
+    const DensityFittingTilePlan tile_plan = plan_cuda_density_fitting_tiles(
+        data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget, 0, false,
+        options.diis_history, automatic_rhf_rank);
     auxiliary_tile = tile_plan.auxiliary_tile;
     ao_pair_tile = tile_plan.ao_pair_tile;
+    automatic_rhf_rank = tile_plan.automatic_rhf_rank;
   }
   const vibeqc_status status =
-      planning_budget != 0
-          ? create_cuda_density_fitting_jk_plan_tiled(
-                device_id, data.size(), nbf, naux, metrics, three_center,
-                options.density_fitting_relative_threshold, auxiliary_tile, ao_pair_tile, &raw_plan,
-                diagnostics, detail)
-          : create_cuda_density_fitting_jk_plan(
-                device_id, data.size(), nbf, naux, metrics, three_center,
-                options.density_fitting_relative_threshold, 0, &raw_plan, diagnostics, detail);
+      planning_budget != 0 ? create_cuda_density_fitting_jk_plan_tiled(
+                                 device_id, data.size(), nbf, naux, metrics, three_center,
+                                 options.density_fitting_relative_threshold, auxiliary_tile,
+                                 ao_pair_tile, &raw_plan, diagnostics, detail, automatic_rhf_rank)
+                           : create_cuda_density_fitting_jk_plan(
+                                 device_id, data.size(), nbf, naux, metrics, three_center,
+                                 options.density_fitting_relative_threshold, 0, &raw_plan,
+                                 diagnostics, detail, automatic_rhf_rank);
   if (status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
     throw std::bad_alloc();
   if (status != VIBEQC_STATUS_SUCCESS) {
@@ -1745,7 +1753,7 @@ ScfResult run_rhf_density_fitting_cuda_impl(const core::System& system,
     throw std::runtime_error("basis has fewer orbitals than occupied electron pairs");
   }
   const CudaDensityFittingPlanPtr plan = make_cuda_density_fitting_plan(
-      data, options, device_id, occupied, nullptr, &system, &auxiliary_system);
+      data, options, device_id, occupied, false, nullptr, &system, &auxiliary_system);
   const auto eigen = df_setup_eigen(plan.get());
   const Matrix orthogonalizer = initial_guess::prepare_overlap_orthogonalizer(
       system, data.one_electron.overlap, n, overlap_cache, eigen);
@@ -1864,7 +1872,7 @@ ScfResult run_uhf_density_fitting_cuda_impl(const core::System& system,
     throw std::runtime_error("basis has fewer orbitals than required UHF spin occupations");
   }
   const CudaDensityFittingPlanPtr plan = make_cuda_density_fitting_plan(
-      data, options, device_id, std::max(alpha_occupied, beta_occupied), nullptr, &system,
+      data, options, device_id, std::max(alpha_occupied, beta_occupied), true, nullptr, &system,
       &auxiliary_system);
   const auto eigen = df_setup_eigen(plan.get());
   const Matrix orthogonalizer = initial_guess::prepare_overlap_orthogonalizer(
@@ -2186,7 +2194,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
           auxiliary_systems.push_back(
               density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]));
         }
-        owned_plan = make_cuda_density_fitting_batch_plan(data, options, device_id, occupied,
+        owned_plan = make_cuda_density_fitting_batch_plan(data, options, device_id, occupied, false,
                                                           &metric_diagnostics, &orbital_systems,
                                                           &auxiliary_systems);
         plan = owned_plan.get();
@@ -2657,8 +2665,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
               density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]));
         }
         owned_plan = make_cuda_density_fitting_batch_plan(
-            data, options, device_id, std::max(alpha_occupied, beta_occupied), &metric_diagnostics,
-            &orbital_systems, &auxiliary_systems);
+            data, options, device_id, std::max(alpha_occupied, beta_occupied), true,
+            &metric_diagnostics, &orbital_systems, &auxiliary_systems);
         plan = owned_plan.get();
         if (cached_plan != nullptr) {
           *cached_plan = owned_plan.release();

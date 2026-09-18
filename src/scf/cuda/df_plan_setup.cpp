@@ -181,7 +181,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail, CudaDensityFittingIntegralSource* integral_source,
-    bool retain_three_center, DfValueStorageOptions storage) {
+    bool retain_three_center, DfValueStorageOptions storage, std::size_t automatic_rhf_rank) {
   runtime::df_progress::Scope preparation("df_plan_setup");
   runtime::df_progress::number("planner_ao_pair_tile", ao_pair_tile);
   runtime::df_progress::number("planner_auxiliary_tile", auxiliary_tile);
@@ -303,7 +303,13 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     }
   }
 
-  const bool occupied_scf_reserved = df_occupied_exchange_requested(nbf, naux, batch_size);
+  // Generic tensor/source callers cannot infer a reference from dimensions.
+  // Even an authorized RHF hint cannot reserve for an ineligible layout.
+  if (streamed || (integral_source && !packed) ||
+      (packed && automatic_rhf_rank > storage.rank_capacity))
+    automatic_rhf_rank = 0;
+  const bool occupied_scf_reserved =
+      df_occupied_exchange_requested(nbf, naux, batch_size, automatic_rhf_rank);
   const char* diis_policy = std::getenv("VIBEQC_DF_DIIS_DOTS");
   if (diis_policy && std::strcmp(diis_policy, "auto") != 0 &&
       std::strcmp(diis_policy, "serial") != 0) {
@@ -325,6 +331,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   if (candidate == nullptr) return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   candidate->device_id = device_id;
   candidate->occupied_scf_reserved = occupied_scf_reserved;
+  candidate->automatic_rhf_rank = automatic_rhf_rank;
   candidate->resident_exchange_enabled = df_resident_exchange_requested();
   candidate->triangular_exchange = df_triangular_exchange_requested();
   candidate->flat_dense_exchange = df_flat_dense_exchange_requested();

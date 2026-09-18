@@ -77,6 +77,7 @@ def practical_reference(request):
 @pytest.mark.parametrize(
     "values,storage,space,algebra,budget",
     [
+        ("dense", "auto", "auto", "blas", 0),
         ("dense", "panel", "dense", "scalar", 0),
         ("dense", "panel", "dense", "blas", 0),
         ("dense", "jk-scratch", "occupied", "blas", 0),
@@ -115,7 +116,7 @@ def test_practical_full_force_cold_warm_and_changed_geometry(
         "VIBEQC_DF_RESPONSE_STORAGE": storage,
         "VIBEQC_DF_RESPONSE_SPACE": space,
         "VIBEQC_DF_RESPONSE_ALGEBRA": algebra,
-        "VIBEQC_DF_EXCHANGE": "occupied",
+        "VIBEQC_DF_EXCHANGE": "auto" if space == "auto" else "occupied",
         "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
         "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
         "VIBEQC_DF_WEIGHTED_EXECUTION": "shell",
