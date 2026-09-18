@@ -112,6 +112,108 @@ class ResponseGMRES:
         return solve(operator, rhs, options=self.options)
 
 
+def transpose_solver_contract(solver: TransposeSolver) -> dict:
+    """Freeze an opaque solver's identity, tolerances and declared storage."""
+    for name in ("identity", "backend"):
+        value = getattr(solver, name, None)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"implicit callback requires a nonempty {name}")
+    for name in ("rtol", "atol"):
+        value = getattr(solver, name, None)
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"solver {name} must be finite and nonnegative")
+    if solver.rtol >= 1 or max(solver.rtol, solver.atol) == 0:
+        raise ValueError("solver requires rtol < 1 and a nonzero convergence tolerance")
+    return {
+        "identity": solver.identity,
+        "backend": solver.backend,
+        "workspace_bytes": _checked_bytes(solver.workspace_bytes, "solver workspace"),
+        "rtol": float(solver.rtol),
+        "atol": float(solver.atol),
+    }
+
+
+@dataclass(frozen=True)
+class CheckedAdjointResult:
+    """A solution rechecked against the supplied physical transpose action."""
+
+    solution: np.ndarray
+    residual_norm: float
+    iterations: int
+    operator_actions: int
+    workspace_bytes: int
+
+
+def checked_transpose_solve(operator, rhs, *, solver, assert_current=None):
+    """Shared first-order adjoint acceptance for generated single/block states.
+
+    The caller supplies the already-transposed Euclidean action and performs
+    its own simultaneous state/operator/solver resource admission. No equation,
+    coordinate map, preconditioner or Krylov algorithm is introduced here.
+    A solver's success flag cannot bypass a fresh physical residual evaluation.
+    """
+    contract = transpose_solver_contract(solver)
+    dimension = operator.dimension
+    if type(dimension) is not int or dimension < 1:
+        raise ValueError("adjoint dimension must be a positive integer")
+    if assert_current is not None and not callable(assert_current):
+        raise TypeError("assert_current must be callable")
+    rhs = _immutable(_array(rhs, (dimension,), "adjoint RHS"))
+    actions = 0
+
+    def check():
+        if assert_current is not None:
+            assert_current()
+        if transpose_solver_contract(solver) != contract:
+            raise ResponseCompatibilityError("implicit solver contract changed")
+
+    class CheckedOperator:
+        def __init__(self):
+            self.dimension = dimension
+
+        def apply(self, vector):
+            nonlocal actions
+            check()
+            vector = _immutable(_array(vector, (dimension,), "adjoint iterate"))
+            actions += 1
+            value = _immutable(
+                _array(operator.apply(vector), (dimension,), "transpose action")
+            )
+            check()
+            return value
+
+    checked = CheckedOperator()
+    check()
+    result = solver.solve(checked, rhs)
+    check()
+    if result.converged is not True:
+        raise ImplicitSolveError(f"implicit adjoint failed: {result.reason}")
+    if (
+        not math.isfinite(result.residual_norm)
+        or result.residual_norm < 0
+        or _checked_bytes(result.workspace_bytes, "reported solver workspace")
+        > contract["workspace_bytes"]
+    ):
+        raise ImplicitSolveError(
+            "implicit solver returned invalid residual/resource diagnostics"
+        )
+    if type(result.iterations) is not int or result.iterations < 0:
+        raise ImplicitSolveError(
+            "implicit solver returned invalid iteration diagnostics"
+        )
+    solution = _immutable(_array(result.solution, (dimension,), "adjoint solution"))
+    residual = _vector_norm(checked.apply(solution) - rhs)
+    target = max(contract["atol"], contract["rtol"] * _vector_norm(rhs))
+    if not math.isfinite(target) or residual > target or result.residual_norm > target:
+        raise ImplicitSolveError(
+            f"implicit true adjoint residual failed: {residual:.6g} > {target:.6g}"
+        )
+    check()
+    return CheckedAdjointResult(
+        solution, residual, result.iterations, actions, result.workspace_bytes
+    )
+
+
 @dataclass(frozen=True)
 class ReferenceTensorExecutor:
     """Identified CPU reference execution of the very same generated programs."""
@@ -378,54 +480,23 @@ class BoundImplicitState:
                 self._run("rhs", {PREFIX + "seed": seed})["value"].reshape(-1)
             )
             owner = self
-            actions = 0
 
             class Operator:
                 dimension = spec.dimension
 
                 def apply(self, vector):
-                    nonlocal actions
-                    owner._assert_current(reference_identity)
-                    vector = _array(vector, (self.dimension,), "adjoint iterate")
-                    actions += 1
                     return owner._run(
                         "transpose",
-                        {
-                            PREFIX + "vector": vector.reshape(spec.residual_spec.shape),
-                        },
+                        {PREFIX + "vector": vector.reshape(spec.residual_spec.shape)},
                     )["value"].reshape(-1)
 
-            operator = Operator()
-            result = self.solver.solve(operator, rhs)
-            self._assert_current(reference_identity)
-            if result.converged is not True:
-                raise ImplicitSolveError(f"implicit adjoint failed: {result.reason}")
-            if (
-                not math.isfinite(result.residual_norm)
-                or result.residual_norm < 0
-                or _checked_bytes(result.workspace_bytes, "reported solver workspace")
-                > self._contract["solver_workspace_bytes"]
-            ):
-                raise ImplicitSolveError(
-                    "implicit solver returned invalid residual/resource diagnostics"
-                )
-            if type(result.iterations) is not int or result.iterations < 0:
-                raise ImplicitSolveError(
-                    "implicit solver returned invalid iteration diagnostics"
-                )
-            y = _immutable(
-                _array(result.solution, (spec.dimension,), "adjoint solution")
+            result = checked_transpose_solve(
+                Operator(),
+                rhs,
+                solver=self.solver,
+                assert_current=lambda: self._assert_current(reference_identity),
             )
-            residual = _vector_norm(operator.apply(y) - rhs)
-            target = max(self.solver.atol, self.solver.rtol * _vector_norm(rhs))
-            if (
-                not math.isfinite(target)
-                or residual > target
-                or result.residual_norm > target
-            ):
-                raise ImplicitSolveError(
-                    f"implicit true adjoint residual failed: {residual:.6g} > {target:.6g}"
-                )
+            y, residual = result.solution, result.residual_norm
             extra[PREFIX + "vector"] = y.reshape(spec.residual_spec.shape)
             source = self._run("source", extra)
             adjoint = self._run(
@@ -443,7 +514,7 @@ class BoundImplicitState:
                 self.primal_residual_norm,
                 residual,
                 result.iterations,
-                actions,
+                result.operator_actions,
                 self.plan.identity,
                 self.state_identity,
                 self.execution_identity,
