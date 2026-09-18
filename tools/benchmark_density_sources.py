@@ -50,7 +50,10 @@ from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixt
 from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
-from tools.vibeqc_validation.hardware import CUDA_BENCHMARK_PROFILES, qualify_cuda_device
+from tools.vibeqc_validation.hardware import (
+    CUDA_BENCHMARK_PROFILES,
+    qualify_cuda_device,
+)
 
 ROUTES = ("density_matrix", "orbitals")
 LAYOUTS = (("total", "unpolarized"), ("total", "polarized"), ("spin", "polarized"))
