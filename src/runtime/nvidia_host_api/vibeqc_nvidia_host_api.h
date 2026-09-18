@@ -53,25 +53,26 @@ cublasStatus_t cublasSetWorkspace_v2(cublasHandle_t handle, void* workspace,
 cublasStatus_t cublasSetStream_v2(cublasHandle_t handle, cudaStream_t stream);
 cublasStatus_t cublasSetPointerMode_v2(cublasHandle_t handle, cublasPointerMode_t mode);
 cublasStatus_t cublasSetMathMode(cublasHandle_t handle, cublasMath_t mode);
-cublasStatus_t cublasDaxpy_v2(cublasHandle_t handle, int n, const double* alpha,
-                              const double* x, int incx, double* y, int incy);
+cublasStatus_t cublasDaxpy_v2(cublasHandle_t handle, int n, const double* alpha, const double* x,
+                              int incx, double* y, int incy);
 cublasStatus_t cublasDdot_v2(cublasHandle_t handle, int n, const double* x, int incx,
                              const double* y, int incy, double* result);
 cublasStatus_t cublasDgemv_v2(cublasHandle_t handle, cublasOperation_t trans, int m, int n,
                               const double* alpha, const double* a, int lda, const double* x,
                               int incx, const double* beta, double* y, int incy);
 cublasStatus_t cublasDgemm_v2(cublasHandle_t handle, cublasOperation_t transa,
-                              cublasOperation_t transb, int m, int n, int k,
-                              const double* alpha, const double* a, int lda, const double* b,
-                              int ldb, const double* beta, double* c, int ldc);
-cublasStatus_t cublasDsyrk_v2(cublasHandle_t handle, cublasFillMode_t uplo,
-                              cublasOperation_t trans, int n, int k, const double* alpha,
-                              const double* a, int lda, const double* beta, double* c, int ldc);
-cublasStatus_t cublasDgemmStridedBatched(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb, int m, int n, int k,
-    const double* alpha, const double* a, int lda, long long int stride_a, const double* b, int ldb,
-    long long int stride_b, const double* beta, double* c, int ldc, long long int stride_c,
-    int batch_count);
+                              cublasOperation_t transb, int m, int n, int k, const double* alpha,
+                              const double* a, int lda, const double* b, int ldb,
+                              const double* beta, double* c, int ldc);
+cublasStatus_t cublasDsyrk_v2(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans,
+                              int n, int k, const double* alpha, const double* a, int lda,
+                              const double* beta, double* c, int ldc);
+cublasStatus_t cublasDgemmStridedBatched(cublasHandle_t handle, cublasOperation_t transa,
+                                         cublasOperation_t transb, int m, int n, int k,
+                                         const double* alpha, const double* a, int lda,
+                                         long long int stride_a, const double* b, int ldb,
+                                         long long int stride_b, const double* beta, double* c,
+                                         int ldc, long long int stride_c, int batch_count);
 cublasStatus_t cublasDgeam(cublasHandle_t handle, cublasOperation_t transa,
                            cublasOperation_t transb, int m, int n, const double* alpha,
                            const double* a, int lda, const double* beta, const double* b, int ldb,
@@ -117,34 +118,40 @@ cusolverStatus_t cusolverDnDestroySyevjInfo(syevjInfo_t info);
 cusolverStatus_t cusolverDnXsyevjSetTolerance(syevjInfo_t info, double tolerance);
 cusolverStatus_t cusolverDnXsyevjSetMaxSweeps(syevjInfo_t info, int max_sweeps);
 cusolverStatus_t cusolverDnXsyevjSetSortEig(syevjInfo_t info, int sort_eig);
-cusolverStatus_t cusolverDnDsyevjBatched_bufferSize(
-    cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n,
-    const double* a, int lda, const double* w, int* lwork, syevjInfo_t params, int batch_size);
+cusolverStatus_t cusolverDnDsyevjBatched_bufferSize(cusolverDnHandle_t handle,
+                                                    cusolverEigMode_t jobz, cublasFillMode_t uplo,
+                                                    int n, const double* a, int lda,
+                                                    const double* w, int* lwork, syevjInfo_t params,
+                                                    int batch_size);
 cusolverStatus_t cusolverDnDsyevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
                                          cublasFillMode_t uplo, int n, double* a, int lda,
                                          double* w, double* work, int lwork, int* info,
                                          syevjInfo_t params, int batch_size);
-cusolverStatus_t cusolverDnXsyevd_bufferSize(
-    cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz,
-    cublasFillMode_t uplo, int64_t n, cudaDataType data_type_a, const void* a, int64_t lda,
-    cudaDataType data_type_w, const void* w, cudaDataType compute_type,
-    size_t* workspace_bytes_device, size_t* workspace_bytes_host);
-cusolverStatus_t cusolverDnXsyevd(
-    cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz,
-    cublasFillMode_t uplo, int64_t n, cudaDataType data_type_a, void* a, int64_t lda,
-    cudaDataType data_type_w, void* w, cudaDataType compute_type, void* workspace_device,
-    size_t workspace_bytes_device, void* workspace_host, size_t workspace_bytes_host, int* info);
+cusolverStatus_t cusolverDnXsyevd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params,
+                                             cusolverEigMode_t jobz, cublasFillMode_t uplo,
+                                             int64_t n, cudaDataType data_type_a, const void* a,
+                                             int64_t lda, cudaDataType data_type_w, const void* w,
+                                             cudaDataType compute_type,
+                                             size_t* workspace_bytes_device,
+                                             size_t* workspace_bytes_host);
+cusolverStatus_t cusolverDnXsyevd(cusolverDnHandle_t handle, cusolverDnParams_t params,
+                                  cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n,
+                                  cudaDataType data_type_a, void* a, int64_t lda,
+                                  cudaDataType data_type_w, void* w, cudaDataType compute_type,
+                                  void* workspace_device, size_t workspace_bytes_device,
+                                  void* workspace_host, size_t workspace_bytes_host, int* info);
 cusolverStatus_t cusolverDnXsyevBatched_bufferSize(
     cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz,
     cublasFillMode_t uplo, int64_t n, cudaDataType data_type_a, const void* a, int64_t lda,
     cudaDataType data_type_w, const void* w, cudaDataType compute_type,
     size_t* workspace_bytes_device, size_t* workspace_bytes_host, int64_t batch_size);
-cusolverStatus_t cusolverDnXsyevBatched(
-    cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz,
-    cublasFillMode_t uplo, int64_t n, cudaDataType data_type_a, void* a, int64_t lda,
-    cudaDataType data_type_w, void* w, cudaDataType compute_type, void* workspace_device,
-    size_t workspace_bytes_device, void* workspace_host, size_t workspace_bytes_host, int* info,
-    int64_t batch_size);
+cusolverStatus_t cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params,
+                                        cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n,
+                                        cudaDataType data_type_a, void* a, int64_t lda,
+                                        cudaDataType data_type_w, void* w,
+                                        cudaDataType compute_type, void* workspace_device,
+                                        size_t workspace_bytes_device, void* workspace_host,
+                                        size_t workspace_bytes_host, int* info, int64_t batch_size);
 cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* value);
 
 #ifdef __cplusplus
