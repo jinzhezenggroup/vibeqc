@@ -64,3 +64,21 @@ All budgeted cases record zero rejected allocations. The raw archive contains
 47 verified files, is 96,211 bytes, and has SHA256
 `1a8cde14387f4de8322345fcf2d1a15941410d075a413ba923c6087ccba8da7a`.
 The GPU Notebook was stopped after retrieval and verification.
+
+## Review correction: distinguish host bookkeeping OOM
+
+Review of `f0ee7ec` found that the shared allocation ledger reports both device
+OOM and host registry `std::bad_alloc` as `cudaErrorMemoryAllocation`. The new
+radial staging catch therefore could retry a host failure as a smaller device
+allocation, contrary to its stated contract.
+
+The allocator now optionally reports host metadata failure separately, while
+preserving the CUDA status for existing callers. ECP propagates that failure
+before the radial fallback catch. Native regression checks distinguish tracked
+and untracked device OOM from host registry failure, verify reservation/storage
+cleanup, and retain the real one-layer budget fallback and recovery tests.
+
+The RTX 4090 measurements and source manifests above remain historical evidence
+for the pre-correction head. The correction changes allocation error handling;
+the generated ECP header still matches the recorded SHA256 exactly. It does not
+establish new performance measurements.

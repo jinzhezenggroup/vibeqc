@@ -49,6 +49,7 @@ energies or forces are bitwise reproducible across compilers or devices. The
 independent raw-matrix/derivative, endpoint and sanitizer gates in the original
 and merged evidence remain the acceptance criteria.
 
-This clarification changes documentation only. All 28 measured source files
-remain identical to `merge-source-identity.json`; the executable sources are
-the same ones used by the passing CI at `0eb9384` and the retained GPU run.
+The clarification at `f0ee7ec` changed documentation only. All 28 measured
+source files at that commit matched `merge-source-identity.json`, the passing
+CI at `0eb9384` and the retained GPU run. The later allocator error-origin
+correction is documented separately in `merge-validation.md`.

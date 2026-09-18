@@ -129,7 +129,12 @@ struct Arena {
   template <class T>
   T* allocate(std::size_t n, const T* source = nullptr) {
     void* pointer = nullptr;
-    check(runtime::resource_cuda_malloc(&pointer, n * sizeof(T)));
+    bool host_oom = false;
+    const auto status = runtime::resource_cuda_malloc(&pointer, n * sizeof(T), &host_oom);
+    // Registry metadata OOM shares CUDA's status but cannot authorize a radial
+    // staging retry. The allocator has already released and uncharged storage.
+    if (host_oom) throw std::bad_alloc();
+    check(status);
     try {
       allocations.push_back(pointer);
     } catch (...) {

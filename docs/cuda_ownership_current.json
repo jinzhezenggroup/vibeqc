@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13030,
+  "all_handwritten_scientific_lines": 13033,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -167,8 +167,8 @@
       "fallback": 0,
       "oracle": 15,
       "performance_exception": 163,
-      "runtime": -5409,
-      "scientific": 2660
+      "runtime": -5405,
+      "scientific": 2663
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -379,20 +379,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 13496,
+      "bytes": 13768,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 287
+        "scientific": 290
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 298,
+      "physical_lines": 303,
       "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "f7dd70f2afb5ef41b718e412facb6d5a9748a4be335b24235c79d23ecd8fbbb9",
+      "sha256": "9d8f63474765373cd09f434d901641fd0d993e997b147be853365330add628a7",
       "subsystem": "ecp"
     },
     {
@@ -585,20 +585,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6049,
+      "bytes": 6439,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 116,
+        "runtime": 120,
         "scientific": 0
       },
       "path": "src/runtime/resource_cuda.cuh",
-      "physical_lines": 153,
+      "physical_lines": 160,
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
-      "sha256": "2040468a6b17df192d1a0dfc9e1752e46fe4a7922bfbe958e948aaf626a2229d",
+      "sha256": "313c8df626309d3a3a3843602ffead4d87faf879429c93ff817464e2517156bd",
       "subsystem": "runtime"
     },
     {
@@ -3768,8 +3768,8 @@
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
-    "runtime": 10164,
-    "scientific": 12762
+    "runtime": 10168,
+    "scientific": 12765
   },
   "migration_ledger": {
     "ao_grid": {
@@ -4003,7 +4003,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 287
+      "scientific": 290
     },
     "low_rank": {
       "fallback": 0,
@@ -4030,7 +4030,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4430,
+      "runtime": 4434,
       "scientific": 5
     },
     "scf_tensor": {
