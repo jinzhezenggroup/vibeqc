@@ -1,71 +1,80 @@
-# Historical benchmark checkout archive
+# Historical benchmark checkout snapshot
 
-The [upstream data release](https://github.com/jinzhezenggroup/vibeqc/releases/tag/benchmark-evidence-e215b306)
-retains complete original snapshots of 18 historical DF campaigns from
-`e215b30685f8a36ef0cc5772c9166837527f64a2`. This is storage cleanup, not a
-software release or numerical requalification.
+Complete original snapshots of 18 historical DF campaigns remain in existing
+Git commit `e215b30685f8a36ef0cc5772c9166837527f64a2`, an ancestor of this
+cleanup. **No GitHub Release, new tag, release asset, external archive or
+publishing workflow is required or authorized.** Nothing is uploaded by the
+restoration helper; Git history is not rewritten.
 
-Only 197 bulky reports/archives (40,562,398 bytes; 38.68 MiB) were removed from
-the current checkout. The 10,518,603-byte ZIP contains all 917 original campaign
-members, including summaries, source patches, manifests and failed/incomplete
-runs. Every member's original path, byte count and SHA-256 is in
-[`raw-evidence.manifest.json`](raw-evidence.manifest.json).
-`checkout: external` identifies the removed subset; `retained` means the path
-remains source controlled, not that future edits must match this old snapshot.
+Only 197 bulky reports/archives (40,562,398 bytes; 38.68 MiB) are removed from
+the current checkout. [`snapshot.manifest.json`](snapshot.manifest.json)
+inventories all 917 original members (55,852,909 bytes), including summaries,
+source patches, manifests and failed/incomplete runs, by original path, size
+and SHA-256. `checkout: git-history` identifies the removed subset; `retained`
+means the path remains in the checkout, not that future edits must match this
+old snapshot. The manifest is a Git snapshot identity, not a ZIP manifest.
 
-Concise root summaries, original timing/statistical summaries, source patches,
-reproduction scripts and input arrays remain in Git. Test-consumed bundles,
-previous storage-migration fixtures and production-referenced evidence were
-left alone. This does not rewrite Git history or reduce full-clone history.
+Concise summaries, original timing/statistical samples, reproduction scripts,
+input arrays, test-consumed bundles and production-referenced evidence remain
+in the current tree. Existing ancestor objects are the recovery source, not a
+policy to commit new bulky runs. This reduces checkout size, not full-clone
+historical size, and does not requalify any scientific claim.
 
 ## Restore the complete snapshot
 
-Download explicitly; normal tests and builds do not access this release:
+With the recorded Git objects already present, this command is fully offline:
 
 ```bash
-mkdir -p .artifacts/retention-download
-gh release download benchmark-evidence-e215b306 \
-  --repo jinzhezenggroup/vibeqc \
-  --pattern benchmark-evidence-e215b306.zip \
-  --dir .artifacts/retention-download
-python tools/unpack_evidence.py benchmarks/results/retention-checkout \
-  --archive .artifacts/retention-download/benchmark-evidence-e215b306.zip \
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-checkout/snapshot.manifest.json \
   --output .artifacts/retention-snapshot
 ```
 
-The output must be new. The existing unpacker checks the complete archive hash,
-member list, safe relative paths, member sizes and hashes **before** creating
-the output. It never executes historical scripts. The restored tree contains
-`benchmarks/results/<campaign>/` with the original relative layout. Use this
-complete snapshot to check the original campaign manifests; they are not
-inventories of the reduced current checkout. Recorded measured revisions and
-dirty-source patches retain their original meaning.
+The destination must be new. Every original path, byte count and SHA-256 is
+validated in temporary local storage **before** the destination is created.
+Unsafe/duplicate/conflicting paths, missing Git objects or corrupt bytes fail
+without a partial destination. Memory is bounded by the largest member.
+The helper restores files as data; it never executes historical scripts.
+The full original layout is `benchmarks/results/<campaign>/` under the output.
+Use this complete snapshot to inspect original campaign manifests, which are
+not inventories of today's reduced checkout. Measured revisions and dirty
+source patches retain their original scientific meaning.
 
-## Restore one file from existing Git history
-
-No network request is made by this command:
+## Restore one file
 
 ```bash
 python tools/restore_retained_evidence.py \
-  --manifest benchmarks/results/retention-checkout/raw-evidence.manifest.json \
+  --manifest benchmarks/results/retention-checkout/snapshot.manifest.json \
   benchmarks/results/issues388-391-df/profiles/384.json
 ```
 
 Output defaults to `.artifacts/retention-restore/` plus the original path.
-A shallow clone missing the source revision needs an explicit
-`git fetch origin e215b30685f8a36ef0cc5772c9166837527f64a2` first. A full clone
-normally already contains the ancestor objects. This second recovery route
-does not depend on release assets.
+`--output NEW_FILE` selects a new filename; existing files are never overwritten.
+The older size-limit migration and evidence-archive manifests remain supported.
 
-The upstream data release has no automatic expiry; it is not an expiring
-Actions artifact. Do not replace the asset in place. Publish any future
-replacement with a new content identity. Repository administrators can still
-remove Git objects or release assets, so checksums establish identity rather
-than an absolute availability guarantee.
+## Shallow, partial and source-archive checkouts
 
-## Audited moved payloads
+Normal full clones already contain the source history. In a shallow/partial
+clone missing it, the helper fails with an explicit instruction instead of
+fetching implicitly. The user may separately retrieve the existing commit:
 
-| Campaign | Files moved | MiB moved |
+```bash
+git fetch origin e215b30685f8a36ef0cc5772c9166837527f64a2
+```
+
+Then repeat restoration. Missing promisor blobs must also be obtained explicitly
+outside the offline helper. A downloaded source archive without `.git` needs a
+Git clone for historical recovery; no Release is a fallback. Builds and normal
+tests neither fetch history nor require the complete historical snapshot.
+
+Recovery depends on retaining existing source history. Administrators can
+rewrite history or remove objects; hashes establish byte identity, not an
+absolute availability guarantee. A future off-repository backup requires
+separate, explicit authorization, not an implicit extension of cleanup work.
+
+## Audited checkout removals
+
+| Campaign | Files removed from checkout | MiB removed |
 | --- | ---: | ---: |
 | `issue206-aot-and-stock` | 6 | 0.99 |
 | `issue206-current-df` | 13 | 2.81 |
@@ -86,11 +95,9 @@ than an absolute availability guarantee.
 | `issue412-split-gram` | 5 | 0.52 |
 | `issues388-391-df` | 27 | 6.34 |
 
-Every original member was restored and hash/size checked before upload and
-again after downloading the uploaded asset. The existing 1 MiB per-file guard
-remains; a 96 MiB aggregate `benchmarks/results/` budget now prevents unlimited
-growth by many individually small reports. Permanent test fixtures are outside
-that aggregate budget.
+The existing 1 MiB per-file guard remains. A 96 MiB aggregate
+`benchmarks/results/` budget prevents unchecked growth by many individually
+small reports; permanent test fixtures are outside that aggregate budget.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

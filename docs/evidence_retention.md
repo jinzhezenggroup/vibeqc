@@ -61,8 +61,9 @@ python tools/evidence.py publish \
 ```
 
 Prepare the specification from the measured run after reviewing its result.
-The command does not infer a winner, rewrite samples, stage Git changes or
-modify production selectors. Performance acceptance still requires #138's
+The command writes local files only: it does not upload or authorize a GitHub
+Release, tag, asset or publishing workflow. It does not infer a winner, rewrite
+samples, stage Git changes or modify production selectors. Performance acceptance still requires #138's
 comparison, numerical, endpoint, compilation and resource gates. Historical
 schemas retain their original meaning; migration does not retroactively
 certify incomplete provenance. The publisher adds storage metadata, not a
@@ -133,30 +134,44 @@ is not a new scientific qualification.
 
 ## Historical report snapshots
 
-The [checkout archive](../benchmarks/results/retention-checkout/README.md) keeps
-complete historical campaign snapshots as an upstream release asset, with an
-original Git revision and a manifest of every member's size and SHA-256.
+The [checkout snapshot](../benchmarks/results/retention-checkout/README.md)
+uses **existing ancestor Git objects**, not a Release or external archive.
+Its `vibeqc.git-snapshot.v1` manifest pins the original full commit SHA and
+inventories every original path, size and SHA-256, plus total files and bytes.
 Concise summaries and test/production consumers remain in the current tree.
 Historical Markdown links point to pinned Git revisions rather than missing
-checkout files. Restore the complete snapshot before checking its original
-campaign manifests or running historical reproduction scripts.
+checkout files. Restore the complete snapshot before inspecting its original
+campaign manifests or explicitly running historical reproduction scripts:
 
-`tools/unpack_evidence.py --archive PATH --output NEW_DIR` verifies a downloaded
-snapshot without executing anything. For one member, the existing
-`tools/restore_retained_evidence.py` additionally accepts `--manifest PATH` with
-an evidence-archive manifest and a pinned `source_revision`; it verifies bytes
-from Git and writes to ignored local storage. The legacy default manifest and
-archive-restoration interface remain supported. Neither command downloads data
-implicitly, changes source files or weakens numerical gates.
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-checkout/snapshot.manifest.json \
+  --output .artifacts/retention-snapshot
+```
+
+All members are verified before creating a new destination. Invalid identities,
+unsafe/duplicate/conflicting paths, missing objects or checksum/size mismatches
+leave no partial destination; existing files/directories are never overwritten.
+Omit `--all` and provide an original repository-relative path to restore one
+member. The legacy default migration and evidence-archive manifests still work.
+
+The helper does not fetch, including promisor-object lazy fetches, upload or
+execute anything. Missing history requires an explicit user-controlled Git
+fetch; source archives without `.git` need a Git clone. Full-clone history must
+remain available for recovery; cleanup does not rewrite it or reduce its size.
+No new release, tag or external storage is necessary. Normal tests/builds remain
+offline and do not depend on fetching these historical snapshots.
 
 ## External artifacts and expiry
 
 CI uploads `.artifacts/` as debugging output with 14-day retention when present.
 Full stdout, test XML, profiler databases and retries may go there. Compute
 SHA-256 before upload; reference the immutable Actions run/artifact ID, checksum
-and expiry from the publication when it helps explain a decision. Release
-assets or another immutable HTTPS store can provide longer retention, with
-their checksum and retention policy recorded explicitly.
+and expiry from the publication when it helps explain a decision. Longer-lived
+external storage requires separate, explicit user authorization, with checksums
+and retention policy recorded. A cleanup or benchmark task does not authorize
+creating GitHub Releases, release tags/assets or dispatching publishing workflows;
+do not substitute a fork or another host to work around that boundary.
 
 Expired archives must not break tests or reproduction. Permanent reference
 inputs, mathematical definitions, accepted raw samples/statistics and stable

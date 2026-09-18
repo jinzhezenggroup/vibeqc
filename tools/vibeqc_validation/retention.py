@@ -185,8 +185,8 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
         if used > budget:
             errors.append(
                 f"{RESULT_ROOT}: {used} bytes exceeds {budget}-byte aggregate budget; "
-                "retain compact records and move bulky historical evidence to "
-                "checksum-verified durable storage"
+                "retain compact records and recover historical payloads from "
+                "existing Git history; do not publish archives implicitly"
             )
     for path, exception in exceptions.items():
         safe_relative(path)

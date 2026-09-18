@@ -1,10 +1,7 @@
 {
-  "schema": "vibeqc.evidence-archive.v1",
+  "schema": "vibeqc.git-snapshot.v1",
   "source_revision": "e215b30685f8a36ef0cc5772c9166837527f64a2",
-  "archive_url": "https://github.com/jinzhezenggroup/vibeqc/releases/download/benchmark-evidence-e215b306/benchmark-evidence-e215b306.zip",
-  "archive_sha256": "587fbac1ec0b1d1305dd55787e1382c461dd37db95a15daba54cc91aa2ce347a",
-  "archive_bytes": 10518603,
-  "retention": "Upstream release asset with no automatic expiry; existing ancestor Git objects provide a second recovery source. Checksums identify bytes; availability is not guaranteed.",
+  "retention": "Existing ancestor Git objects only; no new external copy, release, tag or asset. Recovery requires retaining source history; history rewriting or object removal can make the snapshot unavailable.",
   "history_rewritten": false,
   "moved_files": 197,
   "moved_bytes": 40562398,
@@ -37,7 +34,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b1-none.json",
       "bytes": 109919,
       "sha256": "952bd57688bb13ef730d1e8c3920cb8f80f2375de3d1e959d2833b8901dfce6a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
@@ -49,7 +46,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b4-none.json",
       "bytes": 393930,
       "sha256": "ede7300677a7668f1d3f4d2b1a252a80d0914f840d0f617c0ad8c7640f560988",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
@@ -61,7 +58,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b1-none.json",
       "bytes": 73420,
       "sha256": "123e8867193c9ce11875db6531767dea776ec6dba4fb217b8814fa609f347827",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b1-none.progress.jsonl",
@@ -73,7 +70,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b4-none.json",
       "bytes": 247082,
       "sha256": "f9c0a0c6d40688ba2250e6712725d363aa0e2ea969bdb5f371e178c07d5ecdc5",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b4-none.progress.jsonl",
@@ -151,7 +148,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/stock-384/384-stock.json",
       "bytes": 98436,
       "sha256": "626f40d11b71e7fa5326bd63537eb7e6be8f707b9bd617f5d300ea3ce517fb9d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/stock-384/384-stock_cuda_api_sum.csv",
@@ -199,7 +196,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/stock-768/768-stock.json",
       "bytes": 118266,
       "sha256": "25fed34c63c01b6b4bfeb1d47f6d98a6d953b5248115f4e517cbbaf75d659fab",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/stock-768/768-stock_cuda_api_sum.csv",
@@ -367,13 +364,13 @@
       "path": "benchmarks/results/issue206-current-df/direct/water-tetramer-def2-svp-spherical-b1-none.json",
       "bytes": 71831,
       "sha256": "1683ba7157ec27aa95357fb60e33af05681ac5512726139d18f5bb1219291585",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/direct/water-tetramer-def2-svp-spherical-b4-none.json",
       "bytes": 246033,
       "sha256": "68bee40e17bf5294da701b4302030bc1e4ac1941db89b11f6cc1bd5ef291da53",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/ammonia-def2-svp-spherical-b1-forces.json",
@@ -403,13 +400,13 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-32mer-4s4-def2-svp-spherical-b1-energy.json",
       "bytes": 176407,
       "sha256": "5365a3095b31dd7162c7333e80464f033121677723fc9e6867474ea58767b566",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-32mer-4s4-def2-svp-spherical-b1-forces.json",
       "bytes": 397155,
       "sha256": "0db569786b3ab902d173efbc2a25c767ccc4ff5fb1d3d0a86b2e537317df3837",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-32mer-4s4-def2-svp-spherical-b1-qualification.json",
@@ -421,13 +418,13 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-hexadecamer-2s4-def2-svp-spherical-b1-energy.json",
       "bytes": 109952,
       "sha256": "e6e37415068f624316859c32d22eb5a3bdc49788bca523d902f1552ef43e600b",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-hexadecamer-2s4-def2-svp-spherical-b1-forces.json",
       "bytes": 220597,
       "sha256": "1ab33043a33c16ee5171f751743ba466c85869001e666fd2cf5c784610e1a856",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-hexadecamer-2s4-def2-svp-spherical-b1-qualification.json",
@@ -439,7 +436,7 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-octamer-s4-def2-svp-spherical-b1-forces.json",
       "bytes": 132716,
       "sha256": "f617ee7118be4b297d9e6e5fb7fcd14c26dba4a63cffc2c88e7d94b1c55d23da",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-octamer-s4-def2-svp-spherical-b1-qualification.json",
@@ -451,7 +448,7 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-octamer-s4-def2-svp-spherical-b4-forces.json",
       "bytes": 492882,
       "sha256": "a8345ef3ea12be6c81b1127737847fceeb6733dfa01e32f4e9edea7a60c9c1ab",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-remaining/water-octamer-s4-def2-svp-spherical-b4-qualification.json",
@@ -469,7 +466,7 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-v2/water-tetramer-def2-svp-spherical-b1-forces.json",
       "bytes": 88683,
       "sha256": "1f95648e6351bd79d76d07b6727ab0fe71f8f188f150a492c493a150f1e2e9e3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-v2/water-tetramer-def2-svp-spherical-b1-qualification.json",
@@ -481,7 +478,7 @@
       "path": "benchmarks/results/issue206-current-df/fresh-warm-v2/water-tetramer-def2-svp-spherical-b4-forces.json",
       "bytes": 317039,
       "sha256": "2323cd2411a8eac4616e32ddd4abba34cd46be57e6cfbefa8a2ba1d7a51b141a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/fresh-warm-v2/water-tetramer-def2-svp-spherical-b4-qualification.json",
@@ -505,7 +502,7 @@
       "path": "benchmarks/results/issue206-current-df/rebuild/192-b1-changed.json",
       "bytes": 310258,
       "sha256": "90d3db49106158444e890165de8e8d4e232792e98bbe542f862ebd2fc0ac6718",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/rebuild/192-b1-cold-stock-rank.json",
@@ -517,7 +514,7 @@
       "path": "benchmarks/results/issue206-current-df/rebuild/192-b1-cold.json",
       "bytes": 296995,
       "sha256": "77b773bf00e043bbcc3c2385cba4451435be4bd5c56886971e378fc6e3216006",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/rebuild/gpu4pyscf-changed-seed.json",
@@ -619,7 +616,7 @@
       "path": "benchmarks/results/issue206-current-df/stock-diagnostics/192-stock.json",
       "bytes": 82758,
       "sha256": "10622518e0489be79c0578ee3b75a5b08a854245811374a638d322d0adc33a0d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-current-df/stock-diagnostics/account.json",
@@ -649,7 +646,7 @@
       "path": "benchmarks/results/issue206-stable-response/history-evidence.zip",
       "bytes": 566399,
       "sha256": "dece87320dd9177b3ca8d4d2c2de69581ae85cf7b4f45c170ca89952866c6d99",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-stable-response/integration-v1.json",
@@ -667,7 +664,7 @@
       "path": "benchmarks/results/issue206-stable-response/numerical-evidence.zip",
       "bytes": 67329,
       "sha256": "57195d52591a78a729ace371e978e644f0df3b1d6c3fff677ab5852781842813",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-stable-response/ownership-delta.json",
@@ -685,13 +682,13 @@
       "path": "benchmarks/results/issue206-stable-response/sources-evidence.zip",
       "bytes": 273614,
       "sha256": "4194870505640909f39c915da9f5bb421b7d0767da9d4ac04e0e01f770c08710",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-stable-response/warm-evidence.zip",
       "bytes": 398052,
       "sha256": "2cebe37bcf31c0fbf8485a7c9647ff28ea630c857d093a4ed17daf776617190c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-stable-response/warm-summary.json",
@@ -715,13 +712,13 @@
       "path": "benchmarks/results/issue308-shell-schedules/direct-gate/water-octamer-s4-def2-svp-spherical-b1-none.json",
       "bytes": 85537,
       "sha256": "9d17a7f4b014cd3f338630ad02ac57563322799e04ddd071e03325dc3dd07ec7",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/direct-gate/water-octamer-s4-def2-svp-spherical-b4-none.json",
       "bytes": 305604,
       "sha256": "9713e767ac9b7c91f7475a9562f3a63b4f20f19e64d2a9ed00e2a5b12409bdbf",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/direct-gate/water-tetramer-def2-svp-spherical-b1-none.json",
@@ -733,7 +730,7 @@
       "path": "benchmarks/results/issue308-shell-schedules/direct-gate/water-tetramer-def2-svp-spherical-b4-none.json",
       "bytes": 191766,
       "sha256": "bccc64e10ae8ca947119afb6a1ab51db1d9f3ef285f131963a7516aeeb3f031b",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/192ao-b1-energy-default.json",
@@ -745,19 +742,19 @@
       "path": "benchmarks/results/issue308-shell-schedules/matched/192ao-b1-forces-default.json",
       "bytes": 103829,
       "sha256": "cbe6be0e2fc13853678cf8d505f3b34982b7dba85cbcba58d765b7e52e621778",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/192ao-b4-energy-default.json",
       "bytes": 214919,
       "sha256": "eccba2b027b06847316706bf23cf92e72bfe4003b1c81810adf66f125f0fdd30",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/192ao-b4-forces-default.json",
       "bytes": 382982,
       "sha256": "2f0a772bf14b89cd8baeb1baa8dd2174728e43e77f0f40af6504381ee63203cb",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/19ao-b1-energy-default.json",
@@ -775,37 +772,37 @@
       "path": "benchmarks/results/issue308-shell-schedules/matched/19ao-b4-energy-default.json",
       "bytes": 117252,
       "sha256": "a1d7761924b7bb34b689c47f754fef93cb6882d491bd5d57096fb9bb598caa1c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/19ao-b4-forces-default.json",
       "bytes": 132781,
       "sha256": "a79ed1ee425ba922a40665c6f9138fc64bed119367b4059af5e93e174395d271",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/384ao-b1-energy-default.json",
       "bytes": 88096,
       "sha256": "ae13f63e516dd9c9ea5922e96ce1dfc4b0bb02632365c312d1c483ff53957a63",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/384ao-b1-forces-default.json",
       "bytes": 171996,
       "sha256": "aa2894ed81f35c3a0c8f92419a620b3102397cfddda3eb22b2c2ed71f6a1b94e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/384ao-b4-energy-default.json",
       "bytes": 320890,
       "sha256": "cf2034a6002ad95d07042d7a5bea02b262d68361c117d336917cb0e99c8de0d3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/384ao-b4-forces-default.json",
       "bytes": 655652,
       "sha256": "b013770c1a4c9e1f5679cb2aa6764750c9595b601a8a9f3851870c82dfa160d4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/96ao-b1-energy-default.json",
@@ -817,25 +814,25 @@
       "path": "benchmarks/results/issue308-shell-schedules/matched/96ao-b1-forces-default.json",
       "bytes": 69667,
       "sha256": "1e41ec727b77db91b45eaaebf674910f18f778ca9e8f07649c4152dc045ac25a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/96ao-b4-energy-default.json",
       "bytes": 161789,
       "sha256": "257e4acd42b3d255cc2255e53f2d3d31595a0420b1a9e2e3a9dfec1be5febdfc",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/96ao-b4-forces-default.json",
       "bytes": 246381,
       "sha256": "902928a7fb4d3620ea296b55e6d0fed83ac238377f624ed8abc1c816dc74276c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/input-qualification.json",
       "bytes": 158587,
       "sha256": "12c89788a41c3b2a3627a827bbc9340501a97f4a1f085b4884b2d7e125ed7db3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/matched/manifest.json",
@@ -847,7 +844,7 @@
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-384ao-b1-traced.json",
       "bytes": 171890,
       "sha256": "4b34ecc05e14a45d8f1c33555af09be9a8bf77027f7ba25f3a06d51475be9525",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-clean-192ao-b1.json",
@@ -859,7 +856,7 @@
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-clean-192ao-b4.json",
       "bytes": 141727,
       "sha256": "54840cbf3d7cc741a5e385922abcc86d86fe697f6f3e03dd59eb23b9b36cdb18",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-clean-19ao-b1.json",
@@ -877,13 +874,13 @@
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-clean-384ao-b1.json",
       "bytes": 69378,
       "sha256": "985ee8c99e585fb14f54475be049425926805a9e9bedcc5dc485495ea2ef6dba",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v3-clean-384ao-b4.json",
       "bytes": 252723,
       "sha256": "f2b1cd5e5717b4a1567e1cca4b1cf2db6d5dfc5e30bd7fe024b963a07255e947",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v4-384-nsys-summary.json",
@@ -913,7 +910,7 @@
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v4-clean-192ao-b4.json",
       "bytes": 141888,
       "sha256": "7499a4c303c552e319cde05842a36cc2779e423187f0c7798e38bf61a9ed41d4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v4-clean-19ao-b1.json",
@@ -931,13 +928,13 @@
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v4-clean-384ao-b1.json",
       "bytes": 69497,
       "sha256": "ec07eb0e3d0fbc004c3618bbf4e54a4943aebfa2439f023bfbc5e7d00cfa3785",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v4-clean-384ao-b4.json",
       "bytes": 252872,
       "sha256": "1e3f0b6bceafa5c67ffec2360169093da5c931ed0a4a0dc3deb29d0445cfb273",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue308-shell-schedules/measurements/v5-clean-oracle-384ao-b1.json",
@@ -1129,7 +1126,7 @@
       "path": "benchmarks/results/issue309-overlap-cache-larger/raw-evidence.zip",
       "bytes": 717585,
       "sha256": "355f03348a704c17c0d32b4b68941d844575abe708c83f6a3f0d3be80c1e6250",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue309-overlap-cache-larger/summary.json",
@@ -1153,7 +1150,7 @@
       "path": "benchmarks/results/issue309-preparation-192b4/raw-evidence.zip",
       "bytes": 1032551,
       "sha256": "da9fa84f99f1f4053b48f64f25f27f3c750566421958545f9b1846108b899a58",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue309-preparation-192b4/summary.json",
@@ -1177,7 +1174,7 @@
       "path": "benchmarks/results/issue311-force-state/qualification.zip",
       "bytes": 688727,
       "sha256": "8a6df19ee4c70beaad7cc9af67308a25d5d3cbce30da5b3da08c3976bd7b169e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/README.md",
@@ -1195,13 +1192,13 @@
       "path": "benchmarks/results/issue382-packed-df/blocks/768-clean.json",
       "bytes": 93480,
       "sha256": "0a5111b1aeb3e25dcf43f509ff7a22d61b9718ae7f13a43a96312a09a19159a0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/blocks/768-screen.json",
       "bytes": 85696,
       "sha256": "39f8fbb89eee799ed7d2199c3aa4524e8f296827ac3b512803a424b51b6037c6",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/final/192-clean.json",
@@ -1231,7 +1228,7 @@
       "path": "benchmarks/results/issue382-packed-df/final/768-clean.json",
       "bytes": 93537,
       "sha256": "8f5c072f5a69663efff1e81912ca2240098be73d529462e512d3a928df0fb247",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/final/768-work.json",
@@ -1309,7 +1306,7 @@
       "path": "benchmarks/results/issue382-packed-df/reference/gpu4pyscf-768-final.json",
       "bytes": 83769,
       "sha256": "ce88b4eeaaa48881f3fa825a1e3b5b178a35b3b8a2483998f4d09810c55f857d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/reference/gpu4pyscf-768-profile.json",
@@ -1393,7 +1390,7 @@
       "path": "benchmarks/results/issue382-packed-df/slice-a/768-clean.json",
       "bytes": 93441,
       "sha256": "cf8f46addf54416efc67d620fb40a8999635c452ddbd00caf857c5e45223b790",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/slice-a/768-profile.json",
@@ -1405,13 +1402,13 @@
       "path": "benchmarks/results/issue382-packed-df/slice-b/768-clean.json",
       "bytes": 93503,
       "sha256": "1ffc48aedd0ffdd246f4b010fa6f2ee26310d1816876103888a24886571c93f5",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/slice-b/768-components.json",
       "bytes": 177254,
       "sha256": "450c21ded80bbf7f842597114ce368dfaeb67e712696024706c67baabb853d94",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue382-packed-df/slice-b/768-work.json",
@@ -1549,31 +1546,31 @@
       "path": "benchmarks/results/issue385-df-signatures/direct-baseline/water-tetramer-def2-svp-spherical-b4-none.json",
       "bytes": 101572,
       "sha256": "c7bcb1e5621601880621d0224454589db08850a98340c744bf662df244fb1af7",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/384-baseline.json",
       "bytes": 79010,
       "sha256": "8511c177728a8dcb8fe25b8c1f8a1bc5af359f57c6c91540a484f599c42d0c4c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/384-candidate.json",
       "bytes": 79054,
       "sha256": "e0c2d54a2918577c3c513bdb7c6ad80766d2dab5d5016f42bf4592d5f8508b17",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/768-baseline.json",
       "bytes": 137202,
       "sha256": "26a83cd0773c8e3dd8a3abefbd27bd171271c65c89fbbb11f9dd1da15264a668",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/768-candidate.json",
       "bytes": 137107,
       "sha256": "0815705938fb7759f5b6298d7eb8043ce4ad9ed80c9a78b035cbb07ecdfeea50",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-192/summary.json",
@@ -1591,7 +1588,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-192/water-octamer-s4-def2-svp-spherical-b4-cuda.json",
       "bytes": 161071,
       "sha256": "2d43a74c47d12bb94636b7a83b8ee805a7adfd751222a4d9a28f874ef76a9461",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-96-baseline/summary.json",
@@ -1609,7 +1606,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-96-baseline/water-tetramer-def2-svp-spherical-b4-cuda.json",
       "bytes": 103328,
       "sha256": "b4b984db39a1cdc501477eb5171d0b4ff0f10dc87495d64f1e9b352ad09f8e48",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-96/summary.json",
@@ -1627,7 +1624,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/matrix-96/water-tetramer-def2-svp-spherical-b4-cuda.json",
       "bytes": 103340,
       "sha256": "5017fcc6c397c0e19178c76aa20a84c89e0632c0adfccf05cf9c61dd98f1ad2c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct-protocol/run.json",
@@ -1651,7 +1648,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct-tighter-reference/96-b4.json",
       "bytes": 101464,
       "sha256": "fa2de4d9dacea23318567fdd186c718cc337484d849b5dc61d639b35163d44da",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct/summary.json",
@@ -1669,7 +1666,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct/water-octamer-s4-def2-svp-spherical-b4-none.json",
       "bytes": 159144,
       "sha256": "e5b614a1978c5cb96901fca766fa3a60a80fe2080576c97d1f3cc01a0b1002d3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/direct/water-tetramer-def2-svp-spherical-b1-none.json",
@@ -1681,7 +1678,7 @@
       "path": "benchmarks/results/issue385-df-signatures/direct/water-tetramer-def2-svp-spherical-b4-none.json",
       "bytes": 102454,
       "sha256": "d175901c86676de20bb128f100f62d8f41e5bd32111af23b835754753f214940",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/final/192-clean.json",
@@ -1711,13 +1708,13 @@
       "path": "benchmarks/results/issue385-df-signatures/final/384-work.json",
       "bytes": 77059,
       "sha256": "a1cc674bf697dfe1f172a5f0b351ccc528e98adae8bf3562022380c7fb5770f3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/final/768-clean.json",
       "bytes": 108797,
       "sha256": "3deecf4f6d7d15c23e79aa3747a300a4d39516e0c9e3770f88fb674c54e7f49a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/final/768-force-stage.json",
@@ -1729,7 +1726,7 @@
       "path": "benchmarks/results/issue385-df-signatures/final/768-work.json",
       "bytes": 100245,
       "sha256": "2765a9a1f7996818331d26ed9b57b7711aa42ed43ea8b959170b510d0a62c860",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/final/96-clean.json",
@@ -1771,7 +1768,7 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/384-clean.json",
       "bytes": 92305,
       "sha256": "cb9aed95c5268b132768073cb1ee71233e7489121a722e75009f389c8e0e30f1",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/384-nsys-summary.json",
@@ -1789,7 +1786,7 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/384-work.json",
       "bytes": 124614,
       "sha256": "a0b9bf808e2d1a5a5a576c717b6400cfa04923e4f87663156b36626c4f1809b7",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/768-all-kernels.json",
@@ -1801,7 +1798,7 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/768-clean.json",
       "bytes": 155643,
       "sha256": "09c21f204c07b78e73be61edb5ee083385ebef0e7c924106588b0f7cf04f37c4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/768-nsys-summary.json",
@@ -1819,7 +1816,7 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/768-work.json",
       "bytes": 156859,
       "sha256": "6f748e9e434603532682790f483f6e6ed71eb0e5205f442c9d9d115194fa7e03",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/summary.json",
@@ -1843,7 +1840,7 @@
       "path": "benchmarks/results/issue385-df-signatures/reference/768-clean.json",
       "bytes": 97105,
       "sha256": "c25005bc2be8fa0f7cd2f13d7497f16c187328e7ec9d38796f4429ee3d086fbe",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/reference/conditions.json",
@@ -2011,13 +2008,13 @@
       "path": "benchmarks/results/issue385-df-signatures/uniform/384-work.json",
       "bytes": 86608,
       "sha256": "8f3de47aa31668287ac6d7bc825054d8fe88f8f472c42e4263c3504deb44ba17",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/uniform/768-clean.json",
       "bytes": 108786,
       "sha256": "03ab857548550235a66506a35ab551be0badf1e6426853d9dfc00d652d4b1c4d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/uniform/768-nsys-summary.json",
@@ -2035,7 +2032,7 @@
       "path": "benchmarks/results/issue385-df-signatures/uniform/768-work.json",
       "bytes": 110252,
       "sha256": "f15a50bcc251df6d4441e2f53ebb638614d6870a88296992e4846156f7dc6eaf",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/uniform/summary.json",
@@ -2053,13 +2050,13 @@
       "path": "benchmarks/results/issue392-393-rejected/block-grouping/384.json",
       "bytes": 183279,
       "sha256": "03754dfb310a42ff2218a46476d495b741fef501276fb9445afe639100a83fa8",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/block-grouping/768.json",
       "bytes": 239967,
       "sha256": "7159fbed38cb72440adc1b4759597012345285f5d7276b38f54774bcdf622171",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/block-grouping/builds.json",
@@ -2101,13 +2098,13 @@
       "path": "benchmarks/results/issue392-393-rejected/early-folding/384.json",
       "bytes": 262637,
       "sha256": "f3a2ff6254fd56dfeb6bbe66c995724c75738c1bef676601ed4aa9716c1d5b8f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/early-folding/768.json",
       "bytes": 347614,
       "sha256": "76203de9924064e43b9a52351daa59dfbb2afb95c2be6d22522a4cbecdb13eb3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/early-folding/builds.json",
@@ -2149,13 +2146,13 @@
       "path": "benchmarks/results/issue392-393-rejected/identity-folding/384.json",
       "bytes": 174465,
       "sha256": "dd6fd5f52cdfb70f560125427cbb425300b90f25b1e68fc527d6cafbfc05327c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/identity-folding/768.json",
       "bytes": 231070,
       "sha256": "0c0108c822749a65f340070d60359b1e004b7cf6a41e1467f9cf79056a71a1c0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/identity-folding/builds.json",
@@ -2203,13 +2200,13 @@
       "path": "benchmarks/results/issue392-393-rejected/serial-grouping/384.json",
       "bytes": 181029,
       "sha256": "2c4bd1f443d853959ea6c7c3b87bbb9d7203e801aaf8871253773d5327c39af3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/serial-grouping/768.json",
       "bytes": 237647,
       "sha256": "8c779ebd65c0f78c022ac8181042deaeb24216cf0690b1f61e0b25f90641fcb1",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/serial-grouping/builds.json",
@@ -2245,13 +2242,13 @@
       "path": "benchmarks/results/issue392-393-rejected/warp-grouping/384.json",
       "bytes": 184157,
       "sha256": "25cdd29119a3997a1cb5b2384eb7a027749ba71b89e44c4768d1df923a25e59a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/warp-grouping/768.json",
       "bytes": 240857,
       "sha256": "0899a4425e44a11b5fa5916c4a7d9c7a96b9cc9d82b9c244eb9daf7575191c36",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue392-393-rejected/warp-grouping/builds.json",
@@ -2311,7 +2308,7 @@
       "path": "benchmarks/results/issue394-000-rys/components/v1-768-endpoint.json",
       "bytes": 65903,
       "sha256": "44323a74b59d3a1a6f30491c02dc278237af3be2cc099cbe9a6d0c02d13215a3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/kernel-comparison.json",
@@ -2323,7 +2320,7 @@
       "path": "benchmarks/results/issue394-000-rys/measurements/v1-384-endpoint.json",
       "bytes": 67693,
       "sha256": "fc1ebea73c82a70d116d3b816128369debd56c8fc65b35d8de8e83869d3dd48d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/measurements/v1-384-work.json",
@@ -2335,7 +2332,7 @@
       "path": "benchmarks/results/issue394-000-rys/measurements/v1-768-endpoint.json",
       "bytes": 113657,
       "sha256": "afcd123499334690dfada12e7663b5bdd81794d4d20d4eb6902784ee35efbc57",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/measurements/v1-768-work.json",
@@ -2497,25 +2494,25 @@
       "path": "benchmarks/results/issue394-000-rys/work/384-polynomial-ledger.json",
       "bytes": 166668,
       "sha256": "79881dd07ce1a48acf1a55ad0b27782a33dd023084c0c61307b45bf83d7b5615",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/work/384-rys-ledger.json",
       "bytes": 166181,
       "sha256": "d2c7f97205933a31d68445ff48cebdfd46f0c9383de7ea0c8251f2f88f0d3837",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/work/768-polynomial-ledger.json",
       "bytes": 173086,
       "sha256": "07e14ad977141cd996f6667e0874d18e11de521e11b2c06f28acbea6141c1e58",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/work/768-rys-ledger.json",
       "bytes": 172494,
       "sha256": "5ce3e2fb9ee602ff305a1c1e09881cf4c5b95dd68379dede49c1a02513fadecc",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/README.md",
@@ -2539,73 +2536,73 @@
       "path": "benchmarks/results/issue395-df-work/measurements/384-baseline-2.json",
       "bytes": 98838,
       "sha256": "0c0304df3b3b51d3b2e9eb631754fd780de7b08b0034ba8763f1a9a847a0fb32",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/384-baseline-3.json",
       "bytes": 115024,
       "sha256": "16ce720cb57ba17af017436109b4c3e3bb159a96d36bfc740c9dc0c05954d9b9",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/384-candidate-2.json",
       "bytes": 98847,
       "sha256": "5a3d00b6cfa7fb50fd435edc196d38b607f67c4affc1fc534ff1344d1a817ab2",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/384-candidate-3.json",
       "bytes": 115004,
       "sha256": "5b47eeacf8f8a377197cf2aa5f871bc87a315dbe6edcdebea0953bb7d22e9956",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/384-overhead.json",
       "bytes": 635800,
       "sha256": "9a29ebb0420749c289ab94645486f7bcab5ea32f0ca15abccbe5999a13295f06",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/384-profile.json",
       "bytes": 635766,
       "sha256": "c0a8ef112a76d7762e690b0e85da59f8f905ccf8388de512c9deb4f75c531f12",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-baseline-2.json",
       "bytes": 155573,
       "sha256": "e41635cea34a0538979714185fbbfc933bb2ecf3fa42f6dc4e0ef7888ad9a69f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-baseline-3.json",
       "bytes": 183879,
       "sha256": "a6a9785e16152a24f2424da2b9f587e437726e62c2556b4fefa92845e183f2ff",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-candidate-2.json",
       "bytes": 155503,
       "sha256": "9f183cd59769021660046db5067a5dcc656d6030eb26a0962f491ba97ac2f344",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-candidate-3.json",
       "bytes": 183950,
       "sha256": "b7ed7999042b53a6a427f5432ac5f4c332895f01a036322aade4878dce2fb58f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-overhead.json",
       "bytes": 695650,
       "sha256": "5abb9dab7b018b46c6ed271986e150b52b82b634e4dd9868ae50d746889d64e6",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/measurements/768-profile.json",
       "bytes": 695690,
       "sha256": "ebe1cebcd7d1c43896d12429a830c36eb5cd0202cccb4b37acd1613ecfefd3da",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/profiles/384-disabled.json",
@@ -2671,7 +2668,7 @@
       "path": "benchmarks/results/issue395-df-work/work/384.json",
       "bytes": 237799,
       "sha256": "64bf6bcd1369af572d8c88bddf24362c093b0a4e985852aadabfc9be370fcb1f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/work/384.md",
@@ -2683,7 +2680,7 @@
       "path": "benchmarks/results/issue395-df-work/work/768.json",
       "bytes": 253594,
       "sha256": "ad8a04614470174051a01dba5f86db1027ddcfddb0dba617de1528c46c444589",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue395-df-work/work/768.md",
@@ -2761,7 +2758,7 @@
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-384-final.json",
       "bytes": 67580,
       "sha256": "61af449df2f55794ad1a5a486ebf273c42bfa4ff186402eb0f1bc83cb65e7f90",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-384-seed-energy.json",
@@ -2773,7 +2770,7 @@
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-384-seed.json",
       "bytes": 67602,
       "sha256": "21024a89f04adfcb273698f773c4a7b65110254b6a9a592c430ba1de365b861e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-384-verification.json",
@@ -2791,7 +2788,7 @@
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-768-final.json",
       "bytes": 113571,
       "sha256": "8d455cd70e78b5a0e86293e8a8dc628421cc2afdfdc79e41172c4877c95780a6",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-768-seed-energy.json",
@@ -2803,7 +2800,7 @@
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-768-seed.json",
       "bytes": 113226,
       "sha256": "b41e70f8b21f9bf1f8fb2aa644dc9f3c40a25c23f8d6b5715a3102c8200b2b9e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-768-verification.json",
@@ -2821,7 +2818,7 @@
       "path": "benchmarks/results/issue399-density-seed/measurements/v2-768-default.json",
       "bytes": 113391,
       "sha256": "e0f0c8f206d2ef342565f8c7a127aff9e44636fdfe85b846e8da595ef97fb93e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/ownership.json",
@@ -2851,7 +2848,7 @@
       "path": "benchmarks/results/issue399-density-seed/profiles/384.0-factor.journal.json",
       "bytes": 75928,
       "sha256": "7e19734c33c58a022f45be99560e03d6d529eebabf1e55a06c2c35048a95c0e3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/profiles/384.json",
@@ -2869,7 +2866,7 @@
       "path": "benchmarks/results/issue399-density-seed/profiles/768.0-auto.journal.json",
       "bytes": 117108,
       "sha256": "442c7b7b005091c18a4814f4d700e10217ace82d0befe2e6553c0c94c4c9c5ee",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/profiles/768.0-dense.host.json",
@@ -2881,7 +2878,7 @@
       "path": "benchmarks/results/issue399-density-seed/profiles/768.0-dense.journal.json",
       "bytes": 102049,
       "sha256": "5695530cd4a6840bbc12f61f7de3e8e2dcbce36e31439584a12409eae5a64ff4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/profiles/768.0-factor.host.json",
@@ -2893,7 +2890,7 @@
       "path": "benchmarks/results/issue399-density-seed/profiles/768.0-factor.journal.json",
       "bytes": 113726,
       "sha256": "388b28b8662def0f9df056b3a50bbde28a1ef2761af42aefbf8cb7393d6b5879",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/profiles/768.json",
@@ -3133,25 +3130,25 @@
       "path": "benchmarks/results/issue404-combined-rys/control-resources/384-baseline.json",
       "bytes": 68875,
       "sha256": "b81b328d281fa2acf3df7eb6bc1619a33f14b05f8f41fb99c93695a10a34ee1e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/control-resources/384-campaign.json",
       "bytes": 126448,
       "sha256": "4560c40a311d5543e1ddd47f302d376db555796cff91eb104136df3ccf3d5a75",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/control-resources/768-baseline.json",
       "bytes": 94116,
       "sha256": "acd38207ec00676e2b7d8ecea82284826f6f85efa008642d38ddd5c9a1820bf0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/control-resources/768-campaign.json",
       "bytes": 171258,
       "sha256": "aeb4a488466ec16f8176af02da0cdb167716e2121f5e6c770c174b15bbfbf12a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/control-resources/control-check.json",
@@ -3211,13 +3208,13 @@
       "path": "benchmarks/results/issue404-combined-rys/promoted-validation/384-auto.json",
       "bytes": 68962,
       "sha256": "26b833acc7f9a1f4b0f0534fbf7628d736fb30a4e1d9e77ac8026e2bc6b7153b",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/promoted-validation/768-auto.json",
       "bytes": 94161,
       "sha256": "41e3dabc17da1283205ca1b8bdf47dbe249e03b7dac613a83f94ccf92917d31a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/promoted-validation/96-auto.json",
@@ -3301,7 +3298,7 @@
       "path": "benchmarks/results/issue408-device-validation/components/768-forces.json",
       "bytes": 77417,
       "sha256": "0b13c5fe2152501d68f0cc146ad7f5b45fe9d0ee369f1bb28b4aef1d7d3a7d53",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue408-device-validation/components/96-energy.json",
@@ -3337,7 +3334,7 @@
       "path": "benchmarks/results/issue408-device-validation/measurements/384-forces.json",
       "bytes": 72761,
       "sha256": "d8c7aa614e4be1d34ffd395b95d1508b510db3bf981cc421668d009588b9f1d4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue408-device-validation/measurements/768-energy.json",
@@ -3349,7 +3346,7 @@
       "path": "benchmarks/results/issue408-device-validation/measurements/768-forces.json",
       "bytes": 118739,
       "sha256": "9498d2697edd9430981385a04ddd8263673957fc16f403483b91e8a314dba793",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue408-device-validation/measurements/96-energy.json",
@@ -3577,13 +3574,13 @@
       "path": "benchmarks/results/issue409-packed-values/capacity/768-12GiB-dense.json",
       "bytes": 213228,
       "sha256": "df9c4baf0ab4e105c732b7dc987e2c3cc022ca42b2c6f14d83a02ec0ea756e51",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/capacity/768-12GiB-packed.json",
       "bytes": 147639,
       "sha256": "39c90a98fef61105ac901918c0c383835332d60e2585bfd1816ba86197b3d16c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/capacity/summary.json",
@@ -3607,91 +3604,91 @@
       "path": "benchmarks/results/issue409-packed-values/constrained/768-12GiB-forces.json",
       "bytes": 426624,
       "sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-192-dense.json",
       "bytes": 73702,
       "sha256": "d1166e624118615f010b7cdebe22e33a88994dad4ca72fdfa0a28c6234ee989e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-192-packed.json",
       "bytes": 234771,
       "sha256": "f84e1910cb860a2ec3e008280bf56dc5d492aa84839fcdfc4902075f696ba6ee",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-384-dense.json",
       "bytes": 87908,
       "sha256": "8679bc71089b2392e6f08cea5fd531bd09a91a98d69d6dd7828ac5ec92c2cbe0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-384-packed.json",
       "bytes": 453836,
       "sha256": "d36ebc66bea06f4b3d9389e564eb78f8db03e8680cb43a2322d94d88fbb0ddda",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-768-dense.json",
       "bytes": 120094,
       "sha256": "698ed4e2d455275aa945cf8e67987df13d9cffcbb5d8b64682c17483859c1ac0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-768-packed.json",
       "bytes": 815307,
       "sha256": "49771f0c5d1cc4e7f3aa6900a1134d3e000347c4833881a13e119870e82e5a02",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-96-464-dense.json",
       "bytes": 99302,
       "sha256": "03976418ee16ce158a37d08dfdd9bda8418e6c59a0cbc8b42bbc77b55e76edab",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/cold-dataflow-profiles-96-464-packed.json",
       "bytes": 180850,
       "sha256": "4cd495e16e5f453d6ac92c3deb4bb41ad0fea7e0ebcbce120dfa060c86757bd4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-192-dense.json",
       "bytes": 65636,
       "sha256": "f0ac7b30944204a13a9cb17f62a98542466e8c7d4dc0e0033e44551613f561c4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-192-packed.json",
       "bytes": 67184,
       "sha256": "1e0fe34169060d561ffb4b68c6c5e99a727c46fde888f13bccd64294ad7b95dc",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-384-dense.json",
       "bytes": 79669,
       "sha256": "bc8d301f0ef681a48c68cec604439df22829f6166e4e3b005e90e3f87027726c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-384-packed.json",
       "bytes": 125912,
       "sha256": "ce7178a743dccaf55c0ebefbc8b5d62ef43f6f3f1b9fc87f055c6a6611dc8411",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-768-dense.json",
       "bytes": 160483,
       "sha256": "bdd9ba9f69ca9969a38d1fe97e3c0882680ec89e3f91a8788abcc3532b9ce054",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/dataflow-profiles-768-packed.json",
       "bytes": 161728,
       "sha256": "ba30ae4d018e05b8feee05565add9fbc0113ea629436c6b148944c9abb8d95a9",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/cold-dataflow-profiles-192-dense.json",
@@ -3715,19 +3712,19 @@
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/cold-dataflow-profiles-384-packed.json",
       "bytes": 68944,
       "sha256": "70ec3ee8167bb9ea265abc1dc3ba973b18ffe8cdd95b8bdc1488b89ed5257863",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/cold-dataflow-profiles-768-dense.json",
       "bytes": 134592,
       "sha256": "1a4b99f9fd8c467c32c0a1668154c59bad4895b1a3bfeb47423ce5dcf3f9351b",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/cold-dataflow-profiles-768-packed.json",
       "bytes": 144968,
       "sha256": "5db5f5e9c80673ec5f4a41d66f16bc1d69ca920cdb0730f45d0d2c7b3f509a33",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/cold-dataflow-profiles-96-464-dense.json",
@@ -3769,13 +3766,13 @@
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/dataflow-profiles-768-dense.json",
       "bytes": 84635,
       "sha256": "34f1e7fce2fc8205909a7be071a6224b291abe24094b19151f8dc56a761fe890",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/dataflow-profiles-768-packed.json",
       "bytes": 85490,
       "sha256": "dff3f957f8ff9c9762ca542fe8ccbad8764896f6f3c43e9f4acdc19655edf374",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/dataflow/observations/unequal-dataflow-profiles-96-464-dense.json",
@@ -3829,7 +3826,7 @@
       "path": "benchmarks/results/issue409-packed-values/partial/rebuild/768-changed.json",
       "bytes": 401967,
       "sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/phasea-summary.json",
@@ -4087,7 +4084,7 @@
       "path": "benchmarks/results/issue409-packed-values/qualification/final-compiled-kernel-resources.json",
       "bytes": 288375,
       "sha256": "0254068cfbad4e027c12e406dcd1f78812630c71e914ec5a5dca3ae171855d16",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/qualification/final-incremental-build-resources.txt",
@@ -4105,7 +4102,7 @@
       "path": "benchmarks/results/issue409-packed-values/qualification/final-portable-192-forces.json",
       "bytes": 239996,
       "sha256": "11317f272d1a0600c157e9fddc1f00552f22fb702b5af4ef798d46c18a6255e3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/qualification/final-portable-manifest.json",
@@ -4177,19 +4174,19 @@
       "path": "benchmarks/results/issue409-packed-values/rebuild/384-changed.json",
       "bytes": 348208,
       "sha256": "e0ff57da898553f792a25d748b5c4abd24c88e1e0ff74ca292525d45f29c0c0e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/rebuild/384-cold.json",
       "bytes": 347969,
       "sha256": "d2012b6fe0f6f0f222a7f9402eaf913a713080eb692402b34463f84ad95a76ca",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/rebuild/768-changed-diagnostics.json",
       "bytes": 147777,
       "sha256": "671ef30186b28310a3e75b9db77db3e5b57b2dcc7456d2feff14d2d5750e7a4f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/rebuild/768-changed-response-attribution.json",
@@ -4201,13 +4198,13 @@
       "path": "benchmarks/results/issue409-packed-values/rebuild/768-changed.json",
       "bytes": 221027,
       "sha256": "80c8dff173b47d0bb8255efeed9a5dc5cdae82994912a6c9535e8f616bafd6db",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/rebuild/768-cold.json",
       "bytes": 555882,
       "sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/references/384-changed-reference.json",
@@ -4465,49 +4462,49 @@
       "path": "benchmarks/results/issue409-packed-values/unequal/water-def2-svp-spherical.json",
       "bytes": 107712,
       "sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/unequal/water-tetramer-def2-svp-spherical.json",
       "bytes": 146198,
       "sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/192-forces.json",
       "bytes": 235862,
       "sha256": "7d7e1a1b094477016133359d311914113d80fad938a296095134232d68a69917",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/384-energy.json",
       "bytes": 194933,
       "sha256": "e9bada271940e09111b739bf60f70e16a81e30405d53e61f7355c732e477acf8",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/384-forces.json",
       "bytes": 358182,
       "sha256": "fc0736686c8d28ad8133454d45e5681c28098eeaa351e387f27bac228099d536",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/768-energy.json",
       "bytes": 317152,
       "sha256": "82ef353feb8e5b4d5e542783aa138ccce2730ee2b50f3cd8c51e7272211cff0a",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/768-forces.json",
       "bytes": 585119,
       "sha256": "ed60914a1197c332bb79958b5144c57b2a79f25ae59a909d6f18dc23aab44e28",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue409-packed-values/warm/96-forces.json",
       "bytes": 149691,
       "sha256": "7d3687438134ad03b9fe8b3ff258faac4b5ca44ef4a1576ade35b8d2a75af41d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/README.md",
@@ -4585,19 +4582,19 @@
       "path": "benchmarks/results/issue412-split-gram/changed-work/768-energy.memory-samples.json",
       "bytes": 73844,
       "sha256": "a3ddb357249f76bc1f0036ef2368443c341af9cf0ea1acfde7d59b79e8719a63",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/changed-work/768-forces.json",
       "bytes": 115801,
       "sha256": "877cffb0bcd8a8ccb1ffd59e8e820503bcc0c3ec751936ed1abab06af637c1e3",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/changed-work/768-forces.memory-samples.json",
       "bytes": 72371,
       "sha256": "076c03fae3db336b045dd3d04a9c256e5a8135b18d604ac66cd9d7d8e9c8a940",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/changed-work/device.json",
@@ -4639,13 +4636,13 @@
       "path": "benchmarks/results/issue412-split-gram/endpoints/384-energy.json",
       "bytes": 92972,
       "sha256": "540320be3946809a221fbaeeae96c3e3f4f7d7f060adebec1566b13967409522",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/endpoints/384-forces.json",
       "bytes": 192344,
       "sha256": "680cc855a8842fdd5c0a61669d46963bd49b2be5d7e4a59cdb26ece5a7763299",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue412-split-gram/endpoints/768-forces.json",
@@ -5167,13 +5164,13 @@
       "path": "benchmarks/results/issues388-391-df/components/384.json",
       "bytes": 622604,
       "sha256": "4518d941a927e7e828de9d75d8c78a80d2527bef47a34130c24a6a2bbabb4cdc",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/components/768.json",
       "bytes": 770726,
       "sha256": "737a9c39b8e3a6905d0a3df8f09ec8aac7ddaf3b389d3ace6d51032a94b89689",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/generated-work.json",
@@ -5191,13 +5188,13 @@
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_DIIS_DOTS.json",
       "bytes": 183112,
       "sha256": "cb974a3cedde8754d1a157fac15343fe5d052b0479d564e0b451043f74eea91c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_RAW_REUSE.json",
       "bytes": 183318,
       "sha256": "77cb66b86c03534c19eb8dd48da6b8e15fe72d147348228a6c99876c6ee62a00",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_RESIDENT_EXCHANGE-energy.json",
@@ -5209,61 +5206,61 @@
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_RESIDENT_EXCHANGE.json",
       "bytes": 353020,
       "sha256": "a522b70aaa1c0c58d9d7c95f10888a19b384d5f07996b37ea9b3f95e1883fefd",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_RESPONSE_BATCHING.json",
       "bytes": 183055,
       "sha256": "73de4d5f9f13a8763ace93a4f2c8ad1719e7ea77acd761128441bd340ff703e2",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/384-VIBEQC_DF_RESPONSE_STORAGE.json",
       "bytes": 183812,
       "sha256": "de1f28462d07696b417497fe0737fb42b445b9850a75ab9afc96f627bd84775f",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-DIIS-legacy-endpoint.json",
       "bytes": 260452,
       "sha256": "8cb3343d7377ff53640fe52223d22c54c46c2f91efa57ebc252cd5b0fb21bbaa",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-DIIS-legacy-energy.json",
       "bytes": 75599,
       "sha256": "6d22231ae36b5f5265a7200997aff6094d164f0bf3ca7d1f24626d3c5f891cea",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-VIBEQC_DF_DIIS_DOTS.json",
       "bytes": 263071,
       "sha256": "0620bef4d0f28fb68d52763489c8b704902a9a6499cde3687a2a339694935cdd",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-VIBEQC_DF_RAW_REUSE.json",
       "bytes": 262896,
       "sha256": "7a2b7b06d36b45fd76acadd55c62e1159c9c55dbcc9882d600cd03c2b36a75d2",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-VIBEQC_DF_RESIDENT_EXCHANGE-energy.json",
       "bytes": 75387,
       "sha256": "2d15f04b625e769f92de43780878740fbf4f982067485bbbfe9559a7a30002c4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-VIBEQC_DF_RESIDENT_EXCHANGE.json",
       "bytes": 504453,
       "sha256": "50bdd8290f268ac379909ba4d41dfb69c377db2a0a3861eb8c8d5feaa0c06847",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/ablations/768-VIBEQC_DF_RESPONSE_BATCHING.json",
       "bytes": 262508,
       "sha256": "62b1bb957e856c9362734f89d6fae95f657f567d1b274244fc99f4dc994944aa",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/baseline/384-clean.json",
@@ -5281,31 +5278,31 @@
       "path": "benchmarks/results/issues388-391-df/measurements/baseline/768-clean.json",
       "bytes": 81562,
       "sha256": "855624047a8682f0ee7dce2bc8fa22b79fbbf50e0d15379be3ba8342a5603338",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/baseline/768-components.json",
       "bytes": 66389,
       "sha256": "65b56d13785d82ae6f9ae14d81711d7fedfb60f79fc257b74c678014d24f2fdf",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/384-forward-center.json",
       "bytes": 72364,
       "sha256": "154736a5c5d58d76aa96dc7ea745750b6c92b145e6bf5202721de35f4d8c0e1c",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/384-forward-legacy.json",
       "bytes": 72361,
       "sha256": "b25c59e71136c39f7144474ca2240ab28e80da269faa0095272b98af1efd0bce",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/384-forward-shared.json",
       "bytes": 72391,
       "sha256": "c5f81a4de069b2003678e0d52edb0e213a1e7ee0b11e7713e6b309b4bec8520d",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/384-reverse-center.json",
@@ -5329,19 +5326,19 @@
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/768-forward-center.json",
       "bytes": 101558,
       "sha256": "43180ce33e04a39c14b5e18ccc516aaa8409298298f3365be84865112fbe624e",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/768-forward-legacy.json",
       "bytes": 101560,
       "sha256": "c2caac6e0e08c0aa66bfa2503f8fbd1217d22248b86c9fb81d92897335cf9dad",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/768-forward-shared.json",
       "bytes": 101451,
       "sha256": "18be8f95af1d7c134ab89eeeca814ba3983351c1701d83e7d1562094c6a89113",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/derivatives/768-reverse-center.json",
@@ -5365,13 +5362,13 @@
       "path": "benchmarks/results/issues388-391-df/measurements/normal/384-normal.json",
       "bytes": 98066,
       "sha256": "4bfbc3b70715ab59fe5f6c8031ab1b61837808c08b1466533c77ae2a49aed077",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/measurements/normal/768-normal.json",
       "bytes": 141252,
       "sha256": "f4b392dbf01faf5ddda0b5c89da168041054d8ea4b62160a21b18534e0d1f4a1",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/ownership.json",
@@ -5383,13 +5380,13 @@
       "path": "benchmarks/results/issues388-391-df/profiles/384.json",
       "bytes": 644686,
       "sha256": "d062765b4f2de94993fb2bd2cdcf28ef820c89f3b54be36731ffd13d39ad1823",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/profiles/768.json",
       "bytes": 706627,
       "sha256": "d2b62c10dd336a3ef51eec6d7a43ef94dc4f30d5da31c37ed7f9c324a07422d0",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/profiles/environment.json",
@@ -5425,7 +5422,7 @@
       "path": "benchmarks/results/issues388-391-df/rejected/panel-reassociation.json",
       "bytes": 205977,
       "sha256": "c8909e019fc997da971969e962e0916a2676a045b71401e742e1d5901b0ca4e4",
-      "checkout": "external"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issues388-391-df/reproduction/baseline.sh",
@@ -5511,5 +5508,7 @@
       "sha256": "cbc180d92da0e1a3c8643b17cd280db597714403c7cecb17d14a221887dc581e",
       "checkout": "retained"
     }
-  ]
+  ],
+  "file_count": 917,
+  "total_bytes": 55852909
 }
