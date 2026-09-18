@@ -51,3 +51,40 @@ def normalized_cartesian_components(angular, weights, scale=1.0):
         if weight != 0.0:
             components.append((quantums, weight))
     return tuple(components)
+
+
+def normalized_radial_primitives(angular, primitives):
+    """Match the native contracted-shell radial normalization exactly once.
+
+    Cartesian angular double-factorial factors remain the public-weight
+    adapter's responsibility. No coordinates, electronic state or engine is
+    needed to normalize fixed basis coefficients.
+    """
+    primitives = tuple(tuple(row) for row in primitives)
+    if type(angular) is not int or not 0 <= angular <= 4 or not primitives:
+        raise ValueError("a nonempty s/p/d/f/g primitive shell is required")
+    if any(
+        len(row) != 2 or not all(math.isfinite(x) for x in row) or row[0] <= 0
+        for row in primitives
+    ):
+        raise ValueError("primitive exponents must be positive and coefficients finite")
+    norm2 = sum(
+        ca * cb * (2 * math.sqrt(a * b) / (a + b)) ** (angular + 1.5)
+        for a, ca in primitives
+        for b, cb in primitives
+    )
+    if not math.isfinite(norm2) or norm2 <= 0:
+        raise ValueError("contracted shell has invalid normalization")
+    result = tuple(
+        (
+            a,
+            c
+            * (2 * a / math.pi) ** 0.75
+            * (4 * a) ** (0.5 * angular)
+            / math.sqrt(norm2),
+        )
+        for a, c in primitives
+    )
+    if any(not math.isfinite(c) for _, c in result):
+        raise ValueError("normalized primitive coefficient overflow")
+    return result

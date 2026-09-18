@@ -2,6 +2,13 @@
   "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function.",
   "files": [
     {
+      "path": "src/runtime/cuda_architecture.hpp",
+      "reason": "Allocation-free CUDA capability attribute query and error propagation for schedule selection; no scientific arithmetic or cached device ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/dft/cuda_ks_kernels.hpp",
       "reason": "Native KS scalar diagnostic, physical-Fock and occupation-stabilization launch contracts; no mathematical bodies.",
       "regions": [],

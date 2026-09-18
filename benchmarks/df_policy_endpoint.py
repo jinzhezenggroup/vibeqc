@@ -21,7 +21,11 @@ import numpy as np
 from vibeqc import Calculator, _native
 
 from benchmarks._cases import benchmark_cases
-from benchmarks.compare_gpu4pyscf_batch import convergence_payload, scaled_geometries
+from benchmarks.compare_gpu4pyscf_batch import (
+    convergence_payload,
+    load_comparison_basis,
+    scaled_geometries,
+)
 from benchmarks.df_component_ledger import aggregate, read_host_trace, read_trace
 
 CASES = {
@@ -92,6 +96,67 @@ def independent_reference(reference, aos, energies, forces, basis_metadata):
     return expected_energy, expected_forces
 
 
+def cpu_reference(case, orbital_basis, auxiliary_basis):
+    """Build an independent explicit-basis oracle outside all native timers."""
+    import pyscf
+    from pyscf import gto, scf
+
+    molecule = gto.M(
+        atom=case.atoms,
+        unit="Bohr",
+        basis=orbital_basis,
+        cart=case.basis_representation == "cartesian",
+        spin=case.multiplicity - 1,
+        charge=case.charge,
+        verbose=0,
+    )
+    oracle = (scf.UHF if case.method == "uhf" else scf.RHF)(molecule).density_fit(
+        auxbasis=auxiliary_basis
+    )
+    oracle.conv_tol, oracle.conv_tol_grad, oracle.max_cycle = 1e-13, 1e-12, 200
+    oracle.direct_scf_tol = 1e-14
+    oracle.kernel()
+    if not oracle.converged:
+        raise RuntimeError("independent CPU reference did not converge")
+    gradient = oracle.nuc_grad_method()
+    gradient.auxbasis_response = True
+    energy, force = np.array([oracle.e_tot]), -gradient.kernel()[None, :, :]
+    if not np.isfinite(energy).all() or not np.isfinite(force).all():
+        raise RuntimeError("independent CPU reference is nonfinite")
+    return (
+        energy,
+        force,
+        {
+            "pyscf_version": pyscf.__version__,
+            "ao_count": molecule.nao,
+            "auxiliary_count": oracle.with_df.auxmol.nao,
+            "orbital_basis": orbital_basis,
+            "auxiliary_basis": auxiliary_basis,
+            "energies_hartree": energy.tolist(),
+            "forces_hartree_per_bohr": force.tolist(),
+            "energy_tolerance": oracle.conv_tol,
+            "gradient_tolerance": oracle.conv_tol_grad,
+            "direct_scf_tolerance": oracle.direct_scf_tol,
+            "auxbasis_response": True,
+        },
+    )
+
+
+def endpoint_errors(energy, force, reference_energy, reference_force):
+    """Keep every reference check shape-strict, including cold and prime calls."""
+    energy, reference_energy = np.asarray(energy), np.asarray(reference_energy)
+    pairs = [(energy, reference_energy)]
+    if force is not None:
+        pairs.append((np.asarray(force), np.asarray(reference_force)))
+    if any(
+        a.shape != b.shape or not np.isfinite(a).all() or not np.isfinite(b).all()
+        for a, b in pairs
+    ):
+        raise RuntimeError("endpoint/reference energy or force arrays are invalid")
+    differences = [float(np.max(np.abs(a - b))) for a, b in pairs]
+    return differences[0], differences[1] if force is not None else None
+
+
 def main():
     """Retain each numerical result before enforcing unchanged strict gates."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -119,9 +184,17 @@ def main():
         help="Run a separate component pass after all clean samples",
     )
     parser.add_argument("--cuda-profile", action="store_true")
+    parser.add_argument(
+        "--shell-work",
+        action="store_true",
+        help="Capture detailed shell work only in the separate component pass",
+    )
     parser.add_argument("--host-trace", action="store_true")
     parser.add_argument("--journal", action="store_true")
     parser.add_argument("--reference", type=Path)
+    parser.add_argument("--cpu-reference", action="store_true")
+    parser.add_argument("--orbital-basis-file", type=Path)
+    parser.add_argument("--auxiliary-basis-file", type=Path)
     parser.add_argument("--source-patch", type=Path)
     parser.add_argument("--warm-checkpoint-in", type=Path)
     parser.add_argument("--warm-checkpoint-out", type=Path)
@@ -155,12 +228,22 @@ def main():
         or (args.expected_iterations is not None and args.expected_iterations < 1)
     ):
         parser.error("requires Slurm, positive repeats and a nonnegative DF budget")
+    if args.shell_work and not args.components_after:
+        parser.error("--shell-work requires --components-after")
+    if args.cpu_reference and args.reference:
+        parser.error("choose one independent reference source")
+    if (
+        args.orbital_basis_file or args.auxiliary_basis_file
+    ) and not args.cpu_reference:
+        parser.error("explicit bases require a fresh --cpu-reference")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.output.exists():
         parser.error("refusing to overwrite evidence")
     if args.warm_checkpoint_out and args.warm_checkpoint_out.exists():
         parser.error("refusing to overwrite the frozen warm checkpoint")
-    if args.skip_cold and (not args.warm_checkpoint_in or not args.reference):
+    if args.skip_cold and (
+        not args.warm_checkpoint_in or not (args.reference or args.cpu_reference)
+    ):
         parser.error("skip-cold requires a frozen checkpoint and independent reference")
     from vibeqc.resources_hf import _CUDA_SCHEDULE_VARIABLES
 
@@ -197,6 +280,26 @@ def main():
             parser.error("cold-control requires a known CUDA schedule NAME=VALUE")
         cold_controls[name] = value
     case = benchmark_cases()[CASES[args.aos]]
+    orbital, cpu_orbital = case.vibeqc_basis, case.pyscf_basis
+    if args.orbital_basis_file:
+        orbital, cpu_orbital = load_comparison_basis(
+            args.orbital_basis_file, case, role="orbital", compute_forces=True
+        )
+    auxiliary, cpu_auxiliary = orbital, cpu_orbital
+    if args.auxiliary_basis_file:
+        auxiliary, cpu_auxiliary = load_comparison_basis(
+            args.auxiliary_basis_file, case, role="auxiliary", compute_forces=True
+        )
+    # The historical explicit JKFIT fixtures have stricter retained gates.
+    energy_gate, force_gate = (
+        (3e-11, 3e-11) if args.auxiliary_basis_file else (1e-9, 1e-8)
+    )
+    screening_tolerance = 1e-14 if args.auxiliary_basis_file else 1e-12
+    fresh_reference = (
+        cpu_reference(case, cpu_orbital, cpu_auxiliary) if args.cpu_reference else None
+    )
+    if fresh_reference is not None and fresh_reference[2]["ao_count"] != args.aos:
+        parser.error("explicit orbital basis AO count differs from --aos")
     library = Path(os.environ["VIBEQC_LIBRARY"]).resolve()
     native = _native.load_library()
     native.vibeqc_get_source_identity.restype = ctypes.c_char_p
@@ -223,15 +326,15 @@ def main():
         "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
         "scientific_settings": {
             "density_fitting_memory_budget_bytes": args.df_budget,
-            "basis": str(case.vibeqc_basis),
+            "basis": cpu_orbital,
             "basis_representation": case.basis_representation,
-            "auxiliary_basis": "same as orbital basis",
+            "auxiliary_basis": cpu_auxiliary,
             "metric_relative_threshold": 1e-10,
             "method": case.method,
             "energy_tolerance": 1e-12,
             "density_tolerance": 1e-10,
             "max_iterations": 100,
-            "screening_tolerance": 1e-12,
+            "screening_tolerance": screening_tolerance,
             "geometries_bohr": case.atoms,
         },
         "git_head": subprocess.check_output(
@@ -247,6 +350,16 @@ def main():
         "measured_properties": ["energy"] if args.energy_only else ["energy", "forces"],
         "expected_iterations": args.expected_iterations,
         "cold_controls": cold_controls,
+        "gates": {"energy": energy_gate, "force": force_gate},
+        "cpu_reference": None if fresh_reference is None else fresh_reference[2],
+        "basis_file_sha256": {
+            role: hashlib.sha256(path.read_bytes()).hexdigest()
+            for role, path in (
+                ("orbital", args.orbital_basis_file),
+                ("auxiliary", args.auxiliary_basis_file),
+            )
+            if path is not None
+        },
         "samples": [],
     }
 
@@ -271,13 +384,13 @@ def main():
     os.environ.update(cold_controls)
     calculator = Calculator(
         method=case.method,
-        basis=case.vibeqc_basis,
+        basis=orbital,
         basis_representation=case.basis_representation,
         device="cuda",
         density_fitting="cuda",
-        auxiliary_basis=case.vibeqc_basis,
+        auxiliary_basis=auxiliary,
         density_fitting_memory_budget_bytes=args.df_budget,
-        screening_tolerance=1e-12,
+        screening_tolerance=screening_tolerance,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
         max_iterations=100,
@@ -336,6 +449,20 @@ def main():
                 os.environ[name] = value
         expected_energy = cold.energies
         expected_forces = np.array([item.forces for item in cold.items])
+        if fresh_reference is not None:
+            expected_energy, expected_forces = fresh_reference[:2]
+            cold_errors = endpoint_errors(
+                cold.energies,
+                np.array([item.forces for item in cold.items]),
+                expected_energy,
+                expected_forces,
+            )
+            payload["initialization_errors"] = cold_errors
+            save()
+            if cold_errors[0] > energy_gate or cold_errors[1] > force_gate:
+                raise RuntimeError(
+                    "initialization failed independent energy/force gates"
+                )
         if args.reference:
             reference_bytes = args.reference.read_bytes()
             expected_energy, expected_forces = independent_reference(
@@ -361,6 +488,25 @@ def main():
             phase = "diagnostic-" if diagnostic else ""
             select_policy(policy)
             prime, prime_seconds = execute(batch)
+            if fresh_reference is not None:
+                prime_errors = endpoint_errors(
+                    prime.energies,
+                    None
+                    if args.energy_only
+                    else np.array([item.forces for item in prime.items]),
+                    expected_energy,
+                    expected_forces,
+                )
+                if prime_errors[0] > energy_gate or (
+                    prime_errors[1] is not None and prime_errors[1] > force_gate
+                ):
+                    payload["failed_prime"] = {
+                        "policy": policy,
+                        "repeat": repeat,
+                        "errors": prime_errors,
+                    }
+                    save()
+                    raise RuntimeError("prime failed independent energy/force gates")
             trace = args.output.with_suffix(f".{phase}{repeat}-{policy}.jsonl")
             host_trace = args.output.with_suffix(
                 f".{phase}{repeat}-{policy}.host.jsonl"
@@ -378,15 +524,22 @@ def main():
                 cudart = ctypes.CDLL("libcudart.so.12")
                 if cudart.cudaProfilerStart() != 0:
                     raise RuntimeError("cudaProfilerStart failed")
+            previous_work = os.environ.get("VIBEQC_DF_SHELL_WORK")
             previous_counters = os.environ.get("VIBEQC_DF_SHELL_COUNTERS")
             if diagnostic:
                 os.environ["VIBEQC_DF_SHELL_COUNTERS"] = "1"
+                if args.shell_work:
+                    os.environ["VIBEQC_DF_SHELL_WORK"] = "1"
             result, seconds = execute(batch)
             if diagnostic:
                 if previous_counters is None:
                     os.environ.pop("VIBEQC_DF_SHELL_COUNTERS", None)
                 else:
                     os.environ["VIBEQC_DF_SHELL_COUNTERS"] = previous_counters
+            if previous_work is None:
+                os.environ.pop("VIBEQC_DF_SHELL_WORK", None)
+            else:
+                os.environ["VIBEQC_DF_SHELL_WORK"] = previous_work
             if args.cuda_profile and cudart.cudaProfilerStop() != 0:
                 raise RuntimeError("cudaProfilerStop failed")
             os.environ.pop("VIBEQC_DF_PROGRESS_TRACE", None)
@@ -478,9 +631,9 @@ def main():
             )
             save()
             print(phase + policy, repeat, seconds, sample["iterations"], flush=True)
-            if sample["maximum_energy_error"] > 1e-9 or (
+            if sample["maximum_energy_error"] > energy_gate or (
                 sample["maximum_force_error"] is not None
-                and sample["maximum_force_error"] > 1e-8
+                and sample["maximum_force_error"] > force_gate
             ):
                 raise RuntimeError("unchanged DF energy/force gate failed")
             if args.expected_iterations is not None and any(

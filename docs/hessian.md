@@ -7,6 +7,14 @@ written before any assembly code exists, so the term list and the sign
 conventions are fixed in one place instead of being reverse-engineered from
 three different providers later.
 
+## Current implementation status
+
+The native CPU tools path now consumes a VibeQC RHF snapshot and generated
+first/second integral derivatives, with native J/K response. PySCF is confined
+to external comparison oracles. The qualified small-system domain and remaining
+#180 production/GPU/HVP work are described below; a tiny analytic Hessian does
+not close the whole Hessian/HVP roadmap or expose a public Calculator API.
+
 ## Scope of this slice
 
 Slice A targets a **tiny dense analytic RHF Hessian** with component checks, on
@@ -246,7 +254,13 @@ provider chain. That integration must consume #178 generated second-integral
 blocks and #179's shared response operator/solver. The dense reference stays
 independent so it can test that future implementation. The occupied CPHF block
 is fixed by the metric gauge, and its induced density contributes to the virtual
-response; a correctly constructed reduced occupied/virtual solve is equivalent.
+response. `_first_order_mo1_e1_vir_only` implements the equivalent reduced
+(nvir, nocc) solve: the known occupied metric response is eliminated into the
+right-hand side as `b_v - F_vo b_o`. Independent dense full/reduced regressions
+compare orbital response, occupied-energy response and the assembled Hessian
+for H2, water and the multi-virtual d-shell fixture. These tests establish the
+need to include the occupied metric contribution, not a need to iterate the
+redundant full response space.
 
 `System.derive()` differences fresh-molecule integrals. `hessian_components()`
 returns nuclear, core, overlap/Pulay, two-electron and relaxation contributions.
@@ -274,3 +288,105 @@ and seven virtual orbitals. The tests additionally cover genuine 7-AO water
 STO-3G. No complete-method performance or generated-provider claim is made.
 
 See the [reference-boundary rationale](../.agents/notes/implemented/numerics/2026-09-17-hessian-reference-boundary.md).
+
+## Bounded native CPU analytic RHF integration
+
+`NativeRHFState` and `analytic_hessian` provide a native-input tools integration
+for **at most 12 Cartesian AOs and four atoms**, with a closed-shell, all-electron,
+conventional unscreened RHF reference. The supported integral primitives cover
+s/p/d/f; end-to-end default tests qualify H2 and STO-3G water, while the 12-AO
+custom d-shell case is an explicitly requested slow test. This is not a public
+production-size Hessian, CUDA Hessian, DFT/DF/ECP/UHF Hessian, or molecular HVP
+capability. Those remain separate #180 acceptance items.
+
+### State and derivative ownership
+
+The calculation side requires no PySCF installation and imports no Hessian
+reference oracle. The chain is:
+
+1. `NativeSource` owns the native geometry/basis and integral source.
+   `export_rhf` runs the existing native CPU RHF solver and exports a checked
+   immutable `ReferenceSnapshot`. Its existing small-system bridge canonicalizes
+   the final Fock with NumPy on the CPU and records the measured physical/density
+   residuals; it is not a GPU-resident or generated SCF implementation.
+2. `NativeRHFState` binds that same snapshot to its live source. Geometry, basis,
+   representation, Hamiltonian, electron count, dimension, and source lifetime
+   are checked. Hessian helpers do not rerun SCF or manufacture convergence data.
+3. `first_order.generated_first_order` obtains S/T/V and ERI first derivatives
+   from the existing compiler DAGs. The explicit CPU first-component adapter
+   emits bounded Cartesian component subsets and streams primitive contractions
+   through the native runtime template. It introduces no new integral recurrence.
+4. ERI first derivatives are immediately contracted with the fixed reference
+   density into the frozen-Fock perturbation. Nuclear-attraction operator-center
+   motion and all basis-center motions are accumulated onto physical atoms.
+   No molecular `3N * NAO^4` first-derivative tensor is retained.
+5. `build_rhf_nuclear_rhs` constructs the symmetric-gauge RHS, including the
+   known metric-density Fock term. #179 `RHFResponseOperator` / true-residual
+   GMRES uses `NativeJKBackend`, not the dense AO response oracle.
+6. The explicit second-derivative skeleton uses #178 generated providers.
+   Two-electron energy weights are folded per shell quartet rather than stored
+   as a molecular four-index tensor. Nuclear repulsion is closed-form.
+   Relaxation evaluates every ordered atom/axis pair independently; raw symmetry
+   is checked without copying one triangle onto the other.
+
+The known occupied response is `U_ij = -S_ij/2`; the virtual response is
+`U_ai = x_ia.T - S_ai/2`. Exact elimination of the known occupied block is
+algebraically equivalent to the full redundant reference solve. It is the
+occupied metric contribution, not redundant iteration, that must be retained.
+
+### Usage and resource boundaries
+
+```python
+from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_hessian import NativeRHFState, analytic_hessian
+
+with NativeSource([(1, (0, 0, 0)), (1, (0, 0, 1.4))], basis="sto-3g") as source:
+    state = NativeRHFState.from_source(source, tolerance=1e-12)
+    components = analytic_hessian(state)
+    hessian = components["total"]  # (atom, atom, xyz, xyz), Eh / Bohr**2
+```
+
+The caller owns `source` lifetime and must keep it open while evaluating a
+Hessian. State-bound first-order matrices are cached as immutable arrays;
+a changed geometry requires a new source/state. Compiler artifacts are cached
+under `.artifacts` by default; pass `cache=...` to `from_source` to choose a
+separate writable location. A C++ compiler is required for the generated kernels.
+
+First-component records and component outputs have an explicit numeric budget.
+The complete tools integration still retains all coordinate H1/S1 and response
+vectors, the full molecular Hessian, and the existing tiny native SCF workspace.
+It does not claim #180's global memory-budgeted production assembly or a
+matrix-free molecular HVP. Python orchestration and cold compilation can be
+expensive; no performance advantage is asserted.
+
+An optional supplied `relax` tensor must be finite, real and exactly
+`(natoms, natoms, 3, 3)`. It is a diagnostic component override, not evidence
+that a native electronic-response solve occurred. Unsupported state domains and
+closed/mismatched sources fail before derivative-provider execution.
+
+### Verification
+
+`tests/python/test_hessian_analytic.py` checks the following separately:
+
+- A fresh-process test blocks imports of PySCF and the semi-numerical Hessian
+  reference, and forbids the dense native derivative and dense AO response
+  oracles while running the complete native H2 chain.
+- Generated frozen-Fock/overlap perturbations are compared against an independent
+  native derivative oracle used only on the assertion side.
+- The final Hessian and individual components are compared with optional external
+  PySCF analytic and finite-difference references at the same exact basis records.
+- Three-step directional differences of VibeQC analytic forces independently
+  test the total Hessian; raw symmetry and per-axis translation identities are
+  checked before any presentation operation.
+- Wrong relaxation tensors, out-of-domain sizes, unrelated references, repeated
+  SCF attempts, and closed sources are explicitly tested. The earlier reduced
+  CPHF regression still verifies orbital, occupied-energy and Hessian equivalence.
+
+`tests/python/test_first_derivatives_native.py` separately checks generated
+primitive components, Cartesian normalization and coincident-center scatter,
+metadata/resource rejection, late-chunk failure isolation, and native output
+publication. PySCF-dependent comparisons may skip when the optional oracle is
+not installed; the no-oracle native test must not skip for that reason.
+
+See the [native first-order source decision](../.agents/notes/implemented/numerics/2026-09-19-hessian-native-first-order-sources.md)
+for the superseded PySCF-backed integration design and its replacement.

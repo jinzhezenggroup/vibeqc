@@ -64,7 +64,9 @@ python tools/benchmark_df_values.py \
 | `VIBEQC_DF_FINAL_PROJECTION` | Reuse under the shared resident RHF work/capacity policy | `off`, `reuse` |
 
 The qualified sm_120 derivative manifest chooses cooperative Rys/compact for
-its 18 s/p/d entries. Missing architectures/classes retain polynomial execution;
+its 18 s/p/d entries and auxiliary-f `003/103/113/203/213`. These five
+classes require only the qualified three/four-root DF quadrature. The five-root
+`223` class and missing architectures/classes retain polynomial execution;
 availability alone never qualifies a new entry. Lowering selection does not
 change the separate consumer, weight-layout or primitive-packet admission rules.
 See the [cooperative lowering qualification](../.agents/notes/implemented/performance/2026-09-17-cooperative-df-rys.md)
@@ -90,6 +92,44 @@ Mathematical lowering is selected only through the class manifest. Historical
 checkpoints may retain retired controls as source provenance; importing their
 density requires `allow_warm=True`, and re-export preserves those controls.
 See the [selector retirement note](../.agents/notes/implemented/compatibility/2026-09-16-df-math-selector-retirement.md).
+
+## Derivative consumer admission
+
+`src/scf/df_derivative_policy.hpp` owns the initial conservative sm_120 work
+profile. This is an empirical scheduling envelope, not a universal latency
+prediction or a mathematical capability declaration:
+
+- Full shell execution requires estimated public weight work `N_AO² * N_aux`
+  of at least `2^18`.
+- Signature packets additionally require estimated ordered primitive work
+  `P_orbital² * P_auxiliary` of at least `2^22`, with contraction-length
+  variation within an angular class. `P` sums primitive counts over shells.
+
+Comparisons use overflow-safe ceiling divisions. Unknown architectures and
+smaller work retain the generic/angular-only alternatives. The existing
+source, metric, derivative schedule, representation, response-state and arena
+checks still decide correctness eligibility. The profile does not authorize
+new mathematical kernels, change precision or screening, or bypass allocations.
+Generated architecture/class manifests remain the separate lowering authority.
+
+The shell and packet rules generalize across AO/auxiliary ratios and non-water
+fixtures without storing a molecular histogram. They do not replace the separate
+packed occupied-response layout selector. That remaining selector and wider
+profile qualification stay under #444/#445; no universal cross-device speedup
+is implied.
+
+Schedule lookups query only CUDA compute-capability attributes through
+`runtime/cuda_architecture.hpp`. They do not fetch the complete device property
+record per auxiliary panel. The helper neither caches device ordinals nor masks
+runtime errors; full product identity is queried only where a separate retained
+compatibility boundary still requires it.
+
+The [decision note](../.agents/notes/implemented/performance/2026-09-19-df-work-admission.md)
+and [evidence](../benchmarks/results/issue445-df-work-admission/README.md)
+retain small-system losses, holdouts, rejected query overhead, numerical gates
+and the measured domain. `benchmarks.df_admission_probe` compares existing
+controls against an independent full-force reference; it never edits this
+profile or promotes a result automatically.
 
 ## Force screening contract
 
@@ -154,3 +194,8 @@ product-name whitelist.
 Qualification and rejected alternatives are retained in the
 [decision note](../.agents/notes/implemented/performance/2026-09-16-df-tuning-and-projection.md)
 and [evidence bundle](../benchmarks/results/issue404-407-df/README.md).
+
+The [auxiliary-f qualification](../.agents/notes/implemented/performance/2026-09-19-df-auxiliary-f-rys.md)
+adds these classes without changing the separate workload-based consumer or
+primitive-packet policy. Candidate availability is not itself a promotion;
+independent derivative and full-endpoint evidence remains mandatory.
