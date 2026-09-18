@@ -225,3 +225,44 @@ def test_all_torch_oracle_contains_both_composite_hessian_terms(xyz):
         lambda r: r.square().sum().square(), xyz
     )
     assert hessian[0, 0, 0, 0].item() == 12.0
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [torch.bool, torch.int32, torch.int64, torch.complex64, torch.complex128],
+)
+def test_non_real_floating_coordinates_never_reach_backend(route, dtype):
+    coordinates = torch.tensor([[0, 0, -1], [0, 0, 1]], dtype=dtype)
+    calculator = QuadraticCalculator()
+    with pytest.raises(TypeError, match="real floating-point tensor"):
+        evaluate(route, coordinates, calculator)
+    assert calculator.calls == []
+
+
+def test_coordinate_dtype_is_checked_before_default_calculator(monkeypatch, route):
+    def unexpected_calculator(**kwargs):
+        pytest.fail("invalid coordinate dtype constructed a native calculator")
+
+    monkeypatch.setattr("vibeqc.torch.Calculator", unexpected_calculator)
+    coordinates = torch.ones((2, 3), dtype=torch.int64)
+    with pytest.raises(TypeError, match="real floating-point tensor"):
+        evaluate(route, coordinates, None)
+
+
+@pytest.mark.parametrize(
+    "dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64]
+)
+def test_real_floating_coordinate_dtypes_preserve_energy_and_backward(route, dtype):
+    coordinates = torch.tensor(
+        [[0.25, -0.5, 1.0], [0.0, 0.75, -1.5]],
+        dtype=dtype,
+        requires_grad=True,
+    )
+    result = evaluate(route, coordinates, QuadraticCalculator())
+    assert result.dtype == dtype
+    assert result.device == coordinates.device
+    torch.testing.assert_close(
+        result, coordinates.detach().double().square().sum().to(dtype)
+    )
+    result.backward()
+    torch.testing.assert_close(coordinates.grad, 2 * coordinates.detach())
