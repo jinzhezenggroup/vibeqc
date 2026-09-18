@@ -116,6 +116,38 @@ def reconstruct_domain(shells, panels, pair_mode, auxiliary_shells=None):
     return result
 
 
+def _primitive_work_domains(expected, signature_policy):
+    """Map host signatures to the actual trace grouping, retaining exact costs.
+
+    Angular-only launches report the documented p0_0_0 sentinel: they do not
+    claim that their primitives have zero length. A sparse angular group only
+    reports how many shell tasks were active, so its possible primitive work
+    is bounded by the cheapest/most expensive host tasks with that count.
+    """
+    if signature_policy not in (0, 1, 2):
+        raise ValueError("unknown primitive signature policy")
+    domains = defaultdict(Counter)
+    for signature, tasks in expected.items():
+        key = signature[:3] + (0, 0, 0) if signature_policy == 0 else signature
+        domains[key][math.prod(signature[3:])] += tasks
+    return domains
+
+
+def _active_primitive_bounds(costs, active):
+    if active < 0 or active > sum(costs.values()):
+        raise ValueError("active shell count exceeds visited shells")
+
+    def bound(reverse):
+        remaining, work = active, 0
+        for cost, count in sorted(costs.items(), reverse=reverse):
+            used = min(remaining, count)
+            work += cost * used
+            remaining -= used
+        return work
+
+    return bound(False), bound(True)
+
+
 def kernel_activity(database_path, record):
     """Read actual Nsight durations, requiring the traced class launch domain.
 
@@ -218,7 +250,10 @@ def reduce_work(record, shells, auxiliary_shells=None):
     expected = reconstruct_domain(
         shells, panels, counters["shell_work_pair_mode"], auxiliary_shells
     )
-    if set(expected) != set(signatures):
+    work_domains = _primitive_work_domains(
+        expected, counters.get("shell_primitive_signature_policy", 1)
+    )
+    if set(work_domains) != set(signatures):
         raise ValueError("device signature domain differs from the host reconstruction")
     if set(classes) != {signature[:3] for signature in signatures}:
         raise ValueError("device class domain differs from its signatures")
@@ -229,14 +264,16 @@ def reduce_work(record, shells, auxiliary_shells=None):
             raise ValueError(f"incomplete signature work counters: {signature}")
         if any(type(value) is not int or value < 0 for value in values.values()):
             raise ValueError("work counters must be nonnegative integers")
-        tasks = expected[signature]
+        costs = work_domains[signature]
+        tasks = sum(costs.values())
         if values["shell_tasks"] != tasks:
             raise ValueError(f"host/device shell count differs: {signature}")
         active = values["active_shell_tasks"]
         if active > tasks:
             raise ValueError("active shell count exceeds visited shells")
-        primitives = active * math.prod(signature[3:])
-        if primitives != values["primitive_products"]:
+        lower, upper = _active_primitive_bounds(costs, active)
+        primitives = values["primitive_products"]
+        if not lower <= primitives <= upper:
             raise ValueError(f"host/device primitive count differs: {signature}")
         roots = values.get("rys_evaluations", 0)
         if not (

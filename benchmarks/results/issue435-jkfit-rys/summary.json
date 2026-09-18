@@ -264,5 +264,6 @@
     }
   ],
   "external_timing": "No fresh GPU4PySCF timing comparison",
-  "reproduction": "README.md"
+  "reproduction": "README.md",
+  "final_default_qualification": "default-summary.json"
 }

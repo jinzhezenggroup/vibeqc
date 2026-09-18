@@ -20,6 +20,71 @@ fixed explicit shell/packet consumer. Its `auto` arm means the old qualified
 whole-default path. Do not confuse this with the separate final default-path
 cross-binary qualification.
 
+## Final automatic-path qualification
+
+The combined build is now independently qualified in its ordinary default
+configuration, without `WEIGHTED_EXECUTION`, `DERIVATIVE_PAIRS`, packet, schedule,
+response or occupied-exchange overrides. All three arms use `SHELL_POLICY=auto`.
+The old arm already contains #480; it is **not** the older multi-second baseline
+from the opening issue description.
+
+Seven round-major interleaved triples per case use fresh processes and identical
+frozen density blobs. Each invocation independently reconstructs its exact CPU
+PySCF reference and performs a complete untimed prime before one clean sample.
+All 42 clean measurements finish before six separate diagnostic invocations.
+
+| Orbital/auxiliary | Before general admission (post-#480) | #486 admission only | #486 + this PR | Combined reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 96/464 | 400.069681 ms | 116.220613 ms | 86.454980 ms | 78.39% (4.63x) |
+| 192/928 | 341.615192 ms | 303.464744 ms | 248.064558 ms | 27.38% (1.38x) |
+
+The incremental f-kernel reduction versus #486 is 25.61% / 18.26%. All seven
+combined/baseline and combined/parent pairs improve. Every arm satisfies the
+predeclared relative median-absolute-deviation threshold of 5%; the observed
+maximum is below 0.60%. All raw measurements are retained, without outlier
+removal. Warm SCF updates are matched at two / three, and traced J/K/eigensolve/
+physical-final-state calls match across all three arms. Density SHA-256 and the
+actual loaded native source identity are verified per invocation, not inferred
+from a file path or the benchmark driver's current Git commit.
+
+The largest error across the 42 clean samples is 3.184e-12 Eh and
+1.920e-12 Eh/Bohr, within the unchanged 3e-11 / 3e-11 gates. The final trace
+selects angular grouping for 96/464, signature packets for 192/928, Rys for all
+five newly qualified f classes, and polynomial for `223`. The class work agrees
+with host reconstruction and the preceding admitted path; no screening or
+scientific work is removed. A postprocessor fix handles the angular-only
+`p0_0_0` signature sentinel as a group of real primitive lengths, not literal
+zero primitives. For sparse angular groups, host-task costs give explicit tight
+bounds; full groups and concrete signatures retain exact primitive counts.
+This reporting fix does not change the measured CUDA library.
+
+`default-96.json` and `default-192.json` retain all 21 clean result documents per
+case plus three clearly separated diagnostic documents. `default-summary.json`
+records paired ratios, branch counts, numerical maxima and the operator ledger;
+`default-campaign.json` records the actual invocation ordering, return codes,
+source bases and input hashes. `final-ledger-96.json` and
+`final-ledger-192.json` contain the fully reduced and independently reconstructed
+class/signature work. Only repeated diagnostic `_work_` counter fields are
+omitted from endpoint documents, with the exact predicate and raw hashes
+recorded. No clean result field is removed.
+
+The combined Release library SHA-256 is
+`05ba2fd4c7e5996dc2405928a3c3b939d85e0594644c14a70e71bca823e639e5`;
+its actual native identity is
+`b028248591d664fd4aff1751b90c951e03f89bf1fb3da90b5bfcdd44327e3a23`.
+Reconstruct `4168e93978d3df5f686bda6ac67e6e3a229f3fa8` plus `final.patch`;
+`final-build-identity.json` binds each maintained and generated source file.
+The preceding arms' exact source bases, patches, hashes and native identities
+are in `default-summary.json`; their patches are retained by the existing
+`issue445-df-rys-admission/candidate.patch` and
+`issue445-df-work-admission/candidate.patch` campaigns. The benchmark
+`git_head` identifies the driver checkout, not an older compiled binary.
+
+The final, unmodified compiled implementation passes **40 GPU regression tests**
+covering the parent automatic-admission suite and the complete practical suite
+(`validation.json`, Slurm job 10023). It is ready for review together with #486;
+this evidence does not imply that either PR has already merged.
+
 ## Same-binary causal experiment
 
 RTX 5090; CUDA 12.9.1 / nvcc 12.9.86; GNU C++ 11.4; Release `-O3 -DNDEBUG`;

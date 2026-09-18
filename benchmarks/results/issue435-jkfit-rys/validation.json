@@ -76,5 +76,32 @@
     "seconds": 8.27,
     "compiler_structure_modules": 181,
     "compiler_dependency_errors": 0
+  },
+  "final_integration_gpu_suite": {
+    "source_base": "4168e93978d3df5f686bda6ac67e6e3a229f3fa8",
+    "source_patch": "final.patch",
+    "library_sha256": "05ba2fd4c7e5996dc2405928a3c3b939d85e0594644c14a70e71bca823e639e5",
+    "native_source_identity": "b028248591d664fd4aff1751b90c951e03f89bf1fb3da90b5bfcdd44327e3a23",
+    "command": "pytest tests/python/test_df_derivative_auto_cuda.py tests/python/test_df_practical_response_cuda.py -q",
+    "passed": 40,
+    "skipped": 0,
+    "seconds": 167.23,
+    "slurm_job_id": "10023",
+    "log_sha256": "c025bd7fb4085a46fbfd1a89229595fe45f933fee20346d66e4147f1d2e0c7ea"
+  },
+  "final_ledger_tests": {
+    "command": "pytest tests/python/test_df_shell_work_ledger.py -q",
+    "passed": 32,
+    "skipped": 0,
+    "seconds": 0.28,
+    "scope": "Includes six new angular-only sentinel and sparse mixed-primitive bounds controls; final default traces both reduce successfully.",
+    "reporting_fix_history": "Initial final-96 reduction rejected the angular-only p0_0_0 sentinel; the reducer now reconstructs that documented grouping rather than treating zero sentinels as primitive lengths. No compiled math or measured timing was changed."
+  },
+  "final_host_suite": {
+    "command": "pytest tests/python/test_df_derivative_policy.py tests/python/test_df_policy_endpoint.py tests/python/test_df_shell_work_ledger.py tests/python/test_df_tuning.py tests/python/test_df_policy.py tests/python/test_cuda_ownership.py -q",
+    "passed": 103,
+    "skipped": 0,
+    "seconds": 8.18,
+    "log_sha256": "f9f5e04231368ec784076c77b9173fc1b2a724a978734e2e91827e64b2ce2720"
   }
 }

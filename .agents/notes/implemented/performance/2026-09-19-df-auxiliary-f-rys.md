@@ -60,6 +60,23 @@ checking the remaining component work. Detailed counters are intrusive and
 never mixed into clean endpoint medians; the existing paired runner now also
 accepts exact explicit bases and fresh independent references.
 
+## Final default integration
+
+The combined default build passes 40 GPU regressions. Seven interleaved clean
+triples compare pinned post-#480, #486-only and combined default execution under
+one protocol, with identical frozen densities and no route overrides. Complete
+96/464 wall time changes 400.070 -> 116.221 -> 86.455 ms; 192/928 changes
+341.615 -> 303.465 -> 248.065 ms. All paired differences improve, relative MAD
+stays below 0.60%, and branch/operator work matches. The incremental f-only
+benefit on the actual admitted defaults is 25.61% and 18.26%. These timings are
+not a comparison against the old multi-second issue-opening benchmark.
+
+The final angular-only trace uses a p0_0_0 group sentinel. Its postprocessor now
+collapses host primitive signatures into that angular group and preserves their
+exact task-cost distribution. Sparse groups have explicit tight active-work
+bounds; dense groups retain exact work. This reporting-only correction was
+validated against both default traces and six additional host cases.
+
 ## Consequences and revisit triggers
 
 Default execution combines the general workload policy with the qualified

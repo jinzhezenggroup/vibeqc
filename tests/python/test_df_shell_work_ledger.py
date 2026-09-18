@@ -1,6 +1,7 @@
 """Reject inconsistent scientific work evidence without requiring a GPU."""
 
 import copy
+import math
 import sqlite3
 from collections import Counter
 from itertools import product
@@ -263,3 +264,44 @@ def test_shared_recurrence_work_is_counted_once_per_primitive(
     else:
         with pytest.raises(ValueError, match="root/recurrence"):
             reduce_work(sss_record, [(0, 2, 0, 1)])
+
+
+@pytest.mark.parametrize("primitive_delta", (-1, 0, 1))
+def test_angular_group_zero_signature_is_a_sentinel(sss_record, primitive_delta):
+    counters = sss_record["counters"]
+    counters["shell_primitive_signature_policy"] = 0
+    for key in list(counters):
+        if "_p2_2_2_" in key:
+            counters[key.replace("_p2_2_2_", "_p0_0_0_")] = counters.pop(key)
+    counters["shell_000_p0_0_0_work_primitive_products"] += primitive_delta
+    if primitive_delta:
+        with pytest.raises(ValueError, match="primitive count differs"):
+            reduce_work(sss_record, [(0, 2, 0, 1)])
+    else:
+        assert (
+            reduce_work(sss_record, [(0, 2, 0, 1)])["totals"]["primitive_products"] == 8
+        )
+
+
+@pytest.mark.parametrize("policy", (0, 1, 2))
+def test_sparse_angular_work_bounds_use_host_primitive_costs(policy):
+    from benchmarks.df_shell_work_ledger import (
+        _active_primitive_bounds,
+        _primitive_work_domains,
+    )
+
+    expected = Counter({(1, 0, 3, 1, 2, 3): 2, (1, 0, 3, 4, 2, 3): 3})
+    domains = _primitive_work_domains(expected, policy)
+    if policy == 0:
+        costs = domains[(1, 0, 3, 0, 0, 0)]
+        assert costs == {6: 2, 24: 3}
+        assert _active_primitive_bounds(costs, 0) == (0, 0)
+        assert _active_primitive_bounds(costs, 1) == (6, 24)
+        assert _active_primitive_bounds(costs, 3) == (36, 72)
+        assert _active_primitive_bounds(costs, 5) == (84, 84)
+        with pytest.raises(ValueError, match="active shell count"):
+            _active_primitive_bounds(costs, 6)
+    else:
+        assert set(domains) == set(expected)
+        for key, costs in domains.items():
+            assert _active_primitive_bounds(costs, 1) == (math.prod(key[3:]),) * 2

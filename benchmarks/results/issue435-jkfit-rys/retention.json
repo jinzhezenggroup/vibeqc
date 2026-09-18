@@ -102,6 +102,16 @@
       "retained_sha256": "c07b1ed8f4c147d8ab7c05af11ce903beecd519ca870fc4b60e01375bc7f7fc4",
       "retained_bytes": 108912,
       "transformation": "JSON whitespace only; verified parsed equality"
+    },
+    "default-96.json": {
+      "retained_sha256": "79292b6129143ac0087599c2c139ebfc2cb3225e7fa941871ca682be4d2a4e76",
+      "retained_bytes": 430945,
+      "transformation": "Consolidation of 21 full clean result documents and 3 separate diagnostics; original hashes and precise diagnostic-only omission are included in original_files. All clean results are unchanged."
+    },
+    "default-192.json": {
+      "retained_sha256": "7fd2b92c73ae54f813890dde95c64d2ab86716795d7b4f6f771aeff75924cfc5",
+      "retained_bytes": 520732,
+      "transformation": "Consolidation of 21 full clean result documents and 3 separate diagnostics; original hashes and precise diagnostic-only omission are included in original_files. All clean results are unchanged."
     }
   },
   "not_committed": "Build/test logs, native binaries, checkpoints and raw profiler/trace streams stay outside the source checkout; retained reduced ledgers include original trace hashes."
