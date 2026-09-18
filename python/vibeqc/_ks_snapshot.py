@@ -18,6 +18,54 @@ from .batch import PreparedBatch
 from .ks import SCF_DOMAIN
 
 
+def _scf_xc_points(library, pbe, rho, gradient):
+    """Evaluate the exact native SCF point model without an AO contraction."""
+    if type(pbe) is not bool:
+        raise TypeError("SCF point evaluator requires a boolean PBE flag")
+    raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
+    if (
+        np.iscomplexobj(raw_rho)
+        or np.iscomplexobj(raw_gradient)
+        or raw_rho.ndim != 2
+        or raw_rho.shape[0] != 2
+        or raw_gradient.shape != (2, raw_rho.shape[1], 3)
+        or raw_rho.shape[1] == 0
+    ):
+        raise ValueError("SCF point evaluator requires rho[2,n] and gradient[2,n,3]")
+    rho = np.ascontiguousarray(raw_rho, dtype=np.float64)
+    gradient = np.ascontiguousarray(raw_gradient, dtype=np.float64)
+    output = np.empty((rho.shape[1], 9), dtype=np.float64)
+    try:
+        evaluate = library.vibeqc_xc_point_batch_v1
+    except AttributeError as error:
+        raise NotImplementedError("native library lacks the #163-A XC point bridge") from error
+    evaluate.argtypes = [
+        ct.c_uint32,
+        ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double),
+        ct.c_size_t,
+        ct.POINTER(ct.c_double),
+        ct.c_size_t,
+    ]
+    evaluate.restype = ct.c_int
+    _native.check(
+        library,
+        evaluate(
+            int(pbe),
+            rho.ctypes.data_as(ct.POINTER(ct.c_double)),
+            gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
+            rho.shape[1],
+            output.ctypes.data_as(ct.POINTER(ct.c_double)),
+            output.size,
+        ),
+    )
+    return {
+        "energy": immutable(output[:, 0]),
+        "rho": immutable(output[:, 1:3].T),
+        "gradient": immutable(output[:, 3:].reshape(-1, 2, 3).transpose(1, 0, 2)),
+    }
+
+
 class NativeKsSnapshot:
     """Own one native snapshot and check its current batch before consumption."""
 
@@ -122,6 +170,7 @@ class NativeKsSnapshot:
         from ._dft_gradient import (
             StationaryKsIdentity,
             native_ao_geometry_identity,
+            scf_regularization_identity,
             xc_geometry_topology_identity,
         )
 
@@ -229,10 +278,9 @@ class NativeKsSnapshot:
             grid_identity=grid.identity,
             topology_identity=xc_geometry_topology_identity(basis, grid),
             functional_identity=spec.identity,
-            # Native SCF's scaled tail/spin extension is a distinct energy
-            # model from generated interior-v1. Never relabel it to authorize
-            # unsupported generated molecular derivatives.
-            regularization_identity=canonical_hash({"scf_domain": SCF_DOMAIN}),
+            # The derivative bridge consumes this exact SCF point model;
+            # interior-v1 remains a separate diagnostic contract.
+            regularization_identity=scf_regularization_identity(),
             provider_identity=canonical_hash(
                 {
                     "provider": "native-cuda-exact-j-fp64",
@@ -260,6 +308,13 @@ class NativeKsSnapshot:
             physical=True,
             _source=self,
         )
+
+    def evaluate_xc_points(self, pbe, rho, gradient):
+        """Return SCF-domain point energy and Cartesian first derivatives."""
+        self.check_current()
+        values = _scf_xc_points(self._library, pbe, rho, gradient)
+        self.check_current()
+        return values
 
     def validate(self, state):
         """Reject copied labels and even self-consistent replacement matrices."""

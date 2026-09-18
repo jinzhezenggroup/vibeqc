@@ -8,6 +8,7 @@ from vibeqc._dft_gradient import (
     StationaryKsIdentity,
     StationaryKsState,
     _fixed_density_xc_geometry,
+    _native_ao_atoms,
     bind_generated_xc_geometry,
     native_ao_geometry_identity,
     xc_geometry_topology_identity,
@@ -15,7 +16,7 @@ from vibeqc._dft_gradient import (
 )
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
-from vibeqc_compiler.xc import functional
+from vibeqc_compiler.xc import ContractionProgram, functional
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 
 from tools.vibeqc_validation.dft_gradient import finite_difference_xc_directional
@@ -112,6 +113,51 @@ def bound_h2(method, name, spin, *, occupations=None):
         natom = basis.natom
     density = value.density[0] if spin == "unpolarized" else value.density
     return spec, value, args, grid, density, bound, natom
+
+
+@pytest.mark.parametrize(
+    "method,name,spin",
+    [
+        ("lda-rks", "LDA_XC_PW", "unpolarized"),
+        ("pbe-rks", "PBE", "unpolarized"),
+        ("lda-uks", "LDA_XC_PW", "polarized"),
+        ("pbe-uks", "PBE", "polarized"),
+    ],
+)
+def test_cartesian_point_coefficient_pullback_matches_generated_interior(method, name, spin):
+    spec, _, args, grid, density, bound, _ = bound_h2(method, name, spin)
+    with NativeAO(**args) as basis:
+        program = ContractionProgram(spec, "geometry")
+        jets = basis.evaluate(grid.points, program.contract.ao_order)
+        features = program.features(jets, density)
+        rows = program.scalar_values(features)
+        v = program._gradient(rows, len(grid.points))
+        gradient = features.get("gradient")
+        functional_gradient = (
+            gradient
+            if gradient is None or spec.spin == "polarized"
+            else gradient.sum(axis=0)
+        )
+        compact = program.coefficients.evaluate(functional_gradient, v)
+        rho = compact["rho"]
+        cartesian_gradient = compact.get("gradient")
+        if spec.spin == "unpolarized":
+            rho = np.repeat(rho, 2, axis=0)
+            if cartesian_gradient is not None:
+                cartesian_gradient = np.repeat(cartesian_gradient, 2, axis=0)
+        actual = program.geometry_from_cartesian_coefficients(
+            jets,
+            density,
+            grid.weights,
+            rows[()],
+            rho,
+            cartesian_gradient,
+            ao_atoms=_native_ao_atoms(basis),
+            natom=basis.natom,
+        )
+    np.testing.assert_allclose(actual.centers, bound.partials.centers, atol=2e-12)
+    np.testing.assert_allclose(actual.points, bound.partials.points, atol=2e-12)
+    np.testing.assert_allclose(actual.weights, bound.partials.weights, atol=2e-12)
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
