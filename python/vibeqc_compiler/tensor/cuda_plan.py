@@ -19,7 +19,7 @@ from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 from .cuda_gemm import fp64_coefficient, gemm_contract
-from .ir import Node
+from .ir import TRANSCENDENTALS, Node
 from .program import Program, _hash
 from .types import checked_size
 
@@ -31,7 +31,9 @@ VALIDATION_CHUNK = 4096
 # Two NumPy iterator buffers, two reusable FP64 scratch buffers and one mask.
 VALIDATION_BYTES = VALIDATION_CHUNK * (4 * 8 + 1)
 VIEWS = frozenset(("transpose", "reshape", "slice", "broadcast"))
-ELEMENTWISE = frozenset(("add", "multiply", "divide", "scaled_bilinear"))
+ELEMENTWISE = (
+    frozenset(("add", "multiply", "divide", "scaled_bilinear")) | TRANSCENDENTALS
+)
 
 
 def strides(shape) -> tuple[int, ...]:
@@ -299,6 +301,8 @@ def plan_cuda(
         target.target_info
     )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
+    if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
+        raise ValueError("too many steps for transcendental domain diagnostics")
     for node, _ in nodes:
         if node.spec.dtype != "float64":
             raise ValueError("CUDA tensor baseline supports only float64")
@@ -326,6 +330,8 @@ def plan_cuda(
             fp64_coefficient(pair)
         if "coefficient" in node.attrs:
             fp64_coefficient(node.attrs["coefficient"])
+        if "exponent" in node.attrs:
+            fp64_coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }

@@ -11,6 +11,7 @@ from math import prod
 
 from .cuda_gemm import fp64_coefficient, gemm_contract
 from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
+from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
 
@@ -62,6 +63,19 @@ def _value(plan, i, prefix=""):
     if node.op == "scaled_bilinear":
         operands = ", ".join(_read(child, "z", prefix) for child in args)
         return f"return {prefix}scaled_bilinear({operands}, error, {i});"
+    if node.op in TRANSCENDENTALS:
+        lines = [f"const double x = {_read(args[0], 'z', prefix)};"]
+        if node.op in ("log", "power", "sqrt"):
+            predicate = "x >= 0.0" if node.op == "sqrt" else "x > 0.0"
+            lines.append(
+                f"if (!({predicate})) {{ atomicCAS(error, 0, -{len(plan.steps) + i + 1}); return 0.0; }}"
+            )
+        function = "pow" if node.op == "power" else node.op
+        arguments = "x"
+        if node.op == "power":
+            arguments += ", " + fp64_coefficient(a["exponent"]).hex()
+        lines.append(f"return finite(::{function}({arguments}), error, {i});")
+        return "\n".join(lines)
     if node.op == "einsum":
         domains = {}
         for child, labels in zip(node.inputs, a["labels"], strict=True):
@@ -128,6 +142,22 @@ return finite(value, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
     return f"return {_read(child, index, prefix)};"
+
+
+def _arithmetic_error_expression(plan, legacy):
+    """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
+
+    Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
+    and -[n+1,2n] is a scalar-domain error. The planner bounds the int range.
+    """
+    if not any(s.node.op in TRANSCENDENTALS for s in plan.steps):
+        return legacy
+    n = len(plan.steps)
+    return (
+        f"(arithmetic_error < -{n} ? "
+        'std::string("tensor transcendental domain error at step ") + '
+        f"std::to_string(-arithmetic_error - {n} - 1) : ({legacy}))"
+    )
 
 
 def _group_map(g, labels):
@@ -316,6 +346,10 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         library_offset + plan.library_bytes + aligned(plan.reservations.total)
     )
     assert error_offset + ALIGNMENT == plan.allocation_bytes
+    error_expression = _arithmetic_error_expression(
+        plan,
+        'std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1)',
+    )
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
@@ -369,7 +403,7 @@ extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const double* const*
         metrics.observed_device_delta = std::max(ctx.metrics.prepare_device_delta, ctx.device_delta());
         *result = metrics;
         if (arithmetic_error)
-            throw std::runtime_error(std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1));
+            throw std::runtime_error({error_expression});
         return 0;
     }} catch (const std::exception& e) {{
         // Drain queued host transfers before Python may release their arrays.
