@@ -22,11 +22,14 @@ vibeqc_status qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& pl
                                               std::span<const std::int32_t> beta, bool& qualified,
                                               std::string& detail) {
   qualified = false;
-  const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
-                               plan.integral_source && plan.packed_raw &&
-                               plan.value_storage.rank_capacity >= 160;
   const bool measured_rank = (plan.nbf == 384 && alpha.size() == 1 && alpha[0] == 80) ||
                              (plan.nbf == 768 && alpha.size() == 1 && alpha[0] == 160);
+  // Packed storage must fit this endpoint's occupied rank, not the rank of the
+  // largest qualified endpoint. The measured-rank gate also validates alpha[0].
+  const bool packed_resident =
+      plan.value_storage.pairs == DfPairStorage::SymmetricLower && plan.integral_source &&
+      plan.packed_raw && measured_rank &&
+      plan.value_storage.rank_capacity >= static_cast<std::size_t>(alpha[0]);
   if (plan.occupied_scf_reserved && measured_rank && plan.naux == plan.nbf &&
       plan.batch_size == 1 && beta.empty() && (!plan.integral_source || packed_resident) &&
       !plan.streamed && plan.row_tile == plan.nbf &&

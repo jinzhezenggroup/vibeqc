@@ -35,14 +35,35 @@ int main() {
     std::string detail;
     std::vector<std::int32_t> alpha{rank}, beta=uhf ? alpha : std::vector<std::int32_t>{};
     const auto status=cuda_df::occupied_scf_policy(p, enabled, detail, alpha, beta);
-    if(status!=VIBEQC_STATUS_SUCCESS || enabled!=expected) throw std::runtime_error(detail);
+    if(status!=VIBEQC_STATUS_SUCCESS || enabled!=expected)
+      throw std::runtime_error("nbf=" + std::to_string(p.nbf) +
+          " rank=" + std::to_string(rank) +
+          " capacity=" + std::to_string(p.value_storage.rank_capacity) +
+          " expected=" + std::to_string(expected) +
+          " enabled=" + std::to_string(enabled) + " " + detail);
+  };
+  const auto check_packed_capacity = [&](int rank) {
+    // A packed lease must fit the selected occupation, including rank 80 at
+    // 384 AO. Requiring the older 768-AO rank silently selects dense exchange.
+    p.integral_source=reinterpret_cast<CudaDensityFittingIntegralSource*>(1);
+    p.packed_raw=reinterpret_cast<double*>(1);
+    p.value_storage.pairs=DfPairStorage::SymmetricLower;
+    p.value_storage.rank_capacity=rank;
+    check(true, rank);
+    p.value_storage.rank_capacity=rank-1; check(false, rank);
+    p.value_storage.rank_capacity=rank;
+    p.packed_raw=nullptr; check(false, rank);
+    p.integral_source=nullptr;
+    p.value_storage={};
   };
   setenv("VIBEQC_DF_EXCHANGE", "auto", 1);
   check(true);
+  check_packed_capacity(160);
   check(false, 159); check(false, 161); check(false, 160, true);
   p.naux=767; check(false); p.naux=768;
   p.nbf=384; p.naux=384; p.row_tile=384; p.auxiliary_tile=384;
   check(true, 80);
+  check_packed_capacity(80);
   check(false, 79); check(false, 81); check(false, 80, true);
   p.naux=383; check(false, 80);
   p.nbf=768; p.naux=768; p.row_tile=768; p.auxiliary_tile=768;
