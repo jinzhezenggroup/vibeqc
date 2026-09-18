@@ -16,6 +16,7 @@ from vibeqc_compiler.common.resources import (
     checked_bytes,
 )
 
+from .cuda_dtype import program_precision
 from .cuda_plan import TensorSchedule, plan_cuda
 
 
@@ -186,7 +187,7 @@ def tensor_resource_choices(
         "tensor_contraction",
         "tensorir-cuda",
         "cuda",
-        "fp64",
+        program_precision(program),
         json.dumps(
             {
                 "equation": program.logical_hash,
