@@ -196,6 +196,8 @@ void options_and_workspace_boundaries() {
           "one-byte-short workspace was not rejected before the operator");
   require(short_result.workspace_bytes == probe.workspace_bytes,
           "workspace rejection lost the exact requirement");
+  require(short_result.solution.empty(),
+          "workspace refusal allocated a dimension-sized solution");
 }
 
 void stable_norm_extremes() {

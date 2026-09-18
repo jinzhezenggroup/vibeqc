@@ -145,10 +145,9 @@ ConventionalForceResult conventional_force_impl(
   result.derivative_workspace_bytes = posthf::checked_add(
       resources.derivative_staging_bytes, resources.derivative_backend_staging_bytes);
   result.planned_endpoint_peak_bytes = resources.peak_bytes;
-  // Every numeric vector in the conventional force owner has a deterministic planned
-  // extent and no hidden derivative tensor. Treat that tracked ownership as
-  // the measured endpoint peak until allocator-level telemetry is available.
-  result.measured_endpoint_peak_bytes = resources.peak_bytes;
+  // No allocator-level endpoint telemetry is available in this slice. Zero
+  // means unmeasured, not zero allocation; never copy the plan into a measurement.
+  result.measured_endpoint_peak_bytes = 0;
   return result;
 }
 }  // namespace

@@ -408,7 +408,8 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution():
         assert 0.0 <= diag.response_relative_residual <= 1.0
         assert diag.response_workspace_bytes > 0
         assert diag.derivative_workspace_bytes > 0
-        assert diag.measured_endpoint_peak_bytes <= diag.planned_endpoint_peak_bytes
+        # This bounded slice has a plan but no endpoint allocation telemetry.
+        assert diag.measured_endpoint_peak_bytes == 0
         assert diag.planned_endpoint_peak_bytes <= diag.numeric_capacity_bytes
         assert diag.force_provenance_flags == 0x7
         assert diag.response_operator_hash == b"rhf-canonical-response-v1"

@@ -39,6 +39,7 @@ struct GmresPlan {
 };
 
 struct GmresResult {
+  /** Empty on workspace refusal; no dimension-sized output is allocated. */
   std::vector<double> solution;
   GmresStatus status{GmresStatus::nonfinite_input};
   double residual_norm{};

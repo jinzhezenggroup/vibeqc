@@ -146,8 +146,9 @@ class Mp2Prepared final : public PreparedCalculation {
         last_->derivative_workspace_bytes = force_diagnostic->derivative_workspace_bytes;
         last_->planned_endpoint_peak_bytes =
             std::max(reference_capacity_, force_diagnostic->planned_endpoint_peak_bytes);
-        last_->measured_endpoint_peak_bytes =
-            std::max(reference_capacity_, force_diagnostic->measured_endpoint_peak_bytes);
+        // Preserve the producer's unavailable-measurement sentinel. A planned
+        // reference capacity cannot turn an unmeasured endpoint into an observation.
+        last_->measured_endpoint_peak_bytes = force_diagnostic->measured_endpoint_peak_bytes;
         last_->numeric_capacity_bytes =
             std::max(last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
         last_->force_provenance_flags = 0x7;

@@ -488,8 +488,9 @@ typedef struct vibeqc_correlation_diagnostic {
   uint64_t response_workspace_bytes;
   /** Peak numeric staging owned by the force derivative contraction. */
   uint64_t derivative_workspace_bytes;
-  /** Conservative simultaneous endpoint plan and tracked numeric ownership. */
+  /** Conservative simultaneous endpoint numeric-capacity plan. */
   uint64_t planned_endpoint_peak_bytes;
+  /** Observed endpoint peak; zero means measurement is unavailable, not zero usage. */
   uint64_t measured_endpoint_peak_bytes;
   /** Bit 0=response converged, 1=shell-streamed derivative, 2=no global derivative tensors. */
   uint64_t force_provenance_flags;

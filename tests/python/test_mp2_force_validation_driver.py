@@ -93,6 +93,10 @@ def test_case_record_requires_complete_scientific_and_resource_gates():
         },
     }
     validate_case_record(record, expected_steps=(0.004, 0.002, 0.001))
+    record["diagnostics"]["measured_endpoint_peak_bytes"] = 0
+    with pytest.raises(ValueError, match="requires a measured endpoint peak"):
+        validate_case_record(record, expected_steps=(0.004, 0.002, 0.001))
+    record["diagnostics"]["measured_endpoint_peak_bytes"] = 1024
     record["errors"]["finite_difference"].pop()
     with pytest.raises(ValueError, match="finite-difference steps"):
         validate_case_record(record, expected_steps=(0.004, 0.002, 0.001))

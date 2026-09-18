@@ -226,6 +226,8 @@ def validate_case_record(record: dict, *, expected_steps: Sequence[float]) -> No
         for key in integer_fields
     ):
         raise ValueError("case record has invalid resource diagnostics")
+    if diagnostic["measured_endpoint_peak_bytes"] == 0:
+        raise ValueError("case record requires a measured endpoint peak")
     if not (
         diagnostic["measured_endpoint_peak_bytes"]
         <= diagnostic["planned_endpoint_peak_bytes"]
@@ -683,7 +685,8 @@ def run_case(
         <= ENERGY_FORCE_IDENTITY_ATOL,
         "batch": max(batch_force_error, batch_energy_error) <= BATCH_ATOL,
         "response": diagnostic["response_absolute_residual"] <= 1.0e-10,
-        "resource_plan": diagnostic["measured_endpoint_peak_bytes"]
+        "resource_plan": 0
+        < diagnostic["measured_endpoint_peak_bytes"]
         <= diagnostic["planned_endpoint_peak_bytes"]
         <= diagnostic["numeric_capacity_bytes"],
         "provenance": diagnostic["force_provenance_flags"] == 7,

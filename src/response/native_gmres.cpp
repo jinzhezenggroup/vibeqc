@@ -107,6 +107,11 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
                         std::span<const double> rhs, std::span<const double> initial_guess,
                         std::span<const double> diagonal_preconditioner) {
   const auto n = plan.dimension;
+  // Admission precedes even the output allocation: refusal must not allocate
+  // O(dimension) bytes or invoke the operator with an insufficient budget.
+  if (plan.options.max_workspace_bytes < plan.workspace_bytes)
+    return result_for(plan, {}, GmresStatus::workspace_limit,
+                      std::numeric_limits<double>::infinity(), 0.0, 0, 0, 0, 0);
   std::vector<double> x(n, 0.0);
   if (rhs.size() != n || !finite(rhs) ||
       (!initial_guess.empty() && (initial_guess.size() != n || !finite(initial_guess))) ||
@@ -119,9 +124,6 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
     if (std::abs(value) <= plan.options.breakdown_tolerance)
       throw std::invalid_argument("GMRES diagonal preconditioner contains a zero entry");
   if (!initial_guess.empty()) std::copy(initial_guess.begin(), initial_guess.end(), x.begin());
-  if (plan.options.max_workspace_bytes < plan.workspace_bytes)
-    return result_for(plan, std::move(x), GmresStatus::workspace_limit,
-                      std::numeric_limits<double>::infinity(), 0.0, 0, 0, 0, 0);
 
   std::size_t operator_actions = 0;
   std::size_t preconditioner_actions = 0;

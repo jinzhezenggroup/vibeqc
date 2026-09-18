@@ -195,9 +195,13 @@ and cannot reuse an old reference or MO tile.
 Force diagnostics append response iterations/restarts, true absolute and
 relative residuals, response and derivative workspace bytes,
 `planned_endpoint_peak_bytes`, `measured_endpoint_peak_bytes`, force provenance
-flags, equation identity, and response-operator identity. Measured numeric
-ownership must not exceed the simultaneous plan, which in turn must fit the
-configured numeric capacity. CUDA transfer counters disclose staging; they are
+flags, equation identity, and response-operator identity. A zero
+`measured_endpoint_peak_bytes` means that endpoint allocation telemetry is
+unavailable; it is not a zero-memory observation or a copy of the plan. This
+slice currently reports that unavailable sentinel, so the measured-resource
+qualification gate remains unsatisfied. Once measured, numeric ownership must
+not exceed the simultaneous plan, which in turn must fit the configured numeric
+capacity. CUDA transfer counters disclose staging; they are
 not a claim that the full endpoint is device-resident. Older C callers receive
 the supported struct prefix selected by `struct_size`.
 
