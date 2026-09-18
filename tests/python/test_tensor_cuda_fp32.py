@@ -317,6 +317,9 @@ def test_resident_typed_spans_transfers_and_validation(gpu, dtype):
         "--ftz true",
         "--prec-div=false",
         "--prec-sqrt false",
+        "--fmad=true",
+        "--fmad true",
+        "-fmad=1",
     ],
 )
 def test_strict_fp32_rejects_arithmetic_environment_overrides(monkeypatch, flags):
