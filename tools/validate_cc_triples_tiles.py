@@ -203,7 +203,7 @@ def run(args):
                     # Full GPU run via the corrected CudaTriplesTiles
                     with CudaTriplesTiles(config, compiler, cache) as tiles:
                         t0 = time.perf_counter()
-                        result = tiles.run_tiles(arrays)
+                        result = tiles.run_tiles(arrays, oracle=True)
                     gpu_time_s = time.perf_counter() - t0
 
                     # CPU masked per-tile reference

@@ -11,6 +11,11 @@ each tile upload.  One resident plan is compiled per unique tile shape
 disk via ``compile_resident``.  Each resident is created per tile and closed
 before the next tile, so device memory is bounded by the single-tile plan
 peak — full ``nocc³ × nvir³`` T3 or denominator tensors are never allocated.
+
+The shared input guards from ``triples._validate`` and
+``triples._check_denominators`` run once before any GPU work, matching the
+CPU/TensorIR entry-point contract.  CPU oracle comparison is **opt-in**
+(``oracle=True``) and **never runs** on the default production path.
 """
 
 from __future__ import annotations
@@ -20,11 +25,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .triples_tiles import (
-    TriplesTileEnumerator,
-    build_tile_triples_program,
-    tile_triples_energy_masked,
-)
+from .triples import _check_denominators, _validate
+from .triples_tiles import TriplesTileEnumerator, build_tile_triples_program
 
 
 @dataclass(frozen=True)
@@ -50,16 +52,20 @@ class TriplesTileConfig:
 
 @dataclass
 class CudaTriplesResult:
-    """Complete GPU (T) execution including per-tile diagnostics."""
+    """Complete GPU (T) execution including per-tile diagnostics.
+
+    ``per_tile_masked_cpu`` is populated only when ``oracle=True`` was passed
+    to :meth:`CudaTriplesTiles.run_tiles`.
+    """
 
     et: float
     per_tile: list[float]
-    per_tile_masked_cpu: list[float]
     tile_count: int
     vir_chunk_size: int
     nocc: int
     nvir: int
     peak_device_bytes: int
+    per_tile_masked_cpu: list[float] | None = None
     peak_bytes_per_tile: list[int] = field(default_factory=list)
     plan_identity: str = ""
     artifact_keys: list[str] = field(default_factory=list)
@@ -75,6 +81,10 @@ class CudaTriplesTiles:
     sub-block virtual dimension and triangular range), used for one
     upload/run/download cycle, then closed.  Compilation is transparently
     cached to disk so repeated tile shapes reuse the cached artifact.
+
+    The shared input/denominator guards from :mod:`triples` run once before
+    any GPU work.  The CPU masked-oracle comparison is opt-in (``oracle=True``)
+    and never runs on the default production path.
 
     Parameters
     ----------
@@ -100,25 +110,31 @@ class CudaTriplesTiles:
         self._compile_resident = compile_resident
         self._PreparedResident = PreparedResident
 
-    def run_tiles(self, arrays, *, profile=False):
+    def run_tiles(self, arrays, *, oracle=False, profile=False):
         """Evaluate all tiles and return :class:`CudaTriplesResult`.
 
-        Each tile gets its own shape-matched resident plan and owner.
-        Device memory per tile is bounded by the tile plan peak.
+        The shared finite/canonical/denominator guards run once before any
+        GPU uploads or compilation, matching the CPU/TensorIR entry-point
+        contract.  CPU masked-oracle comparison is opt-in via ``oracle=True``
+        and **never runs on the default production path**.
 
         Parameters
         ----------
         arrays : dict
             The eight full-system float64 ndarrays keyed by
             ``ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v``.
+        oracle : bool
+            When True, also compute the per-tile masked CPU reference
+            (``CudaTriplesResult.per_tile_masked_cpu``).  Off by default;
+            intended for validation/debug use only.
         profile : bool
             Forwarded to ``resident.run(profile=...)``.
 
         Returns
         -------
         CudaTriplesResult
-            Total E_T, per-tile GPU scalars, per-tile masked CPU reference,
-            timing breakdown and provenance.
+            Total E_T, per-tile GPU scalars, (optionally) per-tile masked
+            CPU reference, timing breakdown and provenance.
         """
         nocc = self.config.nocc
         nvir = self.config.nvir
@@ -133,23 +149,9 @@ class CudaTriplesTiles:
         eps_o = arrays["eps_o"]
         eps_v = arrays["eps_v"]
 
-        # Validate shapes once
-        expected = {
-            "ovvv": (nocc, nvir, nvir, nvir),
-            "ovoo": (nocc, nvir, nocc, nocc),
-            "ovov": (nocc, nvir, nocc, nvir),
-            "fov": (nocc, nvir),
-            "t1": (nocc, nvir),
-            "t2": (nocc, nocc, nvir, nvir),
-            "eps_o": (nocc,),
-            "eps_v": (nvir,),
-        }
-        for name, shape in expected.items():
-            arr = arrays[name]
-            if not isinstance(arr, np.ndarray) or arr.dtype != np.float64:
-                raise ValueError(f"{name} must be a float64 ndarray")
-            if arr.shape != shape:
-                raise ValueError(f"{name} shape {arr.shape} != expected {shape}")
+        # --- shared input guard (#150 contract) ---
+        _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
+        _check_denominators(eps_o, eps_v, 1e-10)
 
         enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
         tiles = list(enumerator)
@@ -160,10 +162,11 @@ class CudaTriplesTiles:
             "upload_s": 0.0,
             "run_s": 0.0,
             "download_s": 0.0,
+            "oracle_s": 0.0,
             "tile_count": len(tiles),
         }
         per_tile = []
-        per_tile_masked_cpu = []
+        per_tile_masked_cpu = [] if oracle else None
         peak_bytes_per_tile = []
         artifact_keys = []
         et = 0.0
@@ -223,22 +226,28 @@ class CudaTriplesTiles:
             per_tile.append(et_tile)
             et += et_tile
 
-            # CPU masked reference for per-tile comparison
-            cpu_masked = tile_triples_energy_masked(
-                tile,
-                nocc,
-                ovvv,
-                ovoo,
-                ovov,
-                fov,
-                t1,
-                t2,
-                eps_o,
-                eps_v,
-            )
-            per_tile_masked_cpu.append(cpu_masked)
-
         timing["total_s"] = time.perf_counter() - t0_total
+
+        # Opt-in CPU masked reference (validation/debug only)
+        if oracle:
+            t0 = time.perf_counter()
+            from .triples_tiles import tile_triples_energy_masked
+
+            for tile in tiles:
+                cpu_masked = tile_triples_energy_masked(
+                    tile,
+                    nocc,
+                    ovvv,
+                    ovoo,
+                    ovov,
+                    fov,
+                    t1,
+                    t2,
+                    eps_o,
+                    eps_v,
+                )
+                per_tile_masked_cpu.append(cpu_masked)
+            timing["oracle_s"] = time.perf_counter() - t0
 
         return CudaTriplesResult(
             et=et,
@@ -263,6 +272,7 @@ class CudaTriplesTiles:
                     }
                     for tile, pb in zip(tiles, peak_bytes_per_tile)
                 ],
+                "oracle_enabled": oracle,
             },
         )
 
@@ -291,6 +301,10 @@ def cpu_triples_tiles(
 
     Returns the same :class:`CudaTriplesResult` shape (``peak_device_bytes=0``,
     no plan identity).  Useful for testing parity on systems without a GPU.
+
+    The masked CPU oracle is never computed by this function; use
+    :func:`tools.vibeqc_cc.triples_tiles.tile_triples_energy_masked`
+    directly for per-tile validation.
     """
     ovvv = arrays["ovvv"]
     ovoo = arrays["ovoo"]
@@ -301,15 +315,18 @@ def cpu_triples_tiles(
     eps_o = arrays["eps_o"]
     eps_v = arrays["eps_v"]
 
+    # Shared input guards
+    _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
+    _check_denominators(eps_o, eps_v, denominator_threshold)
+
+    from .triples_tiles import tile_triples_energy
+
     enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size)
     tiles = list(enumerator)
     per_tile = []
-    per_tile_masked_cpu = []
     et = 0.0
 
     for tile in tiles:
-        from .triples_tiles import tile_triples_energy, tile_triples_energy_masked
-
         et_tile = tile_triples_energy(
             tile,
             nocc,
@@ -326,24 +343,9 @@ def cpu_triples_tiles(
         per_tile.append(et_tile)
         et += et_tile
 
-        cpu_masked = tile_triples_energy_masked(
-            tile,
-            nocc,
-            ovvv,
-            ovoo,
-            ovov,
-            fov,
-            t1,
-            t2,
-            eps_o,
-            eps_v,
-        )
-        per_tile_masked_cpu.append(cpu_masked)
-
     return CudaTriplesResult(
         et=et,
         per_tile=per_tile,
-        per_tile_masked_cpu=per_tile_masked_cpu,
         tile_count=len(tiles),
         vir_chunk_size=vir_chunk_size,
         nocc=nocc,
