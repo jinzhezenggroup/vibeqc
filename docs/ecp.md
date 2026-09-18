@@ -254,7 +254,7 @@ and [retained evidence](../benchmarks/results/ecp-stuttgart-171/README.md).
 ## Bounded heavy-element parameter qualification
 
 The real-parameter qualification covers the installed PySCF 2.14.0 LANL2DZ
-Rb and Cs orbital/ECP records, paired with STO-3G hydrogen. These are separate
+Rb, Cs and Au orbital/ECP records, paired with STO-3G hydrogen. These are separate
 from synthetic high-angular-momentum operator tests. The reference parameters
 are consumed only by tests and the qualification driver; normal execution
 continues to use caller-owned basis/ECP records without a PySCF dependency.
@@ -263,23 +263,45 @@ continues to use caller-owned basis/ECP records without a PySCF dependency.
 |---|---:|---:|---:|---:|
 | Rb | 37 | 28 | 9 | 13 |
 | Cs | 55 | 46 | 9 | 13 |
+| Au | 79 | 60 | 19 | 23 |
 
-The fixtures use the unmodified s/p orbital records, local f label and s/p/d
-nonlocal channels. They cover neutral singlet RbH/CsH (10 explicit electrons)
+The Rb/Cs fixtures use the unmodified s/p orbital records, local f label and
+s/p/d nonlocal channels. They cover neutral singlet RbH/CsH (10 explicit electrons)
 and their singly charged doublet cations (9 explicit electrons), with direct
 RHF/UHF on CPU/CUDA. The nuclei are placed off-axis; raw matrix and derivative
 gates use two bond geometries per element. Qualification is limited to these
 parameter records, states and geometries. It does not establish arbitrary
-Rb/Cs chemistry, other LANL2DZ elements, other ECP families, spin-orbit physics,
+Rb/Cs/Au chemistry, other LANL2DZ elements, other ECP families, spin-orbit physics,
 or a relativistic method beyond the supplied scalar potential.
 
 `tests/python/test_ecp_heavy.py` pins the combined orbital/ECP parameter hashes,
 checks removed-core/effective-charge bookkeeping, and compares local and
 nonlocal matrices separately with Libcint. Both grid levels, all-center
 two-step finite differences, arbitrary nonsymmetric AO weights, complete HF
-energies/forces, and budgeted geometry replay with complete-energy differences
-must pass. The 13-AO fixtures fit the current CUDA resource inventory; their
-tests check the allocation ledger against the declared budget.
+energies/forces, and geometry replay with complete-energy differences must
+pass, using a planned budget where supported. The 13-AO Rb/Cs fixtures fit the
+current CUDA resource inventory; their tests check the allocation ledger
+against the declared budget.
+
+AuH uses the unmodified s/p/d orbital records with a local g label and real
+s/p/d/f nonlocal projectors. The neutral singlet has 20 explicit electrons
+(RHF), and the -1 doublet has 21 (UHF). Its f-only Libcint block and all-center
+finite differences are checked independently against the difference between
+the full potential and the same potential with f coefficients set to zero.
+This protects the physical f channel from silent omission or relabeling.
+The local g label does not imply a g orbital or nonlocal g capability.
+
+The 23-AO AuH fixture exceeds the CUDA budget inventory's 16-public-AO limit.
+Numerical CUDA singlepoints and changed-geometry replay run without an explicit
+budget; resource estimation and explicit-budget preparation must reject that
+domain. CPU replay retains its planned budget. This qualification does not
+extend CUDA resource support or claim a device-memory bound for AuH.
+Au uses tighter SCF stopping criteria (`energy_tolerance=1e-12`,
+`density_tolerance=1e-10`, at most 200 iterations). The reference must converge
+to the same energy from minao, one-electron and atomic initial guesses. The
+AuH+ doublet is not qualified: its native SCF solution did not match the
+independent references during validation. ECP operator agreement alone does
+not establish complete-method agreement for that state.
 
 Run the suite and record a compact endpoint report with:
 
@@ -288,14 +310,18 @@ python -m pytest tests/python/test_ecp_heavy.py -q
 VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_heavy.py -q -k cuda
 python tools/qualify_ecp_heavy.py --device cpu --output heavy-cpu.json
 python tools/qualify_ecp_heavy.py --device cuda --output heavy-cuda.json
+python tools/qualify_ecp_heavy.py --device cuda --elements Au --output gold-cuda.json
 ```
 
 Use the pinned reference-test extra and the corresponding `VIBEQC_LIBRARY` as
 described below. The report includes parameter identities, matrix/energy/force
 errors, exact library and test hashes, planned bounds and the CUDA ledger.
+Unsupported Au CUDA plans are recorded explicitly with no claimed peak bound.
 Single-call timings are context for reproduction, not performance claims.
 See the [qualification decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-heavy-parameters.md)
 for the boundaries and the retained evidence.
+The [real f-channel decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-real-f-gold.md)
+records the separate AuH parameter, projector and resource-boundary qualification.
 
 ## Reproduction and parameter sources
 

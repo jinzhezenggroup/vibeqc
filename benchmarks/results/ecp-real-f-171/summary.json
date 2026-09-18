@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "cpu": "16 passed, 16 deselected, 2 warnings in 1041.53s (0:17:21)",
+    "cpu-ctest": "100% tests passed, 0 tests failed out of 2",
+    "cuda": "16 passed, 16 deselected, 2 warnings in 78.96s (0:01:18)",
+    "cuda-ctest": "100% tests passed, 0 tests failed out of 3",
+    "cuda-memcheck": "2 complete Au RHF/UHF cases passed, 0 errors"
+  },
+  "numerical_maxima": {
+    "cpu": {
+      "local_matrix": 8.615330671091215e-14,
+      "nonlocal_matrix": 1.341149413747189e-13,
+      "energy": 6.536993168992922e-13,
+      "force": 1.0415490692139429e-10,
+      "net_force": 8.881784197001252e-16
+    },
+    "cuda": {
+      "local_matrix": 8.038014698286133e-14,
+      "nonlocal_matrix": 1.2168044349891716e-13,
+      "energy": 7.105427357601002e-13,
+      "force": 1.970038923659878e-10,
+      "net_force": 8.881784197001252e-16
+    }
+  },
+  "scope": "LANL2DZ Au + STO-3G H: neutral RHF and -1 doublet UHF, CPU/CUDA; AuH+ unqualified; no CUDA budget bound or performance claim"
+}

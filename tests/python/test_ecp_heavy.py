@@ -1,4 +1,4 @@
-"""Bounded real-parameter qualification: LANL2DZ Rb/Cs with STO-3G hydrogen.
+"""Bounded real-parameter qualification: LANL2DZ Rb/Cs/Au with STO-3G hydrogen.
 
 Parameters are loaded from the pinned test-only PySCF installation. This suite
 does not establish coverage of other heavy elements or ECP parameter families.
@@ -6,6 +6,7 @@ does not establish coverage of other heavy elements or ECP parameter families.
 
 import json
 import os
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -22,11 +23,45 @@ from vibeqc.ecp import ecp_integrals, resolve_ecp
 from vibeqc.profiles import canonical_hash
 
 # Atomic number, removed core, and an off-axis molecular geometry in bohr.
-CASES = {"Rb": (37, 28, 4.4), "Cs": (55, 46, 4.8)}
+CASES = {"Rb": (37, 28, 4.4), "Cs": (55, 46, 4.8), "Au": (79, 60, 3.0)}
+VALENCE_CHARGES = {"Rb": 9, "Cs": 9, "Au": 19}
 PARAMETER_SHA256 = {
+    "Au": "618e1d76ee6ec1af1f846befb9ca9da96b54c8bbac109033cf5b34414b615642",
     "Rb": "9d8f07743d6859efb8fa6155fe1ac83e7e9de18bb453f51dcdb2846c202277aa",
     "Cs": "f5d99d7ab2ca5fae6d454127584aa3bc241de2ea8e3d4870d5889f8c23b0aa9e",
 }
+
+
+def molecular_charge(symbol, spin):
+    # AuH+ has competing native SCF solutions and is not qualified here.
+    return -spin if symbol == "Au" else spin
+
+
+def scf_options(symbol):
+    return (
+        {"energy_tolerance": 1e-12, "density_tolerance": 1e-10, "max_iterations": 200}
+        if symbol == "Au"
+        else {}
+    )
+
+
+def reference_hf(symbol, mol):
+    scf = pytest.importorskip("pyscf.scf")
+    guesses = ("minao", "1e", "atom") if symbol == "Au" else ("minao",)
+    solutions = []
+    for guess in guesses:
+        target = scf.UHF(mol) if mol.spin else scf.RHF(mol)
+        if symbol == "Au":
+            target.conv_tol_grad = 1e-9
+            target.max_cycle = 200
+        target.run(conv_tol=1e-12, init_guess=guess)
+        assert target.converged
+        solutions.append(target)
+    energies = {guess: target.e_tot for guess, target in zip(guesses, solutions)}
+    np.testing.assert_allclose(
+        list(energies.values()), solutions[0].e_tot, atol=2e-9, rtol=0
+    )
+    return solutions[0], energies
 
 
 def heavy_fixture(symbol, *, spin=0, displacement=0.0):
@@ -51,7 +86,7 @@ def heavy_fixture(symbol, *, spin=0, displacement=0.0):
         ecp=potentials,
         unit="Bohr",
         spin=spin,
-        charge=spin,
+        charge=molecular_charge(symbol, spin),
         verbose=0,
     )
     elements = []
@@ -173,22 +208,24 @@ def test_heavy_components_refinement_and_all_center_derivatives(symbol, device):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_heavy_complete_hf_and_core_bookkeeping(symbol, spin, device):
     require_device(device)
-    scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = heavy_fixture(symbol, spin=spin)
     z, core, _ = CASES[symbol]
     cores, terms = resolve_ecp(basis, tuple(Atom.from_value(atom) for atom in atoms))
     assert cores == (core, 0)
     assert {term[0] for term in terms} == {0}
-    assert mol.nelectron == z - core + 1 - spin == 10 - spin
-    np.testing.assert_array_equal(mol.atom_charges(), [9, 1])
+    valence = VALENCE_CHARGES[symbol]
+    assert mol.nelectron == z - core + 1 - mol.charge == valence + 1 - mol.charge
+    np.testing.assert_array_equal(mol.atom_charges(), [valence, 1])
     assert mol.energy_nuc() == pytest.approx(
-        9 / np.linalg.norm(mol.atom_coords()[0] - mol.atom_coords()[1]), abs=1e-13
+        valence / np.linalg.norm(mol.atom_coords()[0] - mol.atom_coords()[1]), abs=1e-13
     )
-    oracle = (scf.UHF(mol) if spin else scf.RHF(mol)).run(conv_tol=1e-12)
-    assert oracle.converged
+    oracle, _ = reference_hf(symbol, mol)
     result = Calculator(
-        method="uhf" if spin else "rhf", basis=basis, device=device
-    ).singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+        method="uhf" if spin else "rhf",
+        basis=basis,
+        device=device,
+        **scf_options(symbol),
+    ).singlepoint(atoms, charge=molecular_charge(symbol, spin), multiplicity=spin + 1)
     assert result.converged
     assert result.executed_backend == ("cuda" if device == "cuda" else "cpu_reference")
     np.testing.assert_allclose(result.energy, oracle.e_tot, atol=2e-8, rtol=0)
@@ -201,26 +238,45 @@ def test_heavy_complete_hf_and_core_bookkeeping(symbol, spin, device):
 @pytest.mark.parametrize("symbol", CASES)
 @pytest.mark.parametrize("spin", [0, 1])
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_heavy_budgeted_replay_complete_energy_difference(symbol, spin, device):
+def test_heavy_resource_boundary_replay_complete_energy_difference(
+    symbol, spin, device
+):
     require_device(device)
     atoms, basis, mol = heavy_fixture(symbol, spin=spin)
     method = "uhf" if spin else "rhf"
-    plan = Calculator(basis=basis, device=device, method=method).estimate_resources(
-        [atoms], charges=[spin], multiplicities=[spin + 1]
-    )
-    plan.require_feasible()
+    plan = Calculator(
+        basis=basis, device=device, method=method, **scf_options(symbol)
+    ).estimate_resources([atoms], charges=[mol.charge], multiplicities=[spin + 1])
+    if symbol == "Au" and device == "cuda":
+        assert mol.nao_nr() == 23
+        assert plan.status == "unsupported"
+        with pytest.raises(NotImplementedError, match="<=16 public AOs"):
+            plan.require_feasible()
+        # Qualify numerical replay without inventing a larger CUDA inventory.
+        budget = None
+        with pytest.raises(NotImplementedError, match="<=16 public AOs"):
+            Calculator(
+                basis=basis,
+                device=device,
+                method=method,
+                resource_budget=ResourceBudget(device_bytes=1 << 30),
+            ).prepare_batch([atoms], charges=[mol.charge], multiplicities=[spin + 1])
+    else:
+        plan.require_feasible()
+        budget = ResourceBudget(
+            host_bytes=plan.peak_bytes["host"],
+            device_bytes=plan.peak_bytes.get("device"),
+        )
     calculator = Calculator(
         basis=basis,
         device=device,
         method=method,
-        resource_budget=ResourceBudget(
-            host_bytes=plan.peak_bytes["host"],
-            device_bytes=plan.peak_bytes.get("device"),
-        ),
+        resource_budget=budget,
+        **scf_options(symbol),
     )
     direction = np.array([[0.23, -0.31, 0.17], [-0.19, 0.11, 0.29]])
     with calculator.prepare_batch(
-        [atoms], charges=[spin], multiplicities=[spin + 1]
+        [atoms], charges=[mol.charge], multiplicities=[spin + 1]
     ) as batch:
         initial = batch.execute(strict=True).items[0]
         assert initial.converged
@@ -237,7 +293,57 @@ def test_heavy_budgeted_replay_complete_energy_difference(symbol, spin, device):
         restored = batch.execute(coordinates=[mol.atom_coords()], strict=True).items[0]
         np.testing.assert_allclose(restored.energy, initial.energy, atol=2e-10, rtol=0)
         np.testing.assert_allclose(restored.forces, initial.forces, atol=2e-8, rtol=0)
-        if device == "cuda":
+        if device == "cuda" and budget is not None:
             ledger = batch.resource_diagnostics["observation"]["device_ledger"]
             assert ledger["rejected_allocations"] == 0
             assert 0 < ledger["peak_bytes"] <= ledger["limit_bytes"]
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_gold_real_f_channel_is_nonzero_and_independently_resolved(device):
+    require_device(device)
+    gto = pytest.importorskip("pyscf.gto")
+    atoms, basis, mol = heavy_fixture("Au")
+    gold = basis.by_element[79]
+    records = json.loads(gold.ecp_data)
+    assert {r["angular_momentum"][0] for r in records} == {0, 1, 2, 3, 4}
+    assert max(shell.angular_momentum for shell in gold.shells) == 2
+    raw = ecp_integrals(atoms, basis, device=device)
+    for record in records:
+        if record["angular_momentum"] == [3]:
+            record["coefficients"] = [["0"] * len(record["r_exponents"])]
+    without_f = replace(
+        basis,
+        elements=tuple(
+            replace(element, ecp_data=json.dumps(records))
+            if element.atomic_number == 79
+            else element
+            for element in basis.elements
+        ),
+    )
+    reduced = ecp_integrals(atoms, without_f, device=device)
+    selected = mol.copy()
+    selected._ecpbas = mol._ecpbas[mol._ecpbas[:, gto.ANG_OF] == 3]
+    norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
+    expected = selected.intor("ECPscalar") / norms[:, None] / norms[None, :]
+    assert np.max(np.abs(expected)) > 1e-6
+    np.testing.assert_allclose(
+        raw.nonlocal_ - reduced.nonlocal_, expected, atol=2e-9, rtol=0
+    )
+    np.testing.assert_array_equal(raw.local, reduced.local)
+    xyz = mol.atom_coords()
+    for step in (2e-4, 7e-5):
+        for atom in range(2):
+            for axis in range(3):
+                delta = np.zeros_like(xyz)
+                delta[atom, axis] = step
+                plus = selected.copy().set_geom_(xyz + delta, unit="Bohr")
+                minus = selected.copy().set_geom_(xyz - delta, unit="Bohr")
+                fd = (plus.intor("ECPscalar") - minus.intor("ECPscalar")) / (2 * step)
+                fd /= norms[:, None] * norms[None, :]
+                np.testing.assert_allclose(
+                    (raw.nonlocal_derivative - reduced.nonlocal_derivative)[atom, axis],
+                    fd,
+                    atol=3e-7,
+                    rtol=2e-6,
+                )

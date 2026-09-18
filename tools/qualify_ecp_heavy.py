@@ -1,4 +1,4 @@
-"""Record bounded LANL2DZ Rb/Cs ECP evidence using a test-only PySCF oracle."""
+"""Record bounded LANL2DZ Rb/Cs/Au ECP evidence using a test-only PySCF oracle."""
 
 import argparse
 import importlib.util
@@ -11,7 +11,6 @@ from time import perf_counter
 
 import numpy as np
 import pyscf
-from pyscf import scf
 from vibeqc import Calculator, ResourceBudget
 from vibeqc.ecp import ecp_integrals
 from vibeqc.profiles import file_hash
@@ -25,6 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--elements", nargs="+", help="subset of qualified elements")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     fixture_path = root / "tests/python/test_ecp_heavy.py"
@@ -53,10 +53,13 @@ def main():
             ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"],
             text=True,
         ).strip()
-    for symbol in oracle.CASES:
+    elements = args.elements or list(oracle.CASES)
+    if any(symbol not in oracle.CASES for symbol in elements):
+        parser.error("--elements must be selected from " + ", ".join(oracle.CASES))
+    for symbol in elements:
         for spin in (0, 1):
             atoms, basis, mol = oracle.heavy_fixture(symbol, spin=spin)
-            options = {"charge": spin, "multiplicity": spin + 1}
+            options = {"charge": mol.charge, "multiplicity": spin + 1}
             raw = ecp_integrals(atoms, basis, device=args.device, **options)
             fine = ecp_integrals(
                 atoms,
@@ -67,10 +70,12 @@ def main():
                 **options,
             )
             expected = oracle.reference_components(mol)
-            target = (scf.UHF(mol) if spin else scf.RHF(mol)).run(conv_tol=1e-12)
-            assert target.converged
+            target, reference_energies = oracle.reference_hf(symbol, mol)
             calculator = Calculator(
-                basis=basis, device=args.device, method="uhf" if spin else "rhf"
+                basis=basis,
+                device=args.device,
+                method="uhf" if spin else "rhf",
+                **oracle.scf_options(symbol),
             )
             start = perf_counter()
             result = calculator.singlepoint(atoms, **options)
@@ -92,34 +97,43 @@ def main():
             assert errors["force"] < 2e-6
             assert errors["net_force"] < 2e-7
             plan = calculator.estimate_resources(
-                [atoms], charges=[spin], multiplicities=[spin + 1]
-            ).require_feasible()
+                [atoms], charges=[mol.charge], multiplicities=[spin + 1]
+            )
+            if symbol == "Au" and args.device == "cuda":
+                assert mol.nao_nr() == 23 and plan.status == "unsupported"
+                assert "<=16 public AOs" in plan.diagnostic
+                budget = None
+            else:
+                plan.require_feasible()
+                budget = ResourceBudget(
+                    host_bytes=plan.peak_bytes["host"],
+                    device_bytes=plan.peak_bytes.get("device"),
+                )
             bounded = Calculator(
                 basis=basis,
                 device=args.device,
                 method="uhf" if spin else "rhf",
-                resource_budget=ResourceBudget(
-                    host_bytes=plan.peak_bytes["host"],
-                    device_bytes=plan.peak_bytes.get("device"),
-                ),
+                resource_budget=budget,
+                **oracle.scf_options(symbol),
             )
             with bounded.prepare_batch(
-                [atoms], charges=[spin], multiplicities=[spin + 1]
+                [atoms], charges=[mol.charge], multiplicities=[spin + 1]
             ) as batch:
                 replay = batch.execute(strict=True).items[0]
                 assert replay.converged
                 np.testing.assert_allclose(
                     replay.energy, result.energy, atol=2e-10, rtol=0
                 )
-                ledger = batch.resource_diagnostics["observation"].get("device_ledger")
-                if args.device == "cuda":
+                diagnostics = batch.resource_diagnostics or {}
+                ledger = diagnostics.get("observation", {}).get("device_ledger")
+                if args.device == "cuda" and budget is not None:
                     assert ledger["rejected_allocations"] == 0
                     assert 0 < ledger["peak_bytes"] <= ledger["limit_bytes"]
             case = {
                 "symbol": symbol,
                 "method": "uhf" if spin else "rhf",
                 "atoms_bohr": atoms,
-                "charge": spin,
+                "charge": mol.charge,
                 "multiplicity": spin + 1,
                 "core_electrons": oracle.CASES[symbol][1],
                 "nelectron": mol.nelectron,
@@ -130,10 +144,15 @@ def main():
                 "quadrature_difference": raw.quadrature_difference(fine),
                 "energy": result.energy,
                 "reference_energy": target.e_tot,
+                "reference_initial_guess_energies": reference_energies,
+                "scf_options": oracle.scf_options(symbol),
                 "forces": result.forces.tolist(),
                 "reference_forces": expected_forces.tolist(),
                 "singlepoint_ms": elapsed,
-                "resource_peak_bytes": plan.peak_bytes,
+                "resource_status": plan.status,
+                "resource_diagnostic": plan.diagnostic,
+                "resource_peak_bytes": plan.peak_bytes if budget is not None else None,
+                "budgeted_execution": budget is not None,
                 "device_ledger": ledger,
             }
             if args.device == "cuda":
