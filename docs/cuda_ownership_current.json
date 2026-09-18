@@ -167,7 +167,7 @@
       "fallback": 0,
       "oracle": 15,
       "performance_exception": 163,
-      "runtime": -5405,
+      "runtime": -5408,
       "scientific": 2663
     },
     "reclassified_files": [
@@ -1052,20 +1052,20 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 22367,
+      "bytes": 22215,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 383,
+        "runtime": 380,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "physical_lines": 413,
+      "physical_lines": 411,
       "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
       "regions": [],
       "role": "runtime",
-      "sha256": "d07d0f8d73bad1f3d08ffef65b25fe06a8cfe5fb10d10a5357e79b2620a9b3c2",
+      "sha256": "adfb0d64782f479525cc1f72c6bbaefc93b408d6025ee82c3c8b8a4dabe91cde",
       "subsystem": "df_derivatives"
     },
     {
@@ -3575,7 +3575,7 @@
   "generated": [
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "one_electron_value_policy",
       "outputs": [
         "generated/generated_one_electron_policy.cuh"
@@ -3584,7 +3584,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "one_electron_values",
       "outputs": [
         "generated/generated_one_electron_values.cuh"
@@ -3593,7 +3593,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "one_electron_derivatives",
       "outputs": [
         "generated/generated_one_electron_derivatives.cuh"
@@ -3602,7 +3602,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_values",
       "outputs": [
         "generated/df_values.cuh"
@@ -3611,7 +3611,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_derivatives",
       "outputs": [
         "generated/generated_df_derivatives.cuh"
@@ -3620,7 +3620,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_shell_derivatives",
       "outputs": [
         "generated/generated_df_shell_derivatives.cuh"
@@ -3629,7 +3629,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_rys_roots",
       "outputs": [
         "generated/generated_df_rys.cuh"
@@ -3638,7 +3638,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_rys_shell",
       "outputs": [
         "generated/generated_df_rys_shell.cuh",
@@ -3648,7 +3648,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "weighted_eri",
       "outputs": [
         "generated/weighted_eri.cuh"
@@ -3657,7 +3657,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "aot_integrals",
       "outputs": [
         "generated/production_shell_kernels/**/*.cu",
@@ -3668,7 +3668,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_tensor",
       "outputs": [],
       "owner": "python/vibeqc_compiler/tensor",
@@ -3676,7 +3676,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_xc",
       "outputs": [],
       "owner": "python/vibeqc_compiler/xc",
@@ -3684,7 +3684,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_dft",
       "outputs": [],
       "owner": "python/vibeqc_compiler/dft",
@@ -3692,7 +3692,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "jit_integral",
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
@@ -3700,7 +3700,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "ao_grid_policy",
       "outputs": [
         "generated/generated_grid_policy.cu"
@@ -3710,7 +3710,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_policies",
       "outputs": [
         "generated/generated_df_policy.cuh",
@@ -3737,7 +3737,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_derivative_production_policy",
       "outputs": [
         "generated/generated_df_production.hpp"
@@ -3746,7 +3746,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_sss_force_screening",
       "outputs": [
         "generated/generated_df_screening.cuh"
@@ -3755,7 +3755,7 @@
     },
     {
       "files": [],
-      "measurement": "not materialized",
+      "measurement": "explicit build",
       "name": "df_value_candidates",
       "outputs": [
         "generated/generated_df_value_candidates.cuh"
@@ -3768,7 +3768,7 @@
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
-    "runtime": 10168,
+    "runtime": 10165,
     "scientific": 12765
   },
   "migration_ledger": {
@@ -3974,7 +3974,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 808,
+      "runtime": 805,
       "scientific": 1395
     },
     "df_response_weights": {

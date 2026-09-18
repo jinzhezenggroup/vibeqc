@@ -56,17 +56,19 @@ python tools/benchmark_df_values.py \
 
 | Control | Automatic behavior | Diagnostic overrides |
 | --- | --- | --- |
-| `VIBEQC_DF_SHELL_POLICY` | Generated sm_120 mapping for 384/768 AO with equal auxiliary dimension; other sizes retain legacy | `legacy`, `candidate` |
+| `VIBEQC_DF_SHELL_POLICY` | Qualified architecture/class mapping, without an AO-size or auxiliary-equality filter | `legacy`, `candidate` |
 | `VIBEQC_DF_SHELL_SCHEDULE` | Class-specific manifest schedule | `warp`, `packed`, `compact` |
 | `VIBEQC_DF_VALUE_MATH` | Existing generic Rys | `generic`, `polynomial`, `rys`, `candidate` |
 | `VIBEQC_DF_VALUE_RAW_MAPPING` | Existing scalar raw export | `scalar`, `subgroup`, `warp`, `candidate` |
 | `VIBEQC_DF_FORCE_SCREEN_ABS` | Off | Nonnegative finite absolute force budget, or `off` |
 | `VIBEQC_DF_FINAL_PROJECTION` | Reuse under the shared resident RHF work/capacity policy | `off`, `reuse` |
 
-The derivative manifest chooses Rys/compact for 000/001/002/100/200 and
-polynomial/compact for 101/110. The automatic sm_120 domain remains 384/768 AO
-with equal auxiliary dimension; the manifest does not broaden that domain.
-See the [combined endpoint qualification note](../.agents/notes/implemented/performance/2026-09-17-combined-rys-promotion.md).
+The qualified sm_120 derivative manifest chooses cooperative Rys/compact for
+its 18 s/p/d entries. Missing architectures/classes retain polynomial execution;
+availability alone never qualifies a new entry. Lowering selection does not
+change the separate consumer, weight-layout or primitive-packet admission rules.
+See the [cooperative lowering qualification](../.agents/notes/implemented/performance/2026-09-17-cooperative-df-rys.md)
+and [dimension-independent admission](../.agents/notes/implemented/performance/2026-09-19-df-rys-admission.md) notes.
 Value candidates remain unqualified after complete cold
 endpoint regressions. The raw `candidate` schedule applies its generated lane
 count only to total angular degree at most two; metric and higher classes retain
@@ -76,8 +78,8 @@ in checkpoint scheduling identity as optional extensions, preserving older
 checkpoint compatibility.
 
 An unqualified derivative campaign may embed a qualified `baseline` profile for
-each architecture. `auto` retains that baseline in the existing qualified size
-domain; `candidate` selects the proposed class mapping. Both arms share one
+each architecture. `auto` retains that qualified baseline; `candidate` selects
+the proposed class mapping. Both arms share one
 prepared state and library, so the endpoint runner can interleave identical
 frozen-density replays without repeating large initialization or holding two
 DF arenas. Both profiles undergo the same mathematical/evidence validation.
