@@ -53,9 +53,11 @@ independently reproduce its reference branch and complete force/replay gates.
 
 See [the retained bundle](../../../../benchmarks/results/ecp-real-f-171/README.md)
 for source/library identities, endpoint errors, resource status, initial-guess
-energies and reproduction. Production/native/compiler sources are unchanged
-from master 97adc1a. Existing Release CPU/CUDA binaries are reused only after
-checking all 647 native, runtime and build inputs plus both binary hashes.
+energies and reproduction. Production/native/compiler sources are unchanged by this PR relative to the
+qualification base `0ed06a3`. Fresh Release CPU/CUDA binaries were built and
+all 680 native/runtime/build inputs plus both binary hashes were retained.
+Master later advanced to `e215b30` via #448; its changed-file set has zero
+overlap with those 680 qualified inputs.
 
 This does not qualify g projectors, g orbitals, other ECP families, spin-orbit
 physics, DFT forces, density fitting or larger CUDA budget inventories. Timings
@@ -66,7 +68,7 @@ are single-call context, not performance evidence. Refs #171.
 All 16 shared heavy-element cases pass on each backend; native ECP CTest
 passes 2/2 CPU and 3/3 CUDA. Both complete Au CUDA endpoints pass memcheck
 with zero errors. For the two declared Au states, maximum energy error across
-backends is 7.106e-13 Eh and maximum force error is 1.971e-10 Eh/bohr. CUDA
-resource requests remain unsupported as required. All 647 native/runtime/build
+backends is 7.390e-13 Eh and maximum force error is 1.971e-10 Eh/bohr. CUDA
+resource requests remain unsupported as required. All 680 native/runtime/build
 inputs plus both final test/report files match retained source identities.
 The cation failure remains excluded and documented rather than accepted.

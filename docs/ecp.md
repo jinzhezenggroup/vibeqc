@@ -332,11 +332,11 @@ For example, build in Release mode with Ninja:
 ```sh
 cmake -S . -B build-ecp-cpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIBEQC_ENABLE_CUDA=OFF
 cmake --build build-ecp-cpu --parallel
-cmake -S . -B build-ecp-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIBEQC_ENABLE_CUDA=ON -DVIBEQC_ENABLE_AOT_SHELLS=OFF -DCMAKE_CUDA_ARCHITECTURES=89
+cmake -S . -B build-ecp-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIBEQC_ENABLE_CUDA=ON -DVIBEQC_ENABLE_AOT_SHELLS=OFF -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build build-ecp-cuda --parallel
 ```
 
-Architecture 89 is the measured RTX 4090 target; select the actual allocated
+Architecture 120 is the measured RTX 5090 target; select the actual allocated
 GPU architecture for other devices. The measurements validate the generic
 CUDA build and do not promote an AOT shell profile.
 

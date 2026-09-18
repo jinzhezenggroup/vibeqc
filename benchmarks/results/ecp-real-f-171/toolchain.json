@@ -1,6 +1,17 @@
 {
-  "gpu": "NVIDIA GeForce RTX 4090, 570.124.06",
-  "cuda": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
-  "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
-  "build": "Reused exact-input CPU/CUDA Release binaries from halogen-20260918; sm_89; AOT off; 647 native/runtime/build files match."
+  "host": "node3",
+  "cpu": "AMD EPYC 7K62 48-Core Processor",
+  "gpu": "NVIDIA GeForce RTX 5090, 580.95.05",
+  "python": "3.11.14",
+  "pyscf": "2.14.0",
+  "numpy": "2.4.6",
+  "pytest": "9.1.1",
+  "cmake": "4.2.1",
+  "ninja": "1.13.0.git.kitware.jobserver-pipe-1",
+  "cxx": "g++ 11.4.0",
+  "cuda": "nvcc 12.9.86",
+  "cuda_architecture": "120",
+  "build": "Fresh exact-input CPU/CUDA Release builds; AOT off; CUDA sm_120; 680 native/runtime/build inputs bound in source-identity.json.",
+  "agent": "ChatGPT",
+  "model": "GPT-5.6 Sol"
 }

@@ -31,7 +31,7 @@ No integral grid, scientific implementation or acceptance tolerance changed.
 ## Measured acceptance
 
 CPU and CUDA each pass all 16 tests, including the original Rb/Cs regressions.
-The full CPU suite takes 1,041.53 seconds and CUDA takes 78.96 seconds on the
+The full CPU suite takes 997.69 seconds and CUDA takes 66.72 seconds on the
 recorded host; the 23-AO CPU replay is intentionally included in this gate.
 Native ECP CTest passes 2/2 CPU and 3/3 CUDA. Both complete Au CUDA endpoints
 pass Compute Sanitizer with zero errors. Local ECP IR/input tests pass 40
@@ -39,22 +39,21 @@ checks, and Ruff/format checks pass for both changed Python files.
 
 | Maximum absolute Au endpoint error | CPU | CUDA |
 | --- | ---: | ---: |
-| Local matrix | 8.616e-14 | 8.039e-14 |
-| Nonlocal matrix | 1.342e-13 | 1.217e-13 |
-| Complete energy (Eh) | 6.537e-13 | 7.106e-13 |
-| Complete force (Eh/bohr) | 1.042e-10 | 1.971e-10 |
-| Net force (Eh/bohr) | 8.882e-16 | 8.882e-16 |
+| Local matrix | 8.616e-14 | 8.038e-14 |
+| Nonlocal matrix | 1.359e-13 | 1.235e-13 |
+| Complete energy (Eh) | 6.537e-13 | 7.390e-13 |
+| Complete force (Eh/bohr) | 1.042e-10 | 1.970e-10 |
+| Net force (Eh/bohr) | 8.882e-16 | 2.220e-15 |
 
 The compact reports retain state-specific values, all three reference initial
 guess energies, parameter/library/fixture/driver identities and resource status.
 `unqualified-cation.json` retains the cation/anion state-selection diagnostic.
 
-The raw archive `evidence-171/ISSUE-171-real-f-results.tar.gz` contains 36
-files and is 147,074 compressed bytes. SHA256:
-`c37d0a18cfada325d7350e711d568d070802ee927dc04508a921fb53a347ed28`.
-The downloaded archive, member manifest and all 649 local input hashes were
-verified. Raw logs and binaries remain outside Git. The Notebook was stopped
-and its STOPPED state verified after retrieval.
+`raw-evidence-manifest.json` binds the 28 fresh qualification logs, timing/exit
+records, compact endpoint reports, Release libraries and generated ECP headers
+by byte size and SHA256. Raw logs and binaries remain outside Git on the
+qualification host. `source-identity.json` independently binds all 680 tracked
+native/runtime/build inputs plus the final test and report-driver sources.
 
 ## Resource boundary
 
@@ -82,8 +81,8 @@ for the state-selection and resource rationale.
 
 ## Reproduction and source identity
 
-Build Release CPU/CUDA from base master `97adc1a` with AOT off and the target
-architecture selected (89 on the measured RTX 4090). Set `PYTHONPATH=python`,
+Build Release CPU/CUDA from qualification base `0ed06a3` with AOT off and the
+target architecture selected (120 on the measured RTX 5090). Set `PYTHONPATH=python`,
 explicit `VIBEQC_LIBRARY`, `VIBEQC_PROFILE=off`, and one OMP/OpenBLAS/MKL thread.
 Install the pinned `reference-test` extra.
 
@@ -95,16 +94,15 @@ python tools/qualify_ecp_heavy.py --device cuda --elements Au --output cuda-endp
 VIBEQC_ECP_CUDA_TEST=1 compute-sanitizer --tool memcheck --error-exitcode 99 python -m pytest tests/python/test_ecp_heavy.py -q -k 'cuda and Au and complete_hf'
 ```
 
-Production native, runtime and compiler code is unchanged. The measured
-CPU/CUDA Release binaries from `build-171/halogen-20260918` are reused after
-647 native/runtime/build inputs, both binaries and generated ECP header hashes
-match. `source-identity.json` binds those inputs, the original build receipt
-and final test/report source hashes. A report-only follow-up handles absent
-resource diagnostics for unbudgeted execution; numerical test source is
-unchanged between its successful run and that report correction.
-The original build logs remain in
-`evidence-171/ISSUE-171-halogen-results.tar.gz` (SHA256
-`d41d254ee72fdf3ff1580048d331f7e9aadf31e085d6b43cb00b6debfe66efdc`).
+Production native, runtime and compiler code is unchanged by this PR. Fresh
+CPU/CUDA Release binaries were built from the rebased qualification tree; no
+prior binary is reused. `source-identity.json` binds all 680 native/runtime/build
+inputs, both final libraries, both generated ECP headers and the final
+test/report sources. During finalization master advanced from `0ed06a3` to
+`e215b30` via #448; that commit changes no file in the 680-file qualification
+identity, so the final merge candidate remains byte-identical for every
+qualified build/runtime input. The exact comparison is retained in the source
+identity.
 
 Native scientific LOC delta is zero. Single-call timings are reproducibility
 context, not a performance claim. Spin-orbit methods, other ECP families,
