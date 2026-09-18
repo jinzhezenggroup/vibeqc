@@ -199,7 +199,7 @@ class CudaTriplesTiles:
                 "eps_v": eps_v[:a_end],
             }
             # Use the tile program for this a-range
-            tile_prog = build_tile_triples_program(
+            build_tile_triples_program(
                 nocc, a_end, vir_chunk=(tile.a_start, tile.a_end)
             )
             timing["extract_s"] += time.perf_counter() - t0
@@ -209,7 +209,7 @@ class CudaTriplesTiles:
             timing["upload_s"] += time.perf_counter() - t0
 
             t0 = time.perf_counter()
-            leases, metrics = resident.run(profile=profile)
+            leases, _metrics = resident.run(profile=profile)
             timing["run_s"] += time.perf_counter() - t0
 
             t0 = time.perf_counter()

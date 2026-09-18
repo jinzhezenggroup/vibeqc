@@ -174,7 +174,6 @@ def tile_triples_energy(
     ground truth for GPU-vs-CPU comparison (gate ≤ 1e-10).
     """
     nvir_full = len(eps_v)
-    nvir = tile.a_end  # sub-block virtual size
     _validate(nocc, nvir_full, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     views = _views(ovvv, ovoo, ovov, fov, t1, t2)
     eijk = eps_o[:, None, None] + eps_o[None, :, None] + eps_o[None, None, :]

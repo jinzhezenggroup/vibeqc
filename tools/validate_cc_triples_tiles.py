@@ -84,8 +84,8 @@ def load_endpoint(name):
 
 def run_tiles_gpu(feeds, tile_prog, resident, enumerator):
     """Evaluate all tiles through the resident owner, returning per-tile scalars."""
-    nocc = feeds["nocc"]
-    nvir = feeds["nvir"]
+    feeds["nocc"]
+    feeds["nvir"]
     ovvv = feeds["ovvv"]
     ovoo = feeds["ovoo"]
     ovov = feeds["ovov"]

@@ -112,7 +112,7 @@ def test_tile_sum_equals_full_reference(o, v, seed, chunk):
     is the per-tile gate the goal requires for GPU-vs-CPU comparison.
     """
     arrays = _random_case(o, v, seed)
-    ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
+    _ovvv, _ovoo, _ovov, _fov, _t1, _t2, _eps_o, _eps_v = arrays
     ref = triples_energy(o, v, *arrays)
     enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=chunk)
     total = 0.0
@@ -172,7 +172,7 @@ def test_tile_tensorir_program_roundtrip(o, v, seed):
     from vibeqc_compiler.tensor import execute as tensor_execute
 
     arrays = _random_case(o, v, seed)
-    ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
+    _ovvv, _ovoo, _ovov, _fov, _t1, _t2, _eps_o, _eps_v = arrays
     feeds = {n: a for n, a in zip(INPUT_NAMES, arrays)}
     for chunk in ((0, v), (0, v // 2 + 1) if v > 1 else (0, v)):
         prog = build_tile_triples_program(o, v, vir_chunk=chunk)
@@ -188,7 +188,7 @@ def test_tile_tensorir_vs_cpu_reference(o, v, seed):
     from vibeqc_compiler.tensor import execute as tensor_execute
 
     arrays = _random_case(o, v, seed)
-    ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
+    _ovvv, _ovoo, _ovov, _fov, _t1, _t2, _eps_o, _eps_v = arrays
     feeds = {n: a for n, a in zip(INPUT_NAMES, arrays)}
     for chunk_size in [1, 2, v]:
         enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=chunk_size)
@@ -299,7 +299,7 @@ def test_endpoint_multi_tile_coverage(name, chunk):
     """Multi-tile coverage on all non-zero-triples endpoints."""
     feeds = _endpoint_feeds(name)
     nocc, nvir = feeds[0], feeds[1]
-    nvir_triples = nvir * (nvir + 1) * (nvir + 2) // 6
+    nvir * (nvir + 1) * (nvir + 2) // 6
     if chunk > nvir:
         pytest.skip(f"chunk size {chunk} > nvir {nvir}")
     enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
