@@ -204,3 +204,62 @@ def test_nsight_activity_must_match_class_launch_domain(tmp_path, sss_record):
     sss_record["regions"].append(copy.deepcopy(sss_record["regions"][0]))
     with pytest.raises(ValueError, match="launch counts"):
         kernel_activity(path, sss_record)
+
+
+@pytest.mark.parametrize("pair_mode", (0, 1, 2))
+def test_unequal_auxiliary_f_shell_domain_and_partial_panels(pair_mode):
+    orbital = [(0, 2, 0, 1), (1, 1, 1, 3), (0, 1, 4, 1)]
+    auxiliary = [(0, 1, 0, 1), (3, 2, 1, 7), (2, 1, 8, 5)]
+    panels = [(0, 4, 1), (4, 9, 2)]
+    expected = Counter()
+    for ia, ib, ic in product(
+        range(len(orbital)), range(len(orbital)), range(len(auxiliary))
+    ):
+        a, b, c = orbital[ia], orbital[ib], auxiliary[ic]
+        if pair_mode and (a[:2], ia) < (b[:2], ib):
+            continue
+        for begin, count, repeats in panels:
+            if any(begin <= ao < begin + count for ao in range(c[2], c[2] + c[3])):
+                expected[(a[0], b[0], c[0], a[1], b[1], c[1])] += repeats
+    assert reconstruct_domain(orbital, panels, pair_mode, auxiliary) == expected
+    assert reconstruct_domain(orbital, panels, pair_mode) != expected
+
+
+@pytest.mark.parametrize("states,valid", ((48, True), (47, False), (49, False)))
+def test_shared_recurrence_work_is_counted_once_per_primitive(
+    sss_record, monkeypatch, states, valid
+):
+    from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model
+
+    # A toy lowering moves the six SSS component states into a shared cache;
+    # unchanged total work must not be compared with the now-zero component work.
+    model = shell_rys_work_model((0, 0, 0))
+    model.update(shared_recurrence_states=6, component_recurrence_states=[0])
+    monkeypatch.setattr(
+        "benchmarks.df_shell_work_ledger.shell_rys_work_model", lambda angular: model
+    )
+    for prefix in ("shell_000_work_", "shell_000_p2_2_2_work_"):
+        for field in (
+            "boys_evaluations",
+            "boys_order_sum",
+            "boys_series_iterations",
+            "boys_series",
+            "boys_small_argument",
+            "specialized_prepare_axis_calls",
+            "cache_coefficient_values",
+            "convolution_iterations",
+        ):
+            sss_record["counters"][prefix + field] = 0
+        for field, value in (
+            ("rys_evaluations", 8),
+            ("rys_roots", 8),
+            ("recurrence_states", states),
+        ):
+            sss_record["counters"][prefix + field] = value
+    if valid:
+        assert (
+            reduce_work(sss_record, [(0, 2, 0, 1)])["totals"]["recurrence_states"] == 48
+        )
+    else:
+        with pytest.raises(ValueError, match="root/recurrence"):
+            reduce_work(sss_record, [(0, 2, 0, 1)])
