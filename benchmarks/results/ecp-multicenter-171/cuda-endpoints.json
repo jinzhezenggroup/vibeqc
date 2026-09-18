@@ -1,0 +1,412 @@
+{
+  "device": "cuda",
+  "python": "3.11.16",
+  "pyscf": "2.14.0",
+  "numpy": "2.2.6",
+  "library_sha256": "e5a86947d23a7757f7e49c25fbc4a5534358323827016cf7e5a8a6197fd1ce24",
+  "fixture_sha256": "0366072b7609b1f5099c82e513c7e63d9ec302eb8e9e6f5f3405d046cde9cf70",
+  "shared_helper_sha256": "ee561d2d4f692f3cda20cdcd6243abc818da40113036f4764c466b3322b81e84",
+  "driver_sha256": "0378d08e7d8c2b0131442c432b2f108d6e5409a6b714d4da258f0478d7286225",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Enhanced / Automatic IBRS; IBPB conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+  "timing_scope": "one synchronous fresh Calculator singlepoint, no warmup; no performance claim",
+  "grids": [
+    [
+      160,
+      32,
+      64
+    ],
+    [
+      224,
+      44,
+      88
+    ]
+  ],
+  "cases": [
+    {
+      "order": "Na-K",
+      "method": "rhf",
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "K",
+          [
+            0.43,
+            0.29,
+            5.8
+          ]
+        ]
+      ],
+      "charge": 0,
+      "multiplicity": 1,
+      "core_electrons": [
+        10,
+        18
+      ],
+      "nelectron": 2,
+      "nao": 16,
+      "basis_identity": "ffb8740ca3b379e91f66ee0d403d568b8444607843d9a035ee7970cdf86602ca",
+      "parameter_sha256": "e7860773555887760528a11fcbc37958a2923df0fd5d4e6f2874e17b5acf29c0",
+      "errors": {
+        "local_matrix": 8.396061623727746e-16,
+        "nonlocal_matrix": 5.412337245047638e-15,
+        "energy": 2.1649348980190553e-15,
+        "force": 1.1651731662842835e-11,
+        "net_force": 1.0408340855860843e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.249000902703301e-16,
+        "nonlocal_matrix_max_abs": 5.828670879282072e-16,
+        "local_derivative_max_abs": 2.0816681711721685e-17,
+        "nonlocal_derivative_max_abs": 1.3877787807814457e-16
+      },
+      "energy": -0.31337627018114494,
+      "reference_energy": -0.3133762701811428,
+      "forces": [
+        [
+          -0.0008694160966991412,
+          -0.0014490268278318638,
+          -0.016316042081386865
+        ],
+        [
+          0.0008694160966991309,
+          0.001449026827831857,
+          0.01631604208138676
+        ]
+      ],
+      "reference_forces": [
+        [
+          -0.0008694160973199911,
+          -0.001449026828866662,
+          -0.01631604209303854
+        ],
+        [
+          0.0008694160973199926,
+          0.0014490268288666576,
+          0.016316042093038493
+        ]
+      ],
+      "singlepoint_ms": 3008.6541986092925,
+      "resource_peak_bytes": {
+        "host": 6119392,
+        "device": 4281136,
+        "pinned": 0,
+        "pageable": 6119392,
+        "device:0": 4281136
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 4281136,
+        "live_bytes": 585624,
+        "peak_bytes": 3038968,
+        "allocations": 29,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      },
+      "cpu_cuda_max_abs": {
+        "local": 4.163336342344337e-17,
+        "nonlocal_": 2.7755575615628914e-16,
+        "local_derivative": 1.9081958235744878e-17,
+        "nonlocal_derivative": 1.8041124150158794e-16
+      }
+    },
+    {
+      "order": "Na-K",
+      "method": "uhf",
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "K",
+          [
+            0.43,
+            0.29,
+            5.8
+          ]
+        ]
+      ],
+      "charge": 1,
+      "multiplicity": 2,
+      "core_electrons": [
+        10,
+        18
+      ],
+      "nelectron": 1,
+      "nao": 16,
+      "basis_identity": "ffb8740ca3b379e91f66ee0d403d568b8444607843d9a035ee7970cdf86602ca",
+      "parameter_sha256": "e7860773555887760528a11fcbc37958a2923df0fd5d4e6f2874e17b5acf29c0",
+      "errors": {
+        "local_matrix": 8.396061623727746e-16,
+        "nonlocal_matrix": 5.412337245047638e-15,
+        "energy": 2.1371793224034263e-15,
+        "force": 5.793976409762536e-16,
+        "net_force": 1.734723475976807e-17
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.249000902703301e-16,
+        "nonlocal_matrix_max_abs": 5.828670879282072e-16,
+        "local_derivative_max_abs": 2.0816681711721685e-17,
+        "nonlocal_derivative_max_abs": 1.3877787807814457e-16
+      },
+      "energy": -0.1756141139655384,
+      "reference_energy": -0.17561411396553625,
+      "forces": [
+        [
+          -0.0012266650735225989,
+          -0.0020444417892044216,
+          -0.023020414546442755
+        ],
+        [
+          0.0012266650735225995,
+          0.0020444417892044324,
+          0.023020414546442772
+        ]
+      ],
+      "reference_forces": [
+        [
+          -0.0012266650735227361,
+          -0.0020444417892045604,
+          -0.023020414546443334
+        ],
+        [
+          0.0012266650735227361,
+          0.0020444417892045577,
+          0.023020414546443324
+        ]
+      ],
+      "singlepoint_ms": 2667.7008057013154,
+      "resource_peak_bytes": {
+        "host": 6250464,
+        "device": 4392000,
+        "pinned": 0,
+        "pageable": 6250464,
+        "device:0": 4392000
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 4392000,
+        "live_bytes": 641056,
+        "peak_bytes": 3094400,
+        "allocations": 29,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      },
+      "cpu_cuda_max_abs": {
+        "local": 4.163336342344337e-17,
+        "nonlocal_": 2.7755575615628914e-16,
+        "local_derivative": 1.9081958235744878e-17,
+        "nonlocal_derivative": 1.8041124150158794e-16
+      }
+    },
+    {
+      "order": "K-Na",
+      "method": "rhf",
+      "atoms_bohr": [
+        [
+          "K",
+          [
+            0.43,
+            0.29,
+            5.8
+          ]
+        ],
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ]
+      ],
+      "charge": 0,
+      "multiplicity": 1,
+      "core_electrons": [
+        18,
+        10
+      ],
+      "nelectron": 2,
+      "nao": 16,
+      "basis_identity": "ffb8740ca3b379e91f66ee0d403d568b8444607843d9a035ee7970cdf86602ca",
+      "parameter_sha256": "e7860773555887760528a11fcbc37958a2923df0fd5d4e6f2874e17b5acf29c0",
+      "errors": {
+        "local_matrix": 8.396061623727746e-16,
+        "nonlocal_matrix": 5.384581669432009e-15,
+        "energy": 2.1094237467877974e-15,
+        "force": 1.1628403101537899e-11,
+        "net_force": 5.204170427930421e-17
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.249000902703301e-16,
+        "nonlocal_matrix_max_abs": 5.551115123125783e-16,
+        "local_derivative_max_abs": 2.0816681711721685e-17,
+        "nonlocal_derivative_max_abs": 1.5265566588595902e-16
+      },
+      "energy": -0.3133762701811448,
+      "reference_energy": -0.31337627018114267,
+      "forces": [
+        [
+          0.0008694160966992278,
+          0.0014490268278319572,
+          0.016316042081388128
+        ],
+        [
+          -0.0008694160966992225,
+          -0.001449026827831954,
+          -0.016316042081388076
+        ]
+      ],
+      "reference_forces": [
+        [
+          0.0008694160973188147,
+          0.0014490268288646897,
+          0.016316042093016396
+        ],
+        [
+          -0.0008694160973188195,
+          -0.0014490268288646947,
+          -0.01631604209301648
+        ]
+      ],
+      "singlepoint_ms": 2723.1308463960886,
+      "resource_peak_bytes": {
+        "host": 6119392,
+        "device": 4281136,
+        "pinned": 0,
+        "pageable": 6119392,
+        "device:0": 4281136
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 4281136,
+        "live_bytes": 585624,
+        "peak_bytes": 3038968,
+        "allocations": 29,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      },
+      "cpu_cuda_max_abs": {
+        "local": 4.163336342344337e-17,
+        "nonlocal_": 3.3306690738754696e-16,
+        "local_derivative": 1.9081958235744878e-17,
+        "nonlocal_derivative": 1.8041124150158794e-16
+      }
+    },
+    {
+      "order": "K-Na",
+      "method": "uhf",
+      "atoms_bohr": [
+        [
+          "K",
+          [
+            0.43,
+            0.29,
+            5.8
+          ]
+        ],
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ]
+      ],
+      "charge": 1,
+      "multiplicity": 2,
+      "core_electrons": [
+        18,
+        10
+      ],
+      "nelectron": 1,
+      "nao": 16,
+      "basis_identity": "ffb8740ca3b379e91f66ee0d403d568b8444607843d9a035ee7970cdf86602ca",
+      "parameter_sha256": "e7860773555887760528a11fcbc37958a2923df0fd5d4e6f2874e17b5acf29c0",
+      "errors": {
+        "local_matrix": 8.396061623727746e-16,
+        "nonlocal_matrix": 5.384581669432009e-15,
+        "energy": 3.1363800445660672e-15,
+        "force": 3.642919299551295e-16,
+        "net_force": 4.85722573273506e-17
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.249000902703301e-16,
+        "nonlocal_matrix_max_abs": 5.551115123125783e-16,
+        "local_derivative_max_abs": 2.0816681711721685e-17,
+        "nonlocal_derivative_max_abs": 1.5265566588595902e-16
+      },
+      "energy": -0.17561411396553883,
+      "reference_energy": -0.1756141139655357,
+      "forces": [
+        [
+          0.001226665073522615,
+          0.0020444417892044576,
+          0.02302041454644303
+        ],
+        [
+          -0.0012266650735226162,
+          -0.00204444178920446,
+          -0.02302041454644298
+        ]
+      ],
+      "reference_forces": [
+        [
+          0.0012266650735227405,
+          0.0020444417892045556,
+          0.023020414546443345
+        ],
+        [
+          -0.0012266650735227413,
+          -0.0020444417892045577,
+          -0.023020414546443345
+        ]
+      ],
+      "singlepoint_ms": 2644.0123775973916,
+      "resource_peak_bytes": {
+        "host": 6250464,
+        "device": 4392000,
+        "pinned": 0,
+        "pageable": 6250464,
+        "device:0": 4392000
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 4392000,
+        "live_bytes": 641056,
+        "peak_bytes": 3094400,
+        "allocations": 29,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      },
+      "cpu_cuda_max_abs": {
+        "local": 4.163336342344337e-17,
+        "nonlocal_": 3.3306690738754696e-16,
+        "local_derivative": 1.9081958235744878e-17,
+        "nonlocal_derivative": 1.8041124150158794e-16
+      }
+    }
+  ],
+  "gpu": "NVIDIA GeForce RTX 4090, 570.124.06"
+}

@@ -94,6 +94,22 @@ records the quadrature boundary and independent moment/addition-theorem gates.
 The [orbital-f decision](../.agents/notes/implemented/numerics/2026-09-17-ecp-orbital-f.md)
 records the separate orbital/projector bounds and f qualification gates.
 
+## Mixed-family physical centers
+
+The bounded NaK qualification combines LANL2DZ Na and Stuttgart RLC K
+orbital/ECP records in one 16-AO spherical calculation. Both physical atoms
+carry distinct ECP terms, removing 10 and 18 core electrons respectively.
+Independent per-center operator blocks, all-center derivatives, atom/AO
+permutations, direct RHF/UHF complete forces and budgeted geometry replay
+test that parameter and core-count mappings follow their physical atoms.
+Na has a nonzero local residual; K has a zero local residual and nonzero
+nonlocal projectors. Effective ionic charges supply the Coulomb tails once.
+
+See [the mixed-center qualification](../benchmarks/results/ecp-multicenter-171/README.md)
+for exact parameters, geometries, acceptance gates and reproduction. This
+bounded evidence does not establish general mixed-family coverage or new
+methods, angular limits or resource inventories.
+
 ## Numerical and execution boundaries
 
 The baseline uses Gauss-Legendre radial nodes mapped by `r=t/(1-t)`, polar
