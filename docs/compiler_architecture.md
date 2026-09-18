@@ -13,10 +13,12 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
 | `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
+| `method` | Canonical `MethodSpec -> MethodIR` composition and primitive requirements; no SCF/runtime policy | `common`, `xc` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
-The compiler owns mathematical IR and lowering. `src/integrals`, `src/tensor`
-and `src/dft` own the corresponding native interfaces, runtime allocation and
+The compiler owns mathematical IR and lowering. `method` is the composition front
+end above XC; representability there does not imply runtime support.
+`src/integrals`, `src/tensor` and `src/dft` own the corresponding native interfaces, runtime allocation and
 execution templates; method and SCF code consume these interfaces. A compiler
 package move does not promote a new scientific capability or retire a native
 fallback. Native scientific ownership and retirement are tracked by #231.

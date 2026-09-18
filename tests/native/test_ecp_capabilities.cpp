@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "integrals/ecp.hpp"
+#include "integrals/ecp_cuda.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace {
@@ -70,12 +71,29 @@ void check_c_api() {
         }
       }
 }
+#if !VIBEQC_HAS_CUDA
+void check_cuda_not_built_stub() {
+  vibeqc::core::System system;
+  vibeqc::integrals::EcpData output;
+  std::string detail;
+  require(vibeqc::integrals::ecp_integrals_cuda(0, system, 160, 32, false, output, detail) ==
+              VIBEQC_STATUS_NOT_IMPLEMENTED,
+          "CPU-only ECP CUDA stub lost not-implemented status");
+  require(detail.find("cuda.scalar") != std::string::npos &&
+              detail.find("not built") != std::string::npos,
+          "CPU-only ECP CUDA stub lost provider-specific diagnostics");
+}
+#endif
+
 }  // namespace
 
 int main() {
   try {
     check_grid_wrapper();
     check_c_api();
+#if !VIBEQC_HAS_CUDA
+    check_cuda_not_built_stub();
+#endif
     std::cout << "ECP native orbital-f boundary and host-grid wrapper passed\n";
   } catch (const std::exception& e) {
     std::cerr << e.what() << '\n';

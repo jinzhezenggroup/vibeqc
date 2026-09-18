@@ -1,5 +1,6 @@
 #include "scf/fock_build.hpp"
 
+#include <array>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -72,16 +73,89 @@ void validate_densities(FockSpin spin, std::size_t count, std::span<const double
   for (double value : beta) require(std::isfinite(value), "nonfinite Fock spin density");
 }
 
+constexpr FockProviderCapabilities supported_fock_domain() {
+  FockProviderCapabilities capabilities;
+  capabilities.restricted = true;
+  capabilities.unrestricted = true;
+  capabilities.full_range = true;
+  capabilities.maximum_derivative_order = 1;
+  capabilities.maximum_angular_momentum = 3;
+  capabilities.cartesian = true;
+  capabilities.spherical = true;
+  capabilities.batching = true;
+  capabilities.independent_terms = true;
+  capabilities.arbitrary_coefficients = true;
+  return capabilities;
+}
+
+constexpr FockProviderRegistration make_registration(std::string_view name,
+                                                     FockApproximation approximation,
+                                                     runtime::ProviderBackend backend,
+                                                     runtime::ProviderAvailability availability,
+                                                     std::string_view reason,
+                                                     std::string_view provenance) {
+  return {{"scf.fock", name, 1, backend},
+          {approximation, supported_fock_domain()},
+          availability,
+          runtime::ProviderFallback::None,
+          runtime::ProviderRequirement::PreparedState | runtime::ProviderRequirement::Resources,
+          reason,
+          provenance};
+}
+
+#if VIBEQC_HAS_CUDA
+constexpr auto kCudaAvailability = runtime::ProviderAvailability::Executable;
+constexpr std::string_view kCudaReason{};
+#else
+constexpr auto kCudaAvailability = runtime::ProviderAvailability::NotBuilt;
+constexpr std::string_view kCudaReason = "CUDA support was not compiled into this build";
+#endif
+
+constexpr std::array<FockProviderRegistration, 4> kFockProviders{{
+    make_registration("cpu.exact", FockApproximation::Exact, runtime::ProviderBackend::Cpu,
+                      runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
+    make_registration("cpu.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cpu,
+                      runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
+    make_registration("cuda.exact", FockApproximation::Exact, runtime::ProviderBackend::Cuda,
+                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
+    make_registration("cuda.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cuda,
+                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
+}};
+
+runtime::ProviderBackend registry_backend(FockBackend backend) {
+  return backend == FockBackend::Cpu ? runtime::ProviderBackend::Cpu
+                                     : runtime::ProviderBackend::Cuda;
+}
+
 }  // namespace
+
+const FockProviderRegistration& fock_provider_registration(FockApproximation approximation,
+                                                           FockBackend backend) {
+  require(valid(approximation) && valid(backend), "unknown Fock provider/backend");
+  const auto execution_backend = registry_backend(backend);
+  for (const auto& provider : kFockProviders)
+    if (provider.domain.approximation == approximation &&
+        provider.identity.backend == execution_backend)
+      return provider;
+  throw std::logic_error("valid Fock provider/backend has no registry entry");
+}
 
 FockProviderCapabilities fock_provider_capabilities(FockApproximation approximation,
                                                     FockBackend backend) {
-  require(valid(approximation) && valid(backend), "unknown Fock provider/backend");
+  const auto& provider = fock_provider_registration(approximation, backend);
   FockProviderCapabilities capabilities;
-  capabilities.independent_terms = true;
-  capabilities.arbitrary_coefficients = capabilities.independent_terms;
-  capabilities.legacy_adapter_only = false;
+  capabilities.provider_version = provider.identity.version;
+  if (!runtime::provider_executable(provider)) return capabilities;
+  capabilities = provider.domain.capabilities;
+  capabilities.available = true;
+  capabilities.provider_version = provider.identity.version;
   return capabilities;
+}
+
+void require_fock_provider_executable(FockApproximation approximation, FockBackend backend) {
+  const auto& provider = fock_provider_registration(approximation, backend);
+  if (!runtime::provider_executable(provider))
+    throw std::runtime_error(runtime::provider_diagnostic(provider, "Fock preparation"));
 }
 
 FockBuildSpec make_hf_fock_spec(FockSpin spin, FockApproximation approximation) {
@@ -103,6 +177,19 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
           "Fock screening tolerance must be nonnegative and finite");
   canonicalize(spec.coulomb);
   canonicalize(spec.exchange);
+  for (const auto* term : {&spec.coulomb, &spec.exchange}) {
+    if (!term->present) continue;
+    const auto& capability =
+        fock_provider_registration(term->approximation, backend).domain.capabilities;
+    require(spec.spin == FockSpin::Restricted ? capability.restricted : capability.unrestricted,
+            "requested Fock spin convention is outside the provider domain");
+    require(spec.derivative_order <= capability.maximum_derivative_order,
+            "requested Fock derivative order is outside the provider domain");
+    require(term->op == FockOperator::FullRange    ? capability.full_range
+            : term->op == FockOperator::ShortRange ? capability.short_range
+                                                   : capability.long_range,
+            "requested Fock operator is outside the provider domain");
+  }
   const bool fitted = spec.coulomb.approximation == FockApproximation::DensityFitted ||
                       spec.exchange.approximation == FockApproximation::DensityFitted;
   if (fitted) {

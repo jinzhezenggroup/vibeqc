@@ -59,9 +59,13 @@ def source_identity(source: Path) -> str:
     """Mirror the CMake compatibility inventory before spending a tuning budget."""
     paths = {
         source / "CMakeLists.txt",
+        source / "cmake/VibeQCCuda.cmake",
         source / "cmake/VibeQCGenerated.cmake",
+        source / "cmake/VibeQCGeneratedSources.cmake",
+        source / "cmake/VibeQCSources.cmake",
         source / "cmake/VibeQCTests.cmake",
         source / "tools/generate_shell_kernels.py",
+        source / "tools/generate_ecp_kernels.py",
         source / "tools/generate_df_kernels.py",
         source / "tools/generate_weighted_eri_kernels.py",
         source / "tools/generate_one_electron_kernels.py",
