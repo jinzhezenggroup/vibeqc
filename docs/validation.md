@@ -31,7 +31,10 @@ scheduler/resource layout without editing source. Set
 `VIBEQC_BENCHMARK_LOCAL=1` for tools that support local execution. Explicit
 CLI/function arguments take precedence over environment settings, which take
 precedence over the project defaults. Empty environment values for partition,
-GRES or time omit that optional Slurm flag.
+GRES or time omit that optional Slurm flag. Current benchmark executables consume
+one result stream and share one artifact path: nonlocal launches therefore require
+exactly one node and one task. Larger requests are rejected, not silently clamped
+or presented as distributed measurements.
 
 Commands recorded in historical evidence and examples may still show
 `main/gpu:5090:1`; those identify the cluster allocation used for that

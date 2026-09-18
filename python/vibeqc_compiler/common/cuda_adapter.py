@@ -149,6 +149,11 @@ class CudaExecutionProfile:
             raise ValueError("CUDA execution command must be non-empty")
         if self.local:
             return list(command)
+        # Every current consumer owns one result stream and one artifact path.
+        # Multiple Slurm tasks would duplicate work and overwrite trial records,
+        # not distribute one benchmark. Keep that request explicit and fail closed.
+        if self.nodes != 1 or self.ntasks != 1:
+            raise ValueError("CUDA benchmark launches require one node and one task")
         prefix = [self.srun]
         if self.partition is not None:
             prefix.append(f"--partition={self.partition}")

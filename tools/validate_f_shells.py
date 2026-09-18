@@ -45,7 +45,6 @@ def main() -> int:
     parser.add_argument("--compile-timeout", type=float, default=600)
     parser.add_argument(
         "--slurm-time",
-        default="00:10:00",
         help="finite allocation time per numerical class; scheduler resources use the shared benchmark profile",
     )
     parser.add_argument("--runtime-timeout", type=int, default=900)
