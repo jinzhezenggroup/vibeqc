@@ -101,7 +101,7 @@ This completes only the #163-A stationary derivative contract / XC geometry
 slice. Atom-centred grid/partition response, the other energy terms and Pulay
 contributions, complete molecular gradients, CUDA gradient lowering, and public
 DFT forces remain unsupported under #163 B/C. See the
-[native ownership decision](../.agents/notes/implemented/numerics/2026-09-16-stationary-native-handoff.md).
+[stationary XC ownership decision](../.agents/notes/implemented/numerics/2026-09-18-scf-point-generated-pullback.md).
 The public `Result.density_rms` retains its density-update convergence meaning.
 The separate `Result.physical_residual_rms` reports the physical commutator
 RMS; UKS combines the alpha/beta matrix entries in both public RMS measures.
