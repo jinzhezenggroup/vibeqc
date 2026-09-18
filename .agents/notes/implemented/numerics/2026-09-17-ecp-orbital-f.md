@@ -82,3 +82,6 @@ resource gates, including any increase to fixed AO expansion storage.
 - [Current ECP contract](../../../../docs/ecp.md).
 - [Prior host-grid decision](../architecture/2026-09-17-ecp-host-grid.md), whose
   original s/p/d orbital boundary is superseded by this bounded extension.
+
+The separate [f-projector decision](2026-09-18-ecp-f-projectors.md) supersedes
+this note's f-projector exclusion while preserving its orbital boundary.

@@ -175,7 +175,7 @@ def _ecp_workspace(item):
     points = 2 * 44 * 44
     return checked_bytes(
         32 * n * n * (1 + d)
-        + 32 * n * (points + 9)
+        + 32 * n * (points + 16)
         + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
         + 4096,
         "ECP two-grid workspace",

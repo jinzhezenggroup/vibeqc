@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13015,
+  "all_handwritten_scientific_lines": 13017,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -168,7 +168,7 @@
       "oracle": 15,
       "performance_exception": 163,
       "runtime": -5410,
-      "scientific": 2645
+      "scientific": 2647
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -379,20 +379,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 12366,
+      "bytes": 12657,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 272
+        "scientific": 274
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 278,
+      "physical_lines": 280,
       "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "5411702c94cf9b75b478681b8bc2ae948a0cc1faa029244dc3c85934bb944e40",
+      "sha256": "a23beee43a6ef3187480ae3f255a2f7abff7b2b769fe0a6eb771ff340d0e1a3e",
       "subsystem": "ecp"
     },
     {
@@ -3878,10 +3878,10 @@
     {
       "files": [
         {
-          "bytes": 34335,
-          "code_lines": 1196,
+          "bytes": 35562,
+          "code_lines": 1234,
           "path": "generated/generated_ecp_ao.cuh",
-          "sha256": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334"
+          "sha256": "9e21fb36f87c2fea0e7a14e27bcfb054118c990bb3d01b5ac7fefd96bfa3b4f9"
         }
       ],
       "measurement": "explicit build",
@@ -3940,13 +3940,13 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 27541945,
+  "generated_bytes": 27543172,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
     "runtime": 10163,
-    "scientific": 12747
+    "scientific": 12749
   },
   "migration_ledger": {
     "ao_grid": {
@@ -4034,7 +4034,7 @@
       "status": "partial"
     },
     "ecp": {
-      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
       "evidence": [
         "tests/python/test_ecp.py",
         "tests/python/test_ecp_ir.py",
@@ -4042,13 +4042,15 @@
         "tests/python/test_ecp_f.py",
         "tests/python/test_ecp_validation.py",
         "tests/native/test_ecp_capabilities.cpp",
-        "benchmarks/results/ecp-f-171/README.md"
+        "benchmarks/results/ecp-f-171/README.md",
+        "tests/python/test_ecp_f_projector.py",
+        "benchmarks/results/ecp-f-projector-171/README.md"
       ],
-      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding.",
-      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector f or higher families unavailable. No broad heavy-element qualification.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
       "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
       "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
-      "status": "Bounded s/p/d/f orbital extension over generated projector/radial, AO/fixed-weight and host grid arithmetic; projectors remain s/p/d. No DFT, broad heavy-element or performance-promotion claim."
+      "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
@@ -4174,7 +4176,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 272
+      "scientific": 274
     },
     "low_rank": {
       "fallback": 0,

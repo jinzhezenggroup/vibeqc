@@ -664,7 +664,7 @@ VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
 VIBEQC_API void vibeqc_system_destroy(vibeqc_system* system);
 
 /** Scalar Gaussian residual ECP: c r^(power-2) exp(-exponent r^2).
- * channel=-1 is local, 0..2 is a nonlocal projector difference.
+ * channel=-1 is local, 0..3 is a nonlocal projector difference.
  * Core counts are atom-major and must leave positive effective ionic charges.
  * All buffers are copied; existing all-electron system_create ABI is unchanged. */
 typedef struct vibeqc_ecp_term {

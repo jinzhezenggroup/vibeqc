@@ -62,12 +62,21 @@ void check_c_api() {
                 "native ECP orbital-f/g capability mismatch");
         require((system != nullptr) == (angular == 3), "failed ECP constructor published output");
         if (angular == 3) {
-          const vibeqc_ecp_term unsupported{0, 3, 2, 0.8, -2};
+          const std::array<vibeqc_ecp_term, 2> supported{{term, {0, 3, 2, 0.63, 0.74}}};
+          vibeqc_system* extended{};
+          require(
+              vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(), supported.data(),
+                                       supported.size(), &extended) == VIBEQC_STATUS_SUCCESS &&
+                  extended,
+              "native f projector rejected");
+          vibeqc_system_destroy(extended);
+          const std::array<vibeqc_ecp_term, 2> unsupported{{term, {0, 4, 2, 0.8, -2}}};
           vibeqc_system* bad{};
-          require(vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(), &unsupported,
-                                           1, &bad) == VIBEQC_STATUS_INVALID_ARGUMENT &&
+          require(vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(),
+                                           unsupported.data(), unsupported.size(),
+                                           &bad) == VIBEQC_STATUS_INVALID_ARGUMENT &&
                       !bad,
-                  "orbital f support silently enabled projector f");
+                  "projector f support silently enabled projector g");
         }
       }
 }

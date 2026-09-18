@@ -79,7 +79,7 @@ std::array<double, 4> evaluate(const AO& ao, const core::System& system,
 }
 
 // Any orthonormal real basis within l gives the same summed projector.
-std::array<double, 9> harmonics(double x, double y, double z) {
+std::array<double, 16> harmonics(double x, double y, double z) {
   return {1 / std::sqrt(4 * pi),
           std::sqrt(3 / (4 * pi)) * x,
           std::sqrt(3 / (4 * pi)) * y,
@@ -88,7 +88,14 @@ std::array<double, 9> harmonics(double x, double y, double z) {
           std::sqrt(15 / (4 * pi)) * y * z,
           std::sqrt(5 / (16 * pi)) * (3 * z * z - 1),
           std::sqrt(15 / (4 * pi)) * x * z,
-          std::sqrt(15 / (16 * pi)) * (x * x - y * y)};
+          std::sqrt(15 / (16 * pi)) * (x * x - y * y),
+          std::sqrt(35 / (32 * pi)) * y * (3 * x * x - y * y),
+          std::sqrt(105 / (4 * pi)) * x * y * z,
+          std::sqrt(21 / (32 * pi)) * y * (5 * z * z - 1),
+          std::sqrt(7 / (16 * pi)) * z * (5 * z * z - 3),
+          std::sqrt(21 / (32 * pi)) * x * (5 * z * z - 1),
+          std::sqrt(105 / (16 * pi)) * z * (x * x - y * y),
+          std::sqrt(35 / (32 * pi)) * x * (x * x - 3 * y * y)};
 }
 }  // namespace
 
@@ -123,7 +130,7 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
   struct Point {
     std::array<double, 3> xyz;
     double weight;
-    std::array<double, 9> y;
+    std::array<double, 16> y;
   };
   std::vector<Point> sphere;
   for (const auto& zw : polar)
@@ -134,13 +141,13 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
     }
   // A radial shell is the lifetime boundary: no full molecular quadrature/AO tensor.
   std::vector<std::array<double, 4>> values(n * sphere.size());
-  std::vector<std::array<double, 4>> projections(n * 9);
+  std::vector<std::array<double, 4>> projections(n * 16);
   for (std::size_t center = 0; center < system.atoms.size(); ++center) {
     if (system.atoms[center].ecp_core == 0) continue;
     for (const auto& tw : radial_grid) {
       const double t = (tw[0] + 1) / 2, r = t / (1 - t);
       const double rw = tw[1] / (2 * (1 - t) * (1 - t));
-      std::array<double, 4> potentials{};
+      std::array<double, 5> potentials{};
       for (const auto& term : system.ecp_terms)
         if (term.atom_index == center)
           potentials[term.channel + 1] +=
@@ -155,9 +162,9 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
         for (std::size_t a = 0; a < n; ++a) {
           const auto v = evaluate(aos[a], system, point);
           values[a * sphere.size() + q] = v;
-          for (unsigned m = 0; m < 9; ++m)
+          for (unsigned m = 0; m < 16; ++m)
             for (unsigned d = 0; d < (derivatives ? 4U : 1U); ++d)
-              projections[a * 9 + m][d] += sphere[q].weight * sphere[q].y[m] * v[d];
+              projections[a * 16 + m][d] += sphere[q].weight * sphere[q].y[m] * v[d];
         }
       }
       for (std::size_t a = 0; a < n; ++a)
@@ -175,10 +182,10 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
                 local[d + 4] += w * va[0] * vb[d + 1];
               }
           }
-          for (unsigned l = 0; l <= 2; ++l)
+          for (unsigned l = 0; l <= 3; ++l)
             for (unsigned m = l * l; m < (l + 1) * (l + 1); ++m) {
-              const auto& va = projections[a * 9 + m];
-              const auto& vb = projections[b * 9 + m];
+              const auto& va = projections[a * 16 + m];
+              const auto& vb = projections[b * 16 + m];
               const double w = potentials[l + 1];
               nonlocal[0] += w * va[0] * vb[0];
               if (derivatives)

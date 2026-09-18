@@ -66,10 +66,18 @@ def test_highest_singleton_channel_is_local():
     assert terms == ((0, -1, 2, 0.8, -2.0), (0, 0, 2, 0.8, -2.0))
 
 
+def test_g_local_label_enables_f_projector_without_g_orbitals():
+    cores, terms = resolve(
+        element([potential(angular_momentum=[4]), potential(angular_momentum=[3])])
+    )
+    assert cores == (10,)
+    assert terms == ((0, -1, 2, 0.8, -2.0), (0, 3, 2, 0.8, -2.0))
+
+
 @pytest.mark.parametrize(
     "changes, message",
     [
-        ({"angular_momentum": [4]}, "local channel"),
+        ({"angular_momentum": [5]}, "local channel"),
         ({"spin_orbit": True}, "unknown ECP parameter fields"),
     ],
 )

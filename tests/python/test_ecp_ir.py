@@ -63,7 +63,9 @@ def test_generated_harmonic_channel_addition_theorem():
             for v in (a, b)
         )
         dot = a @ b
-        for l, polynomial in enumerate((1.0, dot, (3 * dot * dot - 1) / 2)):
+        for l, polynomial in enumerate(
+            (1.0, dot, (3 * dot * dot - 1) / 2, (5 * dot**3 - 3 * dot) / 2)
+        ):
             selected = slice(l * l, (l + 1) ** 2)
             assert ya[selected] @ yb[selected] == pytest.approx(
                 (2 * l + 1) / (4 * math.pi) * polynomial, abs=3e-15
@@ -74,7 +76,7 @@ def test_generated_harmonic_channel_addition_theorem():
 def test_ecp_center_and_versioned_roundtrip(weighted):
     ir = build_ecp_ir(
         (1, 2),
-        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(0, 0, 1.5, 2)),
+        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(3, 0, 1.5, 2)),
         derivatives=True,
         weighted=weighted,
     )
@@ -132,7 +134,7 @@ def test_invalid_ecp_lowerings_fail_closed():
         build_ecp_ir((0, 0), (term,), weighted=True)
     for kwargs in (
         {"power": -1},
-        {"channel": 3},
+        {"channel": 4},
         {"exponent": 0},
         {"coefficient": float("nan")},
     ):
