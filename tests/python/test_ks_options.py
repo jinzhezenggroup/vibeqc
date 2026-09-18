@@ -16,6 +16,7 @@ from vibeqc import (
 )
 from vibeqc.ks import resolve_ks_options
 from vibeqc_compiler.dft.grid import MolecularGrid
+from vibeqc_compiler.method import SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import functional
 
 H2 = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -41,9 +42,26 @@ def test_functional_composition_resolves_only_required_ingredients():
     assert lda.ao_order == 0 and lda.functional.ingredients == ("rho",)
     assert pbe.ao_order == 1 and pbe.functional.ingredients == ("rho", "sigma")
     assert lda.functional.spin == "unpolarized" and pbe.functional.spin == "polarized"
+    assert lda.method_ir.identifier == "LDA_XC_PW"
+    assert pbe.method_ir.identifier == "PBE"
+    assert isinstance(pbe.method_ir.primitives[0], SemilocalXCPrimitive)
+    assert pbe.functional.identity == functional("PBE", spin="polarized").identity
+    assert (
+        lda.functional.identity == functional("LDA_XC_PW", spin="unpolarized").identity
+    )
+    assert pbe.to_payload()["method_ir_identity"] == pbe.method_ir.identity
     assert "tau" not in pbe.to_payload()["required_ingredients"]
     assert pbe.to_payload()["scalar_derivative_order"] == 1
     assert pbe.to_payload()["scf_domain"].endswith("pbe-spin-c2-1e-18")
+
+
+def test_method_ir_capability_gate_rejects_non_semilocal_graph(monkeypatch):
+    import vibeqc.ks as ks_module
+
+    hybrid = resolve_method("PBE0", spin="unpolarized")
+    monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: hybrid)
+    with pytest.raises(NotImplementedError, match="exactly one supported semilocal"):
+        ks_module.resolve_ks_options("pbe-rks")
 
 
 def test_unsupported_compositions_and_policy_fail_before_native_load(monkeypatch):

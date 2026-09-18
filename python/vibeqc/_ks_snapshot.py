@@ -15,7 +15,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 
 from . import _native
 from .batch import PreparedBatch
-from .ks import SCF_DOMAIN
+from .ks import SCF_DOMAIN, resolve_ks_method
 
 
 class NativeKsSnapshot:
@@ -117,7 +117,6 @@ class NativeKsSnapshot:
     def decode(self, basis, grid):
         """Verify actual AO/grid sources before deriving any Python identities."""
         from vibeqc_compiler.dft.grid import ExplicitGrid
-        from vibeqc_compiler.xc.spec import functional
 
         from ._dft_gradient import (
             StationaryKsIdentity,
@@ -204,11 +203,11 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        spin = "unpolarized" if spins == 1 else "polarized"
-        spec = functional("PBE" if pbe else "LDA_XC_PW", spin=spin)
+        method = ("pbe" if pbe else "lda") + ("-rks" if spins == 1 else "-uks")
+        _, spec = resolve_ks_method(method)
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
-            method=("pbe" if pbe else "lda") + ("-rks" if spins == 1 else "-uks"),
+            method=method,
             model_identity=canonical_hash(
                 {
                     "native_owner": owner,
