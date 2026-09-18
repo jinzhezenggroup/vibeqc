@@ -57,7 +57,9 @@ ECP-center derivatives use generated `dC = -(dA+dB)` after the angular
 reduction and before physical atom accumulation, including coincident A/B/C
 cases. Value-only calls do not read derivative slots.
 
-The one-radial-shell schedule is shared across the supported orbital domain.
+CPU uses one radial layer. CUDA batches up to four layers for at most 16 public
+AOs and 44 polar points; larger domains retain one layer. Each AO pair still
+accumulates radial contributions in their original order.
 The independent `src/integrals/ecp.cpp` CPU implementation remains the public
 CPU fallback and a numerical oracle; it intentionally does not call these
 generated contractions. The compiler also owns ECP-centered node displacement,
@@ -105,15 +107,20 @@ rigorous error bound for arbitrary exponents/geometries. Raw exports expose
 their explicit grids so discretization and CPU/GPU floating-point errors
 can be inspected separately.
 
-CPU and CUDA stage only one radial shell of AO values and projections.
+CPU stages one radial layer of AO values and projections. CUDA stages at most
+four in the bounded small-domain schedule, independently of radial grid length.
+The final batch uses its actual remaining layers. OOM in optional four-layer
+staging retries the original single-layer schedule; other failures propagate.
+The shared compiler policy also controls the resource bound, using Cartesian
+storage capacity and actual public AO count for schedule selection.
 CUDA consumes device hcore/density/force buffers on the borrowed stream;
 raw exports additionally transfer output to host. Complete HF uses bounded
 two-grid derivative buffers; the resource planner includes this transient
 workspace, core-adjusted occupations and ECP parameter identity. GPU memory
 uses the shared native allocation ledger. Prepared topology identity includes
 core counts, channel parameters and atom mappings; geometry changes rebuild
-one-electron terms. The first implementation favors a verifiable baseline
-and makes no speedup claim.
+one-electron terms. The [radial-schedule decision](../.agents/notes/implemented/performance/2026-09-18-ecp-radial-batching.md)
+records ordering, bounded fallback and endpoint qualification.
 
 CUDA HF resource inventory v1 remains limited to at most 16 public AOs (and
 its existing DIIS/layout constraints). Orbital-f support does not enlarge that

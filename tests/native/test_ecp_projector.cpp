@@ -341,6 +341,9 @@ void check() {
 
 int main() {
   try {
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 44) == 4);
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(17, 44) == 1);
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 45) == 1);
     check_grid();
     check();
     check_ao_consumer();

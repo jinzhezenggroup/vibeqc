@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13015,
+  "all_handwritten_scientific_lines": 13028,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -168,7 +168,7 @@
       "oracle": 15,
       "performance_exception": 163,
       "runtime": -5409,
-      "scientific": 2645
+      "scientific": 2658
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -379,20 +379,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 12366,
+      "bytes": 13257,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 272
+        "scientific": 285
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 278,
+      "physical_lines": 296,
       "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "5411702c94cf9b75b478681b8bc2ae948a0cc1faa029244dc3c85934bb944e40",
+      "sha256": "02a9268e7d7e9c99e490b06e8d1c3f2f1d3d1c4224d7ea4778f9063b62714dd0",
       "subsystem": "ecp"
     },
     {
@@ -3817,10 +3817,10 @@
     {
       "files": [
         {
-          "bytes": 34335,
-          "code_lines": 1196,
+          "bytes": 34489,
+          "code_lines": 1200,
           "path": "generated/generated_ecp_ao.cuh",
-          "sha256": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334"
+          "sha256": "0ca4ae2a16e012baafbf021a15025d13e17760ce7a4d49ad0b36c75bd708cd06"
         }
       ],
       "measurement": "explicit build",
@@ -3879,13 +3879,13 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 12428397,
+  "generated_bytes": 12428551,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
     "runtime": 10164,
-    "scientific": 12747
+    "scientific": 12760
   },
   "migration_ledger": {
     "ao_grid": {
@@ -4117,7 +4117,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 272
+      "scientific": 285
     },
     "low_rank": {
       "fallback": 0,

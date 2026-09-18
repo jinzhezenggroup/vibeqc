@@ -116,6 +116,18 @@ void errors_and_recovery() {
       require(observation.read()[0] == 0, "CUDA error leaked device allocations");
     }
     {
+      // One radial layer fits, four do not. Optional batching must fall back
+      // without publishing partial output, leaking, or masking non-OOM errors.
+      const std::size_t polar = device_consumer ? 44 : 32;
+      const auto budget =
+          2 * polar * polar * (sizeof(vibeqc::integrals::EcpSpherePoint) + 4 * sizeof(double)) +
+          (16 << 10);
+      Observation observation(budget, 0);
+      require(execute() == VIBEQC_STATUS_SUCCESS, "single-layer OOM fallback failed");
+      const auto values = observation.read();
+      require(values[0] == 0 && values[3] > 0, "radial fallback was not exercised or leaked");
+    }
+    {
       Observation observation(8 << 20, 0);
       require(execute() == VIBEQC_STATUS_SUCCESS, "ECP execution did not recover");
       const auto values = observation.read();

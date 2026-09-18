@@ -8,6 +8,7 @@ The native adapter owns scheduling, storage and physical-atom scatter.
 
 from .ecp import emit_ecp_ao_cuda
 from .ecp_grid import emit_ecp_grid_cpp
+from .ecp_schedule import emit_ecp_schedule_cpp
 from .expr import Graph
 from .ir import EcpRadialTerm
 from .scalar_c import ScalarCEmitter
@@ -152,6 +153,7 @@ def emit_ecp_quadrature_cpp():
         .replace("#pragma once\n", "")
         .replace("__device__ inline", "VIBEQC_ECP_INLINE"),
         "namespace vibeqc::generated {",
+        *emit_ecp_schedule_cpp(),
         *emit_ecp_grid_cpp(),
         *_emit_ao_consumer(),
         *_emit_weighted_consumer(),

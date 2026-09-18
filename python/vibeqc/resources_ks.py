@@ -143,7 +143,7 @@ def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
     # pair indices and S/H/nuclear output, then frees them before preparing J.
     # This bound includes every explicit device buffer of that value-only path.
     setup = byte_product(64, 1 + a + s + p + n + pairs + n * n)
-    setup = max(setup, _ecp_workspace(item))
+    setup = max(setup, _ecp_workspace(item, cuda=True))
     return {
         "state": checked_bytes(int(output[0])),
         "xc": checked_bytes(int(output[1])),
