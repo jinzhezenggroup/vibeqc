@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
+find_package(Threads REQUIRED)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGenerated.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGeneratedSources.cmake")
@@ -172,6 +173,7 @@ if(VIBEQC_ENABLE_CUDA)
 endif()
 
 add_library(vibeqc SHARED)
+target_link_libraries(vibeqc PRIVATE Threads::Threads)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 
