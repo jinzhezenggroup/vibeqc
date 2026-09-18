@@ -235,9 +235,7 @@ def resolve_cuda_execution_profile(
         gres=text_value("VIBEQC_BENCHMARK_GRES", gres, "gpu:5090:1"),
         nodes=int_value("VIBEQC_BENCHMARK_NODES", nodes, 1),
         ntasks=int_value("VIBEQC_BENCHMARK_NTASKS", ntasks, 1),
-        slurm_time=text_value(
-            "VIBEQC_BENCHMARK_TIME", slurm_time, default_slurm_time
-        ),
+        slurm_time=text_value("VIBEQC_BENCHMARK_TIME", slurm_time, default_slurm_time),
     )
 
 
@@ -268,7 +266,7 @@ class CudaBenchmarkExecutor:
         slurm_time: str | None = None,
         default_slurm_time: str | None = "00:10:00",
         environment: Mapping[str, str] | None = None,
-    ) -> "CudaBenchmarkExecutor":
+    ) -> CudaBenchmarkExecutor:
         """Resolve one shared profile and adapt it to the benchmark executor."""
 
         profile = resolve_cuda_execution_profile(

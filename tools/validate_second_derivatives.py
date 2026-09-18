@@ -459,9 +459,9 @@ def run(args):
             f".artifacts/second-reproduction-{args.backend}",
         ]
         if args.backend == "cuda":
-            argv = resolve_cuda_execution_profile(
-                default_slurm_time="00:15:00"
-            ).wrap(argv)
+            argv = resolve_cuda_execution_profile(default_slurm_time="00:15:00").wrap(
+                argv
+            )
         publish(
             args.output,
             {
