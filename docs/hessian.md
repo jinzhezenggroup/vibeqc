@@ -230,3 +230,47 @@ result. A full-Hessian request that cannot be expressed within the provider's
 tile bounds is rejected; an unimplemented DF/ECP/range-separated/meta-GGA
 Hessian is reported as unsupported rather than silently answered with an
 HF or energy-only quantity.
+
+## Independent semi-numerical reference
+
+`tools.vibeqc_hessian.reference` supplies a tiny CPU oracle with an independent
+dense CPHF solve and finite-difference first/second integral derivatives. It
+requires optional PySCF, all-electron closed-shell RHF, Cartesian AOs, at most
+18 AOs and four atoms, and a nonzero occupied/virtual gap. Invalid steps,
+unsupported molecules, unconverged SCF references and failed response solves
+raise errors. It is imported explicitly; importing the Hessian weight/RHS
+helpers does not require PySCF.
+
+This reference does **not** complete slice-A step 4 or qualify the analytic
+provider chain. That integration must consume #178 generated second-integral
+blocks and #179's shared response operator/solver. The dense reference stays
+independent so it can test that future implementation. The occupied CPHF block
+is fixed by the metric gauge, and its induced density contributes to the virtual
+response; a correctly constructed reduced occupied/virtual solve is equivalent.
+
+`System.derive()` differences fresh-molecule integrals. `hessian_components()`
+returns nuclear, core, overlap/Pulay, two-electron and relaxation contributions.
+With energy-weighted density `W = 2 sum_i eps_i C_i C_i^T`, the full-coordinate
+Pulay skeleton is `-Tr[W S_RR]`; the complete coordinate derivative already
+includes both AO slots. `hessian_total()` evaluates both atom orders without
+symmetrizing the result. Its layout is `(atom, atom, xyz, xyz)` (PySCF convention),
+and its units are Eh/Bohr². Transpose to `(atom, xyz, atom, xyz)` before using the
+existing skeleton/diagnostic helpers.
+
+Reproduce the reference gates with:
+
+```sh
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=python:. \
+  python tools/hessian_examples.py --case h2,water --output /tmp/hessian-reference.json
+```
+
+The driver retains the full basis/geometry and source hashes, compares against
+PySCF's analytic Hessian (5e-6 absolute tolerance), total-energy differences
+(5e-4), and all three analytic-gradient difference steps (2e-4 each). It also
+gates raw symmetry, translation, component sums and the omitted-relaxation
+negative case; any failed gate produces a nonzero exit status. H2 uses STO-3G;
+water uses a **custom 12-AO O(s,p,d) + H/STO-3G stress basis**, with five occupied
+and seven virtual orbitals. The tests additionally cover genuine 7-AO water
+STO-3G. No complete-method performance or generated-provider claim is made.
+
+See the [reference-boundary rationale](../.agents/notes/implemented/numerics/2026-09-17-hessian-reference-boundary.md).

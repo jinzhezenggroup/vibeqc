@@ -90,6 +90,62 @@ def test_new_host_ablation_cli_rejects_ambiguous_or_non_host_requests(
 
 
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
+@pytest.mark.parametrize("reference", (False, True))
+def test_final_state_fixed_point_reuses_rejected_probe_without_hiding_solves(
+    method, reference
+):
+    """Two accepted probes plus one promoted rejection require three solves.
+
+    The promoted probe also accounts for the sole density correction. Counting
+    it again would invent work; omitting accepted probes would hide real work.
+    """
+    import copy
+
+    from benchmarks.df_host_workloads import validate_final_state_counts
+
+    count = 3 * (2 if method == "uhf" else 1)
+    group = "eigensolves_by_reason" if reference else "device_eigensolves_by_reason"
+    record = {
+        "eigensolves_by_reason": {},
+        "device_eigensolves_by_reason": {},
+        "exclusive_phases": {
+            name: {"calls": calls}
+            for name, calls in {
+                "final_state_read": 2,
+                "final_state_fock_build": 3,
+                "final_state_validation": 3,
+                "strict_final_correction": 1,
+                "final_state_corrected": 1,
+                "final_state_reuse": 1,
+                "final_state_weighted_density": 2,
+                "force_response": 2,
+                "final_state_fixed_point": 3,
+                "final_state_fixed_point_promotion": 1,
+            }.items()
+        },
+    }
+    record[group]["final_fock"] = {"calls": count}
+    kwargs = {
+        "batch_size": 2,
+        "method": method,
+        "force": False,
+        "reference": reference,
+        "compute_forces": True,
+    }
+    validate_final_state_counts(record, **kwargs)
+    for name in ("final_state_fixed_point", "final_state_fixed_point_promotion"):
+        broken = copy.deepcopy(record)
+        broken["exclusive_phases"][name]["calls"] += 1
+        with pytest.raises(RuntimeError, match="fixed-point"):
+            validate_final_state_counts(broken, **kwargs)
+    for wrong in (count - 1, count + 1):
+        broken = copy.deepcopy(record)
+        broken[group]["final_fock"]["calls"] = wrong
+        with pytest.raises(RuntimeError, match="spin providers"):
+            validate_final_state_counts(broken, **kwargs)
+
+
+@pytest.mark.parametrize("method", ("rhf", "uhf"))
 def test_strict_provider_ablation_requires_actual_fock_validation_and_correction(
     method,
 ):

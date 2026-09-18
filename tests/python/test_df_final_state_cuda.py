@@ -98,7 +98,12 @@ def test_selection_rebuild_and_force_transitions(
                 reference = calls(ledger["eigensolves_by_reason"], "final_fock")
                 device = calls(ledger["device_eigensolves_by_reason"], "final_fock")
                 assert (reference + device) % spins == 0
-                corrections = (reference + device) // spins
+                corrections = calls(phases, "strict_final_correction")
+                checks = calls(phases, "final_state_fixed_point")
+                promoted = calls(phases, "final_state_fixed_point_promotion")
+                assert checks == (size if "forces" in properties else 0) + promoted
+                assert 0 <= promoted <= corrections
+                assert (reference + device) // spins == corrections + checks - promoted
                 assert calls(phases, "final_state_read") == size
                 assert calls(phases, "final_state_fock_build") == size + corrections
                 assert calls(phases, "strict_final_correction") == corrections
@@ -117,10 +122,10 @@ def test_selection_rebuild_and_force_transitions(
                 assert calls(ledger["eigensolves_by_reason"], "fallback") == 0
                 if mode == "reference_rebuild":
                     assert (
-                        spins * size <= reference <= spins * 16 * size and device == 0
+                        spins * size <= reference <= spins * 17 * size and device == 0
                     )
                 else:
-                    assert reference == 0 and device <= spins * 16 * size
+                    assert reference == 0 and device <= spins * 17 * size
                     if mode == "device_rebuild":
                         assert (
                             device >= spins * size

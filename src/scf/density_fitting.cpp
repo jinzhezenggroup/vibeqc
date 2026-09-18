@@ -870,12 +870,10 @@ std::vector<double> build_density_fitting_uhf_forces(
   return forces;
 }
 
-DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::size_t nbf,
-                                                  std::size_t naux, std::size_t occupied,
-                                                  std::size_t memory_budget_bytes,
-                                                  std::size_t fixed_device_bytes,
-                                                  bool generated_source) {
-  const bool occupied_exchange = df_occupied_exchange_requested(nbf, naux, batch_size);
+static DensityFittingTilePlan plan_density_fitting_tiles_impl(
+    std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t occupied,
+    std::size_t memory_budget_bytes, std::size_t fixed_device_bytes, bool generated_source,
+    bool occupied_exchange) {
   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
     throw std::invalid_argument("DF planner dimensions must all be positive");
   }
@@ -996,10 +994,34 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   return plan;
 }
 
-DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std::size_t n,
-                                                         std::size_t a, std::size_t rank,
-                                                         std::size_t budget,
-                                                         std::size_t fixed_device_bytes) {
+/** Automatic factors are optional: never shrink a dense plan solely to charge
+ * storage that the resulting streamed/partial path cannot consume. */
+DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t nbf,
+                                                  std::size_t naux, std::size_t occupied,
+                                                  std::size_t budget, std::size_t fixed,
+                                                  bool generated_source,
+                                                  std::size_t automatic_rhf_rank) {
+  const bool automatic = df_occupied_exchange_auto_requested() && !generated_source &&
+                         df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank);
+  if (automatic) {
+    try {
+      auto plan = plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget, fixed,
+                                                  generated_source, true);
+      if (plan.stores_full_three_center) {
+        plan.automatic_rhf_rank = automatic_rhf_rank;
+        return plan;
+      }
+    } catch (const DensityFittingBudgetError&) {
+      // Retry the original dense budget before reporting an infeasible job.
+    }
+  }
+  return plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget, fixed,
+                                         generated_source, df_occupied_exchange_requested());
+}
+
+static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
+    std::size_t batch, std::size_t n, std::size_t a, std::size_t rank, std::size_t budget,
+    std::size_t fixed_device_bytes, bool occupied_exchange) {
   // Validate capacities before forming products below, including both raw and
   // transformed owners. This helper is shared with the actual native allocator.
   (void)df_packed_value_capacity(batch, n, a, rank, 1);
@@ -1009,7 +1031,6 @@ DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std:
       matrix > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
       a > static_cast<std::size_t>(std::numeric_limits<int>::max()))
     throw std::overflow_error("packed DF dimensions exceed native indexing");
-  const bool occupied_exchange = df_occupied_exchange_requested(n, a, batch);
   const auto bytes = [&](std::size_t q) {
     const auto capacity = df_packed_value_capacity(batch, n, a, rank, q);
     const auto legacy = workspace_bytes(matrix, q, batch, n, a, metric_bytes, fixed_device_bytes,
@@ -1046,6 +1067,27 @@ DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std:
           bytes(q),
           true,
           {DfPairStorage::SymmetricLower, rank}};
+}
+
+/** Packed U is independently requested storage; optional automatic SCF factors
+ * may use it only if their additional charged capacity also fits. */
+DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std::size_t nbf,
+                                                         std::size_t naux, std::size_t rank,
+                                                         std::size_t budget, std::size_t fixed,
+                                                         std::size_t automatic_rhf_rank) {
+  if (df_occupied_exchange_auto_requested() && automatic_rhf_rank <= rank &&
+      df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank)) {
+    try {
+      auto plan =
+          plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed, true);
+      plan.automatic_rhf_rank = automatic_rhf_rank;
+      return plan;
+    } catch (const DensityFittingBudgetError&) {
+      // Packing remains explicit; only the unused SCF reservation is dropped.
+    }
+  }
+  return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed,
+                                                df_occupied_exchange_requested());
 }
 
 std::size_t density_fitting_scf_diis_device_bytes(std::size_t batch, std::size_t nbf,

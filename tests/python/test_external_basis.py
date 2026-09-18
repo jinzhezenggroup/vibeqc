@@ -47,6 +47,22 @@ def check(actual, expected, *, atol=1e-11, rtol=1e-10):
     assert result["passed"], result
 
 
+def unsupported_g_ecp_basis():
+    """Keep an explicit unsupported orbital boundary as f becomes available."""
+    basis = imported("def2-tzvp-au")
+    element = basis.by_element[79]
+    return replace(
+        basis,
+        name="synthetic g extension of def2-tzvp-au",
+        elements=(
+            replace(
+                element,
+                shells=(*element.shells, BasisShell(4, ("0.7",), (("1",),))),
+            ),
+        ),
+    )
+
+
 def test_source_hashes_and_complete_canonical_roundtrip(tmp_path):
     metadata = json.loads((ROOT / "manifest.json").read_text())
     for name, checksum in metadata["files"].items():
@@ -284,7 +300,18 @@ def test_realistic_high_l_and_ecp_are_loadable_but_have_precise_missing_routes(
         assert report["shells_checked"] == 20
     au = imported("def2-tzvp-au")
     report = basis_capability(au, [("Au", (0, 0, 0))], backend=backend, role=role)
+    # This record contains f orbitals, now inside the generic scalar ECP route.
+    # Route availability still does not qualify an Au chemical model or ECP DF.
+    assert report["eligible"] and report["data_loadable"]
+    assert not report["validated_element_model"] and not report["aot_promoted"]
+    assert report["shells_checked"] == sum(
+        len(shell.coefficients) for shell in au.by_element[79].shells
+    )
+    report = basis_capability(
+        unsupported_g_ecp_basis(), [("Au", (0, 0, 0))], backend=backend, role=role
+    )
     assert any("ECP with 60 core electrons" in r for r in report["reasons"])
+    assert any("orbital s/p/d/f" in r for r in report["reasons"])
     assert not report["eligible"]
     assert not basis_capability(
         imported(), [("H", (0, 0, 0))], backend=backend, derivative_order=2
@@ -299,14 +326,14 @@ def test_realistic_high_l_and_ecp_are_loadable_but_have_precise_missing_routes(
 
 
 def test_public_rejections_happen_without_truncating_or_changing_charge():
-    for name, atoms, text in (
-        ("cc-pvtz-fe", [("Fe", (0, 0, 0))], "l=4"),
-        ("def2-tzvp-au", [("Au", (0, 0, 0))], "ECP"),
+    for basis, atoms, text in (
+        (imported("cc-pvtz-fe"), [("Fe", (0, 0, 0))], "l=4"),
+        (unsupported_g_ecp_basis(), [("Au", (0, 0, 0))], "ECP.*orbital s/p/d/f"),
     ):
         with pytest.raises(NotImplementedError, match=text):
-            Calculator(basis=imported(name), device="cuda").singlepoint(atoms)
-    with pytest.raises(NotImplementedError, match="ECP"):
-        imported("def2-tzvp-au").shells_for([Atom.from_value(("Au", (0, 0, 0)))])
+            Calculator(basis=basis, device="cuda").singlepoint(atoms)
+    with pytest.raises(NotImplementedError, match="ECP.*orbital s/p/d/f"):
+        unsupported_g_ecp_basis().shells_for([Atom.from_value(("Au", (0, 0, 0)))])
     with pytest.raises(NotImplementedError, match="Z=26"):
         Calculator().singlepoint([("Fe", (0, 0, 0))])
     with pytest.raises(ValueError, match="conflicts"):

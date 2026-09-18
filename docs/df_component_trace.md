@@ -187,8 +187,12 @@ The final-state integration adds two explicit host workload comparisons:
 Each flag is exclusive with other ablation flags and requires `--host-workloads`.
 The trace gates require a candidate read, current physical F evaluation and
 validation for every item, even at zero eigensolves. UHF counts two provider
-leaves per joint correction; forces require one verified W construction and one
-force-response consumer per item. A necessary cold/changed correction is valid
+leaves per joint correction; force fixed-point probes also contribute provider
+leaves. A rejected probe promoted into correction is counted once. With these
+fields present, total provider leaves are `spins * (corrections + checks -
+promotions)`, and successful force items satisfy `checks = items + promotions`.
+Forces require one verified W construction and one force-response consumer per
+item. A necessary cold/changed correction is valid
 on either side; omitted checks, accidental reuse in a forced sample or hidden
 reference fallback fail the gate. Source/library identities and SCF iteration/
 retry branches must match. Run at least five interleaved samples in clean and

@@ -41,6 +41,7 @@ macro(vibeqc_add_native_tests)
 
   vibeqc_native_test(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
   vibeqc_native_test(vibeqc_ecp_projector_tests tests/native/test_ecp_projector.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_ecp_capability_tests tests/native/test_ecp_capabilities.cpp)
   add_dependencies(vibeqc_ecp_projector_tests vibeqc_ecp_codegen)
   target_include_directories(vibeqc_ecp_projector_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
   vibeqc_native_test(vibeqc_fock_provider_tests tests/native/test_fock_provider.cpp)

@@ -166,16 +166,19 @@ def _basis_record(
     return record
 
 
-def _ecp_workspace(item):
-    """Conservative two-grid peak; radial shells are serialized on CPU/CUDA."""
+def _ecp_workspace(item, *, cuda=False):
+    """Conservative two-grid peak, including the selected CUDA radial batch."""
+    from vibeqc_compiler.integral.ecp_schedule import cuda_radial_tile
+
     orbital = item["orbital"]
     if not orbital.get("ecp_terms"):
         return 0
     n, d = orbital["cartesian_nbf"], 3 * item["atoms"]
     points = 2 * 44 * 44
+    tile = cuda_radial_tile(orbital["nbf"], 44) if cuda else 1
     return checked_bytes(
         32 * n * n * (1 + d)
-        + 32 * n * (points + 9)
+        + 32 * tile * n * (points + 16)
         + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
         + 4096,
         "ECP two-grid workspace",
@@ -304,8 +307,8 @@ def _small_cuda_item_inventory(library, item, diis_history):
     )
     return {
         "arena": checked_bytes(int(output[0])),
-        "host": checked_bytes(host + _ecp_workspace(item)),
-        "ecp_workspace": _ecp_workspace(item),
+        "host": checked_bytes(host + _ecp_workspace(item, cuda=True)),
+        "ecp_workspace": _ecp_workspace(item, cuda=True),
     }
 
 

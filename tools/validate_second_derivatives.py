@@ -22,7 +22,10 @@ import numpy as np
 import pyscf
 from validate_range_eri import command, cpu_model
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import (
+    CudaCompilerAdapter,
+    resolve_cuda_execution_profile,
+)
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.evidence import (
     block_error,
@@ -456,15 +459,9 @@ def run(args):
             f".artifacts/second-reproduction-{args.backend}",
         ]
         if args.backend == "cuda":
-            argv = [
-                "srun",
-                "--partition=main",
-                "--gres=gpu:5090:1",
-                "--nodes=1",
-                "--ntasks=1",
-                "--time=00:15:00",
-                *argv,
-            ]
+            argv = resolve_cuda_execution_profile(default_slurm_time="00:15:00").wrap(
+                argv
+            )
         publish(
             args.output,
             {

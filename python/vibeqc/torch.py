@@ -13,6 +13,8 @@ from .elements import checked_integer
 
 def _validated_atomic_numbers(coordinates, atomic_numbers):
     """Preserve molecular identity before any transfer or native evaluation."""
+    if not isinstance(coordinates, torch.Tensor) or not coordinates.is_floating_point():
+        raise TypeError("coordinates must be a real floating-point tensor")
     if coordinates.ndim != 2 or coordinates.shape[1] != 3:
         raise ValueError("coordinates must have shape (natoms, 3)")
     if len(atomic_numbers) != coordinates.shape[0]:
@@ -81,7 +83,9 @@ def energy(
 ) -> torch.Tensor:
     """Return HF energy with a native analytic first-order coordinate backward.
 
-    Atomic numbers, charge and multiplicity must be exact integers (not bools).
+    Coordinates must be a real floating-point tensor; energy and coordinate
+    gradients retain its dtype and device. Atomic numbers, charge and
+    multiplicity must be exact integers (not bools).
     Differentiable backward (``create_graph=True``), Hessians and HVPs raise an
     error because the native force callback does not provide force derivatives.
     """
@@ -120,7 +124,12 @@ class _BatchedEnergyFunction(torch.autograd.Function):
                     "all ragged coordinate tensors must share device and dtype"
                 )
 
-        cpu_coordinates = [item.detach().cpu().numpy() for item in coordinates]
+        # Native coordinates are FP64. Convert before NumPy so real Torch
+        # dtypes without a NumPy representation (notably bfloat16) work too.
+        cpu_coordinates = [
+            item.detach().to(device="cpu", dtype=torch.float64).numpy()
+            for item in coordinates
+        ]
         if prepared_batch is not None:
             if prepared_batch.atomic_numbers != atomic_numbers:
                 raise ValueError(
@@ -179,7 +188,9 @@ def batched_energy(
     to the largest atom count. Passing a `PreparedBatch` enables native
     topology-aware warm starts across repeated forward calls.
 
-    Each atomic-number list must match its coordinates. Atomic numbers, charges
+    Coordinate tensors must be real floating point; energies and gradients
+    retain their shared dtype and device. Each atomic-number list must match
+    its coordinates. Atomic numbers, charges
     and multiplicities must be exact integers (not bools). Only first-order
     derivatives are supported; differentiable backward, Hessians and HVPs raise
     an error, including when a prepared batch supplies the detached forces.

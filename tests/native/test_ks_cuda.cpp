@@ -303,9 +303,10 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
 
   if (atoms > 1) {
     auto invalid = result.density;
-    std::fill(invalid.begin(), invalid.begin() + atoms * atoms, 0.0);
+    const auto matrix_size = static_cast<std::size_t>(atoms) * atoms;
+    std::fill(invalid.begin(), invalid.begin() + matrix_size, 0.0);
     invalid[0] = -1.0;
-    invalid[atoms * atoms - 1] = 2.0;
+    invalid[matrix_size - 1] = 2.0;
     const auto failed = plan.run(&invalid);
     require(plan.failed() && !failed.converged, "invalid grid density did not fail the CUDA item");
     require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,

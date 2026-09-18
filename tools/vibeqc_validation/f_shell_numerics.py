@@ -392,7 +392,7 @@ def numerical_matrix(
     *,
     nvcc: Path,
     cache: Path,
-    slurm_time: str = "00:10:00",
+    slurm_time: str | None = None,
     timeout: int = 900,
     finite_difference_classes=("fsss", "fsps", "fpps"),
     progress=None,
@@ -418,9 +418,7 @@ def numerical_matrix(
     compiler = CudaCompilerAdapter(
         nvcc.resolve(), cuda_target_info(report["architecture"])
     )
-    executor = CudaBenchmarkExecutor(
-        timeout, partition="main", gres="gpu:5090:1", slurm_time=slurm_time
-    )
+    executor = CudaBenchmarkExecutor.from_environment(timeout, slurm_time=slurm_time)
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()

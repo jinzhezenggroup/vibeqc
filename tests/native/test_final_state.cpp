@@ -90,7 +90,8 @@ void analytic_spin_states() {
     if (beta >= 0) near(force.state->weighted_density[1][0], -.5 * beta, "wrong beta W");
     const auto rebuilt = a.select(true, true);
     require(rebuilt.state && !rebuilt.reused && rebuilt.fock_evaluations == 2 &&
-                rebuilt.eigen_solves == a.d.size() && rebuilt.density_updates == 1,
+                rebuilt.eigen_solves == 2 * a.d.size() && rebuilt.density_updates == 1 &&
+                rebuilt.fixed_point_checks == 1 && rebuilt.fixed_point_eigen_solves == a.d.size(),
             "forced rebuild did not solve, project and evaluate the new D");
     near(rebuilt.state->diagnostic.energy, energy.state->diagnostic.energy,
          "rebuild energy changed");
@@ -217,7 +218,8 @@ void malformed_candidates_and_provider_dimensions() {
         select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, &candidate, a.physical(), a.eigen(),
                            a.limits, true, false, backend);
     require(corrected.state && !corrected.reused && corrected.candidate_rejections == 1 &&
-                corrected.eigen_solves == 1 && corrected.density_updates == 1,
+                corrected.eigen_solves == 2 && corrected.density_updates == 1 &&
+                corrected.fixed_point_eigen_solves == 1,
             "malformed detached candidate bypassed bounded correction");
     const initial_guess::EigenOperation malformed = [&](const auto&, const auto*, const auto*,
                                                         auto) { return candidate.spins[0]; };
@@ -239,8 +241,8 @@ void physical_reference_caps() {
   require(a.valid(), "analytic scaled-residual fixture failed the generic contract");
   const auto ill_conditioned_force = a.select(true);
   require(ill_conditioned_force.state.has_value(), "ill-conditioned accepted state lost W");
-  near(ill_conditioned_force.state->weighted_density[0][0], -2e8,
-       "ill-conditioned W disagrees with its analytic occupied projector");
+  require(std::abs(ill_conditioned_force.state->weighted_density[0][0] - (-2e8 + 20)) < 1e-7,
+          "ill-conditioned W used lagged eigenvalues instead of the physical Fock");
   a.limits.require_canonicality = true;
   require(!a.valid(), "physical-reference CFC amplification escaped absolute canonicality");
   a = Fixture{};
@@ -270,7 +272,8 @@ void corrections_and_factor_invalidation() {
           "one physical rebuild bypassed the energy-change gate");
   a.limits.maximum_corrections = 2;
   result = a.select(true);
-  require(result.state && result.fock_evaluations == 3 && result.eigen_solves == 2,
+  require(result.state && result.fock_evaluations == 3 && result.eigen_solves == 3 &&
+              result.fixed_point_eigen_solves == 1,
           "bounded correction did not reach a consistent analytic state");
   near(result.state->diagnostic.energy, -2.7, "energy was not evaluated at returned D");
   require(result.state->identity.factor.density_generation == 11,
@@ -297,6 +300,68 @@ void corrections_and_factor_invalidation() {
     require(!failure.state && failure.eigen_solves == 0, "generation overflow allowed correction");
   }
   require(Fixture{}.select().state.has_value(), "failed correction poisoned independent reuse");
+}
+
+void physical_fixed_point_and_consistent_weight() {
+  // A small physical gap makes the old commutator/eigenframe gates pass even
+  // though the occupied projector changes by more than the requested tolerance.
+  // All matrices and the physical eigenvectors are analytic, including UHF's
+  // empty beta channel. The probe must be reused when it triggers correction.
+  for (const int beta : {-1, 0, 1}) {
+    Fixture a;
+    const double weight = beta < 0 ? 2 : 1;
+    const double theta = 1.2e-10 / weight, c = std::cos(theta), s = std::sin(theta);
+    a.s = a.x = {1, 0, 0, 1};
+    a.h = {-1, 0, 0, -.99};
+    a.f.spins = {a.h};
+    a.c.spins = {{{-1, -.99}, {c, -s, s, c}}};
+    a.d = {{weight * c * c, weight * c * s, weight * c * s, weight * s * s}};
+    a.limits.density_tolerance = 1e-10;
+    a.limits.energy_tolerance = 1e-12;
+    if (beta >= 0) {
+      a.id.model = resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted), FockBackend::Cpu);
+      a.id.occupied = {1, static_cast<std::size_t>(beta)};
+      a.d.push_back({static_cast<double>(beta), 0, 0, 0});
+      a.f.spins.push_back(a.h);
+      a.c.spins.push_back({{-1, -.99}, a.x});
+    }
+    a.f.identity = a.c.identity = a.id;
+    require(a.valid(), "small-gap fixture does not isolate the missing physical projector gate");
+    const initial_guess::EigenOperation exact = [&](const Matrix& f, const Matrix*, const Matrix*,
+                                                    std::size_t) {
+      require(f == a.h, "fixed-point probe did not solve the actual physical Fock");
+      return reference::EigenResult{{-1, -.99}, a.x};
+    };
+    const auto selected = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, &a.c,
+                                             a.physical(), exact, a.limits, true, false, backend);
+    require(selected.state && !selected.reused && selected.fock_evaluations == 2 &&
+                selected.density_updates == 1 && selected.fixed_point_checks == 2 &&
+                selected.fixed_point_rejections == 1 && selected.eigen_solves == 2 * a.d.size() &&
+                selected.fixed_point_eigen_solves == selected.eigen_solves,
+            "physical fixed-point correction was skipped, duplicated or not counted");
+    near(selected.state->density[0][1], 0, "force retained the nonstationary density");
+    near(selected.state->weighted_density[0][0], -weight, "physical Pulay weight is incorrect");
+    require(
+        selected.state->identity.factor.density_generation == a.id.factor.density_generation + 1,
+        "fixed-point correction retained an old occupied-factor generation");
+    a.limits.maximum_corrections = 0;
+    const auto exhausted = select_final_state(a.id, a.s, a.h, a.x, a.nuclear, a.d, &a.c,
+                                              a.physical(), exact, a.limits, true, false, backend);
+    require(
+        !exhausted.state && exhausted.fixed_point_rejections == 1 && exhausted.density_updates == 0,
+        "zero correction budget published a nonstationary force state");
+  }
+  Fixture a;
+  a.s = a.x = {1, 0, 0, 1};
+  a.d = {{2, 0, 0, 0}};
+  a.f.spins[0] = {-1 + 1e-12, 0, 0, 3};
+  a.c.spins[0] = {{-1, 3}, a.x};
+  // Density is already a fixed point. A sub-gate diagonal eigenvalue lag must
+  // not leak into the derivative weight when the current physical F is known.
+  const auto selected = a.select(true);
+  require(selected.state && selected.reused, "stationary density was needlessly replaced");
+  near(selected.state->weighted_density[0][0], -2 + 2e-12,
+       "force weight was built from lagged orbital eigenvalues");
 }
 
 void provider_failure_and_nonlinear_exhaustion() {
@@ -379,6 +444,7 @@ int main() {
     malformed_candidates_and_provider_dimensions();
     physical_reference_caps();
     corrections_and_factor_invalidation();
+    physical_fixed_point_and_consistent_weight();
     provider_failure_and_nonlinear_exhaustion();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

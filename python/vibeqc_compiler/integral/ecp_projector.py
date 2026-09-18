@@ -7,8 +7,10 @@ The native adapter owns scheduling, storage and physical-atom scatter.
 """
 
 from .ecp import emit_ecp_ao_cuda
+from .ecp_grid import emit_ecp_grid_cpp
+from .ecp_schedule import emit_ecp_schedule_cpp
 from .expr import Graph
-from .ir import EcpRadialTerm
+from .ir import ECP_MAX_PROJECTOR_ANGULAR, EcpRadialTerm
 from .scalar_c import ScalarCEmitter
 
 
@@ -130,7 +132,7 @@ def _emit_weighted_consumer():
 
 
 def emit_ecp_quadrature_cpp():
-    """Emit the validated s/p/d projector and powers 0..4 domain.
+    """Emit the validated s/p/d/f projector and powers 0..4 domain.
 
     Type parameters expose only scalar term/node/jet records. They do not
     select a mathematical backend. The same emitted arithmetic is compiled
@@ -139,6 +141,9 @@ def emit_ecp_quadrature_cpp():
     lines = [
         "#pragma once",
         "#include <cmath>",
+        "#include <array>",
+        "#include <stdexcept>",
+        "#include <vector>",
         "#if defined(__CUDACC__)",
         "#define VIBEQC_ECP_INLINE __host__ __device__ inline",
         "#else",
@@ -148,9 +153,13 @@ def emit_ecp_quadrature_cpp():
         .replace("#pragma once\n", "")
         .replace("__device__ inline", "VIBEQC_ECP_INLINE"),
         "namespace vibeqc::generated {",
+        *emit_ecp_schedule_cpp(),
+        f"inline constexpr int ecp_max_projector_angular = {ECP_MAX_PROJECTOR_ANGULAR};",
+        f"inline constexpr int ecp_projector_count = {(ECP_MAX_PROJECTOR_ANGULAR + 1) ** 2};",
+        *emit_ecp_grid_cpp(),
         *_emit_ao_consumer(),
         *_emit_weighted_consumer(),
-        "// Scalar ECP operator contract: local=-1, projectors=0..2, powers=0..4.",
+        "// Scalar ECP operator contract: local=-1, projectors=0..3, powers=0..4.",
         "VIBEQC_ECP_INLINE double ecp_radial(unsigned power, double r,",
         "    double alpha, double coefficient, double weight) {",
         "  double out[1];",
@@ -210,7 +219,7 @@ def emit_ecp_quadrature_cpp():
         "    const Radial& radial, const Point* sphere, int nq, int center,",
         "    const Jet* va, const Jet* vb, const Jet* pa, const Jet* pb,",
         "    bool derivatives, double (&parts)[2][10]) {",
-        "  double potential[4] = {};",
+        f"  double potential[{ECP_MAX_PROJECTOR_ANGULAR + 2}] = {{}};",
         "  for (int part=0; part<2; ++part)",
         "    for (int d=0; d<10; ++d) parts[part][d]=0;",
         "  for (int t=0; t<nt; ++t) {",
@@ -225,7 +234,7 @@ def emit_ecp_quadrature_cpp():
     ]
     # Emit the projector multiplicities from the operator channel convention;
     # each l contains 2*l+1 orthonormal real harmonics, beginning at l*l.
-    for channel in range(3):
+    for channel in range(ECP_MAX_PROJECTOR_ANGULAR + 1):
         EcpRadialTerm(channel, 0, 1.0, 1.0)
         lines += [
             f"  for (int m={channel**2}; m<{(channel + 1) ** 2}; ++m)",

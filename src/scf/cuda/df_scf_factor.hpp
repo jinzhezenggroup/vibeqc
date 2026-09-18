@@ -7,15 +7,14 @@
 
 namespace vibeqc::scf::cuda_df {
 
-/** Exact measured resident RHF domain shared by occupied, seed and final selectors.
- * Shape, occupation, storage/provider and actual device identity must all match.
+/** Shared resident capacity/work gate for SCF, seed, final K and force response.
+ * Callers must establish singleton RHF and validate their density/factor owner;
+ * a profitable rank and sufficient storage never establish provenance.
  */
-vibeqc_status qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
-                                              std::span<const std::int32_t> alpha,
-                                              std::span<const std::int32_t> beta, bool& qualified,
-                                              std::string& detail);
+bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
+                                     std::size_t rank) noexcept;
 
-/** Select explicit occupied exchange or the exact qualified automatic domain. */
+/** Select explicit occupied exchange or the shared resident RHF work policy. */
 vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
                                   std::string& detail, std::span<const std::int32_t> alpha = {},
                                   std::span<const std::int32_t> beta = {});

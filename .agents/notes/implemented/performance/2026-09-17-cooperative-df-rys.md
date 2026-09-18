@@ -143,3 +143,10 @@ records, failures, resource reports, workloads and reproduction drivers.
 - `benchmarks/results/issue404-combined-rys/768-forces.json`
 - `python/vibeqc_compiler/integral/rys.py`
 - `python/vibeqc_compiler/integral/df_rys_shell.py`
+
+## Subsequent admission qualification
+
+The [2026-09-19 admission decision](2026-09-19-df-rys-admission.md) supersedes
+only the automatic dimension/equal-auxiliary boundary after a separate current-
+source qualification. The measurements and original decision above remain
+historical evidence; the new work does not count the 384/768 speedups again.

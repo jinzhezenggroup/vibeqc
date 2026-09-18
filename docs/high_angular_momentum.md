@@ -74,8 +74,11 @@ One compilation unit contains one explicitly selected component, capped at
 CUDA emits a device function of the same name for a caller-owned launch. Input
 exponents precede xyz coordinates of all mathematical operator centers. S/T/V
 have two exponents (V includes an independent nuclear center); DF has one
-exponent per Gaussian. Inputs must be finite with positive exponents. Outputs
-are the value, then center-major xyz gradients, in atomic units. These are raw
+exponent per Gaussian. Full-range four-center ERIs use four exponents followed
+by the four shell-center xyz coordinates. They are lowered from the same
+ShellClassComponentKernel DAG used by CUDA shell codegen; range-separated ERIs
+remain on their dedicated operator path. Inputs must be finite with positive
+exponents. Outputs are the value, then center-major xyz gradients, in atomic units. These are raw
 unnormalized primitive results; callers supply normalization, contractions,
 spherical transformations and arbitrary fixed cotangents. The IR's nuclear
 charge is retained. This interface does not dispatch an HF calculation.

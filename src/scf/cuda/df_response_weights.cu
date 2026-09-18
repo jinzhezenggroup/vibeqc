@@ -25,6 +25,24 @@ __global__ void inverse_kernel(std::size_t a, const double* x, double* inverse) 
   inverse[ij] = value;
 }
 
+/** Scale projected AO factors before rotating them back to the public axis.
+ * Constructing M^-1 as X X^T first loses significant digits through the later
+ * raw-A contraction on practical JKFIT bases. Keep the eigendirections separate
+ * until their factors have been divided by the corresponding eigenvalue.
+ */
+__global__ void divide_factor_eigenvalues(std::size_t matrix, std::size_t a,
+                                          const double* eigenvalues, double* factors) {
+  const auto element = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (element < matrix * a) factors[element] /= eigenvalues[element / matrix];
+}
+
+/** Charge vectors have the eigenvalue index contiguous within each density. */
+__global__ void divide_charge_eigenvalues(std::size_t a, std::size_t terms,
+                                          const double* eigenvalues, double* charges) {
+  const auto element = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (element < a * terms) charges[element] /= eigenvalues[element % a];
+}
+
 __global__ void charge_kernel(std::size_t matrix, std::size_t a, std::size_t q, std::size_t terms,
                               const double* densities, const double* values, double* charges) {
   const auto t = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
@@ -132,6 +150,15 @@ __global__ void exchange_metric_kernel(std::size_t matrix, std::size_t a, std::s
   bar_inverse[(begin + p) * a + q] -= coefficient * value;
 }
 
+/** The two occurrences of A in exchange give -2*cK*D^T B_Q D.
+ * B already contains the inverse, so no inverse follows this accumulation.
+ */
+__global__ void fitted_exchange_weights_kernel(std::size_t matrix, double coefficient,
+                                               const double* response, double* weights) {
+  const auto ij = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (ij < matrix) weights[ij] -= 2 * coefficient * response[ij];
+}
+
 /** Eigenvectors are cuSOLVER column-major; all response matrices are row-major.
  * Stages compute sym(E) Q, Q^T temp with the divided differences, Q Ehat,
  * then temp Q^T. These include finite discarded eigenvalues, which a simple
@@ -178,6 +205,287 @@ __global__ void symmetrize_kernel(std::size_t a, double* values, std::size_t cou
 std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, std::size_t terms,
                                                 std::size_t tile) {
   return 4 * a * a + (3 + 2 * tile) * n * n + 2 * terms * a;
+}
+
+/** Full-rank response with inverse-applied factors before quadratic products.
+ * Forming a raw A Gram and then applying two ill-conditioned metric inverses
+ * amplifies its rounding error. B_P=sum_Q A_Q M^-1_QP instead gives
+ * bar_A_P=cJ*D*c_P-2*cK*D^T*B_P*D and
+ * bar_M_PQ=-cJ*c_P*c_Q/2+cK*(D^T*B_Q*D):B_P directly.
+ *
+ * Two already charged complete panels are required. An owned full tile reuses
+ * its raw panel as weights only after the B transform; a resident borrow keeps
+ * raw immutable and lends its other two buffers. No new allocation, source
+ * regeneration, or host numerical work is introduced by this route.
+ */
+static cudaError_t contract_full_rank_response(
+    std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+    const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+    cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
+    const std::function<void(std::size_t, double*)>& read_values,
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
+  const auto matrix = n * n, aa = a * a;
+  auto* inverse = workspace;
+  auto* bar_metric = inverse + aa;
+  auto* values = workspace + 4 * aa;
+  auto* temporary = values + matrix;
+  auto* response = temporary + matrix;
+  auto* charges = response + matrix;
+  auto* potentials = charges + terms.size() * a;
+  auto* first_panel = potentials + terms.size() * a;
+  auto* raw = borrowed ? borrowed->raw_auxiliary_major : first_panel;
+  auto* fitted = borrowed ? borrowed->exchange_response : first_panel + matrix * a;
+  auto* weights = borrowed ? borrowed->staging_weights : first_panel;
+  const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
+  const double one = 1, zero = 0;
+  const auto checked = [](cublasStatus_t status) {
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+  };
+  if (borrowed && !borrowed->resident_raw.data) {
+    auto error = cudaMemcpyAsync(weights, raw_host.data(), raw_host.size_bytes(),
+                                 cudaMemcpyHostToDevice, stream);
+    if (error != cudaSuccess) return error;
+    cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix, a,
+                                                 0, 0, a, weights, raw);
+    runtime::cuda_trace::trace_counter("raw_value_upload_bytes", raw_host.size_bytes());
+    runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 1);
+  } else if (!borrowed) {
+    for (std::size_t q = 0; q < a; ++q) read_values(q, raw + q * matrix);
+  }
+  {
+    runtime::cuda_trace::TraceRegion transform("response_inverse_applied_factors", stream);
+    checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, mi, ai, ai, &one, raw, mi,
+                        metric.eigenvectors, ai, &zero, fitted, mi));
+    divide_factor_eigenvalues<<<blocks(matrix * a), threads, 0, stream>>>(
+        matrix, a, metric.eigenvalues, fitted);
+    checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, mi, ai, ai, &one, fitted, mi,
+                        metric.eigenvectors, ai, &zero, weights, mi));
+    // Owned raw storage may be overwritten after the first projection; a
+    // borrowed raw tensor stays immutable because weights is separate there.
+    // The first projection buffer is now dead and becomes the A-adjoint panel.
+    std::swap(fitted, weights);
+    runtime::cuda_trace::trace_counter("response_inverse_applied_factor_elements", matrix * a);
+    runtime::cuda_trace::trace_counter("response_inverse_applied_factor_gemms", 2);
+    runtime::cuda_trace::trace_counter("response_inverse_applied_factor_flops", 4 * matrix * aa);
+  }
+  auto error = cudaMemsetAsync(weights, 0, matrix * a * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  error = cudaMemsetAsync(bar_metric, 0, aa * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  // Charge and metric adjoints must use the same fitted factors as exchange.
+  // Applying M^-1 to the raw charges separately loses this consistency through
+  // a different cancellation order on practical ill-conditioned auxiliary bases.
+  if (blas_products) {
+    checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(terms.size()), mi,
+                        &one, fitted, mi, densities, mi, &zero, potentials, ai));
+    runtime::cuda_trace::trace_counter("response_charge_blas_dots", terms.size() * a);
+  } else {
+    for (std::size_t q = 0; q < a; ++q)
+      charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(
+          matrix, a, q, terms.size(), densities, fitted + q * matrix, potentials);
+    runtime::cuda_trace::trace_counter("response_charge_scalar_dots", terms.size() * a);
+  }
+  runtime::cuda_trace::trace_counter("response_charge_dot_elements", terms.size() * a * matrix);
+  for (std::size_t t = 0; t < terms.size(); ++t) {
+    if (terms[t].coulomb_coefficient != 0) {
+      coulomb_weights_kernel<<<blocks(matrix * a), threads, 0, stream>>>(
+          matrix, a, 0, a, terms[t].coulomb_coefficient, densities + t * matrix, potentials + t * a,
+          weights);
+      coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, -terms[t].coulomb_coefficient,
+                                                                potentials + t * a, bar_metric);
+    }
+    const double coefficient = terms[t].exchange_coefficient;
+    if (coefficient == 0) continue;
+    for (std::size_t q = 0; q < a; ++q) {
+      if (blas_products) {
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ni, ni, &one,
+                            densities + t * matrix, ni, fitted + q * matrix, ni, &zero, temporary,
+                            ni));
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ni, &one, temporary, ni,
+                            densities + t * matrix, ni, &zero, response, ni));
+        runtime::cuda_trace::trace_counter("response_density_blas_products", 2);
+      } else {
+        right_density_kernel<<<blocks(matrix), threads, 0, stream>>>(
+            n, fitted + q * matrix, densities + t * matrix, temporary);
+        left_density_kernel<<<blocks(matrix), threads, 0, stream>>>(n, densities + t * matrix,
+                                                                    temporary, response);
+        runtime::cuda_trace::trace_counter("response_density_scalar_products", 2);
+      }
+      runtime::cuda_trace::trace_counter("response_ao_matrix_products", 2);
+      fitted_exchange_weights_kernel<<<blocks(matrix), threads, 0, stream>>>(
+          matrix, coefficient, response, weights + q * matrix);
+      if (serial_metric_dot) {
+        exchange_metric_kernel<<<blocks(a), threads, 0, stream>>>(matrix, a, 0, a, q, -coefficient,
+                                                                  fitted, response, bar_metric);
+        runtime::cuda_trace::trace_counter("response_metric_serial_dots", a);
+      } else {
+        checked(cublasDgemv(blas, CUBLAS_OP_T, mi, ai, &coefficient, fitted, mi, response, 1, &one,
+                            bar_metric + q, ai));
+        runtime::cuda_trace::trace_counter("response_metric_blas_dots", a);
+      }
+    }
+  }
+  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_metric);
+  error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  runtime::cuda_trace::trace_counter("response_full_rank_factor_first", 1);
+  for (std::size_t begin = 0; begin < a; begin += tile) {
+    const auto count = std::min(tile, a - begin);
+    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
+    consume(0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix);
+  }
+  consume(1, {}, aa, bar_metric);
+  return cudaSuccess;
+}
+
+/** Bounded weight panels with a borrowed forward source or complete fitted B.
+ * Keep W_P while replacing the other panel with each fitted B_Q, and form
+ * bar_M_PQ=-W_P:B_Q/2. Both inverse applications precede the quadratic product;
+ * multiplying a mixed W_P:A_Q product by the inverse afterwards is unstable.
+ * The diagonal block consumes the original B_P before it is overwritten.
+ * The reader counts repeated fitted projections and any source regeneration.
+ * A complete fitted tensor permits direct reads and one metric GEMM per panel.
+ */
+static cudaError_t contract_full_rank_panels(
+    std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+    const double* densities, std::size_t tile, double* workspace, cudaStream_t stream,
+    cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
+    const std::function<void(std::size_t, std::size_t, double*)>& read_fitted,
+    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+    const double* all_fitted = nullptr) {
+  const auto matrix = n * n, aa = a * a;
+  auto* bar_metric = workspace + aa;
+  auto* temporary = workspace + 4 * aa + matrix;
+  auto* response = temporary + matrix;
+  auto* potentials = response + matrix;
+  // The first AO scratch matrix is reserved for packed-source unpacking.
+  auto* fitted_panel = potentials + 2 * terms.size() * a;
+  auto* weights = fitted_panel + (all_fitted ? a : tile) * matrix;
+  const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
+  const double one = 1, zero = 0, half = -.5;
+  const auto checked = [](cublasStatus_t status) {
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+  };
+  auto error = cudaMemsetAsync(bar_metric, 0, aa * sizeof(double), stream);
+  if (error != cudaSuccess) return error;
+  for (std::size_t begin = 0; begin < a; begin += tile) {
+    const auto count = std::min(tile, a - begin);
+    if (!all_fitted) read_fitted(begin, count, fitted_panel);
+    const double* fitted = all_fitted ? all_fitted + begin * matrix : fitted_panel;
+    error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
+    if (error != cudaSuccess) return error;
+    for (std::size_t p = 0; p < count; ++p)
+      charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(
+          matrix, a, begin + p, terms.size(), densities, fitted + p * matrix, potentials);
+    runtime::cuda_trace::trace_counter("response_charge_scalar_dots", terms.size() * count);
+    runtime::cuda_trace::trace_counter("response_charge_dot_elements",
+                                       terms.size() * count * matrix);
+    for (std::size_t t = 0; t < terms.size(); ++t) {
+      if (terms[t].coulomb_coefficient != 0)
+        coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
+            matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
+            potentials + t * a, weights);
+      const double coefficient = terms[t].exchange_coefficient;
+      if (coefficient == 0) continue;
+      for (std::size_t p = 0; p < count; ++p) {
+        if (blas_products) {
+          checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ni, ni, &one,
+                              densities + t * matrix, ni, fitted + p * matrix, ni, &zero, temporary,
+                              ni));
+          checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ni, &one, temporary, ni,
+                              densities + t * matrix, ni, &zero, response, ni));
+          runtime::cuda_trace::trace_counter("response_density_blas_products", 2);
+        } else {
+          right_density_kernel<<<blocks(matrix), threads, 0, stream>>>(
+              n, fitted + p * matrix, densities + t * matrix, temporary);
+          left_density_kernel<<<blocks(matrix), threads, 0, stream>>>(n, densities + t * matrix,
+                                                                      temporary, response);
+          runtime::cuda_trace::trace_counter("response_density_scalar_products", 2);
+        }
+        runtime::cuda_trace::trace_counter("response_ao_matrix_products", 2);
+        fitted_exchange_weights_kernel<<<blocks(matrix), threads, 0, stream>>>(
+            matrix, coefficient, response, weights + p * matrix);
+      }
+    }
+    const auto contract_metric = [&](std::size_t qbegin, std::size_t qcount) {
+      if (serial_metric_dot) {
+        for (std::size_t q = 0; q < qcount; ++q)
+          exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
+              matrix, a, begin, count, qbegin + q, .5, weights, fitted + q * matrix, bar_metric);
+        runtime::cuda_trace::trace_counter("response_metric_serial_dots", count * qcount);
+      } else {
+        // Column-major [Q,P] writes the row-major [P,Q] block with leading a.
+        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(qcount),
+                            static_cast<int>(count), mi, &half, fitted, mi, weights, mi, &zero,
+                            bar_metric + begin * a + qbegin, ai));
+        runtime::cuda_trace::trace_counter("response_metric_blas_gemms", 1);
+        runtime::cuda_trace::trace_counter("response_metric_blas_dots", count * qcount);
+      }
+    };
+    if (all_fitted) {
+      fitted = all_fitted;
+      contract_metric(0, a);
+    } else {
+      contract_metric(begin, count);
+      for (std::size_t qbegin = 0; qbegin < a; qbegin += tile) {
+        if (qbegin == begin) continue;
+        const auto qcount = std::min(tile, a - qbegin);
+        read_fitted(qbegin, qcount, fitted_panel);
+        contract_metric(qbegin, qcount);
+      }
+    }
+    error = cudaGetLastError();
+    if (error != cudaSuccess) return error;
+    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
+    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
+  }
+  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_metric);
+  error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  runtime::cuda_trace::trace_counter(
+      all_fitted ? "response_full_rank_single_tensor" : "response_full_rank_bounded_factor_first",
+      1);
+  consume(1, {}, aa, bar_metric);
+  return cudaSuccess;
+}
+
+/** Fit one owned tensor in place without keeping a second complete tensor.
+ * An auxiliary transform never mixes distinct AO pairs. Project a disjoint
+ * pair batch into two currently dead metric matrices before overwriting its
+ * original raw rows. The fixed scratch is O(Naux^2), already charged, and raw
+ * integral production is one pass regardless of the derivative panel count.
+ */
+static cudaError_t fit_full_tensor_in_place(
+    std::size_t n, std::size_t a, std::size_t terms, CudaDfMetricView metric, double* workspace,
+    cudaStream_t stream, cublasHandle_t blas,
+    const std::function<void(std::size_t, double*)>& read_values, double*& fitted) {
+  const auto matrix = n * n, aa = a * a;
+  auto* projected = workspace + 2 * aa;
+  fitted = workspace + 4 * aa + 3 * matrix + 2 * terms * a;
+  for (std::size_t q = 0; q < a; ++q) read_values(q, fitted + q * matrix);
+  const auto pair_tile = std::min(matrix, 2 * a);
+  const auto mi = static_cast<int>(matrix), ai = static_cast<int>(a);
+  const double one = 1, zero = 0;
+  runtime::cuda_trace::TraceRegion transform("response_inverse_applied_factors", stream);
+  for (std::size_t begin = 0; begin < matrix; begin += pair_tile) {
+    const auto count = std::min(pair_tile, matrix - begin);
+    const auto rows = static_cast<int>(count);
+    auto status = cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rows, ai, ai, &one, fitted + begin,
+                              mi, metric.eigenvectors, ai, &zero, projected, rows);
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+    divide_factor_eigenvalues<<<blocks(count * a), threads, 0, stream>>>(
+        count, a, metric.eigenvalues, projected);
+    auto error = cudaGetLastError();
+    if (error != cudaSuccess) return error;
+    status = cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, rows, ai, ai, &one, projected, rows,
+                         metric.eigenvectors, ai, &zero, fitted + begin, mi);
+    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+    runtime::cuda_trace::trace_counter("response_inverse_applied_factor_gemms", 2);
+  }
+  runtime::cuda_trace::trace_counter("response_inverse_applied_factor_elements", matrix * a);
+  runtime::cuda_trace::trace_counter("response_inverse_applied_factor_flops", 4 * matrix * aa);
+  return cudaSuccess;
 }
 
 /** Borrow the resident plan's raw view and two full J/K temporaries.
@@ -347,7 +655,7 @@ static cudaError_t contract_occupied_response(
     std::span<const double> raw_host,
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
     bool packed_pairs, std::span<const std::int64_t> auxiliary_shell_offsets,
-    std::size_t ao_block_rows) {
+    std::size_t ao_block_rows, const std::function<void(std::size_t, double*)>& read_values = {}) {
   const auto matrix = n * n, aa = a * a;
   const auto pair_stride = packed_pairs ? n * (n + 1) / 2 : matrix;
   auto* inverse = workspace;
@@ -370,7 +678,7 @@ static cudaError_t contract_occupied_response(
   const auto checked = [](cublasStatus_t status) {
     if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
   };
-  if (!buffers.resident_raw.data && !packed_raw) {
+  if (!read_values && !buffers.resident_raw.data && !packed_raw) {
     runtime::cuda_trace::TraceRegion upload("raw_value_resident_upload", stream);
     auto error = cudaMemcpyAsync(transformed_projected, raw_host.data(), raw_host.size_bytes(),
                                  cudaMemcpyHostToDevice, stream);
@@ -378,18 +686,48 @@ static cudaError_t contract_occupied_response(
     runtime::cuda_trace::trace_counter("raw_value_upload_bytes", raw_host.size_bytes());
     runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 1);
   }
-  if (!buffers.resident_raw.data && !packed_raw) {
+  if (!read_values && !buffers.resident_raw.data && !packed_raw) {
     runtime::cuda_trace::TraceRegion transpose("raw_value_resident_transpose", stream);
     // The existing gather supports both NVIDIA and providers without GEAM.
     cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix, a,
                                                  0, 0, a, transformed_projected, raw);
   }
-  inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
+  if (!metric.full_rank)
+    inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
   auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
   if (error != cudaSuccess) return error;
+  if (read_values) {
+    // Source-driven projection: each raw AO slice feeds every charge and spin
+    // before eviction. Keep C^T A_Q C, not A itself, across the auxiliary axis.
+    // The third AO temporary is raw; the first is disjoint A*C scratch.
+    runtime::cuda_trace::TraceRegion products("streamed_occupied_raw_projection", stream);
+    for (std::size_t q = 0; q < a; ++q) {
+      read_values(q, raw);
+      checked(cublasDgemv(blas, CUBLAS_OP_T, mi, static_cast<int>(terms.size()), &one, densities,
+                          mi, raw, 1, &zero, charges + q, ai));
+      std::size_t offset = 0;
+      for (std::size_t t = 0; t < terms.size(); ++t) {
+        const auto& factor = buffers.occupied_factors[t];
+        const auto r = factor.rank, rr = r * r;
+        if (!r || terms[t].exchange_coefficient == 0) continue;
+        const auto ri = static_cast<int>(r);
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ni, &one, raw, ni,
+                            factor.coefficients, ni, &zero, temporary, ni));
+        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ri, ri, ni, &one, factor.coefficients,
+                            ni, temporary, ni, &zero, transformed_projected + offset + q * rr, ri));
+        offset += a * rr;
+        runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
+        runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2);
+      }
+    }
+    runtime::cuda_trace::trace_counter("response_streamed_occupied_raw_passes", 1);
+    runtime::cuda_trace::trace_counter("response_streamed_occupied_charge_gemvs", a);
+  }
   {
     runtime::cuda_trace::TraceRegion charge("coulomb_response_charge_dot", stream);
-    if (packed_raw) {
+    if (read_values) {
+      // Charges were formed during the single raw-source pass above.
+    } else if (packed_raw) {
       // Unit-weight raw pairs contract D_mn+D_nm; triangular storage never
       // discards an antisymmetric density component by reading one triangle.
       for (std::size_t t = 0; t < terms.size(); ++t) {
@@ -402,12 +740,27 @@ static cudaError_t contract_occupied_response(
       checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(terms.size()), mi,
                           &one, raw, mi, densities, mi, &zero, charges, ai));
     }
-    potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
-                                                                       charges, potentials);
+    if (metric.full_rank) {
+      // Preserve weak metric directions until after applying the charge
+      // projection. Forming X X^T first also destabilizes occupied response.
+      const auto ti = static_cast<int>(terms.size());
+      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ti, ai, &one, metric.eigenvectors, ai,
+                          charges, ai, &zero, potentials, ai));
+      divide_charge_eigenvalues<<<blocks(a * terms.size()), threads, 0, stream>>>(
+          a, terms.size(), metric.eigenvalues, potentials);
+      checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ai, ti, ai, &one, metric.eigenvectors, ai,
+                          potentials, ai, &zero, charges, ai));
+      std::swap(charges, potentials);
+      runtime::cuda_trace::trace_counter("response_occupied_charge_inverse_gemms", 2);
+    } else {
+      potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
+                                                                         charges, potentials);
+    }
     for (std::size_t t = 0; t < terms.size(); ++t)
       if (terms[t].coulomb_coefficient != 0)
-        coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, terms[t].coulomb_coefficient,
-                                                                  charges + t * a, bar_inverse);
+        coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(
+            a, metric.full_rank ? -terms[t].coulomb_coefficient : terms[t].coulomb_coefficient,
+            (metric.full_rank ? potentials : charges) + t * a, bar_inverse);
   }
   std::size_t retained = 0;
   for (std::size_t t = 0; t < terms.size(); ++t) {
@@ -419,7 +772,16 @@ static cudaError_t contract_occupied_response(
         terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
     {
       runtime::cuda_trace::TraceRegion products("exchange_response_occupied_products", stream);
-      if (buffers.final_occupied_projection) {
+      if (read_values) {
+        // Keep the existing eigenfactor inverse ordering. Its input and output
+        // alternate between these disjoint intervals; previous spin factors
+        // remain below retained while the reusable projection is overwritten.
+        error = cudaMemcpyAsync(projected, transformed_projected + retained,
+                                a * rr * sizeof(double), cudaMemcpyDeviceToDevice, stream);
+        if (error != cudaSuccess) return error;
+        runtime::cuda_trace::trace_counter("response_streamed_raw_projection_copy_bytes",
+                                           a * rr * sizeof(double));
+      } else if (buffers.final_occupied_projection) {
         // U is column-major (a*r,n); right multiplication by its exact C
         // yields G_whitened[a,i,j]. The tail is disjoint from G_raw[ij,a].
         // No new O(n*a*r) allocation or raw/retained-subspace approximation.
@@ -503,15 +865,37 @@ static cudaError_t contract_occupied_response(
                                            2 * a * (n * n * r + n * rr));
     }
     {
-      runtime::cuda_trace::TraceRegion dot("exchange_response_occupied_metric_gemm", stream);
-      const double alpha = -coefficient;
-      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, projected, rri,
-                          projected, rri, &one, bar_inverse, ai));
+      runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
+      if (metric.full_rank) {
+        auto* fitted = transformed_projected + retained;
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
+                            metric.eigenvectors, ai, &zero, fitted, rri));
+        divide_factor_eigenvalues<<<blocks(rr * a), threads, 0, stream>>>(rr, a, metric.eigenvalues,
+                                                                          fitted);
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, rri, ai, ai, &one, fitted, rri,
+                            metric.eigenvectors, ai, &zero, projected, rri));
+        // Retain each spin's final factors in the original disjoint staging
+        // interval. The next spin reuses projected; it cannot overwrite them.
+        error = cudaMemcpyAsync(fitted, projected, rr * a * sizeof(double),
+                                cudaMemcpyDeviceToDevice, stream);
+        if (error != cudaSuccess) return error;
+        runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms", 2);
+        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops", 4 * rr * aa);
+        runtime::cuda_trace::trace_counter("response_occupied_factor_copy_bytes",
+                                           rr * a * sizeof(double));
+      } else {
+        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
+                            inverse, ai, &zero, transformed_projected + retained, rri));
+      }
     }
     {
-      runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
-      checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
-                          inverse, ai, &zero, transformed_projected + retained, rri));
+      runtime::cuda_trace::TraceRegion dot("exchange_response_occupied_metric_gemm", stream);
+      // Full rank permits the Gram of U=M^-1 T directly. A truncated metric
+      // still needs raw T in its spectral map to retain subspace motion.
+      const double alpha = metric.full_rank ? coefficient : -coefficient;
+      const auto* metric_factors = metric.full_rank ? transformed_projected + retained : projected;
+      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, metric_factors, rri,
+                          metric_factors, rri, &one, bar_inverse, ai));
     }
     retained += a * rr;
     runtime::cuda_trace::trace_counter("response_occupied_rank", r);
@@ -523,7 +907,7 @@ static cudaError_t contract_occupied_response(
   runtime::cuda_trace::trace_counter("response_pseudo_density_capacity_elements",
                                      tile * pair_stride);
   runtime::cuda_trace::trace_counter("response_dense_weight_panel_elements",
-                                     packed_pairs ? 0 : a * matrix);
+                                     packed_pairs ? 0 : tile * matrix);
   std::size_t peak_count = 0, block_peak_elements = 0;
   for (std::size_t begin = 0; begin < a;) {
     auto count = std::min(tile, a - begin);
@@ -667,14 +1051,20 @@ static cudaError_t contract_occupied_response(
   runtime::cuda_trace::trace_counter("response_full_packed_weight_tensor_elements",
                                      packed_pairs && peak_count == a ? pair_stride * a : 0);
   runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
-                                                             transformed);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
-                                                             bar_inverse);
+  if (!metric.full_rank) {
+    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
+                                                               metric_temp);
+    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
+                                                               transformed);
+    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
+                                                               metric_temp);
+    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
+                                                               bar_inverse);
+  } else {
+    runtime::cuda_trace::trace_counter("response_full_rank_occupied_factor_first", 1);
+    if (read_values)
+      runtime::cuda_trace::trace_counter("response_streamed_occupied_factor_first", 1);
+  }
   symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
@@ -690,13 +1080,39 @@ cudaError_t contract_cuda_df_response_weights(
     const std::function<void(std::size_t, double*)>& read_values,
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
     const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host, bool packed_pairs,
-    std::span<const std::int64_t> auxiliary_shell_offsets, std::size_t packed_block_rows) {
+    std::span<const std::int64_t> auxiliary_shell_offsets, std::size_t packed_block_rows,
+    const std::function<void(std::size_t, std::size_t, double*)>& read_fitted,
+    bool single_fitted_tensor, const CudaDfResponseBuffers* streamed_occupied) {
+  if (streamed_occupied) {
+    if (!metric.full_rank || borrowed || read_fitted || packed_pairs || single_fitted_tensor ||
+        !read_values || !streamed_occupied->occupied_response)
+      return cudaErrorInvalidValue;
+    return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
+                                      *streamed_occupied, {}, consume, false, {}, packed_block_rows,
+                                      read_values);
+  }
+  if (single_fitted_tensor) {
+    if (!metric.full_rank || borrowed || read_fitted || packed_pairs) return cudaErrorInvalidValue;
+    double* fitted = nullptr;
+    const auto error = fit_full_tensor_in_place(n, a, terms.size(), metric, workspace, stream, blas,
+                                                read_values, fitted);
+    if (error != cudaSuccess) return error;
+    return contract_full_rank_panels(n, a, terms, densities, tile, workspace, stream, blas,
+                                     serial_metric_dot, blas_products, {}, consume, fitted);
+  }
   if (packed_pairs && (!borrowed || !borrowed->occupied_response || !packed_block_rows))
     return cudaErrorInvalidValue;
   if (borrowed && borrowed->occupied_response)
     return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume, packed_pairs,
                                       auxiliary_shell_offsets, packed_block_rows);
+  if (metric.full_rank && (borrowed || tile == a))
+    return contract_full_rank_response(n, a, terms, densities, metric, tile, workspace, stream,
+                                       blas, serial_metric_dot, blas_products, read_values, consume,
+                                       borrowed, raw_host);
+  if (metric.full_rank && read_fitted)
+    return contract_full_rank_panels(n, a, terms, densities, tile, workspace, stream, blas,
+                                     serial_metric_dot, blas_products, read_fitted, consume);
   if (borrowed)
     return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume);

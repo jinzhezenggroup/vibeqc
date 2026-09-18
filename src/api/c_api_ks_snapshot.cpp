@@ -1,11 +1,14 @@
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <vector>
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_snapshot.hpp"
+#include "dft/xc_point.hpp"
 #include "methods/dft_method.hpp"
 
 struct vibeqc_ks_snapshot {
@@ -126,6 +129,33 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
+  constexpr std::size_t stride = 9;
+  if (pbe > 1 || !rho || !gradient || !values || point_count == 0 ||
+      point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  for (std::size_t point = 0; point < point_count; ++point) {
+    double local_rho[2]{rho[point], rho[point_count + point]};
+    double local_gradient[2][3]{};
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t axis = 0; axis < 3; ++axis)
+        local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
+    const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient);
+    if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    double* output = values + stride * point;
+    output[0] = xc.energy;
+    output[1] = xc.rho[0];
+    output[2] = xc.rho[1];
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t axis = 0; axis < 3; ++axis)
+        output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+  }
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot) { delete snapshot; }

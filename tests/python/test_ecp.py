@@ -12,13 +12,28 @@ from vibeqc.ecp import ecp_integrals, resolve_ecp
 from vibeqc.profiles import canonical_hash
 
 
-def fixture(*, representation="spherical", d_shell=False, spin=0):
+def fixture(
+    *,
+    representation="spherical",
+    d_shell=False,
+    f_shell=False,
+    f_on_h=False,
+    spin=0,
+    f_projector=False,
+):
     gto = pytest.importorskip("pyscf.gto")
     # Parameters are read only by this independent test, never by runtime.
     basis = {"Na": gto.basis.load("lanl2dz", "Na"), "H": gto.basis.load("sto-3g", "H")}
     if d_shell:
         basis["Na"] += [[2, [0.35, 1.0]]]
+    if f_shell:
+        basis["Na"] += [[3, [0.55, 0.81], [0.17, 0.23]]]
+    if f_on_h:
+        basis["H"] += [[3, [0.45, 0.9], [1.15, -0.12]]]
     ecp = {"Na": gto.basis.load_ecp("lanl2dz", "Na")}
+    if f_projector:
+        # Synthetic bounded extension, not a new physical element parameterization.
+        ecp["Na"][1].append([3, [[], [], [[0.63, 0.74], [1.17, -0.21]]]])
     atoms = [("Na", (0.13, -0.21, 0.17)), ("H", (0.43, 0.19, 3.2))]
     mol = gto.M(
         atom=atoms,
@@ -197,7 +212,9 @@ def test_parameters_invalidate_identity_and_malformed_channels_fail():
         resolve_ecp(bad, tuple(Atom.from_value(a) for a in atoms))
 
 
-def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
+def detached_native(
+    xyz, *, device="cpu", power=2, d_projector=False, orbital=0, f_projector=False
+):
     """An ECP atom with no Gaussian shell tests its independent center motion."""
     from vibeqc import _native
 
@@ -215,7 +232,7 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
         *(_native.AtomDescriptor(z, *r) for z, r in zip((11, 1, 2), xyz))
     )
     shells = (_native.ShellDescriptor * 2)(
-        _native.ShellDescriptor(1, 0, 0, 1), _native.ShellDescriptor(2, 1, 1, 1)
+        _native.ShellDescriptor(1, orbital, 0, 1), _native.ShellDescriptor(2, 1, 1, 1)
     )
     primitives = (_native.PrimitiveDescriptor * 2)(
         _native.PrimitiveDescriptor(0.7, 1.0), _native.PrimitiveDescriptor(1.1, 1.0)
@@ -237,6 +254,8 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
     records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
     if d_projector:
         records.append((2, 0.63, 0.74))
+    if f_projector:
+        records.extend(((3, 0.63, 0.74), (3, 1.17, -0.21)))
     terms = (_native.EcpTermDescriptor * len(records))(
         *(_native.EcpTermDescriptor(0, l, power, a, c) for l, a, c in records)
     )
@@ -252,7 +271,8 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
                 ctypes.byref(system),
             ),
         )
-        result = np.empty((2, 10, 4, 4))
+        n = (orbital + 1) * (orbital + 2) // 2 + 3
+        result = np.empty((2, 10, n, n))
         _native.check(
             library,
             library.vibeqc_system_ecp_integrals(
@@ -272,11 +292,15 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False):
         library.vibeqc_context_destroy(context)
 
 
-def detached_reference(xyz, *, power=2, d_projector=False):
+def detached_reference(
+    xyz, *, power=2, d_projector=False, orbital=0, f_projector=False
+):
     gto = pytest.importorskip("pyscf.gto")
     records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
     if d_projector:
         records.append((2, 0.63, 0.74))
+    if f_projector:
+        records.extend(((3, 0.63, 0.74), (3, 1.17, -0.21)))
     channels = [
         [channel, [[] for _ in range(power)] + [[[exponent, coefficient]]]]
         for channel, exponent, coefficient in records
@@ -285,7 +309,7 @@ def detached_reference(xyz, *, power=2, d_projector=False):
         atom=list(zip(("Na", "H", "He"), xyz)),
         unit="Bohr",
         verbose=0,
-        basis={"H": [[0, [0.7, 1.0]]], "He": [[1, [1.1, 1.0]]]},
+        basis={"H": [[orbital, [0.7, 1.0]]], "He": [[1, [1.1, 1.0]]]},
         ecp={"Na": [10, channels]},
         cart=True,
     )
@@ -294,7 +318,8 @@ def detached_reference(xyz, *, power=2, d_projector=False):
     local = mol.intor("ECPscalar")
     mol._ecpbas = original[original[:, gto.ANG_OF] != -1]
     nonlocal_ = mol.intor("ECPscalar")
-    return np.array([local, nonlocal_])
+    norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
+    return np.array([local, nonlocal_]) / norms[None, :, None] / norms[None, None, :]
 
 
 def test_ecp_and_basis_centers_move_independently():
@@ -451,7 +476,7 @@ def test_ecp_resource_budget_and_parameter_invalidation(device):
     "field,value,match",
     [
         ("r_exponents", [5], "radial powers"),
-        ("angular_momentum", [4], "local channel"),
+        ("angular_momentum", [5], "local channel"),
         ("unknown", True, "unknown ECP"),
     ],
 )

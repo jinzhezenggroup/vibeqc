@@ -1,0 +1,140 @@
+{
+  "archive_sha256": "b98e482a4f99c55a45f69f8a44e508c6d6b6cb21316708cc59873cff420058f3",
+  "files": [
+    {
+      "bytes": 3542,
+      "path": "ISSUE-171-stuttgart-collect.py",
+      "sha256": "4a8f927bc7371176f7b808afb36e0a546576eb8744ff144374fb50598472325a"
+    },
+    {
+      "bytes": 1176,
+      "path": "ISSUE-171-stuttgart-prepare.sh",
+      "sha256": "feceb07576e7e7a2fe6b3a1953100abd4a3c90c63dbccf8abd6e10f5d4195351"
+    },
+    {
+      "bytes": 2117,
+      "path": "ISSUE-171-stuttgart-run.sh",
+      "sha256": "81cb31bc171970376612ab1ebcb51a4accfedce01edd6ad83e3ddb9f5148152b"
+    },
+    {
+      "bytes": 710839,
+      "path": "baseline-manifest.json",
+      "sha256": "a4f03b891fb560bba87bbc9b3326d456e88407baef35dbef804343d40f24aec5"
+    },
+    {
+      "bytes": 19722,
+      "path": "cpu-CMakeCache.txt",
+      "sha256": "136e3388fd049ac8968b6b0e77a0d22197baa1babb451ae85c60eaf12e2bf3f5"
+    },
+    {
+      "bytes": 26492,
+      "path": "cpu-build.log",
+      "sha256": "ff8f07fddbdb6047d81cf743b22796bdb230c7eefa99ef218384d0ae7526264e"
+    },
+    {
+      "bytes": 461,
+      "path": "cpu-configure.log",
+      "sha256": "56c20554449779631961a26ef90c76cc896758ac29cfc0bbd0bd9cb438f9643b"
+    },
+    {
+      "bytes": 4051,
+      "path": "cpu-ctest.log",
+      "sha256": "87730a48e81f1f2184c5444c753bf4acb36fd1fc60d0a94260af5b40d51331ae"
+    },
+    {
+      "bytes": 0,
+      "path": "cpu-driver.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 11810,
+      "path": "cpu-endpoints.json",
+      "sha256": "3bcf32240b29cd18460c8c52ca27966e676a9862aadc9f69405e9af476128e14"
+    },
+    {
+      "bytes": 0,
+      "path": "cpu-endpoints.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 99,
+      "path": "cpu-preflight.log",
+      "sha256": "22bd0602e485e21676279c5aedc8d008bea4469ff3deb2b3a7f910f429e6b2dd"
+    },
+    {
+      "bytes": 1413,
+      "path": "cpu-stuttgart.log",
+      "sha256": "a296913b2c277a1d86ff099c42e5b37a76d7c700917e85ea0860ae187b48b20c"
+    },
+    {
+      "bytes": 2,
+      "path": "cpu.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "bytes": 34944,
+      "path": "cuda-CMakeCache.txt",
+      "sha256": "3684a6d4e1682dfd8f1b311d3d778e9b3f57af2aec1adb623a91171a079af2ed"
+    },
+    {
+      "bytes": 33296,
+      "path": "cuda-build.log",
+      "sha256": "6de99f0fdbd45840d7b8e12cb6966809b83cd98ab3777404b88fb6d6beadb785"
+    },
+    {
+      "bytes": 1126,
+      "path": "cuda-configure.log",
+      "sha256": "abf29982ea5af2d74b7062401ec546b5443a7896f20a5b59cfcb65de5740f7f1"
+    },
+    {
+      "bytes": 695,
+      "path": "cuda-ctest.log",
+      "sha256": "42fd4aecaea93159ee82c8569080aff283d3fe1b7e791795eb55752a67203269"
+    },
+    {
+      "bytes": 0,
+      "path": "cuda-driver.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 14004,
+      "path": "cuda-endpoints.json",
+      "sha256": "e0530f937c3a8660ea8c2df5361e9690797a04213abd0b626d120077090b7a19"
+    },
+    {
+      "bytes": 0,
+      "path": "cuda-endpoints.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 187,
+      "path": "cuda-memcheck.log",
+      "sha256": "6f953e0a2f2409756b6f99226b3d37e41debf39d35e86d2b86f98c9cc58fe9b7"
+    },
+    {
+      "bytes": 1426,
+      "path": "cuda-stuttgart.log",
+      "sha256": "78517f41834873a4affba2bf75628013d153f16dc957bd5da6f2bf8d06c08663"
+    },
+    {
+      "bytes": 2,
+      "path": "cuda.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "bytes": 267,
+      "path": "parameters.jsonl",
+      "sha256": "20f09316b6c7abec4ef74603cded914369760210090617994964714621568e9b"
+    },
+    {
+      "bytes": 648,
+      "path": "source-identity.json",
+      "sha256": "6c17a95fecd2eec314a956c979a362fde87cff8f1a5854207f4ba236d7dbd2c4"
+    },
+    {
+      "bytes": 749,
+      "path": "toolchain.json",
+      "sha256": "8de47de65871d26d72cbab72d38ee1317e6f5be2d9b98b3948e00fe05c6ac2d1"
+    }
+  ]
+}

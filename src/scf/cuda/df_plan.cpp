@@ -21,10 +21,10 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail) {
+    std::string& detail, std::size_t automatic_rhf_rank) {
   return create_cuda_density_fitting_jk_plan_tiled_impl(
       device_id, batch_size, nbf, naux, metrics, three_center, relative_threshold, auxiliary_tile,
-      ao_pair_tile, plan, diagnostics, detail, nullptr);
+      ao_pair_tile, plan, diagnostics, detail, nullptr, false, {}, automatic_rhf_rank);
 }
 
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
@@ -54,7 +54,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail, bool retain_three_center, DfValueStorageOptions storage) {
+    std::string& detail, bool retain_three_center, DfValueStorageOptions storage,
+    std::size_t automatic_rhf_rank) {
   if (plan != nullptr) *plan = nullptr;
   if (source == nullptr || *source == nullptr) {
     detail = "source-backed CUDA DF plan requires a source";
@@ -65,7 +66,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
   // every failure path; clear the caller slot unconditionally below.
   vibeqc_status status = create_cuda_density_fitting_jk_plan_tiled_impl(
       device_id, batch_size, nbf, naux, metrics, {}, relative_threshold, auxiliary_tile,
-      ao_pair_tile, plan, diagnostics, detail, *source, retain_three_center, storage);
+      ao_pair_tile, plan, diagnostics, detail, *source, retain_three_center, storage,
+      automatic_rhf_rank);
   if (status == VIBEQC_STATUS_SUCCESS) {
     *source = nullptr;  // ownership transfers to the prepared plan
   } else {
@@ -80,7 +82,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,
     const std::vector<double>& metrics, const std::vector<double>& three_center,
     double relative_threshold, std::size_t auxiliary_tile, CudaDensityFittingJkPlan** plan,
-    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics, std::string& detail) {
+    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics, std::string& detail,
+    std::size_t automatic_rhf_rank) {
   // The compatibility API is the resident/default path: keep the complete
   // auxiliary dimension so large-AO warm replays can capture the SCF Graph.
   // Budgeted callers use the tiled entry point directly and may select host
@@ -88,7 +91,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
   const std::size_t resident_auxiliary_tile = auxiliary_tile == 0U ? naux : auxiliary_tile;
   return create_cuda_density_fitting_jk_plan_tiled(
       device_id, batch_size, nbf, naux, metrics, three_center, relative_threshold,
-      resident_auxiliary_tile, 0, plan, diagnostics, detail);
+      resident_auxiliary_tile, 0, plan, diagnostics, detail, automatic_rhf_rank);
 }
 
 void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan* plan) noexcept {
@@ -130,8 +133,9 @@ bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* pla
          plan->triangular_exchange == df_triangular_exchange_requested() &&
          plan->flat_dense_exchange == df_flat_dense_exchange_requested() &&
          plan->cooperative_diis == df_cooperative_diis_requested() &&
-         plan->occupied_scf_reserved ==
-             df_occupied_exchange_requested(plan->nbf, plan->naux, plan->batch_size);
+         plan->occupied_scf_reserved == df_occupied_exchange_requested(plan->nbf, plan->naux,
+                                                                       plan->batch_size,
+                                                                       plan->automatic_rhf_rank);
 }
 
 DfPairStorage cuda_density_fitting_pair_storage(const CudaDensityFittingJkPlan* plan) noexcept {

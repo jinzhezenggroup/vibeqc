@@ -14,7 +14,8 @@ from vibeqc_compiler.dft.ao import NativeAO
 from vibeqc_compiler.dft.grid import ExplicitGrid
 from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
 from vibeqc_compiler.xc.spec import FunctionalSpec
-from vibeqc_compiler.xc.spec import functional as canonical_functional
+
+from .ks import SCF_DOMAIN, resolve_ks_method
 
 _METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
@@ -101,8 +102,8 @@ class StationaryKsState:
         """Read the actual current #162 state and verify its AO/grid sources.
 
         CPU plans have no #162 handoff and fail explicitly. Native SCF keeps
-        its own regularization identity; generated interior-only XC geometry
-        remains unsupported for that model until the domains are reconciled.
+        its own regularization identity; #163-A consumes that exact point model
+        before applying the compiler-generated density/AO geometry pullback.
         """
         from ._ks_snapshot import NativeKsSnapshot
 
@@ -173,13 +174,13 @@ class StationaryDerivativeContract:
 
     @property
     def spin(self):
-        return (
-            "unpolarized" if self.state_identity.method.endswith("rks") else "polarized"
-        )
+        method_ir, _ = resolve_ks_method(self.state_identity.method)
+        return method_ir.spin
 
     @property
     def family(self):
-        return "lda" if self.state_identity.method.startswith("lda") else "gga"
+        _, functional = resolve_ks_method(self.state_identity.method)
+        return "lda" if functional.ingredients == ("rho",) else "gga"
 
     def to_payload(self):
         return {
@@ -402,10 +403,7 @@ class GeneratedXcGeometry(FixedDensityXcGeometry):
         super().__post_init__()
         contract = StationaryDerivativeContract(self.state_identity)
         contract.validate(self.state)
-        spec = canonical_functional(
-            "LDA_XC_PW" if contract.family == "lda" else "PBE", spin=contract.spin
-        )
-        if self.regularization_identity != xc_regularization_identity(spec):
+        if self.regularization_identity != scf_regularization_identity():
             raise ValueError("stationary regularization identity mismatch")
 
     def directional(self, motion):
@@ -486,7 +484,7 @@ def bind_generated_xc_geometry(
     if not isinstance(contract, StationaryDerivativeContract):
         raise TypeError("expected a stationary derivative contract")
     state = contract.validate(state)
-    result = _fixed_density_xc_geometry(contract, state, functional, basis, grid)
+    result = _scf_domain_xc_geometry(contract, state, functional, basis, grid)
     # Recheck after evaluation, including source identities and snapshot content.
     return GeneratedXcGeometry(
         **{
@@ -495,6 +493,86 @@ def bind_generated_xc_geometry(
             if item.init
         },
         state=state,
+    )
+
+
+def scf_regularization_identity():
+    """Identify the exact native LDA/PBE SCF energy/first-derivative domain."""
+    return canonical_hash({"scf_domain": SCF_DOMAIN})
+
+
+def _scf_domain_xc_geometry(contract, state, functional, basis, grid):
+    """Bind generated AO geometry pullback to the exact native SCF point model."""
+    contract._validate_arrays(state)
+    if not isinstance(functional, FunctionalSpec):
+        raise TypeError("expected a typed XC functional")
+    if not isinstance(basis, NativeAO) or not isinstance(grid, ExplicitGrid):
+        raise TypeError("stationary XC geometry requires NativeAO and ExplicitGrid")
+    if functional.identity != state.identity.functional_identity:
+        raise ValueError("stationary functional identity mismatch")
+    if functional.spin != contract.spin:
+        raise ValueError("stationary spin identity mismatch")
+    family = "lda" if functional.ingredients == ("rho",) else "gga"
+    if family != contract.family:
+        raise ValueError("stationary functional family mismatch")
+    _, expected_functional = resolve_ks_method(state.identity.method)
+    if functional.identity != expected_functional.identity:
+        raise ValueError(
+            "stationary "
+            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
+        )
+    regularization_identity = scf_regularization_identity()
+    if state.identity.regularization_identity != regularization_identity:
+        raise ValueError("stationary regularization identity mismatch")
+    for name, actual in (
+        ("basis_identity", basis.identity),
+        ("geometry_identity", native_ao_geometry_identity(basis)),
+        ("grid_identity", grid.identity),
+        ("topology_identity", xc_geometry_topology_identity(basis, grid)),
+    ):
+        if actual != getattr(state.identity, name):
+            raise ValueError(f"stationary {name.replace('_', ' ')} mismatch")
+
+    program = ContractionProgram(functional, "geometry")
+    density = state.density[0] if contract.spin == "unpolarized" else state.density
+    jets = basis.evaluate(grid.points, program.contract.ao_order)
+    features = program.features(jets, density)
+    gradient = features.get("gradient")
+    point_gradient = (
+        np.zeros((2, len(grid.points), 3)) if gradient is None else gradient
+    )
+    point_values = state._source.evaluate_xc_points(
+        contract.family == "gga", features["rho"], point_gradient
+    )
+    partials = program.geometry_from_cartesian_coefficients(
+        jets,
+        density,
+        grid.weights,
+        point_values["energy"],
+        point_values["rho"],
+        point_values["gradient"] if contract.family == "gga" else None,
+        ao_atoms=_native_ao_atoms(basis),
+        natom=basis.natom,
+    )
+    return FixedDensityXcGeometry(
+        state_identity=state.identity,
+        discrete_contract_identity=canonical_hash(
+            {
+                "schema": "vibeqc.stationary-scf-xc-geometry/v1",
+                "functional": functional.identity,
+                "scf_domain": SCF_DOMAIN,
+                "point_coefficients": "rho-gradient-cartesian-v1",
+                "generated_pullback": program.contract.identity,
+            }
+        ),
+        basis_identity=basis.identity,
+        geometry_identity=native_ao_geometry_identity(basis),
+        grid_identity=grid.identity,
+        topology_identity=xc_geometry_topology_identity(basis, grid),
+        functional_identity=functional.identity,
+        regularization_identity=regularization_identity,
+        density_generation=state.identity.density_generation,
+        partials=partials,
     )
 
 
@@ -516,11 +594,11 @@ def _fixed_density_xc_geometry(contract, state, functional, basis, grid):
     family = "lda" if functional.ingredients == ("rho",) else "gga"
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
-    expected_identifier = "LDA_XC_PW" if contract.family == "lda" else "PBE"
-    expected_functional = canonical_functional(expected_identifier, spin=contract.spin)
+    _, expected_functional = resolve_ks_method(state.identity.method)
     if functional.identity != expected_functional.identity:
         raise ValueError(
-            f"stationary {contract.family.upper()} requires canonical {expected_identifier}"
+            "stationary "
+            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
         )
     if state.identity.regularization_identity != xc_regularization_identity(functional):
         raise ValueError("stationary regularization identity mismatch")

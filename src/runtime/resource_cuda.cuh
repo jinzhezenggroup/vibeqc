@@ -30,10 +30,14 @@ class ResourceScopeExit {
 /** Charge the actual requested CUDA bytes before returning a native pointer.
  * A rejected allocation has the ordinary typed CUDA OOM status. No policy
  * changes the equation or silently selects another backend here.
+ * Optional host_oom distinguishes registry metadata failure from device/budget
+ * exhaustion for callers that may retry a smaller device allocation. The CUDA
+ * status remains unchanged for existing callers.
  */
 template <class Allocate, class Release>
 cudaError_t resource_cuda_allocate(void** output, std::size_t bytes, Allocate allocate,
-                                   Release release) {
+                                   Release release, bool* host_oom = nullptr) {
+  if (host_oom) *host_oom = false;
   auto ledger = active_device_resource_ledger;
   if (!ledger) return allocate();
   if (output == nullptr) return cudaErrorInvalidValue;
@@ -76,6 +80,7 @@ cudaError_t resource_cuda_allocate(void** output, std::size_t bytes, Allocate al
       (void)release();
       *output = nullptr;
       status = cudaErrorMemoryAllocation;
+      if (host_oom) *host_oom = true;
     }
   }
   {
@@ -89,9 +94,11 @@ cudaError_t resource_cuda_allocate(void** output, std::size_t bytes, Allocate al
   return status;
 }
 
-inline cudaError_t resource_cuda_malloc(void** output, std::size_t bytes) {
+inline cudaError_t resource_cuda_malloc(void** output, std::size_t bytes,
+                                        bool* host_oom = nullptr) {
   return resource_cuda_allocate(
-      output, bytes, [&] { return cudaMalloc(output, bytes); }, [&] { return cudaFree(*output); });
+      output, bytes, [&] { return cudaMalloc(output, bytes); }, [&] { return cudaFree(*output); },
+      host_oom);
 }
 
 template <class T>

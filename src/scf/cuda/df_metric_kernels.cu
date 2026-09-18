@@ -39,6 +39,15 @@ __global__ void scale_eigenvectors_kernel(std::size_t matrix_elements, std::size
   scaled_eigenvectors[element] = eigenvectors[element] * scales[system * dimension + column];
 }
 
+__global__ void scale_metric_projection_kernel(std::size_t dimension, std::size_t elements,
+                                               const double* eigenvalues, bool square_root,
+                                               double* projected) {
+  const auto k = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (k >= elements) return;
+  const auto value = eigenvalues[k % dimension];
+  projected[k] /= square_root ? sqrt(value) : value;
+}
+
 void launch_symmetrize_metrics_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t dimension, double* metrics) {
   symmetrize_metrics_kernel<<<grid, block, shared_bytes, stream>>>(dimension, metrics);
@@ -49,5 +58,13 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       const double* scales, double* scaled_eigenvectors) {
   scale_eigenvectors_kernel<<<grid, block, shared_bytes, stream>>>(
       matrix_elements, dimension, eigenvectors, scales, scaled_eigenvectors);
+}
+
+void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
+                                    const double* eigenvalues, bool square_root,
+                                    double* projected) {
+  const auto elements = dimension * pairs;
+  scale_metric_projection_kernel<<<static_cast<unsigned>((elements + 255) / 256), 256, 0, stream>>>(
+      dimension, elements, eigenvalues, square_root, projected);
 }
 }  // namespace vibeqc::scf::cuda_df

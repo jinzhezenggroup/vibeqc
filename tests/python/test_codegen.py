@@ -3888,10 +3888,39 @@ def test_generated_order2_fock_masks_handwritten_fallback():
     assert "contract_fock_direct_order2_task<Unrestricted>" in worker_source
 
 
-def test_production_codegen_cmake_tracks_transitive_generator_inputs():
+def test_production_codegen_cmake_tracks_transitive_generator_inputs(tmp_path):
     """Regenerate production CUDA whenever shared compiler stages change."""
 
-    source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    # The modular build collects compiler inputs recursively. Inspect the actual
+    # dependency graph of its CPU-configurable shell-codegen pilot, rather than
+    # requiring a redundant list of compiler filenames in the top-level CMake.
+    subprocess.run(
+        [
+            "cmake",
+            "-S",
+            str(REPOSITORY_ROOT),
+            "-B",
+            str(tmp_path),
+            "-G",
+            "Ninja",
+            "-DVIBEQC_ENABLE_CUDA=OFF",
+            "-DVIBEQC_BUILD_TESTS=OFF",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    dependencies = subprocess.check_output(
+        [
+            "ninja",
+            "-C",
+            str(tmp_path),
+            "-t",
+            "query",
+            "generated/shell_kernels/eri_psss_x_gradient.cuh",
+        ],
+        text=True,
+    )
     for dependency in (
         "python/vibeqc_compiler/integral/blocks.py",
         "python/vibeqc_compiler/integral/cache.py",
@@ -3910,9 +3939,13 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "python/vibeqc_compiler/integral/shell_signature.py",
         "python/vibeqc_compiler/integral/shell_spec.py",
     ):
-        assert dependency in source
-    assert "python/vibeqc_compiler/integral/dppp_dispatch.py" not in source
-    assert "python/vibeqc_compiler/integral/low_order_force.py" not in source
+        assert dependency in dependencies
+    # Production AOT generation must consume the same complete compiler input
+    # set. Checking this declaration needs no CUDA compiler or device in CPU CI.
+    cuda = (REPOSITORY_ROOT / "cmake/VibeQCCuda.cmake").read_text(encoding="utf-8")
+    production = cuda.split("vibeqc_register_generated_sources(", 1)[1]
+    production_dependencies = production.split("DEPENDS", 1)[1].split("ARGS", 1)[0]
+    assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" in production_dependencies
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
@@ -6142,21 +6175,58 @@ def test_autotune_driver_probes_and_rejects_target_before_trials():
     assert "compile target sm_80 does not match allocated" in source
 
 
-def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool():
-    """Prevent parallel compilation from shadowing the GPU run adapter."""
+def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
+    tmp_path, monkeypatch
+):
+    """Exercise both compile pools before using the configured GPU adapter."""
+    from vibeqc_compiler.integral.tuning import driver
+    from vibeqc_compiler.integral.tuning.cli import argument_parser
 
-    source = (
-        REPOSITORY_ROOT
-        / "python"
-        / "vibeqc_compiler"
-        / "integral"
-        / "tuning"
-        / "driver.py"
-    ).read_text(encoding="utf-8")
-    assert "benchmark_executor = CudaBenchmarkExecutor(" in source
-    assert "as compile_pool:" in source
-    assert "run = benchmark_executor.run(" in source
-    assert "as executor:" not in source
+    class ReachedBenchmark(Exception):
+        pass
+
+    trial = supported_schedule_trials(PSPS_SPEC)[0]
+    compiled = []
+    monkeypatch.setenv("VIBEQC_BENCHMARK_PARTITION", "test-partition")
+    monkeypatch.setenv("VIBEQC_BENCHMARK_GRES", "gpu:environment:1")
+    monkeypatch.setattr(driver, "supported_schedule_trials", lambda *a: (trial,))
+    for name in (
+        "emit_schedule_oracle_translation_unit",
+        "emit_schedule_translation_unit",
+        "emit_schedule_driver",
+    ):
+        monkeypatch.setattr(driver, name, lambda *a, **kw: "// test-only source")
+
+    def compile_trial(*args):
+        compiled.append(args)
+        return {"returncode": 0, "object": tmp_path / "test-only.o"}
+
+    monkeypatch.setattr(driver, "_compile_trial", compile_trial)
+    monkeypatch.setattr(
+        driver.CudaCompilerAdapter,
+        "link",
+        lambda *a: subprocess.CompletedProcess([], 0, "", ""),
+    )
+
+    def run_benchmark(self, executable, environment):
+        assert len(compiled) == 2  # Independent oracle and candidate pools.
+        assert self.partition == "test-partition"
+        assert self.gres == "gpu:explicit:1"
+        assert executable.name == "shell_schedule_autotune"
+        raise ReachedBenchmark
+
+    monkeypatch.setattr(driver.CudaBenchmarkExecutor, "run", run_benchmark)
+    arguments = argument_parser().parse_args(
+        [
+            "--shell-class=psps",
+            "--gres=gpu:explicit:1",
+            "--compile-jobs=2",
+            "--work-directory",
+            str(tmp_path),
+        ]
+    )
+    with pytest.raises(ReachedBenchmark):
+        driver._run_autotune(arguments)
 
 
 def test_autotune_emits_unique_schedule_variants_and_manifest_records():

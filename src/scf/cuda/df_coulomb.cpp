@@ -12,6 +12,7 @@
 #include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
+#include "scf/cuda/df_metric_kernels.hpp"
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
@@ -86,12 +87,15 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
       for (std::size_t system = 0; system < plan.batch_size; ++system) {
         const auto* inverse = plan.inverse_square_roots + system * plan.naux * plan.naux;
         auto* charge = plan.auxiliary_density + system * plan.naux;
+        const bool factor_first = plan.metric_full_rank[system] &&
+                                  plan.row_tile * plan.nbf * plan.auxiliary_tile >= plan.naux;
         // The small panel charge/potential borrows K scratch; only the first
         // auxiliary_count entries are live, within every resolved tile size.
         auto* panel_vector = plan.exchange_intermediate;
         for (std::size_t begin = 0; begin < plan.naux; begin += plan.auxiliary_tile) {
           const auto count = std::min(plan.auxiliary_tile, plan.naux - begin);
-          cuda_error = cudaMemsetAsync(panel_vector, 0, count * sizeof(double), plan.stream);
+          auto* raw_charge = factor_first ? charge + begin : panel_vector;
+          cuda_error = cudaMemsetAsync(raw_charge, 0, count * sizeof(double), plan.stream);
           if (cuda_error != cudaSuccess)
             return cuda_failure(cuda_error, "zero raw DF panel charge", detail);
           for (std::size_t pair_begin = 0; pair_begin < plan.matrix_elements;
@@ -104,11 +108,12 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
             launch_accumulate_streamed_auxiliary_density_kernel(
                 blocks_for(count), kThreads, 0, plan.stream, pairs, count,
                 plan.auxiliary_tile_values, density + system * plan.matrix_elements + pair_begin,
-                panel_vector);
+                raw_charge);
             cuda_error = cudaPeekAtLastError();
             if (cuda_error != cudaSuccess)
               return cuda_failure(cuda_error, "raw DF panel charge contraction", detail);
           }
+          if (factor_first) continue;
           const auto status = trace_call("ri_j_metric_gemm", plan.stream, [&] {
             return cublasDgemv(plan.blas, CUBLAS_OP_N, static_cast<int>(plan.naux),
                                static_cast<int>(count), &one, inverse + begin * plan.naux,
@@ -117,15 +122,47 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
           if (status != CUBLAS_STATUS_SUCCESS)
             return blas_failure(status, "transform raw DF panel charge", detail);
         }
-        for (std::size_t begin = 0; begin < plan.naux; begin += plan.auxiliary_tile) {
-          const auto count = std::min(plan.auxiliary_tile, plan.naux - begin);
-          const auto status = trace_call("ri_j_metric_gemm", plan.stream, [&] {
-            return cublasDgemv(plan.blas, CUBLAS_OP_N, static_cast<int>(count),
-                               static_cast<int>(plan.naux), &one, inverse + begin,
-                               static_cast<int>(plan.naux), charge, 1, &zero, panel_vector, 1);
+        if (factor_first) {
+          // Keep eigendirections until after division. Only two length-Naux
+          // vectors are live, in the charge owner and existing K scratch;
+          // source work stays at the same two complete raw-tensor passes.
+          const auto a = static_cast<int>(plan.naux);
+          const auto* q = plan.metric_eigenvectors + system * plan.naux * plan.naux;
+          auto status = trace_call("ri_j_metric_eigen_projection", plan.stream, [&] {
+            return cublasDgemv(plan.blas, CUBLAS_OP_T, a, a, &one, q, a, charge, 1, &zero,
+                               panel_vector, 1);
           });
           if (status != CUBLAS_STATUS_SUCCESS)
-            return blas_failure(status, "form raw DF panel potential", detail);
+            return blas_failure(status, "project raw DF charge eigendirections", detail);
+          launch_scale_metric_projection(plan.stream, plan.naux, 1,
+                                         plan.metric_eigenvalues + system * plan.naux, false,
+                                         panel_vector);
+          cuda_error = cudaPeekAtLastError();
+          if (cuda_error != cudaSuccess)
+            return cuda_failure(cuda_error, "scale raw DF charge eigendirections", detail);
+          status = trace_call("ri_j_metric_scaled_rotation", plan.stream, [&] {
+            return cublasDgemv(plan.blas, CUBLAS_OP_N, a, a, &one, q, a, panel_vector, 1, &zero,
+                               charge, 1);
+          });
+          if (status != CUBLAS_STATUS_SUCCESS)
+            return blas_failure(status, "rotate inverse-applied raw DF charge", detail);
+          runtime::cuda_trace::trace_counter("streamed_coulomb_factor_first", 1);
+          runtime::cuda_trace::trace_counter("streamed_coulomb_factor_gemvs", 2);
+          runtime::cuda_trace::trace_counter("streamed_coulomb_factor_flops",
+                                             4 * plan.naux * plan.naux);
+        }
+        for (std::size_t begin = 0; begin < plan.naux; begin += plan.auxiliary_tile) {
+          const auto count = std::min(plan.auxiliary_tile, plan.naux - begin);
+          if (!factor_first) {
+            const auto status = trace_call("ri_j_metric_gemm", plan.stream, [&] {
+              return cublasDgemv(plan.blas, CUBLAS_OP_N, static_cast<int>(count),
+                                 static_cast<int>(plan.naux), &one, inverse + begin,
+                                 static_cast<int>(plan.naux), charge, 1, &zero, panel_vector, 1);
+            });
+            if (status != CUBLAS_STATUS_SUCCESS)
+              return blas_failure(status, "form raw DF panel potential", detail);
+          }
+          const auto* potential = factor_first ? charge + begin : panel_vector;
           for (std::size_t pair_begin = 0; pair_begin < plan.matrix_elements;
                pair_begin += pair_tile) {
             const auto pairs = std::min(pair_tile, plan.matrix_elements - pair_begin);
@@ -135,7 +172,7 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
             if (source_status != VIBEQC_STATUS_SUCCESS) return source_status;
             launch_build_streamed_coulomb_tile_kernel(
                 blocks_for(pairs), kThreads, 0, plan.stream, pairs, count,
-                plan.auxiliary_tile_values, panel_vector,
+                plan.auxiliary_tile_values, potential,
                 plan.coulomb + system * plan.matrix_elements + pair_begin);
             cuda_error = cudaPeekAtLastError();
             if (cuda_error != cudaSuccess)

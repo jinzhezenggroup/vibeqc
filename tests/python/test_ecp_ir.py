@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.integral.ecp import build_ecp_ir, gaussian_roots
+from vibeqc_compiler.integral.ecp_grid import harmonic_roots, radial_map_roots
 from vibeqc_compiler.integral.ecp_projector import (
     emit_ecp_quadrature_cpp,
     pair_roots,
@@ -36,11 +37,46 @@ def test_ecp_codegen_without_site_packages(tmp_path):
     assert output.read_text() == emit_ecp_quadrature_cpp()
 
 
+def test_generated_grid_radial_map_and_jacobian():
+    graph, (radius, weight) = radial_map_roots()
+    for z in (-0.999, -0.7, 0.0, 0.4, 0.999):
+        values = {"z": z, "weight": 0.37}
+        # Independent rational form and its analytic Jacobian.
+        assert graph.evaluate(radius, values) == pytest.approx((1 + z) / (1 - z))
+        assert graph.evaluate(weight, values) == pytest.approx(0.74 / (1 - z) ** 2)
+        derivative = graph.differentiate(radius, graph.variable("z"))
+        assert graph.evaluate(weight, values) == pytest.approx(
+            0.37 * graph.evaluate(derivative, values)
+        )
+
+
+def test_generated_harmonic_channel_addition_theorem():
+    graph, roots = harmonic_roots()
+    rng = np.random.default_rng(17103)
+    for _ in range(30):
+        a, b = rng.normal(size=(2, 3))
+        a, b = a / np.linalg.norm(a), b / np.linalg.norm(b)
+        ya, yb = (
+            np.array(
+                [graph.evaluate(r, dict(zip("xyz", v, strict=True))) for r in roots]
+            )
+            for v in (a, b)
+        )
+        dot = a @ b
+        for l, polynomial in enumerate(
+            (1.0, dot, (3 * dot * dot - 1) / 2, (5 * dot**3 - 3 * dot) / 2)
+        ):
+            selected = slice(l * l, (l + 1) ** 2)
+            assert ya[selected] @ yb[selected] == pytest.approx(
+                (2 * l + 1) / (4 * math.pi) * polynomial, abs=3e-15
+            )
+
+
 @pytest.mark.parametrize("weighted", [False, True])
 def test_ecp_center_and_versioned_roundtrip(weighted):
     ir = build_ecp_ir(
         (1, 2),
-        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(0, 0, 1.5, 2)),
+        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(3, 0, 1.5, 2)),
         derivatives=True,
         weighted=weighted,
     )
@@ -68,7 +104,7 @@ def test_ecp_center_and_versioned_roundtrip(weighted):
 
 def test_generated_center_derivatives_independent_finite_difference():
     rng = np.random.default_rng(171)
-    for l in range(3):
+    for l in range(4):
         for component in cartesian_components(l):
             graph, roots = gaussian_roots(component)
             for xyz in (np.zeros(3), rng.normal(size=3)):
@@ -91,19 +127,32 @@ def test_generated_center_derivatives_independent_finite_difference():
 
 def test_invalid_ecp_lowerings_fail_closed():
     term = EcpRadialTerm(-1, 2, 1.0, 1.0)
-    for angular in ((0,), (0, 3)):
+    for angular in ((0,), (0, 4)):
         with pytest.raises(ValueError):
             build_ecp_ir(angular, (term,))
     with pytest.raises(ValueError):
         build_ecp_ir((0, 0), (term,), weighted=True)
     for kwargs in (
         {"power": -1},
-        {"channel": 3},
+        {"channel": 4},
         {"exponent": 0},
         {"coefficient": float("nan")},
     ):
         with pytest.raises(ValueError):
             replace(term, **kwargs)
+
+
+@pytest.mark.parametrize("angular", [(0, 3), (3, 2), (3, 3)])
+@pytest.mark.parametrize("weighted", [False, True])
+def test_f_orbital_ir_derivative_contract(angular, weighted):
+    ir = build_ecp_ir(
+        angular,
+        (EcpRadialTerm(2, 4, 0.8, -1.2),),
+        derivatives=True,
+        weighted=weighted,
+    )
+    assert ir.derivative.recovered_centers(ir.operator) == (2,)
+    assert integral_from_payload(integral_to_payload(ir)) == ir
 
 
 @pytest.mark.parametrize("power", range(5))

@@ -86,15 +86,22 @@ owner token whenever a stationary contract is validated. Batch replay (including
 failed requests), owner replacement and closure revoke old snapshots. Directly
 constructed array records provide no stationary authorization.
 
-Generated fixed-density XC AO-centre, point and weight partials have an
-independent multistep CPU energy oracle. They use `interior-v1`, whereas native
-SCF uses `semilocal-scaled-v1/pbe-spin-c2-1e-18`. Stationary XC binding rejects
-that domain mismatch; these diagnostics do not complete #163-A. Matching the
-energy/derivative domain remains required before connecting the native handoff
-to generated XC geometry. Atom-centred grid/partition response, the other energy
-terms and Pulay contributions, CUDA gradient lowering, and public DFT forces
-also remain unsupported. See the
-[native ownership decision](../.agents/notes/implemented/numerics/2026-09-16-stationary-native-handoff.md).
+Issue #163-A now binds that live native state to generated XC AO-centre,
+point and weight geometry pullbacks without relabeling the energy model. A
+private CPU point bridge reuses the exact
+`semilocal-scaled-v1/pbe-spin-c2-1e-18` SCF evaluator for per-point energy and
+Cartesian density/gradient coefficients; the compiler-generated AO-jet pullback
+owns the density/AO geometric chain. The bridge is checked against all 97
+independent Libxc/mpmath SCF-domain reference points, while the existing
+multistep fixed-density oracle and LDA/PBE RKS/UKS component/directional tests
+continue to exercise the geometric chain. `interior-v1` remains a separate
+diagnostic contract and cannot authorize a native state.
+
+This completes only the #163-A stationary derivative contract / XC geometry
+slice. Atom-centred grid/partition response, the other energy terms and Pulay
+contributions, complete molecular gradients, CUDA gradient lowering, and public
+DFT forces remain unsupported under #163 B/C. See the
+[stationary XC ownership decision](../.agents/notes/implemented/numerics/2026-09-18-scf-point-generated-pullback.md).
 The public `Result.density_rms` retains its density-update convergence meaning.
 The separate `Result.physical_residual_rms` reports the physical commutator
 RMS; UKS combines the alpha/beta matrix entries in both public RMS measures.

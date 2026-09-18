@@ -12,6 +12,8 @@
 
 namespace vibeqc::integrals {
 namespace {
+static_assert(sizeof(EcpSpherePoint::harmonics) / sizeof(double) == generated::ecp_projector_count);
+constexpr int projector_count = generated::ecp_projector_count;
 struct Primitive {
   double exponent, coefficient;
 };
@@ -40,8 +42,8 @@ __global__ void evaluate_ao(const AO* aos, const Primitive* primitives,
 __global__ void project(const Four* values, const EcpSpherePoint* sphere, int n, int nq, int nr,
                         bool derivatives, Four* projections) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= nr * n * 9) return;
-  const int m = i % 9, a = (i / 9) % n, r = i / (9 * n);
+  if (i >= nr * n * projector_count) return;
+  const int m = i % projector_count, a = (i / projector_count) % n, r = i / (projector_count * n);
   projections[i] = generated::ecp_project(values + (r * n + a) * nq, sphere, nq, m, derivatives);
 }
 __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
@@ -49,26 +51,30 @@ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
                          const Four* values, const Four* projections, int n, int nq, int nr,
                          int center, int ncoord, double* output) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= nr * n * n) return;
-  const int b = i % n, a = (i / n) % n, r = i / (n * n);
+  if (i >= n * n) return;
+  const int b = i % n, a = i / n;
   if (b > a) return;
   const int size = n * n, stride = size * (1 + ncoord);
-  double parts[2][10];
-  generated::ecp_contract(terms, nt, radii[r], sphere, nq, center, values + (r * n + a) * nq,
-                          values + (r * n + b) * nq, projections + (r * n + a) * 9,
-                          projections + (r * n + b) * 9, ncoord != 0, parts);
-  for (int part = 0; part < 2; ++part)
-    for (int transpose = 0; transpose < (a == b ? 1 : 2); ++transpose) {
-      const int item = transpose ? b * n + a : a * n + b;
-      double* out = output + part * stride;
-      atomicAdd(out + item, parts[part][0]);
-      if (ncoord)
-        for (int d = 0; d < 3; ++d) {
-          atomicAdd(out + (1 + aos[a].atom * 3 + d) * size + item, parts[part][d + 1]);
-          atomicAdd(out + (1 + aos[b].atom * 3 + d) * size + item, parts[part][d + 4]);
-          atomicAdd(out + (1 + center * 3 + d) * size + item, parts[part][d + 7]);
-        }
-    }
+  // Each AO pair owns its radial loop. Keep the original FP64 addition order
+  // while AO evaluation and projection expose several independent layers.
+  for (int r = 0; r < nr; ++r) {
+    double parts[2][10];
+    generated::ecp_contract(terms, nt, radii[r], sphere, nq, center, values + (r * n + a) * nq,
+                            values + (r * n + b) * nq, projections + (r * n + a) * projector_count,
+                            projections + (r * n + b) * projector_count, ncoord != 0, parts);
+    for (int part = 0; part < 2; ++part)
+      for (int transpose = 0; transpose < (a == b ? 1 : 2); ++transpose) {
+        const int item = transpose ? b * n + a : a * n + b;
+        double* out = output + part * stride;
+        atomicAdd(out + item, parts[part][0]);
+        if (ncoord)
+          for (int d = 0; d < 3; ++d) {
+            atomicAdd(out + (1 + aos[a].atom * 3 + d) * size + item, parts[part][d + 1]);
+            atomicAdd(out + (1 + aos[b].atom * 3 + d) * size + item, parts[part][d + 4]);
+            atomicAdd(out + (1 + center * 3 + d) * size + item, parts[part][d + 7]);
+          }
+      }
+  }
 }
 __global__ void consume(const double* output, int size, int ncoord, double* hcore,
                         const double* density, double* forces) {
@@ -123,7 +129,12 @@ struct Arena {
   template <class T>
   T* allocate(std::size_t n, const T* source = nullptr) {
     void* pointer = nullptr;
-    check(runtime::resource_cuda_malloc(&pointer, n * sizeof(T)));
+    bool host_oom = false;
+    const auto status = runtime::resource_cuda_malloc(&pointer, n * sizeof(T), &host_oom);
+    // Registry metadata OOM shares CUDA's status but cannot authorize a radial
+    // staging retry. The allocator has already released and uncharged storage.
+    if (host_oom) throw std::bad_alloc();
+    check(status);
     try {
       allocations.push_back(pointer);
     } catch (...) {
@@ -161,16 +172,16 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
             {}};
       for (unsigned t = 0; t < expansion.size(); ++t) {
         const auto& v = expansion[t];
-        ao.components[t] = {
-            v.component[0], v.component[1], v.component[2],
-            v.coefficient * molecule::cartesian_component_normalization(v.component)};
+        ao.components[t] = {v.component[0], v.component[1], v.component[2],
+                            generated::ecp_component_coefficient(v.component[0], v.component[1],
+                                                                 v.component[2], v.coefficient)};
       }
       aos.push_back(ao);
     }
   }
   const int ncoord = derivatives ? system.atoms.size() * 3 : 0;
   const std::size_t size = n * n, stride = size * (1 + ncoord);
-  // One radial shell bounds staging independent of the radial grid length.
+  // The compiler schedule bounds staging independently of radial grid length.
   Arena arena{stream, {}};
   auto daos = arena.allocate(aos.size(), aos.data());
   auto dprimitives = arena.allocate(primitives.size(), primitives.data());
@@ -181,24 +192,38 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
     std::vector<EcpSpherePoint> sphere;
     ecp_quadrature(nr, na, radial_grid, sphere);
     const int nq = sphere.size();
+    unsigned tile = std::min(nr, generated::ecp_cuda_radial_tile(n, na));
     Arena grid{stream, {}};
     auto dsphere = grid.allocate(sphere.size(), sphere.data());
     auto dradii = grid.allocate(radial_grid.size(), radial_grid.data());
-    auto values = grid.allocate<Four>(n * nq);
-    auto projections = grid.allocate<Four>(n * 9);
+    Four* staging = nullptr;
+    try {
+      staging = grid.allocate<Four>(tile * n * (nq + projector_count));
+    } catch (const CudaFailure& error) {
+      if (error.status != cudaErrorMemoryAllocation || tile == 1) throw;
+      // Optional batching may exhaust either the active ledger or the device.
+      // A failed allocation owns no staging. Clear that OOM before retrying
+      // the original bounded schedule; other CUDA/host errors propagate.
+      (void)cudaGetLastError();
+      tile = 1;
+      staging = grid.allocate<Four>(n * (nq + projector_count));
+    }
+    auto values = staging;
+    auto projections = staging + tile * n * nq;
     check(cudaMemsetAsync(destination, 0, 2 * stride * sizeof(double), stream));
     for (unsigned c = 0; c < system.atoms.size(); ++c) {
       const auto& atom = system.atoms[c];
       if (!atom.ecp_core) continue;
-      for (unsigned r = 0; r < nr; ++r) {
-        evaluate_ao<<<(n * nq + 127) / 128, 128, 0, stream>>>(
-            daos, dprimitives, dsphere, dradii + r, n, nq, 1, atom.position[0], atom.position[1],
-            atom.position[2], derivatives, values);
-        project<<<(n * 9 + 127) / 128, 128, 0, stream>>>(values, dsphere, n, nq, 1, derivatives,
-                                                         projections);
+      for (unsigned r = 0; r < nr; r += tile) {
+        const unsigned count = std::min(tile, nr - r);
+        evaluate_ao<<<(count * n * nq + 127) / 128, 128, 0, stream>>>(
+            daos, dprimitives, dsphere, dradii + r, n, nq, count, atom.position[0],
+            atom.position[1], atom.position[2], derivatives, values);
+        project<<<(count * n * projector_count + 127) / 128, 128, 0, stream>>>(
+            values, dsphere, n, nq, count, derivatives, projections);
         contract<<<(size + 127) / 128, 128, 0, stream>>>(daos, dterms, system.ecp_terms.size(),
                                                          dsphere, dradii + r, values, projections,
-                                                         n, nq, 1, c, ncoord, destination);
+                                                         n, nq, count, c, ncoord, destination);
         check(cudaPeekAtLastError());
       }
     }

@@ -12,6 +12,119 @@
 #include "scf/cuda/df_runtime.hpp"
 
 namespace vibeqc::scf::cuda_df {
+namespace {
+
+/** Project raw source slices before whitening when all auxiliary directions of
+ * a bounded AO-row block fit. The four existing, disjoint plan buffers hold
+ * left/right occupied projections, raw AO input and one eigenprojection.
+ * This changes source work from auxiliary-output-panel regeneration to AO-row
+ * regeneration; it allocates nothing and remains safe inside SCF capture.
+ */
+vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, std::size_t system,
+                                                const double* coefficients, std::size_t rank,
+                                                bool column_major, double weight, std::size_t rows,
+                                                double* exchange, std::string& detail) {
+  using namespace runtime::cuda_trace;
+  const auto n = plan.nbf, a = plan.naux, capacity = plan.panel_capacity;
+  const auto ar = a * rank;
+  const double one = 1, zero = 0;
+  auto* left = plan.auxiliary_tile_values;
+  auto* right = plan.exchange_contributions;
+  auto* raw = plan.exchange_intermediate;
+  auto* transformed = plan.exchange_tile_output;
+  auto* output = exchange + system * plan.matrix_elements;
+  const auto project = [&](std::size_t begin, std::size_t count, double* target) -> vibeqc_status {
+    const auto raw_tile = std::min(a, capacity / (count * n));
+    trace_counter("raw_panel_source_auxiliary_evaluations", count * n * a);
+    trace_counter("streamed_occupied_raw_generation_rows", count);
+    for (std::size_t p = 0; p < a; p += raw_tile) {
+      const auto q = std::min(raw_tile, a - p);
+      const auto status = generate_cuda_density_fitting_raw_tile(
+          plan.integral_source, system, begin * n, count * n, p, q, -1,
+          reinterpret_cast<void*>(plan.stream), raw, detail);
+      if (status != VIBEQC_STATUS_SUCCESS) return status;
+      // Raw [mu,nu,P] has contiguous P. Each mu projects its contracted nu
+      // directly into U[mu,i,P]; lda=a preserves prior raw-auxiliary blocks.
+      const auto blas = trace_call("streamed_occupied_raw_projection", plan.stream, [&] {
+        return cublasDgemmStridedBatched(
+            plan.blas, CUBLAS_OP_N, column_major ? CUBLAS_OP_N : CUBLAS_OP_T, static_cast<int>(q),
+            static_cast<int>(rank), static_cast<int>(n), &one, raw, static_cast<int>(q), q * n,
+            coefficients, static_cast<int>(column_major ? n : rank), 0, &zero, target + p,
+            static_cast<int>(a), ar, static_cast<int>(count));
+      });
+      if (blas != CUBLAS_STATUS_SUCCESS)
+        return blas_failure(blas, "project streamed raw DF factors", detail);
+      trace_counter("occupied_projection_products", count);
+      trace_counter("occupied_projection_flops", 2 * q * count * n * rank);
+    }
+    // Keep eigendirections separate until after division. Orthogonal rotation
+    // back to symmetric whitening cancels in the complete K Gram. These
+    // private factors are never published as a final symmetric-C projection.
+    const auto blas = trace_call("streamed_occupied_metric_projection", plan.stream, [&] {
+      return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(a),
+                         static_cast<int>(count * rank), static_cast<int>(a), &one,
+                         plan.metric_eigenvectors + system * a * a, static_cast<int>(a), target,
+                         static_cast<int>(a), &zero, transformed, static_cast<int>(a));
+    });
+    if (blas != CUBLAS_STATUS_SUCCESS)
+      return blas_failure(blas, "whiten streamed occupied DF factors", detail);
+    launch_scale_metric_projection(plan.stream, a, count * rank,
+                                   plan.metric_eigenvalues + system * a, true, transformed);
+    auto error = cudaPeekAtLastError();
+    if (error == cudaSuccess)
+      error = cudaMemcpyAsync(target, transformed, count * ar * sizeof(double),
+                              cudaMemcpyDeviceToDevice, plan.stream);
+    if (error != cudaSuccess)
+      return cuda_failure(error, "retain streamed occupied DF factors", detail);
+    trace_counter("streamed_whitening_factor_gemms", 1);
+    trace_counter("streamed_whitening_factor_flops", 2 * a * a * count * rank);
+    trace_counter("streamed_occupied_projection_copy_bytes", count * ar * sizeof(double));
+    return VIBEQC_STATUS_SUCCESS;
+  };
+  for (std::size_t r = 0; r < n; r += rows) {
+    const auto nr = std::min(rows, n - r);
+    auto status = project(r, nr, left);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    for (std::size_t c = 0; c < (plan.triangular_exchange ? r + 1 : n); c += rows) {
+      const auto nc = std::min(rows, n - c);
+      const auto* column = left;
+      if (c != r) {
+        status = project(c, nc, right);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        column = right;
+      } else {
+        trace_counter("occupied_panel_cache_hits", 1);
+      }
+      // Columns of each (a*rank,rows) panel are output AO rows. Every matrix
+      // block is produced exactly once, including partial row/column tails.
+      const auto blas = trace_call("streamed_occupied_exchange_gemm", plan.stream, [&] {
+        return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(nr),
+                           static_cast<int>(nc), static_cast<int>(ar), &weight, left,
+                           static_cast<int>(ar), column, static_cast<int>(ar), &zero,
+                           output + r + c * n, static_cast<int>(n));
+      });
+      if (blas != CUBLAS_STATUS_SUCCESS)
+        return blas_failure(blas, "contract streamed occupied DF factors", detail);
+      trace_counter("occupied_exchange_products", 1);
+      trace_counter("occupied_exchange_flops", 2 * nr * nc * ar);
+    }
+  }
+  if (plan.triangular_exchange) {
+    launch_mirror_exchange_triangle(blocks_for(plan.matrix_elements), kThreads, plan.stream, n,
+                                    output);
+    const auto error = cudaPeekAtLastError();
+    if (error != cudaSuccess) return cuda_failure(error, "mirror streamed occupied DF K", detail);
+  }
+  trace_counter("streamed_occupied_source_first", 1);
+  trace_counter("streamed_occupied_row_blocks", (n + rows - 1) / rows);
+  trace_counter("streamed_occupied_retained_projection_capacity_bytes",
+                2 * rows * ar * sizeof(double));
+  trace_counter("streamed_occupied_metric_projection_capacity_bytes", rows * ar * sizeof(double));
+  trace_counter("streamed_occupied_scratch_capacity_bytes", 4 * capacity * sizeof(double));
+  trace_counter("occupied_exchange_triangular", plan.triangular_exchange);
+  return VIBEQC_STATUS_SUCCESS;
+}
+}  // namespace
 
 vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_t system,
                                       const double* coefficients, std::size_t rank,
@@ -32,6 +145,28 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
   trace_counter("occupied_rank", rank);
   trace_counter("occupied_factor_bytes", plan.nbf * rank * sizeof(double));
   if (!rank) return VIBEQC_STATUS_SUCCESS;
+
+  if (plan.integral_source && plan.streamed && plan.metric_full_rank[system] &&
+      rank <= static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux) {
+    // Raw AO input and all-Q occupied projections use separate buffers with
+    // the same charged capacity. Require both to fit at least one complete
+    // AO row, and select this order only when it reduces logical source work.
+    const auto rows = std::min(
+        {plan.nbf, plan.panel_capacity / (plan.naux * rank), plan.panel_capacity / plan.nbf});
+    const auto legacy = df_streamed_k_panel(plan.nbf, plan.naux, plan.panel_capacity);
+    if (rows) {
+      const auto blocks = (plan.nbf + rows - 1) / rows;
+      const auto last = plan.nbf - (blocks - 1) * rows;
+      const long double generated_rows =
+          plan.triangular_exchange
+              ? static_cast<long double>(rows) * (blocks - 1) * (blocks + 2) / 2 + last
+              : static_cast<long double>(plan.nbf) * blocks;
+      if (generated_rows <
+          static_cast<long double>(plan.nbf) * legacy.row_tiles * legacy.output_tiles)
+        return build_streamed_projected_exchange(plan, system, coefficients, rank, column_major,
+                                                 weight, rows, exchange, detail);
+    }
+  }
 
   const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
   const bool complete_projection =

@@ -227,15 +227,45 @@ void verify_unrestricted_coefficients_and_capabilities() {
   const auto cuda = fock_provider_capabilities(FockApproximation::Exact, FockBackend::Cuda);
   const auto fitted =
       fock_provider_capabilities(FockApproximation::DensityFitted, FockBackend::Cuda);
-  require(cpu.restricted && cpu.unrestricted && cpu.full_range && !cpu.short_range &&
-              !cpu.long_range && cpu.maximum_derivative_order == 1 &&
+  const auto& cpu_registration =
+      fock_provider_registration(FockApproximation::Exact, FockBackend::Cpu);
+  require(cpu.available && cpu.restricted && cpu.unrestricted && cpu.full_range &&
+              !cpu.short_range && !cpu.long_range && cpu.maximum_derivative_order == 1 &&
               cpu.maximum_angular_momentum == 3 && cpu.cartesian && cpu.spherical &&
-              cpu.independent_terms && cpu.arbitrary_coefficients && !cpu.legacy_adapter_only,
-          "CPU exact capabilities misrepresent the executable contract");
-  require(cuda.independent_terms && cuda.arbitrary_coefficients && !cuda.legacy_adapter_only,
-          "CUDA capabilities omit the independent provider boundary");
-  require(!fitted.legacy_adapter_only && fitted.independent_terms && fitted.arbitrary_coefficients,
-          "CUDA DF capabilities omit independent selection and signed response");
+              cpu.independent_terms && cpu.arbitrary_coefficients && !cpu.legacy_adapter_only &&
+              cpu.provider_version == cpu_registration.identity.version &&
+              vibeqc::runtime::provider_executable(cpu_registration) &&
+              vibeqc::runtime::has_requirement(cpu_registration.requirements,
+                                               vibeqc::runtime::ProviderRequirement::PreparedState),
+          "CPU exact capabilities misrepresent the executable registration");
+#if VIBEQC_HAS_CUDA
+  require(cuda.available && cuda.independent_terms && cuda.arbitrary_coefficients &&
+              !cuda.legacy_adapter_only && fitted.available && fitted.independent_terms &&
+              fitted.arbitrary_coefficients,
+          "CUDA capabilities omit registered independent providers");
+#else
+  require(!cuda.available && !cuda.restricted && !cuda.independent_terms && !fitted.available &&
+              !fitted.arbitrary_coefficients,
+          "CPU-only capability query claimed an unregistered CUDA provider");
+  const auto& cuda_registration =
+      fock_provider_registration(FockApproximation::Exact, FockBackend::Cuda);
+  require(cuda_registration.availability == vibeqc::runtime::ProviderAvailability::NotBuilt &&
+              !vibeqc::runtime::provider_executable(cuda_registration),
+          "CPU-only CUDA registration lost its not-built state");
+  std::string unavailable_detail;
+  try {
+    require_fock_provider_executable(FockApproximation::Exact, FockBackend::Cuda);
+  } catch (const std::runtime_error& error) {
+    unavailable_detail = error.what();
+  }
+  require(unavailable_detail.find("cuda.exact") != std::string::npos &&
+              unavailable_detail.find("not built") != std::string::npos,
+          "not-built CUDA provider did not fail with provider-specific diagnostics");
+  const auto semantic_cuda = resolve_fock_build(
+      make_hf_fock_spec(FockSpin::Restricted, FockApproximation::Exact), FockBackend::Cuda);
+  require(semantic_cuda.backend == FockBackend::Cuda,
+          "not-built CUDA request silently fell back to another backend");
+#endif
   require_rejected(
       [&] {
         (void)fock_provider_capabilities(static_cast<FockApproximation>(99), FockBackend::Cpu);

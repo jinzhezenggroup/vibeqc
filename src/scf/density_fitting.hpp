@@ -220,6 +220,9 @@ struct DensityFittingTilePlan {
   // Independent of auxiliary_tile: generated B can be retained with bounded K Q.
   bool stores_full_three_center{};
   DfValueStorageOptions value_storage{};
+  // Nonzero only when this budget admits automatic RHF factors. Pass the hint
+  // to native creation; a dense fallback must not restore an unused charge.
+  std::size_t automatic_rhf_rank{};
 };
 
 /** A valid DF shape has no tile fitting the requested positive allowance.
@@ -245,13 +248,14 @@ class DensityFittingBudgetError : public std::invalid_argument {
  * generated_source permits reusing contraction staging for raw materialization;
  * callers must pass stores_full_three_center to the source plan adapter. Explicit
  * host-tensor plans additionally need their raw upload during setup.
+ * automatic_rhf_rank authorizes optional SCF factor reservation for a known
+ * RHF occupation. Zero keeps dense accounting. If optional factors force
+ * streaming, auto retries the dense budget; explicit occupied never does.
  */
-[[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size,
-                                                                std::size_t nbf, std::size_t naux,
-                                                                std::size_t occupied,
-                                                                std::size_t memory_budget_bytes,
-                                                                std::size_t fixed_device_bytes = 0,
-                                                                bool generated_source = false);
+[[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(
+    std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t occupied,
+    std::size_t memory_budget_bytes, std::size_t fixed_device_bytes = 0,
+    bool generated_source = false, std::size_t automatic_rhf_rank = 0);
 
 /** Explicit exact packed resident plan, including both A/B and bounded dense
  * fallback panels. rank_capacity reserves complete U; ranks beyond that bound
@@ -261,7 +265,8 @@ class DensityFittingBudgetError : public std::invalid_argument {
  */
 [[nodiscard]] DensityFittingTilePlan plan_packed_density_fitting_tiles(
     std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t rank_capacity,
-    std::size_t memory_budget_bytes, std::size_t fixed_device_bytes = 0);
+    std::size_t memory_budget_bytes, std::size_t fixed_device_bytes = 0,
+    std::size_t automatic_rhf_rank = 0);
 
 /** Additional lazy SCF DIIS capacity, conservatively covering joined-spin UHF.
  * Add this to fixed_device_bytes before choosing K panels, and to native

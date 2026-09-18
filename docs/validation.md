@@ -16,6 +16,30 @@ PySCF/libcint is used only by saved reference-generation
 scripts. Ordinary tests consume committed data and require neither PySCF nor a
 CUDA toolchain.
 
+## CUDA benchmark execution profiles
+
+CUDA validation and benchmark tools share one scheduler-resource profile rather
+than embedding a cluster/GPU selector in each script. The current development
+default remains `partition=main`, `gres=gpu:5090:1`, one node and one task,
+with a finite per-tool time limit. These values are defaults for this checkout,
+not hardware requirements.
+
+Set `VIBEQC_BENCHMARK_PARTITION`, `VIBEQC_BENCHMARK_GRES`,
+`VIBEQC_BENCHMARK_NODES`, `VIBEQC_BENCHMARK_NTASKS`,
+`VIBEQC_BENCHMARK_TIME` or `VIBEQC_BENCHMARK_SRUN` to select another
+scheduler/resource layout without editing source. Set
+`VIBEQC_BENCHMARK_LOCAL=1` for tools that support local execution. Explicit
+CLI/function arguments take precedence over environment settings, which take
+precedence over the project defaults. Empty environment values for partition,
+GRES or time omit that optional Slurm flag. Current benchmark executables consume
+one result stream and share one artifact path: nonlocal launches therefore require
+exactly one node and one task. Larger requests are rejected, not silently clamped
+or presented as distributed measurements.
+
+Commands recorded in historical evidence and examples may still show
+`main/gpu:5090:1`; those identify the cluster allocation used for that
+measurement and are not portable eligibility checks.
+
 ## Existing tests and oracle independence
 
 DFT03's first fixed-density slice is documented in [XC integration](xc_integration.md).

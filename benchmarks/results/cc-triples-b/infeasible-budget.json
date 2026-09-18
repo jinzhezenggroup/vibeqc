@@ -1,0 +1,75 @@
+{
+  "scope": "#150 B bounded CUDA triples tiles",
+  "schema": "vibeqc.ccsd-t.tile-validation/1",
+  "compile_only": false,
+  "tensor_source_identity": "613cb315a41d1563fd49d6d5a05bbc06b687203ea04e04cba929aabe1e5eb408",
+  "qualification_source_identity": {
+    "git_head": "fd91b3a6b6d22ada3f4a6e34ac316a2a0226663c",
+    "worktree_dirty": false,
+    "sha256": {
+      "tools/vibeqc_cc/triples.py": "ea7f1ddcfc21b607bfa90494d5b25e78ddb258d05838ef84f0d428a807236592",
+      "tools/vibeqc_cc/triples_tiles.py": "710c454d7908e9e26ae76e22bb9ff830506645979c24023e4d9ac297690899de",
+      "tools/vibeqc_cc/triples_cuda.py": "5237388355b1a73ae5d35fa1fefa5cab0289d92626faec025aacd870d88be3c5",
+      "tools/validate_cc_triples_tiles.py": "bd19bf8474b9b68e2185366685ad9524940229f919eb92a89040112349373926"
+    }
+  },
+  "python": "3.13.9",
+  "numpy": "2.5.1",
+  "compiler_target": {
+    "architecture": "sm_120",
+    "compute_capability_major": 12,
+    "compute_capability_minor": 0,
+    "warp_size": 32,
+    "maximum_threads_per_block": 1024,
+    "maximum_threads_per_sm": 1536,
+    "maximum_blocks_per_sm": 24,
+    "registers_per_sm": 65536,
+    "maximum_registers_per_thread": 255,
+    "shared_memory_per_block": 49152,
+    "shared_memory_per_block_optin": 101376,
+    "shared_memory_per_sm": 102400,
+    "sm_count": 170,
+    "required_cuda_features": [
+      "fp64",
+      "fp64_atomic_add"
+    ],
+    "minimum_cuda_toolkit": "12.8",
+    "cuda_toolkit_version": "",
+    "nvcc_version": "",
+    "ptxas_version": "",
+    "driver_version": "",
+    "generator_abi": 1,
+    "tuning_maximum_registers": 192,
+    "tuning_maximum_packed_registers": 224,
+    "tuning_maximum_stack_bytes": 128,
+    "tuning_maximum_shared_bytes": 49152,
+    "packed_register_caps": [
+      192,
+      208
+    ],
+    "compute_capability": "12.0"
+  },
+  "runtime_device": null,
+  "selected_molecules": [
+    "h2"
+  ],
+  "molecules": [
+    {
+      "name": "h2",
+      "nocc": 1,
+      "nvir": 1,
+      "cpu_et": 0.0,
+      "cpu_time_s": 0.0004851478151977062,
+      "ground_truth_et": 8.392021714075268e-49,
+      "tile_results": [
+        {
+          "vir_chunk_size": 1,
+          "budget_mib": 1,
+          "compiled": false,
+          "infeasible_reason": "infeasible tensor byte budget: at least 105033288 bytes required, budget 1048576",
+          "gpu_run": null
+        }
+      ]
+    }
+  ]
+}

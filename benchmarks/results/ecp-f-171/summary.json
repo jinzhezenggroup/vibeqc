@@ -1,0 +1,2421 @@
+{
+  "validation": {
+    "cpu-ctest": [
+      "",
+      "100% tests passed, 0 tests failed out of 31",
+      "",
+      "Total Test time (real) =   5.76 sec"
+    ],
+    "cuda-ctest": [
+      "",
+      "100% tests passed, 0 tests failed out of 3",
+      "",
+      "Total Test time (real) =   1.47 sec"
+    ],
+    "cpu-python": [
+      "..............ss.s...ss.....sssss...............................s.s.s.s. [ 90%]",
+      "s.s.ss.s                                                                 [100%]",
+      "61 passed, 19 skipped in 616.62s (0:10:16)"
+    ],
+    "cuda-focused-python": [
+      "...................                                                      [100%]",
+      "19 passed, 61 deselected in 118.37s (0:01:58)"
+    ],
+    "cpu-focused-python": [
+      ".                                                                        [100%]",
+      "1 passed, 16 deselected in 253.19s (0:04:13)"
+    ],
+    "cuda-memcheck": [
+      "========= COMPUTE-SANITIZER",
+      "ECP CUDA error categories, partial cleanup and recovery PASS",
+      "========= ERROR SUMMARY: 0 errors"
+    ],
+    "cuda-f-memcheck": [
+      "========= COMPUTE-SANITIZER",
+      "..                                                                       [100%]",
+      "2 passed, 15 deselected in 49.43s",
+      "========= ERROR SUMMARY: 0 errors"
+    ]
+  },
+  "baseline": {
+    "device": "cuda",
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "machine": "x86_64",
+    "library_sha256": "1e58ea41c5b47e1be536d081d8a2d0ce98d5e6b5ead627f0fb76489c838e8de7",
+    "grid": {
+      "radial": 160,
+      "polar": 32,
+      "azimuth": 64
+    },
+    "refined_grid": {
+      "radial": 224,
+      "polar": 44,
+      "azimuth": 88
+    },
+    "atoms_bohr": [
+      [
+        "Na",
+        [
+          0.13,
+          -0.21,
+          0.17
+        ]
+      ],
+      [
+        "H",
+        [
+          0.43,
+          0.19,
+          3.2
+        ]
+      ]
+    ],
+    "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+    "timing_scope": "warm synchronous API including context, metadata, allocations and transfers",
+    "component_timing": "other coefficients zeroed; full local/projector engine retained",
+    "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+    "gpu": "NVIDIA GeForce RTX 4090, 570.195.03",
+    "quadrature_difference": {
+      "local_matrix_max_abs": 3.468114684324064e-12,
+      "nonlocal_matrix_max_abs": 7.216449660063518e-16,
+      "local_derivative_max_abs": 2.0259155464330547e-11,
+      "nonlocal_derivative_max_abs": 3.608224830031759e-16
+    },
+    "libcint_matrix_max_abs": 3.4688155126083586e-12,
+    "cpu_gpu_max_abs": {
+      "local": 4.163336342344337e-17,
+      "nonlocal_": 2.220446049250313e-16,
+      "local_derivative": 3.122502256758253e-17,
+      "nonlocal_derivative": 1.942890293094024e-16
+    },
+    "components": {
+      "local_value": {
+        "median_ms": 88.46275135874748,
+        "samples_ms": [
+          89.70252983272076,
+          88.46275135874748,
+          88.43461237847805
+        ]
+      },
+      "local_gradient": {
+        "median_ms": 177.29850485920906,
+        "samples_ms": [
+          179.05384860932827,
+          177.29850485920906,
+          176.6144558787346
+        ]
+      },
+      "nonlocal_value": {
+        "median_ms": 89.11815471947193,
+        "samples_ms": [
+          89.11815471947193,
+          155.5794943124056,
+          88.67169544100761
+        ]
+      },
+      "nonlocal_gradient": {
+        "median_ms": 177.84261517226696,
+        "samples_ms": [
+          177.84261517226696,
+          176.64672434329987,
+          181.49988912045956
+        ]
+      }
+    },
+    "hf": [
+      {
+        "method": "rhf",
+        "timing": {
+          "median_ms": 989.1002289950848,
+          "samples_ms": [
+            990.1582729071379,
+            989.1002289950848,
+            985.7903886586428
+          ]
+        },
+        "energy_abs_error": 1.5543122344752192e-15,
+        "force_max_abs_error": 5.533767888366015e-13,
+        "resource_peak_bytes": {
+          "host": 2835680,
+          "device": 2343376,
+          "pinned": 0,
+          "pageable": 2835680,
+          "device:0": 2343376
+        }
+      },
+      {
+        "method": "uhf",
+        "timing": {
+          "median_ms": 983.3591282367706,
+          "samples_ms": [
+            986.8515525013208,
+            983.3591282367706,
+            983.2895621657372
+          ]
+        },
+        "energy_abs_error": 6.661338147750939e-16,
+        "force_max_abs_error": 4.649058915617843e-16,
+        "resource_peak_bytes": {
+          "host": 2877152,
+          "device": 2378528,
+          "pinned": 0,
+          "pageable": 2877152,
+          "device:0": 2378528
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "device": "cuda",
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "machine": "x86_64",
+    "library_sha256": "0321e660a51cc5123e86b5edebdd0a3e06d6093093d5965a5f08cc008ce9af53",
+    "grid": {
+      "radial": 160,
+      "polar": 32,
+      "azimuth": 64
+    },
+    "refined_grid": {
+      "radial": 224,
+      "polar": 44,
+      "azimuth": 88
+    },
+    "atoms_bohr": [
+      [
+        "Na",
+        [
+          0.13,
+          -0.21,
+          0.17
+        ]
+      ],
+      [
+        "H",
+        [
+          0.43,
+          0.19,
+          3.2
+        ]
+      ]
+    ],
+    "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+    "timing_scope": "warm synchronous API including context, metadata, allocations and transfers",
+    "component_timing": "other coefficients zeroed; full local/projector engine retained",
+    "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+    "gpu": "NVIDIA GeForce RTX 4090, 570.195.03",
+    "quadrature_difference": {
+      "local_matrix_max_abs": 3.468114684324064e-12,
+      "nonlocal_matrix_max_abs": 7.216449660063518e-16,
+      "local_derivative_max_abs": 2.0259155464330547e-11,
+      "nonlocal_derivative_max_abs": 3.608224830031759e-16
+    },
+    "libcint_matrix_max_abs": 3.4688155126083586e-12,
+    "cpu_gpu_max_abs": {
+      "local": 4.163336342344337e-17,
+      "nonlocal_": 2.220446049250313e-16,
+      "local_derivative": 3.122502256758253e-17,
+      "nonlocal_derivative": 1.942890293094024e-16
+    },
+    "components": {
+      "local_value": {
+        "median_ms": 89.50576931238174,
+        "samples_ms": [
+          88.76770921051502,
+          89.50576931238174,
+          90.36639705300331
+        ]
+      },
+      "local_gradient": {
+        "median_ms": 179.21373061835766,
+        "samples_ms": [
+          177.9476683586836,
+          179.21373061835766,
+          179.24480885267258
+        ]
+      },
+      "nonlocal_value": {
+        "median_ms": 89.3650520592928,
+        "samples_ms": [
+          89.3650520592928,
+          89.28594924509525,
+          89.54872190952301
+        ]
+      },
+      "nonlocal_gradient": {
+        "median_ms": 177.54514142870903,
+        "samples_ms": [
+          177.82520316541195,
+          177.54514142870903,
+          177.3339845240116
+        ]
+      }
+    },
+    "hf": [
+      {
+        "method": "rhf",
+        "timing": {
+          "median_ms": 993.6004541814327,
+          "samples_ms": [
+            996.3477551937103,
+            993.6004541814327,
+            989.7604174911976
+          ]
+        },
+        "energy_abs_error": 1.5543122344752192e-15,
+        "force_max_abs_error": 5.533837277305054e-13,
+        "resource_peak_bytes": {
+          "host": 2835680,
+          "device": 2343376,
+          "pinned": 0,
+          "pageable": 2835680,
+          "device:0": 2343376
+        }
+      },
+      {
+        "method": "uhf",
+        "timing": {
+          "median_ms": 989.1919102519751,
+          "samples_ms": [
+            994.6434088051319,
+            988.7755196541548,
+            989.1919102519751
+          ]
+        },
+        "energy_abs_error": 6.661338147750939e-16,
+        "force_max_abs_error": 4.649058915617843e-16,
+        "resource_peak_bytes": {
+          "host": 2877152,
+          "device": 2378528,
+          "pinned": 0,
+          "pageable": 2877152,
+          "device:0": 2378528
+        }
+      }
+    ]
+  },
+  "f_endpoints": {
+    "cpu": {
+      "device": "cpu",
+      "python": "3.11.16",
+      "pyscf": "2.14.0",
+      "library_sha256": "4671d5799bb5b4b70052e22577818e2d117cfd3333f4d98e64d5967e51812086",
+      "timing_scope": "warm synchronous Calculator.singlepoint, including fresh system/SCF and complete energy/forces; one warmup per case",
+      "claim": "bounded f capability qualification, no f speedup comparison with unsupported baseline",
+      "threads": {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+      "cases": [
+        {
+          "representation": "cartesian",
+          "executed_backend": "cpu_reference",
+          "method": "rhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 19,
+          "shell_count": 6,
+          "basis_identity": "b8274da906e51408f4dfa3537b48b571d80585d28b222153bd5d2bc07d559d99",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 361,
+          "matrix_max_abs_error": 3.468857145971782e-12,
+          "timing_ms": {
+            "median": 85398.8330680877,
+            "samples": [
+              85398.8330680877
+            ]
+          },
+          "iterations": [
+            8
+          ],
+          "energy_abs_errors": [
+            2.886579864025407e-15
+          ],
+          "force_max_abs_errors": [
+            1.1542954092558233e-10
+          ],
+          "resource_peak_bytes": {
+            "host": 34969744,
+            "device": 0,
+            "pinned": 0,
+            "pageable": 34969744
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 34969744,
+                "device_bytes": 0,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "rhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cpu",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"a19370116ee1b5d1cf2f99e03881d76a5fb6a7e44fbb7542964fbeee61675e34\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 19, \"primitives\": 11, \"representation\": \"cartesian\", \"shells\": 6}, \"spins\": 1}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"precision\": \"fp64\", \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cpu-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "fleet topology, warm state and outputs",
+                          "bytes": 14368,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "largest serialized item workspace",
+                          "bytes": 34955376,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized items; retained state summed across fleet"
+                        ],
+                        [
+                          "cpu_worker_limit",
+                          "1"
+                        ],
+                        [
+                          "item_phase_inventory",
+                          "[{\"finalization\": 7576568, \"integral_state\": 7338456, \"iteration\": 7576568, \"preparation\": 34955376}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cpu-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 34969744,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 34969744
+              },
+              "resident_bytes": {
+                "host": 14368,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 14368
+              },
+              "peak_phases": {
+                "pageable": 0,
+                "host": 0
+              },
+              "limits": {
+                "host": 34969744,
+                "device": 0
+              },
+              "identity": "13bd7dcd81237eaf0db446d977b1a09763ae8113238b6582d4a989b215b45cf1"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "unavailable",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": 7405032,
+              "samples": 8,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        },
+        {
+          "representation": "cartesian",
+          "executed_backend": "cpu_reference",
+          "method": "uhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 19,
+          "shell_count": 6,
+          "basis_identity": "b8274da906e51408f4dfa3537b48b571d80585d28b222153bd5d2bc07d559d99",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 361,
+          "matrix_max_abs_error": 3.468857145971782e-12,
+          "timing_ms": {
+            "median": 86015.06534777582,
+            "samples": [
+              86015.06534777582
+            ]
+          },
+          "iterations": [
+            2
+          ],
+          "energy_abs_errors": [
+            1.9984014443252818e-15
+          ],
+          "force_max_abs_errors": [
+            1.9359513991901167e-15
+          ],
+          "resource_peak_bytes": {
+            "host": 34981296,
+            "device": 0,
+            "pinned": 0,
+            "pageable": 34981296
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 34981296,
+                "device_bytes": 0,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "uhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cpu",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 1, \"ionic_charge\": 1, \"multiplicity\": 2, \"nalpha\": 1, \"nbeta\": 0, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"a19370116ee1b5d1cf2f99e03881d76a5fb6a7e44fbb7542964fbeee61675e34\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 19, \"primitives\": 11, \"representation\": \"cartesian\", \"shells\": 6}, \"spins\": 2}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"precision\": \"fp64\", \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cpu-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "fleet topology, warm state and outputs",
+                          "bytes": 25920,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "largest serialized item workspace",
+                          "bytes": 34955376,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized items; retained state summed across fleet"
+                        ],
+                        [
+                          "cpu_worker_limit",
+                          "1"
+                        ],
+                        [
+                          "item_phase_inventory",
+                          "[{\"finalization\": 7813384, \"integral_state\": 7338456, \"iteration\": 7813384, \"preparation\": 34955376}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cpu-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 34981296,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 34981296
+              },
+              "resident_bytes": {
+                "host": 25920,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 25920
+              },
+              "peak_phases": {
+                "pageable": 0,
+                "host": 0
+              },
+              "limits": {
+                "host": 34981296,
+                "device": 0
+              },
+              "identity": "c3715524c0b671a8c24d9ee2a6ffc0de0bf76c1fe65bce4a1ec5b14b920be963"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "unavailable",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": 7410960,
+              "samples": 2,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        },
+        {
+          "representation": "spherical",
+          "executed_backend": "cpu_reference",
+          "method": "rhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 16,
+          "shell_count": 6,
+          "basis_identity": "8dae0bbe3d54c08b8ccfc49d6fcba022bbc1027476f088f2f01eb33180ded803",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 256,
+          "matrix_max_abs_error": 3.468857145971782e-12,
+          "timing_ms": {
+            "median": 85767.62947626412,
+            "samples": [
+              85767.62947626412
+            ]
+          },
+          "iterations": [
+            8
+          ],
+          "energy_abs_errors": [
+            2.886579864025407e-15
+          ],
+          "force_max_abs_errors": [
+            1.4351103638787777e-11
+          ],
+          "resource_peak_bytes": {
+            "host": 30806704,
+            "device": 0,
+            "pinned": 0,
+            "pageable": 30806704
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 30806704,
+                "device_bytes": 0,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "rhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cpu",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"155d8d632b1dc5984fd6b7351974bad82f5ea04192f2da3a73238350ef6b4d32\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 16, \"primitives\": 11, \"representation\": \"spherical\", \"shells\": 6}, \"spins\": 1}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"precision\": \"fp64\", \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cpu-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "fleet topology, warm state and outputs",
+                          "bytes": 11008,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "largest serialized item workspace",
+                          "bytes": 30795696,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized items; retained state summed across fleet"
+                        ],
+                        [
+                          "cpu_worker_limit",
+                          "1"
+                        ],
+                        [
+                          "item_phase_inventory",
+                          "[{\"finalization\": 3867968, \"integral_state\": 3698736, \"iteration\": 3867968, \"preparation\": 30795696}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cpu-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 30806704,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 30806704
+              },
+              "resident_bytes": {
+                "host": 11008,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 11008
+              },
+              "peak_phases": {
+                "pageable": 0,
+                "host": 0
+              },
+              "limits": {
+                "host": 30806704,
+                "device": 0
+              },
+              "identity": "418989c9aefcf4e7f1cd9037128b2c8309227fd2707ed398c117f02e41ca7042"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "unavailable",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": 3745968,
+              "samples": 8,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        },
+        {
+          "representation": "spherical",
+          "executed_backend": "cpu_reference",
+          "method": "uhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 16,
+          "shell_count": 6,
+          "basis_identity": "8dae0bbe3d54c08b8ccfc49d6fcba022bbc1027476f088f2f01eb33180ded803",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 256,
+          "matrix_max_abs_error": 3.468857145971782e-12,
+          "timing_ms": {
+            "median": 85519.77112144232,
+            "samples": [
+              85519.77112144232
+            ]
+          },
+          "iterations": [
+            2
+          ],
+          "energy_abs_errors": [
+            1.2212453270876722e-15
+          ],
+          "force_max_abs_errors": [
+            1.1657341758564144e-15
+          ],
+          "resource_peak_bytes": {
+            "host": 30814896,
+            "device": 0,
+            "pinned": 0,
+            "pageable": 30814896
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 30814896,
+                "device_bytes": 0,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "uhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cpu",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 1, \"ionic_charge\": 1, \"multiplicity\": 2, \"nalpha\": 1, \"nbeta\": 0, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"155d8d632b1dc5984fd6b7351974bad82f5ea04192f2da3a73238350ef6b4d32\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 16, \"primitives\": 11, \"representation\": \"spherical\", \"shells\": 6}, \"spins\": 2}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"precision\": \"fp64\", \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cpu-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "fleet topology, warm state and outputs",
+                          "bytes": 19200,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "largest serialized item workspace",
+                          "bytes": 30795696,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized items; retained state summed across fleet"
+                        ],
+                        [
+                          "cpu_worker_limit",
+                          "1"
+                        ],
+                        [
+                          "item_phase_inventory",
+                          "[{\"finalization\": 4035904, \"integral_state\": 3698736, \"iteration\": 4035904, \"preparation\": 30795696}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cpu-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 30814896,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 30814896
+              },
+              "resident_bytes": {
+                "host": 19200,
+                "device": 0,
+                "pinned": 0,
+                "pageable": 19200
+              },
+              "peak_phases": {
+                "pageable": 0,
+                "host": 0
+              },
+              "limits": {
+                "host": 30814896,
+                "device": 0
+              },
+              "identity": "a3c4748b87366467eea66b016fe06cc3d20033400881a8da8f9ad74f53a4d10c"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "unavailable",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": 3750192,
+              "samples": 2,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": null,
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "cuda": {
+      "device": "cuda",
+      "python": "3.11.16",
+      "pyscf": "2.14.0",
+      "library_sha256": "0321e660a51cc5123e86b5edebdd0a3e06d6093093d5965a5f08cc008ce9af53",
+      "timing_scope": "warm synchronous Calculator.singlepoint, including fresh system/SCF and complete energy/forces; one warmup per case",
+      "claim": "bounded f capability qualification, no f speedup comparison with unsupported baseline",
+      "threads": {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+      "cases": [
+        {
+          "representation": "cartesian",
+          "executed_backend": "cuda",
+          "method": "rhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 19,
+          "shell_count": 6,
+          "basis_identity": "b8274da906e51408f4dfa3537b48b571d80585d28b222153bd5d2bc07d559d99",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 361,
+          "matrix_max_abs_error": 3.4688155126083586e-12,
+          "timing_ms": {
+            "median": 1527.350576594472,
+            "samples": [
+              1539.560217410326,
+              1526.0120052844286,
+              1527.350576594472
+            ]
+          },
+          "iterations": [
+            8,
+            8,
+            8
+          ],
+          "energy_abs_errors": [
+            8.215650382226158e-15,
+            7.993605777301127e-15,
+            8.881784197001252e-15
+          ],
+          "force_max_abs_errors": [
+            4.4644978686170234e-10,
+            4.464497660450206e-10,
+            4.464495509393096e-10
+          ],
+          "resource_status": "unsupported",
+          "resource_diagnostic": "hf: CUDA HF inventory v1 requires a CUDA library, <=16 public AOs and DIIS history <=64",
+          "resource_peak_bytes": null,
+          "resource_diagnostics": null
+        },
+        {
+          "representation": "cartesian",
+          "executed_backend": "cuda",
+          "method": "uhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 19,
+          "shell_count": 6,
+          "basis_identity": "b8274da906e51408f4dfa3537b48b571d80585d28b222153bd5d2bc07d559d99",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 361,
+          "matrix_max_abs_error": 3.4688155126083586e-12,
+          "timing_ms": {
+            "median": 1300.3659024834633,
+            "samples": [
+              1300.3659024834633,
+              1302.49198153615,
+              1300.124952569604
+            ]
+          },
+          "iterations": [
+            2,
+            2,
+            2
+          ],
+          "energy_abs_errors": [
+            5.773159728050814e-15,
+            5.662137425588298e-15,
+            5.440092820663267e-15
+          ],
+          "force_max_abs_errors": [
+            2.8796409701214998e-15,
+            2.976785484776201e-15,
+            3.00454106039183e-15
+          ],
+          "resource_status": "unsupported",
+          "resource_diagnostic": "hf: CUDA HF inventory v1 requires a CUDA library, <=16 public AOs and DIIS history <=64",
+          "resource_peak_bytes": null,
+          "resource_diagnostics": null
+        },
+        {
+          "representation": "spherical",
+          "executed_backend": "cuda",
+          "method": "rhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 16,
+          "shell_count": 6,
+          "basis_identity": "8dae0bbe3d54c08b8ccfc49d6fcba022bbc1027476f088f2f01eb33180ded803",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 256,
+          "matrix_max_abs_error": 3.4688155126083586e-12,
+          "timing_ms": {
+            "median": 9409.473232924938,
+            "samples": [
+              9409.473232924938,
+              9413.813268765807,
+              9259.754491969943
+            ]
+          },
+          "iterations": [
+            8,
+            8,
+            8
+          ],
+          "energy_abs_errors": [
+            2.6645352591003757e-15,
+            2.6645352591003757e-15,
+            2.6645352591003757e-15
+          ],
+          "force_max_abs_errors": [
+            5.101422964615132e-10,
+            5.101423589115583e-10,
+            5.101421854392107e-10
+          ],
+          "resource_status": "feasible",
+          "resource_diagnostic": null,
+          "resource_peak_bytes": {
+            "host": 4728608,
+            "device": 4675744,
+            "pinned": 0,
+            "pageable": 4728608,
+            "device:0": 4675744
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 4728608,
+                "device_bytes": 4675744,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "rhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cuda",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"155d8d632b1dc5984fd6b7351974bad82f5ea04192f2da3a73238350ef6b4d32\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 16, \"primitives\": 11, \"representation\": \"spherical\", \"shells\": 6}, \"spins\": 1}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"native_binary_sha256\": \"0321e660a51cc5123e86b5edebdd0a3e06d6093093d5965a5f08cc008ce9af53\", \"precision\": \"fp64\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_DERIVATIVE_MAPPING\": null, \"VIBEQC_DF_DERIVATIVE_PAIRS\": null, \"VIBEQC_DF_DIIS_DOTS\": null, \"VIBEQC_DF_EXCHANGE\": null, \"VIBEQC_DF_FINAL_EXCHANGE\": null, \"VIBEQC_DF_FINAL_PROJECTION\": null, \"VIBEQC_DF_FORCE_SCREEN_ABS\": null, \"VIBEQC_DF_PACKED_AO_BLOCK_ROWS\": null, \"VIBEQC_DF_PRIMITIVE_BUCKETS\": null, \"VIBEQC_DF_RAW_REUSE\": null, \"VIBEQC_DF_RAW_STAGING\": null, \"VIBEQC_DF_REFERENCE_FINAL_VALIDATION\": null, \"VIBEQC_DF_RESIDENT_EXCHANGE\": null, \"VIBEQC_DF_RESPONSE_ALGEBRA\": null, \"VIBEQC_DF_RESPONSE_BATCHING\": null, \"VIBEQC_DF_RESPONSE_SPACE\": null, \"VIBEQC_DF_RESPONSE_STORAGE\": null, \"VIBEQC_DF_SEED_EXCHANGE\": null, \"VIBEQC_DF_SEED_VERIFY\": null, \"VIBEQC_DF_SHELL_POLICY\": null, \"VIBEQC_DF_SHELL_SCHEDULE\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DF_VALUE_MATH\": null, \"VIBEQC_DF_VALUE_RAW_MAPPING\": null, \"VIBEQC_DF_VALUE_STORAGE\": null, \"VIBEQC_DF_WEIGHTED_EXECUTION\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cuda-small-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "all retained direct-HF bucket arenas",
+                          "bytes": 585392,
+                          "space": "device:0",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "one cold numerical retry alongside warm bucket",
+                          "bytes": 4090352,
+                          "space": "device:0",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "fleet host state, packed topology and staging capacity",
+                          "bytes": 4728608,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized buckets; every retained arena summed"
+                        ],
+                        [
+                          "eigensolver",
+                          "small native; no external library workspace"
+                        ],
+                        [
+                          "item_inventory",
+                          "[{\"arena\": 585392, \"ecp_workspace\": 3504960, \"host\": 4728608}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+                    "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cuda-small-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 4728608,
+                "device": 4675744,
+                "pinned": 0,
+                "pageable": 4728608,
+                "device:0": 4675744
+              },
+              "resident_bytes": {
+                "host": 4728608,
+                "device": 585392,
+                "pinned": 0,
+                "pageable": 4728608,
+                "device:0": 585392
+              },
+              "peak_phases": {
+                "device:0": 0,
+                "pageable": 0,
+                "host": 0,
+                "device": 0
+              },
+              "limits": {
+                "host": 4728608,
+                "device": 4675744
+              },
+              "identity": "ea25ffa916ca78e0649a24c3b0a8017418df69d62f7750b651c554a505acad46"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": {
+                "device": 0,
+                "limit_bytes": 4675744,
+                "live_bytes": 0,
+                "peak_bytes": 0,
+                "allocations": 0,
+                "rejected_allocations": 0,
+                "owner": "hf",
+                "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+              },
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": 585392,
+              "cuda_arena_samples": 2,
+              "device_ledger": {
+                "device": 0,
+                "limit_bytes": 4675744,
+                "live_bytes": 585392,
+                "peak_bytes": 3038560,
+                "allocations": 29,
+                "rejected_allocations": 0,
+                "owner": "hf",
+                "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+              },
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        },
+        {
+          "representation": "spherical",
+          "executed_backend": "cuda",
+          "method": "uhf",
+          "f_centers": [
+            "Na"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 16,
+          "shell_count": 6,
+          "basis_identity": "8dae0bbe3d54c08b8ccfc49d6fcba022bbc1027476f088f2f01eb33180ded803",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 256,
+          "matrix_max_abs_error": 3.4688155126083586e-12,
+          "timing_ms": {
+            "median": 9366.749567911029,
+            "samples": [
+              9305.720627307892,
+              9366.749567911029,
+              9504.75944019854
+            ]
+          },
+          "iterations": [
+            2,
+            2,
+            2
+          ],
+          "energy_abs_errors": [
+            3.3306690738754696e-16,
+            3.3306690738754696e-16,
+            3.3306690738754696e-16
+          ],
+          "force_max_abs_errors": [
+            7.563394355258879e-16,
+            7.632783294297951e-16,
+            7.563394355258879e-16
+          ],
+          "resource_status": "feasible",
+          "resource_diagnostic": null,
+          "resource_peak_bytes": {
+            "host": 4859680,
+            "device": 4786608,
+            "pinned": 0,
+            "pageable": 4859680,
+            "device:0": 4786608
+          },
+          "resource_diagnostics": {
+            "plan": {
+              "budget": {
+                "host_bytes": 4859680,
+                "device_bytes": 4786608,
+                "pinned_host_bytes": null,
+                "per_device_bytes": [],
+                "host_reserve_bytes": 0,
+                "device_reserve_bytes": 0,
+                "headroom_fraction": 0.0,
+                "schema_version": 1
+              },
+              "requests": [
+                {
+                  "name": "hf",
+                  "identity": {
+                    "method": "uhf",
+                    "provider": "native-hf-direct-v1",
+                    "backend": "cuda",
+                    "precision": "fp64",
+                    "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [11, 1], \"ecp_core_electrons\": [10, 0], \"electron_count\": 1, \"ionic_charge\": 1, \"multiplicity\": 2, \"nalpha\": 1, \"nbeta\": 0, \"nuclear_charges\": [11, 1]}, \"orbital\": {\"basis_hash\": \"155d8d632b1dc5984fd6b7351974bad82f5ea04192f2da3a73238350ef6b4d32\", \"cartesian_nbf\": 19, \"ecp_core_electrons\": [10, 0], \"ecp_terms\": 16, \"maximum_angular\": 3, \"nbf\": 16, \"primitives\": 11, \"representation\": \"spherical\", \"shells\": 6}, \"spins\": 2}]}",
+                    "observables": [
+                      "energy",
+                      "forces"
+                    ],
+                    "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"native_binary_sha256\": \"0321e660a51cc5123e86b5edebdd0a3e06d6093093d5965a5f08cc008ce9af53\", \"precision\": \"fp64\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_DERIVATIVE_MAPPING\": null, \"VIBEQC_DF_DERIVATIVE_PAIRS\": null, \"VIBEQC_DF_DIIS_DOTS\": null, \"VIBEQC_DF_EXCHANGE\": null, \"VIBEQC_DF_FINAL_EXCHANGE\": null, \"VIBEQC_DF_FINAL_PROJECTION\": null, \"VIBEQC_DF_FORCE_SCREEN_ABS\": null, \"VIBEQC_DF_PACKED_AO_BLOCK_ROWS\": null, \"VIBEQC_DF_PRIMITIVE_BUCKETS\": null, \"VIBEQC_DF_RAW_REUSE\": null, \"VIBEQC_DF_RAW_STAGING\": null, \"VIBEQC_DF_REFERENCE_FINAL_VALIDATION\": null, \"VIBEQC_DF_RESIDENT_EXCHANGE\": null, \"VIBEQC_DF_RESPONSE_ALGEBRA\": null, \"VIBEQC_DF_RESPONSE_BATCHING\": null, \"VIBEQC_DF_RESPONSE_SPACE\": null, \"VIBEQC_DF_RESPONSE_STORAGE\": null, \"VIBEQC_DF_SEED_EXCHANGE\": null, \"VIBEQC_DF_SEED_VERIFY\": null, \"VIBEQC_DF_SHELL_POLICY\": null, \"VIBEQC_DF_SHELL_SCHEDULE\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DF_VALUE_MATH\": null, \"VIBEQC_DF_VALUE_RAW_MAPPING\": null, \"VIBEQC_DF_VALUE_STORAGE\": null, \"VIBEQC_DF_WEIGHTED_EXECUTION\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+                    "schema_version": 1
+                  },
+                  "candidates": [
+                    {
+                      "name": "cuda-small-resident",
+                      "mode": "resident",
+                      "estimates": [
+                        {
+                          "name": "all retained direct-HF bucket arenas",
+                          "bytes": 640824,
+                          "space": "device:0",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "one cold numerical retry alongside warm bucket",
+                          "bytes": 4145784,
+                          "space": "device:0",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "workspace",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        },
+                        {
+                          "name": "fleet host state, packed topology and staging capacity",
+                          "bytes": 4859680,
+                          "space": "pageable",
+                          "first_phase": 0,
+                          "last_phase": 0,
+                          "kind": "persistent",
+                          "cacheable": false,
+                          "recomputable": false,
+                          "streamed_bytes": 0,
+                          "accounting": "capacity_bound"
+                        }
+                      ],
+                      "relative_cost": 0,
+                      "decisions": [
+                        [
+                          "batch_execution",
+                          "serialized buckets; every retained arena summed"
+                        ],
+                        [
+                          "eigensolver",
+                          "small native; no external library workspace"
+                        ],
+                        [
+                          "item_inventory",
+                          "[{\"arena\": 640824, \"ecp_workspace\": 3504960, \"host\": 4859680}]"
+                        ]
+                      ]
+                    }
+                  ],
+                  "scope_exclusions": [
+                    "caller-owned inputs and previously retained output objects",
+                    "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+                    "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+                  ],
+                  "unsupported_reason": null,
+                  "infeasible_reason": null
+                }
+              ],
+              "selections": [
+                [
+                  "hf",
+                  "cuda-small-resident"
+                ]
+              ],
+              "status": "feasible",
+              "diagnostic": null,
+              "schema_version": 1,
+              "peak_bytes": {
+                "host": 4859680,
+                "device": 4786608,
+                "pinned": 0,
+                "pageable": 4859680,
+                "device:0": 4786608
+              },
+              "resident_bytes": {
+                "host": 4859680,
+                "device": 640824,
+                "pinned": 0,
+                "pageable": 4859680,
+                "device:0": 640824
+              },
+              "peak_phases": {
+                "device:0": 0,
+                "pageable": 0,
+                "host": 0,
+                "device": 0
+              },
+              "limits": {
+                "host": 4859680,
+                "device": 4786608
+              },
+              "identity": "75c6cf181a8c73251d060c299575bdff93a22193563063ab9b64b915be6d4ab5"
+            },
+            "owner": "hf",
+            "phase": "observation",
+            "preparation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": null,
+              "cuda_arena_samples": null,
+              "device_ledger": {
+                "device": 0,
+                "limit_bytes": 4786608,
+                "live_bytes": 0,
+                "peak_bytes": 0,
+                "allocations": 0,
+                "rejected_allocations": 0,
+                "owner": "hf",
+                "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+              },
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            },
+            "observation": {
+              "status": "observed",
+              "sampled_item_peak_host_bytes": null,
+              "samples": null,
+              "sampled_cuda_arena_peak_bytes": 640824,
+              "cuda_arena_samples": 2,
+              "device_ledger": {
+                "device": 0,
+                "limit_bytes": 4786608,
+                "live_bytes": 640824,
+                "peak_bytes": 3093992,
+                "allocations": 29,
+                "rejected_allocations": 0,
+                "owner": "hf",
+                "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+              },
+              "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+              "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+              "complete_plan_peak": false,
+              "cpu_worker_limit": 1,
+              "excludes": [
+                "recurrence/eigensolver temporaries",
+                "other fleet items",
+                "runtime overhead"
+              ]
+            }
+          }
+        },
+        {
+          "representation": "cartesian",
+          "executed_backend": "cuda",
+          "method": "rhf",
+          "f_centers": [
+            "Na",
+            "H"
+          ],
+          "atoms_bohr": [
+            [
+              "Na",
+              [
+                0.13,
+                -0.21,
+                0.17
+              ]
+            ],
+            [
+              "H",
+              [
+                0.43,
+                0.19,
+                3.2
+              ]
+            ]
+          ],
+          "ao_count": 29,
+          "shell_count": 7,
+          "basis_identity": "84afd85e38013928171bc856bedc5c7a3f5fffacecd74224c2a64aa91f5b004e",
+          "shells": [
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 0,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 1,
+              "primitives": 1,
+              "contractions": 1
+            },
+            {
+              "atom": 0,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 0,
+              "primitives": 3,
+              "contractions": 1
+            },
+            {
+              "atom": 1,
+              "angular": 3,
+              "primitives": 2,
+              "contractions": 1
+            }
+          ],
+          "ecp_terms": 16,
+          "ecp_centers": 1,
+          "raw_grid": [
+            160,
+            32,
+            64
+          ],
+          "hf_grids": [
+            [
+              160,
+              32,
+              64
+            ],
+            [
+              224,
+              44,
+              88
+            ]
+          ],
+          "ao_pair_count": 841,
+          "matrix_max_abs_error": 3.4688155126083586e-12,
+          "timing_ms": {
+            "median": 1908.8393412530422,
+            "samples": [
+              1908.8393412530422,
+              1909.3335680663586,
+              1905.3719528019428
+            ]
+          },
+          "iterations": [
+            9,
+            9,
+            9
+          ],
+          "energy_abs_errors": [
+            3.552713678800501e-15,
+            4.6629367034256575e-15,
+            4.218847493575595e-15
+          ],
+          "force_max_abs_errors": [
+            2.4364080891681184e-10,
+            2.4364101014473505e-10,
+            2.4364119749487045e-10
+          ],
+          "resource_status": "unsupported",
+          "resource_diagnostic": "hf: CUDA HF inventory v1 requires a CUDA library, <=16 public AOs and DIIS history <=64",
+          "resource_peak_bytes": null,
+          "resource_diagnostics": null
+        }
+      ],
+      "gpu": "NVIDIA GeForce RTX 4090, 570.195.03"
+    }
+  },
+  "provenance": {
+    "baseline": {
+      "base_commit": "d0f6b127a2e9e0049994c5f14e4748441d71fc43",
+      "source_kind": "verified git archive snapshot, not a Git checkout",
+      "modified_from_base": false,
+      "overlay_files": [],
+      "archive_sha256": {
+        "f-baseline.tar.gz": "cc1658f3c62f551eea57b8777f08a06c759568f6cfe45814a8658d778b6a1bea"
+      },
+      "verified_file_count": 3359,
+      "source_manifest_sha256": "2ebef03d0437099e89721e9da7b6dee12bfa9df03ff7c2b8d75db324d3c92f7e",
+      "build_sha256": {
+        "libvibeqc.so": "1e58ea41c5b47e1be536d081d8a2d0ce98d5e6b5ead627f0fb76489c838e8de7",
+        "generated/generated_ecp_ao.cuh": "c060e66e47f0a83cf0e22ddbe0766f97234fcfd43423f0bfddf87042804945e9",
+        "CMakeCache.txt": "add694f5f27c2e5d49c1842bace342a419962efa96163e2ddf9632b4dfba89d0"
+      },
+      "toolchain": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+      "gpu": "NVIDIA GeForce RTX 4090, 570.195.03\n"
+    },
+    "candidate": {
+      "base_commit": "d0f6b127a2e9e0049994c5f14e4748441d71fc43",
+      "source_kind": "verified git archive snapshot, not a Git checkout",
+      "modified_from_base": true,
+      "overlay_files": [
+        "python/vibeqc_compiler/integral/ecp.py",
+        "python/vibeqc_compiler/integral/ecp_grid.py",
+        "python/vibeqc_compiler/integral/ir.py",
+        "python/vibeqc/ecp.py",
+        "src/api/c_api_ecp.cpp",
+        "tests/native/test_ecp_projector.cpp",
+        "tests/native/test_ecp_capabilities.cpp",
+        "cmake/VibeQCTests.cmake",
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_f.py",
+        "tests/python/test_ecp_ir.py",
+        "tests/python/test_ecp_validation.py"
+      ],
+      "archive_sha256": {
+        "f-baseline.tar.gz": "cc1658f3c62f551eea57b8777f08a06c759568f6cfe45814a8658d778b6a1bea",
+        "f-formatted.tar.gz": "3bc7eea047ec4a20c57479315a35187ea7b587df4e180cbbf8ab24eb99537a8d"
+      },
+      "verified_file_count": 3361,
+      "source_manifest_sha256": "775c1c14d20e9ea926d7cec727aedd20a073c8d9c89059a10be885c3a4cb437c",
+      "build_sha256": {
+        "libvibeqc.so": "0321e660a51cc5123e86b5edebdd0a3e06d6093093d5965a5f08cc008ce9af53",
+        "generated/generated_ecp_ao.cuh": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334",
+        "CMakeCache.txt": "add694f5f27c2e5d49c1842bace342a419962efa96163e2ddf9632b4dfba89d0"
+      },
+      "toolchain": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+      "gpu": "NVIDIA GeForce RTX 4090, 570.195.03\n"
+    },
+    "cpu": {
+      "base_commit": "d0f6b127a2e9e0049994c5f14e4748441d71fc43",
+      "source_kind": "verified git archive snapshot, not a Git checkout",
+      "modified_from_base": true,
+      "overlay_files": [
+        "python/vibeqc_compiler/integral/ecp.py",
+        "python/vibeqc_compiler/integral/ecp_grid.py",
+        "python/vibeqc_compiler/integral/ir.py",
+        "python/vibeqc/ecp.py",
+        "src/api/c_api_ecp.cpp",
+        "tests/native/test_ecp_projector.cpp",
+        "tests/native/test_ecp_capabilities.cpp",
+        "cmake/VibeQCTests.cmake",
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_f.py",
+        "tests/python/test_ecp_ir.py",
+        "tests/python/test_ecp_validation.py"
+      ],
+      "archive_sha256": {
+        "f-baseline.tar.gz": "cc1658f3c62f551eea57b8777f08a06c759568f6cfe45814a8658d778b6a1bea",
+        "f-formatted.tar.gz": "3bc7eea047ec4a20c57479315a35187ea7b587df4e180cbbf8ab24eb99537a8d"
+      },
+      "verified_file_count": 3361,
+      "source_manifest_sha256": "775c1c14d20e9ea926d7cec727aedd20a073c8d9c89059a10be885c3a4cb437c",
+      "build_sha256": {
+        "libvibeqc.so": "4671d5799bb5b4b70052e22577818e2d117cfd3333f4d98e64d5967e51812086",
+        "generated/generated_ecp_ao.cuh": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334",
+        "CMakeCache.txt": "6b3a397c1380a748eeaa6ef5f44cdb8efaa7bb70b9f09cf713bb353432439937"
+      },
+      "toolchain": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+      "gpu": "NVIDIA GeForce RTX 4090, 570.195.03\n"
+    }
+  }
+}

@@ -1,11 +1,14 @@
 # Issue 163-A stationary DFT derivative design
 
-Implementation status: the native state/source handoff and fixed-density oracle
-are available. Stationary generated XC binding remains unsupported because the
-native SCF and generated derivative domains differ; see
-[current method behavior](../../methods.md) and the
+Implementation status: the A slice is implemented. The live #162 state/source
+handoff now feeds the exact SCF-domain point energy/differential into the
+compiler-generated AO/density geometry pullback, so no `interior-v1` relabeling
+is used. The private point bridge is covered by the 97 independent Libxc/mpmath
+SCF-domain references; the fixed-density multistep oracle and directional tests
+remain independent of the generated AO pullback. Complete grid/partition motion,
+molecular gradients, CUDA derivative lowering and public forces remain B/C.
+See [current method behavior](../../methods.md) and the
 [native handoff decision](../../../.agents/notes/implemented/numerics/2026-09-16-stationary-native-handoff.md).
-The full A-slice scope below remains the target.
 
 ## Scope
 
@@ -40,13 +43,17 @@ The alternatives rejected for this slice are:
 
 ## Ownership boundaries
 
-The compiler layer owns mathematical local derivatives and compact
-contractions:
+The derivative path has one scalar point primitive and one generated geometric
+owner. The native SCF point evaluator owns the exact versioned LDA/PBE
+energy/first-differential domain already used by #162; its 97-point independent
+reference suite prevents a second formula from drifting. The compiler layer
+owns the compact geometric contractions:
 
-- LDA/GGA ingredient conventions and functional derivatives;
-- AO spatial jets and their pullback into AO-centre and grid-point sources;
+- LDA/GGA ingredient and Cartesian point-coefficient conventions;
+- AO spatial jets and their generated pullback into AO-centre and grid-point
+  sources;
 - explicit quadrature-weight derivatives;
-- output-pruned generated CPU/native programs for the requested observable.
+- output-pruned generated CPU programs for the requested geometric observable.
 
 The stationary DFT layer owns method and state semantics:
 

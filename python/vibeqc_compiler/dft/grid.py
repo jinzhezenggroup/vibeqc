@@ -246,8 +246,8 @@ class MolecularGrid:
             + 128 * len(angular),
         )
 
-    def tiles(self, tile_points=256):
-        """Build moved points and fresh partition weights, including final tiles."""
+    def _raw_tiles(self, tile_points=256):
+        """Shared atomic points/measures before molecular partitioning."""
         checked_int(tile_points, "tile points")
         na = len(self.directions)
         per_atom = len(self.radii) * na
@@ -261,19 +261,24 @@ class MolecularGrid:
                 + self.directions[angular] * (self.radii[radial] * scale)[:, None]
             )
             raw = self.radial_weights[radial] * scale**3 * self.angular_weights[angular]
+            yield GridTile(
+                begin,
+                immutable(points),
+                immutable(raw),
+                tuple(int(x) for x in owner),
+            )
+
+    def tiles(self, tile_points=256):
+        """Build moved points and fresh partition weights, including final tiles."""
+        for raw in self._raw_tiles(tile_points):
             partition = partition_weights(
-                points,
+                raw.points,
                 self.centers,
                 iterations=self.spec.partition_iterations,
                 coincident_tolerance=self.spec.coincident_tolerance,
             )
-            weights = raw * partition[np.arange(len(indices)), owner]
-            yield GridTile(
-                begin,
-                immutable(points),
-                immutable(weights),
-                tuple(int(x) for x in owner),
-            )
+            weights = raw.weights * partition[np.arange(len(raw.owners)), raw.owners]
+            yield GridTile(raw.begin, raw.points, immutable(weights), raw.owners)
 
     def explicit(self, *, max_points=200_000):
         """Materialize a guarded small reference grid for independent exporters."""

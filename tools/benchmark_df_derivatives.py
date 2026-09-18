@@ -201,8 +201,8 @@ def main():
     (directory / "link.log").write_text(linked.stdout + linked.stderr)
     if linked.returncode:
         raise RuntimeError("benchmark link failed; see link.log")
-    executor = CudaBenchmarkExecutor(
-        timeout=1800, partition="main", gres="gpu:5090:1", slurm_time="00:30:00"
+    executor = CudaBenchmarkExecutor.from_environment(
+        timeout=1800, default_slurm_time="00:30:00"
     )
     # Exactly one srun; preserve even an empty inherited CUDA visibility mask.
     command = [*executor.command(executable), str(directory / "workload.txt")]

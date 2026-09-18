@@ -11,6 +11,7 @@
 
 #include "api/handles.hpp"
 #include "integrals/ecp_cuda.hpp"
+#include "runtime/resource_cuda.cuh"
 
 // Private resource-observation ABI used by prepared Python requests as well.
 extern "C" {
@@ -50,6 +51,55 @@ struct Observation {
     return values;
   }
 };
+
+void allocation_failure_origin() {
+  // CUDA status alone cannot distinguish host registry OOM. Synthetic allocator
+  // results exercise both origins without exhausting host or device memory.
+  void* pointer = nullptr;
+  bool host_oom = true;
+  auto device_oom = [] { return cudaErrorMemoryAllocation; };
+  auto unused_release = [] { return cudaSuccess; };
+  require(vibeqc::runtime::resource_cuda_allocate(&pointer, 8, device_oom, unused_release,
+                                                  &host_oom) == cudaErrorMemoryAllocation &&
+              !host_oom,
+          "untracked device OOM misclassified as host failure");
+  {
+    Observation observation(8, 0);
+    require(vibeqc::runtime::resource_cuda_allocate(&pointer, 8, device_oom, unused_release,
+                                                    &host_oom) == cudaErrorMemoryAllocation &&
+                !host_oom,
+            "tracked device OOM misclassified as host failure");
+    require(observation.read()[0] == 0 && observation.read()[3] == 1,
+            "device OOM lost rejection or reservation cleanup");
+  }
+  {
+    Observation observation(8, 0);
+    // Generation exhaustion takes the same bad_alloc path as registry insertion
+    // failure. Restore it even on assertion failure so subsequent tests recover.
+    struct RestoreGeneration {
+      std::uint64_t value = vibeqc::runtime::device_allocation_generation;
+      ~RestoreGeneration() { vibeqc::runtime::device_allocation_generation = value; }
+    } restore;
+    vibeqc::runtime::device_allocation_generation = std::numeric_limits<std::uint64_t>::max();
+    double storage{};
+    int releases = 0;
+    auto allocate = [&] {
+      pointer = &storage;
+      return cudaSuccess;
+    };
+    auto release = [&] {
+      ++releases;
+      return cudaSuccess;
+    };
+    require(vibeqc::runtime::resource_cuda_allocate(&pointer, 8, allocate, release, &host_oom) ==
+                    cudaErrorMemoryAllocation &&
+                host_oom,
+            "host registry OOM incorrectly authorizes device fallback");
+    require(pointer == nullptr && releases == 1, "registry failure leaked allocation");
+    require(observation.read()[0] == 0 && observation.read()[3] == 0,
+            "registry failure leaked reservation or reported device rejection");
+  }
+}
 
 void errors_and_recovery() {
   const vibeqc_context_descriptor context_desc{sizeof(context_desc), VIBEQC_ABI_VERSION, 0,
@@ -116,6 +166,18 @@ void errors_and_recovery() {
       require(observation.read()[0] == 0, "CUDA error leaked device allocations");
     }
     {
+      // One radial layer fits, four do not. Optional batching must fall back
+      // without publishing partial output, leaking, or masking non-OOM errors.
+      const std::size_t polar = device_consumer ? 44 : 32;
+      const auto budget =
+          2 * polar * polar * (sizeof(vibeqc::integrals::EcpSpherePoint) + 4 * sizeof(double)) +
+          (16 << 10);
+      Observation observation(budget, 0);
+      require(execute() == VIBEQC_STATUS_SUCCESS, "single-layer OOM fallback failed");
+      const auto values = observation.read();
+      require(values[0] == 0 && values[3] > 0, "radial fallback was not exercised or leaked");
+    }
+    {
       Observation observation(8 << 20, 0);
       require(execute() == VIBEQC_STATUS_SUCCESS, "ECP execution did not recover");
       const auto values = observation.read();
@@ -148,6 +210,7 @@ int main() {
     return 77;
   }
   try {
+    allocation_failure_origin();
     errors_and_recovery();
     std::cout << "ECP CUDA error categories, partial cleanup and recovery PASS\n";
     return 0;

@@ -1,0 +1,6 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090, 570.124.06",
+  "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
+  "cuda": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+  "library_reuse": "Existing Release CPU/CUDA libraries, AOT off on sm_89. All relevant build inputs verified unchanged; exact existing binaries used for new tests."
+}

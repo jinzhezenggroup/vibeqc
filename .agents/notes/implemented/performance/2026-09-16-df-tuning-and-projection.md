@@ -3,6 +3,10 @@
 Status: implemented
 Date: 2026-09-16
 
+The endpoint-specific occupied admission described here is superseded by the
+[general work policy](2026-09-18-general-occupied-df-policy.md). The numerical
+formulas, owner/generation checks and historical evidence remain applicable.
+
 ## Problem
 
 Issues #404–407 asked for shared derivative/value autotuning, force-aware

@@ -273,18 +273,20 @@ The [resident DF dataflow note](../.agents/notes/implemented/performance/2026-09
 retains isolated arithmetic/cache ablations, the comparison with GPU4PySCF's
 Rys consumer, unchanged scientific work counters, and binary/resource costs.
 
-## Low-angular Rys derivatives
+## Rys derivative selection
 
-The compiler generates polynomial and Rys first derivatives for
-`000/001/002/100/101/110/200`. Mathematical lowering comes from the class
-manifest. Automatic selection uses the qualified sm_120 entries for 384/768 AO
-with equal auxiliary dimension and remains polynomial outside that domain.
-The production manifest selects Rys only for `000`; additional Rys availability
-does not promote a class. `VIBEQC_DF_SHELL_POLICY=candidate` admits candidate
-manifest entries for complete endpoint qualification. See [DF tuning](df_tuning.md)
-for batch qualification, manifest selection, schedules and force screening.
+Mathematical lowering comes from the generated architecture/class manifest,
+without an AO-count or equal-auxiliary-dimension whitelist. The qualified sm_120
+profile selects cooperative Rys/compact for its 18 s/p/d entries. Missing targets
+and classes, including auxiliary f classes, retain the polynomial fallback.
+Additional mathematical availability does not promote an unqualified entry.
+`VIBEQC_DF_SHELL_POLICY=legacy` forces the fallback; `candidate` admits candidate
+manifest entries for complete endpoint qualification. Consumer, packet and
+weight-layout admission remain separate. See [DF tuning](df_tuning.md) and the
+[admission evidence](../.agents/notes/implemented/performance/2026-09-19-df-rys-admission.md).
 
-The node convention is `u=t²`. SSS uses one node `F1(T)/F0(T)` and weight `F0(T)`;
+For the original seven low-angular classes `000/001/002/100/101/110/200`, the
+node convention is `u=t²`. SSS uses one node `F1(T)/F0(T)` and weight `F0(T)`;
 the other six classes share a two-root evaluator with a piecewise Chebyshev table
 and an asymptotic branch at `T >= 48`. Gaussian product geometry and moment IR
 are shared with the polynomial emitter. Raised/lowered moments produce six

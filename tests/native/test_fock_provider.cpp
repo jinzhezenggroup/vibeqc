@@ -218,9 +218,9 @@ void preflight() {
            "unrequested derivative executed");
   const auto capability =
       fock_provider_capabilities(FockApproximation::DensityFitted, FockBackend::Cpu);
-  require(capability.independent_terms && capability.arbitrary_coefficients &&
-              !capability.legacy_adapter_only,
-          "CPU DF capabilities do not describe independent providers");
+  require(capability.available && capability.independent_terms &&
+              capability.arbitrary_coefficients && !capability.legacy_adapter_only,
+          "CPU DF capabilities do not describe registered independent providers");
 }
 
 void molecular_endpoints() {
