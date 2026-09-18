@@ -15,8 +15,8 @@ from vibeqc._dft_gradient import (
     xc_geometry_topology_identity,
     xc_regularization_identity,
 )
-from vibeqc_compiler.dft import NativeAO
 from vibeqc._ks_snapshot import _scf_xc_points
+from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.xc import functional
 from vibeqc_compiler.xc.contractions import ContractionProgram

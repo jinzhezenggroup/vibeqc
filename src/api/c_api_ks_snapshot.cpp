@@ -131,9 +131,9 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
   }
 }
 
-vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho,
-                                           const double* gradient, std::size_t point_count,
-                                           double* values, std::size_t value_count) {
+vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
   constexpr std::size_t stride = 9;
   if (pbe > 1 || !rho || !gradient || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
@@ -144,8 +144,7 @@ vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho,
     double local_gradient[2][3]{};
     for (std::size_t spin = 0; spin < 2; ++spin)
       for (std::size_t axis = 0; axis < 3; ++axis)
-        local_gradient[spin][axis] =
-            gradient[(spin * point_count + point) * 3 + axis];
+        local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
     const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient);
     if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
     double* output = values + stride * point;

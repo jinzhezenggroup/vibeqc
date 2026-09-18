@@ -540,9 +540,7 @@ def _scf_domain_xc_geometry(contract, state, functional, basis, grid):
     features = program.features(jets, density)
     gradient = features.get("gradient")
     point_gradient = (
-        np.zeros((2, len(grid.points), 3))
-        if gradient is None
-        else gradient
+        np.zeros((2, len(grid.points), 3)) if gradient is None else gradient
     )
     point_values = state._source.evaluate_xc_points(
         contract.family == "gga", features["rho"], point_gradient

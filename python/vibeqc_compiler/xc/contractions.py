@@ -309,12 +309,10 @@ class ContractionProgram:
             # spin derivatives because Da=Db=D/2.
             coefficients = {"rho": immutable(0.5 * (rho[0] + rho[1]))[None]}
             if gradient is not None:
-                coefficients["gradient"] = immutable(
-                    0.5 * (gradient[0] + gradient[1])
-                )[None]
-        return self._geometry(
-            jets, d, weights, coefficients, energy, ao_atoms, natom
-        )
+                coefficients["gradient"] = immutable(0.5 * (gradient[0] + gradient[1]))[
+                    None
+                ]
+        return self._geometry(jets, d, weights, coefficients, energy, ao_atoms, natom)
 
     def _geometry(self, jets, density, weights, coefficients, energy, ao_atoms, natom):
         """Pull back compact AO bilinears, then split translation sources.

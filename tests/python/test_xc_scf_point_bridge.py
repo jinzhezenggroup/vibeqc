@@ -9,9 +9,7 @@ from vibeqc._ks_snapshot import _scf_xc_points
 
 
 def test_scf_point_bridge_matches_independent_domain_fixture():
-    data = np.loadtxt(
-        Path(__file__).resolve().parents[1] / "data/xc/scf_domain.tsv"
-    )
+    data = np.loadtxt(Path(__file__).resolve().parents[1] / "data/xc/scf_domain.tsv")
     library = _native.load_library(device="cpu")
     for pbe in (False, True):
         rows = data[data[:, 0] == int(pbe)]
