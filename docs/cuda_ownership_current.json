@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13033,
+  "all_handwritten_scientific_lines": 13330,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -7,6 +7,7 @@
       "src/dft/cuda_ks_kernels.hpp",
       "src/dft/cuda_xc.hpp",
       "src/dft/cuda_xc_kernels.cuh",
+      "src/dft/dispersion/d4_reference.hpp",
       "src/dft/grid_task_view.cuh",
       "src/dft/xc_point.hpp",
       "src/integrals/ecp_cuda.cu",
@@ -165,7 +166,7 @@
     ],
     "maintained_code_lines": {
       "fallback": 0,
-      "oracle": 15,
+      "oracle": 312,
       "performance_exception": 163,
       "runtime": -5408,
       "scientific": 2663
@@ -326,6 +327,23 @@
       "role": "runtime",
       "sha256": "ff0fbe6bc6c2a2c20b9c1f22d242dbcd24f56ab35d25275440dc14d380cebb15",
       "subsystem": "xc"
+    },
+    {
+      "bytes": 14915,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 297,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/dft/dispersion/d4_reference.hpp",
+      "physical_lines": 334,
+      "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": [],
+      "role": "oracle",
+      "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e",
+      "subsystem": "d4_dispersion"
     },
     {
       "bytes": 1192,
@@ -3766,7 +3784,7 @@
   "generated_bytes": 35716,
   "maintained_code_lines": {
     "fallback": 0,
-    "oracle": 15,
+    "oracle": 312,
     "performance_exception": 253,
     "runtime": 10165,
     "scientific": 12765
@@ -3786,6 +3804,19 @@
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
       "status": "partial"
+    },
+    "d4_dispersion": {
+      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "evidence": [
+        "docs/d4_reference.md",
+        "tests/data/d4/oracle_manifest.json",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+      ],
+      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
+      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "owner": "d4_dispersion",
+      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
+      "status": "oracle"
     },
     "df_derivatives": {
       "current_default": "Generated two-/three-center center derivatives on shared normalized primitive/AO traversal; bounded cooperative weighted response is the sole CUDA HF force route.",
@@ -3969,6 +4000,13 @@
       "performance_exception": 0,
       "runtime": 550,
       "scientific": 162
+    },
+    "d4_dispersion": {
+      "fallback": 0,
+      "oracle": 297,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 0
     },
     "df_derivatives": {
       "fallback": 0,
