@@ -15,7 +15,10 @@ Slice B generates forward and reverse programs for every primitive.
 Gather/slice use exact incidence matrices and repeated einsum labels use exact
 identity projections.  Packed parameters are expanded through an explicit
 unpack DAG, and their reverse programs apply the weighted transpose; callers
-request this with the ``packed=`` mapping.
+request this with the ``packed=`` mapping. Dense symmetry-constrained inputs
+keep their dense storage: forward seeds obey the declared symmetry and reverse
+results use a signed-permutation group projector under the dense inner product,
+without constructing coordinate-incidence matrices.
 """
 
 from __future__ import annotations
@@ -733,6 +736,39 @@ def _inverse_weights_constant(node: Node, layout: PackedLayout) -> Node:
     )
 
 
+def _dense_symmetry_adjoint(bar: Node, spec: TensorSpec) -> Node:
+    """Orthogonally project a dense cotangent onto a signed symmetry space.
+
+    Average the finite signed permutation group, not only its generators:
+    generators may not commute. This is the dense equivalent of
+    unpack(unpack_transpose(bar)) without a coordinate-sized incidence matrix.
+    Opposite signs for one permutation describe a structural zero space.
+    Bound symbolic group expansion independently of tensor dimensions.
+    """
+    identity = tuple(range(len(spec.indices)))
+    group = {(identity, 1)}
+    pending = [(identity, 1)]
+    while pending:
+        permutation, sign = pending.pop()
+        for symmetry in spec.symmetries:
+            item = (
+                tuple(permutation[axis] for axis in symmetry.permutation),
+                sign * symmetry.sign,
+            )
+            if item not in group:
+                if len(group) >= 4096:
+                    raise ValueError(
+                        "dense symmetry projector exceeds 4096 signed permutations"
+                    )
+                group.add(item)
+                pending.append(item)
+    ordered = sorted(group)
+    return add(
+        *(bar if axes == identity else transpose(bar, axes) for axes, _ in ordered),
+        coefficients=(Fraction(sign, len(group)) for _, sign in ordered),
+    )
+
+
 def linearize(
     program: Program,
     tangent_inputs,
@@ -764,11 +800,6 @@ def linearize(
     selected_outputs = _select_names(program.outputs, outputs, "output")
     tangent_nodes = {}
     for name, node in requested.items():
-        if node.spec.symmetries:
-            raise NotImplementedError(
-                "packed/symmetric tangent inputs need a boundary unpack map; "
-                "slice B currently generates dense general tangents only"
-            )
         generated = f"{TANGENT_PREFIX}{name}"
         if generated in inputs or generated in program.outputs:
             raise ValueError(
@@ -859,12 +890,6 @@ def transpose_program(
         if node.spec.differentiable
     }
     selected_inputs = _select_names(differentiable, inputs, "input")
-    for name, node in selected_inputs.items():
-        if node.spec.symmetries:
-            raise NotImplementedError(
-                "packed/symmetric cotangent inputs need a boundary transpose "
-                "map; slice B currently generates dense general cotangents only"
-            )
     groups = _input_groups(program)
     roots = (node for name in selected_inputs for node in groups[name])
     relevant = _ancestors(selected_outputs.values()) & _descendants_of(program, roots)
@@ -912,6 +937,9 @@ def transpose_program(
             inverse = _inverse_weights_constant(node, layouts[name])
             bar = multiply(bar, inverse)
             generated_nodes.extend([inverse, bar])
+        elif node.spec.symmetries:
+            bar = _dense_symmetry_adjoint(bar, node.spec)
+            generated_nodes.append(bar)
         derivative_name = f"{COTANGENT_PREFIX}{name}"
         derivative_outputs[derivative_name] = bar
         output_map[derivative_name] = name
