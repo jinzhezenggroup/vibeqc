@@ -647,6 +647,16 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
         )
         selection_mode = "explicit"
 
+    execution_profile = resolve_cuda_execution_profile(
+        local=getattr(arguments, "local", None),
+        srun=getattr(arguments, "srun", None),
+        partition=getattr(arguments, "partition", None),
+        gres=getattr(arguments, "gres", None),
+        nodes=getattr(arguments, "nodes", None),
+        ntasks=getattr(arguments, "ntasks", None),
+        slurm_time=getattr(arguments, "slurm_time", None),
+    )
+
     work_directory_owner = None
     if arguments.work_directory is None:
         work_directory_owner = tempfile.TemporaryDirectory(prefix="vibeqc-shell-batch-")
@@ -723,16 +733,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 raise RuntimeError(link.stdout + link.stderr)
             linked_binary_bytes = _artifact_size(executable)
             run = subprocess.run(
-                benchmark_command(
-                    executable,
-                    local=arguments.local,
-                    srun=arguments.srun,
-                    partition=arguments.partition,
-                    gres=arguments.gres,
-                    nodes=arguments.nodes,
-                    ntasks=arguments.ntasks,
-                    slurm_time=arguments.slurm_time,
-                ),
+                execution_profile.wrap([str(executable)]),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -813,8 +814,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             "nvcc": str(arguments.nvcc),
             "single_gpu_process": True,
             "srun": {
-                "partition": arguments.partition,
-                "gres": arguments.gres,
+                **execution_profile.to_dict(),
                 "returncode": run_returncode,
                 "stderr": run_stderr,
             },
