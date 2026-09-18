@@ -55,8 +55,10 @@ def _runtime(pci_status=0, bus=b"0000:03:00.0", runtime_version=12090):
         ),
         ("NVIDIA GeForce RTX 5090", "sm120", False),
         (
-            "Different GPU, GPU-assigned, 580, 16 MiB, 12.0\n"
-            "NVIDIA GeForce RTX 5090, GPU-other, 580, 32 MiB, 12.0",
+            (
+                "Different GPU, GPU-assigned, 580, 16 MiB, 12.0\n"
+                "NVIDIA GeForce RTX 5090, GPU-other, 580, 32 MiB, 12.0"
+            ),
             "sm120",
             False,
         ),
