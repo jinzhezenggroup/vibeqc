@@ -101,7 +101,7 @@ files, preserving the original array bytes and numeric identity checks.
 The same retention checker also enforces the optional
 `benchmark_results_max_bytes` policy field across **all** indexed files under
 `benchmarks/results/`, including manifests and summaries. Its current budget is
-96 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
+128 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
 classification exceptions cannot waive it. Permanent fixtures under
 `tests/reference_data/`, `tests/data/` and audited external sources are not
 counted. Changing the budget is an explicit policy review, not an automatic
