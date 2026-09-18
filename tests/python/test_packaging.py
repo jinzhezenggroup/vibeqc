@@ -71,7 +71,6 @@ def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypa
     assert "libcuda.so.1" not in sonames
 
 
-
 def test_cuda_runtime_preload_is_noop_off_linux(monkeypatch):
     monkeypatch.setattr(_cuda_runtime.sys, "platform", "darwin")
 
