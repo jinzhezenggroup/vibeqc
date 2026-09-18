@@ -1,5 +1,5 @@
 {
-  "benchmark_results_max_bytes": 100663296,
+  "benchmark_results_max_bytes": 134217728,
   "exceptions": {
     "benchmarks/results/accuracy-173/arithmetic/states.npz": {
       "owner": "accuracy-173",
