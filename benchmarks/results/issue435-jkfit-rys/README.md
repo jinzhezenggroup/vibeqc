@@ -1,5 +1,7 @@
 # Practical JKFIT auxiliary-f derivative qualification (#435)
 
+> Full historical raw records are recoverable from the [verified Git snapshot](../retention-df-integration/README.md). Restore it before replaying the original raw-record commands. Compact summaries and all production-manifest references remain in this checkout.
+
 ## Change and scope
 
 The compiler now generates cooperative Rys/compact derivatives for auxiliary-f
