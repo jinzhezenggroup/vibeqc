@@ -418,8 +418,8 @@ def numerical_matrix(
     compiler = CudaCompilerAdapter(
         nvcc.resolve(), cuda_target_info(report["architecture"])
     )
-    executor = CudaBenchmarkExecutor(
-        timeout, partition="main", gres="gpu:5090:1", slurm_time=slurm_time
+    executor = CudaBenchmarkExecutor.from_environment(
+        timeout, default_slurm_time=slurm_time
     )
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
