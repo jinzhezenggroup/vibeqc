@@ -110,12 +110,16 @@ caller's established numerical recovery. Force evaluation receives only the
 validated converged density and keeps its full metric/center/Pulay response.
 
 Native and common resource ledgers reserve two full AO matrices for spin
-factors plus generation flags for explicit occupied selection or any shape
-that could benefit at rank one under the automatic work policy. The eventual
-spin ranks are not known when a native tensor plan is created; actual allocation
-uses the bucket's occupied ranks. These extra reservations can reduce residency
-under a tight budget, and are charged before selecting tiles. Dense mode retains its previous
-minimum-budget and residency boundaries. A native plan freezes this reservation
+factors plus generation flags only for explicit occupied selection or a known
+RHF occupation accepted by the shared work policy. Unknown references, UHF,
+zero/high rank and ineligible generated layouts keep dense reservation.
+The method passes this occupation through the shape planner and native plan
+constructor; the versioned Python query accepts `rhf_occupied` explicitly.
+If optional factors would force a host-raw plan into streaming or make the
+budget infeasible, auto retains the original dense plan. Packed plans can also
+drop the optional SCF charge while retaining their explicitly requested U
+capacity. Runtime allocation uses the actual occupied ranks. Dense mode retains
+its previous minimum-budget and residency boundaries. A native plan freezes this reservation
 at creation and rejects occupied SCF before allocation if it reserved only dense
 storage. Ordinary prepared batches rebuild the value/SCF plan on policy changes,
 retaining their geometry response cache. Batches with a global `ResourceBudget`

@@ -25,7 +25,7 @@ int main() {
   std::size_t n, a, batch, rank;
   while (std::cin >> n >> a >> batch >> rank)
     std::cout << vibeqc::scf::df_occupied_exchange_preferred(n,a,batch,rank) << " "
-              << vibeqc::scf::df_occupied_exchange_requested(n,a,batch) << "\n";
+              << vibeqc::scf::df_occupied_exchange_requested(n,a,batch,rank) << "\n";
 }
 """
     )
@@ -75,7 +75,7 @@ def test_work_policy_tracks_contraction_costs(exchange_policy):
         dense_flops = 2 * a * n**3 + 2 * a * n**3
         occupied_flops = 2 * a * n * n * rank + 2 * n * n * a * rank
         assert selected == (rank > 0 and 2 * occupied_flops <= dense_flops)
-        assert reserved  # Unknown final rank is conservatively budgeted.
+        assert reserved == selected  # Known RHF rank authorizes the reservation.
 
 
 def test_invalid_indexing_batch_and_explicit_controls(exchange_policy):

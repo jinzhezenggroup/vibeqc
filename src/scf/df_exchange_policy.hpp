@@ -53,18 +53,17 @@ inline bool df_occupied_exchange_preferred(std::size_t nbf, std::size_t naux, st
          naux <= blas_limit / nbf && rank > 0 && rank <= nbf / 2;
 }
 
-/** CPU-safe reservation before rank/reference and resident-plan admission.
- * Reserve for any shape that could benefit at rank one under the shared work
- * policy. The API does not know the eventual spin ranks; the resource planner
- * charges both full AO factors and runtime allocates only the actual ranks.
- * Reservation alone never authorizes factors or exceeds the memory budget.
+/** Reserve automatic factors only with a method-authorized RHF occupation.
+ * Zero means unknown reference/rank or UHF: those plans keep dense capacity.
+ * Explicit occupied retains its conservative reservation for all references.
  */
 inline bool df_occupied_exchange_requested(std::size_t nbf = 0, std::size_t naux = 0,
-                                           std::size_t batch = 0) noexcept {
+                                           std::size_t batch = 0,
+                                           std::size_t automatic_rhf_rank = 0) noexcept {
   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
   return (value && std::strcmp(value, "occupied") == 0) ||
-         (df_occupied_exchange_auto_requested() &&
-          df_occupied_exchange_preferred(nbf, naux, batch, 1));
+         (df_occupied_exchange_auto_requested() && df_resident_exchange_requested() &&
+          df_occupied_exchange_preferred(nbf, naux, batch, automatic_rhf_rank));
 }
 
 }  // namespace vibeqc::scf

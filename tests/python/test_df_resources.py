@@ -72,28 +72,93 @@ def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
         ((1, 384, 383, 80), 2 * 384 * 384 * 8 + 12),
         ((1, 192, 192, 40), 2 * 192 * 192 * 8 + 12),
         ((1, 512, 700, 100), 2 * 512 * 512 * 8 + 12),
-        ((1, 8, 13, 8), 2 * 8 * 8 * 8 + 12),
+        ((1, 8, 13, 8), 0),
         ((1, 1, 1, 1), 0),
     ],
 )
-def test_auto_reserves_potential_work_policy_candidates(monkeypatch, shape, expected):
-    """Reservation precedes device/rank admission and never removes dense capacity."""
+def test_auto_reserves_only_authorized_rhf_work_policy_candidates(
+    monkeypatch, shape, expected
+):
+    """Only a known profitable RHF occupation can charge automatic factor storage."""
     library = Calculator()._library
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
     dense = density_fitting_tile_plan(
-        library, *shape, budget_bytes=0, fixed_device_bytes=0
+        library,
+        *shape,
+        budget_bytes=1 << 40,
+        fixed_device_bytes=0,
+        rhf_occupied=shape[-1],
     )
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
     automatic = density_fitting_tile_plan(
-        library, *shape, budget_bytes=0, fixed_device_bytes=0
+        library,
+        *shape,
+        budget_bytes=1 << 40,
+        fixed_device_bytes=0,
+        rhf_occupied=shape[-1],
     )
-    # Reservation cannot assume the final RHF rank. All candidate shapes charge
-    # two full AO factors, two generation words and an error word.
+    # Native and common planners receive the same method-authorized rank.
     assert automatic.peak_workspace_bytes - dense.peak_workspace_bytes == expected
 
 
+@pytest.mark.parametrize("generated", [False, True])
+@pytest.mark.parametrize("rhf_rank", [None, 0, 5, 8])
+def test_ineligible_auto_keeps_dense_budget_and_tiles(monkeypatch, generated, rhf_rank):
+    """UHF/unknown, empty and high-rank jobs spend no unused factor reservation."""
+    library = Calculator()._library
+
+    def query(budget):
+        return density_fitting_tile_plan(
+            library,
+            1,
+            8,
+            8,
+            5,
+            budget_bytes=budget,
+            fixed_device_bytes=0,
+            generated_source=generated,
+            rhf_occupied=rhf_rank,
+        )
+
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    budget = query(0).peak_workspace_bytes
+    dense = query(budget)
+    assert dense.stores_full_three_center
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    assert query(budget) == dense
+    monkeypatch.delenv("VIBEQC_DF_EXCHANGE")
+    assert query(budget) == dense
+
+
+def test_optional_auto_factors_do_not_force_streaming(monkeypatch):
+    """Even eligible RHF retains its dense tiles when optional factors do not fit."""
+    library = Calculator()._library
+
+    def query(budget):
+        return density_fitting_tile_plan(
+            library,
+            1,
+            8,
+            8,
+            2,
+            budget_bytes=budget,
+            fixed_device_bytes=0,
+            rhf_occupied=2,
+        )
+
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    budget = query(0).peak_workspace_bytes
+    dense = query(budget)
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    assert query(budget) == dense
+    reserve = 2 * 8 * 8 * 8 + 12
+    admitted = query(budget + reserve)
+    assert admitted.stores_full_three_center
+    assert admitted.peak_workspace_bytes == budget + reserve
+
+
 @pytest.mark.parametrize("generated,full_bytes", [(False, 1104943), (True, 1100847)])
-@pytest.mark.parametrize("occupied_policy", [None, "auto", "occupied"])
+@pytest.mark.parametrize("occupied_policy", ["occupied"])
 def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     monkeypatch, generated, full_bytes, occupied_policy
 ):

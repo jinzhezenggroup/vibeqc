@@ -35,10 +35,13 @@ def test_automatic_cold_and_warm_force_matches_independent_oracle(
     case = benchmark_cases()[case_name]
     mol = gto.M(atom=case.atoms, unit="Bohr", basis="def2-svp", verbose=0)
     oracle = scf.RHF(mol).density_fit(auxbasis="def2-svp")
-    oracle.conv_tol, oracle.conv_tol_grad, oracle.max_cycle = 1e-13, 1e-12, 200
+    # Match the independent SCF acceptance used by the existing force suite;
+    # absolute energy steps below the 768-AO total-energy ULP are not meaningful.
+    oracle.conv_tol, oracle.conv_tol_grad, oracle.max_cycle = 1e-12, 1e-10, 100
     oracle.kernel()
     assert oracle.converged
     expected_force = -oracle.nuc_grad_method().kernel()
+    np.savez(tmp_path / "oracle.npz", energy=oracle.e_tot, forces=expected_force)
     for control in (
         "EXCHANGE",
         "SEED_EXCHANGE",

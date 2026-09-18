@@ -22,12 +22,21 @@ a calibrated device latency threshold. Division avoids overflow when checking
 costs and native BLAS index bounds. Equal orbital/auxiliary dimensions have no
 mathematical role in this algorithm and are no longer an admission condition.
 
-CPU reservation uses the same policy with rank one, since native plan creation
-does not yet know the final occupations/reference. It charges both full AO
-factors and generation/error flags before choosing tiles under the budget.
-Runtime allocates the actual ranks. This intentionally reserves a superset of
-the executable domain and can shrink tiles for tight-budget callers. Explicit
-dense selection retains its smaller reservation.
+Reservation receives a known RHF occupation from the method owner. Unknown
+reference/rank and UHF pass zero; high/zero ranks fail the shared work rule.
+The same hint travels through native tile planning, plan creation/cache identity
+and versioned common resource queries. Old shape-only query ABIs remain valid
+and never guess the method from dimensions. Explicit occupied mode retains its
+conservative two-full-factor reservation for all references.
+
+Automatic storage is optional. If its charge would force a host-raw resident
+plan into partial/streamed tiles or make the budget fail, the planner retries
+with the original dense reservation and passes a zero hint to creation. Dense
+generated sources cannot use the resident occupied implementation and receive
+no automatic charge. Packed sources may drop the optional SCF reservation
+without removing their independently requested all-Q U storage. Common resource
+accounting uses the returned admission hint, including a separately queried
+singleton cold-recovery plan. Actual factor allocation uses the final ranks.
 
 `qualified_resident_rhf_exchange` combines this work rule with actual resident
 capacity. SCF, seed factorization, final physical K and force response share it.
@@ -53,6 +62,11 @@ ordinary FP64 BLAS algorithm.
 
 ## Rejected alternatives
 
+Reserving at a hypothetical rank one before reference/rank is known charges
+UHF and high-rank jobs for storage they cannot consume; under tight budgets it
+can force streaming or reject an otherwise valid job. The review exposed this
+compatibility regression, so method-aware hints replace that initial design.
+
 Adding another endpoint preserves the maintenance problem. Replacing endpoints
 with an unexplained AO-size threshold would merely conceal it. Coupling this
 policy to the generated derivative tuning tables would mix independent
@@ -65,7 +79,7 @@ endpoint measurements would imply unsupported precision.
 CPU tests compare contraction FLOP counts across even/odd dimensions, unequal
 auxiliaries and rank boundaries, including 384/80, 512/123 and 768/160. They
 cover native indexing overflow, invalid dimensions, batches, explicit controls
-and conservative resource-budget boundaries. CUDA selector tests exercise
+and tight-budget UHF/high-rank and optional-factor fallback boundaries. CUDA selector tests exercise
 actual versus advertised projection capacity, missing storage, residency,
 RHF/UHF and explicit fallbacks without querying a device identity.
 

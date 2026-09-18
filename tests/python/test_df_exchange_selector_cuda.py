@@ -25,6 +25,7 @@ def test_auto_requires_rank_reference_residency_and_reservation(tmp_path):
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/density_fitting.hpp"
 int main() {
   using namespace vibeqc::scf;
   CudaDensityFittingJkPlan p;
@@ -96,6 +97,38 @@ int main() {
   p.occupied_scf_reserved=false; check(false); p.occupied_scf_reserved=true;
   setenv("VIBEQC_DF_EXCHANGE", "dense", 1); check(false);
   setenv("VIBEQC_DF_EXCHANGE", "occupied", 1); check(true, 159, true);
+
+  // Real allocation must preserve the method-aware planner's decision. The
+  // rank-zero hint denotes UHF/unknown reference, not a rank-zero RHF guess.
+  std::vector<double> metric(64, 0), raw(512, 0);
+  for (int i=0; i<8; ++i) metric[i*8+i]=1;
+  setenv("VIBEQC_DF_EXCHANGE", "dense", 1);
+  const auto dense_budget=plan_density_fitting_tiles(1,8,8,2,0).peak_workspace_bytes;
+  const auto allocated = [&](std::size_t hint, std::size_t budget, bool expected) {
+    const auto tile=plan_density_fitting_tiles(1,8,8,2,budget,0,false,hint);
+    if (!tile.stores_full_three_center)
+      throw std::runtime_error("optional factors forced a resident plan to stream");
+    CudaDensityFittingJkPlan* actual=nullptr;
+    std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
+    std::string detail;
+    const auto status=create_cuda_density_fitting_jk_plan_tiled(
+        0,1,8,8,metric,raw,1e-10,tile.auxiliary_tile,tile.ao_pair_tile,
+        &actual,diagnostics,detail,tile.automatic_rhf_rank);
+    if (status!=VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+    const bool reserved=actual->occupied_scf_reserved;
+    const auto peak=diagnostics[0].peak_device_bytes;
+    destroy_cuda_density_fitting_jk_plan(actual);
+    if(reserved!=expected) throw std::runtime_error("native reservation differs from planner");
+    return peak;
+  };
+  const auto dense_peak=allocated(2,dense_budget,false);
+  setenv("VIBEQC_DF_EXCHANGE", "auto", 1);
+  for (std::size_t hint : {0U,6U,2U})
+    if(allocated(hint,dense_budget,false)!=dense_peak)
+      throw std::runtime_error("ineligible or constrained auto changed dense reservation");
+  constexpr auto factor_bytes=2*8*8*sizeof(double)+12;
+  if(allocated(2,dense_budget+factor_bytes,true)!=dense_peak+factor_bytes)
+    throw std::runtime_error("admitted factor reservation was not charged exactly");
 }
 """
     )
