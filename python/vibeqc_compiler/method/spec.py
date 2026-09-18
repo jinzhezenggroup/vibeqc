@@ -8,7 +8,7 @@ PBE0 here does not make hybrid KS execution available automatically.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fractions import Fraction
 from types import MappingProxyType
 from typing import ClassVar
@@ -98,7 +98,11 @@ class MethodSpec:
 
 @dataclass(frozen=True)
 class SemilocalXCPrimitive:
-    """One canonical semilocal-XC node backed by the #161 expression compiler."""
+    """One canonical semilocal-XC node backed by the #161 expression compiler.
+
+    Direct construction normalizes component order and removes inactive terms,
+    just like ``resolve_method``, while retaining the functional's provenance.
+    """
 
     functional: FunctionalSpec
     kind: ClassVar[str] = "semilocal_xc"
@@ -115,6 +119,14 @@ class SemilocalXCPrimitive:
         ):
             raise UnsupportedMethod(
                 "semilocal primitive cannot hide exchange-operator metadata"
+            )
+        # FunctionalSpec intentionally preserves its declaration order. Normalize
+        # at this boundary so catalog specs and explicit MethodIR construction
+        # share a semantic identity without mutating the caller's XC declaration.
+        components = _canonical_components(self.functional.components)
+        if components != self.functional.components:
+            object.__setattr__(
+                self, "functional", replace(self.functional, components=components)
             )
 
     @property

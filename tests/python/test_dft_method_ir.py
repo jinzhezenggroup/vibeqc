@@ -7,11 +7,13 @@ import pytest
 from vibeqc_compiler.method import (
     METHOD_CATALOG,
     ExactExchangePrimitive,
+    MethodIR,
     MethodSpec,
     SemilocalXCPrimitive,
     UnsupportedMethod,
     resolve_method,
 )
+from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 
 def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
@@ -78,6 +80,34 @@ def test_method_identity_is_semantic_while_manifest_identity_retains_name():
 def test_audited_method_catalog_is_read_only():
     with pytest.raises(TypeError):
         METHOD_CATALOG["PBE"] = MethodSpec("mutated", (("LDA_X", Fraction(1)),))
+
+
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_direct_method_ir_canonicalizes_existing_xc_specs(spin):
+    """Public primitive construction shares the resolver's semantic identity."""
+    catalog = functional("PBE", spin=spin)
+    # FunctionalSpec preserves component order and permits inactive components.
+    # Neither may fragment MethodIR identity for the same mathematical graph.
+    variants = (
+        catalog,
+        FunctionalSpec("reordered", tuple(reversed(catalog.components)), spin=spin),
+        FunctionalSpec(
+            "with-inactive-lda",
+            (*catalog.components, ("LDA_X", Fraction(0))),
+            spin=spin,
+        ),
+    )
+    expected = resolve_method("PBE", spin=spin)
+    for spec in variants:
+        primitive = SemilocalXCPrimitive(spec)
+        direct = MethodIR("PBE", spin, (primitive,))
+        assert direct.identity == expected.identity
+        assert (
+            primitive.functional.components
+            == expected.primitives[0].functional.components
+        )
+        assert primitive.functional.identifier == spec.identifier
+    assert catalog.components[0][0] == "GGA_X_PBE"
 
 
 def test_same_family_extension_is_data_only_and_json_serializable():
