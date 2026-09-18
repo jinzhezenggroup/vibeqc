@@ -324,8 +324,89 @@ def _first_order_mo1_e1(s, h1ao):
     return mo1s, e1s
 
 
+def _first_order_mo1_e1_vir_only(s, h1ao):
+    """Equivalent dense solve on the nonredundant virtual/occupied block.
+
+    The occupied response is known from the metric gauge. Eliminating it from
+    ``(I + F) x = b`` gives ``(I + F_vv) x_v = b_v - F_vo b_o``;
+    fixing its value never licenses dropping its induced Fock contribution.
+    This reference path verifies equivalence without using the full dense solve.
+    """
+    C = s.C
+    eps = s.eps
+    nocc = s.nocc
+    occ = s.occ
+    virt = s.virt
+    mocc = C[:, occ]
+    nat = s.nat
+    nbf = C.shape[0]
+    nmo = s.nmo
+    nvirt = len(virt)
+    e_i = eps[occ]
+    e_a = eps[virt]
+    e_ai = 1 / (e_a[:, None] - e_i[None, :])  # (nvir, nocc)
+    mo1s = np.zeros((nat, 3, nbf, nocc))
+    e1s = np.zeros((nat, 3, nocc, nocc))
+    for ia in range(nat):
+        for x in range(3):
+            R = ia * 3 + x
+            h1_mo = C.T @ h1ao[ia, x] @ mocc
+            s1_mo = C.T @ s.S1[R] @ mocc
+            hs0 = h1_mo - s1_mo * e_i[None, :]
+            mo1base = hs0.copy()
+            mo1base[virt, :] = -hs0[virt, :] * e_ai
+            mo1base[occ, :] = -s1_mo[occ, :] * 0.5
+
+            def F(mo1):
+                dm = C @ (2 * mo1) @ mocc.T
+                dm = dm + dm.T
+                v = C.T @ _wof(s.ERI, dm) @ mocc
+                out = v.copy()
+                out[virt, :] *= e_ai
+                out[occ, :] = 0
+                return out
+
+            # Reduced (nvirt*nocc) operator: virtual columns only.
+            dim = nvirt * nocc
+            Fvv = np.zeros((dim, dim))
+            for col in range(dim):
+                mo1 = np.zeros((nmo, nocc))
+                # Advanced indexing followed by ravel() returns a copy.
+                # Write through actual row/column indices to seed this basis vector.
+                mo1[virt[col // nocc], col % nocc] = 1.0
+                Fvv[:, col] = F(mo1)[virt, :].ravel()
+            matrix = np.eye(dim) + Fvv
+            occupied_response = np.zeros((nmo, nocc))
+            occupied_response[occ, :] = mo1base[occ, :]
+            rhs = (mo1base - F(occupied_response))[virt, :].ravel()
+            Xv = np.linalg.solve(matrix, rhs)
+            residual = np.linalg.norm(matrix @ Xv - rhs, ord=np.inf)
+            if not np.isfinite(Xv).all() or residual > 1e-10 * (
+                1 + np.linalg.norm(rhs, ord=np.inf)
+            ):
+                raise RuntimeError("reduced CPHF true residual exceeds tolerance")
+            mo1 = np.zeros((nmo, nocc))
+            mo1[virt, :] = Xv.reshape(nvirt, nocc)
+            mo1[occ, :] = mo1base[occ, :]  # frozen at base (not iterated)
+            dm = C @ (2 * mo1) @ mocc.T
+            dm = dm + dm.T
+            fvind_full = C.T @ _wof(s.ERI, dm) @ mocc
+            hs = hs0 + fvind_full
+            mo1[virt, :] = hs[virt, :] / (e_i[None, :] - e_a[:, None])
+            mo1[occ, :] = mo1base[occ, :]
+            mo1s[ia, x] = C @ mo1
+            e1s[ia, x] = hs[occ, :] + mo1[occ, :] * (e_i[:, None] - e_i)
+    return mo1s, e1s
+
+
 def hessian_total(
-    s, with_relax=True, with_pulay=True, with_2e=True, with_nuc=True, with_core=True
+    s,
+    with_relax=True,
+    with_pulay=True,
+    with_2e=True,
+    with_nuc=True,
+    with_core=True,
+    mo1e1_fn=_first_order_mo1_e1,
 ):
     """Semi-numerical reference Hessian, shaped (nat, nat, 3, 3).
 
@@ -352,7 +433,7 @@ def hessian_total(
             h1ao[ia, x] = s.h1[R] + _wof(s.ERI1[R], P0)
 
     if with_relax:
-        mo1s, e1s = _first_order_mo1_e1(s, h1ao)
+        mo1s, e1s = mo1e1_fn(s, h1ao)
 
     H = np.zeros((nat, nat, 3, 3))
     # Evaluate both atom orders independently. Copying one triangle would

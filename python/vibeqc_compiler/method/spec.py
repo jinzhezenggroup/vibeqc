@@ -17,6 +17,8 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
+from .dispersion import D3Spec, DispersionCorrectionPrimitive
+
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
 FULL_RANGE = "full-range"
@@ -59,6 +61,7 @@ class MethodSpec:
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
+    dispersion: D3Spec | None = None
 
     def __post_init__(self):
         if not isinstance(self.identifier, str) or not self.identifier.strip():
@@ -78,6 +81,8 @@ class MethodSpec:
             _require_fraction(coefficient, f"component {name}")
             if not coefficient:
                 raise UnsupportedMethod("zero-valued manifest components are ambiguous")
+        if self.dispersion is not None and not isinstance(self.dispersion, D3Spec):
+            raise TypeError("dispersion requires a D3Spec")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
             raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
@@ -93,6 +98,7 @@ class MethodSpec:
                 for name, coefficient in self.semilocal_components
             ],
             "exact_exchange": str(self.exact_exchange),
+            **({"dispersion": self.dispersion.to_payload()} if self.dispersion else {}),
         }
 
 
@@ -187,7 +193,9 @@ class ExactExchangePrimitive:
         return self.semantic_payload()
 
 
-MethodPrimitive = SemilocalXCPrimitive | ExactExchangePrimitive
+MethodPrimitive = (
+    SemilocalXCPrimitive | ExactExchangePrimitive | DispersionCorrectionPrimitive
+)
 
 
 @dataclass(frozen=True)
@@ -214,10 +222,18 @@ class MethodIR:
             raise UnsupportedMethod("unsupported MethodIR version")
         if not isinstance(self.primitives, tuple) or not self.primitives:
             raise UnsupportedMethod("MethodIR requires at least one primitive")
-        allowed = (SemilocalXCPrimitive, ExactExchangePrimitive)
+        allowed = (
+            SemilocalXCPrimitive,
+            ExactExchangePrimitive,
+            DispersionCorrectionPrimitive,
+        )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
             raise UnsupportedMethod("MethodIR contains an unsupported primitive")
-        order = {SemilocalXCPrimitive: 0, ExactExchangePrimitive: 1}
+        order = {
+            SemilocalXCPrimitive: 0,
+            ExactExchangePrimitive: 1,
+            DispersionCorrectionPrimitive: 2,
+        }
         keys = [order[type(primitive)] for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):
             raise UnsupportedMethod(
@@ -243,8 +259,10 @@ class MethodIR:
             if isinstance(primitive, SemilocalXCPrimitive):
                 ingredients.update(primitive.functional.ingredients)
                 operators.append("semilocal-xc")
-            else:
+            elif isinstance(primitive, ExactExchangePrimitive):
                 operators.append(primitive.operator + "-exchange")
+            else:
+                operators.append("geometry-d3-bj")
         return {
             "spin": self.spin,
             "reference": self.reference,
@@ -328,4 +346,6 @@ def resolve_method(method, *, spin="unpolarized"):
         primitives.append(ExactExchangePrimitive(spec.exact_exchange))
     if not primitives:
         raise UnsupportedMethod("method components cancel to an empty graph")
+    if spec.dispersion is not None:
+        primitives.append(DispersionCorrectionPrimitive(spec.dispersion))
     return MethodIR(spec.identifier, spin, tuple(primitives))

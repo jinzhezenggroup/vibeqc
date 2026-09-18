@@ -6,8 +6,10 @@
 #include <memory>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 
 #include "molecule/basis.hpp"
+#include "runtime/cuda_architecture.hpp"
 #include "runtime/cuda_component_trace.hpp"
 #include "runtime/host_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
@@ -18,6 +20,7 @@
 #include "scf/cuda/df_shell_derivatives.cuh"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_df_gradient.hpp"
+#include "scf/df_derivative_policy.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -705,32 +708,29 @@ vibeqc_status execute_cuda_df_hf_gradient(
     arena.stream = reinterpret_cast<cudaStream_t>(stream_handle);
     arena.owns_stream = false;
     const auto o = arena.upload(host_o), x = arena.upload(host_a);
-    // Clean complete-force endpoints qualify this combined default only for
-    // resident 192--384-AO sm_120 execution and the qualified 768/768-AO
-    // borrowed response. Small UHF regresses from launch and pinned-allocation
-    // overhead; other backends and source-backed regimes need their own
-    // endpoint evidence. Explicit selectors stay usable everywhere.
-    // Attribution probes retain the original comparison defaults.
-    bool promoted_default = false, packed_default = false, signature_device = false;
+    // Work-based schedule selection is independent of correctness eligibility.
+    // Preserve source/metric/diagnostic gates; small or unknown targets retain
+    // the generic route. Packed response has a separate qualification boundary.
+    bool promoted_default = false, packed_default = false;
+    unsigned derivative_architecture = 0;
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
     if (device_metric && schedule == 0 && (!source || packed_raw) &&
-        ((n >= 192 && n <= 384) || (borrowed && n == 768 && a == 768)) &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
-      cudaDeviceProp properties{};
-      check(cudaGetDeviceProperties(&properties, device));
-      promoted_default = properties.major == 12 && properties.minor == 0;
-      signature_device =
-          promoted_default && std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
+      check(runtime::cuda_architecture(device, derivative_architecture));
+      promoted_default = df_shell_execution_preferred(n, a, derivative_architecture);
       // Packed production is qualified on the same trusted 768-AO occupied
       // response as #381. Smaller defaults keep the faster dense response
       // producer and consume its shell pairs symmetrically.
-      packed_default = promoted_default && borrowed && borrowed->occupied_response && n == 768 &&
-                       a == 768 && terms.size() == 1 && borrowed->occupied_factors[0].rank == 160 &&
-                       std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
+      if (promoted_default && borrowed && borrowed->occupied_response && n == 768 && a == 768 &&
+          terms.size() == 1 && borrowed->occupied_factors[0].rank == 160) {
+        cudaDeviceProp properties{};
+        check(cudaGetDeviceProperties(&properties, device));
+        packed_default = std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
+      }
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
@@ -785,33 +785,32 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (primitive_bucket_policy != "auto" && primitive_bucket_policy != "off" &&
         primitive_bucket_policy != "on" && primitive_bucket_policy != "packet")
       throw std::invalid_argument("unknown DF primitive buckets (use auto, off, on or packet)");
-    // Automatic selection is an exact measured workload profile, not an AO-size
-    // guess: both public bases must match the spherical def2-SVP water shell
-    // histogram. Other signatures, representations and schedules stay opt-in.
-    const auto signature_profile = [n](const core::System& system) {
-      if (system.basis_representation != VIBEQC_BASIS_SPHERICAL) return false;
-      std::array<std::size_t, 6> counts{};
+    // Estimate primitive loop work without naming a molecule or exact shell
+    // histogram. Grouping is useful only when lengths vary within an l class.
+    const auto primitive_work = [](const core::System& system) {
+      std::size_t total = 0;
+      std::array<std::size_t, 4> minimum{}, maximum{};
       for (const auto& shell : system.shells) {
         const auto l = shell.angular_momentum;
         const auto p = shell.primitives.size();
-        const int index = l == 0 && p == 1   ? 0
-                          : l == 0 && p == 3 ? 1
-                          : l == 0 && p == 5 ? 2
-                          : l == 1 && p == 1 ? 3
-                          : l == 1 && p == 3 ? 4
-                          : l == 2 && p == 1 ? 5
-                                             : -1;
-        if (index < 0) return false;
-        ++counts[index];
+        if (l >= minimum.size() || !p || p > std::numeric_limits<std::size_t>::max() - total)
+          return std::pair<std::size_t, bool>{0, false};
+        total += p;
+        minimum[l] = minimum[l] ? std::min(minimum[l], p) : p;
+        maximum[l] = std::max(maximum[l], p);
       }
-      return counts == std::array<std::size_t, 6>{n / 6, n / 12, n / 24, n / 8, n / 24, n / 24};
+      return std::pair{total, minimum != maximum};
     };
+    const auto [orbital_primitives, orbital_heterogeneous] = primitive_work(orbital);
+    const auto [auxiliary_primitives, auxiliary_heterogeneous] = primitive_work(auxiliary);
     const bool automatic_packets =
-        primitive_bucket_policy == "auto" && signature_device && full_shell_domain &&
-        shell_variant == 2 && a == n && terms.size() == 1 &&
-        ((n == 384 && derivative_pairs == DfDerivativePairs::symmetric) ||
-         (n == 768 && packed_default && packed_pairs)) &&
-        signature_profile(orbital) && signature_profile(auxiliary);
+        primitive_bucket_policy == "auto" && promoted_default && full_shell_domain &&
+        shell_variant == 2 && derivative_pairs != DfDerivativePairs::full && terms.size() == 1 &&
+        orbital.basis_representation == VIBEQC_BASIS_SPHERICAL &&
+        auxiliary.basis_representation == VIBEQC_BASIS_SPHERICAL &&
+        df_signature_packets_preferred(orbital_primitives, auxiliary_primitives,
+                                       orbital_heterogeneous || auxiliary_heterogeneous,
+                                       derivative_architecture);
     const bool signature_packets = primitive_bucket_policy == "packet" || automatic_packets;
     const bool primitive_buckets =
         shell_execution && (primitive_bucket_policy == "on" || signature_packets);

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "upstream": "https://github.com/jinzhezenggroup/xtbloom",
+  "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
+  "sources": {
+    "src/model/gfn1/d3.cpp": {
+      "sha256": "6f77139f7dee1a2512693aef57caaba93bc2acc59b8db018bec380fc21113e67",
+      "git_blob": "c7c2c1f637a701c336a20fe8126fcd5da602ce8f"
+    },
+    "src/model/gfn1/d3.hpp": {
+      "sha256": "31af2aa61d480e94fd97972a61908f1bd61c97923a3d392224733b0eca3be3ab",
+      "git_blob": "b3cb89995f7dc8035698a42ec5653e64256342cb"
+    },
+    "src/model/gfn1/coordination.cpp": {
+      "sha256": "77316bbb498fc5d59b0d91abde5acc67d6de04b61bf6102fe5b6cd70b1984a9a",
+      "git_blob": "a7ff8be2eff038fcf1a064d485b517134e275e1a"
+    },
+    "src/backends/cuda/gfn1_classical_corrections.cu": {
+      "sha256": "cb4919ca06adc5ba333ee5e382efd07db72c621e78ea623720116017c7b4322d",
+      "git_blob": "1ff928dbc8de0af5cc88815179835dde63d9616a"
+    },
+    "src/backends/cuda/gfn1_classical_corrections.cuh": {
+      "sha256": "b5332e34c4fe77b9002b4140dcf630292d2dd23d348f84f171d361565981ac6b",
+      "git_blob": "6d1d3b3bfec91c1b3c596776b2176a6b4f4ac6ed"
+    },
+    "data/parameters/gfn1_d3.json": {
+      "sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+      "git_blob": "50abf22dd48918a2bb0ee653160c7911329058fa"
+    },
+    "data/parameters/gfn1_d3_manifest.json": {
+      "sha256": "34344727c84992c566e2445f95e5c249222ba0ff0feeb70a0aa0f567257e8cbf",
+      "git_blob": "259fcb1ae5dd3b4707d46f0156ff7f49dc5c547c"
+    },
+    "data/parameters/gfn1.json": {
+      "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
+      "git_blob": "73b85b3b31a3a5f817c395fe2aab95c7e4a14d18"
+    },
+    "data/parameters/gfn1_manifest.json": {
+      "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
+      "git_blob": "d6d46d250e2013e4d9247a5bc1d484d69fbd4e82"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "sha256": "fc764a55ce011180b038d847973686eaba9e59a70609959815c0bc2e80444c26",
+      "git_blob": "0739974c5f71d8337c00adb6c404785fa42c33a4"
+    },
+    "CUDA_MKL_LINKING_EXCEPTION": {
+      "sha256": "510e239f910efb93abfa9cb9c41b6dd3778a78bc7512cf3ca755f2931b817fd3",
+      "git_blob": "12c063419c201cca4e59734a8fe91d22967a2b5e"
+    }
+  },
+  "data": {
+    "gfn1_d3.json": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+    "covalent_radii.json": "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+  },
+  "role": "Repository-only D3(BJ) qualification baseline; not a promoted runtime provider",
+  "radii_extraction": "gfn1.json: elements in atomic-number order, covalent_radius_bohr only",
+  "attribution": {
+    "agent": "ChatGPT",
+    "model": "GPT-6 Astra Pro"
+  }
+}
