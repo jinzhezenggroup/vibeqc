@@ -1,5 +1,6 @@
 """Canonical method composition above scientific compiler primitives."""
 
+from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .spec import (
     METHOD_CATALOG,
@@ -14,6 +15,8 @@ from .spec import (
 __all__ = [
     "METHOD_CATALOG",
     "ExactExchangePrimitive",
+    "ImplicitSolveSpec",
+    "ImplicitVJPPlan",
     "MethodIR",
     "MethodSpec",
     "SemilocalXCPrimitive",

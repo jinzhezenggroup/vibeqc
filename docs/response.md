@@ -1,7 +1,8 @@
 # Shared orbital response and bounded Krylov solves
 
-`tools/vibeqc_response` is the shared native response-solver layer for RHF and
-semilocal-KS orbital response. It separates the problem snapshot, the
+`tools/vibeqc_response` is the shared response-solver tooling for RHF and
+semilocal-KS orbital response. Its Krylov controller is Python/host-controlled;
+the operator backends include native J/K execution. It separates the problem snapshot, the
 matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
@@ -10,6 +11,10 @@ RKS/UKS CPKS endpoint remains an open acceptance item for `#179`/`#162`.
 
 This layer is not a new public electronic-structure method. RHF remains the
 registered HF method, and `#162` still owns the converged RKS/UKS SCF endpoint.
+
+The [generated implicit-response adapter](implicit_response.md) reuses this
+solver through an explicit callback. It generates transposed operators and source
+weights from TensorIR rather than introducing a method-specific adjoint solver.
 
 ## Problem snapshot
 
