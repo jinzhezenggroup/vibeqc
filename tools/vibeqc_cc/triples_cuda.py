@@ -169,6 +169,7 @@ class CudaTriplesTiles:
         per_tile_masked_cpu = [] if oracle else None
         peak_bytes_per_tile = []
         artifact_keys = []
+        runtime_device = None
         et = 0.0
 
         t0_total = time.perf_counter()
@@ -222,6 +223,9 @@ class CudaTriplesTiles:
                 t0 = time.perf_counter()
                 et_tile = float(resident.download(leases["triples_energy"])[()])
                 timing["download_s"] += time.perf_counter() - t0
+                if runtime_device is None:
+                    # Captured once from the first resident's device probe.
+                    runtime_device = resident.device
 
             per_tile.append(et_tile)
             et += et_tile
@@ -260,7 +264,7 @@ class CudaTriplesTiles:
             peak_device_bytes=max(peak_bytes_per_tile) if peak_bytes_per_tile else 0,
             peak_bytes_per_tile=peak_bytes_per_tile,
             artifact_keys=artifact_keys,
-            runtime_device=None,
+            runtime_device=runtime_device,
             timing=timing,
             provenance={
                 "schema": "vibeqc.ccsd-t.cuda-tile/1",

@@ -205,6 +205,8 @@ def run(args):
                         t0 = time.perf_counter()
                         result = tiles.run_tiles(arrays, oracle=True)
                     gpu_time_s = time.perf_counter() - t0
+                    if manifest["runtime_device"] is None:
+                        manifest["runtime_device"] = result.runtime_device
 
                     # CPU masked per-tile reference
                     enum = TriplesTileEnumerator(
@@ -238,6 +240,7 @@ def run(args):
                         "peak_device_bytes": result.peak_device_bytes,
                         "peak_bytes_per_tile": result.peak_bytes_per_tile,
                         "artifact_keys": result.artifact_keys,
+                        "runtime_device": result.runtime_device,
                         "gpu_et": result.et,
                         "cpu_et": cpu_et,
                         "de_total": de_total,
