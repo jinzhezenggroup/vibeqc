@@ -129,6 +129,16 @@ def run(args):
         compile_timeout=args.compile_timeout,
     )
     budgets = [int(b) * (1 << 20) for b in args.budget.split(",")]
+    selected_molecules = tuple(
+        name.strip() for name in args.molecules.split(",") if name.strip()
+    )
+    unknown_molecules = sorted(set(selected_molecules) - set(GROUND_TRUTH))
+    if not selected_molecules or unknown_molecules:
+        raise ValueError(
+            "molecules must be a nonempty comma-separated subset of "
+            f"{sorted(GROUND_TRUTH)}; unknown={unknown_molecules}"
+        )
+
     source_identity = _qualification_source_identity()
     if not args.compile_only and source_identity["worktree_dirty"]:
         raise RuntimeError(
@@ -145,10 +155,11 @@ def run(args):
         "numpy": np.__version__,
         "compiler_target": compiler.target.to_payload(),
         "runtime_device": None,
+        "selected_molecules": selected_molecules,
         "molecules": [],
     }
 
-    for name in ("h2", "he", "h2o", "nh3", "ch4"):
+    for name in selected_molecules:
         expected_o, expected_v, expected_et = GROUND_TRUTH[name]
         feeds = load_endpoint(name)
         nocc, nvir = feeds[0], feeds[1]
@@ -399,6 +410,15 @@ if __name__ == "__main__":
         "--budget",
         default="256,512",
         help="Comma-separated memory budgets in MiB (default: 256,512)",
+    )
+    parser.add_argument(
+        "--molecules",
+        default="h2,he,h2o,nh3,ch4",
+        help=(
+            "Comma-separated endpoint subset. The default runs all endpoints; "
+            "qualification may scope a retained run to the minimum cases needed "
+            "for a stated gate, e.g. h2,h2o."
+        ),
     )
     parser.add_argument(
         "--compile-timeout",
