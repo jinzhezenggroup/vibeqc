@@ -111,7 +111,8 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
           const auto exchanged =
               provider.get({std::vector<std::size_t>{i}, vb, std::vector<std::size_t>{j}, va}, cuda,
                            device, &result.metrics);
-          std::vector<double> x(tile * tile);
+          const auto tile_elements = static_cast<std::size_t>(tile) * tile;
+          std::vector<double> x(tile_elements);
           for (unsigned u = 0; u < tile; ++u)
             for (unsigned v = 0; v < tile; ++v) x[u * tile + v] = exchanged[v * tile + u];
           double out[2]{};
@@ -230,7 +231,8 @@ Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::Ra
     for (std::size_t j = 0; j < no; ++j)
       for (std::size_t a0 = 0; a0 < nv; a0 += tile)
         for (std::size_t b0 = 0; b0 < nv; b0 += tile) {
-          std::vector<double> g(tile * tile), x(tile * tile);
+          const auto tile_elements = static_cast<std::size_t>(tile) * tile;
+          std::vector<double> g(tile_elements), x(tile_elements);
           std::vector<double> ea(tile, ref.orbital_energies[no]);
           std::vector<double> eb(tile, ref.orbital_energies[no]);
           for (unsigned a = 0; a < tile; ++a)
