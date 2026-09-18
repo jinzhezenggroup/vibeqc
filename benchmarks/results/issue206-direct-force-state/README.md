@@ -21,6 +21,11 @@ and no Release, tag or external copy was created. The
 [history snapshot](history-snapshot.manifest.json) records every path, size and
 SHA-256. All 66 entries were restored and verified before checkout removal.
 
+Integration must use a **merge commit**, not squash or rebase: the pinned
+snapshot revision must remain an ancestor of the default branch after PR-branch
+cleanup. Repository settings already allow merge commits; no setting change is
+needed. The checkout compaction does not imply a reduction in Git-history size.
+
 Each historical matrix retains `retained-samples.json`: all seven paired scalar
 errors, raw timings, convergence states, settings, input hashes, build identities and
 original failed verdicts. Full force arrays and journals are recovered with:
