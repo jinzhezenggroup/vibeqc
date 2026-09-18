@@ -143,6 +143,10 @@ class Mp2Prepared final : public PreparedCalculation {
         last_->response_absolute_residual = force_diagnostic->response.residual_norm;
         last_->response_relative_residual = force_diagnostic->response.relative_residual;
         last_->response_workspace_bytes = force_diagnostic->response.workspace_bytes;
+        last_->measured_response_workspace_peak_bytes =
+            force_diagnostic->response.measured_workspace_peak_bytes;
+        last_->response_workspace_allocation_count =
+            force_diagnostic->response.workspace_allocation_count;
         last_->derivative_workspace_bytes = force_diagnostic->derivative_workspace_bytes;
         last_->planned_endpoint_peak_bytes =
             std::max(reference_capacity_, force_diagnostic->planned_endpoint_peak_bytes);

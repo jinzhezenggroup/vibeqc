@@ -7,6 +7,8 @@
 
 namespace vibeqc::response {
 namespace {
+using WorkspaceVector = runtime::TrackedVector<double>;
+
 std::size_t checked_add(std::size_t first, std::size_t second) {
   if (second > std::numeric_limits<std::size_t>::max() - first)
     throw std::overflow_error("GMRES workspace size overflow");
@@ -29,7 +31,7 @@ double relative_residual(double residual, double rhs) {
   return residual == 0.0 ? 0.0 : std::numeric_limits<double>::infinity();
 }
 
-GmresResult result_for(const GmresPlan& plan, std::vector<double> solution, GmresStatus status,
+GmresResult result_for(const GmresPlan& plan, WorkspaceVector solution, GmresStatus status,
                        double residual, double rhs_norm, std::size_t iterations,
                        std::size_t restarts, std::size_t operator_actions,
                        std::size_t preconditioner_actions) {
@@ -43,6 +45,11 @@ GmresResult result_for(const GmresPlan& plan, std::vector<double> solution, Gmre
   result.operator_actions = operator_actions;
   result.preconditioner_actions = preconditioner_actions;
   result.workspace_bytes = plan.workspace_bytes;
+  if (const auto counter = result.solution.get_allocator().counter()) {
+    const auto measured = counter->snapshot();
+    result.measured_workspace_peak_bytes = measured.peak_bytes;
+    result.workspace_allocation_count = measured.allocation_count;
+  }
   return result;
 }
 
@@ -112,7 +119,8 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
   if (plan.options.max_workspace_bytes < plan.workspace_bytes)
     return result_for(plan, {}, GmresStatus::workspace_limit,
                       std::numeric_limits<double>::infinity(), 0.0, 0, 0, 0, 0);
-  std::vector<double> x(n, 0.0);
+  const runtime::TrackedAllocator<double> allocator(std::make_shared<runtime::AllocationCounter>());
+  WorkspaceVector x(n, 0.0, allocator);
   if (rhs.size() != n || !finite(rhs) ||
       (!initial_guess.empty() && (initial_guess.size() != n || !finite(initial_guess))) ||
       (!diagonal_preconditioner.empty() &&
@@ -152,7 +160,7 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
   }
   const double target =
       std::max(plan.options.absolute_tolerance, plan.options.relative_tolerance * rhs_norm);
-  std::vector<double> image(n), residual(rhs.begin(), rhs.end());
+  WorkspaceVector image(n, 0.0, allocator), residual(rhs.begin(), rhs.end(), allocator);
   if (!initial_guess.empty()) {
     if (!apply_checked(x, image))
       return result_for(plan, std::move(x), GmresStatus::nonfinite_operator,
@@ -173,11 +181,14 @@ GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
                       operator_actions, preconditioner_actions);
 
   const auto restart = plan.restart;
-  std::vector<double> basis((restart + 1) * n), preconditioned(restart * n);
-  std::vector<double> hessenberg((restart + 1) * restart);
-  std::vector<double> cosine(restart), sine(restart), transformed(restart + 1);
-  std::vector<double> work(n), candidate(n), candidate_image(n), candidate_residual(n);
-  std::vector<double> best_x(x), best_residual_vector(residual), coefficients(restart);
+  WorkspaceVector basis((restart + 1) * n, 0.0, allocator),
+      preconditioned(restart * n, 0.0, allocator);
+  WorkspaceVector hessenberg((restart + 1) * restart, 0.0, allocator);
+  WorkspaceVector cosine(restart, 0.0, allocator), sine(restart, 0.0, allocator),
+      transformed(restart + 1, 0.0, allocator);
+  WorkspaceVector work(n, 0.0, allocator), candidate(n, 0.0, allocator),
+      candidate_image(n, 0.0, allocator), candidate_residual(n, 0.0, allocator);
+  WorkspaceVector best_x(x), best_residual_vector(residual), coefficients(restart, 0.0, allocator);
   std::size_t iterations = 0, restarts = 0, stagnation = 0;
 
   while (iterations < plan.options.max_iterations) {

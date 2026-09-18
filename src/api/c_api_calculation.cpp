@@ -180,6 +180,9 @@ vibeqc_status vibeqc_calculation_get_correlation_diagnostic(
   const auto value = calculation->plan->correlation_diagnostic();
   if (!value) return VIBEQC_STATUS_NOT_IMPLEMENTED;
   std::memcpy(diagnostic, &*value, std::min<std::size_t>(caller_size, sizeof(*diagnostic)));
+  // Keep the caller's actual capacity. Publishing the producer's larger size
+  // would make a repeated query overrun a legacy caller's unchanged buffer.
+  diagnostic->struct_size = caller_size;
   return VIBEQC_STATUS_SUCCESS;
 }
 

@@ -495,6 +495,13 @@ typedef struct vibeqc_correlation_diagnostic {
   /** Bit 0=response converged, 1=shell-streamed derivative, 2=no global derivative tensors. */
   uint64_t force_provenance_flags;
   char response_operator_hash[65];
+  /** Actual high-water payload of GMRES-owned arrays, including its result.
+   * Excludes input spans, operator callbacks, other MP2 stages and allocator
+   * overhead. Zero when unmeasured; never a complete endpoint measurement.
+   */
+  uint64_t measured_response_workspace_peak_bytes;
+  /** Successful allocation events in the same GMRES ownership domain. */
+  uint64_t response_workspace_allocation_count;
 } vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */

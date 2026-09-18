@@ -15,6 +15,8 @@ def test_mp2_documentation_states_exact_force_and_batch_boundary():
         "RI-MP2 forces remain unsupported",
         "per-item",
         "measured_endpoint_peak_bytes",
+        "measured_response_workspace_peak_bytes",
+        "response_workspace_allocation_count",
         "issue193-conventional-force-b2",
     ):
         assert claim in text

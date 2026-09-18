@@ -196,8 +196,59 @@ void options_and_workspace_boundaries() {
           "one-byte-short workspace was not rejected before the operator");
   require(short_result.workspace_bytes == probe.workspace_bytes,
           "workspace rejection lost the exact requirement");
-  require(short_result.solution.empty(),
-          "workspace refusal allocated a dimension-sized solution");
+  require(short_result.solution.empty(), "workspace refusal allocated a dimension-sized solution");
+}
+
+void measured_workspace_owns_returned_storage() {
+  const std::array<double, 2> rhs{1.0, 2.0};
+  const auto plan = vibeqc::response::prepare_gmres(2, {});
+  std::shared_ptr<vibeqc::runtime::AllocationCounter> counter;
+  {
+    const auto result = vibeqc::response::solve_gmres(
+        plan,
+        [](auto in, auto out) {
+          out[0] = 2.0 * in[0];
+          out[1] = 3.0 * in[1];
+        },
+        rhs);
+    counter = result.solution.get_allocator().counter();
+    require(counter != nullptr && result.converged(), "successful response is unmeasured");
+    const auto measured = counter->snapshot();
+    require(measured.live_bytes == result.solution.capacity() * sizeof(double),
+            "completed solve retained scratch or lost its output accounting");
+    require(measured.peak_bytes == result.measured_workspace_peak_bytes &&
+                measured.allocation_count == result.workspace_allocation_count &&
+                result.measured_workspace_peak_bytes > measured.live_bytes &&
+                result.measured_workspace_peak_bytes < plan.workspace_bytes,
+            "response measurement is not actual allocation high-water usage");
+  }
+  require(counter->snapshot().live_bytes == 0, "returned response leaked its live allocation");
+
+  const auto zero = vibeqc::response::solve_gmres(plan, [](auto, auto) {}, std::array<double, 2>{});
+  require(zero.measured_workspace_peak_bytes == 3 * 2 * sizeof(double) &&
+              zero.workspace_allocation_count == 3,
+          "zero-RHS measurement includes unused Krylov workspace or substitutes its plan");
+
+  auto refused_plan = plan;
+  refused_plan.options.max_workspace_bytes = plan.workspace_bytes - 1;
+  const auto refused = vibeqc::response::solve_gmres(refused_plan, [](auto, auto) {}, rhs);
+  require(refused.measured_workspace_peak_bytes == 0 && refused.workspace_allocation_count == 0 &&
+              !refused.solution.get_allocator().counter(),
+          "workspace refusal allocated instrumentation or manufactured a measurement");
+
+  bool threw = false;
+  try {
+    (void)vibeqc::response::solve_gmres(
+        plan, [](auto, auto) { throw std::runtime_error("injected response operator failure"); },
+        rhs);
+  } catch (const std::runtime_error&) {
+    threw = true;
+  }
+  require(threw, "operator exception was swallowed by instrumentation");
+  const auto retry = vibeqc::response::solve_gmres(
+      plan, [](auto in, auto out) { std::copy(in.begin(), in.end(), out.begin()); }, rhs);
+  require(retry.converged() && retry.measured_workspace_peak_bytes > 0,
+          "failed response contaminated a later allocation domain");
 }
 
 void stable_norm_extremes() {
@@ -225,6 +276,7 @@ int main() {
     breakdown_and_nonfinite_paths();
     options_and_workspace_boundaries();
     stable_norm_extremes();
+    measured_workspace_owns_returned_storage();
     std::cout << "Native GMRES contracts passed\n";
     return 0;
   } catch (const std::exception& error) {

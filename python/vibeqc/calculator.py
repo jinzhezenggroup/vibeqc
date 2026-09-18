@@ -115,6 +115,8 @@ class CorrelationResult:
     measured_endpoint_peak_bytes: int
     force_provenance_flags: int
     response_operator_hash: str
+    measured_response_workspace_peak_bytes: int
+    response_workspace_allocation_count: int
 
 
 @dataclass(frozen=True)

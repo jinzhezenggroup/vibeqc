@@ -301,6 +301,23 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
     assert abs(calc.singlepoint(atoms).energy - first.energy) <= 1e-12
 
 
+def test_public_force_reports_response_measurement_without_promoting_endpoint():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    calc = Calculator(method="mp2", basis="sto-3g", device="cpu")
+    energy = calc.singlepoint(atoms, properties=("energy",)).correlation
+    assert energy.measured_response_workspace_peak_bytes == 0
+    assert energy.response_workspace_allocation_count == 0
+    force = calc.singlepoint(atoms, properties=("energy", "forces")).correlation
+    assert (
+        0
+        < force.measured_response_workspace_peak_bytes
+        < force.response_workspace_bytes
+    )
+    assert force.response_workspace_allocation_count > 0
+    # Response-only telemetry cannot satisfy complete-endpoint qualification.
+    assert force.measured_endpoint_peak_bytes == 0
+
+
 def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device="cpu")
@@ -407,6 +424,12 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution():
         assert diag.response_absolute_residual < 1e-10
         assert 0.0 <= diag.response_relative_residual <= 1.0
         assert diag.response_workspace_bytes > 0
+        assert (
+            0
+            < diag.measured_response_workspace_peak_bytes
+            < diag.response_workspace_bytes
+        )
+        assert diag.response_workspace_allocation_count > 0
         assert diag.derivative_workspace_bytes > 0
         # This bounded slice has a plan but no endpoint allocation telemetry.
         assert diag.measured_endpoint_peak_bytes == 0
@@ -432,6 +455,44 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution():
         )
         assert legacy.contents.opposite_spin_energy < 0
         assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
+        assert legacy.contents.struct_size == legacy_size
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation, ct.cast(legacy, ct.POINTER(_native.CorrelationDiagnostic))
+            ),
+        )
+        assert legacy.contents.struct_size == legacy_size
+        assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
+
+        # The preceding B2 ABI prefix must also remain bounded by struct_size.
+        class PreviousB2Diagnostic(ct.Structure):
+            _fields_ = _native.CorrelationDiagnostic._fields_[:-2]
+
+        previous_size = ct.sizeof(PreviousB2Diagnostic)
+        storage = (ct.c_ubyte * (previous_size + 32))(*([0xA5] * (previous_size + 32)))
+        previous = ct.cast(storage, ct.POINTER(PreviousB2Diagnostic))
+        previous.contents.struct_size = previous_size
+        previous.contents.abi_version = _native.ABI_VERSION
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation,
+                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
+            ),
+        )
+        assert previous.contents.response_operator_hash == b"rhf-canonical-response-v1"
+        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
+        assert previous.contents.struct_size == previous_size
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation,
+                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
+            ),
+        )
+        assert previous.contents.struct_size == previous_size
+        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
 
         failed_forces = (ct.c_double * 6)(*([456.0] * 6))
         failed = _native.ResultDescriptor(

@@ -263,6 +263,8 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("measured_endpoint_peak_bytes", ctypes.c_uint64),
         ("force_provenance_flags", ctypes.c_uint64),
         ("response_operator_hash", ctypes.c_char * 65),
+        ("measured_response_workspace_peak_bytes", ctypes.c_uint64),
+        ("response_workspace_allocation_count", ctypes.c_uint64),
     ]
 
 

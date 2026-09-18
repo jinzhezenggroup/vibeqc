@@ -195,7 +195,13 @@ and cannot reuse an old reference or MO tile.
 Force diagnostics append response iterations/restarts, true absolute and
 relative residuals, response and derivative workspace bytes,
 `planned_endpoint_peak_bytes`, `measured_endpoint_peak_bytes`, force provenance
-flags, equation identity, and response-operator identity. A zero
+flags, equation identity, and response-operator identity. `measured_response_workspace_peak_bytes` separately reports the actual
+allocator high-water payload of GMRES-owned arrays, including its returned
+solution; `response_workspace_allocation_count` counts successful allocations
+in that domain. Both are zero for energy-only execution. The response-only
+measurement excludes caller-owned inputs, operator-callback buffers, other MP2
+stages, and allocator overhead. It must not populate the complete endpoint field.
+A zero
 `measured_endpoint_peak_bytes` means that endpoint allocation telemetry is
 unavailable; it is not a zero-memory observation or a copy of the plan. This
 slice currently reports that unavailable sentinel, so the measured-resource

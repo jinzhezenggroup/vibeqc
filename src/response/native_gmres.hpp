@@ -3,7 +3,8 @@
 #include <cstddef>
 #include <functional>
 #include <span>
-#include <vector>
+
+#include "runtime/tracked_allocator.hpp"
 
 namespace vibeqc::response {
 
@@ -40,7 +41,7 @@ struct GmresPlan {
 
 struct GmresResult {
   /** Empty on workspace refusal; no dimension-sized output is allocated. */
-  std::vector<double> solution;
+  runtime::TrackedVector<double> solution;
   GmresStatus status{GmresStatus::nonfinite_input};
   double residual_norm{};
   double relative_residual{};
@@ -49,6 +50,12 @@ struct GmresResult {
   std::size_t operator_actions{};
   std::size_t preconditioner_actions{};
   std::size_t workspace_bytes{};
+  /** Actual high-water mark of GMRES-owned array payload, including its result.
+   * Excludes input spans, operator callback allocations and allocator overhead;
+   * this is not a complete MP2 endpoint measurement. Zero on admission refusal.
+   */
+  std::size_t measured_workspace_peak_bytes{};
+  std::size_t workspace_allocation_count{};
 
   [[nodiscard]] bool converged() const noexcept {
     return status == GmresStatus::initial_residual || status == GmresStatus::converged;
