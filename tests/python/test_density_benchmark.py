@@ -69,7 +69,7 @@ def test_probe_binds_assigned_device_then_qualifies_requested_profile(
 
     def query(arguments):
         assert "--id=0000:03:00.0" in arguments
-        assert "compute_cap" in arguments[3]
+        assert "compute_cap" in arguments[2]
         return row
 
     monkeypatch.setattr(benchmark, "capture", query)
