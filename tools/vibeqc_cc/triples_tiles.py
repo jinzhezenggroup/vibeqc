@@ -326,7 +326,8 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
     the full virtual space [0, nvir) is used (single-tile mode).
 
     Input tensors are sized for the sub-block: virtual dim = nvir,
-    occupied dim = nocc.
+    occupied dim = nocc.  The caller is responsible for uploading the
+    tile-appropriate sub-blocks; see ``CudaTriplesTiles.run_tiles``.
     """
     if any(type(n) is not int or n < 1 for n in (nocc, nvir)):
         raise ValueError("triples require nonempty occupied and virtual spaces")
