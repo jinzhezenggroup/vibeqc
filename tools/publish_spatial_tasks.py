@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 
+from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.evidence import (
     canonical_hash,
     new_evidence,
@@ -429,15 +430,9 @@ def main():
             f".artifacts/234-{backend}-final.json",
         ]
         if backend == "cuda":
-            command = [
-                "srun",
-                "--partition=main",
-                "--gres=gpu:5090:1",
-                "--nodes=1",
-                "--ntasks=1",
-                "--time=00:10:00",
-                *command,
-            ]
+            command = resolve_cuda_execution_profile(
+                default_slurm_time="00:10:00"
+            ).wrap(command)
         specification = {
             "source": {"revision": run["revision"], "dirty": False},
             "reproduction": {
