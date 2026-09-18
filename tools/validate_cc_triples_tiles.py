@@ -43,10 +43,8 @@ from tools.vibeqc_cc.triples import triples_energy
 from tools.vibeqc_cc.triples_tiles import (
     TriplesTileEnumerator,
     build_tile_triples_program,
-    tile_triples_energy,
     tile_triples_energy_masked,
 )
-from tools.vibeqc_validation.schema import file_hash
 
 ENDPOINTS_DIR = ROOT / "tests/reference_data/cc/endpoints"
 GROUND_TRUTH = {
@@ -178,7 +176,10 @@ def run(args):
             assert abs(cpu_et - expected_et) <= 1e-9, (
                 f"{name}: E_T={cpu_et} vs truth={expected_et}"
             )
-            print(f"  |dE_T| vs ground truth = {abs(cpu_et - expected_et):.2e}", flush=True)
+            print(
+                f"  |dE_T| vs ground truth = {abs(cpu_et - expected_et):.2e}",
+                flush=True,
+            )
 
         mol_record = {
             "name": name,
@@ -206,7 +207,9 @@ def run(args):
                     max_bytes=max_bytes,
                     schedule=TensorSchedule(),
                 )
-                print(f"plan_ok peak={plan.peak_bytes//1024} KiB", flush=True, end=" ")
+                print(
+                    f"plan_ok peak={plan.peak_bytes // 1024} KiB", flush=True, end=" "
+                )
 
                 if args.compile_only:
                     artifact = compile_resident(plan, compiler, cache)
@@ -232,15 +235,23 @@ def run(args):
                 t0 = time.perf_counter()
                 with PreparedResident(plan, artifact, device=0) as resident:
                     # CPU reference per-tile with masking
-                    enumerator_1 = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=nvir)
+                    enumerator_1 = TriplesTileEnumerator(
+                        nocc, nvir, vir_chunk_size=nvir
+                    )
                     cpu_per_tile = []
                     for t in enumerator_1:
                         cpu_per_tile.append(
                             tile_triples_energy_masked(
-                                t, nocc,
-                                feeds["ovvv"], feeds["ovoo"], feeds["ovov"],
-                                feeds["fov"], feeds["t1"], feeds["t2"],
-                                feeds["eps_o"], feeds["eps_v"],
+                                t,
+                                nocc,
+                                feeds["ovvv"],
+                                feeds["ovoo"],
+                                feeds["ovov"],
+                                feeds["fov"],
+                                feeds["t1"],
+                                feeds["t2"],
+                                feeds["eps_o"],
+                                feeds["eps_v"],
                             )
                         )
 
@@ -340,22 +351,34 @@ def run(args):
                     f" tiles={r['max_tile_diff']:.2e}"
                     f" det={r['deterministic']}"
                 )
-                if not r["de_total_ok"] or not r["per_tile_ok"] or not r["deterministic"]:
+                if (
+                    not r["de_total_ok"]
+                    or not r["per_tile_ok"]
+                    or not r["deterministic"]
+                ):
                     all_ok = False
-                    print(f"FAIL {mol['name']} {b['budget_mib']}MiB: {status}", flush=True)
+                    print(
+                        f"FAIL {mol['name']} {b['budget_mib']}MiB: {status}", flush=True
+                    )
                 else:
-                    print(f"PASS {mol['name']} {b['budget_mib']}MiB: {status}", flush=True)
+                    print(
+                        f"PASS {mol['name']} {b['budget_mib']}MiB: {status}", flush=True
+                    )
 
     if not all_ok:
         raise SystemExit(1)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="GPU triples-tiles validation for #150 B")
+    parser = argparse.ArgumentParser(
+        description="GPU triples-tiles validation for #150 B"
+    )
     parser.add_argument("--output", required=True, help="Output directory for results")
     parser.add_argument("--cache", required=True, help="Compilation cache directory")
     parser.add_argument("--nvcc", required=True, help="Path to nvcc")
-    parser.add_argument("--architecture", required=True, help="CUDA architecture (e.g. sm_90)")
+    parser.add_argument(
+        "--architecture", required=True, help="CUDA architecture (e.g. sm_90)"
+    )
     parser.add_argument(
         "--compile-only",
         action="store_true",
