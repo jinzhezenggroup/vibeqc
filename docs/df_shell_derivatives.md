@@ -2,21 +2,17 @@
 
 `VIBEQC_DF_WEIGHTED_EXECUTION=shell` selects generated weighted three-center
 derivatives across all 64 s/p/d/f shell classes. `shell-sp` retains the original
-seven non-SSS s/p classes as a comparison subset. Clean endpoints qualify the
-combined `shell` / `compact` / `blas` / `pinned-panels` default for resident
-192--384-AO sm_120 device-metric execution and the qualified 768-AO occupied
-response. Other sizes, backends, source-backed
-values, serial mappings and attribution probes retain the previous defaults.
-In particular, small UHF remains generic because pinned allocations and shell
-launches regress its complete endpoint. The initial s/p-only prototype did not
-resolve the 192-to-384-AO force scaling problem in #308.
+seven non-SSS s/p classes as a comparison subset. Automatic consumer admission
+uses the centralized [work profile](df_tuning.md#derivative-consumer-admission),
+separate from device-metric/source/state/resource correctness gates. Small work
+and unknown target profiles retain the generic consumer. Serial mappings and
+attribution probes retain their explicit fallbacks. The packed occupied-response
+layout remains separately qualified; shell admission never grants that layout.
 
-The measured 384-AO batch-one/four complete-force means fall from 12.007/47.905 s
-to 3.261/13.498 s with compact scheduling. Corresponding 192-to-384 ratios fall
-from 14.94/14.87 to 12.14/12.94. This is a material endpoint improvement, with
-substantial scaling work still remaining. The selection evidence, numerical
-gates and qualification scope are retained in
-`benchmarks/results/issue308-shell-schedules/`.
+Historical #308 shell-schedule measurements remain in
+`benchmarks/results/issue308-shell-schedules/`; they are not current endpoint
+latencies. The current work-based decision is recorded in the
+[admission note](../.agents/notes/implemented/performance/2026-09-19-df-work-admission.md).
 
 The scalar and shell consumers use the same generated primitive geometry and
 Boys routine. The compiler builds each shell class's axis-moment cache from
@@ -66,16 +62,17 @@ angular-only traversal. Primitive counts are uniform runtime parameters; the
 generated derivative equations and component schedule are unchanged. The
 control is recorded in prepared replay metadata.
 
-The default `auto` selects packets only on RTX 5090 for the measured spherical
-384/384-AO dense symmetric response or the already qualified 768/768-AO packed
-occupied response, with one density term and the full `shell` / `compact`
-schedule. Both bases must match the measured six-bin water def2-SVP shell
-histogram: `(l,nprim) = (0,1),(0,3),(0,5),(1,1),(1,3),(2,1)` with counts
-`N/6,N/12,N/24,N/8,N/24,N/24`. Other shapes, signatures, representations,
-backends and diagnostic schedules retain angular-only execution. Explicit
-`on` and `packet` remain available for comparisons outside this profile.
-The decision and rejected alternatives are retained in the
-[signature scheduling note](../.agents/notes/implemented/performance/2026-09-15-df-signature-packets.md).
+The default `auto` selects packets through the centralized primitive-work
+profile, with one density term, spherical bases, symmetric/packed pairs and a
+full `shell` / `compact` consumer. It requires heterogeneous contraction lengths
+within at least one angular class. There is no water shell fingerprint, exact
+AO/rank pair or equal orbital/auxiliary dimension requirement. Unknown profiles,
+small primitive work, homogeneous contractions and incompatible diagnostic
+schedules retain angular-only execution. Explicit `on` and `packet` controls
+remain available for qualification. The original
+[signature scheduling note](../.agents/notes/implemented/performance/2026-09-15-df-signature-packets.md)
+preserves historical alternatives; the current work profile supersedes its
+endpoint-specific admission boundary.
 
 Each signature preserves the original shell order, so auxiliary-panel clipping
 still uses the same public AO offsets. A symmetric or packed same-signature

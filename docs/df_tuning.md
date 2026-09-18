@@ -91,6 +91,44 @@ checkpoints may retain retired controls as source provenance; importing their
 density requires `allow_warm=True`, and re-export preserves those controls.
 See the [selector retirement note](../.agents/notes/implemented/compatibility/2026-09-16-df-math-selector-retirement.md).
 
+## Derivative consumer admission
+
+`src/scf/df_derivative_policy.hpp` owns the initial conservative sm_120 work
+profile. This is an empirical scheduling envelope, not a universal latency
+prediction or a mathematical capability declaration:
+
+- Full shell execution requires estimated public weight work `N_AO² * N_aux`
+  of at least `2^18`.
+- Signature packets additionally require estimated ordered primitive work
+  `P_orbital² * P_auxiliary` of at least `2^22`, with contraction-length
+  variation within an angular class. `P` sums primitive counts over shells.
+
+Comparisons use overflow-safe ceiling divisions. Unknown architectures and
+smaller work retain the generic/angular-only alternatives. The existing
+source, metric, derivative schedule, representation, response-state and arena
+checks still decide correctness eligibility. The profile does not authorize
+new mathematical kernels, change precision or screening, or bypass allocations.
+Generated architecture/class manifests remain the separate lowering authority.
+
+The shell and packet rules generalize across AO/auxiliary ratios and non-water
+fixtures without storing a molecular histogram. They do not replace the separate
+packed occupied-response layout selector. That remaining selector and wider
+profile qualification stay under #444/#445; no universal cross-device speedup
+is implied.
+
+Schedule lookups query only CUDA compute-capability attributes through
+`runtime/cuda_architecture.hpp`. They do not fetch the complete device property
+record per auxiliary panel. The helper neither caches device ordinals nor masks
+runtime errors; full product identity is queried only where a separate retained
+compatibility boundary still requires it.
+
+The [decision note](../.agents/notes/implemented/performance/2026-09-19-df-work-admission.md)
+and [evidence](../benchmarks/results/issue445-df-work-admission/README.md)
+retain small-system losses, holdouts, rejected query overhead, numerical gates
+and the measured domain. `benchmarks.df_admission_probe` compares existing
+controls against an independent full-force reference; it never edits this
+profile or promotes a result automatically.
+
 ## Force screening contract
 
 Screening applies only to weighted SSS three-center derivatives. Higher classes,

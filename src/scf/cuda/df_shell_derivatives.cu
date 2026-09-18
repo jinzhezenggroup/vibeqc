@@ -8,6 +8,7 @@
 
 #include "generated_df_production.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_architecture.hpp"
 #include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_shell_derivatives.cuh"
 #include "scf/cuda/df_shell_kernel.cuh"
@@ -274,10 +275,8 @@ cudaError_t production_target(unsigned& architecture) {
   if (policy != "auto" && policy != "legacy" && policy != "candidate") return cudaErrorInvalidValue;
   if (!generated::production_policy_available || policy == "legacy") return cudaSuccess;
   int device = 0;
-  cudaDeviceProp properties{};
   auto error = cudaGetDevice(&device);
-  if (error == cudaSuccess) error = cudaGetDeviceProperties(&properties, device);
-  if (error == cudaSuccess) architecture = 10 * properties.major + properties.minor;
+  if (error == cudaSuccess) error = runtime::cuda_architecture(device, architecture);
   return error;
 }
 
