@@ -1,1 +1,0 @@
-cd /inspire/qb-ilm/project/chemicalreaction/czxs25220150/_150b && curl -sL -o validate_cc_triples_tiles.py https://raw.githubusercontent.com/xshengrui/vibeqc/claude/issue-150-b-tiles/tools/validate_cc_triples_tiles.py && ls -la
