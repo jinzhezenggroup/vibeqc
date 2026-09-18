@@ -8,7 +8,10 @@ version = "0.1.0"
 description = "VibeQC: GPU-native batched quantum chemistry"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "GPL-3.0-or-later"}
+license = "GPL-3.0-or-later"
+# The native wheel contains Implib-generated code, so its MIT notice must ship
+# alongside the project license; default root-level license globs miss it.
+license-files = ["LICENSE", "LICENSES/*.txt", "THIRD_PARTY_NOTICES.md"]
 dependencies = [
   "numpy>=1.24",
   "nvidia-cublas-cu12>=12.9.1.4; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",

@@ -76,6 +76,19 @@ jobs:
           assert len(wheels) == 1, wheels
           with zipfile.ZipFile(wheels[0]) as archive:
               names = set(archive.namelist())
+              # Check the repaired artifact: vendored trampoline notices must
+              # reach users together with the native code generated from them.
+              metadata_dirs = {
+                  name.split("/", 1)[0]
+                  for name in names
+                  if name.endswith(".dist-info/METADATA")
+              }
+              assert len(metadata_dirs) == 1, metadata_dirs
+              metadata_dir = metadata_dirs.pop()
+              for license_file in ("LICENSE", "LICENSES/implib-MIT.txt", "THIRD_PARTY_NOTICES.md"):
+                  installed_notice = f"{metadata_dir}/licenses/{license_file}"
+                  assert installed_notice in names, installed_notice
+                  assert archive.read(installed_notice) == pathlib.Path(license_file).read_bytes()
               assert "vibeqc/lib/libvibeqc.so" in names, sorted(
                   name
                   for name in names
