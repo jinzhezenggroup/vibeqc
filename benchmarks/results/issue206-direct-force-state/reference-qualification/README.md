@@ -1,45 +1,60 @@
 # Explicit reference qualification follow-up
 
-The tolerance-only reference policy is **not qualified**. The historical failed
-campaign remains unchanged. The first two exact 96-AO geometries contain failed
-convergence controls despite tighter requested thresholds; the partial sweep
-was stopped after those decisive failures, not relabeled as complete or passing.
+**The full-Fock reference policy is qualified; native integration acceptance is
+not established by this reference-only experiment.** Historical tolerance-only
+and paired-matrix failures remain failures.
 
-`incremental-diagnostic.json` retains every completed scalar diagnostic, including
-nonconverged repeats, incomplete setting counts, frozen-library identity and
-hashes of full raw records retained on node3. Two earlier script attempts failed
-at stock API calls before usable samples; their records remain in that manifest.
-The two failed attempts to allocate a fresh full-Fock experiment (Slurm jobs
-10026 and 10028) produced no molecular acceptance result. No passing reference policy is established by this directory.
+## Completed full-Fock GPU experiment
 
-The committed benchmark controls preserve historical defaults. An explicitly
-qualified experiment can request, for example:
+Slurm job 10035 completed four exact 96-AO geometries, thresholds 1e-9, 1e-10,
+1e-11 and 1e-12, and three repeats: all 48 samples are retained in
+[full-fock-diagnostic.json](full-fock-diagnostic.json). The stock GPU4PySCF
+provider used `direct_scf=False`; no CPU replacement or native change was used
+in this experiment. CPU calculations remain an independent accuracy oracle.
+
+The 1e-11 setting passes the predeclared 3e-12 Eh/bohr qualification margin:
+
+- Maximum CPU-oracle force error at 1e-11: 2.311040248059726e-12.
+- Maximum CPU-oracle force error in the 1e-12 controls: 2.864375403532904e-12.
+- Maximum force change under tightening: 9.49906819869284e-13.
+- Every 1e-11 and 1e-12 sample converged; looser settings remain unqualified.
+
+The record retains all scalar observations, exact geometries, CPU oracle forces,
+package/source identities, and hashes of full force and frozen-density arrays.
+The complete raw report remains at its recorded ignored node3 path and hash.
+[sweep-full-fock.py.txt](sweep-full-fock.py.txt) preserves the exact executed
+runner bytes; its historical input paths must be restored before replay.
+
+## Historical failures
+
+[incremental-diagnostic.json](incremental-diagnostic.json) retains every
+completed scalar sample from the earlier tolerance-only sweep, including
+nonconverged repeats and incomplete setting counts. Its 30 completed samples
+failed qualification; they are not relabeled by the new full-Fock experiment.
+The initial full-Fock allocation attempts 10026/10028 produced no molecular
+result. All historical raw records remain separate from job 10035.
+
+## Complete endpoint qualification
+
+Use the qualified reference only in an explicitly labeled new campaign, after
+building and validating its native source:
 
 ```sh
 python benchmarks/real_molecule_gate.py --density-fitting none --repeats 7 \
   --reference-gradient-tolerance 96=1e-11 --reference-full-fock 96 \
-  --output-directory <fresh-output-directory>
+  --output-directory .artifacts/pr427-matrix-fresh
 ```
 
-This is a command example, **not an accepted setting or a claim that it passes**.
-Full-density rebuilding applies only to the selected stock reference arms; its
-entire cost remains in endpoint timing. Native settings and numerical error
-gates are unchanged. The 192-AO arms keep their historical reference settings.
+Set `VIBEQC_LIBRARY` to that campaign's verified production Release/AOT library.
+All four endpoints and seven interleaved pairs remain mandatory. Complete stock
+endpoint timing includes the extra full-Fock/convergence work. The 192-AO
+reference settings and every native, iteration, energy, force and speed gate
+remain unchanged. Defaults have not changed.
 
-## Completed work and remaining qualification
-
-Benchmark controls are committed in `c2e93d347ca4203d2efff35016a47b74210912f9`.
-Both host test files passed all 53 tests; applicable repository hooks passed.
-Native production code and the measured library are unchanged. This follow-up
-has not rerun the native test suite and does not imply a new native test result.
-
-The next scientific step is the separately specified full-Fock stock sweep;
-its cause hypothesis has not been verified on GPU. Only after that policy meets
-the declared CPU-agreement and tightening-stability criteria may a complete
-four-endpoint, seven-pair campaign qualify it. The exact prepared runners and all
-full raw records remain in the node3 artifact directory recorded in the JSON.
-No outstanding GPU job for this follow-up remains after the bounded allocation
-failures. PR #427 remains draft; issue #206 remains open.
+The master-integration CPU library passed 230 targeted host regressions. The
+production CUDA build and its native tests/full paired matrix are separate
+qualification steps; neither historical 49-test native results nor this
+reference-only pass authorizes a merge. Issue #206 remains open.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

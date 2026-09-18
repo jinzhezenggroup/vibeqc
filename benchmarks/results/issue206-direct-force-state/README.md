@@ -12,6 +12,30 @@ P F(P) P / 2 for RHF and P_sigma F_sigma P_sigma for UHF. Coarse mixed items
 retain their earlier stop; exact neighbors and mandatory FP64 refinement apply
 the physical criterion. Production uses no CPU reference products.
 
+## Historical record storage
+
+The original 66 records (3,692,876 bytes) remain byte-exact in existing Git
+history at `5ff708e3d51212f6baaa12efef346ebc172623ef`. 55 reports, source snapshots
+and work journals have left the current checkout; no Git history was rewritten,
+and no Release, tag or external copy was created. The
+[history snapshot](history-snapshot.manifest.json) records every path, size and
+SHA-256. All 66 entries were restored and verified before checkout removal.
+
+Each historical matrix retains `retained-samples.json`: all seven paired scalar
+errors, raw timings, convergence states, settings, input hashes, build identities and
+original failed verdicts. Full force arrays and journals are recovered with:
+
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/issue206-direct-force-state/history-snapshot.manifest.json \
+  --output .artifacts/pr427-historical-snapshot
+```
+
+Restore the complete snapshot before inspecting the original `manifest.json` or
+replaying its historical scripts. Later qualification runs are separate records;
+this storage change neither changes historical verdicts nor qualifies the
+post-merge build.
+
 ## Final build and unchanged external gates
 
 - Source identity: `7951fbce9d6bb0d39332e4a40c9a3919cfad0869e7f6fb360951c609dc33daa7`.
@@ -45,7 +69,7 @@ against the exact-geometry tight CPU oracle. The stock orbital-gradient norm
 paired force gate. Every native repeat stays within 3.30e-12 of that oracle.
 The 96/b4 point also fails, with paired maximum 3.70581e-11; its native/stock
 maxima against CPU are 4.24476e-12/3.56404e-11. Both 192-AO points pass.
-[The decomposition](diagnosis/final-direct-pairs.json) preserves all fourteen samples
+[The decomposition](https://github.com/njzjz-bot/vibeqc/blob/5ff708e3d51212f6baaa12efef346ebc172623ef/benchmarks/results/issue206-direct-force-state/diagnosis/final-direct-pairs.json) preserves all fourteen samples
 and the failed verdict; it is not a replacement acceptance run.
 
 The final binary passes 49 native tests, a retained independent-CPU OH public
@@ -75,7 +99,7 @@ force work; another omitted changed coordinates from an energy-only call.
 earlier source. Those samples are never substituted for final-source job 9890.
 
 The manifest indexes byte-exact input/output records and historical scripts.
-The scripts under [reproduction/](reproduction/) are saved as `.py.txt` to preserve
+The scripts under [reproduction/](https://github.com/njzjz-bot/vibeqc/tree/5ff708e3d51212f6baaa12efef346ebc172623ef/benchmarks/results/issue206-direct-force-state/reproduction/) are saved as `.py.txt` to preserve
 measured bytes. Restore their `.artifacts/issue206/` paths and original relative
 inputs, or adapt only those paths to this archive. Build with the retained
 configuration, use the recorded source patch, run native/independent correctness
