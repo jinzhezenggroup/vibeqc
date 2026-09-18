@@ -1,5 +1,6 @@
 """Canonical method composition above scientific compiler primitives."""
 
+from .matrix_function import SymmetricMatrixFunctionSpec
 from .spec import (
     METHOD_CATALOG,
     ExactExchangePrimitive,
@@ -16,6 +17,7 @@ __all__ = [
     "MethodIR",
     "MethodSpec",
     "SemilocalXCPrimitive",
+    "SymmetricMatrixFunctionSpec",
     "UnsupportedMethod",
     "resolve_method",
 ]
