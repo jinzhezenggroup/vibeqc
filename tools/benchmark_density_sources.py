@@ -50,6 +50,8 @@ from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixt
 from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
+from tools.vibeqc_validation.hardware import CUDA_BENCHMARK_PROFILES, qualify_cuda_device
+
 ROUTES = ("density_matrix", "orbitals")
 LAYOUTS = (("total", "unpolarized"), ("total", "polarized"), ("spin", "polarized"))
 BUDGETS = (128 << 20, 256 << 20)
@@ -61,13 +63,13 @@ def capture(argv):
     return subprocess.check_output(argv, text=True, timeout=60, cwd=ROOT).strip()
 
 
-def probe_gpu(nvcc):
-    """Bind hardware evidence to CUDA ordinal zero within Slurm's visibility.
+def probe_gpu(nvcc, profile):
+    """Bind provenance and capability checks to CUDA ordinal zero.
 
     NVML/nvidia-smi ordinals need not match remapped CUDA ordinals. Resolve
-    the PCI bus ID through the selected CUDA runtime, then query that device
-    explicitly, so another installed RTX 5090 cannot validate the wrong GPU.
-    This probe must run inside the benchmark's checked Slurm allocation.
+    the PCI bus ID through the selected CUDA runtime, query that device
+    explicitly, and qualify it by the requested hardware profile rather than
+    by a marketing product name.
     """
     runtime = ctypes.CDLL(str(nvcc.parent.parent / "lib64/libcudart.so"))
     pci_bus = runtime.cudaDeviceGetPCIBusId
@@ -78,22 +80,50 @@ def probe_gpu(nvcc):
     if status or not bus.value:
         raise RuntimeError(f"cannot identify the assigned CUDA device: {status}")
     bus_id = bus.value.decode("ascii")
+
+    runtime_version = ctypes.c_int()
+    get_runtime_version = runtime.cudaRuntimeGetVersion
+    get_runtime_version.argtypes = [ctypes.POINTER(ctypes.c_int)]
+    get_runtime_version.restype = ctypes.c_int
+    status = get_runtime_version(ctypes.byref(runtime_version))
+    if status:
+        raise RuntimeError(f"cannot query the assigned CUDA runtime: {status}")
+
     gpu = capture(
         [
             "nvidia-smi",
             "--id=" + bus_id,
-            "--query-gpu=name,uuid,driver_version,memory.total",
+            "--query-gpu=name,uuid,driver_version,memory.total,compute_cap",
             "--format=csv,noheader",
         ]
     )
     rows = list(csv.reader(gpu.splitlines(), skipinitialspace=True))
-    if (
-        len(rows) != 1
-        or len(rows[0]) != 4
-        or rows[0][0].strip() != "NVIDIA GeForce RTX 5090"
-    ):
-        raise RuntimeError("benchmark requires the assigned device to be an RTX 5090")
-    return {"gpu": gpu, "pci_bus_id": bus_id, "visible_device_ordinal": 0}
+    if len(rows) != 1 or len(rows[0]) != 5:
+        raise RuntimeError("cannot record provenance for the assigned CUDA device")
+    name, uuid, driver, memory, compute_capability = (
+        value.strip() for value in rows[0]
+    )
+    try:
+        capability = tuple(int(value) for value in compute_capability.split("."))
+    except ValueError as error:
+        raise RuntimeError(
+            "assigned CUDA device reported an invalid compute capability"
+        ) from error
+    qualification = qualify_cuda_device(
+        {"name": name, "compute_capability": capability}, profile
+    )
+    return {
+        "gpu": gpu,
+        "name": name,
+        "uuid": uuid,
+        "driver_version": driver,
+        "memory_total": memory,
+        "compute_capability": list(capability),
+        "cuda_runtime_version": runtime_version.value,
+        "qualification": qualification,
+        "pci_bus_id": bus_id,
+        "visible_device_ordinal": 0,
+    }
 
 
 def gate(actual, expected):
@@ -454,6 +484,15 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--samples", type=int, default=5)
     parser.add_argument(
+        "--hardware-profile",
+        choices=tuple(CUDA_BENCHMARK_PROFILES),
+        default="sm120",
+        help=(
+            "CUDA eligibility profile; rtx5090-reproduction retains the old "
+            "exact-device reproduction gate"
+        ),
+    )
+    parser.add_argument(
         "--spatial",
         action="store_true",
         help="measure prepared unscreened and screened local D/C XC",
@@ -464,6 +503,7 @@ def main():
         help="hash-checked larger independent SCF-state fixtures",
     )
     args = parser.parse_args()
+    hardware_profile = CUDA_BENCHMARK_PROFILES[args.hardware_profile]
     if args.workload_matrix and args.spatial:
         raise ValueError("workload matrix already declares its dense/local modes")
     if (
@@ -528,7 +568,7 @@ def main():
         backend_selected="cuda",
     )
     report["device"] = {
-        **probe_gpu(nvcc),
+        **probe_gpu(nvcc, hardware_profile),
         "host": platform.platform(),
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
         "slurm_job": capture(
@@ -536,7 +576,11 @@ def main():
         ),
         "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
     }
-    report["hardware"] = outcome("pass", probe="validated assigned RTX 5090 allocation")
+    report["hardware"] = outcome(
+        "pass",
+        probe="validated assigned CUDA hardware profile",
+        profile=hardware_profile.name,
+    )
     report["toolchain"] = {
         "python": sys.version,
         "numpy": np.__version__,
@@ -549,6 +593,7 @@ def main():
     }
     report["settings"] = {
         "device": "cuda",
+        "hardware_profile": hardware_profile.name,
         "fast_compile": False,
         "samples_per_route": args.samples,
         "collocation_backend": "cuda",
@@ -589,7 +634,10 @@ def main():
     }
     started = perf_counter()
     artifact = compile_cuda(
-        CudaCompilerAdapter(nvcc, cuda_target_info("sm_120")), args.cache
+        CudaCompilerAdapter(
+            nvcc, cuda_target_info(hardware_profile.target_architecture)
+        ),
+        args.cache,
     )
     report["cuda_artifact"] = artifact.metadata
     programs = {}
