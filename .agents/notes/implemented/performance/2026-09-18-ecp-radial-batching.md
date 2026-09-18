@@ -90,3 +90,21 @@ is recorded separately in `benchmarks/results/ecp-schedule-171/merge-validation.
 The merged ownership report is regenerated from current sources and measures
 the materialized ECP header; other unchanged generated-family entries are
 retained from current master.
+
+## Clarification: the production call site defines radial ordering
+
+The review of PR #458 observed that the old internal kernel decoded a radial
+index from the thread index. Taken alone, that body could permit competing
+radial threads if launched for several layers. The actual production caller
+in both `b78215e` and `1865c5a` instead passes `nr=1`, advances `dradii + r`
+in an ascending host loop, and queues every launch on the same stream. It
+therefore does not execute concurrent radial-layer atomics for an AO pair.
+
+The new kernel serializes up to four layers inside the pair-owning thread;
+its internal mapping changes, while the production sequence of per-layer
+FP64 updates remains ascending. The same triangular pair ownership and
+per-layer A/B/C updates handle coincident physical centers. This is not a
+claim about hypothetical direct launches of the old kernel with `nr>1`, nor
+a cross-architecture bitwise guarantee. See the source-linked
+[ordering audit](../../../../benchmarks/results/ecp-schedule-171/reduction-order.md).
+The existing independent numerical gates remain the scientific qualification.

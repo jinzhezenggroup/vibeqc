@@ -58,8 +58,10 @@ reduction and before physical atom accumulation, including coincident A/B/C
 cases. Value-only calls do not read derivative slots.
 
 CPU uses one radial layer. CUDA batches up to four layers for at most 16 public
-AOs and 44 polar points; larger domains retain one layer. Each AO pair still
-accumulates radial contributions in their original order.
+AOs and 44 polar points; larger domains retain one layer. Each AO pair
+accumulates layers in ascending radial order. This matches the preceding
+production path's one-layer launches on the same stream; the old internal
+kernel's unused multi-layer thread mapping is not the ordering contract.
 The independent `src/integrals/ecp.cpp` CPU implementation remains the public
 CPU fallback and a numerical oracle; it intentionally does not call these
 generated contractions. The compiler also owns ECP-centered node displacement,
@@ -93,8 +95,9 @@ The separate projector extension includes seven orthonormal real f harmonics
 (slots 9..15) and compiler-owned f-channel reductions. The native constructor
 uses the emitted projector bound; BSE/NWChem local labels may extend through g
 so that f is a nonlocal difference. This local label does not enable g orbitals
-or g projectors. CPU and CUDA retain one radial shell with 16 projected jets
-per AO; the resource inventory includes the expanded projection storage.
+or g projectors. Each staged radial layer contains 16 projected jets per AO.
+CPU stages one layer; CUDA stages up to four within the bounded schedule
+described above. The resource inventory includes this projection storage.
 Synthetic signed f-channel parameters qualify this operator capability without
 claiming a physical heavy-element parameter family.
 
