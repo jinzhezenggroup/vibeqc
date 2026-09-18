@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cstddef>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
