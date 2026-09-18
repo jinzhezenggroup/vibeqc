@@ -131,6 +131,52 @@ DFT SCF/gradients remain dependent on #162/#163, so DFT/ECP completion is not
 claimed. No broad heavy-element validation follows from support for the
 parameter format.
 
+## Bounded heavy-element parameter qualification
+
+The real-parameter qualification covers the installed PySCF 2.14.0 LANL2DZ
+Rb and Cs orbital/ECP records, paired with STO-3G hydrogen. These are separate
+from synthetic high-angular-momentum operator tests. The reference parameters
+are consumed only by tests and the qualification driver; normal execution
+continues to use caller-owned basis/ECP records without a PySCF dependency.
+
+| ECP element | Atomic number | Removed electrons | Ionic charge | Molecular AO count |
+|---|---:|---:|---:|---:|
+| Rb | 37 | 28 | 9 | 13 |
+| Cs | 55 | 46 | 9 | 13 |
+
+The fixtures use the unmodified s/p orbital records, local f label and s/p/d
+nonlocal channels. They cover neutral singlet RbH/CsH (10 explicit electrons)
+and their singly charged doublet cations (9 explicit electrons), with direct
+RHF/UHF on CPU/CUDA. The nuclei are placed off-axis; raw matrix and derivative
+gates use two bond geometries per element. Qualification is limited to these
+parameter records, states and geometries. It does not establish arbitrary
+Rb/Cs chemistry, other LANL2DZ elements, other ECP families, spin-orbit physics,
+or a relativistic method beyond the supplied scalar potential.
+
+`tests/python/test_ecp_heavy.py` pins the combined orbital/ECP parameter hashes,
+checks removed-core/effective-charge bookkeeping, and compares local and
+nonlocal matrices separately with Libcint. Both grid levels, all-center
+two-step finite differences, arbitrary nonsymmetric AO weights, complete HF
+energies/forces, and budgeted geometry replay with complete-energy differences
+must pass. The 13-AO fixtures fit the current CUDA resource inventory; their
+tests check the allocation ledger against the declared budget.
+
+Run the suite and record a compact endpoint report with:
+
+```sh
+python -m pytest tests/python/test_ecp_heavy.py -q
+VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_heavy.py -q -k cuda
+python tools/qualify_ecp_heavy.py --device cpu --output heavy-cpu.json
+python tools/qualify_ecp_heavy.py --device cuda --output heavy-cuda.json
+```
+
+Use the pinned reference-test extra and the corresponding `VIBEQC_LIBRARY` as
+described below. The report includes parameter identities, matrix/energy/force
+errors, exact library and test hashes, planned bounds and the CUDA ledger.
+Single-call timings are context for reproduction, not performance claims.
+See the [qualification decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-heavy-parameters.md)
+for the boundaries and the retained evidence.
+
 ## Reproduction and parameter sources
 
 Install the pinned `reference-test` extra (PySCF 2.14.0), build the CPU or CUDA
