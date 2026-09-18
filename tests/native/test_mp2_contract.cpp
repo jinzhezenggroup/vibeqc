@@ -33,7 +33,8 @@ vibeqc::core::System h2() {
 void generated_equations() {
   for (unsigned tile : {1, 2, 4, 8}) {
     const auto plan = vibeqc::mp2::generated::cpu_plan(tile);
-    std::vector<double> g(tile * tile), x(tile * tile), ea(tile), eb(tile);
+    const auto tile_elements = static_cast<std::size_t>(tile) * tile;
+    std::vector<double> g(tile_elements), x(tile_elements), ea(tile), eb(tile);
     for (unsigned a = 0; a < tile; ++a) {
       ea[a] = 0.2 + 0.1 * a;
       eb[a] = 0.3 + 0.2 * a;
