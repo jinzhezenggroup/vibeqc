@@ -38,7 +38,9 @@ def _scf_xc_points(library, pbe, rho, gradient):
     try:
         evaluate = library.vibeqc_xc_point_batch_v1
     except AttributeError as error:
-        raise NotImplementedError("native library lacks the #163-A XC point bridge") from error
+        raise NotImplementedError(
+            "native library lacks the #163-A XC point bridge"
+        ) from error
     evaluate.argtypes = [
         ct.c_uint32,
         ct.POINTER(ct.c_double),

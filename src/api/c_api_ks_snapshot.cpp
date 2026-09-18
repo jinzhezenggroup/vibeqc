@@ -132,9 +132,8 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
 }
 
 vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho,
-                                           const double* gradient,
-                                           std::size_t point_count, double* values,
-                                           std::size_t value_count) {
+                                           const double* gradient, std::size_t point_count,
+                                           double* values, std::size_t value_count) {
   constexpr std::size_t stride = 9;
   if (pbe > 1 || !rho || !gradient || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
