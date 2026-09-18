@@ -97,6 +97,7 @@ PRIMITIVES = {
         "add",
         "multiply",
         "divide",
+        "scaled_bilinear",
         "einsum",
         "transpose",
         "reshape",
@@ -169,7 +170,7 @@ def _infer(
 ) -> TensorSpec:
     """Infer safe result metadata; explicit view types are checked here too."""
     base = _common(inputs)
-    if op in ("add", "multiply", "divide"):
+    if op in ("add", "multiply", "divide", "scaled_bilinear"):
         if any(
             tuple(i.domain for i in n.spec.indices)
             != tuple(i.domain for i in base.indices)
@@ -185,6 +186,10 @@ def _infer(
             for n in inputs[1:]:
                 symmetry.intersection_update(n.spec.symmetries)
             return _result(inputs, symmetries=tuple(symmetry))
+        if op == "scaled_bilinear":
+            if len(inputs) != 6:
+                raise ValueError("scaled_bilinear requires six operands")
+            return _result(inputs)
         if len(inputs) != 2:
             raise ValueError("elementwise multiply/divide require two operands")
         # Products of antisymmetric tensors need not remain antisymmetric.
@@ -274,6 +279,7 @@ _ATTRS = {
     "add": {"coefficients"},
     "multiply": set(),
     "divide": set(),
+    "scaled_bilinear": set(),
     "einsum": {"labels", "output", "coefficient"},
     "transpose": {"axes"},
     "reshape": set(),
@@ -353,6 +359,16 @@ def multiply(left: Node, right: Node) -> Node:
 def divide(left: Node, right: Node) -> Node:
     """Elementwise quotient; a zero denominator is an execution error."""
     return _make("divide", (left, right))
+
+
+def scaled_bilinear(a: Node, b: Node, c: Node, d: Node, e: Node, f: Node) -> Node:
+    """Range-safe (a*b - c*d)/(e*f), without implicit broadcasting.
+
+    The products/difference share one arithmetic boundary. Binary exponent
+    scaling and compensated products preserve finite results and cancellation;
+    zero denominators and nonfinite final values remain execution errors.
+    """
+    return _make("scaled_bilinear", (a, b, c, d, e, f))
 
 
 def einsum(equation: str, *inputs: Node, coefficient=1) -> Node:

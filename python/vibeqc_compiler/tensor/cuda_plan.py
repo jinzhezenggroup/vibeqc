@@ -31,7 +31,7 @@ VALIDATION_CHUNK = 4096
 # Two NumPy iterator buffers, two reusable FP64 scratch buffers and one mask.
 VALIDATION_BYTES = VALIDATION_CHUNK * (4 * 8 + 1)
 VIEWS = frozenset(("transpose", "reshape", "slice", "broadcast"))
-ELEMENTWISE = frozenset(("add", "multiply", "divide"))
+ELEMENTWISE = frozenset(("add", "multiply", "divide", "scaled_bilinear"))
 
 
 def strides(shape) -> tuple[int, ...]:

@@ -29,11 +29,12 @@ import numpy as np
 from .interpreter import evaluate_nodes
 from .ir import Node
 from .program import Program
+from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
 
 AD_SCHEMA = "vibeqc.tensor.autodiff"
 AD_VERSION = 1
-AD_RULE_VERSION = 1
+AD_RULE_VERSION = 2
 DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 BACKEND = "numpy-cpu-autodiff"
 
@@ -326,8 +327,9 @@ def _jvp_multiply(node: Node, values, tangents) -> np.ndarray:
 
 
 def _jvp_divide(node: Node, values, tangents) -> np.ndarray:
-    numerator = tangents[0] * values[1] - values[0] * tangents[1]
-    return numerator / (values[1] * values[1])
+    x, y = values
+    dx, dy = tangents
+    return scaled_bilinear_value(dx, y, x, dy, y, y)
 
 
 def _jvp_einsum(node: Node, values, tangents) -> np.ndarray:
@@ -382,10 +384,36 @@ def _jvp_broadcast(node: Node, values, tangents) -> np.ndarray:
     return np.broadcast_to(tangents[0].transpose(order).reshape(shape), node.spec.shape)
 
 
+def _vjp_scaled_bilinear(node, values, bar, active=(True,) * 6):
+    a, b, c, d, e, f = values
+    zero, one = _zeros(node.spec), np.ones(node.spec.shape, dtype=node.spec.dtype)
+    result = []
+    primal = scaled_bilinear_value(*values) if any(active[4:]) else zero
+    for index, other in enumerate((b, a, d, c, primal, primal)):
+        if not active[index]:
+            result.append(zero)
+            continue
+        den1, den2 = (e, f) if index < 4 else (values[index], one)
+        terms = (bar, other, zero, zero) if index < 2 else (zero, zero, bar, other)
+        result.append(scaled_bilinear_value(*terms, den1, den2))
+    return result
+
+
+def _jvp_scaled_bilinear(node, values, tangents):
+    # Higher derivatives remain expressible. As with the ordinary add rule,
+    # accumulation of six partials is not a global cancellation-safe reduction.
+    result = _zeros(node.spec)
+    for index, tangent in enumerate(tangents):
+        active = tuple(i == index for i in range(6))
+        result += _vjp_scaled_bilinear(node, values, tangent, active)[index]
+    return result
+
+
 _JVP_RULES = {
     "add": _jvp_add,
     "multiply": _jvp_multiply,
     "divide": _jvp_divide,
+    "scaled_bilinear": _jvp_scaled_bilinear,
     "einsum": _jvp_einsum,
     "transpose": _jvp_transpose,
     "reshape": _jvp_reshape,
@@ -416,9 +444,13 @@ def _vjp_multiply(node: Node, values, bar) -> list[np.ndarray]:
     return [bar * values[1], bar * values[0]]
 
 
-def _vjp_divide(node: Node, values, bar) -> list[np.ndarray]:
-    denominator = values[1] * values[1]
-    return [bar / values[1], -(bar * values[0]) / denominator]
+def _vjp_divide(node: Node, values, bar, active=(True, True)) -> list[np.ndarray]:
+    x, y = values
+    zero = _zeros(node.spec)
+    return [
+        bar / y if active[0] else zero,
+        scaled_bilinear_value(zero, zero, bar, x, y, y) if active[1] else zero,
+    ]
 
 
 def _einsum_vjp_reference(node: Node, values, bar) -> list[np.ndarray]:
@@ -534,6 +566,7 @@ _VJP_RULES = {
     "add": _vjp_add,
     "multiply": _vjp_multiply,
     "divide": _vjp_divide,
+    "scaled_bilinear": _vjp_scaled_bilinear,
     "einsum": _vjp_einsum,
     "transpose": _vjp_transpose,
     "reshape": _vjp_reshape,
@@ -552,12 +585,14 @@ AD_RULES = {
 AD_PRIMITIVES = frozenset(AD_RULES)
 
 
-def _vjp_node(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_node(node: Node, values, bar, active=None) -> list[np.ndarray]:
     """Dispatch one primitive and reject any future primitive without a rule."""
     try:
         rule = _VJP_RULES[node.op]
     except KeyError as exc:
         raise ValueError(f"no VJP rule for tensor primitive: {node.op}") from exc
+    if active is not None and node.op in ("divide", "scaled_bilinear"):
+        return rule(node, values, bar, active)
     return rule(node, values, bar)
 
 
@@ -594,21 +629,30 @@ def _jvp_arrays(
 
 
 def _vjp_arrays(
-    program: Program, values: Mapping[Node, np.ndarray], cotangents
+    program: Program, values: Mapping[Node, np.ndarray], cotangents, selected=None
 ) -> dict[Node, np.ndarray]:
     """Propagate cotangents through one primal evaluation in reverse order."""
     live = program.live_nodes
+    relevant = set(live) if selected is None else set()
+    if selected is not None:
+        for node in live:
+            if (node.op == "input" and node.attrs["name"] in selected) or any(
+                operand in relevant for operand in node.inputs
+            ):
+                relevant.add(node)
     bars = {node: _zeros(node.spec) for node in live}
     for name, cotangent in cotangents.items():
         bars[program.outputs[name]] += cotangent
     for node in reversed(live):
-        if node.op in ("input", "constant"):
+        if node.op in ("input", "constant") or node not in relevant:
             continue
         bar = bars[node]
         operands = [values[operand] for operand in node.inputs]
         try:
             with np.errstate(divide="raise", invalid="raise", over="raise"):
-                contributions = _vjp_node(node, operands, bar)
+                contributions = _vjp_node(
+                    node, operands, bar, tuple(n in relevant for n in node.inputs)
+                )
         except FloatingPointError as exc:
             raise ValueError(
                 f"non-finite VJP arithmetic at primitive {node.op}"
@@ -616,6 +660,8 @@ def _vjp_arrays(
         if len(contributions) != len(node.inputs):
             raise ValueError(f"VJP rule for {node.op} returned the wrong arity")
         for operand, contribution in zip(node.inputs, contributions):
+            if operand not in relevant:
+                continue
             contribution = np.asarray(contribution)
             if (
                 contribution.shape != operand.spec.shape
@@ -677,7 +723,9 @@ def vjp(
 
     Cotangents may be supplied for a subset of outputs; omitted outputs are
     treated as zero.  ``inputs`` selects which differentiable input cotangents
-    are returned; pruning the reverse computation itself is slice B.
+    are returned. Unrequested paths and quotient partials are pruned before
+    arithmetic so an unrequested overflowing quotient adjoint cannot fail a
+    finite requested one.
     """
     if not isinstance(program, Program):
         raise TypeError("vjp requires a Program")
@@ -691,7 +739,7 @@ def vjp(
     selected = _select_names(differentiable, inputs, "input")
     _require_general_inputs(program, selected)
     values = evaluate_nodes(program, feeds, max_bytes=max_bytes)
-    bars = _vjp_arrays(program, values, cotangents)
+    bars = _vjp_arrays(program, values, cotangents, selected)
     _check_budget(program, bars, max_bytes)
     groups = _input_groups(program)
     input_cotangents = {
