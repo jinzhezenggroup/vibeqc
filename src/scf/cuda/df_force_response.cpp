@@ -192,9 +192,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
   if (packed_resident && storage != "panel" && space == "occupied") borrow = true;
   // An explicit occupied request already chose compatible borrowed storage;
   // automatic work selection must not replace that comparison override.
-  if (space == "auto" && storage != "panel" && (full_scratch || packed_resident) && schedule == 0 &&
-      terms.size() == 1 && final_state && final_state->identity.occupied.size() == 1 &&
-      qualified_resident_rhf_exchange(*plan, final_state->identity.occupied[0])) {
+  if (space != "occupied" && storage != "panel" && (full_scratch || packed_resident) &&
+      schedule == 0 && plan->batch_size == 1 && terms.size() == 1) {
     // Share SCF's work/capacity policy. The token is only a selection hint:
     // exact owner, model, density and device generations are validated below.
     // Diagnostic schedules and attribution probes retain their panel path.
@@ -213,8 +212,15 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
         compatible("VIBEQC_DF_RESPONSE_ALGEBRA", "blas") &&
         absent("VIBEQC_DF_RESPONSE_UPLOAD_PROBE") && absent("VIBEQC_DF_RESPONSE_SCATTER_PROBE") &&
         !(serial && std::string_view(serial) == "1")) {
-      automatic_occupied = true;
-      borrow = true;
+      automatic_occupied =
+          space == "auto" && final_state && final_state->identity.occupied.size() == 1 &&
+          qualified_resident_rhf_exchange(*plan, final_state->identity.occupied[0]);
+      // Dense response can also reuse existing full J/K storage: projecting
+      // each Q once avoids repeating work across response panels. Its storage
+      // policy needs no occupied reservation or factor token. Keep this path
+      // when occupied factors are unavailable, without any new allocation or
+      // inferring full capacity from retained B alone.
+      if ((full_scratch && storage == "auto") || automatic_occupied) borrow = true;
     }
   }
   CudaDfResponseBuffers buffers;

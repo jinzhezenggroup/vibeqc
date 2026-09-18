@@ -82,6 +82,7 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
         for step, (storage, force, changed) in enumerate(
             (
                 ("panel", True, False),
+                ("auto", True, False),
                 ("jk-scratch", True, False),
                 ("jk-scratch", False, False),
                 ("jk-scratch", True, False),
@@ -114,7 +115,9 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
                     counters = response["counters"]
                     n, a = response["nbf"], response["naux"]
                     assert counters["response_scratch_bytes"] <= 4 << 20
-                    if storage == "jk-scratch":
+                    if storage == "jk-scratch" or (
+                        storage == "auto" and batch_size == 1 and case.method == "rhf"
+                    ):
                         assert (
                             counters["response_borrowed_jk_bytes"] == 3 * n * n * a * 8
                         )

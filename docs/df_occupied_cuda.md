@@ -162,9 +162,13 @@ Matching warm resident calls perform zero raw-tensor H2D copies or transposes.
 validity before submission and restores it only after successful response
 from the matching immutable source, including failure/retry handling.
 
-`VIBEQC_DF_RESPONSE_STORAGE=auto` borrows this capacity when the shared
-occupied-work policy selects a singleton resident RHF response with default
-shell/BLAS controls and a final-state token. `panel` preserves bounded execution;
+`VIBEQC_DF_RESPONSE_STORAGE=auto` borrows full J/K capacity for singleton RHF
+responses with default shell/BLAS controls. Dense response also benefits from
+projecting each auxiliary only once, so unavailable occupied factors do not
+force repeated panel projections. Occupied algebra additionally requires the
+shared work/capacity policy and validated final-state factors. Packed storage
+can only lend its smaller scratch to a qualified occupied response.
+`panel` preserves bounded execution;
 `jk-scratch` requests validated borrowing explicitly. Borrowed capacity is
 reported once alongside owned scratch and transfers; reuse is never inferred
 from dimensions or a small component-local budget alone.

@@ -43,8 +43,12 @@ capacity. SCF, seed factorization, final physical K and force response share it.
 It requires singleton non-streamed storage, full AO rows, reserved factors and
 an all-Q occupied projection. Host-raw plans require full auxiliary scratch;
 packed sources also require raw storage and sufficient logical rank capacity.
-Automatic execution is RHF only. Explicit diagnostic controls retain their
-checked behavior. No device query or product-name check is necessary for the
+Automatic occupied execution is RHF only. Dense response can independently
+borrow existing full J/K scratch under compatible singleton shell/BLAS controls:
+this avoids repeated Q projections even when occupied factors are unavailable,
+requires no new allocation and does not authorize factor reuse. Packed scratch
+still requires qualified occupied factors. Explicit diagnostic controls retain
+their checked behavior. No device query or product-name check is necessary for the
 ordinary FP64 BLAS algorithm.
 
 ## Invariants
@@ -82,6 +86,12 @@ cover native indexing overflow, invalid dimensions, batches, explicit controls
 and tight-budget UHF/high-rank and optional-factor fallback boundaries. CUDA selector tests exercise
 actual versus advertised projection capacity, missing storage, residency,
 RHF/UHF and explicit fallbacks without querying a device identity.
+
+The changed-geometry OH/UHF replay can execute strict final-state corrections,
+which advance the determinant beyond the retained canonical factors. Its route
+test now requires host-trace correction evidence before expecting dense fallback;
+the initial canonical replay must still use occupied factors, and independent
+energy/force tolerances are unchanged.
 
 Numerical validation and measured results are recorded in the PR. The dedicated
 automatic endpoint test uses independent PySCF energies and full analytic
