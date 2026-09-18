@@ -131,6 +131,46 @@ DFT SCF/gradients remain dependent on #162/#163, so DFT/ECP completion is not
 claimed. No broad heavy-element validation follows from support for the
 parameter format.
 
+## Stuttgart RLC parameter qualification
+
+The bounded Stuttgart RLC suite uses the installed PySCF 2.14.0
+`stuttgart-dz` Na/K orbital and scalar ECP records with STO-3G hydrogen.
+The unmodified s/p orbital records give nine molecular AOs. Na removes ten
+core electrons and K removes eighteen; both leave ionic charge +1. Neutral
+singlet NaH/KH therefore contain two explicit electrons, while their +1
+doublet cations contain one. Qualification covers direct RHF/UHF on CPU/CUDA
+at the off-axis geometries in `tests/python/test_ecp_stuttgart.py`.
+
+This family has an exactly zero local residual, separate from the nonzero
+effective-charge Coulomb attraction, and signed s/p/d projector differences.
+The reference loader drops zero local coefficients. The test-only converter
+restores the published zero local term (`n=2`, exponent 1, coefficient 0) to
+retain the local f channel in the owned schema. Dropping the entire local
+channel would incorrectly reinterpret the d projector as local.
+
+The suite pins the combined orbital/ECP parameter hashes, checks separate
+Libcint local/nonlocal matrices, compares both quadrature levels and all-center
+derivatives at two displacement steps, and checks complete energies/forces
+against PySCF. Exact-budget geometry replay checks complete-energy differences
+and the CUDA allocation ledger. The supported scope is these parameter records,
+states and geometries; other Stuttgart elements, RSC/MDF families, spin-orbit,
+DFT/ECP and larger angular domains require separate evidence.
+
+With the pinned reference-test extra and the corresponding native library:
+
+```sh
+python -m pytest tests/python/test_ecp_stuttgart.py -q
+VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_stuttgart.py -q -k cuda
+python tools/qualify_ecp_stuttgart.py --device cpu --output stuttgart-cpu.json
+python tools/qualify_ecp_stuttgart.py --device cuda --output stuttgart-cuda.json
+```
+
+The report binds parameter, fixture, driver and native-library identities to
+matrix/energy/force errors, resource bounds and device observations. Timings
+describe single synchronous calls and do not establish a speedup.
+See the [qualification decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-stuttgart-rlc.md)
+and [retained evidence](../benchmarks/results/ecp-stuttgart-171/README.md).
+
 ## Reproduction and parameter sources
 
 Install the pinned `reference-test` extra (PySCF 2.14.0), build the CPU or CUDA
