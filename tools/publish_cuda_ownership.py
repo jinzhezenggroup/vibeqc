@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "python"))
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.evidence import (
     block_error,
     canonical_hash,
@@ -411,31 +412,29 @@ def main():
         "This shared stage requires significant speedup; source retirement is governed by #231's explicitly retained nonregression decision.",
     )
     write_evidence(stage / "evidence.json", record)
-    command = [
-        "srun",
-        "--partition=main",
-        "--gres=gpu:5090:1",
-        "--nodes=1",
-        "--ntasks=1",
-        "--time=02:00:00" if domain == "df" else "--time=01:00:00",
-        "python",
-        "tools/benchmark_cuda_ownership.py",
-        "compare",
-        "--domain",
-        domain,
-        "--baseline-root",
-        "<baseline-checkout>",
-        "--baseline-build",
-        "<baseline-optimized-build>",
-        "--candidate-root",
-        "<candidate-checkout>",
-        "--candidate-build",
-        "<candidate-optimized-build>",
-        "--samples",
-        str(len(records) // 2),
-        "--output",
-        ".artifacts/ownership-reproduction",
-    ]
+    command = resolve_cuda_execution_profile(
+        default_slurm_time="02:00:00" if domain == "df" else "01:00:00"
+    ).wrap(
+        [
+            "python",
+            "tools/benchmark_cuda_ownership.py",
+            "compare",
+            "--domain",
+            domain,
+            "--baseline-root",
+            "<baseline-checkout>",
+            "--baseline-build",
+            "<baseline-optimized-build>",
+            "--candidate-root",
+            "<candidate-checkout>",
+            "--candidate-build",
+            "<candidate-optimized-build>",
+            "--samples",
+            str(len(records) // 2),
+            "--output",
+            ".artifacts/ownership-reproduction",
+        ]
+    )
     # Historical measured checkouts predate this option; their omitted field
     # already means inventory scope and must keep the original replay argv.
     if "process_scope" in candidate:
