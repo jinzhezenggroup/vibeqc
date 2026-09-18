@@ -8,6 +8,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGenerated.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGeneratedSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
 
 # Leaf lowering/tuning modules are scientific generator inputs too. Track
@@ -137,8 +138,33 @@ if(VIBEQC_ENABLE_CUDA)
     set_property(GLOBAL PROPERTY JOB_POOLS
                  vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
     # XsyevBatched is the capture-safe production eigensolver for realistic
-    # AO buckets and is available in the supported CUDA 12.9 toolkit.
-    find_package(CUDAToolkit 12.9 REQUIRED)
+    # AO buckets and is available in the supported CUDA 12.9 toolkit. Native
+    # SDK builds link the toolkit providers normally. Python wheels instead
+    # need only compiler-owned headers: hidden Implib.so trampolines resolve
+    # the provider SONAMEs lazily at runtime.
+    if(VIBEQC_PYTHON_WHEEL)
+      if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.9)
+        message(FATAL_ERROR "VibeQC CUDA wheels require CUDA 12.9 or newer")
+      endif()
+      set(CMAKE_CUDA_RUNTIME_LIBRARY None)
+      enable_language(C ASM)
+      set(VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+      foreach(_vibeqc_cuda_header IN ITEMS cuda_runtime_api.h cublas_v2.h cusolverDn.h)
+        set(_vibeqc_cuda_header_found OFF)
+        foreach(_vibeqc_cuda_include IN LISTS VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS)
+          if(EXISTS "${_vibeqc_cuda_include}/${_vibeqc_cuda_header}")
+            set(_vibeqc_cuda_header_found ON)
+            break()
+          endif()
+        endforeach()
+        if(NOT _vibeqc_cuda_header_found)
+          message(FATAL_ERROR "CUDA compiler include set lacks ${_vibeqc_cuda_header}")
+        endif()
+      endforeach()
+    else()
+      find_package(CUDAToolkit 12.9 REQUIRED)
+      set(VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
+    endif()
   else()
     message(WARNING "CUDA compiler not found; building the CPU reference backend only")
     set(VIBEQC_ENABLE_CUDA OFF)
@@ -159,9 +185,11 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "tools/vibeqc_tensor/*.py" "tools/vibeqc_mp2/*.py"
      "tools/vibeqc_posthf/plan_spec.py")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt"
-     "cmake/VibeQCCuda.cmake" "cmake/VibeQCGenerated.cmake"
-     "cmake/VibeQCGeneratedSources.cmake" "cmake/VibeQCSources.cmake"
-     "cmake/VibeQCTests.cmake"
+     "cmake/VibeQCCuda.cmake" "cmake/VibeQCCudaImplib.cmake"
+     "cmake/VibeQCGenerated.cmake" "cmake/VibeQCGeneratedSources.cmake"
+     "cmake/VibeQCSources.cmake" "cmake/VibeQCTests.cmake"
+     "cmake/3rdparty/implib_manifest.json"
+     "tools/generate_cuda_implib.py"
      "tools/generate_shell_kernels.py" "tools/generate_ecp_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
      "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"

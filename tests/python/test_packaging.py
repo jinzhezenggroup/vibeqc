@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from vibeqc import _native
+from vibeqc import _cuda_runtime, _native
 
 
 def test_installed_package_library_finds_wheel_layout(tmp_path, monkeypatch):
@@ -30,6 +30,49 @@ def test_native_candidates_prefer_override_then_bundled(tmp_path, monkeypatch):
     monkeypatch.setattr(_native, "PACKAGE_DIR", package)
 
     assert _native._candidate_paths()[:2] == [explicit, bundled]
+
+
+def test_cuda_runtime_search_finds_pypi_provider_dirs(tmp_path, monkeypatch):
+    site_packages = tmp_path / "site-packages"
+    cublas = site_packages / "nvidia" / "cublas" / "lib"
+    cusolver = site_packages / "nvidia" / "cusolver" / "lib"
+    cublas.mkdir(parents=True)
+    cusolver.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        _cuda_runtime.site, "getsitepackages", lambda: [str(site_packages)]
+    )
+    monkeypatch.setattr(_cuda_runtime.site, "getusersitepackages", lambda: None)
+
+    search_dirs = _cuda_runtime._runtime_search_dirs()
+    assert cublas.resolve() in search_dirs
+    assert cusolver.resolve() in search_dirs
+
+
+def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypatch):
+    provider = tmp_path / "lib"
+    provider.mkdir()
+    sonames = [group[0] for group in _cuda_runtime._CUDA_RUNTIME_LIBRARY_GROUPS]
+    for soname in sonames:
+        (provider / soname).touch()
+
+    loaded = []
+
+    def fake_cdll(path, *, mode):
+        loaded.append((Path(path).name, mode))
+        return object()
+
+    monkeypatch.setattr(_cuda_runtime, "_cuda_runtime_handles", {})
+    monkeypatch.setattr(_cuda_runtime, "_runtime_search_dirs", lambda: [provider])
+    monkeypatch.setattr(_cuda_runtime.ctypes, "CDLL", fake_cdll)
+
+    assert _cuda_runtime.preload_cuda_runtime_libraries() == tuple(sonames)
+    assert [name for name, _ in loaded] == sonames
+    assert "libcuda.so.1" not in sonames
+
+
+def test_package_installs_cuda_runtime_wrapper():
+    assert getattr(_native.load_library, "_vibeqc_cuda_runtime_loader", False)
 
 
 def test_wheel_compiler_templates_include_local_dependencies(tmp_path, monkeypatch):

@@ -41,7 +41,9 @@ macro(vibeqc_configure_cuda_backend target)
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
   target_compile_definitions(vibeqc_direct_angular_force PRIVATE
     VIBEQC_BUILDING_LIBRARY=1 VIBEQC_HAS_CUDA=1)
-  target_link_libraries(vibeqc_direct_angular_force PRIVATE CUDA::cudart)
+  if(NOT VIBEQC_PYTHON_WHEEL)
+    target_link_libraries(vibeqc_direct_angular_force PRIVATE CUDA::cudart)
+  endif()
   set_target_properties(vibeqc_direct_angular_force PROPERTIES
     CUDA_SEPARABLE_COMPILATION OFF
     CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
@@ -63,7 +65,9 @@ macro(vibeqc_configure_cuda_backend target)
       "${CMAKE_CURRENT_BINARY_DIR}/generated")
     target_compile_definitions(vibeqc_direct_native PRIVATE
       VIBEQC_BUILDING_LIBRARY=1 VIBEQC_HAS_CUDA=1)
-    target_link_libraries(vibeqc_direct_native PRIVATE CUDA::cudart)
+    if(NOT VIBEQC_PYTHON_WHEEL)
+      target_link_libraries(vibeqc_direct_native PRIVATE CUDA::cudart)
+    endif()
     set_target_properties(vibeqc_direct_native PROPERTIES
       CUDA_SEPARABLE_COMPILATION ON
       CUDA_RESOLVE_DEVICE_SYMBOLS ON
@@ -281,7 +285,11 @@ macro(vibeqc_configure_cuda_backend target)
   else()
     target_sources(${target} PRIVATE src/scf/aot_shell_registry_stub.cpp)
   endif()
-  target_link_libraries(${target} PRIVATE CUDA::cudart CUDA::cublas CUDA::cusolver)
+  if(VIBEQC_PYTHON_WHEEL)
+    vibeqc_attach_cuda_implib(${target})
+  else()
+    target_link_libraries(${target} PRIVATE CUDA::cudart CUDA::cublas CUDA::cusolver)
+  endif()
   target_compile_definitions(${target} PUBLIC VIBEQC_HAS_CUDA=1)
   set_target_properties(${target} PROPERTIES
     CUDA_SEPARABLE_COMPILATION ${VIBEQC_CUDA_SEPARABLE_COMPILATION})
