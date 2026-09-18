@@ -102,6 +102,4 @@ def test_failed_runtime_probe_cannot_publish_hardware_success(monkeypatch, statu
 
     monkeypatch.setattr(benchmark, "capture", forbidden)
     with pytest.raises(RuntimeError, match="cannot identify the assigned CUDA device"):
-        benchmark.probe_gpu(
-            Path("/toolkit/bin/nvcc"), CUDA_BENCHMARK_PROFILES["sm120"]
-        )
+        benchmark.probe_gpu(Path("/toolkit/bin/nvcc"), CUDA_BENCHMARK_PROFILES["sm120"])
