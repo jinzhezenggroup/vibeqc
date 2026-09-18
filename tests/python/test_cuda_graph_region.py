@@ -155,8 +155,10 @@ def test_emitted_capture_excludes_host_transfers_and_keeps_error_checks():
     assert "another_tensor_run_graph" in prefixed
 
 
+@pytest.mark.parametrize("minimal_headers", [False, True])
 def test_native_shared_lifecycle_recovers_capture_failure_and_never_retries_launch(
     tmp_path,
+    minimal_headers,
 ):
     """Compile the real lifecycle against a deterministic fake CUDA API.
 
@@ -173,8 +175,8 @@ using cudaStream_t = void*;
 using cudaGraph_t = int*;
 using cudaGraphExec_t = int*;
 using cudaError_t = int;
-constexpr int cudaSuccess=0, cudaErrorStreamCaptureUnsupported=1,
-  cudaErrorStreamCaptureInvalidated=2, cudaErrorNotSupported=3,
+constexpr int cudaSuccess=0, cudaErrorStreamCaptureUnsupported=900,
+  cudaErrorStreamCaptureInvalidated=901, cudaErrorNotSupported=801,
   cudaErrorMemoryAllocation=4, cudaStreamCaptureModeThreadLocal=5;
 inline int begin_error=0, end_error=0, instantiate_error=0, launch_error=0;
 inline int ends=0, live_graphs=0, live_execs=0, launches=0;
@@ -196,6 +198,14 @@ inline int cudaGraphInstantiate(cudaGraphExec_t* out,cudaGraph_t,void*,void*,uns
 }
 inline int cudaGraphLaunch(cudaGraphExec_t,cudaStream_t) { ++launches; return launch_error; }
 """)
+    if minimal_headers:
+        header = tmp_path / "cuda_runtime.h"
+        text = (
+            header.read_text()
+            .replace("cudaErrorStreamCaptureUnsupported", "stub_capture_unsupported")
+            .replace("cudaErrorStreamCaptureInvalidated", "stub_capture_invalidated")
+        )
+        header.write_text(text)
     source = tmp_path / "test.cpp"
     source.write_text(r"""
 #include <cassert>
@@ -232,13 +242,14 @@ int main() {
   graph.submit(key,false,false,op); assert(graph.metrics.mode==0);
  }
  assert(live_execs==0 && live_graphs==0);
- for(int failure=0;failure<4;++failure) {
+ for(int failure=0;failure<5;++failure) {
   CudaGraphRegion graph;
   graph.submit(key,true,false,op);
   if(failure==0) begin_error=cudaErrorNotSupported;
-  if(failure==1) end_error=cudaErrorStreamCaptureInvalidated;
+  if(failure==1) end_error=901;
   if(failure==2) instantiate_error=cudaErrorMemoryAllocation;
   if(failure==3) nodes=4097;
+  if(failure==4) begin_error=900;
   graph.submit(key,true,false,op);
   assert(graph.metrics.mode==4 && live_execs==0 && live_graphs==0);
   graph.submit(key,true,false,op); assert(graph.metrics.capture_attempts==1);

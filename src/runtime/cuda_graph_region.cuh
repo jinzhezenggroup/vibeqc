@@ -107,8 +107,10 @@ class CudaGraphRegion {
     if (status != cudaSuccess) throw std::runtime_error(cudaGetErrorString(status));
   }
   static bool capture_failure(cudaError_t status) {
-    return status == cudaErrorStreamCaptureUnsupported ||
-           status == cudaErrorStreamCaptureInvalidated || status == cudaErrorNotSupported ||
+    // CUDA's stable public error codes; compatibility headers such as CuMetal
+    // may omit these enumerator names while retaining the runtime status ABI.
+    const auto code = static_cast<int>(status);
+    return code == 900 || code == 901 || status == cudaErrorNotSupported ||
            status == cudaErrorMemoryAllocation;
   }
   void fail(const char* text) {
