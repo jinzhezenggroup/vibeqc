@@ -5,12 +5,13 @@ must supply a verified :class:`CudaCompilerAdapter` and a writable cache
 directory.  All real-device validation runs on qz (inspire); local machines
 without CUDA raise an explicit error at preparation time.
 
-The host extracts tile-sized sub-blocks from the full-system tensors before
-each tile upload.  One resident plan is compiled per unique tile shape
-``(nocc, a_end, a_start, a_end)``; compilation is transparently cached to
-disk via ``compile_resident``.  Each resident is created per tile and closed
-before the next tile, so device memory is bounded by the single-tile plan
-peak — full ``nocc³ × nvir³`` T3 or denominator tensors are never allocated.
+The host extracts exact-shape sub-blocks from the full-system tensors before
+each tile upload.  Label axes are prefix-bounded by the tile's ``a_end``,
+while the W1 virtual summation axes remain full ``nvir``.  One resident plan
+is compiled per tile range/shape; compilation is transparently cached to disk
+via ``compile_resident``.  Each resident is created per tile and closed before
+the next tile, so no full ``nocc³ × nvir³`` T3 or denominator tensor is ever
+allocated.
 
 The shared input guards from ``triples._validate`` and
 ``triples._check_denominators`` run once before any GPU work, matching the
@@ -24,7 +25,11 @@ import time
 from dataclasses import dataclass, field
 
 from .triples import _check_denominators, _validate
-from .triples_tiles import TriplesTileEnumerator, build_tile_triples_program
+from .triples_tiles import (
+    TriplesTileEnumerator,
+    _tile_input_feeds,
+    build_tile_triples_program,
+)
 
 
 @dataclass(frozen=True)
@@ -151,14 +156,11 @@ class CudaTriplesTiles:
         _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
         _check_denominators(eps_o, eps_v, 1e-10)
 
-        # The (T) tile kernel has two kinds of virtual axes:
-        #   label axes (a,b,c): identify which W/V seed; sliced to the tile's
-        #     a-range by the TensorIR program itself (gathers on [0, a_end)).
-        #   summation axes (f in W1, m in W2): run over the FULL space; f is
-        #     the 4th axis of ovvv and t2, m is the 4th axis of ovoo.
-        # The program declares full-nvir inputs and gathers the tile's label
-        # indices, so feeds stay full-shape (no slicing) and the resident
-        # owner reuses one plan shape across all tiles.
+        # The tile program separates bounded label axes (a,b,c) from the
+        # full virtual summation axis f.  In the original tensors the W1
+        # f-axis is ovvv axis 2 and t2 axis 3; those stay full while label
+        # axes are prefix-bounded to a_end.  This makes every upload shape
+        # exactly match its TensorSpec without truncating the contraction.
 
         enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
         tiles = list(enumerator)
@@ -182,25 +184,15 @@ class CudaTriplesTiles:
         t0_total = time.perf_counter()
 
         for tile in tiles:
-            # 1. Full-shape feeds; the program gathers the tile's a-range.
+            # 1. Extract exact-shape feeds: label axes are bounded by a_end,
+            #    while the W1 f-summation axes remain full nvir.
             t0 = time.perf_counter()
-            sub_feeds = {
-                "ovvv": ovvv,
-                "ovoo": ovoo,
-                "ovov": ovov,
-                "fov": fov,
-                "t1": t1,
-                "t2": t2,
-                "eps_o": eps_o,
-                "eps_v": eps_v,
-            }
+            sub_feeds = _tile_input_feeds(arrays, tile.a_end)
             timing["extract_s"] += time.perf_counter() - t0
 
             # 2. Build the exact per-tile program, plan it, and compile
-            #    (compilation is transparently cached to disk).
-            #    The program's virtual dimension is the FULL nvir so the
-            #    f-summation over t2/ovvv is exact; only the triangular
-            #    a-range is tile-bounded.
+            #    (compilation is transparently cached to disk).  Distinct
+            #    TensorIR spaces keep label extents at a_end and f at nvir.
             t0 = time.perf_counter()
             tile_prog = build_tile_triples_program(
                 nocc, nvir, vir_chunk=(tile.a_start, tile.a_end)

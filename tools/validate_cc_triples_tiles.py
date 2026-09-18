@@ -16,9 +16,11 @@ Options:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import platform
+import subprocess
 import sys as _compiler_sys
 import time
 from pathlib import Path
@@ -41,10 +43,7 @@ from tools.vibeqc_cc.triples_cuda import (
     CudaTriplesTiles,
     TriplesTileConfig,
 )
-from tools.vibeqc_cc.triples_tiles import (
-    TriplesTileEnumerator,
-    tile_triples_energy_masked,
-)
+from tools.vibeqc_cc.triples_tiles import TriplesTileEnumerator
 
 ENDPOINTS_DIR = ROOT / "tests/reference_data/cc/endpoints"
 GROUND_TRUTH = {
@@ -54,6 +53,38 @@ GROUND_TRUTH = {
     "nh3": (5, 3, -1.122922812723691e-04),
     "ch4": (5, 4, -1.555665872715297e-04),
 }
+
+
+QUALIFICATION_SOURCE_PATHS = (
+    "tools/vibeqc_cc/triples.py",
+    "tools/vibeqc_cc/triples_tiles.py",
+    "tools/vibeqc_cc/triples_cuda.py",
+    "tools/validate_cc_triples_tiles.py",
+)
+
+
+def _qualification_source_identity():
+    """Bind retained evidence to the exact git head and orchestration bytes."""
+    git_head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    dirty = bool(
+        subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=ROOT,
+            text=True,
+        ).strip()
+    )
+    hashes = {}
+    for rel in QUALIFICATION_SOURCE_PATHS:
+        hashes[rel] = hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()
+    return {"git_head": git_head, "worktree_dirty": dirty, "sha256": hashes}
+
+
+def _bitwise_equal_float64(left, right):
+    a = np.asarray(left, dtype=np.float64)
+    b = np.asarray(right, dtype=np.float64)
+    return a.shape == b.shape and np.array_equal(a.view(np.uint64), b.view(np.uint64))
 
 
 def load_endpoint(name):
@@ -98,11 +129,18 @@ def run(args):
         compile_timeout=args.compile_timeout,
     )
     budgets = [int(b) * (1 << 20) for b in args.budget.split(",")]
+    source_identity = _qualification_source_identity()
+    if not args.compile_only and source_identity["worktree_dirty"]:
+        raise RuntimeError(
+            "real-device qualification requires a clean tracked worktree so "
+            "git_head binds the executed sources"
+        )
 
     manifest = {
         "scope": "#150 B bounded CUDA triples tiles",
         "schema": "vibeqc.ccsd-t.tile-validation/1",
         "tensor_source_identity": tensor_source_identity(),
+        "qualification_source_identity": source_identity,
         "python": platform.python_version(),
         "numpy": np.__version__,
         "compiler_target": compiler.target.to_payload(),
@@ -180,7 +218,7 @@ def run(args):
                         first_tile = next(iter(enum))
                         tile_prog = build_tile_triples_program(
                             nocc,
-                            first_tile.a_end,
+                            nvir,
                             vir_chunk=(first_tile.a_start, first_tile.a_end),
                         )
                         plan = plan_cuda(
@@ -204,21 +242,31 @@ def run(args):
                         )
                         continue
 
-                    # Full GPU run via the corrected CudaTriplesTiles
+                    # Full GPU run plus an independent second GPU run for the
+                    # claimed bitwise-determinism gate. Only the first run
+                    # enables the CPU oracle.
                     with CudaTriplesTiles(config, compiler, cache) as tiles:
                         t0 = time.perf_counter()
                         result = tiles.run_tiles(arrays, oracle=True)
-                    gpu_time_s = time.perf_counter() - t0
+                        gpu_time_s = time.perf_counter() - t0
+
+                        t0 = time.perf_counter()
+                        repeat = tiles.run_tiles(arrays, oracle=False)
+                        repeat_gpu_time_s = time.perf_counter() - t0
+
                     if manifest["runtime_device"] is None:
                         manifest["runtime_device"] = result.runtime_device
 
-                    # CPU masked per-tile reference
-                    enum = TriplesTileEnumerator(
-                        nocc, nvir, vir_chunk_size=vir_chunk_size
+                    cpu_per_tile = result.per_tile_masked_cpu
+                    assert cpu_per_tile is not None
+                    per_tile_bitwise_equal = _bitwise_equal_float64(
+                        result.per_tile, repeat.per_tile
                     )
-                    cpu_per_tile = [
-                        tile_triples_energy_masked(t, nocc, *feeds[2:]) for t in enum
-                    ]
+                    total_bitwise_equal = _bitwise_equal_float64(result.et, repeat.et)
+                    determinism_ok = per_tile_bitwise_equal and total_bitwise_equal
+                    budget_ok = all(
+                        peak <= max_bytes for peak in result.peak_bytes_per_tile
+                    )
 
                     per_tile_diffs = [
                         abs(g - c) for g, c in zip(result.per_tile, cpu_per_tile)
@@ -234,6 +282,7 @@ def run(args):
                         f"|dE|={de_total:.2e} "
                         f"max_tile_diff={max_tile_diff:.2e} "
                         f"peak={result.peak_device_bytes // 1024}KiB "
+                        f"det={'yes' if determinism_ok else 'NO'} "
                         f"time={gpu_time_s:.2f}s",
                         flush=True,
                     )
@@ -254,6 +303,15 @@ def run(args):
                         "per_tile_diffs": per_tile_diffs,
                         "max_tile_diff": max_tile_diff,
                         "per_tile_ok": per_tile_ok,
+                        "budget_ok": budget_ok,
+                        "determinism_ok": determinism_ok,
+                        "per_tile_bitwise_equal": per_tile_bitwise_equal,
+                        "total_bitwise_equal": total_bitwise_equal,
+                        "repeat_gpu_et": repeat.et,
+                        "repeat_per_tile_gpu": repeat.per_tile,
+                        "repeat_artifact_keys": repeat.artifact_keys,
+                        "repeat_runtime_device": repeat.runtime_device,
+                        "repeat_gpu_time_s": repeat_gpu_time_s,
                         "gpu_time_s": gpu_time_s,
                         "tile_count": result.tile_count,
                         "timing": result.timing,
@@ -304,9 +362,15 @@ def run(args):
                 f"tiles={r['tile_count']} "
                 f"de={r['de_total']:.2e} "
                 f"tile_diff={r['max_tile_diff']:.2e} "
+                f"det={r['determinism_ok']} "
                 f"time={r['gpu_time_s']:.2f}s"
             )
-            if not r["de_total_ok"] or not r["per_tile_ok"]:
+            if (
+                not r["de_total_ok"]
+                or not r["per_tile_ok"]
+                or not r["budget_ok"]
+                or not r["determinism_ok"]
+            ):
                 all_ok = False
                 print(f"FAIL {mol['name']} {tr['budget_mib']}MiB: {status}", flush=True)
             else:

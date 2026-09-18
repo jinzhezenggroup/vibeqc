@@ -321,13 +321,14 @@ def _d3_node_tile(nodes, ijk, a, b, c, fac):
 def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
     """Lower the (T) inventory for a tile to unshared TensorIR.
 
-    The tile covers virtual indices [0, nvir) with triangular a>=b>=c
-    for a in [vir_chunk[0], vir_chunk[1)).  When ``vir_chunk`` is None
-    the full virtual space [0, nvir) is used (single-tile mode).
+    ``nvir`` is the full virtual population.  The tile covers triangular
+    ``a>=b>=c`` values for ``a`` in ``vir_chunk``; all label coordinates
+    therefore lie in the prefix ``[0, a_end)``.
 
-    Input tensors are sized for the sub-block: virtual dim = nvir,
-    occupied dim = nocc.  The caller is responsible for uploading the
-    tile-appropriate sub-blocks; see ``CudaTriplesTiles.run_tiles``.
+    Tensor specs use two distinct virtual index spaces: bounded label axes of
+    extent ``a_end`` and a full summation axis of extent ``nvir``.  This keeps
+    the W1 ``f`` contraction exact while allowing resident uploads to use
+    exact prefix-shaped label tensors.
     """
     if any(type(n) is not int or n < 1 for n in (nocc, nvir)):
         raise ValueError("triples require nonempty occupied and virtual spaces")
@@ -338,13 +339,17 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
         if not (0 <= a_start < a_end <= nvir):
             raise ValueError(f"invalid vir_chunk {vir_chunk} for nvir={nvir}")
     occ = IndexSpace("occupied", "occupied", nocc)
-    vir = IndexSpace("virtual", "virtual", nvir)
+    label_vir = IndexSpace("tile_virtual", "virtual", a_end)
+    sum_vir = IndexSpace("full_virtual", "virtual", nvir)
 
     def O(name):
         return Index(name, occ)
 
     def V(name):
-        return Index(name, vir)
+        return Index(name, label_vir)
+
+    def F(name):
+        return Index(name, sum_vir)
 
     common = {
         "role": "parameter",
@@ -352,8 +357,10 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
         "representation": "restricted_spatial",
     }
     nodes = {
+        # ovvv.transpose(1, 3, 0, 2) is vvov[a,b,i,f], so original
+        # axis 2 is the full f-summation axis while axes 1/3 are labels.
         "ovvv": input_tensor(
-            "ovvv", TensorSpec((O("i0"), V("a0"), V("b0"), V("f0")), **common)
+            "ovvv", TensorSpec((O("i0"), V("a0"), F("f0"), V("b0")), **common)
         ),
         "ovoo": input_tensor(
             "ovoo", TensorSpec((O("i1"), V("a1"), O("j1"), O("m1")), **common)
@@ -363,8 +370,10 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
         ),
         "fov": input_tensor("fov", TensorSpec((O("k3"), V("c3")), **common)),
         "t1": input_tensor("t1", TensorSpec((O("i4"), V("a4")), **common)),
+        # t2T[c,f,k,j] requires the second virtual t2 axis to remain full;
+        # W2/V2 may still gather label coordinates from that full prefix.
         "t2": input_tensor(
-            "t2", TensorSpec((O("i5"), O("j5"), V("a5"), V("b5")), **common)
+            "t2", TensorSpec((O("i5"), O("j5"), V("a5"), F("f5")), **common)
         ),
         "eps_o": input_tensor("eps_o", TensorSpec((O("i6"),), **common)),
         "eps_v": input_tensor("eps_v", TensorSpec((V("a7"),), **common)),
@@ -413,11 +422,38 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
             "inventory_hash": INVENTORY_HASH,
             "source": "PySCF 2.14.0 ccsd_t_slow.py kernel + r3; see source_manifest.json",
             "note": (
-                f"bounded tile TensorIR reference; "
-                f"nocc={nocc}, nvir={nvir}, a_range={a_start}:{a_end}"
+                f"bounded tile TensorIR reference; nocc={nocc}, "
+                f"label_nvir={a_end}, sum_nvir={nvir}, "
+                f"a_range={a_start}:{a_end}"
             ),
         },
     )
+
+
+def _tile_input_feeds(arrays, a_end):
+    """Extract exact-shape TensorIR feeds for a prefix-bounded tile.
+
+    Label axes use ``[0, a_end)``.  The W1 ``f`` summation stays full:
+    ``ovvv`` axis 2 and ``t2`` axis 3 retain the complete virtual population.
+    """
+    ovvv = arrays["ovvv"]
+    ovoo = arrays["ovoo"]
+    ovov = arrays["ovov"]
+    fov = arrays["fov"]
+    t1 = arrays["t1"]
+    t2 = arrays["t2"]
+    eps_o = arrays["eps_o"]
+    eps_v = arrays["eps_v"]
+    return {
+        "ovvv": np.ascontiguousarray(ovvv[:, :a_end, :, :a_end]),
+        "ovoo": np.ascontiguousarray(ovoo[:, :a_end, :, :]),
+        "ovov": np.ascontiguousarray(ovov[:, :a_end, :, :a_end]),
+        "fov": np.ascontiguousarray(fov[:, :a_end]),
+        "t1": np.ascontiguousarray(t1[:, :a_end]),
+        "t2": np.ascontiguousarray(t2[:, :, :a_end, :]),
+        "eps_o": np.ascontiguousarray(eps_o),
+        "eps_v": np.ascontiguousarray(eps_v[:a_end]),
+    }
 
 
 def tile_triples_energy_tensorir(
@@ -438,15 +474,20 @@ def tile_triples_energy_tensorir(
     """Build and execute the tile TensorIR lowering; returns the E_T scalar."""
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)
-    feeds = {
-        "ovvv": ovvv,
-        "ovoo": ovoo,
-        "ovov": ovov,
-        "fov": fov,
-        "t1": t1,
-        "t2": t2,
-        "eps_o": eps_o,
-        "eps_v": eps_v,
-    }
-    result = execute(build_tile_triples_program(nocc, nvir, vir_chunk=vir_chunk), feeds)
+    program = build_tile_triples_program(nocc, nvir, vir_chunk=vir_chunk)
+    a_end = nvir if vir_chunk is None else vir_chunk[1]
+    feeds = _tile_input_feeds(
+        {
+            "ovvv": ovvv,
+            "ovoo": ovoo,
+            "ovov": ovov,
+            "fov": fov,
+            "t1": t1,
+            "t2": t2,
+            "eps_o": eps_o,
+            "eps_v": eps_v,
+        },
+        a_end,
+    )
+    result = execute(program, feeds)
     return float(result.outputs["triples_energy"])

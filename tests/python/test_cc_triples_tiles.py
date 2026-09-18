@@ -47,6 +47,20 @@ def _random_case(nocc, nvir, seed):
     return ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v
 
 
+def _bounded_tensorir_feeds(arrays, a_end):
+    ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
+    return {
+        "ovvv": np.ascontiguousarray(ovvv[:, :a_end, :, :a_end]),
+        "ovoo": np.ascontiguousarray(ovoo[:, :a_end, :, :]),
+        "ovov": np.ascontiguousarray(ovov[:, :a_end, :, :a_end]),
+        "fov": np.ascontiguousarray(fov[:, :a_end]),
+        "t1": np.ascontiguousarray(t1[:, :a_end]),
+        "t2": np.ascontiguousarray(t2[:, :, :a_end, :]),
+        "eps_o": np.ascontiguousarray(eps_o),
+        "eps_v": np.ascontiguousarray(eps_v[:a_end]),
+    }
+
+
 def _endpoint_feeds(name):
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
         eps = data["eps"]
@@ -172,9 +186,8 @@ def test_tile_tensorir_program_roundtrip(o, v, seed):
     from vibeqc_compiler.tensor import execute as tensor_execute
 
     arrays = _random_case(o, v, seed)
-    _ovvv, _ovoo, _ovov, _fov, _t1, _t2, _eps_o, _eps_v = arrays
-    feeds = {n: a for n, a in zip(INPUT_NAMES, arrays)}
     for chunk in ((0, v), (0, v // 2 + 1) if v > 1 else (0, v)):
+        feeds = _bounded_tensorir_feeds(arrays, chunk[1])
         prog = build_tile_triples_program(o, v, vir_chunk=chunk)
         replayed = Program.loads(prog.dumps())
         v1 = tensor_execute(prog, feeds).outputs["triples_energy"]
@@ -188,8 +201,6 @@ def test_tile_tensorir_vs_cpu_reference(o, v, seed):
     from vibeqc_compiler.tensor import execute as tensor_execute
 
     arrays = _random_case(o, v, seed)
-    _ovvv, _ovoo, _ovov, _fov, _t1, _t2, _eps_o, _eps_v = arrays
-    feeds = {n: a for n, a in zip(INPUT_NAMES, arrays)}
     for chunk_size in [1, 2, v]:
         enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=chunk_size)
         for tile in enumerator:
@@ -197,8 +208,27 @@ def test_tile_tensorir_vs_cpu_reference(o, v, seed):
             prog = build_tile_triples_program(
                 o, v, vir_chunk=(tile.a_start, tile.a_end)
             )
+            feeds = _bounded_tensorir_feeds(arrays, tile.a_end)
             tir = tensor_execute(prog, feeds).outputs["triples_energy"]
             np.testing.assert_allclose(tir, cpu, atol=1e-11, rtol=1e-10)
+
+
+def test_partial_tile_tensorir_bounds_labels_but_keeps_full_f_axis():
+    """Partial-tile specs retain full summation axes and bounded label axes."""
+    from vibeqc_compiler.tensor import execute as tensor_execute
+
+    o, v = 2, 4
+    arrays = _random_case(o, v, 208)
+    tile = TileSpec(1, 3, v)
+    feeds = _bounded_tensorir_feeds(arrays, tile.a_end)
+    assert feeds["ovvv"].shape == (o, tile.a_end, v, tile.a_end)
+    assert feeds["t2"].shape == (o, o, tile.a_end, v)
+    assert feeds["eps_v"].shape == (tile.a_end,)
+
+    prog = build_tile_triples_program(o, v, vir_chunk=(tile.a_start, tile.a_end))
+    got = tensor_execute(prog, feeds).outputs["triples_energy"]
+    expected = tile_triples_energy(tile, o, *arrays)
+    np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
 
 
 @pytest.mark.parametrize("o,v,seed", [(2, 2, 206)])

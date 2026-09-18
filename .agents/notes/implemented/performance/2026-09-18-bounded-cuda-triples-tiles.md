@@ -26,15 +26,17 @@ artifacts.**
 - `tools/vibeqc_cc/triples_tiles.py` provides `TriplesTileEnumerator`
   (a-chunked triangular virtual domain; occupied space is never chunked),
   `TileSpec`, the per-tile CPU reference `tile_triples_energy`, the
-  masked-domain oracle `tile_triples_energy_masked`, and the tile-sized
-  TensorIR lowering `build_tile_triples_program(nocc, a_end, vir_chunk=(a_start, a_end))`.
+  masked-domain oracle `tile_triples_energy_masked`, and the tile TensorIR
+  lowering `build_tile_triples_program(nocc, nvir, vir_chunk=(a_start, a_end))`.
+  The lowering uses separate virtual spaces for bounded label axes
+  (`a,b,c < a_end`) and the full W1 summation axis `f < nvir`.
 - `tools/vibeqc_cc/triples_cuda.py` `CudaTriplesTiles.run_tiles` loops tiles:
   for each tile it builds the exact `(a_start, a_end)` program, plans it under
   the caller's `max_bytes`, compiles (disk-cached so repeated shapes reuse
   artifacts), creates a `PreparedResident`, uploads exact-shape sub-block
-  feeds, runs, downloads the scalar, and closes the resident. Device memory
-  at any moment is bounded by the single-tile plan peak; the largest tensor
-  on device is tile-sized.
+  feeds, runs, downloads the scalar, and closes the resident. Label axes are
+  prefix-bounded while `ovvv` axis 2 and `t2` axis 3 remain full for the
+  exact `f` contraction; full T3/denominator tensors are never materialized.
 - The shared guards `triples._validate` + `triples._check_denominators` run
   once before any GPU work (fail-closed for non-finite inputs, noncanonical
   or near-zero denominators — the #150 step-7 contract).
@@ -74,15 +76,18 @@ artifacts.**
 
 ## Evidence
 
-- `tests/python/test_cc_triples_tiles.py` — 14 tests: enumerator coverage
-  (every `a>=b>=c` triple exactly once), tile-sum parity vs `triples_energy`
+- `tests/python/test_cc_triples_tiles.py` — CPU/TensorIR regression suite:
+  enumerator coverage (every `a>=b>=c` triple exactly once), exact partial-
+  tile feed-shape coverage, tile-sum parity vs `triples_energy`
   (≤1e-10), masked-oracle parity, TensorIR roundtrip/differentiability,
   determinism, chunk-size independence, endpoint regression
   (h2/he ≈ 0; h2o/nh3/ch4 vs pinned PySCF 2.14.0 truth ≤1e-9).
 - `tools/validate_cc_triples_tiles.py` — qz GPU validation driver: per
   molecule, per chunk size (`nvir` and `nvir//2`), per budget (256/512 MiB):
   per-tile GPU-vs-masked-CPU ≤1e-10, total ≤1e-9, two-run bitwise determinism,
-  peak-bytes records, explicit infeasible-budget failure.
+  peak-bytes records, explicit infeasible-budget failure, and an evidence
+  identity containing the exact git head plus SHA-256 hashes of the triples
+  execution/orchestration sources.
 - Real-device run manifest: retained under
   `benchmarks/results/cc-triples-b/` when executed on qz (GPU, architecture
   and artifact keys recorded in `runtime_device` / `artifact_keys`).
@@ -92,9 +97,10 @@ artifacts.**
 - Compile latency: each unique tile shape costs one NVCC compile (cached
   across runs). For tiny endpoint systems (nvir ≤ 4) this is seconds per
   shape; larger systems amortize via cache reuse.
-- Data movement: sub-block extraction on host is O(nocc × a_end³) per tile
-  plus one H2D upload per tensor per tile; acceptable for slice B's target
-  sizes, and bounded by design.
+- Data movement: label axes are prefix-bounded, but the exact W1 `f`
+  contraction keeps one virtual axis full in `ovvv` and `t2`.  Host/H2D
+  storage therefore scales with mixed `a_end`/full-`nvir` input shapes,
+  while the forbidden full T3/denominator storage remains absent.
 
 ## Revisit when
 
