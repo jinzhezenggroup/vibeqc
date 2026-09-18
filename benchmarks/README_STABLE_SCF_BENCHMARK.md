@@ -16,6 +16,11 @@ Every SCF timing artifact must retain, per repeat:
 - total time and separately measured SCF / force stages when available.
 
 The summary must also publish an iteration-branch histogram for each engine.
+The checker requires nonempty per-system records and nonnegative integer iteration
+counts without coercion. At least two warm observations and explicit successful
+convergence of every item are necessary for a stability verdict. Missing legacy
+convergence flags or a single observation remain diagnostic-only. A passing
+stability check does not replace independent energy/force correctness gates.
 
 ## Performance claims
 

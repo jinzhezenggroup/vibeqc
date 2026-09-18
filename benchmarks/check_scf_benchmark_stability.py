@@ -18,7 +18,18 @@ from typing import Any
 def iteration_branch(sample: dict[str, Any]) -> tuple[int, ...]:
     """Return the per-system SCF iteration tuple for one warm sample."""
 
-    return tuple(int(item["iterations"]) for item in sample["convergence"])
+    convergence = sample.get("convergence")
+    if not isinstance(convergence, list) or not convergence:
+        raise ValueError("each warm sample requires nonempty convergence records")
+    counts = []
+    for item in convergence:
+        if not isinstance(item, dict):
+            raise TypeError("convergence records must be objects")
+        value = item.get("iterations")
+        if type(value) is not int or value < 0:
+            raise ValueError("SCF iteration counts must be nonnegative integers")
+        counts.append(value)
+    return tuple(counts)
 
 
 def branch_histogram(samples: list[dict[str, Any]]) -> dict[str, int]:
@@ -51,6 +62,17 @@ def stability_summary(payload: dict[str, Any]) -> dict[str, Any]:
     )
 
     reasons: list[str] = []
+    for engine, samples in (("VibeQC", vibeqc_samples), ("GPU4PySCF", gpu_samples)):
+        if len(samples) < 2:
+            reasons.append(
+                f"{engine} needs at least two warm repeats to test stability"
+            )
+        if any(
+            item.get("converged") is not True
+            for sample in samples
+            for item in sample["convergence"]
+        ):
+            reasons.append(f"{engine} lacks confirmed convergence for every warm item")
     if not vibeqc_stable:
         reasons.append("VibeQC warm replays follow multiple SCF iteration branches")
     if not gpu_stable:
@@ -65,6 +87,7 @@ def stability_summary(payload: dict[str, Any]) -> dict[str, Any]:
     headline_valid = not reasons
     return {
         "headline_cross_engine_ratio_valid": headline_valid,
+        "scope": "iteration-workload stability; independent numerical gates are still required",
         "interpretation": (
             "stable iteration-matched normal-convergence comparison"
             if headline_valid
