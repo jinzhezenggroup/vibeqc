@@ -1,4 +1,5 @@
 {
+  "benchmark_results_max_bytes": 100663296,
   "exceptions": {
     "benchmarks/results/accuracy-173/arithmetic/states.npz": {
       "owner": "accuracy-173",

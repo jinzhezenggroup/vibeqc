@@ -97,6 +97,15 @@ record after checking each part's SHA-256 and size. No numerical values or
 sample ordering are changed. Permanent array inputs can be stored as named NPY
 files, preserving the original array bytes and numeric identity checks.
 
+The same retention checker also enforces the optional
+`benchmark_results_max_bytes` policy field across **all** indexed files under
+`benchmarks/results/`, including manifests and summaries. Its current budget is
+96 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
+classification exceptions cannot waive it. Permanent fixtures under
+`tests/reference_data/`, `tests/data/` and audited external sources are not
+counted. Changing the budget is an explicit policy review, not an automatic
+response to another benchmark dump.
+
 Full logs, retries and profiler traces belong in `.artifacts/` or external
 storage. Do not compress them, rename them or split binary archives into chunks
 to bypass the limit. New benchmark archive paths are also ignored by default.
@@ -121,6 +130,24 @@ that restored archive to `tools/unpack_evidence.py --archive PATH --output NEW_D
 Small test-consumed archives remain in the current tree. Historical numerical
 claims retain their original identities and limitations; the migration itself
 is not a new scientific qualification.
+
+## Historical report snapshots
+
+The [checkout archive](../benchmarks/results/retention-checkout/README.md) keeps
+complete historical campaign snapshots as an upstream release asset, with an
+original Git revision and a manifest of every member's size and SHA-256.
+Concise summaries and test/production consumers remain in the current tree.
+Historical Markdown links point to pinned Git revisions rather than missing
+checkout files. Restore the complete snapshot before checking its original
+campaign manifests or running historical reproduction scripts.
+
+`tools/unpack_evidence.py --archive PATH --output NEW_DIR` verifies a downloaded
+snapshot without executing anything. For one member, the existing
+`tools/restore_retained_evidence.py` additionally accepts `--manifest PATH` with
+an evidence-archive manifest and a pinned `source_revision`; it verifies bytes
+from Git and writes to ignored local storage. The legacy default manifest and
+archive-restoration interface remain supported. Neither command downloads data
+implicitly, changes source files or weakens numerical gates.
 
 ## External artifacts and expiry
 
