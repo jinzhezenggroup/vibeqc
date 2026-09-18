@@ -47,7 +47,7 @@ def aligned(size: int) -> int:
 
 @dataclass(frozen=True)
 class TensorSchedule:
-    """Small explicit search space; ordinary single-stream execution only.
+    """Small explicit search space over one stable stream, optionally replayed.
 
     Recompute duplicates shared intermediates between output roots. It does
     not duplicate work within a root or promise arbitrary out-of-core output

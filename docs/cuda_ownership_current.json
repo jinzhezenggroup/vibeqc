@@ -569,6 +569,23 @@
       "subsystem": "runtime"
     },
     {
+      "bytes": 6915,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 165,
+        "scientific": 0
+      },
+      "path": "src/runtime/cuda_graph_region.cuh",
+      "physical_lines": 188,
+      "reason": "Shared graph capture, replay, invalidation and diagnostics. No scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "4e63d30994726b3c0fdf6685d04348ff0af20b314b2cf3016447d7b8fb0c40a5",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 2911,
       "code_lines": {
         "fallback": 0,
@@ -3556,6 +3573,23 @@
       "subsystem": "runtime"
     },
     {
+      "bytes": 1551,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 37,
+        "scientific": 0
+      },
+      "path": "src/tensor/cuda_graph_context.cuh",
+      "physical_lines": 42,
+      "reason": "Adapter binding the shared graph owner to TensorIR arena, stream and library lifetimes.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2767a7cc2a526e7df234a44950d5b74202c4d6318c25c4f3752d1c8148d1bd98",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 4320,
       "code_lines": {
         "fallback": 0,
@@ -3786,7 +3820,7 @@
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
-    "runtime": 10177,
+    "runtime": 10379,
     "scientific": 12768
   },
   "migration_ledger": {
@@ -4048,7 +4082,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4447,
+      "runtime": 4649,
       "scientific": 5
     },
     "scf_tensor": {

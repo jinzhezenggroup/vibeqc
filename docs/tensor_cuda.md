@@ -13,7 +13,7 @@ supplied equations and do not implement a complete CCSD/MP2 method.
 | Baseline execution | Unfused FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
 | Candidate execution | View elimination, ordered elementwise fusion, smaller panels and root recomputation |
 | Selection | Explicit bounded tuning, CPU/baseline parity, resource and complete-endpoint gates |
-| Graph capture | Ordinary stream reported explicitly; capture is not implemented |
+| Graph capture | Opt-in fixed-region replay with ordinary fallback |
 | Complete molecular CC solver | Outside this executor |
 
 ## Prepare and execute
@@ -61,6 +61,58 @@ plan identities into compiled-code buckets and creates independent prepared
 states. Its budget charges the sum of every plan's peak, including sequential
 execution because all states remain resident. `execute(feeds, workers=...)`
 preserves system order and supports different nocc/nvir populations.
+
+## Optional compiled-region replay
+
+`PreparedCuda(plan, artifact, execution_mode="cuda-graph")` opts into shared
+compiler/runtime capture. The default remains `execution_mode="ordinary"`.
+The first eligible unprofiled call executes ordinarily; the second captures,
+instantiates and executes the fixed device region once; later calls replay.
+Numeric inputs refresh the existing device buffers without recapture. Validation,
+host transfers, detached outputs and arithmetic-error checks remain outside
+capture. Each complete endpoint still makes one native call.
+
+```python
+with PreparedCuda(plan, artifact, execution_mode="cuda-graph") as prepared:
+    prepared.execute(feeds)              # ordinary warmup
+    prepared.execute(feeds)              # capture, instantiate, execute
+    result = prepared.execute(new_feeds) # replay with refreshed numeric inputs
+    print(result.backend, result.metrics["graph_captures"])
+    prepared.invalidate_graph()          # next call warms up before recapture
+```
+
+The pure CaptureContract reuses specialization records and existing artifact
+keys. Identity includes program/compiler/artifact, schedule, shapes/layouts and
+precision, GPU UUID and driver/CUDA/cuBLAS versions. Native binding additionally
+includes the stream, arena and library-handle addresses. A different plan,
+schedule, artifact or device requires a new prepared owner. Invalidation discards
+only replay state. Graphs are destroyed before their referenced resources.
+
+Unsupported capture/instantiation and regions exceeding 4096 launches/nodes fall
+back to ordinary execution. Failed capture is not retried until invalidation.
+Graph-launch or asynchronous execution errors propagate, avoiding duplicate
+execution of possibly submitted work. Zero division and nonfinite intermediate
+checks remain active. `profile=True` uses ordinary section profiling and leaves
+an existing graph reusable. No convergence or DIIS policy changes.
+
+Graph metrics report mode/reason, cumulative capture/replay/fallback counts,
+capture/instantiate CPU time, region submission time and a retained device-memory
+delta. `diagnostics=True` adds this telemetry to an ordinary call without section
+fences. `device_ms` is the event interval around transfers and the device region,
+including host-submission gaps, not isolated kernel time. Unprofiled execution
+retains one explicit completion fence; pageable transfers may synchronize inside
+the CUDA runtime.
+
+Graph storage is outside the exact numeric-buffer budget. Its free-memory delta
+is an observation, not an allocation bound; driver host storage is unmeasured.
+Global ResourcePlan consumers therefore use ordinary fallback until graph storage
+has a budgeted candidate. The resident extension remains ordinary. No automatic
+profile promotion or full SCF/CC qualification is implied.
+
+The shared owner is `src/runtime/cuda_graph_region.cuh`. Existing device-tail-launch
+SCF/eigensolver experiments use a different control abstraction; ProgramIR and
+iterative electronic-structure adoption remain follow-on #460/#370/#507 work.
+See the [decision note](../.agents/notes/implemented/architecture/2026-09-19-compiled-cuda-replay.md).
 
 ## Layouts and contractions
 
