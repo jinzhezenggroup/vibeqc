@@ -152,3 +152,26 @@ def test_wheel_compiler_templates_include_local_dependencies(tmp_path, monkeypat
                     (base / name).is_file()
                     for base in (source.parent, assets / "src", assets / "include")
                 ), (source, name)
+
+
+def test_project_metadata_declares_cuda_runtime_providers():
+    import tomllib
+
+    root = Path(__file__).resolve().parents[2]
+    project = tomllib.loads((root / "pyproject.toml").read_text())
+    dependencies = project["project"]["dependencies"]
+    required = {
+        "nvidia-cublas-cu12",
+        "nvidia-cusolver-cu12",
+        "nvidia-cusparse-cu12",
+        "nvidia-cuda-runtime-cu12",
+        "nvidia-nvjitlink-cu12",
+    }
+    assert required <= {dependency.split(">=", 1)[0] for dependency in dependencies}
+    assert project["project"]["optional-dependencies"]["cuda12"] == []
+
+
+def test_cibuildwheel_uses_base_dependencies_for_provider_smoke():
+    root = Path(__file__).resolve().parents[2]
+    workflow = (root / ".github/workflows/wheels.yml").read_text()
+    assert "CIBW_TEST_EXTRAS" not in workflow

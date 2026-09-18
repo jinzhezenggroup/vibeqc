@@ -35,20 +35,24 @@ minimal cuBLAS/cuSOLVER ABI declarations. These declarations contain only the
 opaque types, enum values, and function signatures used by VibeQC; native builds
 continue to compile against NVIDIA's full headers.
 
-At Python runtime, `vibeqc[cuda12]` supplies separately maintained NVIDIA
-user-space packages. Before loading `libvibeqc.so`, the package discovers
-`site-packages/nvidia/*/lib` and preloads the reviewed provider cohort by
-absolute path so later SONAME lookup reuses those objects. `libcuda.so.1` is
-never sourced from a Python package or toolkit stub; the kernel driver remains
-system-owned. A compatible system CUDA runtime remains a supported alternative.
+At Python runtime, Linux installs declare the reviewed NVIDIA CUDA 12
+user-space packages as base dependencies. This is required because the
+CUDA-bearing `libvibeqc.so` executes NVCC fatbinary/function registration
+constructors while the DSO is loaded, before a caller selects a CPU or CUDA
+calculation path. The historical `vibeqc[cuda12]` extra remains as an empty
+compatibility alias rather than the ownership boundary. Before loading
+`libvibeqc.so`, the package discovers `site-packages/nvidia/*/lib` and
+preloads the reviewed provider cohort by absolute path so later SONAME lookup
+reuses those objects. `libcuda.so.1` is never sourced from a Python package or
+toolkit stub; the kernel driver remains system-owned.
 
 The vendored Implib.so templates are direct binary-generation inputs and are
 therefore hashed as part of `VIBEQC_SOURCE_IDENTITY`, in addition to the
 provenance manifest and VibeQC wrapper generator.
 
 Runtime JIT/autotuning is a separate developer-toolchain boundary. It may still
-require NVCC/PTXAS and a full development toolkit; the `cuda12` runtime extra
-does not claim to provide that toolchain.
+require NVCC/PTXAS and a full development toolkit; the Python runtime-provider
+dependencies do not claim to provide that toolchain.
 
 ## Rejected alternatives
 
@@ -70,9 +74,11 @@ does not claim to provide that toolchain.
 - A repaired Linux CUDA wheel must not bundle cudart, cuBLAS, cuSOLVER,
   cuSPARSE, nvJitLink, or `libcuda`.
 - The wheel's `libvibeqc.so` must have no CUDA provider `DT_NEEDED` entries.
-- The installed-wheel test must execute a provider-backed CUDA runtime call; a
-  no-driver/no-device status is acceptable, but merely opening the library is
-  not.
+- Linux wheel metadata must declare the reviewed CUDA 12 user-space provider
+  cohort as runtime dependencies; CUDA registration occurs during DSO load.
+- The installed-wheel test must install the base wheel without a CUDA extra and
+  execute a provider-backed CUDA runtime call; a no-driver/no-device status is
+  acceptable, but merely opening the library is not.
 - `libcuda.so.1` always comes from the host driver.
 - Native SDK builds retain ordinary CUDA toolkit linkage.
 - Every vendored template byte that can change the trampoline binary participates
@@ -104,18 +110,21 @@ provider smoke.
 
 The wheel gains a small maintained ABI declaration/symbol inventory and a
 vendored MIT-licensed trampoline generator template set. Adding a CUDA host call
-now requires keeping that inventory synchronized. In return, Python package
-import and CPU/reference use no longer require provider libraries to be
-discoverable by the dynamic loader, while GPU users can obtain the reviewed
-CUDA-12 user-space cohort independently of the VibeQC wheel.
+now requires keeping that inventory synchronized. The provider DSOs remain
+independently distributed and are never bundled into VibeQC, but Linux wheel
+installation now brings in the reviewed CUDA-12 user-space cohort because
+loading the CUDA-bearing native DSO requires cudart registration support. A
+future split between CPU and CUDA DSOs could make those providers optional
+again.
 
 ## Revisit when
 
 Revisit this boundary if NVIDIA publishes a stable packaging/linkage mechanism
-that removes the need for local trampolines, if VibeQC targets a new CUDA major
-with different provider SONAMEs or ABI, if non-Linux CUDA wheels are added, or
-if runtime JIT is intentionally made self-contained from Python-distributed
-toolchain components.
+that removes the need for local trampolines, if VibeQC splits CPU and CUDA code
+into independently loaded DSOs so providers can become truly optional, if
+VibeQC targets a new CUDA major with different provider SONAMEs or ABI, if
+non-Linux CUDA wheels are added, or if runtime JIT is intentionally made
+self-contained from Python-distributed toolchain components.
 
 ## References
 
