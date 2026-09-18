@@ -147,6 +147,8 @@ function(vibeqc_attach_cuda_implib target)
       "${output_dir}/${base}.init.c")
   endforeach()
 
+  target_include_directories(${target} BEFORE PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/nvidia_host_api")
   target_include_directories(${target} PRIVATE ${VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS})
   target_link_libraries(${target} PRIVATE ${CMAKE_DL_LIBS})
   target_link_options(${target} PRIVATE "LINKER:-z,defs")
