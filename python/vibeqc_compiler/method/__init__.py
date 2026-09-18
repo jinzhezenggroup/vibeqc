@@ -10,13 +10,21 @@ from .spec import (
     UnsupportedMethod,
     resolve_method,
 )
+from .stationary_gradient import (
+    IntegralGradientBlock,
+    StationaryGradientPlan,
+    StationaryMeanField,
+)
 
 __all__ = [
     "METHOD_CATALOG",
     "ExactExchangePrimitive",
+    "IntegralGradientBlock",
     "MethodIR",
     "MethodSpec",
     "SemilocalXCPrimitive",
+    "StationaryGradientPlan",
+    "StationaryMeanField",
     "SymmetricMatrixFunctionSpec",
     "UnsupportedMethod",
     "resolve_method",

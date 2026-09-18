@@ -13,7 +13,7 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
 | `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
-| `method` | Canonical `MethodSpec -> MethodIR` composition and primitive requirements; no SCF/runtime policy | `common`, `xc` |
+| `method` | Canonical `MethodSpec -> MethodIR`, primitive requirements and generated stationary source plans; no SCF/runtime policy | `common`, `xc`, `tensor` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
 The compiler owns mathematical IR and lowering. `method` is the composition front
@@ -139,3 +139,47 @@ are preserved in the
 Those measurements are migration evidence rather than a current runtime
 performance claim. Raw run logs and generated build products belong in ignored
 `.artifacts/`, according to the [evidence retention policy](evidence_retention.md).
+
+
+## Stationary semilocal gradient plans
+
+`vibeqc_compiler.method.StationaryGradientPlan` combines a resolved semilocal
+MethodIR with an explicit `StationaryMeanField` envelope. The envelope declares
+all-electron/direct full-range Coulomb, fixed integer occupations, real FP64,
+the XC point model and a stable differentiable grid branch. An XC graph alone
+cannot supply the Hamiltonian or overlap constraint.
+
+The implemented compiler/diagnostic slice provides:
+
+- bounded ordered-element one-electron, Coulomb and overlap/Pulay objectives;
+  TensorIR VJP generates their source weights with an exact unit seed;
+- generated contractions with provider-supplied derivative tiles, without a
+  global four-AO-index cotangent; restricted densities already include occupation
+  two, while unrestricted Coulomb uses the total alpha/beta density;
+- a strict component reduction requiring AO-center XC, physical grid motion,
+  partition-weight response, one-electron, J, Pulay and nuclear sources once each.
+  XC functional coefficients are applied upstream, not again in the reduction.
+
+`integral_block(source, terms=..., coordinates=...)` takes **full ordered**
+AO-pair/quartet tuple data. It does not infer packed symmetry multiplicities or
+atom mappings. Its `objective`, `weights` and `contraction` are ordinary TensorIR
+programs; the existing CPU interpreter and CUDA planner/emitter consume the same
+equations. CUDA source generation is not hardware execution qualification.
+`reduce_diagnostic` checks complete input coverage, shapes, FP64, finite values
+and the interpreter's logical byte budget; it is not a public force endpoint.
+
+Plan identity includes method/envelope semantics, not descriptive aliases or
+live solve epochs. Block identity additionally includes generated equation hashes
+and shapes. The existing CUDA planner owns schedule/target identities. Native
+state leases remain runtime-owned and must be checked before and after execution;
+this compile-time plan neither creates nor renews a lease.
+
+**Still unavailable in this slice:** live native gradient/provider binding,
+complete CPU/CUDA molecular gradients, native XC/grid derivative integration and
+public DFT forces. `require_native_endpoint` rejects both backends explicitly.
+The existing `StationaryDerivativeContract` gates remain unchanged; detached or
+stale arrays cannot gain force capability by constructing a plan. Hybrid, ECP,
+DF, meta-GGA and unsupported occupation requests do not inherit this capability.
+
+Tests: `tests/python/test_stationary_gradient_plan.py`. Rationale:
+[generated stationary source composition](../.agents/notes/implemented/architecture/2026-09-19-stationary-gradient-plan.md).
