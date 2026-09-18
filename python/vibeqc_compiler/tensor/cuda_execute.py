@@ -154,6 +154,8 @@ def compile_cuda(
                 "key": key,
                 "binary_sha256": file_hash(library),
                 "compile_seconds": result.duration_seconds,
+                "generated_source_bytes": len(source.encode("utf-8")),
+                "binary_bytes": library.stat().st_size,
                 "resources": [
                     dataclasses.asdict(r) for r in parse_resources(result.stderr)
                 ],

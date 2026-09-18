@@ -165,8 +165,33 @@ elementwise consumers; a slice cannot hide an overflow by discarding entries.
 View chains have a bounded inline depth. These switches are experimental
 requests until a particular plan passes tuning gates.
 
-`tune_cuda(baseline, compiler, fixtures, cache, ...)` considers at most eight
-candidates and eight fixed-shape fixtures, with 5–30 paired repeats. It warms
+`tune_cuda(baseline, compiler, fixtures, cache, ...)` uses a structured
+`TensorScheduleSpace`: view elimination, fusion, recomputation, direct/packed
+GEMM, block threads and M/N/K panel dimensions. Its deterministic bounded walk
+visits single-axis changes before higher-order interactions without enumerating
+the full Cartesian product. Only implemented ordinary-stream dimensions are
+searched; vectorized reductions, cooperative/persistent kernels and shared-memory
+GEMM staging are not implied by these controls.
+
+`TensorSearchLimits` defaults to 128 generated candidates and 12 candidate
+compilation attempts, plus the mandatory baseline. Explicit `schedules=` remains
+supported; it is mutually exclusive with `search_space=`. The static pipeline
+checks planner legality/combined host-device memory, removes equivalent execution
+plans (including ineffective direct-GEMM tile changes), then applies source-size,
+register-pressure and occupancy policies before invoking NVCC. The same plan's
+aliases, lifetimes, outputs, reservations and allocation capacities participate
+in equivalence checking. `maximum_source_bytes` bounds generated source size;
+it is a compile-cost proxy, not a prediction of compilation seconds.
+
+Static register counts are scalar-liveness heuristics for generated kernels and
+occupancy is an upper bound without register-allocation granularity. Neither
+models cuBLAS internals. Packing panels remain global numeric buffers, not shared
+memory. Logical traffic excludes packing/provider/cache traffic; local memory is
+unknown until PTXAS reports it. These qualifications are retained in the evidence.
+Compiled candidates still require complete PTXAS register/stack/spill/shared data
+and feasible per-block resources before any candidate endpoint execution.
+
+Tuning supports eight fixed-shape fixtures, with 5–30 paired repeats. It warms
 the library first, records startup separately, and reuses the shared CG01
 interleaved measurement and noise assessment. Timings include input validation,
 host layout staging, transfers, packing, cuBLAS, all small kernels, result
@@ -180,7 +205,24 @@ gate and a paired bootstrap lower bound apply. An unsuccessful search retains
 the baseline and preserves all candidate failures/raw measurements. Tuning is
 explicit; installation never launches a search. The returned `TensorSelection`
 contains the concrete compiled winner and evidence path, with no global dispatch
-change or claim about unmeasured shapes.
+change or claim about unmeasured shapes. Schema-v2 tuning evidence retains
+static pruning/deadline/budget reasons and actual compilation-attempt counts.
+Artifacts record generated-source and binary sizes alongside compilation seconds
+and PTXAS resources. The existing full-endpoint timing phase remains the promotion
+gate; a separate cheap representative-timing shortlist is not implemented yet.
+
+Accepted rows and the selected winner carry shared #459 `ImplementationProfile`
+records, with the original artifact key, schedule hash and candidate evidence
+hash. Correctness guards bind the equation, numeric-buffer budget, reservations
+and target; performance guards additionally restrict promotion to each measured
+input shape/dtype/stride domain and the existing baseline execution identity
+(GPU UUID, driver/runtime/libraries and Python/NumPy). Values stay in measurement
+provenance, not used as a benchmark-ID dispatch policy. Unmeasured layouts cannot satisfy the
+performance guard; missing target facts fail closed. These records live in the
+existing selection evidence, not a second profile database or automatic loader.
+The current API returns a concrete plan for the caller's measured workload; it
+does not install new global dispatch policy. See the
+[search rationale](../.agents/notes/implemented/performance/2026-09-19-tensor-schedule-search.md).
 
 The local artifact cache verifies each binary hash before loading. Identity
 includes equation/spec/layout/shape/precision, plan and schema, all tensor
