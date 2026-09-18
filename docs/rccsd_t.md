@@ -161,11 +161,13 @@ guards run before any GPU work. CPU oracle comparison is opt-in
 artifact keys, and the probed `runtime_device`.
 
 GPU validation (numerical gates ≤1e-9 total / ≤1e-10 per tile, two-run
-bitwise determinism, two-budget peak-memory evidence) runs on qz via
+bitwise determinism, two-budget peak-memory evidence) runs on CUDA via
 `tools/validate_cc_triples_tiles.py`. Retained manifests bind the run to the
 exact git head and SHA-256 identities of the triples execution/validation
-sources. Rationale for the per-tile resident
-design and revisit conditions:
+sources. The `--molecules` option selects a declared endpoint subset; every
+requested shape/budget must pass, and an infeasible plan makes qualification
+exit unsuccessfully while retaining its diagnostic record. Rationale for the
+per-tile resident design and revisit conditions:
 [`.agents/notes/implemented/performance/2026-09-18-bounded-cuda-triples-tiles.md`](../.agents/notes/implemented/performance/2026-09-18-bounded-cuda-triples-tiles.md).
 
 ```bash

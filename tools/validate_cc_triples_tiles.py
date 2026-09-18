@@ -129,6 +129,16 @@ def run(args):
         compile_timeout=args.compile_timeout,
     )
     budgets = [int(b) * (1 << 20) for b in args.budget.split(",")]
+    selected_molecules = tuple(
+        name.strip() for name in args.molecules.split(",") if name.strip()
+    )
+    unknown_molecules = sorted(set(selected_molecules) - set(GROUND_TRUTH))
+    if not selected_molecules or unknown_molecules:
+        raise ValueError(
+            "molecules must be a nonempty comma-separated subset of "
+            f"{sorted(GROUND_TRUTH)}; unknown={unknown_molecules}"
+        )
+
     source_identity = _qualification_source_identity()
     if not args.compile_only and source_identity["worktree_dirty"]:
         raise RuntimeError(
@@ -139,16 +149,18 @@ def run(args):
     manifest = {
         "scope": "#150 B bounded CUDA triples tiles",
         "schema": "vibeqc.ccsd-t.tile-validation/1",
+        "compile_only": args.compile_only,
         "tensor_source_identity": tensor_source_identity(),
         "qualification_source_identity": source_identity,
         "python": platform.python_version(),
         "numpy": np.__version__,
         "compiler_target": compiler.target.to_payload(),
         "runtime_device": None,
+        "selected_molecules": selected_molecules,
         "molecules": [],
     }
 
-    for name in ("h2", "he", "h2o", "nh3", "ch4"):
+    for name in selected_molecules:
         expected_o, expected_v, expected_et = GROUND_TRUTH[name]
         feeds = load_endpoint(name)
         nocc, nvir = feeds[0], feeds[1]
@@ -184,10 +196,10 @@ def run(args):
 
         arrays = arrays_dict(feeds)
 
-        # Test both single-tile (vir_chunk_size=nvir) and multi-tile (< nvir)
-        for vir_chunk_size in (nvir, max(1, nvir // 2 if nvir > 1 else 1)):
-            if vir_chunk_size == 0:
-                continue
+        # Test both single-tile (vir_chunk_size=nvir) and multi-tile (< nvir).
+        # Deduplicate two-electron endpoints where both choices are 1.
+        chunk_sizes = tuple(dict.fromkeys((nvir, max(1, nvir // 2 if nvir > 1 else 1))))
+        for vir_chunk_size in chunk_sizes:
             for max_bytes in budgets:
                 budget_mib = max_bytes // (1 << 20)
                 label = f"  chunk={vir_chunk_size}, budget={budget_mib}MiB"
@@ -274,8 +286,8 @@ def run(args):
                     max_tile_diff = max(per_tile_diffs) if per_tile_diffs else 0
                     de_total = abs(result.et - cpu_et)
 
-                    de_total_ok = de_total <= 1e-9
-                    per_tile_ok = all(d <= 1e-10 for d in per_tile_diffs)
+                    de_total_ok = bool(de_total <= 1e-9)
+                    per_tile_ok = bool(all(d <= 1e-10 for d in per_tile_diffs))
 
                     print(
                         f"tiles={result.tile_count} "
@@ -356,6 +368,17 @@ def run(args):
         for tr in mol.get("tile_results", []):
             r = tr.get("gpu_run")
             if r is None:
+                # A budget rejection is useful diagnostic evidence, but it
+                # cannot qualify a requested shape/budget as a successful run.
+                # In particular, rejecting every plan must not exit zero.
+                if not tr["compiled"] or not args.compile_only:
+                    all_ok = False
+                    reason = tr.get("infeasible_reason", "missing GPU execution")
+                    print(
+                        f"FAIL {mol['name']} {tr['budget_mib']}MiB "
+                        f"chunk={tr['vir_chunk_size']}: {reason}",
+                        flush=True,
+                    )
                 continue
             status = (
                 f"chunk={tr['vir_chunk_size']} "
@@ -399,6 +422,15 @@ if __name__ == "__main__":
         "--budget",
         default="256,512",
         help="Comma-separated memory budgets in MiB (default: 256,512)",
+    )
+    parser.add_argument(
+        "--molecules",
+        default="h2,he,h2o,nh3,ch4",
+        help=(
+            "Comma-separated endpoint subset. The default runs all endpoints; "
+            "qualification may scope a retained run to the minimum cases needed "
+            "for a stated gate, e.g. h2,h2o."
+        ),
     )
     parser.add_argument(
         "--compile-timeout",

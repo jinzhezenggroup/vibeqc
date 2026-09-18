@@ -44,8 +44,8 @@ artifacts.**
   (`tools/validate_cc_triples_tiles.py`) passes it; the default production
   path never computes CPU reference work.
 - `CudaTriplesResult.runtime_device` is captured from the first resident's
-  device probe (name/architecture), so evidence manifests prove which GPU
-  executed the run.
+  device probe (UUID, architecture, SM count, driver/runtime and cuBLAS
+  identity), so evidence manifests bind the run to the executing CUDA device.
 
 ## Rejected alternatives
 
@@ -57,8 +57,9 @@ artifacts.**
   large `nvir`, and needs a runtime-indexable denominator build inside
   TensorIR that does not exist.
 - **Single resident reused across tiles with upload-only swaps** — the goal
-  statement preferred this ("具名输入上传一次"), but identical shapes across
-  tiles only exist when `vir_chunk_size` divides `nvir` evenly; the
+  statement preferred this ("具名输入上传一次"), but different a-ranges have
+  different prefix extents and compile-time gathers, even when
+  `vir_chunk_size` divides `nvir` evenly; the
   per-tile-owner design keeps every tile exactly shape-matched at the cost of
   one create/destroy per tile (amortized by the on-disk compile cache).
 
@@ -82,14 +83,14 @@ artifacts.**
   (≤1e-10), masked-oracle parity, TensorIR roundtrip/differentiability,
   determinism, chunk-size independence, endpoint regression
   (h2/he ≈ 0; h2o/nh3/ch4 vs pinned PySCF 2.14.0 truth ≤1e-9).
-- `tools/validate_cc_triples_tiles.py` — qz GPU validation driver: per
+- `tools/validate_cc_triples_tiles.py` — CUDA validation driver: per
   molecule, per chunk size (`nvir` and `nvir//2`), per budget (256/512 MiB):
   per-tile GPU-vs-masked-CPU ≤1e-10, total ≤1e-9, two-run bitwise determinism,
   peak-bytes records, explicit infeasible-budget failure, and an evidence
   identity containing the exact git head plus SHA-256 hashes of the triples
   execution/orchestration sources.
 - Real-device run manifest: retained under
-  `benchmarks/results/cc-triples-b/` when executed on qz (GPU, architecture
+  `benchmarks/results/cc-triples-b/` (GPU, architecture
   and artifact keys recorded in `runtime_device` / `artifact_keys`).
 
 ## Consequences

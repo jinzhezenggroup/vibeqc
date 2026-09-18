@@ -386,3 +386,33 @@ def test_program_deterministic_hash():
     # Different chunk produces different hash
     p3 = build_tile_triples_program(2, 3, vir_chunk=(1, 3))
     assert p1.logical_hash != p3.logical_hash
+
+
+@pytest.mark.parametrize(
+    "invalid, message",
+    [
+        ("nan", "finite"),
+        ("inf", "finite"),
+        ("noncanonical", "noncanonical"),
+        ("near_zero", "near-zero"),
+    ],
+)
+def test_cuda_input_guards_precede_planning(tmp_path, invalid, message):
+    """Invalid scientific inputs fail before compilation or device allocation."""
+    from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
+
+    arrays = dict(zip(INPUT_NAMES, _random_case(2, 3, 401), strict=True))
+    if invalid in ("nan", "inf"):
+        arrays["t1"][0, 0] = float(invalid)
+    else:
+        arrays["eps_o"].fill(0)
+        arrays["eps_v"].fill(-1 if invalid == "noncanonical" else 1e-12)
+
+    def unexpected_planning(*args, **kwargs):
+        pytest.fail("invalid inputs reached CUDA planning")
+
+    config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)
+    with CudaTriplesTiles(config, None, tmp_path) as tiles:
+        tiles._plan_cuda = unexpected_planning
+        with pytest.raises(ValueError, match=message):
+            tiles.run_tiles(arrays)

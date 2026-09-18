@@ -2,8 +2,8 @@
 
 No CUDA call, compilation or GPU allocation occurs at import time.  Callers
 must supply a verified :class:`CudaCompilerAdapter` and a writable cache
-directory.  All real-device validation runs on qz (inspire); local machines
-without CUDA raise an explicit error at preparation time.
+directory.  Real-device validation requires CUDA; machines without CUDA
+raise an explicit error at preparation time.
 
 The host extracts exact-shape sub-blocks from the full-system tensors before
 each tile upload.  Label axes are prefix-bounded by the tile's ``a_end``,
