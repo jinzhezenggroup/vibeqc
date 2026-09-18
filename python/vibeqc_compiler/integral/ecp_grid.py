@@ -1,4 +1,4 @@
-"""Compiler-owned bounded ECP host quadrature and real s/p/d harmonics.
+"""Compiler-owned bounded ECP host quadrature and real s/p/d/f harmonics.
 
 The root iteration and grid traversal are finite compiler schedules. Scalar
 recurrences, coordinate transforms and normalization use the common DAG.
@@ -8,7 +8,7 @@ The independent CPU ECP oracle deliberately retains its own implementation.
 import math
 
 from .expr import Graph
-from .ir import ECP_MAX_ORBITAL_ANGULAR
+from .ir import ECP_MAX_ORBITAL_ANGULAR, ECP_MAX_PROJECTOR_ANGULAR
 from .scalar_c import ScalarCEmitter
 from .shell_spec import cartesian_components
 
@@ -27,6 +27,13 @@ def harmonic_roots():
         math.sqrt(5 / (16 * math.pi)) * (3 * z * z - 1),
         math.sqrt(15 / (4 * math.pi)) * x * z,
         math.sqrt(15 / (16 * math.pi)) * (x * x - y * y),
+        math.sqrt(35 / (32 * math.pi)) * y * (3 * x * x - y * y),
+        math.sqrt(105 / (4 * math.pi)) * x * y * z,
+        math.sqrt(21 / (32 * math.pi)) * y * (5 * z * z - 1),
+        math.sqrt(7 / (16 * math.pi)) * z * (5 * z * z - 3),
+        math.sqrt(21 / (32 * math.pi)) * x * (5 * z * z - 1),
+        math.sqrt(105 / (16 * math.pi)) * z * (x * x - y * y),
+        math.sqrt(35 / (32 * math.pi)) * x * (x * x - 3 * y * y),
     )
 
 
@@ -110,7 +117,9 @@ def emit_ecp_grid_cpp():
         "inline void ecp_harmonics(double x, double y, double z, double* out) {",
     ]
     graph, roots = harmonic_roots()
-    lines += _assign(graph, roots, [f"out[{i}]" for i in range(9)]) + ["}"]
+    lines += _assign(
+        graph, roots, [f"out[{i}]" for i in range((ECP_MAX_PROJECTOR_ANGULAR + 1) ** 2)]
+    ) + ["}"]
     lines += [
         "template<class Radial>",
         "inline Radial ecp_radial_node(double z, double weight) {",

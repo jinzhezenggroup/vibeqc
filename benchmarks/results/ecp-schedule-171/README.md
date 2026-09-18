@@ -1,5 +1,12 @@
 # Bounded CUDA ECP radial scheduling
 
+The matched performance measurements below are historical qualification of
+commit `0ba41df84e06e9d3a459c53afd5bbc8f109e02c0`, before integration with
+master `1865c5a` (which adds f projectors and DFT energy support). They are
+not measurements of the merged PR head. The merged schedule uses master's
+16 projector components throughout allocation, indexing and resource bounds;
+its separate integration evidence is described in `merge-validation.md`.
+
 This slice starts at master `b78215ef0bf2cb43c91234c9c2dc852151605468`.
 It changes the execution schedule of existing generated ECP arithmetic,
 not the radial/projector equations, supported methods or quadrature tolerance.
@@ -108,9 +115,10 @@ The native adapter grows from 278 to 296 physical lines, or 272 to 285
 nonblank/noncomment code lines (+13 conservatively scientific ledger lines).
 The generated header grows from 34,335 to 34,489 bytes and 1,196 to 1,200 code
 lines; the four-line schedule helper accounts for the complete difference.
-The ownership snapshot retains unchanged generated-family measurements from
-the base build and updates ECP with the verified candidate header. This slice
-does not claim handwritten-science retirement.
+The original ownership snapshot retained unchanged generated-family measurements
+from the base build and updated ECP with the verified candidate header. The
+merged snapshot is regenerated as described in `merge-validation.md`. This
+slice does not claim handwritten-science retirement.
 
 ## Reproduction and retained evidence
 

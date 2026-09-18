@@ -12,6 +12,8 @@
 
 namespace vibeqc::integrals {
 namespace {
+static_assert(sizeof(EcpSpherePoint::harmonics) / sizeof(double) == generated::ecp_projector_count);
+constexpr int projector_count = generated::ecp_projector_count;
 struct Primitive {
   double exponent, coefficient;
 };
@@ -40,8 +42,8 @@ __global__ void evaluate_ao(const AO* aos, const Primitive* primitives,
 __global__ void project(const Four* values, const EcpSpherePoint* sphere, int n, int nq, int nr,
                         bool derivatives, Four* projections) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= nr * n * 9) return;
-  const int m = i % 9, a = (i / 9) % n, r = i / (9 * n);
+  if (i >= nr * n * projector_count) return;
+  const int m = i % projector_count, a = (i / projector_count) % n, r = i / (projector_count * n);
   projections[i] = generated::ecp_project(values + (r * n + a) * nq, sphere, nq, m, derivatives);
 }
 __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
@@ -58,8 +60,8 @@ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
   for (int r = 0; r < nr; ++r) {
     double parts[2][10];
     generated::ecp_contract(terms, nt, radii[r], sphere, nq, center, values + (r * n + a) * nq,
-                            values + (r * n + b) * nq, projections + (r * n + a) * 9,
-                            projections + (r * n + b) * 9, ncoord != 0, parts);
+                            values + (r * n + b) * nq, projections + (r * n + a) * projector_count,
+                            projections + (r * n + b) * projector_count, ncoord != 0, parts);
     for (int part = 0; part < 2; ++part)
       for (int transpose = 0; transpose < (a == b ? 1 : 2); ++transpose) {
         const int item = transpose ? b * n + a : a * n + b;
@@ -191,7 +193,7 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
     auto dradii = grid.allocate(radial_grid.size(), radial_grid.data());
     Four* staging = nullptr;
     try {
-      staging = grid.allocate<Four>(tile * n * (nq + 9));
+      staging = grid.allocate<Four>(tile * n * (nq + projector_count));
     } catch (const CudaFailure& error) {
       if (error.status != cudaErrorMemoryAllocation || tile == 1) throw;
       // Optional batching may exhaust either the active ledger or the device.
@@ -199,7 +201,7 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
       // the original bounded schedule; other CUDA/host errors propagate.
       (void)cudaGetLastError();
       tile = 1;
-      staging = grid.allocate<Four>(n * (nq + 9));
+      staging = grid.allocate<Four>(n * (nq + projector_count));
     }
     auto values = staging;
     auto projections = staging + tile * n * nq;
@@ -212,8 +214,8 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
         evaluate_ao<<<(count * n * nq + 127) / 128, 128, 0, stream>>>(
             daos, dprimitives, dsphere, dradii + r, n, nq, count, atom.position[0],
             atom.position[1], atom.position[2], derivatives, values);
-        project<<<(count * n * 9 + 127) / 128, 128, 0, stream>>>(values, dsphere, n, nq, count,
-                                                                 derivatives, projections);
+        project<<<(count * n * projector_count + 127) / 128, 128, 0, stream>>>(
+            values, dsphere, n, nq, count, derivatives, projections);
         contract<<<(size + 127) / 128, 128, 0, stream>>>(daos, dterms, system.ecp_terms.size(),
                                                          dsphere, dradii + r, values, projections,
                                                          n, nq, count, c, ncoord, destination);

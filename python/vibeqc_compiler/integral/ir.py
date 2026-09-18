@@ -26,6 +26,7 @@ class KernelConsumer(str, Enum):
 
 
 ECP_MAX_ORBITAL_ANGULAR = 3
+ECP_MAX_PROJECTOR_ANGULAR = 3
 
 
 class OperatorFamily(str, Enum):
@@ -186,8 +187,11 @@ class EcpRadialTerm:
     coefficient: float
 
     def __post_init__(self):
-        if type(self.channel) is not int or not -1 <= self.channel <= 2:
-            raise ValueError("ECP channel must be local (-1) or s/p/d")
+        if (
+            type(self.channel) is not int
+            or not -1 <= self.channel <= ECP_MAX_PROJECTOR_ANGULAR
+        ):
+            raise ValueError("ECP channel must be local (-1) or s/p/d/f")
         if type(self.power) is not int or not 0 <= self.power <= 4:
             raise ValueError("ECP radial power must be 0..4")
         for name in ("exponent", "coefficient"):

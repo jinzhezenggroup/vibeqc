@@ -19,17 +19,18 @@ def test_radial_workspace_public_vs_cartesian_counts():
     assert cuda_radial_tile(16, 44) == 4
     assert cuda_radial_tile(17, 44) == cuda_radial_tile(16, 45) == 1
     assert _ecp_workspace(item, cuda=True) - _ecp_workspace(item) == 3 * 32 * 19 * (
-        2 * 44 * 44 + 9
+        2 * 44 * 44 + 16
     )
     item["orbital"]["nbf"] = 19
     assert _ecp_workspace(item, cuda=True) == _ecp_workspace(item)
 
 
+@pytest.mark.parametrize("f_projector", [False, True])
 @pytest.mark.parametrize("polar", [32, 44, 45])
 @pytest.mark.parametrize("derivatives", [False, True])
-def test_cuda_radial_tail_and_grid_fallback(polar, derivatives):
+def test_cuda_radial_tail_and_grid_fallback(polar, derivatives, f_projector):
     require_device("cuda")
-    atoms, basis, mol = fixture()
+    atoms, basis, mol = fixture(f_projector=f_projector)
     # 161 leaves a one-layer tail in the four-layer schedule; 45 polar points
     # selects the bounded original schedule, independently of AO count.
     kwargs = {"radial_points": 161, "polar_points": polar, "derivatives": derivatives}

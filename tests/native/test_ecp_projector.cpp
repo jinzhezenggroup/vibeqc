@@ -14,7 +14,7 @@ struct Jet {
 };
 struct Point {
   double x, y, z, weight;
-  double harmonics[9];
+  double harmonics[16];
 };
 struct Radial {
   double r, weight;
@@ -52,7 +52,7 @@ void check_grid() {
     ecp_make_grid(orders[0], orders[1], radii, sphere);
     if (radii.size() != orders[0] || sphere.size() != 2 * orders[1] * orders[1])
       throw std::runtime_error("generated grid size mismatch");
-    long double gram[9][9]{};
+    long double gram[16][16]{};
     for (const auto& p : sphere) {
       if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
           !std::isfinite(p.weight) || std::abs(p.x * p.x + p.y * p.y + p.z * p.z - 1) > 1e-14 ||
@@ -60,12 +60,12 @@ void check_grid() {
         throw std::runtime_error("generated sphere is not on unit sphere");
       for (double harmonic : p.harmonics)
         if (!std::isfinite(harmonic)) throw std::runtime_error("nonfinite generated harmonic");
-      for (int a = 0; a < 9; ++a)
-        for (int b = 0; b < 9; ++b)
+      for (int a = 0; a < 16; ++a)
+        for (int b = 0; b < 16; ++b)
           gram[a][b] += (long double)p.weight * p.harmonics[a] * p.harmonics[b];
     }
-    for (int a = 0; a < 9; ++a)
-      for (int b = 0; b < 9; ++b)
+    for (int a = 0; a < 16; ++a)
+      for (int b = 0; b < 16; ++b)
         if (std::abs(gram[a][b] - (a == b ? 1 : 0)) > 2e-13L)
           throw std::runtime_error("generated harmonic orthonormality failed");
     // Addition theorem detects incorrect channel membership/relative signs/normalization.
@@ -74,7 +74,7 @@ void check_grid() {
       const auto& b = sphere[(q * 7 + 11) % sphere.size()];
       const long double dot =
           (long double)a.x * b.x + (long double)a.y * b.y + (long double)a.z * b.z;
-      for (int l = 0; l < 3; ++l) {
+      for (int l = 0; l < 4; ++l) {
         long double sum = 0;
         for (int m = l * l; m < (l + 1) * (l + 1); ++m)
           sum += (long double)a.harmonics[m] * b.harmonics[m];
@@ -264,7 +264,7 @@ void check_weighted_consumer() {
 // nodes using the spherical-harmonic addition theorem and Legendre P_l.
 double kernel(int l, const Point& a, const Point& b) {
   const double x = a.x * b.x + a.y * b.y + a.z * b.z;
-  return (2 * l + 1) / (4 * pi) * (l == 0 ? 1 : l == 1 ? x : (3 * x * x - 1) / 2);
+  return (2 * l + 1) / (4 * pi) * std::legendre(l, x);
 }
 
 void check() {
@@ -283,6 +283,7 @@ void check() {
                   std::sqrt(3 / (4 * pi)) * z, std::sqrt(15 / (4 * pi)) * x * y,
                   std::sqrt(15 / (4 * pi)) * y * z, std::sqrt(5 / (16 * pi)) * (3 * z * z - 1),
                   std::sqrt(15 / (4 * pi)) * x * z, std::sqrt(15 / (16 * pi)) * (x * x - y * y)}};
+    vibeqc::generated::ecp_harmonics(x, y, z, sphere[q].harmonics);
     for (int d = 0; d < 4; ++d) {
       a[q].v[d] = std::sin(0.7 + 1.3 * q + d * 0.4);
       b[q].v[d] = std::cos(-0.3 + 0.7 * q - d * 0.9);
@@ -294,12 +295,12 @@ void check() {
       for (int q = 0; q < nq; ++q)
         for (int d = 1; d < 4; ++d)
           av[q].v[d] = bv[q].v[d] = std::numeric_limits<double>::quiet_NaN();
-    std::array<Jet, 9> pa{}, pb{};
-    for (int m = 0; m < 9; ++m) {
+    std::array<Jet, 16> pa{}, pb{};
+    for (int m = 0; m < 16; ++m) {
       pa[m] = vibeqc::generated::ecp_project(av.data(), sphere.data(), nq, m, derivatives);
       pb[m] = vibeqc::generated::ecp_project(bv.data(), sphere.data(), nq, m, derivatives);
     }
-    for (int channel = -1; channel <= 2; ++channel)
+    for (int channel = -1; channel <= 3; ++channel)
       for (unsigned power = 0; power <= 4; ++power)
         for (double r : {0.0, 1e-7, 0.37, 1.9, 12.0}) {
           const Radial radial{r, 0.73};

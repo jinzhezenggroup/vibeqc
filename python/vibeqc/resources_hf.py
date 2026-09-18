@@ -178,7 +178,7 @@ def _ecp_workspace(item, *, cuda=False):
     tile = cuda_radial_tile(orbital["nbf"], 44) if cuda else 1
     return checked_bytes(
         32 * n * n * (1 + d)
-        + 32 * tile * n * (points + 9)
+        + 32 * tile * n * (points + 16)
         + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
         + 4096,
         "ECP two-grid workspace",

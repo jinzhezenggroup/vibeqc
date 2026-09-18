@@ -70,8 +70,23 @@ Both final OOM/recovery and tail-batch sanitizer runs report zero errors.
 Native code adds 18 physical lines (13 noncomment code lines); the adapter
 remains conservatively scientific in the ownership ledger. Removing the
 four-line compiler-emitted helper exactly recovers the baseline generated
-header. Other generated-family measurements in the current ownership report
-are retained from the unchanged base build; ECP uses the candidate emission.
+header. The original ownership report retained other generated-family
+measurements from the unchanged base build and used the candidate ECP emission.
 There is no scientific-code retirement claim. Final source and binary hashes,
 every endpoint sample, and the external raw archive digest are retained in
 the evidence bundle, including the failed initial fixture log.
+
+## Integration with f projectors
+
+Master `1865c5a` adds the f-projector capability while this schedule was being
+qualified. Integration retains the ordered radial loop and optional OOM
+fallback while adopting master's compiler-owned `ecp_projector_count` for
+all projection offsets and capacities. Resource bounds use 16 components,
+and tail/grid-boundary tests now exercise both ordinary and f projectors.
+Removing only the schedule helper from the merged generated header exactly
+recovers the current master's header. The original timing and memory numbers
+above stay bound to their original commits; merged-head integration evidence
+is recorded separately in `benchmarks/results/ecp-schedule-171/merge-validation.md`.
+The merged ownership report is regenerated from current sources and measures
+the materialized ECP header; other unchanged generated-family entries are
+retained from current master.

@@ -1761,9 +1761,9 @@
     },
     "ecp": {
       "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
-      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
-      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding.",
-      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector f or higher families unavailable. No broad heavy-element qualification.",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
       "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
       "evidence": [
         "tests/python/test_ecp.py",
@@ -1772,9 +1772,11 @@
         "tests/python/test_ecp_f.py",
         "tests/python/test_ecp_validation.py",
         "tests/native/test_ecp_capabilities.cpp",
-        "benchmarks/results/ecp-f-171/README.md"
+        "benchmarks/results/ecp-f-171/README.md",
+        "tests/python/test_ecp_f_projector.py",
+        "benchmarks/results/ecp-f-projector-171/README.md"
       ],
-      "status": "Bounded s/p/d/f orbital extension over generated projector/radial, AO/fixed-weight and host grid arithmetic; projectors remain s/p/d. No DFT, broad heavy-element or performance-promotion claim."
+      "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
     },
     "df_response_weights": {
       "owner": "scf_tensor",
