@@ -1,5 +1,12 @@
 # 000 Rys versus polynomial after #399
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 Only the one-root 000 first-derivative class has a generated Rys implementation.
 `VIBEQC_DF_SHELL_MATH_000=rys` selects it explicitly; `auto` and `polynomial`
 retain the polynomial path. No higher-angular class is implemented or promoted.

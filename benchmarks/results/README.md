@@ -5,7 +5,10 @@
 Keep a short, reviewable summary of scope, acceptance thresholds, observed
 results, source/environment identity and reproduction commands beside each
 archive. Full traces, repeated per-node checks, state dumps and historical
-machine scripts belong in a compressed archive, not expanded JSON diffs.
+machine scripts belong in checksum-verified external storage, not expanded JSON
+diffs or new source-controlled run bundles. The
+[historical checkout archive](retention-checkout/README.md) documents the retained
+release snapshot and offline Git recovery route.
 Preserve distinct cases, budgets, runs and failures; compression must not
 change original bytes or weaken scientific gates. Keep small test-required
 reference fixtures directly usable, with their provenance and licenses.

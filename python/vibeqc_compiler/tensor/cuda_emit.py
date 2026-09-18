@@ -11,6 +11,7 @@ from math import prod
 
 from .cuda_gemm import fp64_coefficient, gemm_contract
 from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
+from .scaled_arithmetic import emit_scaled_bilinear
 
 
 def _integer(value):
@@ -58,6 +59,9 @@ def _value(plan, i, prefix=""):
         return f"return finite(__dmul_rn({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}), error, {i});"
     if node.op == "divide":
         return f"return quotient({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}, error, {i});"
+    if node.op == "scaled_bilinear":
+        operands = ", ".join(_read(child, "z", prefix) for child in args)
+        return f"return {prefix}scaled_bilinear({operands}, error, {i});"
     if node.op == "einsum":
         domains = {}
         for child, labels in zip(node.inputs, a["labels"], strict=True):
@@ -251,6 +255,8 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
     parts = ['#include "cuda_runtime.cuh"', "using namespace vibeqc_tensor;"]
     if namespace:
         parts.append(namespace)
+    if any(step.node.op == "scaled_bilinear" for step in plan.steps):
+        parts.append(emit_scaled_bilinear(prefix))
     initialize = []
     tables = dict(plan.index_tables)
     for i, step in enumerate(plan.steps):

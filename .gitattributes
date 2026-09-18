@@ -23,3 +23,6 @@ external/libxc-7.0.0/* text eol=lf
 tools/generate_xc_references.py text eol=lf
 tools/generate_xc_integration_references.py text eol=lf
 tools/generate_validation_references.py text eol=lf
+
+# Generated per-file hashes; review the migration summary and restoration code.
+benchmarks/results/retention-checkout/snapshot.manifest.json linguist-generated=true

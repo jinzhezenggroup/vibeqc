@@ -1,5 +1,12 @@
 # Generated s/p/d/f response scheduling (#308)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 Clean complete-force endpoints select generated compact shell scheduling with
 BLAS response weights and bounded pinned panels. Automatic selection is scoped
 to resident 192--384-AO sm_120 device-metric execution. Other sizes, backends,

@@ -39,6 +39,7 @@ from .ir import (
     multiply,
     reduce_sum,
     reshape,
+    scaled_bilinear,
     slice_tensor,
     transpose,
 )
@@ -84,6 +85,7 @@ __all__ = [
     "reduce_sum",
     "reshape",
     "rewrite",
+    "scaled_bilinear",
     "slice_tensor",
     "transpose",
     "transpose_program",

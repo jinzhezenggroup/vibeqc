@@ -172,6 +172,22 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
         raise ValueError("review_size_bytes must be positive")
     exceptions = policy["exceptions"]
     errors = []
+    # A per-file cap alone admits an unlimited number of sub-limit run dumps.
+    # Keep the aggregate budget explicit and reviewed, without counting tests'
+    # permanent reference fixtures or waiving any individual-file checks.
+    budget = policy.get("benchmark_results_max_bytes")
+    if budget is not None:
+        if type(budget) is not int or budget <= 0:
+            raise ValueError("benchmark_results_max_bytes must be positive")
+        used = sum(
+            len(data) for path, data in blobs.items() if path.startswith(RESULT_ROOT)
+        )
+        if used > budget:
+            errors.append(
+                f"{RESULT_ROOT}: {used} bytes exceeds {budget}-byte aggregate budget; "
+                "retain compact records and recover historical payloads from "
+                "existing Git history; do not publish archives implicitly"
+            )
     for path, exception in exceptions.items():
         safe_relative(path)
         if (

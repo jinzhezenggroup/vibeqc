@@ -1,5 +1,12 @@
 # #309 larger preparation ablations
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 Five interleaved pairs for each candidate and endpoint on a clean source-bound
 RTX 5090 library, using a finite Slurm allocation. Both domains use RHF,
 spherical def2-SVP and the same orbital auxiliary basis, a 1 GiB DF allowance,
