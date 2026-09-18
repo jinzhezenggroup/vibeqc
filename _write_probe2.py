@@ -1,0 +1,3 @@
+import pathlib
+pathlib.Path("/inspire/qb-ilm/project/chemicalreaction/czxs25220150/_150b/_run_probe.sh").write_text("#!/bin/bash\nexport PATH=/usr/local/cuda/bin:$PATH\nPY=/inspire/qb-ilm/project/chemicalreaction/czxs25220150/env-assets/python/cpython-3.11.16-linux-x86_64-gnu/bin/python3.11\n$PY /inspire/qb-ilm/project/chemicalreaction/czxs25220150/_150b/_probe_nvcc.py\n", newline="\n")
+print("WRITTEN")

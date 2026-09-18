@@ -92,7 +92,7 @@ def run(args):
     output.mkdir(parents=True, exist_ok=True)
     cache = Path(args.cache)
 
-    compiler = CudaCompilerAdapter(args.nvcc, cuda_target_info(args.architecture))
+    compiler = CudaCompilerAdapter(Path(args.nvcc), cuda_target_info(args.architecture))
     budgets = [int(b) * (1 << 20) for b in args.budget.split(",")]
 
     manifest = {
