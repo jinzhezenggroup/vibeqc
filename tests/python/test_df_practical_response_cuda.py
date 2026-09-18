@@ -310,3 +310,56 @@ def test_practical_water_insufficient_budget(monkeypatch, tmp_path, values, budg
         # plan was admitted, rather than returning an empty diagnostic tuple.
         with pytest.raises(NotImplementedError, match="VIBEQC error 3"):
             batch.last_density_fitting_metric_diagnostics()
+
+
+@pytest.mark.parametrize("buckets", ("off", "packet"))
+def test_practical_auxiliary_f_rys_is_executed(
+    monkeypatch, tmp_path, practical_reference, buckets
+):
+    """Observe the generated f classes, not just agreement of two fallbacks."""
+    from benchmarks.df_component_ledger import aggregate, read_trace
+
+    assert os.environ.get("SLURM_JOB_ID")
+    case, orbital, auxiliary, _, references = practical_reference
+    for key, value in {
+        "SHELL_POLICY": "candidate",
+        "WEIGHTED_EXECUTION": "shell",
+        "DERIVATIVE_PAIRS": "symmetric",
+        "SHELL_SCHEDULE": "compact",
+        "PRIMITIVE_BUCKETS": buckets,
+        "FORCE_SCREEN_ABS": "off",
+    }.items():
+        monkeypatch.setenv("VIBEQC_DF_" + key, value)
+    calculator = Calculator(
+        method=case.method,
+        basis=orbital,
+        auxiliary_basis=auxiliary,
+        basis_representation="spherical",
+        device="cuda",
+        density_fitting="cuda",
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+        screening_tolerance=1e-14,
+        max_iterations=100,
+    )
+    trace = tmp_path / "auxiliary-f.jsonl"
+    with calculator.prepare_batch(
+        [case.atoms], charges=[case.charge], multiplicities=[case.multiplicity]
+    ) as batch:
+        batch.execute(strict=True)
+        monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
+        result = batch.execute(strict=True).items[0]
+    energy, force = references[0]
+    assert abs(result.energy - energy) <= 3e-11
+    np.testing.assert_allclose(result.forces, force, rtol=0, atol=3e-11)
+    groups = [
+        g
+        for g in aggregate(read_trace(trace))["groups"]
+        if g["operation"] == "force_response"
+    ]
+    assert len(groups) == 1
+    counts = groups[0]["counter_sums"]
+    for cls in ("003", "103", "113", "203", "213"):
+        assert counts[f"shell_{cls}_rys_selected"] == 1, (cls, counts)
+    # d-d-f requires five roots, which is not admitted by the strict DF quadrature.
+    assert counts["shell_223_rys_selected"] == 0
