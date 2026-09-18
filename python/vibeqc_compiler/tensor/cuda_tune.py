@@ -54,6 +54,8 @@ def endpoint_gate(baseline, candidate, *, minimum_speedup=1.02) -> dict:
 def candidate_schedules() -> tuple[TensorSchedule, ...]:
     """A small readable candidate set; no exhaustive installation-time search."""
     return (
+        TensorSchedule(layouts=True),
+        TensorSchedule(views=True, fuse=True, layouts=True),
         TensorSchedule(views=True),
         TensorSchedule(views=True, fuse=True),
         TensorSchedule(views=True, fuse=True, tile_m=64, tile_n=64, tile_k=64),
@@ -101,7 +103,12 @@ def tune_cuda(
         raise ValueError("tuning duration must be positive and finite")
     if not np.isfinite(minimum_speedup) or minimum_speedup < 1:
         raise ValueError("minimum speedup must be finite and at least one")
-    if baseline.schedule.views or baseline.schedule.fuse or baseline.schedule.recompute:
+    if (
+        baseline.schedule.views
+        or baseline.schedule.fuse
+        or baseline.schedule.recompute
+        or baseline.schedule.layouts
+    ):
         raise ValueError("tuning requires an unfused CUDA baseline")
     started = time.monotonic()
     artifact = compile_cuda(baseline, compiler, cache)

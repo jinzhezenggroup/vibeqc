@@ -167,3 +167,43 @@ def gemm_contract(node: Node) -> GemmContract | None:
     for labels in (batch, m, n, k):
         result.extent(labels)
     return result
+
+
+def direct_gemm_kind(g: GemmContract, layouts) -> str | None:
+    """Recognize dense grouped matrices from physical rather than logical order.
+
+    None denotes a virtual operand without a directly addressable buffer. Such
+    operands deliberately keep generated packing until affine alias lowering is
+    separately qualified. Singleton axes impose no addressing constraint.
+    """
+    if any(layout is None for layout in layouts) or min(g.batch, g.m, g.n, g.k) == 0:
+        return None
+    if max(g.batch, g.m, g.n, g.k) > 2**31 - 1:
+        return None
+
+    def norm(labels):
+        return tuple(label for label in labels if g.extents[label] != 1)
+
+    physical = tuple(
+        norm(tuple(labels[axis] for axis in layout.order))
+        for labels, layout in zip(
+            (g.a_labels, g.b_labels, g.output_labels), layouts, strict=True
+        )
+    )
+    if physical[2] != norm(g.c_order):
+        return None
+    a = (
+        "N"
+        if physical[0] == norm(g.a_order)
+        else "T"
+        if physical[0] == norm(g.batch_labels + g.k_labels + g.m_labels)
+        else None
+    )
+    b = (
+        "N"
+        if physical[1] == norm(g.b_order)
+        else "T"
+        if physical[1] == norm(g.batch_labels + g.n_labels + g.k_labels)
+        else None
+    )
+    return None if a is None or b is None else "direct-" + a + b

@@ -11,7 +11,7 @@ supplied equations and do not implement a complete CCSD/MP2 method.
 | CPU planning | Checked shapes, layouts, lifetimes, reservations and bounded GEMM tiles |
 | Source and compilation | Whole-program CUDA generation through the existing finite NVCC adapter |
 | Baseline execution | Unfused FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
-| Candidate execution | View elimination, ordered elementwise fusion, smaller panels and root recomputation |
+| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels and root recomputation |
 | Selection | Explicit bounded tuning, CPU/baseline parity, resource and complete-endpoint gates |
 | Graph capture | Ordinary stream reported explicitly; capture is not implemented |
 | Complete molecular CC solver | Outside this executor |
@@ -64,7 +64,7 @@ preserves system order and supports different nocc/nvir populations.
 
 ## Layouts and contractions
 
-Materialized values use logical C-order strides. Eligible binary einsums group
+The baseline materializes values with logical C-order strides. Eligible binary einsums group
 declared labels into batch, M, N and K populations. No spin, orbital or symmetry
 relationship is inferred from matching extents. The direct path recognizes
 contiguous matrices in either transpose orientation and batch-prefix layouts.
@@ -95,6 +95,75 @@ Generated JVP/VJP programs from #151 are ordinary TensorIR programs and use
 the same planning, compilation and execution path. The fixed CC-like RTX 5090
 numerical/resource evidence is recorded in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md).
+
+### Opt-in producer/consumer layouts
+
+`TensorSchedule(layouts=True)` enables a bounded layout pass inside one TensorIR
+program. `DenseLayout` records logical shape, a slow-to-fast permutation of logical
+axis ordinals, physical element strides and base-address alignment. It is separate
+from `TensorSpec`: neither equation serialization nor logical/scientific hashes
+change. The descriptor includes transpose-view equivalence, but does not grant
+alias permissions or encode arbitrary padded/affine storage.
+
+For each eligible GEMM, the pass considers the two orientations of each operand
+and its grouped output order **jointly**, then costs the effects on all consumers
+and on the producers themselves. This avoids requiring two individually useful
+changes when both operands must change before any packing can disappear. Shared
+consumers are costed together; no duplicate tensor or persistent packed copy is
+silently created. There are at most 256 trials and four reverse-order sweeps per
+tile configuration. Strict cost improvements alone are accepted; ties retain the
+existing layout, and an exhausted search retains its legal best-so-far plan.
+
+Generated primitive kernels write contiguous physical elements while evaluating
+the corresponding logical coordinates. All generated reads and packed scatters
+honor the selected mapping. A GEMM may write an internal result in its natural
+matrix order even when the equation names another output order; downstream reads
+observe the same logical tensor. Direct NN/NT/TN/TT and grouped/batched eligibility
+are checked against **physical** axis order rather than assuming C-order.
+
+Inputs, constants and every named output remain pinned in logical C-order, so
+ordinary transfers and resident ABI spans do not change. Existing virtual-view,
+fusion and recomputation contracts remain intact. A virtual operand has no direct
+buffer descriptor and retains generated packing; this slice does not infer affine
+aliases through virtual views, create shared pack-once buffers, or propagate
+layouts across ProgramIR subsystems. Those remain follow-up work for #509/#460.
+
+`plan.layout_decision` reports attempted trials, changed steps and semantic panel
+conversion bytes, including repeated A packing across N tiles and B packing
+across M tiles. Its cost adds one logical tensor-read/write equivalent for each
+non-C generic access as a conservative stride penalty. This **cost score is not
+measured DRAM traffic or an additional memory allocation**. The pre-existing
+`estimated_traffic_bytes` remains a coarse logical node-traffic estimate; the
+separate conversion-byte field makes the additional packing work explicit.
+Layout selection is rerun whenever admission shrinks packing tiles, so costs and
+panel capacities describe the final schedule. Dense permutations do not enlarge
+arena slots or alter lifetimes; eliminated panels reduce the charged peak.
+
+Plan schema 2 serializes physical descriptors and the decision. The separate
+`plan.layout_identity` can be supplied as an exact `layout_identity` workload
+fact to #459 specialization guards; it must not replace scientific, compiler or
+full-plan identity checks. Existing artifact keys and native identity checks
+already include the complete plan, preventing reuse across different layouts.
+Generated JVP/VJP programs use the same pass without new derivative rules.
+
+This switch remains opt-in. `tune_cuda` includes layout-only and layout/view/fusion
+candidates and still requires parity, resource and complete-endpoint gates before
+selecting them for the supplied fixture domain. A static byte reduction is not a
+performance-promotion decision.
+
+A focused qualification runner retains local raw paired timings and identities:
+
+```bash
+# Execute within the site's finite GPU allocation.
+PYTHONPATH=python python tools/tensor_layout_benchmark.py \
+  --nvcc /path/to/nvcc --architecture sm_120 \
+  --shape 33 7 65 31 --repeats 10 --output .artifacts/tensor-layout-small
+# Repeat with --shape 65 9 97 63 to exercise a larger domain.
+```
+
+This measures a complete host-staged tensor contraction endpoint, not a complete
+molecular CCSD/DFT calculation. The design rationale and retained qualification
+results are in the [producer-layout note](../.agents/notes/implemented/performance/2026-09-19-tensor-producer-layouts.md).
 
 ## Budgets, lifetimes and limitations
 
@@ -158,8 +227,8 @@ traffic estimate and peak capacity are exposed in `TensorPlan.to_payload()`.
 ## Candidate selection and identity
 
 `TensorSchedule()` is the deterministic unfused baseline. Explicit candidate
-switches enable view elimination, small elementwise fusion and root
-recomputation. Fusion preserves arithmetic order and each intermediate's
+switches enable producer layouts, view elimination, small elementwise fusion and
+root recomputation. Fusion preserves arithmetic order and each intermediate's
 finite/zero-division check. It is restricted to complete same-domain
 elementwise consumers; a slice cannot hide an overflow by discarding entries.
 View chains have a bounded inline depth. These switches are experimental
