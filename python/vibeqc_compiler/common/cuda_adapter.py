@@ -140,7 +140,7 @@ class CudaExecutionProfile:
         for name in ("partition", "gres", "slurm_time"):
             value = getattr(self, name)
             if value is not None and not value.strip():
-                object.__setattr__(self, name, None)
+                raise ValueError(f"CUDA execution {name} must be non-empty or None")
 
     def wrap(self, command: list[str]) -> list[str]:
         """Wrap an argv vector in the selected local or finite Slurm profile."""
