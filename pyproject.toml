@@ -76,7 +76,7 @@ build = ["cp311-manylinux_x86_64"]
 build-frontend = "build[uv]"
 skip = ["*-manylinux_i686", "*-musllinux*"]
 manylinux-x86_64-image = "quay.io/manylinux_cuda/manylinux_2_28_x86_64_cuda12_9:2026.06.30-1"
-test-command = "python -c 'from vibeqc._native import load_library; assert load_library() is not None'"
+test-command = "python -c 'import ctypes; from vibeqc import _native; from vibeqc.profiles import DeviceDescriptor; descriptor=DeviceDescriptor(); descriptor.struct_size=ctypes.sizeof(descriptor); descriptor.abi_version=_native.ABI_VERSION; probe=_native.load_library().vibeqc_cuda_tuning_device; probe.argtypes=[ctypes.c_int32, ctypes.POINTER(DeviceDescriptor)]; probe.restype=ctypes.c_int; print(probe(0, ctypes.byref(descriptor)))'"
 
 [tool.cibuildwheel.linux]
 # manylinux_2_28 ships a ccache too old for nvcc. The CUDA provider shared

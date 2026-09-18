@@ -183,7 +183,8 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "src/*" "include/*" "python/vibeqc_compiler/*.py"
      "python/vibeqc_compiler/*.json" "python/vibeqc/*.py"
      "tools/vibeqc_tensor/*.py" "tools/vibeqc_mp2/*.py"
-     "tools/vibeqc_posthf/plan_spec.py")
+     "tools/vibeqc_posthf/plan_spec.py"
+     "cmake/3rdparty/implib/*")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt"
      "cmake/VibeQCCuda.cmake" "cmake/VibeQCCudaImplib.cmake"
      "cmake/VibeQCGenerated.cmake" "cmake/VibeQCGeneratedSources.cmake"

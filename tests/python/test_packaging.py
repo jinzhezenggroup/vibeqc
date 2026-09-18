@@ -71,6 +71,49 @@ def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypa
     assert "libcuda.so.1" not in sonames
 
 
+
+def test_cuda_runtime_preload_is_noop_off_linux(monkeypatch):
+    monkeypatch.setattr(_cuda_runtime.sys, "platform", "darwin")
+
+    assert _cuda_runtime._runtime_search_dirs() == []
+    assert _cuda_runtime.preload_cuda_runtime_libraries() == ()
+
+
+def test_cuda_runtime_preload_falls_through_loader_errors(tmp_path, monkeypatch):
+    broken = tmp_path / "broken"
+    working = tmp_path / "working"
+    broken.mkdir()
+    working.mkdir()
+    soname = "libcudart.so.12"
+    (broken / soname).touch()
+    (working / soname).touch()
+    attempts = []
+
+    def fake_cdll(path, *, mode):
+        attempts.append((Path(path), mode))
+        if Path(path).parent == broken:
+            raise OSError("broken provider")
+        return object()
+
+    monkeypatch.setattr(_cuda_runtime, "_CUDA_RUNTIME_LIBRARY_GROUPS", ((soname,),))
+    monkeypatch.setattr(_cuda_runtime, "_cuda_runtime_handles", {})
+    monkeypatch.setattr(
+        _cuda_runtime, "_runtime_search_dirs", lambda: [broken, working]
+    )
+    monkeypatch.setattr(_cuda_runtime.ctypes, "CDLL", fake_cdll)
+
+    assert _cuda_runtime.preload_cuda_runtime_libraries() == (soname,)
+    assert [path.parent for path, _ in attempts] == [broken, working]
+    assert _cuda_runtime.preload_cuda_runtime_libraries() == ()
+
+
+def test_cuda_runtime_loader_install_is_idempotent():
+    installed = _native.load_library
+    _cuda_runtime.install_native_loader()
+
+    assert _native.load_library is installed
+
+
 def test_package_installs_cuda_runtime_wrapper():
     assert getattr(_native.load_library, "_vibeqc_cuda_runtime_loader", False)
 
