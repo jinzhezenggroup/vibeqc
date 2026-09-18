@@ -100,9 +100,9 @@ Matrix packed(const Matrix& a, std::size_t n) {
   return out;
 }
 void gemm(CudaDensityFittingJkPlan& plan, const double* a, const double* b, double* out,
-          bool ta = false, bool tb = false, int rank = -1) {
+          bool ta = false, bool tb = false, int rank = -1, double scale = 1) {
   const int n = static_cast<int>(plan.nbf);
-  const double one = 1, zero = 0;
+  const double zero = 0;
   if (rank == 0) {
     check(cudaMemsetAsync(out, 0, plan.nbf * plan.nbf * sizeof(double), plan.stream),
           "zero empty occupied product");
@@ -110,7 +110,7 @@ void gemm(CudaDensityFittingJkPlan& plan, const double* a, const double* b, doub
   }
   const auto status =
       cublasDgemm(plan.blas, ta ? CUBLAS_OP_T : CUBLAS_OP_N, tb ? CUBLAS_OP_T : CUBLAS_OP_N, n, n,
-                  rank < 0 ? n : rank, &one, a, n, b, n, &zero, out, n);
+                  rank < 0 ? n : rank, &scale, a, n, b, n, &zero, out, n);
   if (status != CUBLAS_STATUS_SUCCESS)
     throw std::runtime_error("cuBLAS final-validation product failed: " + std::to_string(status));
 }
@@ -322,26 +322,24 @@ bool products(CudaDensityFittingJkPlan& plan, const solver::FinalStateIdentity& 
   return true;
 }
 Matrix project(CudaDensityFittingJkPlan& plan, const reference::EigenResult& orbitals,
-               std::size_t occupied, double weight, bool weighted,
-               const solver::FinalFrameCandidate* frame = nullptr, std::size_t spin = 0) {
+               std::size_t occupied, double weight) {
   const auto n = plan.nbf, count = n * n;
   if (occupied > n || (!orbitals.vectors.empty() && orbitals.values.size() != n))
     throw std::runtime_error("invalid final-state projection dimensions");
   auto& w = prepare(plan);
-  auto in = inputs(plan, w, frame, spin, weight);
+  auto in = inputs(plan, w, nullptr, 0, weight);
   const auto c = orbitals.vectors.empty() ? Matrix{} : packed(orbitals.vectors, n);
   Matrix result(count);
   Drain drain{plan.stream};
   if (!c.empty()) {
     upload(plan, w.storage + 4 * count, c);
     upload(plan, w.storage + 9 * count, orbitals.values);
-  } else if (!frame) {
+  } else {
     throw std::runtime_error("missing projection coefficients");
   }
   auto* columns = w.storage + 5 * count;
   auto* output = columns + count;
-  launch_validation_columns(plan.stream, n, occupied, in.c, weighted ? in.values : nullptr, weight,
-                            columns);
+  launch_validation_columns(plan.stream, n, occupied, in.c, nullptr, weight, columns);
   gemm(plan, columns, in.c, output, false, true, static_cast<int>(occupied));
   check(cudaPeekAtLastError(), "build final-state density");
   check(cudaMemcpyAsync(result.data(), output, count * sizeof(double), cudaMemcpyDeviceToHost,
@@ -350,6 +348,54 @@ Matrix project(CudaDensityFittingJkPlan& plan, const reference::EigenResult& orb
   trace::trace_counter("device_to_host_bytes", count * sizeof(double));
   drain.finish();
   return packed(result, n);
+}
+
+/** Form the Pulay weight from the exact accepted determinant and physical F.
+ * The existing validation scratch holds D, F, DF and W; no new reservation or
+ * retained-orbital lease is needed. Both host-supplied and tagged device Fock
+ * providers obey the same D F[D] D / spin_weight convention. */
+std::vector<Matrix> weighted_density(CudaDensityFittingJkPlan& plan,
+                                     const solver::FinalStateIdentity& id,
+                                     const std::vector<Matrix>& density,
+                                     const solver::PhysicalFockFrame& fock) {
+  const auto n = plan.nbf, count = n * n;
+  if (id != fock.identity || !fock.physical || density.size() != id.occupied.size() ||
+      fock.spins.size() != density.size())
+    throw std::runtime_error("weighted density has a mismatched physical Fock identity");
+  auto& w = prepare(plan);
+  std::vector<Matrix> result(density.size(), Matrix(count));
+  const double spin_weight = id.model.spec.spin == FockSpin::Restricted ? 2 : 1;
+  Drain drain{plan.stream};
+  for (std::size_t spin = 0; spin < density.size(); ++spin) {
+    const auto d = packed(density[spin], n);
+    const auto f = fock.spins[spin].empty() ? Matrix{} : packed(fock.spins[spin], n);
+    if (f.empty() && !w.physical_hcore)
+      throw std::runtime_error("missing weighted physical Fock input");
+    const auto h = f.empty() ? packed(*w.physical_hcore, n) : Matrix{};
+    // Pageable staging survives each asynchronous upload through this drain.
+    Drain spin_drain{plan.stream};
+    upload(plan, w.storage + 3 * count, d);
+    if (f.empty()) {
+      upload(plan, w.storage + count, h);
+      physical_fock(plan, w, id, spin);
+    } else {
+      upload(plan, w.storage + 2 * count, f);
+    }
+    auto* product = w.storage + 5 * count;
+    auto* output = product + count;
+    gemm(plan, w.storage + 3 * count, w.storage + 2 * count, product);
+    gemm(plan, product, w.storage + 3 * count, output, false, false, -1, 1 / spin_weight);
+    trace::trace_counter("physical_weight_gemms", 2);
+    trace::trace_counter("physical_weight_flops", 4 * n * n * n);
+    check(cudaMemcpyAsync(result[spin].data(), output, count * sizeof(double),
+                          cudaMemcpyDeviceToHost, plan.stream),
+          "read consistent physical weighted density");
+    trace::trace_counter("device_to_host_bytes", count * sizeof(double));
+    spin_drain.finish();
+    result[spin] = packed(result[spin], n);
+  }
+  drain.pending = false;
+  return result;
 }
 }  // namespace
 void destroy_final_validation(void*& opaque) noexcept {
@@ -441,18 +487,13 @@ solver::FinalStateOperations cuda_density_fitting_final_state_operations(
                                                      detail);
   };
   operations.project = [plan](const auto& c, std::size_t occupied, double weight) {
-    return cuda_df::project(*plan, c, occupied, weight, false);
+    return cuda_df::project(*plan, c, occupied, weight);
   };
-  operations.weighted = [plan](const auto& id, const auto& frame) {
+  operations.weighted = [plan](const auto& id, const auto& density, const auto& fock) {
     runtime::cuda_trace::TraceOperation trace(
         "final_state_weighted_density", plan->stream,
         {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
-    std::vector<reference::Matrix> result;
-    const double weight = id.model.spec.spin == FockSpin::Restricted ? 2 : 1;
-    for (std::size_t spin = 0; spin < id.occupied.size(); ++spin)
-      result.push_back(cuda_df::project(*plan, frame.spins[spin], id.occupied[spin], weight, true,
-                                        &frame, spin));
-    return result;
+    return cuda_df::weighted_density(*plan, id, density, fock);
   };
   return operations;
 }

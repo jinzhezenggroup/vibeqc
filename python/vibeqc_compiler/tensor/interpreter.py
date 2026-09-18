@@ -15,6 +15,7 @@ import numpy as np
 
 from .ir import Node
 from .program import Program
+from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
 
 
@@ -71,6 +72,8 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
         if np.any(operands[1] == 0):
             raise ValueError("tensor division by zero")
         return operands[0] / operands[1]
+    if op == "scaled_bilinear":
+        return scaled_bilinear_value(*operands)
     if op == "einsum":
         arguments = []
         for value, labels in zip(operands, a["labels"]):

@@ -1,9 +1,11 @@
 """Scalar ECP preflight, independent of native libraries and reference packages."""
 
 import json
+from dataclasses import replace
 
 import pytest
 from vibeqc import Atom, BasisProvenance, BasisSet, BasisShell, ElementBasis
+from vibeqc.basis_capabilities import basis_capability
 from vibeqc.ecp import resolve_ecp
 
 
@@ -33,6 +35,34 @@ def resolve(record):
         BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
     )
     return resolve_ecp(basis, (Atom(11, (0.0, 0.0, 0.0)),))
+
+
+@pytest.mark.parametrize("backend", ("cpu", "cuda"))
+@pytest.mark.parametrize("order", (0, 1, 2, 3))
+def test_ecp_ao_values_and_first_jets_have_separate_capabilities(backend, order):
+    basis = BasisSet(
+        "synthetic scalar ECP",
+        (element([potential()]),),
+        BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
+    )
+    report = basis_capability(
+        basis,
+        [("Na", (0, 0, 0))],
+        backend=backend,
+        operator="ao",
+        derivative_order=order,
+    )
+    assert report["eligible"] == (order <= 1)
+
+
+def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata():
+    # Local label g is valid with f projectors; h remains outside the contract.
+    basis = BasisSet(
+        "unsupported scalar ECP",
+        (element([potential(angular_momentum=[5])]),),
+        BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
+    )
+    assert not basis_capability(basis, [("Na", (0, 0, 0))], operator="ao")["eligible"]
 
 
 @pytest.mark.parametrize(
@@ -65,13 +95,48 @@ def test_highest_singleton_channel_is_local():
     assert terms == ((0, -1, 2, 0.8, -2.0), (0, 0, 2, 0.8, -2.0))
 
 
+def test_g_local_label_enables_f_projector_without_g_orbitals():
+    cores, terms = resolve(
+        element([potential(angular_momentum=[4]), potential(angular_momentum=[3])])
+    )
+    assert cores == (10,)
+    assert terms == ((0, -1, 2, 0.8, -2.0), (0, 3, 2, 0.8, -2.0))
+
+
 @pytest.mark.parametrize(
     "changes, message",
     [
-        ({"angular_momentum": [4]}, "local channel"),
+        ({"angular_momentum": [5]}, "local channel"),
         ({"spin_orbit": True}, "unknown ECP parameter fields"),
     ],
 )
 def test_unsupported_execution_conventions_remain_rejected(changes, message):
     with pytest.raises(NotImplementedError, match=message):
         resolve(element([potential(**changes)]))
+
+
+def test_f_orbitals_are_resolved_but_g_remains_unsupported():
+    record = element([potential()])
+    for angular in (3, 4):
+        changed = replace(record, shells=(BasisShell(angular, ("0.7",), (("1",),)),))
+        if angular == 3:
+            assert resolve(changed)[0] == (10,)
+        else:
+            with pytest.raises(NotImplementedError, match="orbital s/p/d/f"):
+                resolve(changed)
+
+
+def test_mixed_all_electron_atom_obeys_the_same_orbital_boundary():
+    for angular in (3, 4):
+        hydrogen = ElementBasis(1, (BasisShell(angular, ("0.7",), (("1",),)),))
+        basis = BasisSet(
+            "mixed scalar ECP",
+            (element([potential()]), hydrogen),
+            BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
+        )
+        atoms = (Atom(11, (0.0, 0.0, 0.0)), Atom(1, (0.3, 0.1, 3.0)))
+        if angular == 3:
+            assert resolve_ecp(basis, atoms)[0] == (10, 0)
+        else:
+            with pytest.raises(NotImplementedError, match="orbital s/p/d/f"):
+                resolve_ecp(basis, atoms)

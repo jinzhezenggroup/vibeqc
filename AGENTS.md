@@ -19,6 +19,19 @@ repo-wide unless a nested `AGENTS.md` adds more specific constraints.
 - Preserve durable rationale for non-trivial architecture, numerics, performance,
   and compatibility decisions as Agent Notes under `.agents/notes/`.
 
+## Release authority
+
+- Repository cleanup, benchmark evidence retention, fixes, PRs and merges do
+  not authorize creating/publishing/editing/deleting GitHub Releases or release
+  assets, creating/pushing release tags, or dispatching release/distribution
+  publishing workflows. Each such operation needs explicit user authorization
+  for that operation in the current task.
+- Do not substitute a fork Release or another external host to bypass this
+  boundary. Use existing Git history and ignored local artifacts for historical
+  recovery; a new external backup requires separate approval.
+- A recovery link, checksum, CI result, prior instruction to continue work or
+  permission to open a PR is not authorization to publish a Release.
+
 ## Scoped instructions
 
 Read the closest applicable nested instructions before editing:

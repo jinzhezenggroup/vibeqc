@@ -1,5 +1,12 @@
 # Current stock GPU4PySCF comparison: acceptance remains open
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 VibeQC passes the 192-AO batch-1/4 warm DF force timing gates in this campaign,
 but it does **not** pass the complete #206 acceptance. Large DF endpoints are
 slower than stock, strict numerical failures remain, and final direct-SCF

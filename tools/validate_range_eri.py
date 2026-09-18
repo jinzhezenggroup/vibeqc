@@ -23,7 +23,10 @@ import numpy as np
 import pyscf
 from validate_weighted_eri import make_fixture
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import (
+    CudaCompilerAdapter,
+    resolve_cuda_execution_profile,
+)
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.evidence import (
     block_error,
@@ -380,15 +383,9 @@ def run(args):
             ".artifacts/range-reproduction",
         ]
         if args.backend == "cuda":
-            argv = [
-                "srun",
-                "--partition=main",
-                "--gres=gpu:5090:1",
-                "--nodes=1",
-                "--ntasks=1",
-                "--time=00:10:00",
-                *argv,
-            ]
+            argv = resolve_cuda_execution_profile(default_slurm_time="00:10:00").wrap(
+                argv
+            )
         publish(
             args.output,
             {

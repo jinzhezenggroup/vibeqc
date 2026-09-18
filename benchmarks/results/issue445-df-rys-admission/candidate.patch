@@ -1,0 +1,56 @@
+diff --git a/src/scf/cuda/df_shell_derivatives.cu b/src/scf/cuda/df_shell_derivatives.cu
+index 4347912..f7236c7 100644
+--- a/src/scf/cuda/df_shell_derivatives.cu
++++ b/src/scf/cuda/df_shell_derivatives.cu
+@@ -262,19 +262,17 @@ cudaError_t launch(DfShellBasisView o, DfShellBasisView x, const double* positio
+       o, o, x, positions, begin, count, weights, gradient, counters, stream, pairs,
+       pairs != DfDerivativePairs::full && A == B, diagnostics);
+ }
+-/** Query a target once per host packet call; no dynamic tuning table is read.
+- * Only the measured resident 384/768 domains admit automatic promotion. The
+- * explicit candidate control is for complete endpoint qualification builds.
++/** Query a target once per host packet call. The generated manifest owns
++ * architecture/class qualification; AO dimensions do not change that kernel
++ * capability. Consumer/layout admission remains with the gradient bridge.
++ * Unknown targets/classes and explicit legacy controls retain their fallback.
+  */
+-cudaError_t production_target(DfShellBasisView o, DfShellBasisView x, unsigned& architecture) {
++cudaError_t production_target(unsigned& architecture) {
+   architecture = 0;
+   const char* control = std::getenv("VIBEQC_DF_SHELL_POLICY");
+   const std::string_view policy = control ? control : "auto";
+   if (policy != "auto" && policy != "legacy" && policy != "candidate") return cudaErrorInvalidValue;
+   if (!generated::production_policy_available || policy == "legacy") return cudaSuccess;
+-  if (policy == "auto" &&
+-      ((o.basis.nbf != 384 && o.basis.nbf != 768) || x.basis.nbf != o.basis.nbf))
+-    return cudaSuccess;
+   int device = 0;
+   cudaDeviceProp properties{};
+   auto error = cudaGetDevice(&device);
+@@ -319,7 +317,7 @@ cudaError_t launch_df_shell_derivative_panel(DfShellBasisView o, DfShellBasisVie
+                                              DfShellDiagnostics* diagnostics) {
+   if (variant > 2) return cudaErrorInvalidValue;
+   unsigned architecture = 0;
+-  auto status = production_target(o, x, architecture);
++  auto status = production_target(architecture);
+   if (status != cudaSuccess) return status;
+   generated::for_each_class([&]<unsigned A, unsigned B, unsigned C>() {
+     if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))
+@@ -351,7 +349,7 @@ cudaError_t launch_df_shell_derivative_group(
+     DfDerivativePairs pairs, bool triangle, DfShellDiagnostics* diagnostics) {
+   if (variant > 2) return cudaErrorInvalidValue;
+   unsigned architecture = 0;
+-  auto status = production_target(first, x, architecture);
++  auto status = production_target(architecture);
+   if (status != cudaSuccess) return status;
+   generated::for_each_class([&]<unsigned A, unsigned B, unsigned C>() {
+     if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))
+@@ -384,7 +382,7 @@ cudaError_t launch_df_shell_derivative_packets(
+   if (variant > 2) return cudaErrorInvalidValue;
+   if (orbital.empty() || auxiliary.empty()) return cudaSuccess;
+   unsigned architecture = 0;
+-  auto status = production_target(orbital.front(), auxiliary.front(), architecture);
++  auto status = production_target(architecture);
+   if (status != cudaSuccess) return status;
+   generated::for_each_class([&]<unsigned A, unsigned B, unsigned C>() {
+     if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))

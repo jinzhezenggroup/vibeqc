@@ -1,5 +1,12 @@
 # Checked RHF density seeds and retained final exchange (#399)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 A supplied low-rank PSD density now seeds RI-K through `D=L L^T`, using the
 existing compact GPU eigensolver and occupied exchange with weight one. The
 separate final physical Fock build uses retained canonical C with weight two

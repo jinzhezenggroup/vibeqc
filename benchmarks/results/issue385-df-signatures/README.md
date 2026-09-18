@@ -1,5 +1,12 @@
 # DF primitive-signature scheduling after #383
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 Bounded signature packets reduce the complete clean warm energy-and-force
 endpoint by **6.8% at 384 AOs and 12.1% at 768 AOs** against the refreshed exact
 #383 baseline, with unchanged numerical work. This is a VibeQC before/after

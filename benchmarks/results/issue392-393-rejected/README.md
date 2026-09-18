@@ -1,5 +1,12 @@
 # Rejected isolated DF optimizations
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 This records six candidates that failed the production performance gates for
 #392/#393. `early-folding/` contains direct shared stores and the first register
 variant; `identity-folding/` adds constant tuple extents and unit coefficients.

@@ -1,0 +1,37 @@
+{
+  "platform": "Windows, Python 3.11; no local native shared library",
+  "focused_ir_input_ownership": {
+    "passed": 43
+  },
+  "selected_external_basis_preflight": {
+    "passed": 5,
+    "deselected": 40
+  },
+  "expanded_local_suite": {
+    "passed": 68,
+    "failed": 20,
+    "reason": "Native-dependent tests have no local shared library; pinned fixture hashes differ because the Windows checkout uses CRLF. The LF byte hashes match the pinned data."
+  },
+  "compiler_structure": {
+    "modules": 178,
+    "errors": 0
+  },
+  "scf_structure": {
+    "modules": 217,
+    "errors": 0
+  },
+  "cuda_ownership_inventory_files": 183,
+  "ruff": "9 changed Python files pass lint/format",
+  "scientific_cuda_physical_loc": {
+    "added": 9,
+    "removed": 7,
+    "before": 272,
+    "after": 274,
+    "classification": "whole mixed adapter conservatively scientific"
+  },
+  "generated_ecp_bytes": {
+    "before": 34335,
+    "after": 35562
+  },
+  "boundaries": "No g orbitals/projectors, new heavy-element family, DFT, ECP DF, MP2 or performance promotion."
+}

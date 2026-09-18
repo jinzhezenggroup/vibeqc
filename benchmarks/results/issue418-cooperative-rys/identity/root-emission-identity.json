@@ -1,0 +1,6 @@
+{
+  "slurm_9891_root_header_sha256": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6",
+  "candidate_root_header_sha256": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6",
+  "exact_match": true,
+  "reason": "Bind root GPU qualification before Python formatting to the frozen candidate arithmetic."
+}

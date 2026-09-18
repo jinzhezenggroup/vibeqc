@@ -44,6 +44,46 @@ points. Separate refinement tests integrate known Gaussian/Slater functions
 and molecular densities approaching `Tr(DS)`. No weight or density
 renormalization conceals quadrature error.
 
+## Generated moving-grid response (#163 B1)
+
+`vibeqc_compiler.xc.grid_response.grid_response_tiles(grid, center_motion,
+tile_points=...)` is a **CPU diagnostic/consumer building block**, not a complete
+molecular gradient or a native CPU/CUDA force endpoint. It streams the same raw
+atomic quadrature as `MolecularGrid.tiles`, then supplies separate point and
+partition-weight directional derivatives. Element radial scales, atom ownership
+and the unpruned topology are fixed; every partition center moves independently.
+
+The common scalar `Graph` generates norm, Becke-switch, log-product and normalized
+quotient JVPs. The CPU interpreter executes those generated roots. Pair reductions
+retain log-domain stability and handle exact-zero product factors without
+`0 * infinity`. Storage scales with `tile_points * atom_count`; no full
+coordinate-by-grid Jacobian is constructed. Native resource-budget integration,
+CUDA lowering and full KS assembly are not supplied by this interface.
+
+Each response tile carries its source grid identity, displacement identity and
+pair-branch identity, plus immutable `point_motion` and `weight_motion`. These
+contract separately with the #163-A XC geometry partials. They do not prove that
+an SCF state is current, and must not be relabelled as a complete stationary KS
+force. The method consumer still owns the A-stage state gates and the remaining
+one-electron/Hartree/Pulay/nuclear assembly.
+
+For a multicenter grid, coincident centers at or below `coincident_tolerance`
+and exact point/center collisions are rejected by this first derivative domain;
+the existing value-only equal-split rule is unchanged. Pair clipping/zero-factor
+branches are recorded. A branch identity is a diagnostic, not a proof that an
+arbitrary finite displacement stays smooth: displaced validation must inspect
+branch changes separately. There is no differentiation through pruning,
+screening, radius changes, topology switches or SCF iteration history.
+
+`tests/python/test_grid_response.py` checks point and center sources against
+independent value-only finite differences and a 60-digit Decimal direct-product
+oracle. It also checks rebuilt molecular weights, point/weight contractions,
+translation, permutations, partial tiles, exact-zero factors, source identities
+and fail-closed domains. These small fixtures do not assert broad molecule-scale
+performance or authorize any public DFT force capability.
+
+Rationale: [generated Becke response note](../.agents/notes/implemented/numerics/2026-09-19-generated-becke-grid-response.md).
+
 ## AO derivative conventions
 
 `NativeAO` owns normalized shell state after the original system handle is
@@ -67,7 +107,9 @@ with a full symmetric Hessian must supply off-diagonal multiplicities.
 Spatial differentiation holds centers fixed. Moving a basis center at a fixed
 point gives minus its spatial derivative. Moving a grid owner translates its
 points. Physical-atom motion can affect both and the partition; complete
-nuclear derivatives need that separate chain rule, which is not provided here.
+nuclear derivatives need that separate chain rule. The directional grid building
+block above supplies point/partition motion, not the remaining complete-gradient
+assembly.
 
 The CPU differentiates polynomial coefficients recursively. CUDA independently
 uses the Leibniz rule with closed Gaussian derivatives. Temporary powers can

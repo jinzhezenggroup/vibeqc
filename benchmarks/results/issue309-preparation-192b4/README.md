@@ -1,5 +1,12 @@
 # #309 192-AO batch-4 preparation ablations
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 Five interleaved baseline/candidate pairs per clean endpoint on n3's RTX 5090,
 submitted through Slurm job 9600. The source is exact `master` `b4a18af5` with a
 Release CUDA 12.9.1 / sm_120 build, AOT disabled, RHF spherical def2-SVP and

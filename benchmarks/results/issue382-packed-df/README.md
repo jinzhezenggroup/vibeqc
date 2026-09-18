@@ -1,5 +1,12 @@
 # Packed DF derivative execution — #382
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 The qualified 768-AO RTX 5090 endpoint falls from **9.810 to 7.311 s**
 (25.5%) while the derivative weight handoff falls from 452,984,832 to
 226,787,328 doubles. The generated derivative equations, basis, metric map,

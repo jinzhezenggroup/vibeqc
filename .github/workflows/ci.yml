@@ -238,9 +238,28 @@ jobs:
         run: |
           extra_args=()
           if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            # Keep exhaustive qualification matrices on scheduled/manual CI.
+            # Routine PR/master CI retains one complete CPU HF endpoint for
+            # orbital-f and f-projector support, while avoiding redundant
+            # spin/representation variants that dominate wall time under
+            # --dist=loadfile.
             extra_args+=(
               --deselect
               'tests/python/test_mp2_gradient.py::test_dense_complete_gradient_matches_fully_resolved_finite_differences[water]'
+              --deselect
+              'tests/python/test_ecp_f.py::test_f_prepared_replay_with_planned_budget[cpu]'
+              --deselect
+              'tests/python/test_ecp_f.py::test_f_complete_hf_energy_and_force[1-cartesian-cpu]'
+              --deselect
+              'tests/python/test_ecp_f.py::test_f_complete_hf_energy_and_force[0-spherical-cpu]'
+              --deselect
+              'tests/python/test_ecp_f.py::test_f_complete_hf_energy_and_force[1-spherical-cpu]'
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-cartesian-cpu]'
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
             )
           fi
           .venv/bin/python -m pytest tests/python -q \

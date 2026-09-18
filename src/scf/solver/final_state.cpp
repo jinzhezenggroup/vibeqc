@@ -229,14 +229,77 @@ FinalStateSelection select_final_state(
         return result;
       }
       diagnostic.energy_change = step ? std::abs(energy - previous_energy) : 0;
-      if (valid && !(force_rebuild && step == 0) &&
-          diagnostic.energy_change <= limits.energy_tolerance) {
+      std::optional<FinalFrameCandidate> evaluated;
+      std::vector<Matrix> projected;
+      const auto solve_physical = [&](bool fixed_point) {
+        materialize();
+        evaluated.emplace();
+        projected.clear();
+        for (std::size_t spin = 0; spin < density.size(); ++spin) {
+          ++result.eigen_solves;
+          if (fixed_point) ++result.fixed_point_eigen_solves;
+          auto c = runtime::host_trace::with_reason(
+              runtime::host_trace::EigenReason::final_fock,
+              [&] { return eigen(physical.spins[spin], &overlap, &orthogonalizer, n); });
+          EigenFrameDiagnostic checked;
+          const bool valid_eigen =
+              operations
+                  ? operations->eigen(physical.spins[spin], overlap, c, checked, result.detail) &&
+                        accept_eigen_frame(checked, result.detail)
+                  : validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n,
+                                         checked, result.detail);
+          if (!valid_eigen) {
+            result.status = FinalStateStatus::ProviderFailure;
+            return false;
+          }
+          const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
+          projected.push_back(operations ? operations->project(c, current.occupied[spin], weight)
+                                         : reference::density_from_orbitals(
+                                               c.vectors, n, current.occupied[spin], weight));
+          if (!symmetric(projected.back(), n)) {
+            result.status = FinalStateStatus::ProviderFailure;
+            result.detail = "invalid projected final-state density";
+            return false;
+          }
+          evaluated->spins.push_back(std::move(c));
+        }
+        return true;
+      };
+      bool accepted = valid && !(force_rebuild && step == 0) &&
+                      diagnostic.energy_change <= limits.energy_tolerance;
+      if (accepted && compute_weighted_density) {
+        runtime::host_trace::Region check("final_state_fixed_point", n);
+        ++result.fixed_point_checks;
+        if (!solve_physical(true)) return result;
+        // Reconstructing a retained frame can give exactly zero drift even
+        // when its orbitals came from an older Fock. This projector instead
+        // tests the fixed point of the current physical F[D], before force
+        // weights or occupied-response leases are authorized.
+        for (std::size_t spin = 0; spin < density.size(); ++spin) {
+          double norm = 0;
+          for (std::size_t k = 0; k < n * n; ++k) {
+            const double delta = projected[spin][k] - density[spin][k];
+            norm = std::hypot(norm, delta);
+            diagnostic.maximum_fixed_point_density_error =
+                std::max(diagnostic.maximum_fixed_point_density_error, std::abs(delta));
+          }
+          diagnostic.fixed_point_density_rms =
+              std::max(diagnostic.fixed_point_density_rms, norm / n);
+        }
+        const double tolerance = std::min(1e-8, limits.density_tolerance);
+        accepted = std::isfinite(diagnostic.maximum_fixed_point_density_error) &&
+                   std::isfinite(diagnostic.fixed_point_density_rms) &&
+                   diagnostic.maximum_fixed_point_density_error <= tolerance &&
+                   diagnostic.fixed_point_density_rms <= tolerance;
+        if (!accepted) ++result.fixed_point_rejections;
+      }
+      if (accepted) {
         VerifiedFinalState state{current, std::move(density), physical.spins,
                                  {},      frame->spins,       std::move(diagnostic)};
         if (compute_weighted_density) {
           runtime::host_trace::Region weighted("final_state_weighted_density", n);
           if (operations) {
-            state.weighted_density = operations->weighted(current, *frame);
+            state.weighted_density = operations->weighted(current, state.density, physical);
             if (state.weighted_density.size() != current.occupied.size() ||
                 !std::all_of(state.weighted_density.begin(), state.weighted_density.end(),
                              [n](const auto& w) { return w.size() == n * n && finite(w); })) {
@@ -245,10 +308,11 @@ FinalStateSelection select_final_state(
             }
           } else {
             const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
-            for (std::size_t spin = 0; spin < state.orbitals.size(); ++spin) {
-              auto w = reference::energy_weighted_density(state.orbitals[spin].vectors,
-                                                          state.orbitals[spin].values, n,
-                                                          current.occupied[spin], weight);
+            for (std::size_t spin = 0; spin < state.density.size(); ++spin) {
+              auto w = reference::multiply(
+                  reference::multiply(state.density[spin], physical.spins[spin], n),
+                  state.density[spin], n);
+              for (auto& value : w) value /= weight;
               if (!finite(w)) {
                 result.detail = "nonfinite validated energy-weighted density";
                 return result;
@@ -270,40 +334,15 @@ FinalStateSelection select_final_state(
         result.detail = "strict final-state correction exhausted without a consistent state";
         return result;
       }
-      materialize();
       runtime::host_trace::Region correction("strict_final_correction", n);
       const auto origin = current.factor.density_generation;
-      corrected.emplace();
-      for (const auto& f : physical.spins) {
-        ++result.eigen_solves;
-        corrected->spins.push_back(runtime::host_trace::with_reason(
-            runtime::host_trace::EigenReason::final_fock,
-            [&] { return eigen(f, &overlap, &orthogonalizer, n); }));
-      }
-      // Validate each provider frame before using its coefficients to project D.
-      for (std::size_t spin = 0; spin < density.size(); ++spin) {
-        EigenFrameDiagnostic checked;
-        const auto& c = corrected->spins[spin];
-        const bool valid_eigen =
-            operations
-                ? operations->eigen(physical.spins[spin], overlap, c, checked, result.detail) &&
-                      accept_eigen_frame(checked, result.detail)
-                : validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n,
-                                       checked, result.detail);
-        if (!valid_eigen) {
-          result.status = FinalStateStatus::ProviderFailure;
-          return result;
-        }
-        const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
-        density[spin] = operations ? operations->project(c, current.occupied[spin], weight)
-                                   : reference::density_from_orbitals(
-                                         c.vectors, n, current.occupied[spin], weight);
-        if (!symmetric(density[spin], n)) {
-          result.status = FinalStateStatus::ProviderFailure;
-          result.detail = "invalid projected final-state density";
-          return result;
-        }
-      }
+      // A failed fixed-point probe already solved this exact physical Fock.
+      // Promote its checked frame/projector instead of repeating that work.
+      runtime::host_trace::Region projection(
+          evaluated ? "final_state_fixed_point_promotion" : "final_state_correction_solve", n);
+      if (!evaluated && !solve_physical(false)) return result;
+      corrected = std::move(evaluated);
+      density = std::move(projected);
       ++current.factor.orbital_generation;
       ++current.factor.density_generation;
       ++result.density_updates;

@@ -1,5 +1,12 @@
 # Combined low-angular Rys endpoint qualification (#404)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 The full 42-candidate campaign in [#394](../issue394-batch-rys/README.md)
 selects Rys/compact for 001/002/100/200 in addition to the existing 000 choice;
 101/110 retain polynomial/compact. This bundle qualifies that combined mapping

@@ -117,12 +117,10 @@ def main():
         timeout=30,
     )
     (directory / "cuobjdump.txt").write_text(dump.stdout)
-    executor = CudaBenchmarkExecutor(
+    executor = CudaBenchmarkExecutor.from_environment(
         timeout=300,
-        local=args.local,
-        partition="main",
-        gres="gpu:5090:1",
-        slurm_time="00:05:00",
+        local=True if args.local else None,
+        default_slurm_time="00:05:00",
     )
     report = {
         "schema": "vibeqc.one_electron_derivative_validation"

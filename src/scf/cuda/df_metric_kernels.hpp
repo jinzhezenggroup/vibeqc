@@ -17,4 +17,11 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       std::size_t dimension, const double* eigenvectors,
                                       const double* scales, double* scaled_eigenvectors);
 
+/** Scale column-major [eigendirection,pair] projections in place.
+ * The caller must establish full metric rank; no cutoff is changed here.
+ * square_root selects whitening rather than the full inverse used for J.
+ */
+void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
+                                    const double* eigenvalues, bool square_root, double* projected);
+
 }  // namespace vibeqc::scf::cuda_df

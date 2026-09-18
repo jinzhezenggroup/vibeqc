@@ -63,7 +63,8 @@ void run_case(unsigned atoms, bool pbe) {
     require(std::abs(item.electrons[0] - na) < 1e-11 && std::abs(item.electrons[1] - nb) < 1e-11,
             "UKS iteration changed spin populations");
   }
-  const auto [alpha, beta] = scf::reference::split_spin_matrices(result.density, atoms * atoms);
+  const auto [alpha, beta] =
+      scf::reference::split_spin_matrices(result.density, static_cast<std::size_t>(atoms) * atoms);
   const auto xc = pbe ? dft::integrate_pbe_uks(basis, grid, alpha, beta)
                       : dft::integrate_lda_xc_pw_uks(basis, grid, alpha, beta);
   const auto jk = plan.build(alpha, beta);

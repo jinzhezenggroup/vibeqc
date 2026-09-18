@@ -238,14 +238,14 @@
     },
     {
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations.",
+      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations. Full-rank response admission now selects inverse-applied linear factors before quadratic products; the bounded general and canonical-factor routes report their own source passes, scratch and provenance. Rank-deficient/crossing paths retain the spectral owner and explicit rejection rules.",
       "regions": [],
       "role": "scientific",
       "subsystem": "df_derivatives"
     },
     {
       "path": "src/scf/cuda/df_response_weights.cu",
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed. Full-rank dense and bounded responses apply metric eigenfactors before density/Gram products to avoid amplified quadratic rounding. These BLAS method adapters remain conservatively scientific; retained spectral rank-deficient and serial-reference alternatives have separate numerical roles.",
       "regions": [
         {
           "start": "__global__ void exchange_metric_kernel(",
@@ -463,8 +463,15 @@
       "path": "src/scf/cuda/df_metric_kernels.cu",
       "role": "runtime",
       "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
+      "reason": "Runtime storage and launch glue for CUDA DF metric factors. The new physical inverse/whitening projection kernel is separately counted as scientific; existing storage/symmetrization launch ownership is unchanged.",
+      "regions": [
+        {
+          "start": "__global__ void scale_metric_projection_kernel(",
+          "stop": "void launch_symmetrize_metrics_kernel(",
+          "role": "scientific",
+          "reason": "New FP64 per-eigendirection inverse or inverse-root scaling for a caller-validated full-rank metric. This bounded matrix adapter is native scientific arithmetic, with no integral evaluator or new rank/cutoff policy. Only newly added code is reclassified."
+        }
+      ]
     },
     {
       "path": "src/scf/cuda/df_metric_kernels.hpp",
@@ -1410,7 +1417,7 @@
     },
     {
       "path": "src/integrals/ecp_cuda.cu",
-      "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption. Native normalization metadata, grid construction/convergence, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
+      "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
       "subsystem": "ecp"
@@ -1456,6 +1463,13 @@
       "subsystem": "scf_tensor",
       "reason": "Checked owner-facing launch boundary for packed value density, expansion and projection.",
       "regions": []
+    },
+    {
+      "path": "src/tensor/cuda_resident.cuh",
+      "reason": "Resident span transfer and checked device-to-device copy over the existing tensor Context owner; host-side allocation-bound and lock contracts with no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
     }
   ],
   "generated_families": [
@@ -1746,21 +1760,27 @@
       "status": "resident_prepared_cuda_energy_only"
     },
     "ecp": {
-      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py and src/integrals/ecp_cuda.cu",
-      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
-      "generated_capability": "Gaussian AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA.",
-      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
-      "retirement_condition": "Radial/projector, AO primitive/component and fixed-weight consumer loops require independent polynomial/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining host normalization metadata, grid/harmonic construction and grid-convergence policy require equivalent compiler-owned replacements with those gates before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback separate from generated production algebra.",
+      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
+      "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
       "evidence": [
         "tests/python/test_ecp.py",
         "tests/python/test_ecp_ir.py",
-        "tests/native/test_ecp_projector.cpp"
+        "tests/native/test_ecp_projector.cpp",
+        "tests/python/test_ecp_f.py",
+        "tests/python/test_ecp_validation.py",
+        "tests/native/test_ecp_capabilities.cpp",
+        "benchmarks/results/ecp-f-171/README.md",
+        "tests/python/test_ecp_f_projector.py",
+        "benchmarks/results/ecp-f-projector-171/README.md"
       ],
-      "status": "Bounded projector/radial and AO/fixed-weight consumer lowering; unchanged capability domain; no DFT, broad heavy-element or performance-promotion claim."
+      "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
     },
     "df_response_weights": {
       "owner": "scf_tensor",
-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. The qualified 768/768-AO single-RHF sm_120 resident endpoint automatically borrows three existing full J/K tensors, uploads raw A once and evaluates each Q projection once. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Within that resident domain, automatic occupied-space response additionally requires rank-160 RHF, the actual RTX 5090 identity, and a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. Compatible singleton resident RHF response borrows existing full J/K capacity even when occupied factors are unavailable; this dense reuse requires no factor reservation or new allocation. Occupied response additionally requires the shared twofold-work-reduction policy and actual projection capacity; immutable raw values are reused only with matching source identity. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Automatic occupied-space response shares SCF/seed/final exchange workload and capacity admission, without an AO/rank endpoint, equal-basis or GPU-name whitelist. Automatic factor reservation is method/rank-aware and declines optional storage when it would force a dense resident plan into streaming; UHF, unknown and unprofitable ranks retain dense accounting. Execution additionally requires a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
       "retained_duplicate_reason": "oracle",
@@ -1779,7 +1799,11 @@
         "tests/native/test_df_shell_pairs.cpp",
         "tests/python/test_df_shell_derivatives_cuda.py",
         "benchmarks/results/issue382-packed-df/README.md",
-        "docs/df_tuning.md"
+        "docs/df_tuning.md",
+        "tests/python/test_df_exchange_policy.py",
+        "tests/python/test_df_auto_exchange_cuda.py",
+        ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
+        "tests/python/test_df_resources.py"
       ],
       "status": "native_baseline_with_opt_in_control"
     }

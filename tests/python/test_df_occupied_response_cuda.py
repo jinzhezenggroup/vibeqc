@@ -7,7 +7,7 @@ import pytest
 from vibeqc import Calculator
 
 from benchmarks._cases import benchmark_cases
-from benchmarks.df_component_ledger import read_trace
+from benchmarks.df_component_ledger import read_host_trace, read_trace
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
@@ -90,6 +90,8 @@ def test_occupied_response_replay_and_zero_rank_spin(
             monkeypatch.setenv("VIBEQC_DF_FORCE_FINAL_REBUILD", str(int(rebuild)))
             trace = tmp_path / f"response-{step}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
+            host_trace = tmp_path / f"host-response-{step}.jsonl"
+            monkeypatch.setenv("VIBEQC_DF_HOST_TRACE", str(host_trace))
             result = batch.execute(
                 [np.array([r for _, r in moved])] * batch_size if changed else None,
                 strict=True,
@@ -101,9 +103,42 @@ def test_occupied_response_replay_and_zero_rank_spin(
             records = read_trace(trace)
             responses = [r for r in records if r["operation"] == "force_response"]
             assert len(responses) == batch_size
+            regions = [
+                region
+                for record in read_host_trace(host_trace)
+                for region in record["regions"]
+            ]
+            final_states = {
+                region["item"]: region["name"]
+                for region in regions
+                if region["name"] in ("final_state_reuse", "final_state_corrected")
+            }
+            assert set(final_states) == set(range(batch_size))
+            if step == 0:
+                # The unchanged canonical replay must exercise factor reuse.
+                assert set(final_states.values()) == {"final_state_reuse"}
             for response in responses:
                 counters = response["counters"]
-                if space == "occupied" and not rebuild:
+                item = response["system_offset"]
+                corrected = final_states[item] == "final_state_corrected"
+                if corrected:
+                    # Changed OH/UHF geometry can need strict final correction.
+                    # Its new determinant has no retained canonical factor
+                    # token, so dense response is required. Demand executed
+                    # correction evidence instead of accepting arbitrary loss
+                    # of occupied reuse; the independent force gate stays fixed.
+                    assert any(
+                        region["name"] == "strict_final_correction"
+                        and region["item"] == item
+                        for region in regions
+                    )
+                automatic = (
+                    space == "auto"
+                    and method == "rhf"
+                    and batch_size == 1
+                    and pairs != "generic"
+                )
+                if (space == "occupied" or automatic) and not (rebuild or corrected):
                     assert counters["response_occupied_projection_products"] > 0
                     n, a = response["nbf"], response["naux"]
                     stride = n * (n + 1) // 2 if pairs == "packed" else n * n

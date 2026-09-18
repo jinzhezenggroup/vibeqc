@@ -65,13 +65,15 @@ def _run_autotune(
         target=target,
         compile_timeout=arguments.compile_timeout,
     )
-    benchmark_executor = CudaBenchmarkExecutor(
+    benchmark_executor = CudaBenchmarkExecutor.from_environment(
         timeout=arguments.timeout,
-        local=arguments.local,
-        srun=arguments.srun,
-        partition=arguments.partition,
-        gres=arguments.gres,
-        slurm_time=arguments.slurm_time,
+        local=getattr(arguments, "local", None),
+        srun=getattr(arguments, "srun", None),
+        partition=getattr(arguments, "partition", None),
+        gres=getattr(arguments, "gres", None),
+        nodes=getattr(arguments, "nodes", None),
+        ntasks=getattr(arguments, "ntasks", None),
+        slurm_time=getattr(arguments, "slurm_time", None),
     )
     if arguments.max_registers is None:
         arguments.max_registers = target.tuning_maximum_registers

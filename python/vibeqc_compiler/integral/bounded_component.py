@@ -1,4 +1,4 @@
-"""Opt-in scalar S/T/V/DF lowering through g; independent of AOT catalogs.
+"""Opt-in scalar S/T/V/DF/ERI lowering through g; independent of AOT catalogs.
 
 One compilation unit evaluates one explicit Cartesian primitive component.
 Inputs are positive exponents followed by operator centers in xyz order.
@@ -12,6 +12,7 @@ from .expr import AlgebraForm, AlgebraOrdering, RematerializationPolicy
 from .ir import OperatorFamily
 from .one_electron_derivatives import build_one_electron_derivative_kernel
 from .scalar_c import ScalarCEmitter
+from .shell_class import build_shell_class_component_kernel
 
 
 def emit_bounded_component(integral, components, *, backend="cpu"):
@@ -35,27 +36,56 @@ def emit_bounded_component(integral, components, *, backend="cpu"):
         raise ValueError(
             "bounded components expose raw values/gradients; contract weights outside"
         )
-    df = integral.operator.family in (
+    family = integral.operator.family
+    df = family in (
         OperatorFamily.COULOMB_METRIC,
         OperatorFamily.THREE_CENTER_ERI,
     )
-    kernel = (
-        build_df_derivative_kernel if df else build_one_electron_derivative_kernel
-    )(integral, components)
+    if family == OperatorFamily.FOUR_CENTER_ERI:
+        if integral.operator.range_separated:
+            raise ValueError(
+                "bounded four-center components currently support full-range ERIs"
+            )
+        if integral.recurrence != "subset_wick":
+            raise ValueError(
+                "bounded four-center components require subset_wick recurrence"
+            )
+        kernel = build_shell_class_component_kernel(
+            integral.spec, components, integral=integral
+        )
+        names = ["alpha", "beta", "gamma", "delta"] + [
+            f"{center}_{axis}"
+            for center in ("first", "second", "third", "fourth")
+            for axis in "xyz"
+        ]
+        boys_count = integral.maximum_coulomb_order + 1
+    elif df:
+        kernel = build_df_derivative_kernel(integral, components)
+        exponent_count = len(integral.signature.shells)
+        names = [f"exponent_{i}" for i in range(exponent_count)] + [
+            f"center_{i}_{axis}" for i in integral.operator.centers for axis in "xyz"
+        ]
+        boys_count = kernel.boys_count
+    elif family in (
+        OperatorFamily.OVERLAP,
+        OperatorFamily.KINETIC,
+        OperatorFamily.NUCLEAR_ATTRACTION,
+    ):
+        kernel = build_one_electron_derivative_kernel(integral, components)
+        names = ["alpha", "beta"] + [
+            f"{'abc'[i]}_{axis}" for i in integral.operator.centers for axis in "xyz"
+        ]
+        boys_count = kernel.boys_count
+    else:
+        raise ValueError(f"bounded component backend does not support {family.value}")
     graph = kernel.graph
     roots = (kernel.value,) + tuple(x for axes in kernel.gradients for x in axes)
     if len(tuple(graph.topological_order(roots))) > 30000:
         raise ValueError("component exceeds the 30000-node scalar compilation budget")
-    exponent_count = len(integral.signature.shells)
-    names = (
-        [f"exponent_{i}" for i in range(exponent_count)]
-        + [f"center_{i}_{axis}" for i in integral.operator.centers for axis in "xyz"]
-        if df
-        else ["alpha", "beta"]
-        + [f"{'abc'[i]}_{axis}" for i in integral.operator.centers for axis in "xyz"]
-    )
     variables = {name: f"inputs[{i}]" for i, name in enumerate(names)}
-    variables.update({f"boys_{i}": f"boys[{i}]" for i in range(kernel.boys_count)})
+    if family == OperatorFamily.FOUR_CENTER_ERI:
+        variables["kPi"] = "3.141592653589793238462643383279502884"
+    variables.update({f"boys_{i}": f"boys[{i}]" for i in range(boys_count)})
     emitter = ScalarCEmitter(graph, variables)
     qualifier = 'extern "C"' if backend == "cpu" else "__device__ __noinline__"
     lines = [
@@ -68,9 +98,9 @@ def emit_bounded_component(integral, components, *, backend="cpu"):
         emitter.lines.clear()
         lines += [
             f"  const double t = {emitter.reference(kernel.boys_argument)};",
-            f"  double boys[{kernel.boys_count}];",
-            f"  if (t < {kernel.boys_count + 16}.0) {{",
-            f"    for (unsigned n = 0; n < {kernel.boys_count}; ++n) {{",
+            f"  double boys[{boys_count}];",
+            f"  if (t < {boys_count + 16}.0) {{",
+            f"    for (unsigned n = 0; n < {boys_count}; ++n) {{",
             "      double term = 1.0 / (2.0*n + 1.0), sum = term;",
             "      for (unsigned k = 1; k < 512; ++k) {",
             "        term *= 2.0*t / (2.0*n + 2.0*k + 1.0);",
@@ -81,7 +111,7 @@ def emit_bounded_component(integral, components, *, backend="cpu"):
             "    }",
             "  } else {",
             "    boys[0] = 0.5 * sqrt(3.14159265358979323846/t) * erf(sqrt(t));",
-            f"    for (unsigned n = 1; n < {kernel.boys_count}; ++n)",
+            f"    for (unsigned n = 1; n < {boys_count}; ++n)",
             "      boys[n] = ((2.0*n-1.0)*boys[n-1] - exp(-t))/(2.0*t);",
             "  }",
         ]

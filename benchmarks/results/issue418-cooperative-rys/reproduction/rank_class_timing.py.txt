@@ -1,0 +1,46 @@
+"""Rank the preserved #418 class records without turning them into endpoint claims."""
+
+import hashlib
+import json
+from pathlib import Path
+
+from vibeqc_compiler.integral.df_tuning.policy import rank_profiles
+
+root=Path('.artifacts/issue418')
+output=root/'class-timing-v1'
+profiles={}
+for aos,mode in ((384,1),(768,2)):
+    p=Path(f'benchmarks/results/issue395-df-work/work/{aos}.json')
+    profiles[str(aos)]=json.loads(p.read_text())
+    profiles[str(aos)]['benchmark_pair_mode']=mode
+records=[]
+classes=[]
+baselines={}
+hashes={}
+for phase in ('hot-objects-v2','rest-objects-v1'):
+    assert (output/f'{phase}.exit').read_text().strip()=='0'
+    report=json.loads((root/phase/'report.json').read_text())
+    classes += [tuple(c) for c in report['classes']]
+    baselines.update(report['baselines'])
+    runtime=output/f'{phase}.jsonl'
+    hashes[str(runtime)]=hashlib.sha256(runtime.read_bytes()).hexdigest()
+    eligible={row['key']:row['eligible'] for row in report['compiled']}
+    for row in map(json.loads,runtime.read_text().splitlines()):
+        if row.get('kind')=='device':
+            assert row['architecture']=='sm_120'
+            continue
+        row['eligible']=eligible[row['candidate']]
+        records.append(row)
+result=rank_profiles(profiles,records,baselines=baselines,angular=tuple(classes))
+summary={}
+for profile,rows in result['profiles'].items():
+    summary[profile]={}
+    for cls,row in rows.items():
+        scores=row['milliseconds']
+        control=scores.get(row['baseline'])
+        candidate=scores.get(f'{cls}:rys:compact')
+        summary[profile][cls]={'control_ms':control,'candidate_ms':candidate,'saving_ms':None if control is None or candidate is None else control-candidate,'winner':row['winner'],'baseline_valid':row['baseline_valid']}
+payload={'scope':'class diagnostic only; complete endpoint gates are still required','raw_sha256':hashes,'ranking':result,'summary':summary,'all_rows_numerical_passed':all(r['numerical_passed'] for r in records),'rows':len(records),'maximum_error':max(r['maximum_error'] for r in records)}
+(output/'ranking.json').write_text(json.dumps(payload,indent=2)+'\n')
+print(json.dumps(summary,indent=2))
+print('proposed mapping',result['proposed_mapping'])

@@ -23,6 +23,42 @@
 
 namespace vibeqc::scf::cuda_df {
 namespace {
+/** Apply Q diag(lambda^-1/2) Q^T to one public raw panel in factor order.
+ * Forming the explicit inverse root first loses weak-direction cancellation
+ * when it subsequently contracts raw A. The two products below preserve the
+ * same symmetric whitening convention, cutoff and eigensystem. Setup borrows
+ * the already charged exchange panel before any SCF consumer exists; raw
+ * values and their immutable caches remain intact.
+ */
+vibeqc_status whiten_factor_panel(CudaDensityFittingJkPlan& plan, std::size_t system,
+                                  std::size_t pairs, const double* raw, double* output,
+                                  const double* eigenvectors, const double* scaled_eigenvectors,
+                                  std::string& detail) {
+  const auto a = static_cast<int>(plan.naux), rows = static_cast<int>(pairs);
+  const auto offset = system * plan.naux * plan.naux;
+  const double one = 1, zero = 0;
+  auto status =
+      runtime::cuda_trace::trace_call("resident_metric_eigen_projection", plan.stream, [&] {
+        return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, a, rows, a, &one,
+                           eigenvectors + offset, a, raw, a, &zero, plan.exchange_intermediate, a);
+      });
+  if (status != CUBLAS_STATUS_SUCCESS)
+    return blas_failure(status, "project raw CUDA DF metric factors", detail);
+  status = runtime::cuda_trace::trace_call("resident_metric_scaled_rotation", plan.stream, [&] {
+    return cublasDgemm(plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, a, rows, a, &one,
+                       scaled_eigenvectors + offset, a, plan.exchange_intermediate, a, &zero,
+                       output, a);
+  });
+  if (status != CUBLAS_STATUS_SUCCESS)
+    return blas_failure(status, "rotate scaled CUDA DF metric factors", detail);
+  runtime::cuda_trace::trace_counter("resident_whitening_factor_panels", 1);
+  runtime::cuda_trace::trace_counter("resident_whitening_factor_gemms", 2);
+  runtime::cuda_trace::trace_counter("resident_whitening_factor_flops",
+                                     4 * pairs * plan.naux * plan.naux);
+  runtime::cuda_trace::trace_counter("resident_whitening_projection_elements", pairs * plan.naux);
+  return VIBEQC_STATUS_SUCCESS;
+}
+
 /** Materialize a fixed-geometry source once, reusing bounded resident K staging.
  * Every raw (pair,P) is generated once and feeds ALL Q directly into retained
  * B. Dense storage uses bounded raw panels; packed storage writes its separate
@@ -30,7 +66,8 @@ namespace {
  * The caller handles failure after the plan's stream is drained.
  */
 vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const double* inverse,
-                                           std::string& detail) {
+                                           const double* eigenvectors,
+                                           const double* scaled_eigenvectors, std::string& detail) {
   runtime::cuda_trace::TraceOperation trace("resident_three_center_materialization", plan.stream,
                                             {plan.batch_size, plan.nbf, plan.naux, true, false});
   const double one = 1.0, zero = 0.0;
@@ -44,6 +81,19 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
             plan.integral_source, system, mu * plan.nbf, mu + 1, 0, plan.naux, -1,
             reinterpret_cast<void*>(plan.stream), raw + mu * (mu + 1) / 2 * plan.naux, detail);
         if (status != VIBEQC_STATUS_SUCCESS) return status;
+      }
+      if (plan.metric_full_rank[system] && plan.panel_capacity >= plan.naux) {
+        const auto tile = plan.panel_capacity / plan.naux;
+        for (std::size_t pair = 0; pair < plan.stored_pair_count; pair += tile) {
+          const auto count = std::min(tile, plan.stored_pair_count - pair);
+          const auto status = whiten_factor_panel(
+              plan, system, count, raw + pair * plan.naux,
+              plan.three_center + system * plan.stored_tensor_elements_per_system +
+                  pair * plan.naux,
+              eigenvectors, scaled_eigenvectors, detail);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+        }
+        continue;
       }
       const auto status =
           runtime::cuda_trace::trace_call("resident_metric_transform", plan.stream, [&] {
@@ -75,6 +125,22 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
   for (std::size_t system = 0; system < plan.batch_size; ++system) {
     for (std::size_t pair = 0; pair < plan.matrix_elements; pair += pair_tile) {
       const auto pairs = std::min(pair_tile, plan.matrix_elements - pair);
+      if (plan.metric_full_rank[system] && capacity >= plan.naux) {
+        // The existing pair cap fits all auxiliary directions in each of two
+        // disjoint panels. Generate every raw pair once, then use both GEMMs;
+        // the extra projection never amplifies integral-source work.
+        auto status = generate_cuda_density_fitting_raw_tile(
+            plan.integral_source, system, pair, pairs, 0, plan.naux, -1,
+            reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        status = whiten_factor_panel(
+            plan, system, pairs, plan.auxiliary_tile_values,
+            plan.three_center + system * plan.tensor_elements_per_system + pair * plan.naux,
+            eigenvectors, scaled_eigenvectors, detail);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        runtime::cuda_trace::trace_tile(system, pair, pairs, 0, plan.naux, -1, true);
+        continue;
+      }
       const auto raw_tile = std::min(plan.naux, capacity / pairs);
       for (std::size_t begin = 0; begin < plan.naux; begin += raw_tile) {
         const auto count = std::min(raw_tile, plan.naux - begin);
@@ -115,7 +181,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
     CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail, CudaDensityFittingIntegralSource* integral_source,
-    bool retain_three_center, DfValueStorageOptions storage) {
+    bool retain_three_center, DfValueStorageOptions storage, std::size_t automatic_rhf_rank) {
   runtime::df_progress::Scope preparation("df_plan_setup");
   runtime::df_progress::number("planner_ao_pair_tile", ao_pair_tile);
   runtime::df_progress::number("planner_auxiliary_tile", auxiliary_tile);
@@ -237,7 +303,13 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     }
   }
 
-  const bool occupied_scf_reserved = df_occupied_exchange_requested(nbf, naux, batch_size);
+  // Generic tensor/source callers cannot infer a reference from dimensions.
+  // Even an authorized RHF hint cannot reserve for an ineligible layout.
+  if (streamed || (integral_source && !packed) ||
+      (packed && automatic_rhf_rank > storage.rank_capacity))
+    automatic_rhf_rank = 0;
+  const bool occupied_scf_reserved =
+      df_occupied_exchange_requested(nbf, naux, batch_size, automatic_rhf_rank);
   const char* diis_policy = std::getenv("VIBEQC_DF_DIIS_DOTS");
   if (diis_policy && std::strcmp(diis_policy, "auto") != 0 &&
       std::strcmp(diis_policy, "serial") != 0) {
@@ -259,6 +331,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   if (candidate == nullptr) return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   candidate->device_id = device_id;
   candidate->occupied_scf_reserved = occupied_scf_reserved;
+  candidate->automatic_rhf_rank = automatic_rhf_rank;
   candidate->resident_exchange_enabled = df_resident_exchange_requested();
   candidate->triangular_exchange = df_triangular_exchange_requested();
   candidate->flat_dense_exchange = df_flat_dense_exchange_requested();
@@ -578,7 +651,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   }
   metric_progress.finish("stream_complete");
   if (!candidate->streamed && candidate->integral_source) {
-    status = materialize_generated_tensor(*candidate, setup.inverse_square_roots, detail);
+    status = materialize_generated_tensor(*candidate, setup.inverse_square_roots, setup.metrics,
+                                          setup.scaled_eigenvectors, detail);
     if (status != VIBEQC_STATUS_SUCCESS) return fail_plan(candidate, status);
   } else if (candidate->streamed) {
     if (!candidate->integral_source) {
@@ -598,32 +672,52 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       }
     }
   } else {
-    blas_status = cublasDgemmStridedBatched(
-        candidate->blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(naux),
-        static_cast<int>(matrix_elements), static_cast<int>(naux), &one, setup.inverse_square_roots,
-        static_cast<int>(naux), static_cast<long long>(metric_elements), setup.raw_three_center,
-        static_cast<int>(naux), static_cast<long long>(tensor_elements_per_system), &zero,
-        candidate->three_center, static_cast<int>(naux),
-        static_cast<long long>(tensor_elements_per_system), static_cast<int>(batch_size));
-    if (blas_status != CUBLAS_STATUS_SUCCESS) {
-      return fail_plan(candidate,
-                       blas_failure(blas_status, "transform CUDA DF three-center tensor", detail));
-    }
-    if (candidate->resident_exchange_enabled && batch_size == 1 && candidate->row_tile == nbf &&
-        auxiliary_tile == naux &&
-        nbf * naux <= static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-      // The resident exchange contractions no longer write this third full
-      // scratch tensor. Preserve the original, untruncated raw values here
-      // while setup still owns them; B alone cannot reconstruct discarded
-      // metric directions needed by the exact Frechet derivative.
-      launch_gather_auxiliary_tile_kernel(
-          blocks_for(tensor_elements_per_system), kThreads, 0, candidate->stream, matrix_elements,
-          naux, 0, 0, naux, setup.raw_three_center, candidate->exchange_contributions);
-      cuda_error = cudaGetLastError();
-      if (cuda_error != cudaSuccess)
-        return fail_plan(candidate, cuda_failure(cuda_error, "retain raw DF tensor", detail));
-      candidate->resident_raw_valid = true;
-    }
+    // End the trace (and its pending stream reads) before failure destroys
+    // the plan's stream and allocations.
+    const auto materialization_status = [&]() -> vibeqc_status {
+      runtime::cuda_trace::TraceOperation trace("resident_three_center_materialization",
+                                                candidate->stream,
+                                                {batch_size, nbf, naux, false, false});
+      for (std::size_t system = 0; system < batch_size; ++system) {
+        if (candidate->metric_full_rank[system]) {
+          status =
+              whiten_factor_panel(*candidate, system, matrix_elements,
+                                  setup.raw_three_center + system * tensor_elements_per_system,
+                                  candidate->three_center + system * tensor_elements_per_system,
+                                  setup.metrics, setup.scaled_eigenvectors, detail);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+        } else {
+          // Preserve the original truncated-space preparation and its response.
+          blas_status = cublasDgemm(
+              candidate->blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(naux),
+              static_cast<int>(matrix_elements), static_cast<int>(naux), &one,
+              setup.inverse_square_roots + system * metric_elements, static_cast<int>(naux),
+              setup.raw_three_center + system * tensor_elements_per_system, static_cast<int>(naux),
+              &zero, candidate->three_center + system * tensor_elements_per_system,
+              static_cast<int>(naux));
+          if (blas_status != CUBLAS_STATUS_SUCCESS)
+            return blas_failure(blas_status, "transform CUDA DF three-center tensor", detail);
+        }
+      }
+      if (candidate->resident_exchange_enabled && batch_size == 1 && candidate->row_tile == nbf &&
+          auxiliary_tile == naux &&
+          nbf * naux <= static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        // The resident exchange contractions no longer write this third full
+        // scratch tensor. Preserve the original, untruncated raw values here
+        // while setup still owns them; B alone cannot reconstruct discarded
+        // metric directions needed by the exact Frechet derivative.
+        launch_gather_auxiliary_tile_kernel(
+            blocks_for(tensor_elements_per_system), kThreads, 0, candidate->stream, matrix_elements,
+            naux, 0, 0, naux, setup.raw_three_center, candidate->exchange_contributions);
+        cuda_error = cudaGetLastError();
+        if (cuda_error != cudaSuccess)
+          return cuda_failure(cuda_error, "retain raw DF tensor", detail);
+        candidate->resident_raw_valid = true;
+      }
+      return VIBEQC_STATUS_SUCCESS;
+    }();
+    if (materialization_status != VIBEQC_STATUS_SUCCESS)
+      return fail_plan(candidate, materialization_status);
   }
   // Source force replay borrows these original device factors. Transfer them
   // only after the final stream drain below, so setup still owns error cleanup.

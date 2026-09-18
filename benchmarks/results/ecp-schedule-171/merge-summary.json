@@ -1,0 +1,232 @@
+{
+  "checks": {
+    "cuda-integration.log": "53 passed, 42 deselected in 123.01s (0:02:03)",
+    "resources.log": "33 passed in 9.91s",
+    "ctest.log": "3/3 passed",
+    "memcheck-native.log": "0 errors",
+    "memcheck-tail.log": "0 errors"
+  },
+  "cases": [
+    {
+      "label": "9ao-rhf",
+      "maximum_energy_error": 3.1086244689504383e-15,
+      "maximum_force_error": 2.613529531680925e-10,
+      "timings": {
+        "first_call": {
+          "median_ms": 790.9609819762409,
+          "samples_ms": [
+            790.9609819762409
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 541.4477488957345,
+          "samples_ms": [
+            541.4477488957345,
+            541.1897469311953,
+            541.4674477651715
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 695.061206817627,
+          "samples_ms": [
+            695.061206817627,
+            694.426329806447,
+            695.1866000890732
+          ]
+        },
+        "budgeted": {
+          "median_ms": 697.3275127820671,
+          "samples_ms": [
+            697.3275127820671
+          ]
+        },
+        "batch2": {
+          "median_ms": 1393.2863669469953,
+          "samples_ms": [
+            1393.2863669469953,
+            1393.2863669469953
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 6196928,
+        "device": 5704624,
+        "pinned": 0,
+        "pageable": 6196928,
+        "device:0": 5704624
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 5704624,
+        "live_bytes": 73064,
+        "peak_bytes": 5194952,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "9ao-uhf",
+      "maximum_energy_error": 1.9984014443252818e-15,
+      "maximum_force_error": 3.7491813473233826e-10,
+      "timings": {
+        "first_call": {
+          "median_ms": 697.0795150846243,
+          "samples_ms": [
+            697.0795150846243
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 541.4048722013831,
+          "samples_ms": [
+            541.6767103597522,
+            541.0246727988124,
+            541.4048722013831
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 694.7173872031271,
+          "samples_ms": [
+            694.82437428087,
+            694.7173872031271,
+            693.6983149498701
+          ]
+        },
+        "budgeted": {
+          "median_ms": 694.285451900214,
+          "samples_ms": [
+            694.285451900214
+          ]
+        },
+        "batch2": {
+          "median_ms": 1391.481967177242,
+          "samples_ms": [
+            1391.481967177242,
+            1391.481967177242
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 6238400,
+        "device": 5739776,
+        "pinned": 0,
+        "pageable": 6238400,
+        "device:0": 5739776
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 5739776,
+        "live_bytes": 90640,
+        "peak_bytes": 5212528,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "16ao-rhf",
+      "maximum_energy_error": 2.886579864025407e-15,
+      "maximum_force_error": 1.0944630340903316e-09,
+      "timings": {
+        "first_call": {
+          "median_ms": 9059.447695035487,
+          "samples_ms": [
+            9059.447695035487
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 8008.334026206285,
+          "samples_ms": [
+            7817.015970591456,
+            8008.334026206285,
+            8096.927855163813
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 9186.438550706953,
+          "samples_ms": [
+            9224.815774243325,
+            9186.438550706953,
+            9115.353320725262
+          ]
+        },
+        "budgeted": {
+          "median_ms": 8927.740384358913,
+          "samples_ms": [
+            8927.740384358913
+          ]
+        },
+        "batch2": {
+          "median_ms": 17250.551733653992,
+          "samples_ms": [
+            17250.551733653992,
+            17250.551733653992
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 11824576,
+        "device": 11771712,
+        "pinned": 0,
+        "pageable": 11824576,
+        "device:0": 11771712
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 11771712,
+        "live_bytes": 585392,
+        "peak_bytes": 9230944,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "29ao-rhf-fallback",
+      "maximum_energy_error": 8.881784197001252e-15,
+      "maximum_force_error": 4.371615569542797e-10,
+      "timings": {
+        "first_call": {
+          "median_ms": 2033.776355907321,
+          "samples_ms": [
+            2033.776355907321
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 1146.8303599394858,
+          "samples_ms": [
+            1147.3128702491522,
+            1146.5701558627188,
+            1146.8303599394858
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 1875.404944177717,
+          "samples_ms": [
+            1875.404944177717,
+            1884.0305479243398,
+            1874.6159859001637
+          ]
+        },
+        "batch2": {
+          "median_ms": 3563.269409816712,
+          "samples_ms": [
+            3563.269409816712,
+            3563.269409816712
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 0,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 0
+      },
+      "device_ledger": null
+    }
+  ],
+  "comparison_scope": "Integration candidate only; historical matched baseline/candidate performance remains bound to 0ba41df and b78215e."
+}

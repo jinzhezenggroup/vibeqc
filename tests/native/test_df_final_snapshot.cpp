@@ -120,15 +120,25 @@ void lifecycle(bool uhf, std::size_t batch) {
     const auto selected = solver::select_final_state(
         tokens[item].identity, s, f, x, .3, snapshot.density, &retained,
         [&](const auto&, const auto&) { return physical; },
-        [](const auto&, const auto*, const auto*, auto) -> reference::EigenResult {
-          throw std::runtime_error("valid retained fixture unexpectedly needed correction");
+        [&](const auto& matrix, const auto* overlap, const auto* orthogonalizer,
+            auto n) -> reference::EigenResult {
+          require(matrix == f && overlap && *overlap == s && orthogonalizer &&
+                      *orthogonalizer == x && n == 2,
+                  "fixed-point probe lost its physical F/S/X inputs");
+          // Independent analytic projector for the rotated physical fixture.
+          // Validation requires this solve without changing the retained D.
+          return {{-1, 3}, c};
         },
         {}, true, false, &operations);
     require(selected.state.has_value() && selected.reused, selected.detail);
+    require(selected.density_updates == 0 && selected.fock_evaluations == 1 &&
+                selected.fixed_point_checks == 1 && selected.fixed_point_rejections == 0 &&
+                selected.eigen_solves == (uhf ? 2U : 1U) &&
+                selected.fixed_point_eigen_solves == selected.eigen_solves,
+            "stationary retained state was corrected or its physical probe was not counted");
     for (std::size_t spin = 0; spin < snapshot.density.size(); ++spin) {
       const auto expected = reference::energy_weighted_density(
-          snapshot.candidate.spins[spin].vectors, snapshot.candidate.spins[spin].values, 2,
-          tokens[item].identity.occupied[spin], uhf ? 1 : 2);
+          c, {-1, 3}, 2, tokens[item].identity.occupied[spin], uhf ? 1 : 2);
       for (std::size_t k = 0; k < 4; ++k)
         require(std::abs(selected.state->weighted_density[spin][k] - expected[k]) < 1e-12,
                 "device W differs from the force-state oracle");

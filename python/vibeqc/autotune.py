@@ -59,9 +59,16 @@ def source_identity(source: Path) -> str:
     """Mirror the CMake compatibility inventory before spending a tuning budget."""
     paths = {
         source / "CMakeLists.txt",
+        source / "cmake/VibeQCCuda.cmake",
+        source / "cmake/VibeQCCudaImplib.cmake",
         source / "cmake/VibeQCGenerated.cmake",
+        source / "cmake/VibeQCGeneratedSources.cmake",
+        source / "cmake/VibeQCSources.cmake",
         source / "cmake/VibeQCTests.cmake",
+        source / "cmake/3rdparty/implib_manifest.json",
+        source / "tools/generate_cuda_implib.py",
         source / "tools/generate_shell_kernels.py",
+        source / "tools/generate_ecp_kernels.py",
         source / "tools/generate_df_kernels.py",
         source / "tools/generate_weighted_eri_kernels.py",
         source / "tools/generate_one_electron_kernels.py",
@@ -69,7 +76,7 @@ def source_identity(source: Path) -> str:
         source / "tools/generate_mp2_native.py",
         source / "tools/generate_xc_cpu.py",
     }
-    for directory in ("src", "include"):
+    for directory in ("src", "include", "cmake/3rdparty/implib"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())
     paths.update((source / "python/vibeqc").rglob("*.py"))
     for pattern in ("*.py", "*.json"):

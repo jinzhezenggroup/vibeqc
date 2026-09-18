@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/compile_candidates.py", line 40, in <module>
+    write_workloads(directory/'workload.txt',profiles,angular=classes)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/tools/benchmark_df_derivatives.py", line 71, in write_workloads
+    domain = read_profile(payload, angular=angular)
+  File "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/python/vibeqc_compiler/integral/df_tuning/policy.py", line 145, in read_profile
+    raise ValueError("profile contains no supported derivative work")
+ValueError: profile contains no supported derivative work

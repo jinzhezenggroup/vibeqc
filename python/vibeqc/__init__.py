@@ -1,5 +1,6 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
+from ._cuda_runtime import install_native_loader as _install_native_loader
 from .accuracy import (
     AccuracyAssessment,
     ErrorEvidence,
@@ -65,6 +66,9 @@ from .resources import (
 )
 from .resources_hf import estimate_hf_resources
 from .resources_ks import estimate_ks_resources
+
+_install_native_loader()
+del _install_native_loader
 
 __all__ = [
     "AccuracyAssessment",

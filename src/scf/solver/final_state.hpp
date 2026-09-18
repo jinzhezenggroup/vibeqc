@@ -64,6 +64,9 @@ struct FinalStateDiagnostic {
   double maximum_commutator{}, density_rms{}, maximum_trace_error{}, maximum_idempotency_error{};
   double maximum_density_error{}, maximum_canonical_error{};
   double energy{}, energy_change{};
+  // A fresh physical-Fock projector is distinct from reconstructing the same
+  // retained frame. Force selection checks both the maximum and RMS defect.
+  double maximum_fixed_point_density_error{}, fixed_point_density_rms{};
   std::vector<EigenFrameDiagnostic> eigenframes;
 };
 
@@ -86,8 +89,10 @@ struct FinalStateOperations {
                      const reference::EigenResult&, EigenFrameDiagnostic&, std::string&)>
       eigen;
   std::function<reference::Matrix(const reference::EigenResult&, std::size_t, double)> project;
-  std::function<std::vector<reference::Matrix>(const FinalStateIdentity&,
-                                               const FinalFrameCandidate&)>
+  // W = D F[D] D / spin_weight, using the same tagged determinant as the force.
+  // A lagged frame's orbital energies must not replace the current physical F.
+  std::function<std::vector<reference::Matrix>(
+      const FinalStateIdentity&, const std::vector<reference::Matrix>&, const PhysicalFockFrame&)>
       weighted;
 };
 
@@ -127,6 +132,9 @@ struct FinalStateSelection {
   FinalStateStatus status{FinalStateStatus::NumericalFailure};
   std::string detail;
   unsigned fock_evaluations{}, eigen_solves{}, density_updates{}, candidate_rejections{};
+  // Eigen solves above include these physical fixed-point probes. A rejected
+  // probe is reused for correction, never solved twice at the same density.
+  unsigned fixed_point_checks{}, fixed_point_eigen_solves{}, fixed_point_rejections{};
   bool reused{};
   std::optional<VerifiedFinalState> state;
 };
@@ -137,6 +145,10 @@ using PhysicalFockOperation = std::function<PhysicalFockFrame(
 /** Always evaluate physical F[D_returned] before selecting a candidate. A
  * bounded correction solves that F, projects D, advances both determinant
  * generations, evaluates the new F and checks again, including energy change.
+ * Force selection also compares D with a fresh physical-Fock occupied projector
+ * at the requested density tolerance, including its maximum elementwise drift.
+ * An accepted force uses D F[D] D / spin_weight for W. Energy-only selection
+ * retains its existing frame validation without the additional eigen solve.
  * `force_rebuild` exercises the actual correction path, even for a valid
  * candidate. Callbacks are synchronous/borrowed; exceptions propagate as an
  * explicit failed selection, never as a reference fallback. No successful

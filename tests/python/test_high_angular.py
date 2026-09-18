@@ -430,3 +430,100 @@ extern "C" int launch(const double* x, double* y) {{
             np.testing.assert_allclose(
                 weight * out[1:], weight * gradient.ravel(), atol=5e-11
             )
+
+
+def test_bounded_four_center_cpu_codegen_compiles_and_executes(tmp_path):
+    """Lower one ERI component through the shared compiler DAG to native C++."""
+
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("native compiler unavailable")
+
+    from vibeqc_compiler.integral.blocks import RawBlock, TensorLayout
+    from vibeqc_compiler.integral.ir import FOUR_CENTER_ERI_OPERATOR, build_integral_ir
+    from vibeqc_compiler.integral.shell_signature import ShellSignature
+    from vibeqc_compiler.integral.shell_spec import PSSS_SPEC
+
+    signature = ShellSignature.from_shell_class(PSSS_SPEC)
+    layout = TensorLayout(
+        ("center", "xyz", *signature.tensor_indices),
+        (4, 3, *signature.component_shape),
+    )
+    ir = build_integral_ir(
+        PSSS_SPEC,
+        operator=FOUR_CENTER_ERI_OPERATOR,
+        derivative=FOUR_CENTER_ERI_OPERATOR.nuclear_derivative(),
+        contractions=(RawBlock(layout, layout.storage_bytes),),
+    )
+    assert query_integral_capability(
+        ir, backend="cpu_bounded_component", component_indices=(0,)
+    ).supported
+
+    source = emit_bounded_component(ir, ("x", "", "", ""), backend="cpu")
+    assert source == emit_bounded_component(ir, ("x", "", "", ""), backend="cpu")
+    assert 'extern "C" void evaluate' in source
+    assert "__device__" not in source
+
+    path = tmp_path / "eri_component.cpp"
+    library = tmp_path / "eri_component.so"
+    path.write_text(source)
+    build = subprocess.run(
+        [
+            compiler,
+            "-std=c++17",
+            "-O1",
+            "-shared",
+            "-fPIC",
+            str(path),
+            "-o",
+            str(library),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    assert build.returncode == 0, build.stderr
+
+    evaluate = ctypes.CDLL(str(library)).evaluate
+    evaluate.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS")
+    ] * 2
+    evaluate.restype = None
+    inputs = np.array(
+        [
+            1.3,
+            0.7,
+            0.9,
+            0.5,
+            0.1,
+            -0.3,
+            0.2,
+            -0.4,
+            0.2,
+            0.5,
+            0.6,
+            -0.1,
+            -0.2,
+            -0.2,
+            0.4,
+            -0.6,
+        ],
+        dtype=np.float64,
+    )
+    outputs = np.empty(13)
+    evaluate(inputs, outputs)
+    assert np.isfinite(outputs).all()
+
+    step = 2.0e-6
+    numerical = np.empty(12)
+    for coordinate in range(12):
+        plus, minus = inputs.copy(), inputs.copy()
+        plus[4 + coordinate] += step
+        minus[4 + coordinate] -= step
+        plus_output, minus_output = np.empty(13), np.empty(13)
+        evaluate(plus, plus_output)
+        evaluate(minus, minus_output)
+        numerical[coordinate] = (plus_output[0] - minus_output[0]) / (2.0 * step)
+    np.testing.assert_allclose(outputs[1:], numerical, atol=2e-9, rtol=2e-8)
+    np.testing.assert_allclose(outputs[1:].reshape(4, 3).sum(axis=0), 0.0, atol=3e-12)

@@ -359,7 +359,7 @@ def test_unrequested_division_adjoint_is_never_constructed():
     np.testing.assert_array_equal(actual.outputs["bar_x"], np.asarray(0.5))
 
 
-def test_reverse_generation_fails_closed_for_symmetric_boundaries_and_budgets():
+def test_reverse_generation_fails_closed_for_incidence_budgets():
     i = _axis("i", 4)
     x = _parameter("x", (i,))
     sliced = slice_tensor(x, ((0, 4),))
@@ -369,25 +369,6 @@ def test_reverse_generation_fails_closed_for_symmetric_boundaries_and_budgets():
             ["sliced"],
             inputs=["x"],
             max_elements=0,
-        )
-
-    space = IndexSpace("o", "occupied", 2)
-    symmetric = input_tensor(
-        "symmetric",
-        TensorSpec(
-            (Index("p", space), Index("q", space)),
-            symmetries=(Symmetry((1, 0), -1),),
-            role="parameter",
-            differentiable=True,
-        ),
-    )
-    with pytest.raises(NotImplementedError, match="boundary"):
-        linearize(Program({"symmetric": symmetric}), ["symmetric"])
-    with pytest.raises(NotImplementedError, match="boundary"):
-        transpose_program(
-            Program({"symmetric": symmetric}),
-            ["symmetric"],
-            inputs=["symmetric"],
         )
 
 

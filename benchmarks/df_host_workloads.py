@@ -168,7 +168,16 @@ def validate_final_eigen_counts(
             raise RuntimeError(
                 "provider ablation did not perform bounded strict rebuilding"
             )
-        expected = spins * corrections
+        checks = phases.get("final_state_fixed_point", {}).get("calls", 0)
+        promoted = phases.get("final_state_fixed_point_promotion", {}).get("calls", 0)
+        outputs = phases.get("final_state_weighted_density", {}).get("calls", 0)
+        if (checks or promoted) and (
+            checks != outputs + promoted or not 0 <= promoted <= corrections
+        ):
+            raise RuntimeError(
+                "provider ablation miscounted physical fixed-point solves"
+            )
+        expected = spins * (corrections + checks - promoted)
     if (
         solves.get("final_fock", {}).get("calls", 0) != (expected if reference else 0)
         or device.get("final_fock", {}).get("calls", 0)
@@ -210,7 +219,19 @@ def validate_final_state_counts(
         raise RuntimeError(
             "final state ablation omitted current-F work or misreported correction/output selection"
         )
-    expected = corrections * (2 if method == "uhf" else 1)
+    checks = calls("final_state_fixed_point")
+    promoted = calls("final_state_fixed_point_promotion")
+    # Historical ledgers have neither probe field. In the new protocol, every
+    # successful force item contributes one accepted probe; rejected probes
+    # are promoted into corrections without another eigensolve.
+    if (checks or promoted) and (
+        checks != (batch_size if compute_forces else 0) + promoted
+        or not 0 <= promoted <= corrections
+    ):
+        raise RuntimeError(
+            "final state ablation miscounted physical fixed-point solves"
+        )
+    expected = (corrections + checks - promoted) * (2 if method == "uhf" else 1)
     host = components["eigensolves_by_reason"]
     device = components["device_eigensolves_by_reason"]
     if (

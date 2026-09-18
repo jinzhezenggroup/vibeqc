@@ -6,7 +6,9 @@ schedule search operates on CUDA target records rather than vendor CLI details.
 
 from __future__ import annotations
 
+import os
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -119,30 +121,190 @@ class CudaCompilerAdapter:
 
 
 @dataclass(frozen=True, slots=True)
+class CudaExecutionProfile:
+    """Portable scheduler resources for one CUDA validation/benchmark process."""
+
+    local: bool = False
+    srun: str = "srun"
+    partition: str | None = "main"
+    gres: str | None = "gpu:5090:1"
+    nodes: int = 1
+    ntasks: int = 1
+    slurm_time: str | None = "00:10:00"
+
+    def __post_init__(self) -> None:
+        if self.nodes < 1 or self.ntasks < 1:
+            raise ValueError("CUDA execution nodes/tasks must be positive")
+        if not self.srun.strip():
+            raise ValueError("CUDA execution srun command must be non-empty")
+        for name in ("partition", "gres", "slurm_time"):
+            value = getattr(self, name)
+            if value is not None and not value.strip():
+                raise ValueError(f"CUDA execution {name} must be non-empty or None")
+
+    def wrap(self, command: list[str]) -> list[str]:
+        """Wrap an argv vector in the selected local or finite Slurm profile."""
+
+        if not command:
+            raise ValueError("CUDA execution command must be non-empty")
+        if self.local:
+            return list(command)
+        # Every current consumer owns one result stream and one artifact path.
+        # Multiple Slurm tasks would duplicate work and overwrite trial records,
+        # not distribute one benchmark. Keep that request explicit and fail closed.
+        if self.nodes != 1 or self.ntasks != 1:
+            raise ValueError("CUDA benchmark launches require one node and one task")
+        prefix = [self.srun]
+        if self.partition is not None:
+            prefix.append(f"--partition={self.partition}")
+        if self.gres is not None:
+            prefix.append(f"--gres={self.gres}")
+        prefix.extend((f"--nodes={self.nodes}", f"--ntasks={self.ntasks}"))
+        if self.slurm_time is not None:
+            prefix.append(f"--time={self.slurm_time}")
+        return [*prefix, *command]
+
+    def to_dict(self) -> dict[str, object]:
+        """Return stable provenance without scheduler-specific parsing."""
+
+        return {
+            "local": self.local,
+            "srun": self.srun,
+            "partition": self.partition,
+            "gres": self.gres,
+            "nodes": self.nodes,
+            "ntasks": self.ntasks,
+            "slurm_time": self.slurm_time,
+        }
+
+
+def _environment_bool(value: str, name: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean value")
+
+
+def resolve_cuda_execution_profile(
+    *,
+    environment: Mapping[str, str] | None = None,
+    local: bool | None = None,
+    srun: str | None = None,
+    partition: str | None = None,
+    gres: str | None = None,
+    nodes: int | None = None,
+    ntasks: int | None = None,
+    slurm_time: str | None = None,
+    default_slurm_time: str | None = "00:10:00",
+) -> CudaExecutionProfile:
+    """Resolve explicit overrides over environment over project defaults.
+
+    Empty optional scheduler strings in the environment disable that flag.
+    The current development-cluster selector remains the portable default, but
+    callers can select another resource without source edits.
+    """
+
+    env = os.environ if environment is None else environment
+
+    def text_value(key: str, explicit: str | None, default: str | None) -> str | None:
+        if explicit is not None:
+            return explicit
+        if key in env:
+            return env[key] or None
+        return default
+
+    def int_value(key: str, explicit: int | None, default: int) -> int:
+        if explicit is not None:
+            return explicit
+        if key in env:
+            try:
+                return int(env[key])
+            except ValueError as error:
+                raise ValueError(f"{key} must be an integer") from error
+        return default
+
+    if local is None:
+        resolved_local = (
+            _environment_bool(env["VIBEQC_BENCHMARK_LOCAL"], "VIBEQC_BENCHMARK_LOCAL")
+            if "VIBEQC_BENCHMARK_LOCAL" in env
+            else False
+        )
+    else:
+        resolved_local = local
+    return CudaExecutionProfile(
+        local=resolved_local,
+        srun=text_value("VIBEQC_BENCHMARK_SRUN", srun, "srun") or "srun",
+        partition=text_value("VIBEQC_BENCHMARK_PARTITION", partition, "main"),
+        gres=text_value("VIBEQC_BENCHMARK_GRES", gres, "gpu:5090:1"),
+        nodes=int_value("VIBEQC_BENCHMARK_NODES", nodes, 1),
+        ntasks=int_value("VIBEQC_BENCHMARK_NTASKS", ntasks, 1),
+        slurm_time=text_value("VIBEQC_BENCHMARK_TIME", slurm_time, default_slurm_time),
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class CudaBenchmarkExecutor:
-    """Run one CUDA benchmark locally or through a finite Slurm allocation."""
+    """Run one CUDA benchmark locally or through a shared execution profile."""
 
     timeout: int
     local: bool = False
     srun: str = "srun"
-    partition: str = "main"
-    gres: str = "gpu:1"
-    slurm_time: str = "00:10:00"
+    partition: str | None = "main"
+    gres: str | None = "gpu:5090:1"
+    nodes: int = 1
+    ntasks: int = 1
+    slurm_time: str | None = "00:10:00"
+
+    @classmethod
+    def from_environment(
+        cls,
+        timeout: int,
+        *,
+        local: bool | None = None,
+        srun: str | None = None,
+        partition: str | None = None,
+        gres: str | None = None,
+        nodes: int | None = None,
+        ntasks: int | None = None,
+        slurm_time: str | None = None,
+        default_slurm_time: str | None = "00:10:00",
+        environment: Mapping[str, str] | None = None,
+    ) -> CudaBenchmarkExecutor:
+        """Resolve one shared profile and adapt it to the benchmark executor."""
+
+        profile = resolve_cuda_execution_profile(
+            environment=environment,
+            local=local,
+            srun=srun,
+            partition=partition,
+            gres=gres,
+            nodes=nodes,
+            ntasks=ntasks,
+            slurm_time=slurm_time,
+            default_slurm_time=default_slurm_time,
+        )
+        return cls(timeout=timeout, **profile.to_dict())
+
+    @property
+    def profile(self) -> CudaExecutionProfile:
+        """Expose the effective scheduler resources for provenance/tests."""
+
+        return CudaExecutionProfile(
+            local=self.local,
+            srun=self.srun,
+            partition=self.partition,
+            gres=self.gres,
+            nodes=self.nodes,
+            ntasks=self.ntasks,
+            slurm_time=self.slurm_time,
+        )
 
     def command(self, executable: Path) -> list[str]:
         """Return the execution command without altering device visibility."""
 
-        if self.local:
-            return [str(executable)]
-        return [
-            self.srun,
-            f"--partition={self.partition}",
-            f"--gres={self.gres}",
-            "--nodes=1",
-            "--ntasks=1",
-            f"--time={self.slurm_time}",
-            str(executable),
-        ]
+        return self.profile.wrap([str(executable)])
 
     def run(
         self,

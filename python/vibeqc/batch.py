@@ -564,6 +564,10 @@ class PreparedBatch:
     ) -> BatchResult:
         """Replay the fleet, optionally omitting analytic forces.
 
+        Each supplied coordinate array must be real and have shape
+        ``(natoms, 3)``. Atom-count and nonfinite-coordinate errors retain the
+        native per-item failure contract; malformed layouts fail before replay.
+
         The default requests the method's supported properties. Energy-only
         methods return ``forces=None``; HF can omit forces explicitly with
         ``properties=("energy",)``.
@@ -610,7 +614,7 @@ class PreparedBatch:
             if len(coordinates) != count:
                 raise ValueError("coordinate list must match the prepared batch size")
             input_descriptors: list[_native.BatchInputDescriptor] = []
-            for item in coordinates:
+            for index, item in enumerate(coordinates):
                 if item is None:
                     input_descriptors.append(
                         _native.BatchInputDescriptor(
@@ -621,7 +625,17 @@ class PreparedBatch:
                         )
                     )
                     continue
-                array = np.ascontiguousarray(item, dtype=np.float64).reshape(-1)
+                raw = np.asarray(item)
+                if np.iscomplexobj(raw):
+                    raise ValueError("coordinates must be real")
+                # Wrong element counts already have a native per-item failure
+                # contract, including flat invalid sentinels. Reject a layout
+                # here only when its count could otherwise pass native admission.
+                if raw.size == 3 * self._atom_counts[index] and (
+                    raw.ndim != 2 or raw.shape[1] != 3
+                ):
+                    raise ValueError("coordinates must have shape (natoms, 3)")
+                array = np.ascontiguousarray(raw, dtype=np.float64).reshape(-1)
                 coordinate_storage.append(array)
                 input_descriptors.append(
                     _native.BatchInputDescriptor(

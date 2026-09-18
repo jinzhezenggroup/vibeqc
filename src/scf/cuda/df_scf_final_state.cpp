@@ -193,11 +193,10 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
       density.size() != plan->matrix_elements || !finite_values(density))
     return VIBEQC_STATUS_SUCCESS;
   if (!policy || std::string(policy) == "auto") {
-    bool qualified = false;
-    const auto status = qualified_resident_rhf_exchange(
-        *plan, state->final_alpha_occupied, state->final_beta_occupied, qualified, detail);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
-    if (!qualified) return VIBEQC_STATUS_SUCCESS;
+    if (state->final_alpha_occupied.size() != 1 || !state->final_beta_occupied.empty() ||
+        state->final_alpha_occupied[0] <= 0 ||
+        !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
+      return VIBEQC_STATUS_SUCCESS;
   }
   CudaDfFinalStateToken current;
   auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);

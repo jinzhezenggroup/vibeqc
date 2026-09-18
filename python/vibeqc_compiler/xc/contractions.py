@@ -255,6 +255,65 @@ class ContractionProgram:
             )
         return result
 
+    def geometry_from_cartesian_coefficients(
+        self,
+        jets,
+        density,
+        weights,
+        energy,
+        rho_coefficients,
+        gradient_coefficients=None,
+        *,
+        ao_atoms,
+        natom,
+    ):
+        """Apply generated AO-jet pullback to an audited point differential.
+
+        The point provider supplies dE/drho_s and, for GGA, dE/dgrad(rho_s)
+        in the physical two-spin convention. This method owns only the generated
+        density/AO geometric chain and never reinterprets the scalar XC model.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("Cartesian coefficient pullback requires geometry")
+        jets, weights = immutable(jets), immutable(weights)
+        required = len(jet_indices(self.contract.ao_order))
+        if (
+            jets.ndim != 3
+            or jets.shape[0] not in (1, 4, 10, 20)
+            or jets.shape[0] < required
+            or weights.shape != (jets.shape[1],)
+        ):
+            raise ValueError("XC pullback requires its declared AO/point domain")
+        d = spin_densities(density, jets.shape[2])
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        npoint = jets.shape[1]
+        energy = immutable(energy, shape=(npoint,))
+        rho = immutable(rho_coefficients, shape=(2, npoint))
+        arrays = [energy, rho]
+        gradient = None
+        if self.contract.ingredients.family == "gga":
+            gradient = immutable(gradient_coefficients, shape=(2, npoint, 3))
+            arrays.append(gradient)
+        elif gradient_coefficients is not None:
+            raise ValueError("LDA Cartesian pullback does not consume gradients")
+        if not all(np.isfinite(value).all() for value in arrays):
+            raise ValueError("nonfinite XC Cartesian coefficient")
+
+        if self.spec.spin == "polarized":
+            coefficients = {"rho": rho}
+            if gradient is not None:
+                coefficients["gradient"] = gradient
+        else:
+            # RKS stores D=Da+Db.  Its derivative is the half-sum of the two
+            # spin derivatives because Da=Db=D/2.
+            coefficients = {"rho": immutable(0.5 * (rho[0] + rho[1]))[None]}
+            if gradient is not None:
+                coefficients["gradient"] = immutable(0.5 * (gradient[0] + gradient[1]))[
+                    None
+                ]
+        return self._geometry(jets, d, weights, coefficients, energy, ao_atoms, natom)
+
     def _geometry(self, jets, density, weights, coefficients, energy, ao_atoms, natom):
         """Pull back compact AO bilinears, then split translation sources.
 

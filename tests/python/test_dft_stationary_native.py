@@ -7,9 +7,11 @@ import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions
 from vibeqc._dft_gradient import (
+    StableGridMotion,
     StationaryDerivativeContract,
     StationaryKsState,
     bind_generated_xc_geometry,
+    scf_regularization_identity,
     xc_regularization_identity,
 )
 from vibeqc_compiler.dft import ExplicitGrid, NativeAO
@@ -83,8 +85,23 @@ def test_native_snapshot_rejects_relabeling_and_replay(method):
                 "PBE" if method.startswith("pbe") else "LDA_XC_PW",
                 spin="polarized" if unrestricted else "unpolarized",
             )
-            with pytest.raises(ValueError, match="regularization identity"):
-                bind_generated_xc_geometry(contract, state, spec, basis, state.grid)
+            generated = bind_generated_xc_geometry(
+                contract, state, spec, basis, state.grid
+            )
+            assert generated.regularization_identity == scf_regularization_identity()
+            shift = np.array([0.13, -0.07, 0.05])
+            translation = StableGridMotion(
+                topology_identity=state.identity.topology_identity,
+                centers=np.broadcast_to(shift, generated.partials.centers.shape),
+                points=np.broadcast_to(shift, generated.partials.points.shape),
+                weights=np.zeros_like(generated.partials.weights),
+            )
+            assert generated.directional(translation).total == pytest.approx(
+                0.0, abs=2e-10
+            )
+
+            # Relabeling the exact native state as the interior diagnostic
+            # domain is still forbidden even though #163-A now has a real bridge.
             relabeled = replace(
                 state,
                 identity=replace(

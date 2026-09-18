@@ -96,6 +96,93 @@ def test_batch_native_metadata_identifies_loaded_profile_library(tmp_path, monke
     assert payload["probe"]["device"]["official_profile"] == "sm_120"
 
 
+def _comparison_basis_fixture(
+    tmp_path, *, angular=1, representation="spherical", core=0
+):
+    """Retain a general contraction, including zeros, through both input routes."""
+    from vibeqc import BasisProvenance, BasisSet, BasisShell, ElementBasis
+
+    record = BasisSet(
+        "explicit-test",
+        (
+            ElementBasis(
+                1,
+                (
+                    BasisShell(
+                        angular, ("1.2", "0.3"), (("0.5", "0.0"), ("-0.1", "0.8"))
+                    ),
+                ),
+                ecp_core_electrons=core,
+                ecp_data=json.dumps(
+                    [
+                        {
+                            "ecp_type": "scalar_ecp",
+                            "angular_momentum": [0],
+                            "gaussian_exponents": ["1"],
+                            "r_exponents": [2],
+                            "coefficients": [["1"]],
+                        }
+                    ]
+                )
+                if core
+                else None,
+            ),
+        ),
+        BasisProvenance("test fixture", "1", "test", "0" * 64),
+        representation,
+    )
+    path = tmp_path / "basis.json"
+    record.write(path)
+    return path, record
+
+
+def test_comparison_basis_preserves_general_contractions(tmp_path):
+    """Neither backend may lose a contraction column or its zero coefficients."""
+    from vibeqc import Atom
+
+    path, original = _comparison_basis_fixture(tmp_path)
+    case = SimpleNamespace(atoms=(("H", (0, 0, 0)),), basis_representation="spherical")
+    native, reference = _batch_comparison_module().load_comparison_basis(
+        path, case, role="auxiliary", compute_forces=True
+    )
+    assert native.identity == original.identity
+    assert reference == {"H": [[1, [1.2, 0.5, -0.1], [0.3, 0.0, 0.8]]]}
+    shells = native.shells_for([Atom.from_value(case.atoms[0])])
+    assert len(shells) == 2
+    assert [p.coefficient for p in shells[0].primitives] == [0.5, 0.0]
+    assert [p.coefficient for p in shells[1].primitives] == [-0.1, 0.8]
+
+
+@pytest.mark.parametrize(
+    "change", ["representation", "ecp", "g_shell", "missing_element"]
+)
+def test_comparison_basis_rejects_model_changes_before_gpu_import(tmp_path, change):
+    """A loadable file must not silently change the reference Hamiltonian/domain."""
+    options = {"representation": "cartesian"} if change == "representation" else {}
+    if change == "ecp":
+        options["core"] = 1
+    if change == "g_shell":
+        options["angular"] = 4
+    path, _ = _comparison_basis_fixture(tmp_path, **options)
+    case = SimpleNamespace(
+        atoms=(("He" if change == "missing_element" else "H", (0, 0, 0)),),
+        basis_representation="spherical",
+    )
+    with pytest.raises((ValueError, NotImplementedError)):
+        _batch_comparison_module().load_comparison_basis(
+            path, case, role="auxiliary", compute_forces=True
+        )
+
+
+def test_auxiliary_override_requires_df_before_gpu_import(monkeypatch):
+    """Direct comparisons cannot silently ignore a supplied auxiliary model."""
+    monkeypatch.setattr(
+        sys, "argv", ["benchmark", "--auxiliary-basis-file", "unused.json"]
+    )
+    with pytest.raises(ValueError, match="requires --density-fitting cuda"):
+        _batch_comparison_module().main()
+
+
 def _aot_shell_gate_module():
     """Load the AOT endpoint helpers without importing a GPU backend."""
 

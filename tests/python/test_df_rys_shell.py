@@ -1,4 +1,4 @@
-"""Independent scientific gates for the complete low-angular Rys shell family."""
+"""Independent scientific gates for component and cooperative DF Rys shells."""
 
 import ctypes
 import math
@@ -10,6 +10,7 @@ import pytest
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cuda
 from vibeqc_compiler.integral.df_rys import emit_df_rys_cuda
 from vibeqc_compiler.integral.df_rys_shell import (
+    COMPONENT_RYS_SHELL_CLASSES,
     RYS_SHELL_CLASSES,
     emit_df_rys_policy_cpp,
     emit_df_rys_shell_cuda,
@@ -36,7 +37,8 @@ def shell_evaluator(tmp_path_factory):
     ):
         (directory / name).write_text(emit())
     source = directory / "probe.cpp"
-    source.write_text(r"""
+    source.write_text(
+        r"""
 #define __device__
 #define __forceinline__ inline
 #define __noinline__ __attribute__((noinline))
@@ -50,7 +52,9 @@ void evaluate(bool rys,unsigned item,const double* e,const double* r,double* out
   if(rys) {
     using Math=generated_df_shell::RysShell<A,B,C>;
     generated_df_derivatives::prepare_geometry_rys<Math::nroots>(e[0],a,e[1],b,e[2],c,A+B+C,g);
-    Math::accumulate(item,e[0],e[1],g,nullptr,1.0,independent);
+    double cache[3*Math::axis_size];
+    for(unsigned lane=0;lane<32;++lane) Math::prepare(g,cache,lane,32);
+    Math::accumulate(item,e[0],e[1],g,cache,1.0,independent);
   } else {
     using Math=generated_df_shell::Shell<A,B,C>;
     generated_df_derivatives::prepare_geometry(e[0],a,e[1],b,e[2],c,A+B+C,g);
@@ -64,16 +68,17 @@ void evaluate(bool rys,unsigned item,const double* e,const double* r,double* out
 }
 extern "C" void probe(unsigned cls,bool rys,unsigned item,const double* e,const double* r,double* out) {
   switch(cls) {
-    case 0: return evaluate<0,0,0>(rys,item,e,r,out);
-    case 1: return evaluate<0,0,1>(rys,item,e,r,out);
-    case 2: return evaluate<0,0,2>(rys,item,e,r,out);
-    case 100: return evaluate<1,0,0>(rys,item,e,r,out);
-    case 101: return evaluate<1,0,1>(rys,item,e,r,out);
-    case 110: return evaluate<1,1,0>(rys,item,e,r,out);
-    case 200: return evaluate<2,0,0>(rys,item,e,r,out);
+__SHELL_CASES__
   }
 }
-""")
+""".replace(
+            "__SHELL_CASES__",
+            "\n".join(
+                f"    case {100 * a + 10 * b + c}: return evaluate<{a},{b},{c}>(rys,item,e,r,out);"
+                for a, b, c in RYS_SHELL_CLASSES
+            ),
+        )
+    )
     output = directory / "probe.so"
     subprocess.run(
         [
@@ -174,7 +179,10 @@ def test_rys_retains_polynomial_force_contract_across_argument_branches(
         60.0,
     ]
     arguments.extend(np.geomspace(1e-16, 1e8, 40))
-    arguments.extend([np.nextafter(48.0, 0), 48.0, np.nextafter(48.0, 49)])
+    for boundary in (3e-7, 48.0, 50.0, 55.0):
+        arguments.extend(
+            [np.nextafter(boundary, 0), boundary, np.nextafter(boundary, math.inf)]
+        )
     powers = tuple((l, 0, 0) for l in angular)
     for argument in arguments:
         centers = ((0, 0, 0), (0, 0, 0), (math.sqrt(argument / rho), 0, 0))
@@ -245,4 +253,16 @@ def test_independent_high_precision_center_differentiation(
                     sss, point, tuple(orders)
                 )
             expected[center, 0] = float(value)
-    np.testing.assert_allclose(actual, expected, rtol=5e-13, atol=1e-323)
+    if angular in COMPONENT_RYS_SHELL_CLASSES:
+        # Keep every previously qualified low-angular gate unchanged.
+        np.testing.assert_allclose(actual, expected, rtol=5e-13, atol=1e-323)
+    else:
+        np.testing.assert_allclose(actual[:2], expected[:2], rtol=5e-13, atol=1e-323)
+        # A recovered C derivative can underflow while opposite A/B values
+        # remain normal (211/212 at T=1e300). Its error must then be bounded
+        # by the independently measured A/B errors plus one FP64 addition's
+        # rounding, rather than a relative error against rounded zero. This
+        # does not relax either independent derivative or any endpoint gate.
+        propagated = np.abs(actual[:2] - expected[:2]).sum(axis=0)
+        rounding = 2 * np.finfo(float).eps * np.abs(actual[:2]).sum(axis=0)
+        assert np.all(np.abs(actual[2] - expected[2]) <= propagated + rounding + 1e-323)

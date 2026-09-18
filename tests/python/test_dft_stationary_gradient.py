@@ -2,20 +2,24 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+from vibeqc import _native
 from vibeqc._dft_gradient import (
     StableGridMotion,
     StationaryDerivativeContract,
     StationaryKsIdentity,
     StationaryKsState,
     _fixed_density_xc_geometry,
+    _native_ao_atoms,
     bind_generated_xc_geometry,
     native_ao_geometry_identity,
     xc_geometry_topology_identity,
     xc_regularization_identity,
 )
+from vibeqc._ks_snapshot import _scf_xc_points
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.xc import functional
+from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 
 from tools.vibeqc_validation.dft_gradient import finite_difference_xc_directional
@@ -112,6 +116,123 @@ def bound_h2(method, name, spin, *, occupations=None):
         natom = basis.natom
     density = value.density[0] if spin == "unpolarized" else value.density
     return spec, value, args, grid, density, bound, natom
+
+
+@pytest.mark.parametrize(
+    "method,name,spin",
+    [
+        ("lda-rks", "LDA_XC_PW", "unpolarized"),
+        ("pbe-rks", "PBE", "unpolarized"),
+        ("lda-uks", "LDA_XC_PW", "polarized"),
+        ("pbe-uks", "PBE", "polarized"),
+    ],
+)
+def test_cartesian_point_coefficient_pullback_matches_generated_interior(
+    method, name, spin
+):
+    spec, _, args, grid, density, bound, _ = bound_h2(method, name, spin)
+    with NativeAO(**args) as basis:
+        program = ContractionProgram(spec, "geometry")
+        jets = basis.evaluate(grid.points, program.contract.ao_order)
+        features = program.features(jets, density)
+        rows = program.scalar_values(features)
+        v = program._gradient(rows, len(grid.points))
+        gradient = features.get("gradient")
+        functional_gradient = (
+            gradient
+            if gradient is None or spec.spin == "polarized"
+            else gradient.sum(axis=0)
+        )
+        compact = program.coefficients.evaluate(functional_gradient, v)
+        rho = compact["rho"]
+        cartesian_gradient = compact.get("gradient")
+        if spec.spin == "unpolarized":
+            rho = np.repeat(rho, 2, axis=0)
+            if cartesian_gradient is not None:
+                cartesian_gradient = np.repeat(cartesian_gradient, 2, axis=0)
+        actual = program.geometry_from_cartesian_coefficients(
+            jets,
+            density,
+            grid.weights,
+            rows[()],
+            rho,
+            cartesian_gradient,
+            ao_atoms=_native_ao_atoms(basis),
+            natom=basis.natom,
+        )
+    np.testing.assert_allclose(actual.centers, bound.partials.centers, atol=2e-12)
+    np.testing.assert_allclose(actual.points, bound.partials.points, atol=2e-12)
+    np.testing.assert_allclose(actual.weights, bound.partials.weights, atol=2e-12)
+
+
+@pytest.mark.parametrize(
+    "method,name,spin",
+    [
+        ("lda-rks", "LDA_XC_PW", "unpolarized"),
+        ("pbe-rks", "PBE", "unpolarized"),
+        ("lda-uks", "LDA_XC_PW", "polarized"),
+        ("pbe-uks", "PBE", "polarized"),
+    ],
+)
+def test_scf_domain_pullback_matches_independent_displaced_energy(method, name, spin):
+    spec, value, args, grid, density, _, _ = bound_h2(
+        method,
+        name,
+        spin,
+        occupations=([[1.0, 0.0], [0.7, 0.2]] if spin == "polarized" else None),
+    )
+    library = _native.load_library(device="cpu")
+    pbe = method.startswith("pbe")
+
+    def point_energy(features):
+        gradient = features.get("gradient")
+        if gradient is None:
+            gradient = np.zeros((2, len(grid.points), 3))
+        return _scf_xc_points(library, pbe, features["rho"], gradient)["energy"]
+
+    with NativeAO(**args) as basis:
+        program = ContractionProgram(spec, "geometry")
+        jets = basis.evaluate(grid.points, program.contract.ao_order)
+        features = program.features(jets, density)
+        gradient = features.get("gradient")
+        if gradient is None:
+            gradient = np.zeros((2, len(grid.points), 3))
+        point = _scf_xc_points(library, pbe, features["rho"], gradient)
+        partials = program.geometry_from_cartesian_coefficients(
+            jets,
+            density,
+            grid.weights,
+            point["energy"],
+            point["rho"],
+            point["gradient"] if pbe else None,
+            ao_atoms=_native_ao_atoms(basis),
+            natom=basis.natom,
+        )
+
+    rng = np.random.default_rng(16301)
+    motion = StableGridMotion(
+        topology_identity=value.identity.topology_identity,
+        centers=rng.normal(size=partials.centers.shape) * 0.05,
+        points=rng.normal(size=partials.points.shape) * 0.03,
+        weights=rng.normal(size=partials.weights.shape) * 0.0005,
+    )
+    expected = (
+        np.sum(partials.centers * motion.centers)
+        + np.sum(partials.points * motion.points)
+        + np.sum(partials.weights * motion.weights)
+    )
+    oracle = finite_difference_xc_directional(
+        spec,
+        args,
+        grid.points,
+        grid.weights,
+        density,
+        motion,
+        steps=(1e-3, 3e-4, 1e-4),
+        point_energy=point_energy,
+    )
+    assert oracle.spread < 2e-7
+    np.testing.assert_allclose(oracle.stable_estimate, expected, atol=2e-8)
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])

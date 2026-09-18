@@ -21,7 +21,8 @@ struct CudaDfResponseBlasFailure {
 /** Device scratch in doubles, excluding borrowed densities and metric factors.
  * The caller validates size products before using this allocation-free interface.
  * There are four metric matrices, three AO matrices, two auxiliary blocks and
- * two charge vectors per density term. No complete three-center tensor is used.
+ * two charge vectors per density term. The caller bounds both panels; a tile
+ * equal to naux covers the complete tensor and is charged at its literal size.
  */
 std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, std::size_t terms,
                                                 std::size_t tile);
@@ -32,8 +33,10 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
  * consume receives transient device weights and must enqueue its read on the
  * same stream before returning. Both callbacks propagate launch failures.
  *
- * The spectral Frechet map includes retained/discarded subspace motion, using
- * the exact eigensystem and cutoff that defined the plan's metric transform.
+ * The rank-deficient spectral Frechet map includes retained/discarded subspace
+ * motion, using the exact eigensystem and cutoff of the forward transform.
+ * Owner-verified full rank permits inverse-applied factors before quadratic
+ * products when complete buffers or the fitted-panel callback are available.
  * The owner must reject unresolved rank crossings before calling this routine.
  * blas is the plan-owned host-scalar handle already bound to stream. The
  * serial_metric_dot ablation retains the original fixed-order dot kernel.
@@ -51,6 +54,21 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
  * cap still splits a shell. Offsets and callbacks outlive this synchronous call.
  * packed_block_rows bounds each rectangular AO expansion block (clipped to n);
  * larger blocks trade extra diagonal-block arithmetic for fewer BLAS launches.
+ * Optional read_fitted(begin,count,output) supplies inverse-applied dense
+ * auxiliary-major panels from an owner-validated resident forward tensor or
+ * regenerated raw AO-pair blocks. It uses the same stream and permits strict
+ * full-rank response with a smaller owned tile. Its callback may reuse the
+ * otherwise dead workspace[2*a*a:4*a*a] metric scratch; bar_M lives separately
+ * at workspace[a*a:2*a*a]. Count all repeated projections and raw generation.
+ * single_fitted_tensor instead reserves one complete owned A/B tensor and one
+ * bounded weight panel: add (a-tile)*n*n elements to the usual workspace size.
+ * It applies the inverse in place through disjoint AO-pair batches, generating
+ * raw values once. This option requires full rank, no borrow and no read_fitted.
+ * streamed_occupied instead describes bridge-owned projected-factor scratch
+ * plus owner-validated canonical coefficients. Raw slices feed charges and all
+ * spin projections in one pass. Its raw buffer holds one AO matrix, staging
+ * holds sum(rank^2)*a, and exchange holds max(max(rank^2)*a,tile*n*n).
+ * It requires full rank and excludes borrowed tensors and fitted-panel reads.
  */
 cudaError_t contract_cuda_df_response_weights(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
@@ -60,7 +78,9 @@ cudaError_t contract_cuda_df_response_weights(
     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
     const CudaDfResponseBuffers* borrowed = nullptr, std::span<const double> raw_host = {},
     bool packed_pairs = false, std::span<const std::int64_t> auxiliary_shell_offsets = {},
-    std::size_t packed_block_rows = 256);
+    std::size_t packed_block_rows = 256,
+    const std::function<void(std::size_t, std::size_t, double*)>& read_fitted = {},
+    bool single_fitted_tensor = false, const CudaDfResponseBuffers* streamed_occupied = nullptr);
 
 }  // namespace vibeqc::scf
 #endif

@@ -50,21 +50,31 @@ def fixed_density_probe(tmp_path_factory):
 
 
 @pytest.mark.parametrize(
-    "pairs,auxiliary,passes,retained",
+    "pairs,auxiliary,passes,occupied_rows,retained",
     [
-        (8192, 96, 2, False),
-        (3552, 13, 20, False),
-        (9216, 5, 0, True),
-        (9216, 1, 0, True),
+        (8192, 96, 2, 96, False),
+        (3552, 13, 20, 24, False),
+        (9216, 5, 0, 0, True),
+        (9216, 1, 0, 0, True),
     ],
 )
+@pytest.mark.parametrize("exchange", ["auto", "full"])
 def test_streamed_raw_reuse_matches_independent_jk(
-    fixed_density_probe, pairs, auxiliary, passes, retained, tmp_path
+    fixed_density_probe,
+    pairs,
+    auxiliary,
+    passes,
+    occupied_rows,
+    retained,
+    exchange,
+    tmp_path,
 ):
     binary, fixture = fixed_density_probe
     trace = tmp_path / "trace.jsonl"
     arrays = tmp_path / "arrays.bin"
-    env = dict(os.environ, VIBEQC_DF_TRACE=str(trace))
+    env = dict(
+        os.environ, VIBEQC_DF_TRACE=str(trace), VIBEQC_DF_RESIDENT_EXCHANGE=exchange
+    )
     subprocess.run(
         [
             str(binary),
@@ -93,7 +103,27 @@ def test_streamed_raw_reuse_matches_independent_jk(
         assert record["execution"] == "stream"
         counts = record["counters"]
         assert record["streamed"] != retained
-        assert counts.get("raw_panel_source_auxiliary_evaluations", 0) == 96**3 * passes
+        source_elements = 96**3 * passes
+        if not retained and record["operation"] == "ri_k_occupied":
+            # All-Q occupied projections need one block (96 rows) or four
+            # 24-row blocks. Full K rereads each row four times; triangular
+            # K needs 24*(4+3+2+1) generated rows, including diagonal reuse.
+            blocks = 96 // occupied_rows
+            generated_rows = (
+                occupied_rows * blocks * (blocks + 1) // 2
+                if exchange == "auto"
+                else 96 * blocks
+            )
+            source_elements = generated_rows * 96 * 96
+            assert counts["streamed_occupied_source_first"] == 1
+            assert counts["streamed_occupied_raw_generation_rows"] == generated_rows
+            assert counts["streamed_occupied_row_blocks"] == blocks
+            assert counts["streamed_occupied_retained_projection_capacity_bytes"] == (
+                2 * occupied_rows * 20 * 96 * 8
+            )
+        assert (
+            counts.get("raw_panel_source_auxiliary_evaluations", 0) == source_elements
+        )
         # Q=5 has a final Q=1 tail with room for P=5 raw reuse. The old
         # <=4 branch silently repeated recurrences on that tail.
         assert counts.get("fused_source_auxiliary_evaluations", 0) == 0

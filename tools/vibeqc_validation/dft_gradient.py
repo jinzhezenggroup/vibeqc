@@ -77,10 +77,17 @@ def finite_difference_xc_directional(
     motion,
     *,
     steps=(1e-3, 3e-4, 1e-4),
+    point_energy=None,
 ):
-    """Re-evaluate scalar XC energy on independently displaced inputs."""
+    """Re-evaluate scalar XC energy on independently displaced inputs.
+
+    An optional point-energy callback may supply an independently audited
+    per-point scalar model; this still never calls the geometry pullback.
+    """
     if not isinstance(functional, FunctionalSpec):
         raise TypeError("oracle requires a typed XC functional")
+    if point_energy is not None and not callable(point_energy):
+        raise TypeError("point-energy oracle must be callable")
     if not isinstance(motion, StableGridMotion):
         raise TypeError("oracle requires stable-grid motion")
     if motion.topology_changed:
@@ -124,13 +131,20 @@ def finite_difference_xc_directional(
                     points + sign * step * np.asarray(motion.points),
                     energy.contract.ao_order,
                 )
-            values.append(
-                energy.evaluate(
-                    jets,
-                    density,
-                    weights + sign * step * np.asarray(motion.weights),
-                )["energy"]
-            )
+            displaced_weights = weights + sign * step * np.asarray(motion.weights)
+            if point_energy is None:
+                scalar = energy.evaluate(jets, density, displaced_weights)["energy"]
+            else:
+                features = energy.features(jets, density)
+                per_point = np.asarray(point_energy(features))
+                if (
+                    np.iscomplexobj(per_point)
+                    or per_point.shape != displaced_weights.shape
+                    or not np.isfinite(per_point).all()
+                ):
+                    raise ValueError("point-energy oracle returned an invalid domain")
+                scalar = float(np.dot(displaced_weights, per_point))
+            values.append(scalar)
         estimates.append((values[0] - values[1]) / (2 * step))
 
     differences = np.abs(np.diff(estimates))

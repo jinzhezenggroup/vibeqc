@@ -14,7 +14,7 @@ struct Jet {
 };
 struct Point {
   double x, y, z, weight;
-  double harmonics[9];
+  double harmonics[16];
 };
 struct Radial {
   double r, weight;
@@ -25,6 +25,113 @@ struct Term {
   unsigned power;
   double exponent, coefficient;
 };
+void check_grid() {
+  using namespace vibeqc::generated;
+  // Polynomial moments and standard-library Legendre polynomials are an
+  // independent oracle for both odd and even orders, including the limits.
+  for (unsigned n : {8, 9, 16, 17, 32, 44, 96, 160, 224, 512}) {
+    const auto nodes = ecp_legendre(n);
+    for (unsigned i = 0; i < n; ++i) {
+      const auto [z, weight] = nodes[i];
+      if (!(z > -1 && z < 1 && weight > 0) || !std::isfinite(weight) ||
+          (i && z <= nodes[i - 1][0]) || std::abs(std::legendre(n, z)) > 2e-11)
+        throw std::runtime_error("generated Legendre nodes/weights failed");
+    }
+    for (unsigned power = 0; power < 2 * n; ++power) {
+      long double sum = 0;
+      for (const auto& zw : nodes) sum += zw[1] * std::pow((long double)zw[0], power);
+      const long double expected = power % 2 ? 0 : 2.0L / (power + 1);
+      if (std::abs(sum - expected) > 3e-13L)
+        throw std::runtime_error("generated quadrature polynomial moment failed");
+    }
+  }
+  for (const auto orders :
+       {std::array<unsigned, 2>{16, 8}, {17, 9}, {160, 32}, {224, 44}, {512, 96}}) {
+    std::vector<Radial> radii;
+    std::vector<Point> sphere;
+    ecp_make_grid(orders[0], orders[1], radii, sphere);
+    if (radii.size() != orders[0] || sphere.size() != 2 * orders[1] * orders[1])
+      throw std::runtime_error("generated grid size mismatch");
+    long double gram[16][16]{};
+    for (const auto& p : sphere) {
+      if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+          !std::isfinite(p.weight) || std::abs(p.x * p.x + p.y * p.y + p.z * p.z - 1) > 1e-14 ||
+          !(p.weight > 0))
+        throw std::runtime_error("generated sphere is not on unit sphere");
+      for (double harmonic : p.harmonics)
+        if (!std::isfinite(harmonic)) throw std::runtime_error("nonfinite generated harmonic");
+      for (int a = 0; a < 16; ++a)
+        for (int b = 0; b < 16; ++b)
+          gram[a][b] += (long double)p.weight * p.harmonics[a] * p.harmonics[b];
+    }
+    for (int a = 0; a < 16; ++a)
+      for (int b = 0; b < 16; ++b)
+        if (std::abs(gram[a][b] - (a == b ? 1 : 0)) > 2e-13L)
+          throw std::runtime_error("generated harmonic orthonormality failed");
+    // Addition theorem detects incorrect channel membership/relative signs/normalization.
+    for (std::size_t q = 0; q < sphere.size(); q += 37) {
+      const auto& a = sphere[q];
+      const auto& b = sphere[(q * 7 + 11) % sphere.size()];
+      const long double dot =
+          (long double)a.x * b.x + (long double)a.y * b.y + (long double)a.z * b.z;
+      for (int l = 0; l < 4; ++l) {
+        long double sum = 0;
+        for (int m = l * l; m < (l + 1) * (l + 1); ++m)
+          sum += (long double)a.harmonics[m] * b.harmonics[m];
+        const long double expected =
+            (2 * l + 1) / (4 * std::numbers::pi_v<long double>)*std::legendre(l, dot);
+        if (std::abs(sum - expected) > 3e-15L)
+          throw std::runtime_error("generated harmonic addition theorem failed");
+      }
+    }
+    for (unsigned i = 0; i < radii.size(); ++i)
+      if (!(radii[i].r > 0 && radii[i].weight > 0) || !std::isfinite(radii[i].weight) ||
+          (i && radii[i].r <= radii[i - 1].r))
+        throw std::runtime_error("generated mapped radial grid failed");
+    if (orders[0] >= 160)
+      for (unsigned power = 0; power <= 4; ++power) {
+        long double sum = 0;
+        for (const auto& p : radii)
+          sum += (long double)p.weight * std::pow((long double)p.r, power) *
+                 std::exp(-(long double)p.r * p.r);
+        if (std::abs(sum - std::tgamma((power + 1) / 2.0L) / 2) > 2e-13L)
+          throw std::runtime_error("generated radial Jacobian/moment failed");
+      }
+  }
+  for (unsigned x = 0; x <= 3; ++x)
+    for (unsigned y = 0; x + y <= 3; ++y)
+      for (unsigned z = 0; x + y + z <= 3; ++z) {
+        // Gaussian even moments independently recover the normalization ratio.
+        long double ratio = 1;
+        for (unsigned p : {x, y, z})
+          ratio *= std::tgamma(p + 0.5L) / std::sqrt(std::numbers::pi_v<long double>) *
+                   std::pow(2.0L, p);
+        for (double c : {-0.71, 0.0, 1.23}) {
+          const double actual = ecp_component_coefficient(x, y, z, c);
+          if (!std::isfinite(actual) || std::abs(actual - c / std::sqrt(ratio)) > 1e-15L)
+            throw std::runtime_error("generated AO normalization failed");
+        }
+      }
+  for (const auto orders : {std::array<unsigned, 2>{15, 8}, {513, 8}, {16, 7}, {16, 97}}) {
+    std::vector<Radial> r;
+    std::vector<Point> s;
+    bool rejected = false;
+    try {
+      ecp_make_grid(orders[0], orders[1], r, s);
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    if (!rejected || !r.empty() || !s.empty())
+      throw std::runtime_error("unsupported generated grid accepted or changed outputs");
+  }
+  bool rejected = false;
+  try {
+    (void)ecp_component_coefficient(1, 1, 2, 1.0);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  if (!rejected) throw std::runtime_error("unsupported generated AO normalization accepted");
+}
 void near(double actual, double expected) {
   if (!std::isfinite(actual) || std::abs(actual - expected) > 3e-12 * (1 + std::abs(expected)))
     throw std::runtime_error("generated ECP projector disagrees with addition-theorem oracle");
@@ -62,9 +169,9 @@ void check_ao_consumer() {
   const Primitive primitives[] = {{9, 1234}, {0.13, 0.73}, {1.1, -0.61}, {3.7, 0.29}};
   const Point point{0.36, -0.48, 0.8, 0, {}};
   const std::array<double, 3> center{0.31, -0.22, 0.17};
-  for (unsigned lx = 0; lx <= 2; ++lx)
-    for (unsigned ly = 0; lx + ly <= 2; ++ly)
-      for (unsigned lz = 0; lx + ly + lz <= 2; ++lz)
+  for (unsigned lx = 0; lx <= 3; ++lx)
+    for (unsigned ly = 0; lx + ly <= 3; ++ly)
+      for (unsigned lz = 0; lx + ly + lz <= 3; ++lz)
         for (int count : {1, 3})
           for (double radius : {0.0, 1e-7, 0.73, 4.1}) {
             // Three terms exercise spherical-d-like signed mixtures; offset 1
@@ -109,6 +216,13 @@ void check_ao_consumer() {
               }
             }
           }
+  // g powers must not alias a supported component in the base-4 dispatch key.
+  for (const auto powers : {std::array<unsigned, 3>{0, 0, 4}, {0, 4, 0}, {4, 0, 0}, {2, 1, 1}}) {
+    double jet[4];
+    vibeqc::generated::ecp_ao(powers[0], powers[1], powers[2], 0.2, -0.3, 0.4, 0.7, jet);
+    for (double value : jet)
+      if (std::isfinite(value)) throw std::runtime_error("unsupported ECP AO silently aliased");
+  }
 }
 
 void check_weighted_consumer() {
@@ -150,7 +264,7 @@ void check_weighted_consumer() {
 // nodes using the spherical-harmonic addition theorem and Legendre P_l.
 double kernel(int l, const Point& a, const Point& b) {
   const double x = a.x * b.x + a.y * b.y + a.z * b.z;
-  return (2 * l + 1) / (4 * pi) * (l == 0 ? 1 : l == 1 ? x : (3 * x * x - 1) / 2);
+  return (2 * l + 1) / (4 * pi) * std::legendre(l, x);
 }
 
 void check() {
@@ -169,6 +283,7 @@ void check() {
                   std::sqrt(3 / (4 * pi)) * z, std::sqrt(15 / (4 * pi)) * x * y,
                   std::sqrt(15 / (4 * pi)) * y * z, std::sqrt(5 / (16 * pi)) * (3 * z * z - 1),
                   std::sqrt(15 / (4 * pi)) * x * z, std::sqrt(15 / (16 * pi)) * (x * x - y * y)}};
+    vibeqc::generated::ecp_harmonics(x, y, z, sphere[q].harmonics);
     for (int d = 0; d < 4; ++d) {
       a[q].v[d] = std::sin(0.7 + 1.3 * q + d * 0.4);
       b[q].v[d] = std::cos(-0.3 + 0.7 * q - d * 0.9);
@@ -180,12 +295,12 @@ void check() {
       for (int q = 0; q < nq; ++q)
         for (int d = 1; d < 4; ++d)
           av[q].v[d] = bv[q].v[d] = std::numeric_limits<double>::quiet_NaN();
-    std::array<Jet, 9> pa{}, pb{};
-    for (int m = 0; m < 9; ++m) {
+    std::array<Jet, 16> pa{}, pb{};
+    for (int m = 0; m < 16; ++m) {
       pa[m] = vibeqc::generated::ecp_project(av.data(), sphere.data(), nq, m, derivatives);
       pb[m] = vibeqc::generated::ecp_project(bv.data(), sphere.data(), nq, m, derivatives);
     }
-    for (int channel = -1; channel <= 2; ++channel)
+    for (int channel = -1; channel <= 3; ++channel)
       for (unsigned power = 0; power <= 4; ++power)
         for (double r : {0.0, 1e-7, 0.37, 1.9, 12.0}) {
           const Radial radial{r, 0.73};
@@ -227,6 +342,10 @@ void check() {
 
 int main() {
   try {
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 44) == 4);
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(17, 44) == 1);
+    static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 45) == 1);
+    check_grid();
     check();
     check_ao_consumer();
     check_weighted_consumer();

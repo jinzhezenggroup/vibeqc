@@ -1,0 +1,286 @@
+{
+  "files": [
+    {
+      "path": "ISSUE-171-schedule-collect.py",
+      "bytes": 6930,
+      "sha256": "f22c3aab639c3d2f1afa0635dfd1d704e11637df1e7b5212eca8ba6975b7157b"
+    },
+    {
+      "path": "ISSUE-171-schedule-final-launch.py",
+      "bytes": 681,
+      "sha256": "9c4b824334d15f1e2bb6d41c1cfbaa41af580f7673db30fe19f095a718fdebe5"
+    },
+    {
+      "path": "ISSUE-171-schedule-final.sh",
+      "bytes": 2906,
+      "sha256": "9758f032bd425b9c35518d37799a73a9b98f7d61c69ea1c199ce8790f48109c4"
+    },
+    {
+      "path": "ISSUE-171-schedule-manifest.json",
+      "bytes": 521402,
+      "sha256": "4e6b5dfd9e7fd16dee727f5e8b9609b80af43aba917d248a5e5d9706495a5e42"
+    },
+    {
+      "path": "ISSUE-171-schedule-prepare.py",
+      "bytes": 3369,
+      "sha256": "23c58ba6235839ee12ddd73ce52e42cc5d0e2820d85db980aed6915832742e7c"
+    },
+    {
+      "path": "ISSUE-171-schedule-run.sh",
+      "bytes": 1342,
+      "sha256": "cfe6a55fda96264d52e94e82158fdf093b6c7acba6310fb56e45e0809ed9a9a4"
+    },
+    {
+      "path": "baseline-endpoints.json",
+      "bytes": 22524,
+      "sha256": "58cfd7ecb7a227c03f677240b8a98a9e731d730b08022cf67a194d707c9d1443"
+    },
+    {
+      "path": "baseline-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-generated.cuh",
+      "bytes": 34335,
+      "sha256": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334"
+    },
+    {
+      "path": "baseline-kernels.csv",
+      "bytes": 1637,
+      "sha256": "85d12ca0043fe9290e862fe237d9d2f4298091439a2b97f2765ce664f8f55b2d"
+    },
+    {
+      "path": "baseline-profile.log",
+      "bytes": 829,
+      "sha256": "84f14dbff7449ad7c2f102e47dcb33fed5b63c4636bc3b8f35e409d7017b5a40"
+    },
+    {
+      "path": "baseline-raw-trace.nsys-rep",
+      "bytes": 76092,
+      "sha256": "3e7d6017fe25f52281ab47ffca5388c8432cdca2615af2d80e490cf5b53d41fd"
+    },
+    {
+      "path": "baseline-raw-trace.sqlite",
+      "bytes": 561152,
+      "sha256": "553edae481608dfe7ce8cca0f51d484188ca64647b377519f532be87992132a3"
+    },
+    {
+      "path": "baseline-stats.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "candidate-endpoints.json",
+      "bytes": 22491,
+      "sha256": "902fc6afa291812eaddab68b51cb45ebf8f53548fa57b233e72e7edd41fe9bab"
+    },
+    {
+      "path": "candidate-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "candidate-generated.cuh",
+      "bytes": 34489,
+      "sha256": "0ca4ae2a16e012baafbf021a15025d13e17760ce7a4d49ad0b36c75bd708cd06"
+    },
+    {
+      "path": "candidate-kernels.csv",
+      "bytes": 1644,
+      "sha256": "a1adf60ab4217699265aa7cf25eb134b514b57e670d8098123374116c885f58e"
+    },
+    {
+      "path": "candidate-profile.log",
+      "bytes": 1036,
+      "sha256": "e7b22d08a998202fe629100ae6daa34125fed5126e51c5ca78c52a858671d6b7"
+    },
+    {
+      "path": "candidate-raw-trace.nsys-rep",
+      "bytes": 59986,
+      "sha256": "f48824ebbdaf8c19dc1dcc86b79ade8c98a47f6f339ce705a124e8d3ee19d20a"
+    },
+    {
+      "path": "candidate-raw-trace.sqlite",
+      "bytes": 520192,
+      "sha256": "5efe7a5c789a1bc9a4032f1e981d3fbf8cbdcd6c4e13c60fecf588356a36f29d"
+    },
+    {
+      "path": "candidate-resources.txt",
+      "bytes": 1405,
+      "sha256": "29d60bfac0f439a6581205843576c5c0748d5b54de50aab5bbc86b0b8881c576"
+    },
+    {
+      "path": "candidate-stats.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-projector.log",
+      "bytes": 75,
+      "sha256": "ce0fbe873a1ee1b50e40c421c4c4a6c26fea6135e40de1c9e5ce4181ac1e2fa7"
+    },
+    {
+      "path": "cpu-python.log",
+      "bytes": 110,
+      "sha256": "a9485e909ca42c62c34081a2db1d5f0d35489dc471f35857e376e34a935c4171"
+    },
+    {
+      "path": "cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-build.log",
+      "bytes": 44134,
+      "sha256": "e8d7c16ac2a91e63e011bf5192c25456b2e8881087e4c59888c6ea0f85969f96"
+    },
+    {
+      "path": "cuda-configure.log",
+      "bytes": 1125,
+      "sha256": "b168ddc5ca722b3fb8b791f6120ccc02a77000b81a8fbf9cb588cf9828485a9a"
+    },
+    {
+      "path": "cuda-ctest.log",
+      "bytes": 693,
+      "sha256": "349ad50da53ddd0fc567569119f920e0bfbf92a5670622ec726c353378328d50"
+    },
+    {
+      "path": "cuda-ctest.log.initial",
+      "bytes": 826,
+      "sha256": "773c197a547559aa8212bb8ae39faa1d5e616555a1ab5c08508f16f5f99ea0ea"
+    },
+    {
+      "path": "cuda-ecp.log",
+      "bytes": 2273,
+      "sha256": "9f60acb1d89c7cb5d3e42b814a69f26609a8dc9e453efcd23b7303d9a4407a6f"
+    },
+    {
+      "path": "cuda-final-build.log",
+      "bytes": 5707,
+      "sha256": "8f19d1528fa15721680e9e92d7274ec66a0a801de7e01c321ef25b802d11d8dc"
+    },
+    {
+      "path": "cuda-memcheck-native.log",
+      "bytes": 123,
+      "sha256": "dee39e8ce6fd5ddaa8c9b6d556139a5b64794939d8a7524b17ddbcfa59474c2d"
+    },
+    {
+      "path": "cuda-memcheck-tail.log",
+      "bytes": 174,
+      "sha256": "4e362441fc484d13d91c7d82e585be5fe472fa985dce1935ef3279316cda567a"
+    },
+    {
+      "path": "final-driver.log",
+      "bytes": 63,
+      "sha256": "442ef994d5f5bec29811bbfc82733f84be4fcf481d9b7a913343ace859780284"
+    },
+    {
+      "path": "final-driver.log.initial",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-source-identity.json",
+      "bytes": 2058,
+      "sha256": "4c3a4a19a252419e14dc90ee0a7a3b1b9d38128acb28f2b83f7aad46e74e7090"
+    },
+    {
+      "path": "final.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "final.exit.initial",
+      "bytes": 2,
+      "sha256": "aa67a169b0bba217aa0aa88a65346920c84c42447c36ba5f7ea65f422c1fe5d8"
+    },
+    {
+      "path": "measured-source/python/vibeqc/resources_hf.py",
+      "bytes": 24447,
+      "sha256": "9bd3a17b06309a6b3e47366fe8d2aeaa45db8ddac1d0ee8a374248e6b5110e6d"
+    },
+    {
+      "path": "measured-source/python/vibeqc/resources_ks.py",
+      "bytes": 16134,
+      "sha256": "c2a1594568477e0ca44967369beb7b0bf26b1ce6af33655fa7e81fe1da6ee5e0"
+    },
+    {
+      "path": "measured-source/python/vibeqc_compiler/integral/ecp_projector.py",
+      "bytes": 10110,
+      "sha256": "c64ac49d2c830f9d220ffe18fdefec40c6224881b97a99bca976829a5a0a79c9"
+    },
+    {
+      "path": "measured-source/python/vibeqc_compiler/integral/ecp_schedule.py",
+      "bytes": 682,
+      "sha256": "05e950ebe1e399673258443f4ed30a6e75152416c6e105260353c02e251f5f47"
+    },
+    {
+      "path": "measured-source/src/integrals/ecp_cuda.cu",
+      "bytes": 13257,
+      "sha256": "02a9268e7d7e9c99e490b06e8d1c3f2f1d3d1c4224d7ea4778f9063b62714dd0"
+    },
+    {
+      "path": "measured-source/tests/native/test_ecp_cuda_errors.cpp",
+      "bytes": 7681,
+      "sha256": "6abd86e5347f1a3d5aa17ee79bb759f9b0dcf0ef6c3060f8142bc9e6f32049e4"
+    },
+    {
+      "path": "measured-source/tests/native/test_ecp_projector.cpp",
+      "bytes": 15287,
+      "sha256": "3b40b4f6a8be806f3bf35f0f92cab6e95b88acfa2dbfe0e48c9738c6ea43894d"
+    },
+    {
+      "path": "measured-source/tests/python/test_ecp_schedule.py",
+      "bytes": 1979,
+      "sha256": "00e18a72a2bca4b1fac35c0e6c06bf1b41f995ef374e578821e98b55b23f8e7d"
+    },
+    {
+      "path": "measured-source/tools/benchmark_ecp_schedule.py",
+      "bytes": 7086,
+      "sha256": "782193e6d72b4044d2ac0fab36e882bef2904e9a9505db597d3f47e73f4bba5d"
+    },
+    {
+      "path": "resources-regression.log",
+      "bytes": 100,
+      "sha256": "b2ea3950c6eb6e862c468d61df0cc55b76d0a5da4e8510334740bb99e5b30962"
+    },
+    {
+      "path": "source-identity.json",
+      "bytes": 69260,
+      "sha256": "4ea2b51602f6e51b64114d2e86cfb17400dd664d9c85e3af266be4cd13591a9f"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 5305,
+      "sha256": "94cadb2a4267fa054775cd28540771d2703d761ed23ea01ccc428ed702d3e2b2"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 489,
+      "sha256": "58c2f31be4fbf87a817bc14da52f7ff2515949c15fc9b2539d8ff6be3e952793"
+    }
+  ],
+  "archive": {
+    "name": "ISSUE-171-schedule-results.tar.gz",
+    "bytes": 435589,
+    "sha256": "4a7fe2e98a0e44f4566d229d84fb7405c6b1589c6823474d588cefb768089bb9",
+    "location": "evidence-171/ISSUE-171-schedule-results.tar.gz",
+    "verified_files": 55
+  }
+}

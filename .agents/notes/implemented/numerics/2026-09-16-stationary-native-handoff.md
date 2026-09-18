@@ -3,6 +3,12 @@
 Status: implemented
 Date: 2026-09-16
 
+Update (2026-09-18): the prohibition on binding this native SCF domain to any
+generated XC geometry is superseded by
+[the SCF-point/generated-pullback decision](2026-09-18-scf-point-generated-pullback.md).
+The live-native authorization, replay, lifetime, and relabeling protections
+recorded here remain current.
+
 ## Problem
 
 PR #384's array records could be relabeled with arbitrary owner/epoch/basis

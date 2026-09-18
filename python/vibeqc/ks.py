@@ -9,9 +9,17 @@ from dataclasses import asdict, dataclass, field, replace
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.grid import GridSpec, checked_int
+from vibeqc_compiler.method import MethodIR, SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
+
+_NATIVE_KS_METHODS = {
+    "lda-rks": ("LDA_XC_PW", "unpolarized"),
+    "pbe-rks": ("PBE", "unpolarized"),
+    "lda-uks": ("LDA_XC_PW", "polarized"),
+    "pbe-uks": ("PBE", "polarized"),
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +36,7 @@ class KsOptions:
     grid: GridSpec = field(default_factory=GridSpec)
     tile_points: int = 256
     scf_domain: str = SCF_DOMAIN
+    _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
         if self.functional is not None and not isinstance(
@@ -41,6 +50,13 @@ class KsOptions:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
     @property
+    def method_ir(self):
+        """Resolved method graph consumed by this native KS option set."""
+        if self._method_ir is None:
+            raise ValueError("resolve KS options against a method first")
+        return self._method_ir
+
+    @property
     def ao_order(self):
         """SCF needs the potential; only GGA composition needs first AO jets."""
         if self.functional is None:
@@ -51,7 +67,7 @@ class KsOptions:
         """Keep composition provenance and the effective SCF domain explicit."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
-        return {
+        payload = {
             "functional": self.functional.to_payload(),
             "scf_domain": self.scf_domain,
             "grid": asdict(self.grid),
@@ -61,23 +77,51 @@ class KsOptions:
             "scalar_derivative_order": 1,
             "observable": "scf-energy",
         }
+        if self._method_ir is not None:
+            payload["method_ir"] = self._method_ir.to_payload()
+            payload["method_ir_identity"] = self._method_ir.identity
+        return payload
 
     @property
     def identity(self):
         return canonical_hash(self.to_payload())
 
 
-def resolve_ks_options(method, options=None):
-    """Validate model/spin before resource estimates or native allocation."""
-    if method not in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"):
+def resolve_ks_method(method):
+    """Resolve one native KS name through MethodIR and project its semilocal node."""
+    if method not in _NATIVE_KS_METHODS:
         raise ValueError("KS options require a native LDA/PBE RKS/UKS method")
+    identifier, spin = _NATIVE_KS_METHODS[method]
+    method_ir = resolve_method(identifier, spin=spin)
+    if len(method_ir.primitives) != 1 or not isinstance(
+        method_ir.primitives[0], SemilocalXCPrimitive
+    ):
+        raise NotImplementedError(
+            "native KS requires exactly one supported semilocal XC primitive"
+        )
+    # MethodIR canonicalizes component order for semantic/cache identity, while
+    # the established native KS FunctionalSpec identity retains audited declaration
+    # order. Compare both compositions in canonical form before returning the
+    # catalog representation; overwriting the node's components would hide changed
+    # coefficients or missing terms. Bind the catalog to the requested native
+    # selector, whose fixed kernels cannot execute a different family or spin.
+    runtime_functional = functional(identifier, spin=spin)
+    if (
+        method_ir.primitives[0].semantic_payload()
+        != SemilocalXCPrimitive(runtime_functional).semantic_payload()
+    ):
+        raise RuntimeError(
+            "MethodIR semilocal node disagrees with native KS XC catalog"
+        )
+    return method_ir, runtime_functional
+
+
+def resolve_ks_options(method, options=None):
+    """Validate a MethodIR-resolved model before resource/native allocation."""
+    method_ir, expected = resolve_ks_method(method)
     options = KsOptions() if options is None else options
     if not isinstance(options, KsOptions):
         raise TypeError("ks_options must be KsOptions")
-    expected = functional(
-        "PBE" if method.startswith("pbe") else "LDA_XC_PW",
-        spin="polarized" if method.endswith("uks") else "unpolarized",
-    )
     resolved = expected if options.functional is None else options.functional
     # Identifiers are descriptive; only audited component/parameter identity
     # determines supported mathematics. Zero or modified terms are not ignored.
@@ -92,7 +136,9 @@ def resolve_ks_options(method, options=None):
         raise NotImplementedError(
             "KS FunctionalSpec does not match the method's supported composition/spin"
         )
-    return replace(options, functional=resolved)
+    result = replace(options, functional=resolved)
+    object.__setattr__(result, "_method_ir", method_ir)
+    return result
 
 
 def native_ks_options(options):

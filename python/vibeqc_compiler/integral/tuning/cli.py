@@ -25,17 +25,19 @@ def argument_parser() -> argparse.ArgumentParser:
         default=Path(os.environ.get("VIBEQC_NVCC", shutil.which("nvcc") or "nvcc")),
     )
     parser.add_argument("--architecture", default="sm_120")
-    parser.add_argument("--srun", default="srun")
-    parser.add_argument("--partition", default="main")
-    parser.add_argument("--gres", default="gpu:1")
+    parser.add_argument("--srun")
+    parser.add_argument("--partition")
+    parser.add_argument("--gres")
+    parser.add_argument("--nodes", type=int)
+    parser.add_argument("--ntasks", type=int)
     parser.add_argument(
         "--slurm-time",
-        default="00:10:00",
         help="finite Slurm allocation time used for the benchmark process",
     )
     parser.add_argument(
         "--local",
         action="store_true",
+        default=None,
         help="run directly on an already allocated/visible GPU",
     )
     parser.add_argument(

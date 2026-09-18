@@ -1,0 +1,28 @@
+{
+  "scope": "LANL2DZ Na / STO-3G H; neutral RKS and +1 doublet UKS; LDA/PBE; CPU/CUDA; Cartesian/spherical",
+  "base_commit": "b78215ef0bf2cb43c91234c9c2dc852151605468",
+  "checks": {
+    "cpu-ctest.log": "100% tests passed, 0 tests failed out of 31",
+    "cuda-ctest.log": "100% tests passed, 0 tests failed out of 3",
+    "cpu-preflight.log": "47 passed, 4 skipped",
+    "cpu-dft.log": "12 passed, 12 deselected",
+    "cuda-dft.log": "12 passed, 12 deselected",
+    "cpu-regression.log": "39 passed, 37 deselected",
+    "cuda-regression.log": "7 passed, 6 skipped, 11 deselected",
+    "cuda-dft-regression-enabled.log": "6 passed",
+    "cuda-memcheck.log": "2 passed, 22 deselected"
+  },
+  "sanitizer": "0 errors",
+  "endpoints": 16,
+  "maximum_energy_error": 1.2414270722516108e-09,
+  "maximum_component_error": 7.294408410629671e-10,
+  "maximum_physical_residual_rms": 3.288307348602503e-11,
+  "minimum_absolute_ecp_expectation": 0.021507988679368963,
+  "ownership_delta": {
+    "native_scientific_loc": 0,
+    "compiler_scientific_loc": 0,
+    "native_runtime_loc": 0
+  },
+  "forces_supported": false,
+  "performance_claim": null
+}

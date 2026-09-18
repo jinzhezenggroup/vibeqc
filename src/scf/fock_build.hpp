@@ -6,6 +6,8 @@
 #include <span>
 #include <vector>
 
+#include "runtime/provider_registry.hpp"
+
 namespace vibeqc::scf {
 
 enum class FockSpin { Restricted, Unrestricted };
@@ -60,20 +62,30 @@ struct FockBuildSpec {
 };
 
 struct FockProviderCapabilities {
-  bool restricted{true};
-  bool unrestricted{true};
-  bool full_range{true};
+  bool available{};
+  bool restricted{};
+  bool unrestricted{};
+  bool full_range{};
   bool short_range{};
   bool long_range{};
-  std::uint32_t maximum_derivative_order{1};
-  unsigned maximum_angular_momentum{3};
-  bool cartesian{true};
-  bool spherical{true};
-  bool batching{true};
+  std::uint32_t maximum_derivative_order{};
+  unsigned maximum_angular_momentum{};
+  bool cartesian{};
+  bool spherical{};
+  bool batching{};
   bool independent_terms{};
   bool arbitrary_coefficients{};
   bool legacy_adapter_only{};
+  std::uint32_t provider_version{};
 };
+
+/** Typed scientific domain retained by each executable-provider registration.
+ * Runtime registration owns availability/identity only; Fock semantics stay here. */
+struct FockProviderDomain {
+  FockApproximation approximation{FockApproximation::Exact};
+  FockProviderCapabilities capabilities{};
+};
+using FockProviderRegistration = runtime::ProviderDescriptor<FockProviderDomain>;
 
 /** Resolved once at preparation. Mathematical and execution identities remain
  * separate fields: an execution variant never authorizes another approximation.
@@ -90,8 +102,14 @@ struct ResolvedFockBuild {
   bool operator==(const ResolvedFockBuild&) const = default;
 };
 
+/** Registration is the single source of execution availability. Capability
+ * queries suppress scientific claims for providers that are not executable in
+ * this build, while semantic resolution may still represent such a backend. */
+const FockProviderRegistration& fock_provider_registration(FockApproximation approximation,
+                                                           FockBackend backend);
 FockProviderCapabilities fock_provider_capabilities(FockApproximation approximation,
                                                     FockBackend backend);
+void require_fock_provider_executable(FockApproximation approximation, FockBackend backend);
 FockBuildSpec make_hf_fock_spec(FockSpin spin,
                                 FockApproximation approximation = FockApproximation::Exact);
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,

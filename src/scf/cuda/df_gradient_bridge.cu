@@ -12,6 +12,7 @@
 #include "runtime/host_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/df_derivatives.cuh"
+#include "scf/cuda/df_metric_kernels.hpp"
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_response_weights.cuh"
 #include "scf/cuda/df_shell_derivatives.cuh"
@@ -505,7 +506,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     double relative_threshold, unsigned schedule, std::size_t maximum_bytes,
     std::size_t maximum_auxiliary_tile, std::vector<double>& gradient, std::string& detail,
     DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle,
-    const CudaDfResponseBuffers* borrowed, const CudaDfPackedRawTensorView* packed_raw) {
+    const CudaDfResponseBuffers* borrowed, const CudaDfPackedRawTensorView* packed_raw,
+    const CudaDfWhitenedTensorView* whitened, const CudaDfOccupiedResponseView* occupied) {
   detail.clear();
   // Validate even when the selected execution path retains strict evaluation.
   double target = 0;
@@ -542,8 +544,41 @@ vibeqc_status execute_cuda_df_hf_gradient(
     return device_metric && view.inverse_square_root == device_metric->inverse_square_root &&
            view.eigenvectors == device_metric->eigenvectors &&
            view.eigenvalues == device_metric->eigenvalues &&
-           view.relative_threshold == device_metric->relative_threshold;
+           view.relative_threshold == device_metric->relative_threshold &&
+           view.full_rank == device_metric->full_rank &&
+           view.owner_identity == device_metric->owner_identity;
   };
+  if (occupied) {
+    if (!device_metric || !device_metric->full_rank || !occupied->owner_identity ||
+        occupied->owner_identity != device_metric->owner_identity || occupied->nbf != n ||
+        occupied->naux != a || !source || borrowed || whitened || packed_raw ||
+        terms.size() > occupied->factors.size()) {
+      detail = "streamed occupied DF factors differ from the full-rank metric owner";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (const auto& factor : occupied->factors) {
+      if (factor.rank > n || (factor.rank && !factor.coefficients) ||
+          !std::isfinite(factor.density_scale) || factor.density_scale < 0 ||
+          factor.rank * factor.rank > maximum / a / occupied->factors.size()) {
+        detail = "invalid streamed occupied DF response factor";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+  }
+  if (whitened &&
+      (!whitened->data || !whitened->owner_identity || whitened->nbf != n || whitened->naux != a ||
+       !whitened->metric.full_rank || !metric_matches(whitened->metric) ||
+       whitened->owner_identity != device_metric->owner_identity ||
+       whitened->pair_count != (whitened->packed_pairs ? n * (n + 1) / 2 : n * n) ||
+       (packed_raw && whitened->owner_identity != packed_raw->owner_identity) ||
+       (borrowed && (whitened->data == borrowed->staging_weights ||
+                     whitened->data == borrowed->raw_auxiliary_major ||
+                     whitened->data == borrowed->exchange_response ||
+                     (borrowed->resident_raw.data &&
+                      whitened->owner_identity != borrowed->resident_raw.owner_identity))))) {
+    detail = "resident whitened DF view differs from response shape, rank or metric owner";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   if (packed_raw && (!packed_raw->data || !packed_raw->owner_identity || packed_raw->nbf != n ||
                      packed_raw->naux != a || packed_raw->pair_count != n * (n + 1) / 2 ||
                      !metric_matches(packed_raw->metric))) {
@@ -587,7 +622,9 @@ vibeqc_status execute_cuda_df_hf_gradient(
         raw.metric.inverse_square_root != device_metric->inverse_square_root ||
         raw.metric.eigenvectors != device_metric->eigenvectors ||
         raw.metric.eigenvalues != device_metric->eigenvalues ||
-        raw.metric.relative_threshold != device_metric->relative_threshold) {
+        raw.metric.relative_threshold != device_metric->relative_threshold ||
+        raw.metric.full_rank != device_metric->full_rank ||
+        raw.metric.owner_identity != device_metric->owner_identity) {
       detail = "resident raw DF view differs from the response shape/layout/metric owner";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
@@ -882,8 +919,42 @@ vibeqc_status execute_cuda_df_hf_gradient(
           4.0L * a * a + (3.0L + terms.size()) * n * n + 2.0L * terms.size() * a;
       const auto available = maximum_bytes - arena.stats.device_bytes;
       if ((fixed_elements + 2.0L * n * n) * sizeof(double) > available) throw std::bad_alloc();
+      const auto panel_capacity =
+          static_cast<std::size_t>((available / sizeof(double) - fixed_elements) / (1.0L * n * n));
+      std::size_t occupied_retained = 0, occupied_largest = 0, occupied_coefficients = 0;
+      if (occupied)
+        for (std::size_t t = 0; t < terms.size(); ++t) {
+          const auto rank = occupied->factors[t].rank;
+          if (!terms[t].exchange_coefficient) continue;
+          occupied_retained += a * rank * rank;
+          occupied_largest = std::max(occupied_largest, a * rank * rank);
+          occupied_coefficients += n * rank;
+        }
+      const auto factor_capacity =
+          static_cast<std::size_t>(available / sizeof(double) - fixed_elements);
+      const char* requested_algebra = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
+      const char* requested_dot = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
+      const char* requested_scatter = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
+      // Only the truly bounded range needs a different factor layout. Full
+      // tensor and resident-C routes retain their already qualified selection.
+      // Both UHF projections coexist; the reusable projection/weight buffer
+      // must hold the largest spin's all-Q projection and at least one AO slice.
+      const bool owned_occupied =
+          occupied && panel_capacity <= a && occupied_retained <= factor_capacity &&
+          std::max(occupied_largest, n * n) <= factor_capacity - occupied_retained &&
+          (!requested_algebra || std::string_view(requested_algebra) == "blas") &&
+          (!requested_dot || std::string_view(requested_dot) != "1") &&
+          (!requested_scatter || !*requested_scatter);
+      // If two complete tensors do not fit, a streamed owner can still supply
+      // one raw tensor once. Transform it in place and retain a smaller W panel.
+      // This prevents both the unstable raw-Gram fallback and repeated source
+      // generation for this capacity range without borrowing unowned memory.
+      const bool single_fitted_tensor = device_metric->full_rank && !borrowed && !whitened &&
+                                        panel_capacity / 2 < a && panel_capacity > a;
       const auto capacity =
-          static_cast<std::size_t>((available / sizeof(double) - fixed_elements) / (2.0L * n * n));
+          owned_occupied
+              ? std::min(std::size_t{64}, (factor_capacity - occupied_retained) / (n * n))
+              : (single_fitted_tensor ? panel_capacity - a : panel_capacity / 2);
       const auto tile =
           std::min({a, capacity, maximum_auxiliary_tile ? maximum_auxiliary_tile : a});
       // Occupied projection scratch is dead before derivative consumption.
@@ -902,12 +973,36 @@ vibeqc_status execute_cuda_df_hf_gradient(
         arena.stats.density_host_to_device_bytes += n * n * sizeof(double);
         ++arena.stats.uploads;
       }
-      auto* workspace = static_cast<double*>(arena.allocate(
-          cuda_df_response_workspace_elements(n, a, terms.size(),
-                                              borrowed && borrowed->occupied_response ? 0 : tile) *
-          sizeof(double)));
+      const auto workspace_elements =
+          cuda_df_response_workspace_elements(
+              n, a, terms.size(),
+              (borrowed && borrowed->occupied_response) || owned_occupied ? 0 : tile) +
+          (single_fitted_tensor ? (a - tile) * n * n : 0) +
+          (owned_occupied ? occupied_retained + std::max(occupied_largest, tile * n * n) : 0);
+      auto* workspace = static_cast<double*>(arena.allocate(workspace_elements * sizeof(double)));
+      CudaDfResponseBuffers owned_buffers;
+      if (owned_occupied) {
+        // Raw A occupies the third, otherwise idle, AO temporary while the
+        // first holds A*C. All-Q projections live in disjoint owned intervals;
+        // exchange_response becomes the bounded derivative panel after fitting.
+        owned_buffers.staging_weights =
+            workspace + cuda_df_response_workspace_elements(n, a, terms.size(), 0);
+        owned_buffers.exchange_response = owned_buffers.staging_weights + occupied_retained;
+        owned_buffers.raw_auxiliary_major = workspace + 4 * a * a + 2 * n * n;
+        owned_buffers.staging_elements = occupied_retained;
+        owned_buffers.exchange_elements = std::max(occupied_largest, tile * n * n);
+        owned_buffers.raw_elements = n * n;
+        owned_buffers.occupied_factors = occupied->factors;
+        owned_buffers.occupied_response = true;
+        arena.stats.borrowed_device_bytes = occupied_coefficients * sizeof(double);
+        runtime::cuda_trace::trace_counter("response_borrowed_occupied_factor_bytes",
+                                           arena.stats.borrowed_device_bytes);
+        runtime::cuda_trace::trace_counter(
+            "response_owned_occupied_projection_bytes",
+            (occupied_retained + owned_buffers.exchange_elements) * sizeof(double));
+      }
       arena.stats.device_response = true;
-      arena.stats.occupied_response = borrowed && borrowed->occupied_response;
+      arena.stats.occupied_response = (borrowed && borrowed->occupied_response) || owned_occupied;
       arena.stats.auxiliary_weight_tile = consume_tile;
       arena.stats.weight_tile_elements = consume_tile * response_pair_stride;
       if (borrowed) {
@@ -988,7 +1083,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
       const std::string_view algebra =
-          algebra_control ? algebra_control : (borrowed || promoted_default ? "blas" : "scalar");
+          algebra_control ? algebra_control
+                          : (borrowed || owned_occupied || promoted_default ? "blas" : "scalar");
       if (algebra != "scalar" && algebra != "blas")
         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
       if (borrowed && (algebra != "blas" || serial_dot || gradient_copies != 1))
@@ -1007,10 +1103,129 @@ vibeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("raw_value_owner_identity",
                                            borrowed->resident_raw.owner_identity);
       }
-      if (packed_raw) {
+      // A bounded fitted-panel route reads the whitened owner instead. Merely
+      // receiving a packed raw view does not establish any raw-value traffic.
+      if (packed_raw && (borrowed || !whitened || tile == a)) {
         runtime::cuda_trace::trace_counter("raw_packed_value_reused_bytes",
                                            packed_raw->pair_count * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
+      }
+      std::function<void(std::size_t, std::size_t, double*)> read_fitted;
+      if (whitened && !borrowed && tile < a) {
+        // The forward plan already owns this immutable tensor. Reading it is
+        // an explicit borrow, not extra response allocation or raw regeneration.
+        const auto bytes = whitened->pair_count * a * sizeof(double);
+        arena.stats.borrowed_device_bytes += bytes;
+        runtime::cuda_trace::trace_counter("response_borrowed_whitened_bytes", bytes);
+        read_fitted = [&](std::size_t begin, std::size_t count, double* values) {
+          runtime::cuda_trace::TraceRegion projection("response_fitted_panel_projection",
+                                                      arena.stream);
+          const double one = 1, zero = 0;
+          const auto ai = static_cast<int>(a), mi = static_cast<int>(n * n);
+          const auto handle = reinterpret_cast<cublasHandle_t>(blas_handle);
+          const auto checked = [](cublasStatus_t status) {
+            if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+          };
+          if (!whitened->packed_pairs) {
+            // Public C[ij,Q] is column-major [Q,ij]. Emit [ij,P] directly
+            // into the bounded auxiliary-major panel used by the response.
+            checked(cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, mi, static_cast<int>(count), ai,
+                                &one, whitened->data, ai,
+                                device_metric->inverse_square_root + begin * a, ai, &zero, values,
+                                mi));
+            runtime::cuda_trace::trace_counter("response_fitted_panel_gemms", 1);
+          } else {
+            // Project the whole packed panel with GEMM into the tail of its
+            // dense destination. Expand Q in ascending order after staging
+            // that Q's packed values in the existing spare AO matrix. The end
+            // of dense slice Q never exceeds the start of packed slice Q+1:
+            // (Q+1)*matrix <= count*(matrix-pairs)+(Q+1)*pairs. Thus expansion
+            // cannot destroy an unread later slice, including a short tail.
+            // Staging the current slice also excludes in-kernel read/write
+            // aliases while avoiding one full-tensor GEMV per output Q.
+            const auto pairs = whitened->pair_count;
+            auto* packed_panel = values + count * (n * n - pairs);
+            auto* packed_values = workspace + 4 * a * a;
+            checked(cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(pairs),
+                                static_cast<int>(count), ai, &one, whitened->data, ai,
+                                device_metric->inverse_square_root + begin * a, ai, &zero,
+                                packed_panel, static_cast<int>(pairs)));
+            for (std::size_t p = 0; p < count; ++p) {
+              check(cudaMemcpyAsync(packed_values, packed_panel + p * pairs, pairs * sizeof(double),
+                                    cudaMemcpyDeviceToDevice, arena.stream));
+              cuda_df::launch_unpack_df_values(arena.stream, n, 1, 0, n, 0, 1, true, packed_values,
+                                               values + p * n * n);
+            }
+            check(cudaGetLastError());
+            runtime::cuda_trace::trace_counter("response_fitted_panel_gemms", 1);
+            runtime::cuda_trace::trace_counter("response_fitted_unpack_staging_copies", count);
+            runtime::cuda_trace::trace_counter("response_fitted_unpack_staging_bytes",
+                                               count * pairs * sizeof(double));
+          }
+          runtime::cuda_trace::trace_counter("response_fitted_panel_calls", 1);
+          runtime::cuda_trace::trace_counter("response_inverse_applied_factor_elements",
+                                             count * n * n);
+          runtime::cuda_trace::trace_counter("response_fitted_projection_flops",
+                                             2 * a * whitened->pair_count * count);
+        };
+      } else if (source && device_metric->full_rank && !borrowed && !owned_occupied &&
+                 !single_fitted_tensor && tile < a) {
+        // Corrected or arbitrary densities need no SCF-factor lease. Keep all
+        // eigendirections of a small AO-pair block until after division by
+        // lambda, then emit only the requested public auxiliary columns of
+        // B=A*M^-1. Applying an explicit inverse to a raw Gram is unstable.
+        // The bounded full-rank contraction keeps only workspace[aa:2*aa]
+        // live for bar_M; these two other metric matrices are dead scratch.
+        // W and the fitted output remain disjoint throughout every reread.
+        auto* raw = workspace + 2 * a * a;
+        auto* projected = workspace + 3 * a * a;
+        const auto pair_tile = std::min(a, n * n);
+        runtime::cuda_trace::trace_counter("response_streamed_general_factor_first", 1);
+        runtime::cuda_trace::trace_counter("response_streamed_fitting_scratch_bytes",
+                                           2 * a * a * sizeof(double));
+        runtime::cuda_trace::trace_counter("response_streamed_fitting_pair_tile", pair_tile);
+        read_fitted = [&, raw, projected, pair_tile](std::size_t begin, std::size_t count,
+                                                     double* values) {
+          runtime::cuda_trace::TraceRegion projection("response_streamed_fitted_panel",
+                                                      arena.stream);
+          const double one = 1, zero = 0;
+          const auto ai = static_cast<int>(a), mi = static_cast<int>(n * n);
+          const auto handle = reinterpret_cast<cublasHandle_t>(blas_handle);
+          const auto checked = [](cublasStatus_t status) {
+            if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
+          };
+          for (std::size_t pair = 0; pair < n * n; pair += pair_tile) {
+            const auto pairs = std::min(pair_tile, n * n - pair);
+            const auto status = generate_cuda_density_fitting_raw_tile(
+                source, source_index, pair, pairs, 0, a, -1, stream_handle, raw, detail);
+            if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+            if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+            arena.stats.recomputed_value_bytes += pairs * a * sizeof(double);
+            ++arena.stats.value_slices;
+            // Raw [pair,P] is column-major [P,pair]. Divide Q^T*A before
+            // the public-axis rotation, then write [pair,output_P] directly
+            // into the auxiliary-major fitted panel with leading n*n.
+            checked(cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(pairs), ai,
+                                &one, device_metric->eigenvectors, ai, raw, ai, &zero, projected,
+                                ai));
+            cuda_df::launch_scale_metric_projection(arena.stream, a, pairs,
+                                                    device_metric->eigenvalues, false, projected);
+            check(cudaGetLastError());
+            checked(cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_T, static_cast<int>(pairs),
+                                static_cast<int>(count), ai, &one, projected, ai,
+                                device_metric->eigenvectors + begin, ai, &zero, values + pair, mi));
+            runtime::cuda_trace::trace_counter("response_fitted_panel_gemms", 2);
+          }
+          // Every fitted-panel request regenerates one full logical raw
+          // tensor. Capture/trace counts must not disguise these rereads as
+          // one pass over the complete response or as clean endpoint timing.
+          runtime::cuda_trace::trace_counter("response_streamed_fitting_raw_passes", 1);
+          runtime::cuda_trace::trace_counter("response_fitted_panel_calls", 1);
+          runtime::cuda_trace::trace_counter("response_inverse_applied_factor_elements",
+                                             count * n * n);
+          runtime::cuda_trace::trace_counter("response_fitted_projection_flops",
+                                             2 * n * n * a * (a + count));
+        };
       }
       check(contract_cuda_df_response_weights(
           n, a, terms, densities, *device_metric, consume_tile, workspace, arena.stream,
@@ -1162,7 +1377,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
           borrowed, raw_a, packed_pairs,
           packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
                        : std::span<const std::int64_t>{},
-          packed_block_rows));
+          packed_block_rows, read_fitted, single_fitted_tensor,
+          owned_occupied ? &owned_buffers : nullptr));
       if (gradient_copies > 1) {
         runtime::cuda_trace::TraceRegion reduction("gradient_probe_shard_reduction", arena.stream);
         // Each column is already a complete contracted atom gradient, not an

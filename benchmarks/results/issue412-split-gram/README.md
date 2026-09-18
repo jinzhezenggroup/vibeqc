@@ -1,5 +1,12 @@
 # Bounded split occupied Gram: negative endpoint result (#412)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 The split4 candidate saves about 12.4% of net Gram time on the four real
 768/768/rank-160 fixed-U inputs, but it fails complete endpoint qualification.
 The first matched-density 768 force pair takes **three SCF updates with SYRK

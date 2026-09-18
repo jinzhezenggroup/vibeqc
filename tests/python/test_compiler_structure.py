@@ -40,6 +40,21 @@ def test_dependency_directions():
     assert audit_structure()["errors"] == []
 
 
+def test_method_composition_is_above_xc_and_dft(tmp_path):
+    method = tmp_path / "method"
+    method.mkdir()
+    (method / "ok.py").write_text(
+        "from vibeqc_compiler.xc.spec import FunctionalSpec\n"
+    )
+    assert audit_structure(tmp_path)["errors"] == []
+
+    dft = tmp_path / "dft"
+    dft.mkdir()
+    (dft / "bad.py").write_text("import vibeqc_compiler.method\n")
+    errors = audit_structure(tmp_path)["errors"]
+    assert any("forbidden dft -> method import" in error for error in errors)
+
+
 @pytest.mark.parametrize(
     "module,target,allowed",
     [
@@ -155,3 +170,17 @@ def test_checkout_generator_needs_no_installation_or_runtime(tmp_path):
         text=True,
     )
     assert output.stat().st_size > 0
+
+
+def test_method_custom_derivatives_may_emit_tensor_graphs_but_not_the_reverse(tmp_path):
+    method = tmp_path / "method"
+    method.mkdir()
+    (method / "rule.py").write_text("from vibeqc_compiler.tensor import Program\n")
+    assert audit_structure(tmp_path)["errors"] == []
+    tensor = tmp_path / "tensor"
+    tensor.mkdir()
+    (tensor / "bad.py").write_text("import vibeqc_compiler.method\n")
+    assert any(
+        "forbidden tensor -> method import" in e
+        for e in audit_structure(tmp_path)["errors"]
+    )

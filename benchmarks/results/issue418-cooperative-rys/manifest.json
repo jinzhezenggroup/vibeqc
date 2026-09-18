@@ -1,0 +1,2457 @@
+{
+  "schema": "vibeqc.issue418.qualification.v1",
+  "base_commit": "f5eb8dfb696ce4304c5151670c55fec78fdddb7d",
+  "status": "All campaign, baseline-equivalence, integrated holdout and final production qualification gates passed. Automatic scope remains sm_120,384/768 AO with equal auxiliary spaces; keeps #206 open.",
+  "records": [
+    {
+      "source": ".artifacts/issue418/existing-root-audit.json",
+      "retained": "roots/existing-root-audit.json.gz",
+      "reason": "Every root/weight/Boys-moment sample, including initial ordering-sensitive and strict-table failures.",
+      "original_bytes": 2563781,
+      "original_sha256": "030caaae27819d80d5a7e8b225060e4dd92953df02a62293e22c8b05e34b8d31",
+      "stored_bytes": 436314,
+      "stored_sha256": "39b4479c0b06b9e4c8bb245c7f9c7bb4710e015f2565c7ebed7f01967d280e36",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/existing-root-audit-order-sensitive.json",
+      "retained": "roots/existing-root-audit-order-sensitive.json.gz",
+      "reason": "Every root/weight/Boys-moment sample, including initial ordering-sensitive and strict-table failures.",
+      "original_bytes": 1936052,
+      "original_sha256": "32d8613e4d30782127695173e91c3bc927d7c7ce8ed23b8dd13bddf2483d6928",
+      "stored_bytes": 354488,
+      "stored_sha256": "b95755ad9b892a411aff6bc837538b79c6b6d4fd5fb9c41085fcbe396ab037db",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/strict-root-audit.json",
+      "retained": "roots/strict-root-audit.json.gz",
+      "reason": "Every root/weight/Boys-moment sample, including initial ordering-sensitive and strict-table failures.",
+      "original_bytes": 2563150,
+      "original_sha256": "d2e14a76d5fefd4e433281b625ded3ef0a41977de3a930b38a647bf8cf1da1a7",
+      "stored_bytes": 415714,
+      "stored_sha256": "03d45d4eaf22ef8747a1652362d354f04a4d4c9dbbeb593458830dbcb4cf14cc",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/generated-headers.json",
+      "retained": "identity/generated-headers.json",
+      "reason": "Exact scientific/source identity or predeclared endpoint controls.",
+      "original_bytes": 1057,
+      "original_sha256": "6cb1919c1a6c3c31dd409b610ce767a1a8713bd0feeb4411dd72084ac0f7788c",
+      "stored_bytes": 1057,
+      "stored_sha256": "6cb1919c1a6c3c31dd409b610ce767a1a8713bd0feeb4411dd72084ac0f7788c",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/root-emission-identity.json",
+      "retained": "identity/root-emission-identity.json",
+      "reason": "Exact scientific/source identity or predeclared endpoint controls.",
+      "original_bytes": 335,
+      "original_sha256": "0e2641b47a4aa121f608abaa94c7594dc620954771c32eac5cc991ee1b4f6b3d",
+      "stored_bytes": 335,
+      "stored_sha256": "0e2641b47a4aa121f608abaa94c7594dc620954771c32eac5cc991ee1b4f6b3d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoint-protocol.json",
+      "retained": "identity/endpoint-protocol.json",
+      "reason": "Exact scientific/source identity or predeclared endpoint controls.",
+      "original_bytes": 961,
+      "original_sha256": "865ba1ff8cff63a4aac2131a889592a7ca28352bae62f6cd151f076f5383a243",
+      "stored_bytes": 961,
+      "stored_sha256": "865ba1ff8cff63a4aac2131a889592a7ca28352bae62f6cd151f076f5383a243",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-production-manifest.json",
+      "retained": "identity/baseline-production-manifest.json",
+      "reason": "Exact scientific/source identity or predeclared endpoint controls.",
+      "original_bytes": 1962,
+      "original_sha256": "3a37f10db43233d1de45f8d3e1916915d84283e14c37419bf1d03893629cf802",
+      "stored_bytes": 1962,
+      "stored_sha256": "3a37f10db43233d1de45f8d3e1916915d84283e14c37419bf1d03893629cf802",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/campaign-production-manifest.json",
+      "retained": "identity/campaign-production-manifest.json",
+      "reason": "Exact scientific/source identity or predeclared endpoint controls.",
+      "original_bytes": 4463,
+      "original_sha256": "d1971099ea6b67f9f8e05777e7fabe04f414c37725eaa8a54c655eb3b9ec6f7a",
+      "stored_bytes": 4463,
+      "stored_sha256": "d1971099ea6b67f9f8e05777e7fabe04f414c37725eaa8a54c655eb3b9ec6f7a",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/existing-root-audit.log",
+      "retained": "qualification/existing-root-audit.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 221,
+      "original_sha256": "844497d937adc780c40d33f449c7d8556098dc8b492b1f25d70492c4b6c7dba9",
+      "stored_bytes": 221,
+      "stored_sha256": "844497d937adc780c40d33f449c7d8556098dc8b492b1f25d70492c4b6c7dba9",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/existing-root-audit-aligned.log",
+      "retained": "qualification/existing-root-audit-aligned.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 248,
+      "original_sha256": "3f51d17f345f8e688fa33d37175208bd109d3e6c98e5d49b602ac8a2713e4f06",
+      "stored_bytes": 248,
+      "stored_sha256": "3f51d17f345f8e688fa33d37175208bd109d3e6c98e5d49b602ac8a2713e4f06",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/strict-root-host-tests.log",
+      "retained": "qualification/strict-root-host-tests.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 111,
+      "original_sha256": "75b724fa8f1a9960d4339e56e653c97a657cf6688f788cd7761ca691e204da78",
+      "stored_bytes": 111,
+      "stored_sha256": "75b724fa8f1a9960d4339e56e653c97a657cf6688f788cd7761ca691e204da78",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/strict-root-cuda-tests.log",
+      "retained": "qualification/strict-root-cuda-tests.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 114,
+      "original_sha256": "619d54321c932721a16cf3a597971b93889ca2b5712da6b60a6faa1fe96d965e",
+      "stored_bytes": 114,
+      "stored_sha256": "619d54321c932721a16cf3a597971b93889ca2b5712da6b60a6faa1fe96d965e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/cooperative-shell-host-tests.log",
+      "retained": "qualification/cooperative-shell-host-tests.txt.gz",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 8268,
+      "original_sha256": "32a0ddada9cd821197739161935a97f1dd3088d0689403e7c5139c0b9fa4519b",
+      "stored_bytes": 1679,
+      "stored_sha256": "adf2dd3b8b4b7c1fcdc2403590252c41603f0e8cccf83cb19fb3c168e72949e7",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/cooperative-shell-host-qualified.log",
+      "retained": "qualification/cooperative-shell-host-qualified.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 271,
+      "original_sha256": "30867c3617f3ec50b4ba19918669cb58ca3854a640e1805b0a3d35957cb0b4b6",
+      "stored_bytes": 271,
+      "stored_sha256": "30867c3617f3ec50b4ba19918669cb58ca3854a640e1805b0a3d35957cb0b4b6",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/host-structure-tests.log",
+      "retained": "qualification/host-structure-tests.txt.gz",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 2316,
+      "original_sha256": "0ca3810da87e6cbf470aa17b7dfd5080d48fc120820282551fd620efb5de355b",
+      "stored_bytes": 811,
+      "stored_sha256": "4dbde7f9eadb2cd10c5ac9f6d642e5d0c53e45fa6431fe8f28cb6b8ab1fc090c",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/host-structure-qualified.log",
+      "retained": "qualification/host-structure-qualified.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 99,
+      "original_sha256": "39ce0a4cd0adf05b9c7e506028ed0bc4bba77f4c4a7311e8633ed8445dd08ae0",
+      "stored_bytes": 99,
+      "stored_sha256": "39ce0a4cd0adf05b9c7e506028ed0bc4bba77f4c4a7311e8633ed8445dd08ae0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/coefficient-reproduction.log",
+      "retained": "qualification/coefficient-reproduction.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 113,
+      "original_sha256": "d09d64e411aab3b9817c4be08ddf591c1caa41ccd4cb616a4a232764f14ca338",
+      "stored_bytes": 113,
+      "stored_sha256": "d09d64e411aab3b9817c4be08ddf591c1caa41ccd4cb616a4a232764f14ca338",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-objects-v1.log",
+      "retained": "qualification/hot-objects-v1.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 743,
+      "original_sha256": "80088ea326f3e0e41ab09f2b3ce27f9b19c1801da96331c5a1757d375c76524e",
+      "stored_bytes": 743,
+      "stored_sha256": "80088ea326f3e0e41ab09f2b3ce27f9b19c1801da96331c5a1757d375c76524e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-objects-v2.log",
+      "retained": "qualification/hot-objects-v2.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 829,
+      "original_sha256": "7ef97446612f544979174f2c20f6841d1b098c5b9ac0382f2f935488de5d320f",
+      "stored_bytes": 829,
+      "stored_sha256": "7ef97446612f544979174f2c20f6841d1b098c5b9ac0382f2f935488de5d320f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-objects-v2-link.log",
+      "retained": "qualification/hot-objects-v2-link.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 385,
+      "original_sha256": "4b8b9d65e8bd983a0ad04ec3bc57f999ca981223b40a2e8d935686f48b36e3a1",
+      "stored_bytes": 385,
+      "stored_sha256": "4b8b9d65e8bd983a0ad04ec3bc57f999ca981223b40a2e8d935686f48b36e3a1",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-qualification.log",
+      "retained": "qualification/hot-qualification.txt",
+      "reason": "Validation result or explicit failed setup/recording attempt; retained without replacing failures.",
+      "original_bytes": 212,
+      "original_sha256": "ac9968efe7955c91818552a1f17bb57c6d2ac6ed206111b9eb9658e4cecb6b4b",
+      "stored_bytes": 212,
+      "stored_sha256": "ac9968efe7955c91818552a1f17bb57c6d2ac6ed206111b9eb9658e4cecb6b4b",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-qualification-v2.jsonl",
+      "retained": "qualification/hot-derivatives.jsonl",
+      "reason": "All initial hot/control candidate GPU derivative comparisons.",
+      "original_bytes": 1465,
+      "original_sha256": "57eeed14c2a8dc1bf53286d4c381599d4387e55bf43f6b8902b008caae8bb40f",
+      "stored_bytes": 1465,
+      "stored_sha256": "57eeed14c2a8dc1bf53286d4c381599d4387e55bf43f6b8902b008caae8bb40f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-initcheck.exit",
+      "retained": "sanitizers/hot-objects-v2-initcheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-initcheck.stderr",
+      "retained": "sanitizers/hot-objects-v2-initcheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-initcheck.stdout",
+      "retained": "sanitizers/hot-objects-v2-initcheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1527,
+      "original_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "stored_bytes": 1527,
+      "stored_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-memcheck.exit",
+      "retained": "sanitizers/hot-objects-v2-memcheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-memcheck.stderr",
+      "retained": "sanitizers/hot-objects-v2-memcheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-memcheck.stdout",
+      "retained": "sanitizers/hot-objects-v2-memcheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1527,
+      "original_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "stored_bytes": 1527,
+      "stored_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-racecheck.exit",
+      "retained": "sanitizers/hot-objects-v2-racecheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-racecheck.stderr",
+      "retained": "sanitizers/hot-objects-v2-racecheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-racecheck.stdout",
+      "retained": "sanitizers/hot-objects-v2-racecheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1565,
+      "original_sha256": "b6cebdc3bb19cc5beb5f3a851e78b9b44112fa3aae460fc44f715fed5408b43b",
+      "stored_bytes": 1565,
+      "stored_sha256": "b6cebdc3bb19cc5beb5f3a851e78b9b44112fa3aae460fc44f715fed5408b43b",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-synccheck.exit",
+      "retained": "sanitizers/hot-objects-v2-synccheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-synccheck.stderr",
+      "retained": "sanitizers/hot-objects-v2-synccheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/hot-objects-v2-synccheck.stdout",
+      "retained": "sanitizers/hot-objects-v2-synccheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1527,
+      "original_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "stored_bytes": 1527,
+      "stored_sha256": "831006715bc88a158227372401559e8331ed170c026c05cc07246972ec4016eb",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-initcheck.exit",
+      "retained": "sanitizers/rest-objects-v1-initcheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-initcheck.stderr",
+      "retained": "sanitizers/rest-objects-v1-initcheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-initcheck.stdout",
+      "retained": "sanitizers/rest-objects-v1-initcheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1331,
+      "original_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "stored_bytes": 1331,
+      "stored_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-memcheck.exit",
+      "retained": "sanitizers/rest-objects-v1-memcheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-memcheck.stderr",
+      "retained": "sanitizers/rest-objects-v1-memcheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-memcheck.stdout",
+      "retained": "sanitizers/rest-objects-v1-memcheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1331,
+      "original_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "stored_bytes": 1331,
+      "stored_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-racecheck.exit",
+      "retained": "sanitizers/rest-objects-v1-racecheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-racecheck.stderr",
+      "retained": "sanitizers/rest-objects-v1-racecheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-racecheck.stdout",
+      "retained": "sanitizers/rest-objects-v1-racecheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1369,
+      "original_sha256": "0e2d708d4742a07a69591bc2b4d773b93dcfbabe6bb18e36c34168f22ec7bcb4",
+      "stored_bytes": 1369,
+      "stored_sha256": "0e2d708d4742a07a69591bc2b4d773b93dcfbabe6bb18e36c34168f22ec7bcb4",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-synccheck.exit",
+      "retained": "sanitizers/rest-objects-v1-synccheck.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-synccheck.stderr",
+      "retained": "sanitizers/rest-objects-v1-synccheck.stderr",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-objects-v1-synccheck.stdout",
+      "retained": "sanitizers/rest-objects-v1-synccheck.stdout",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1331,
+      "original_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "stored_bytes": 1331,
+      "stored_sha256": "82bf9a9afa187218ea54c1fa05f3bdc3178ef1ebc0dfc0a30b9c334b2631a6de",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-qualification.exit",
+      "retained": "sanitizers/rest-qualification.exit",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-qualification.jsonl",
+      "retained": "sanitizers/rest-qualification.jsonl",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 1269,
+      "original_sha256": "c07e7f408f03a64552fd9f0f8dbe3f52fd7c02c05a3d1fb9f5d8cb9c0e9fb896",
+      "stored_bytes": 1269,
+      "stored_sha256": "c07e7f408f03a64552fd9f0f8dbe3f52fd7c02c05a3d1fb9f5d8cb9c0e9fb896",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/rest-qualification.log",
+      "retained": "sanitizers/rest-qualification.txt",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/sanitizers-v1/slurm-job.txt",
+      "retained": "sanitizers/slurm-job.txt",
+      "reason": "Complete Slurm 9894 validation and memcheck/racecheck/initcheck/synccheck conclusions.",
+      "original_bytes": 5,
+      "original_sha256": "6f68ebeb48ad1f7fc1da8fdec8b8015acde27ef52a2160944dbbabaf5dfe3d05",
+      "stored_bytes": 5,
+      "stored_sha256": "6f68ebeb48ad1f7fc1da8fdec8b8015acde27ef52a2160944dbbabaf5dfe3d05",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-objects-v2/report.json",
+      "retained": "objects/hot-objects-v2.json",
+      "reason": "Every compile result, resource limit, occupancy estimate and object identity, including raw compiler diagnostics.",
+      "original_bytes": 130540,
+      "original_sha256": "1542f8873c8c506e89dfd1bff5d4890994f6213ff1d4d8bb75af316934873349",
+      "stored_bytes": 130540,
+      "stored_sha256": "1542f8873c8c506e89dfd1bff5d4890994f6213ff1d4d8bb75af316934873349",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/hot-objects-v2/workload.txt",
+      "retained": "workloads/hot-objects-v2.txt",
+      "reason": "Exact geometry, primitive signatures and measured workload counts used for class ranking.",
+      "original_bytes": 48826,
+      "original_sha256": "9cfc8b97cc2f048cf568fb99cc59edf5e8253d50cfcbd4f7cb5af2d33711df59",
+      "stored_bytes": 48826,
+      "stored_sha256": "9cfc8b97cc2f048cf568fb99cc59edf5e8253d50cfcbd4f7cb5af2d33711df59",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/rest-objects-v1/report.json",
+      "retained": "objects/rest-objects-v1.json",
+      "reason": "Every compile result, resource limit, occupancy estimate and object identity, including raw compiler diagnostics.",
+      "original_bytes": 122868,
+      "original_sha256": "f2fb3faa382726386743e6d20dc229a54f3de74ebf6ef196504fd0b267150f31",
+      "stored_bytes": 122868,
+      "stored_sha256": "f2fb3faa382726386743e6d20dc229a54f3de74ebf6ef196504fd0b267150f31",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/rest-objects-v1/workload.txt",
+      "retained": "workloads/rest-objects-v1.txt",
+      "reason": "Exact geometry, primitive signatures and measured workload counts used for class ranking.",
+      "original_bytes": 46015,
+      "original_sha256": "682eb38cb400e631a37d13c7acf2675259d1e030b218384f2b2cbde0a7e51b87",
+      "stored_bytes": 46015,
+      "stored_sha256": "682eb38cb400e631a37d13c7acf2675259d1e030b218384f2b2cbde0a7e51b87",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/hot-objects-v2.exit",
+      "retained": "class-timing/hot-objects-v2.exit",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/hot-objects-v2.jsonl",
+      "retained": "class-timing/hot-objects-v2.jsonl",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 72161,
+      "original_sha256": "45da4d3c76935d344ab0e71070d7a282a33e85dfb07782814497babe5f6fe9a7",
+      "stored_bytes": 72161,
+      "stored_sha256": "45da4d3c76935d344ab0e71070d7a282a33e85dfb07782814497babe5f6fe9a7",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/process-scan.json",
+      "retained": "class-timing/process-scan.json",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 697,
+      "original_sha256": "0d140fb3f14dfb3bcb309f814b7dc6c1da66d0429f8762907a608314796f9157",
+      "stored_bytes": 697,
+      "stored_sha256": "0d140fb3f14dfb3bcb309f814b7dc6c1da66d0429f8762907a608314796f9157",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/ranking.json",
+      "retained": "class-ranking.json",
+      "reason": "All 252 class records ranked without omitting failed work/numerical gates; not complete endpoint qualification.",
+      "original_bytes": 25410,
+      "original_sha256": "36bf3aa3b59f1e80289ea306beac209a63e6fae9cbea4f2f87dca6a3f36c756f",
+      "stored_bytes": 25410,
+      "stored_sha256": "36bf3aa3b59f1e80289ea306beac209a63e6fae9cbea4f2f87dca6a3f36c756f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/rest-objects-v1.exit",
+      "retained": "class-timing/rest-objects-v1.exit",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/rest-objects-v1.jsonl",
+      "retained": "class-timing/rest-objects-v1.jsonl",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 20610,
+      "original_sha256": "12ebece9758b51fc62fb384d35869973083d1350d11e269787cd4e7acacb847b",
+      "stored_bytes": 20610,
+      "stored_sha256": "12ebece9758b51fc62fb384d35869973083d1350d11e269787cd4e7acacb847b",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/class-timing-v1/slurm-job.txt",
+      "retained": "class-timing/slurm-job.txt",
+      "reason": "All class timing samples, exit statuses and process/job provenance from Slurm 9895.",
+      "original_bytes": 5,
+      "original_sha256": "31f2f140ec59163c2865ff28ba3e01d4dcc230f730493f5d4e876685e484521c",
+      "stored_bytes": 5,
+      "stored_sha256": "31f2f140ec59163c2865ff28ba3e01d4dcc230f730493f5d4e876685e484521c",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/audit_roots.py",
+      "retained": "reproduction/audit_roots.py.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 3860,
+      "original_sha256": "49c6f0d002e7813e6dc4bdeb647d9d80ad2b64de81adb1d075882323e4ff68ec",
+      "stored_bytes": 3860,
+      "stored_sha256": "49c6f0d002e7813e6dc4bdeb647d9d80ad2b64de81adb1d075882323e4ff68ec",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/compile_candidates.py",
+      "retained": "reproduction/compile_candidates.py.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 4822,
+      "original_sha256": "f83e8483abf491edfb5fbb3bdb57108d6d96ba7da924f04a2eae99754ec6fb88",
+      "stored_bytes": 4822,
+      "stored_sha256": "f83e8483abf491edfb5fbb3bdb57108d6d96ba7da924f04a2eae99754ec6fb88",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/qualify-all.sh",
+      "retained": "reproduction/qualify-all.sh.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 1055,
+      "original_sha256": "0a2bfda40393be7a39d1b6d17b03f13d44d9f8076ad63a04c68adf4223409e8e",
+      "stored_bytes": 1055,
+      "stored_sha256": "0a2bfda40393be7a39d1b6d17b03f13d44d9f8076ad63a04c68adf4223409e8e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/rank_class_timing.py",
+      "retained": "reproduction/rank_class_timing.py.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 2232,
+      "original_sha256": "48b02059895992c7fbea7db47b06304963c2097b06dbdfcb6b7a6717d4208048",
+      "stored_bytes": 2232,
+      "stored_sha256": "48b02059895992c7fbea7db47b06304963c2097b06dbdfcb6b7a6717d4208048",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/retain_qualification.py",
+      "retained": "reproduction/retain_qualification.py.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 4538,
+      "original_sha256": "e87ab3f24278b2d57eb18b2763683e96a8cf515489b183c9407793274c85f297",
+      "stored_bytes": 4538,
+      "stored_sha256": "e87ab3f24278b2d57eb18b2763683e96a8cf515489b183c9407793274c85f297",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-class-timing.sh",
+      "retained": "reproduction/run-class-timing.sh.txt",
+      "reason": "Exact local qualification/reproduction driver; environment paths identify this machine.",
+      "original_bytes": 1779,
+      "original_sha256": "019257e24884c18bbb7c68b1ce15007a3200a3e3ab8f37a8a97e4259d8f74b87",
+      "stored_bytes": 1779,
+      "stored_sha256": "019257e24884c18bbb7c68b1ce15007a3200a3e3ab8f37a8a97e4259d8f74b87",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-source-v1.patch",
+      "retained": "source/candidate-source.patch.gz",
+      "reason": "Reconstructs the independently qualified native/compiler source before the combined campaign manifest.",
+      "original_bytes": 213760,
+      "original_sha256": "161559965f93a1139ebe9ef819b8f32525caefe160ed7f0c2ae7e5d0f4fb445e",
+      "stored_bytes": 78710,
+      "stored_sha256": "d20ce2c203cf3d4ce8034f04c252b5d4f98f34bcb58cf0828abc3de3d2b2c509",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2323,
+      "original_sha256": "207c5c50962a61445a3c25b070580a39a289f2b67870520114fbee49537feb67",
+      "stored_bytes": 2323,
+      "stored_sha256": "207c5c50962a61445a3c25b070580a39a289f2b67870520114fbee49537feb67",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-auto.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 36268,
+      "original_sha256": "bee6f7dc922c450646a2c60a73cf362c4fe8eec382fe579199721388e553b245",
+      "stored_bytes": 36268,
+      "stored_sha256": "bee6f7dc922c450646a2c60a73cf362c4fe8eec382fe579199721388e553b245",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3220,
+      "original_sha256": "559a71e8de5d172c58d80debb50c8c8e45e38a6242cc38a5b8a38ef0c71a78cf",
+      "stored_bytes": 3220,
+      "stored_sha256": "559a71e8de5d172c58d80debb50c8c8e45e38a6242cc38a5b8a38ef0c71a78cf",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2310,
+      "original_sha256": "36f2f8c9b4b715ce11559e1322f4eef425023bd2dbc03f613f8e57cd2aa07c39",
+      "stored_bytes": 2310,
+      "stored_sha256": "36f2f8c9b4b715ce11559e1322f4eef425023bd2dbc03f613f8e57cd2aa07c39",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-candidate.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 36440,
+      "original_sha256": "6dc7a4047c6d8deb7ed90d9af9af6766543b58400af9d70892076f8c81f9fe72",
+      "stored_bytes": 36440,
+      "stored_sha256": "6dc7a4047c6d8deb7ed90d9af9af6766543b58400af9d70892076f8c81f9fe72",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/192-energy.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3227,
+      "original_sha256": "201a341a75ea15aafc4fc9f9848c793047eae9602914a2e956d8d9ef78d63f6e",
+      "stored_bytes": 3227,
+      "stored_sha256": "201a341a75ea15aafc4fc9f9848c793047eae9602914a2e956d8d9ef78d63f6e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.exit",
+      "retained": "endpoints/endpoints-v1/192-energy.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.json",
+      "retained": "endpoints/endpoints-v1/192-energy.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 112315,
+      "original_sha256": "30944bdc64ff88a262b743ff14ea3335cb64753451f1d5fa0a3e99396c31292f",
+      "stored_bytes": 112315,
+      "stored_sha256": "30944bdc64ff88a262b743ff14ea3335cb64753451f1d5fa0a3e99396c31292f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.stderr",
+      "retained": "endpoints/endpoints-v1/192-energy.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-energy.stdout",
+      "retained": "endpoints/endpoints-v1/192-energy.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 426,
+      "original_sha256": "4692db47f68a944341b75d2264fd44be0143f9c0cb16c692707c34b35e491fda",
+      "stored_bytes": 426,
+      "stored_sha256": "4692db47f68a944341b75d2264fd44be0143f9c0cb16c692707c34b35e491fda",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 4910,
+      "original_sha256": "b2a72e9cee1aae5da74de08138b823e4c929a8a5183763c4bd7c4e5498d700fb",
+      "stored_bytes": 4910,
+      "stored_sha256": "b2a72e9cee1aae5da74de08138b823e4c929a8a5183763c4bd7c4e5498d700fb",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1257745,
+      "original_sha256": "8424a6a9bf03cdb52439c4676aa19793f8aec93d4e8e65ddb49b8ec5cf838247",
+      "stored_bytes": 69720,
+      "stored_sha256": "15e2ab4ed43911f20abc551a4100b18a8ad8a3e6c478bdef4e942fbe7de95a27",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 103479,
+      "original_sha256": "039ac38f9e92b6eda076966dc435967e570261a9be214638d3db3c804daa6250",
+      "stored_bytes": 103479,
+      "stored_sha256": "039ac38f9e92b6eda076966dc435967e570261a9be214638d3db3c804daa6250",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 4855,
+      "original_sha256": "e4d9c82454bb64a992d7a5d0d2893a7f1d2fcf83c53fc902a0fa9f0d945a6792",
+      "stored_bytes": 4855,
+      "stored_sha256": "e4d9c82454bb64a992d7a5d0d2893a7f1d2fcf83c53fc902a0fa9f0d945a6792",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-candidate.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1273203,
+      "original_sha256": "1bdf15daa748eaa6b5aa689ffe92ab2c704196f66398c3e170d83a0dee4b0a96",
+      "stored_bytes": 69480,
+      "stored_sha256": "dc54ec1852c1118d280487bbb66fe554f769853236ee833e64ac73d0e5662245",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/192-forces.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 103481,
+      "original_sha256": "2afdb1c9a40ee17bab47e1334b14537feb464455edfb00404de640f2585dee43",
+      "stored_bytes": 103481,
+      "stored_sha256": "2afdb1c9a40ee17bab47e1334b14537feb464455edfb00404de640f2585dee43",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.exit",
+      "retained": "endpoints/endpoints-v1/192-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.json",
+      "retained": "endpoints/endpoints-v1/192-forces.json.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 195792,
+      "original_sha256": "f3d229ad4f655ce6f44a3b5004e1d444128a34edfed2fda6aaa2e408daea9512",
+      "stored_bytes": 16745,
+      "stored_sha256": "e5933006c641b84d01f09de075aa8a938ad68f010d8a3a00d58cbb7959499068",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.stderr",
+      "retained": "endpoints/endpoints-v1/192-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/192-forces.stdout",
+      "retained": "endpoints/endpoints-v1/192-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 419,
+      "original_sha256": "9cf1d26679a95c9541b7ad7e91a58a467545170c29db172e960bda1c8b350a64",
+      "stored_bytes": 419,
+      "stored_sha256": "9cf1d26679a95c9541b7ad7e91a58a467545170c29db172e960bda1c8b350a64",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2308,
+      "original_sha256": "41eb1691eeb4ee83c5f58acad8fa425561a1f8a4d70c7aea663e4c8401503fe2",
+      "stored_bytes": 2308,
+      "stored_sha256": "41eb1691eeb4ee83c5f58acad8fa425561a1f8a4d70c7aea663e4c8401503fe2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-auto.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 36290,
+      "original_sha256": "44fd6e943caa16addd373cbe2024c6dc0b94f9f03d7e6e04d92f101c591913d2",
+      "stored_bytes": 36290,
+      "stored_sha256": "44fd6e943caa16addd373cbe2024c6dc0b94f9f03d7e6e04d92f101c591913d2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3224,
+      "original_sha256": "1429d687f838c78f5b88b73e73098ba7ac42667874a496b043560838e81f6383",
+      "stored_bytes": 3224,
+      "stored_sha256": "1429d687f838c78f5b88b73e73098ba7ac42667874a496b043560838e81f6383",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2276,
+      "original_sha256": "179ccfd825282bdb713147a163138c3aa0de57ebb16eb722ca811af314b7085f",
+      "stored_bytes": 2276,
+      "stored_sha256": "179ccfd825282bdb713147a163138c3aa0de57ebb16eb722ca811af314b7085f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-candidate.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 36461,
+      "original_sha256": "b839d7b30377f2f8cddb12c0f3b6544d047faf93b968b85fe95b61f729a15540",
+      "stored_bytes": 36461,
+      "stored_sha256": "b839d7b30377f2f8cddb12c0f3b6544d047faf93b968b85fe95b61f729a15540",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/384-energy.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3223,
+      "original_sha256": "a0c5e3a89cdb226c9967c4d779b4f0418769bf88eabe0c58d12a7a74ca569cb4",
+      "stored_bytes": 3223,
+      "stored_sha256": "a0c5e3a89cdb226c9967c4d779b4f0418769bf88eabe0c58d12a7a74ca569cb4",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.exit",
+      "retained": "endpoints/endpoints-v1/384-energy.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.json",
+      "retained": "endpoints/endpoints-v1/384-energy.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 154527,
+      "original_sha256": "da9507fca824fe549c7eeab7f9ec043e112ca94f0cfe89a7cdeb81f9e2ed7dd4",
+      "stored_bytes": 154527,
+      "stored_sha256": "da9507fca824fe549c7eeab7f9ec043e112ca94f0cfe89a7cdeb81f9e2ed7dd4",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.stderr",
+      "retained": "endpoints/endpoints-v1/384-energy.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-energy.stdout",
+      "retained": "endpoints/endpoints-v1/384-energy.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 413,
+      "original_sha256": "a1e9a27be4d3d52801142f3771b4c4615d7f6429be36e4c551fd0cafa54390c2",
+      "stored_bytes": 413,
+      "stored_sha256": "a1e9a27be4d3d52801142f3771b4c4615d7f6429be36e4c551fd0cafa54390c2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3022,
+      "original_sha256": "bc502ca9b70dc073481b16d5d36c215d536eaa45ad987ab0180fdcb510ce1860",
+      "stored_bytes": 3022,
+      "stored_sha256": "bc502ca9b70dc073481b16d5d36c215d536eaa45ad987ab0180fdcb510ce1860",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 763710,
+      "original_sha256": "8153007bdf067e434d18ee5def56264ebb0c1d05fa4fc406f5fc2a648c6ab06b",
+      "stored_bytes": 40838,
+      "stored_sha256": "a7d63af9082bc6ea68edf22c2da7260f7128b5fcb0d37795d59e0796cb901864",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 52488,
+      "original_sha256": "d9f340ec5f0cde07c10dc8c2db0e3bce95eeadf9edd62b1dc6deb82c3df719e6",
+      "stored_bytes": 52488,
+      "stored_sha256": "d9f340ec5f0cde07c10dc8c2db0e3bce95eeadf9edd62b1dc6deb82c3df719e6",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3013,
+      "original_sha256": "6aa5c35975828d665f3cb6bc7a625c426082d13cbf7e4429b625415e0942df99",
+      "stored_bytes": 3013,
+      "stored_sha256": "6aa5c35975828d665f3cb6bc7a625c426082d13cbf7e4429b625415e0942df99",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-candidate.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 768121,
+      "original_sha256": "aa69f9559a9a45ec20fa0d384c905f1f79e49111e5b143cefd21fbd6812e9ef9",
+      "stored_bytes": 41309,
+      "stored_sha256": "c9cae084c754d8680795777299921b7b8956d03a4de2226c1bc07c0ac20a90a4",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/384-forces.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 52485,
+      "original_sha256": "e14319b24e97ac8d680703409bffb449d9ec7e2e851647ef1df012b913a3789b",
+      "stored_bytes": 52485,
+      "stored_sha256": "e14319b24e97ac8d680703409bffb449d9ec7e2e851647ef1df012b913a3789b",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.exit",
+      "retained": "endpoints/endpoints-v1/384-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.json",
+      "retained": "endpoints/endpoints-v1/384-forces.json.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 292979,
+      "original_sha256": "109c5661a95e95a935f61d1c945ce849a6279fdcd1586ae6ed0530b72c84c699",
+      "stored_bytes": 25182,
+      "stored_sha256": "3d0a9ee86f92d68c170d2b5712967fd24351ee10433c3bbd71ca652fae6dd1c9",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.stderr",
+      "retained": "endpoints/endpoints-v1/384-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/384-forces.stdout",
+      "retained": "endpoints/endpoints-v1/384-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 411,
+      "original_sha256": "1e26d091dd139a6066762bfe3cbd72cf9db57209a45e48cc10c16a747ba89387",
+      "stored_bytes": 411,
+      "stored_sha256": "1e26d091dd139a6066762bfe3cbd72cf9db57209a45e48cc10c16a747ba89387",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2808,
+      "original_sha256": "09205a5ddcbf3067e8b192ef89d6f8ae7a0b5266417ff859bcac3c52a111dfc0",
+      "stored_bytes": 2808,
+      "stored_sha256": "09205a5ddcbf3067e8b192ef89d6f8ae7a0b5266417ff859bcac3c52a111dfc0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-auto.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 111512,
+      "original_sha256": "db9eb34d9d022a4cf31e76dad9ec22e7dbfaf559c9d2e8d82524e0c795d9c22c",
+      "stored_bytes": 111512,
+      "stored_sha256": "db9eb34d9d022a4cf31e76dad9ec22e7dbfaf559c9d2e8d82524e0c795d9c22c",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 15574,
+      "original_sha256": "dc01ad4aa309430561011aeafd5632847419153466ce0c5826903c2870e8fffe",
+      "stored_bytes": 15574,
+      "stored_sha256": "dc01ad4aa309430561011aeafd5632847419153466ce0c5826903c2870e8fffe",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2816,
+      "original_sha256": "de14ce8bba5339e8c1cb7987156365e5fac6151a95d4f6cce29ea84f83a54461",
+      "stored_bytes": 2816,
+      "stored_sha256": "de14ce8bba5339e8c1cb7987156365e5fac6151a95d4f6cce29ea84f83a54461",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-candidate.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 112192,
+      "original_sha256": "78c1c009b513b302ce22668f59536ec0d59fe84d517657687caa4f65e1c0f3ff",
+      "stored_bytes": 112192,
+      "stored_sha256": "78c1c009b513b302ce22668f59536ec0d59fe84d517657687caa4f65e1c0f3ff",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/768-energy.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 15585,
+      "original_sha256": "77bf1b57f8ad3e651d9d4f3c057a9e4940ba1efce943d97a5182717b4798ebcf",
+      "stored_bytes": 15585,
+      "stored_sha256": "77bf1b57f8ad3e651d9d4f3c057a9e4940ba1efce943d97a5182717b4798ebcf",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.exit",
+      "retained": "endpoints/endpoints-v1/768-energy.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.json",
+      "retained": "endpoints/endpoints-v1/768-energy.json.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 252624,
+      "original_sha256": "4cb52f4ce0fe4ba91a061dde47f34591c534e5bf0418e1b5077cc7c8c6d1ba88",
+      "stored_bytes": 8547,
+      "stored_sha256": "87368569a59f292cabf9021155a6d3ddc3e0847b5e151c62b6a7b4274aea0a7a",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.stderr",
+      "retained": "endpoints/endpoints-v1/768-energy.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-energy.stdout",
+      "retained": "endpoints/endpoints-v1/768-energy.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 408,
+      "original_sha256": "b7a3eb0dafff2521fc40ed87283c2e3768130fc1347261edc1e88b1189a550de",
+      "stored_bytes": 408,
+      "stored_sha256": "b7a3eb0dafff2521fc40ed87283c2e3768130fc1347261edc1e88b1189a550de",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5657,
+      "original_sha256": "4518122289b56d6bde77c75d4962304b64c2e1b1b086d5c46f6e5fc3c29f07f7",
+      "stored_bytes": 5657,
+      "stored_sha256": "4518122289b56d6bde77c75d4962304b64c2e1b1b086d5c46f6e5fc3c29f07f7",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1748138,
+      "original_sha256": "56c64dceb3c6741ee35c972110cfc8ad20b13213441cfb59222d203c64ba1e3d",
+      "stored_bytes": 118836,
+      "stored_sha256": "00cbf2cc25b63865d3974cfe497d7ee1946bf3a4a61b9f3f371a68760b0602ce",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 49089,
+      "original_sha256": "4381728508cdc3928fad4763b5404caa05777a5d69852bfffcc82d23d5f93bad",
+      "stored_bytes": 49089,
+      "stored_sha256": "4381728508cdc3928fad4763b5404caa05777a5d69852bfffcc82d23d5f93bad",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5695,
+      "original_sha256": "467a57166364e7cca189d4018d8b02e321807084c2cbe81590faabd04f3d5b17",
+      "stored_bytes": 5695,
+      "stored_sha256": "467a57166364e7cca189d4018d8b02e321807084c2cbe81590faabd04f3d5b17",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-candidate.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1750376,
+      "original_sha256": "7e19cfdbf58fff79c2f21501bae696d9e9c38ba5c9dd7df5aba9a25651a05d91",
+      "stored_bytes": 117030,
+      "stored_sha256": "3a83955faa8aa1e4bf466b2d76b628d01f07ac3df8c8a5b9206cde6f7ab0ea6f",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/768-forces.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 49145,
+      "original_sha256": "b96605628a1dfea6a4d1261365d22f2cf9aabb58fc8cbfc55959f46cc624b205",
+      "stored_bytes": 49145,
+      "stored_sha256": "b96605628a1dfea6a4d1261365d22f2cf9aabb58fc8cbfc55959f46cc624b205",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.exit",
+      "retained": "endpoints/endpoints-v1/768-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.json",
+      "retained": "endpoints/endpoints-v1/768-forces.json.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 471539,
+      "original_sha256": "373e50a51c9661c304f8d3c9378f2ce2e9f24335c0e670fb31eb8f27c513e892",
+      "stored_bytes": 42018,
+      "stored_sha256": "e3328e9bccf103d64896c74f13f1e29e8c12d2618ba6832a00607dae84ed9d30",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.stderr",
+      "retained": "endpoints/endpoints-v1/768-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/768-forces.stdout",
+      "retained": "endpoints/endpoints-v1/768-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 409,
+      "original_sha256": "cb5f1c19399b0fd20b8a308ce0e1cd710a7909308c5d9c60d8b2fd55354d8879",
+      "stored_bytes": 409,
+      "stored_sha256": "cb5f1c19399b0fd20b8a308ce0e1cd710a7909308c5d9c60d8b2fd55354d8879",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2293,
+      "original_sha256": "c9a52804e1a8bb466339fa7da4682ce4ef133a3128198f3b40704af8d79247ff",
+      "stored_bytes": 2293,
+      "stored_sha256": "c9a52804e1a8bb466339fa7da4682ce4ef133a3128198f3b40704af8d79247ff",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-auto.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 34817,
+      "original_sha256": "c121e0e52fa2f8253992ea4014f26a14db47bda2200f97f5a0cee716bae604bf",
+      "stored_bytes": 34817,
+      "stored_sha256": "c121e0e52fa2f8253992ea4014f26a14db47bda2200f97f5a0cee716bae604bf",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3217,
+      "original_sha256": "4e7f99ef95dad86dd0e0ea0d83b9a369dfff1a2efe8662ec3e10f7c894430492",
+      "stored_bytes": 3217,
+      "stored_sha256": "4e7f99ef95dad86dd0e0ea0d83b9a369dfff1a2efe8662ec3e10f7c894430492",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2298,
+      "original_sha256": "e92888d3aa43ac39e641e83fc1f2d8e1a1363f6eaf5bc789857d3d8109a0feab",
+      "stored_bytes": 2298,
+      "stored_sha256": "e92888d3aa43ac39e641e83fc1f2d8e1a1363f6eaf5bc789857d3d8109a0feab",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-candidate.journal.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 35047,
+      "original_sha256": "3c6e174f2a879ed3e9128e488045403513001fb554f1d219ce5fac927966184a",
+      "stored_bytes": 35047,
+      "stored_sha256": "3c6e174f2a879ed3e9128e488045403513001fb554f1d219ce5fac927966184a",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/96-energy.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3208,
+      "original_sha256": "da9c20fc435b191fd5a7f539ccb1a866a5794a26b6ace563ca70ac897a307236",
+      "stored_bytes": 3208,
+      "stored_sha256": "da9c20fc435b191fd5a7f539ccb1a866a5794a26b6ace563ca70ac897a307236",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.exit",
+      "retained": "endpoints/endpoints-v1/96-energy.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.json",
+      "retained": "endpoints/endpoints-v1/96-energy.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 91196,
+      "original_sha256": "ae2c3e94391f96de01fc21f59d11e8386a2d002a161249d500e6215c5b81e387",
+      "stored_bytes": 91196,
+      "stored_sha256": "ae2c3e94391f96de01fc21f59d11e8386a2d002a161249d500e6215c5b81e387",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.stderr",
+      "retained": "endpoints/endpoints-v1/96-energy.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-energy.stdout",
+      "retained": "endpoints/endpoints-v1/96-energy.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 435,
+      "original_sha256": "7dd72f64423da3d844d8fbc8dce59e3eaf2745c000eec0419e52b1aa218bc8b9",
+      "stored_bytes": 435,
+      "stored_sha256": "7dd72f64423da3d844d8fbc8dce59e3eaf2745c000eec0419e52b1aa218bc8b9",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2649,
+      "original_sha256": "650c88b65ea2e981edc0e9b5ef1f8bc6f664e73d502d9c7657763a29bb5ab0a3",
+      "stored_bytes": 2649,
+      "stored_sha256": "650c88b65ea2e981edc0e9b5ef1f8bc6f664e73d502d9c7657763a29bb5ab0a3",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 586241,
+      "original_sha256": "4a6f10fea92e8fbdf8759bf8653a750a7e36ce6ef14adc2b3cc96e235d529c3e",
+      "stored_bytes": 32858,
+      "stored_sha256": "240328e3b143db1f97ef7d943f0b3d8996df9605592220926c6afaa5b6746402",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 50529,
+      "original_sha256": "51a45245d8ad791247d824d64d4d920e44c2c62df1abab0879ccf1c741b495f4",
+      "stored_bytes": 50529,
+      "stored_sha256": "51a45245d8ad791247d824d64d4d920e44c2c62df1abab0879ccf1c741b495f4",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-candidate.host.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-candidate.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2640,
+      "original_sha256": "4439bdb194b9668f0d605af1a0bc4c85824eec9e95883b0dc39728de532fb74d",
+      "stored_bytes": 2640,
+      "stored_sha256": "4439bdb194b9668f0d605af1a0bc4c85824eec9e95883b0dc39728de532fb74d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-candidate.journal.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-candidate.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 588367,
+      "original_sha256": "b62b8fb083b5859531e1189512737c3f7d7ed148df2bcc163e238d28a836c59a",
+      "stored_bytes": 32690,
+      "stored_sha256": "661d2b80cc4be07fa8f007676bf934a8cd1a74631394917e4b0d73fc9f54d15a",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.diagnostic-0-candidate.jsonl",
+      "retained": "endpoints/endpoints-v1/96-forces.diagnostic-0-candidate.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 50508,
+      "original_sha256": "0a3db15ae8226553394ab3dfc23f3864f5db0c70c93274503c95f0d1ac1c8727",
+      "stored_bytes": 50508,
+      "stored_sha256": "0a3db15ae8226553394ab3dfc23f3864f5db0c70c93274503c95f0d1ac1c8727",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.exit",
+      "retained": "endpoints/endpoints-v1/96-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.json",
+      "retained": "endpoints/endpoints-v1/96-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 121075,
+      "original_sha256": "a0228bf1bf48bc1fc5c969df606600d44b268fbaffcad28f5406d741eadf4053",
+      "stored_bytes": 121075,
+      "stored_sha256": "a0228bf1bf48bc1fc5c969df606600d44b268fbaffcad28f5406d741eadf4053",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.stderr",
+      "retained": "endpoints/endpoints-v1/96-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/96-forces.stdout",
+      "retained": "endpoints/endpoints-v1/96-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 421,
+      "original_sha256": "aa08f16c1a969649fcebe2ad30f2b5efce9246097b3b0af6bde041873e72cd7c",
+      "stored_bytes": 421,
+      "stored_sha256": "aa08f16c1a969649fcebe2ad30f2b5efce9246097b3b0af6bde041873e72cd7c",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/analysis.json",
+      "retained": "endpoints/endpoints-v1/analysis.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 114717,
+      "original_sha256": "b8b1a2f5b5d5f9320e2958173af941007c6ace3cc356010d38eea36a90f946cf",
+      "stored_bytes": 114717,
+      "stored_sha256": "b8b1a2f5b5d5f9320e2958173af941007c6ace3cc356010d38eea36a90f946cf",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/analysis.stderr",
+      "retained": "endpoints/endpoints-v1/analysis.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/analysis.stdout",
+      "retained": "endpoints/endpoints-v1/analysis.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1044,
+      "original_sha256": "7ad15ef599a9440ced72d47c94cc8d84f4fba2aef6d7e01ae4f1c1767ac533cf",
+      "stored_bytes": 1044,
+      "stored_sha256": "7ad15ef599a9440ced72d47c94cc8d84f4fba2aef6d7e01ae4f1c1767ac533cf",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/process-scan.json",
+      "retained": "endpoints/endpoints-v1/process-scan.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 697,
+      "original_sha256": "88fba4a0b5ba76289875dd3ea9fbeba0b4b880f444546b7244eee8f83b7c3ade",
+      "stored_bytes": 697,
+      "stored_sha256": "88fba4a0b5ba76289875dd3ea9fbeba0b4b880f444546b7244eee8f83b7c3ade",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/endpoints-v1/slurm-job.txt",
+      "retained": "endpoints/endpoints-v1/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "11927c7f2d4df7a5d1490da796008afc0b6d0c0ac228491db881764a1d9d48e0",
+      "stored_bytes": 5,
+      "stored_sha256": "11927c7f2d4df7a5d1490da796008afc0b6d0c0ac228491db881764a1d9d48e0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/native-validation-v1/ctest.exit",
+      "retained": "endpoints/native-validation-v1/ctest.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/native-validation-v1/ctest.txt",
+      "retained": "endpoints/native-validation-v1/ctest.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5938,
+      "original_sha256": "196884243e3c1e1be834e99fa6ca4e7048ccb38f62e79bc5a142a52442122071",
+      "stored_bytes": 5938,
+      "stored_sha256": "196884243e3c1e1be834e99fa6ca4e7048ccb38f62e79bc5a142a52442122071",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/native-validation-v1/slurm-job.txt",
+      "retained": "endpoints/native-validation-v1/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "87b0945ee634c94ce89778e67d96655016c6b5f1a61c6816591d9e597ac42b3c",
+      "stored_bytes": 5,
+      "stored_sha256": "87b0945ee634c94ce89778e67d96655016c6b5f1a61c6816591d9e597ac42b3c",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/campaign/build.json",
+      "retained": "identity/campaign-build.json",
+      "reason": "Frozen campaign binary, source, generated inventory and exact build configuration.",
+      "original_bytes": 5699,
+      "original_sha256": "998504e4911aa6aed215f854251ede652f524c7808e6d9aec34019d078a7a80d",
+      "stored_bytes": 5699,
+      "stored_sha256": "998504e4911aa6aed215f854251ede652f524c7808e6d9aec34019d078a7a80d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/campaign/source.patch",
+      "retained": "identity/campaign-source.patch.gz",
+      "reason": "Frozen campaign binary, source, generated inventory and exact build configuration.",
+      "original_bytes": 197293,
+      "original_sha256": "76aa7691d1db3a13ffcb1a18fd75dc8ec6c09f5747ef5cc916c1f93588bcf2a6",
+      "stored_bytes": 72229,
+      "stored_sha256": "5545a44149616a3e47a38d47b12880c7e3f0825c21c159ae7d726992af3c8296",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/freeze_campaign.py",
+      "retained": "reproduction/freeze_campaign.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 2875,
+      "original_sha256": "f8e235aa30498c23ad1a5567ddf96665b779bfd69b37ec32fa221c177f5596a2",
+      "stored_bytes": 2875,
+      "stored_sha256": "f8e235aa30498c23ad1a5567ddf96665b779bfd69b37ec32fa221c177f5596a2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-native-tests.sh",
+      "retained": "reproduction/run-native-tests.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 502,
+      "original_sha256": "2e5394146ed28ba888211985422ef2501a7370aac9fbb31fb85c7fad51e9cda1",
+      "stored_bytes": 502,
+      "stored_sha256": "2e5394146ed28ba888211985422ef2501a7370aac9fbb31fb85c7fad51e9cda1",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-endpoints.sh",
+      "retained": "reproduction/run-endpoints.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 3068,
+      "original_sha256": "e6fb72e93e05448798d1ee0287de4f8072a850649987f566e4e40a4b81175e17",
+      "stored_bytes": 3068,
+      "stored_sha256": "e6fb72e93e05448798d1ee0287de4f8072a850649987f566e4e40a4b81175e17",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-baseline-equivalence.sh",
+      "retained": "reproduction/run-baseline-equivalence.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 2127,
+      "original_sha256": "d1cea8ee4876efa291cac11b5eaa4779ac3a48059e25ea9de3ce6c6f42f60fa3",
+      "stored_bytes": 2127,
+      "stored_sha256": "d1cea8ee4876efa291cac11b5eaa4779ac3a48059e25ea9de3ce6c6f42f60fa3",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-candidate-holdouts.sh",
+      "retained": "reproduction/run-candidate-holdouts.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 1515,
+      "original_sha256": "7f02ab1f0c4a9dce57529260523ca06becff4e3c6b1e53b335f9eddcbb7015a3",
+      "stored_bytes": 1515,
+      "stored_sha256": "7f02ab1f0c4a9dce57529260523ca06becff4e3c6b1e53b335f9eddcbb7015a3",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/analyze_endpoints.py",
+      "retained": "reproduction/analyze_endpoints.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 8973,
+      "original_sha256": "a2e3b6457e42c6080bf9fb2e339d47cfad53a735cfc3a9809a291e679b374353",
+      "stored_bytes": 8973,
+      "stored_sha256": "a2e3b6457e42c6080bf9fb2e339d47cfad53a735cfc3a9809a291e679b374353",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/analyze_baseline.py",
+      "retained": "reproduction/analyze_baseline.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 3444,
+      "original_sha256": "d0bcd7df023b26961826d0c18028fbd8122272680f59bc7ad96ab14561e81622",
+      "stored_bytes": 3444,
+      "stored_sha256": "d0bcd7df023b26961826d0c18028fbd8122272680f59bc7ad96ab14561e81622",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/retain_endpoints.py",
+      "retained": "reproduction/retain_endpoints.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 5229,
+      "original_sha256": "112daeffc761ded4c57ce2ac2ac34a88a28f79c7aaa2b9454f912cd1bccbf41d",
+      "stored_bytes": 5229,
+      "stored_sha256": "112daeffc761ded4c57ce2ac2ac34a88a28f79c7aaa2b9454f912cd1bccbf41d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/campaign/CMakeCache.txt",
+      "retained": "identity/campaign-CMakeCache.txt.gz",
+      "reason": "Frozen campaign binary, source, generated inventory and exact build configuration.",
+      "original_bytes": 37945,
+      "original_sha256": "ce4fa1f62919f1b90348f948f87d49bf814dff0ec7a38793baa5ddda2f100cf7",
+      "stored_bytes": 5733,
+      "stored_sha256": "1240c1d4edce3ab3ef752942dde0d3f1e0fe22a6936fd492efe317d47091a590",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/ci-python-failed-v1.log",
+      "retained": "qualification/ci-python-failed-v1.txt.gz",
+      "reason": "Original CI failure and repaired host regression retained: versioned CUDA ownership snapshot was stale after the native source edit.",
+      "original_bytes": 1421275,
+      "original_sha256": "bf07a005077d19cb403d8076dfacddeda2abab7713baaf1d752f1415b86aaa0d",
+      "stored_bytes": 129573,
+      "stored_sha256": "77ef22d4abf47d758a2481219073fd3a3af2623a9553783c1af1af7b3e3946a7",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/ownership-regression-v2.txt",
+      "retained": "qualification/ownership-regression-v2.txt",
+      "reason": "Original CI failure and repaired host regression retained: versioned CUDA ownership snapshot was stale after the native source edit.",
+      "original_bytes": 99,
+      "original_sha256": "57fe3a6a91c08d878ccf6c2716247d65b009dffaccfed218add870020c500d63",
+      "stored_bytes": 99,
+      "stored_sha256": "57fe3a6a91c08d878ccf6c2716247d65b009dffaccfed218add870020c500d63",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2987,
+      "original_sha256": "a51001b14787df3445712bf4280425c053226e11269a7c0a75632116eb03ae89",
+      "stored_bytes": 2987,
+      "stored_sha256": "a51001b14787df3445712bf4280425c053226e11269a7c0a75632116eb03ae89",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 764572,
+      "original_sha256": "d24022c3fb5906b1e7682deecb89ca2c4349aa98fdf4719201a7c92a7fc7d1d6",
+      "stored_bytes": 40887,
+      "stored_sha256": "4bdbfda4d382af0d53a43b3a5991c1c23db2f9d4de4fc61229dc5dafba7b0b2e",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 52446,
+      "original_sha256": "ad767da9dfe29c3f7a72cc77db934bcec1221bcd047225c1f4130f8d4fc8c5db",
+      "stored_bytes": 52446,
+      "stored_sha256": "ad767da9dfe29c3f7a72cc77db934bcec1221bcd047225c1f4130f8d4fc8c5db",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.exit",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.json",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 90285,
+      "original_sha256": "e68c877fd7a73f58c058540524df62c6f33c61a605fc2d31ecadcf797834dfc2",
+      "stored_bytes": 90285,
+      "stored_sha256": "e68c877fd7a73f58c058540524df62c6f33c61a605fc2d31ecadcf797834dfc2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.stderr",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/384-forces.stdout",
+      "retained": "endpoints/baseline-equivalence-v1/384-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 71,
+      "original_sha256": "71fdfd52edf8a1bbd8eedfc30fb77e8bacd9fd76afd84005efefeb178bbcf84b",
+      "stored_bytes": 71,
+      "stored_sha256": "71fdfd52edf8a1bbd8eedfc30fb77e8bacd9fd76afd84005efefeb178bbcf84b",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5647,
+      "original_sha256": "722ceda89d59eb2e1361d6540c8c4cf65e0c4759f4a53e394c47f7372f71738a",
+      "stored_bytes": 5647,
+      "stored_sha256": "722ceda89d59eb2e1361d6540c8c4cf65e0c4759f4a53e394c47f7372f71738a",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1746297,
+      "original_sha256": "2d00d791589de3e9f3a493a9248917ad3924f8f9f7b3466d8bd9627e4e5d28db",
+      "stored_bytes": 118465,
+      "stored_sha256": "a6a4500fab1a7b782ac9216424511fcadbdff17b7717f1c72bf74c5fe09134e6",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 49107,
+      "original_sha256": "2d339b4ea7832c9bac9065882ae860ca4b95f336bdc13487dee1fa792751ab74",
+      "stored_bytes": 49107,
+      "stored_sha256": "2d339b4ea7832c9bac9065882ae860ca4b95f336bdc13487dee1fa792751ab74",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.exit",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.json",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 136387,
+      "original_sha256": "6aa3f3b3310ab9ffb364aa1e33131bbac9b3f8dc4145d6b8f12985acf3d961d0",
+      "stored_bytes": 136387,
+      "stored_sha256": "6aa3f3b3310ab9ffb364aa1e33131bbac9b3f8dc4145d6b8f12985acf3d961d0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.stderr",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/768-forces.stdout",
+      "retained": "endpoints/baseline-equivalence-v1/768-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 70,
+      "original_sha256": "b0732a7fe9a2a2a1bc679c4860920c94ef3951044197f3a84e57f2b0b6b3a1cc",
+      "stored_bytes": 70,
+      "stored_sha256": "b0732a7fe9a2a2a1bc679c4860920c94ef3951044197f3a84e57f2b0b6b3a1cc",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/analysis.json",
+      "retained": "endpoints/baseline-equivalence-v1/analysis.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3677,
+      "original_sha256": "89ed0f979eb0271e2165bb9ef36051c9ad07af2e58da0c957cb24fedd1026343",
+      "stored_bytes": 3677,
+      "stored_sha256": "89ed0f979eb0271e2165bb9ef36051c9ad07af2e58da0c957cb24fedd1026343",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/analysis.stderr",
+      "retained": "endpoints/baseline-equivalence-v1/analysis.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/analysis.stdout",
+      "retained": "endpoints/baseline-equivalence-v1/analysis.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 204,
+      "original_sha256": "eb5400fa8eeb66beed1376d8c5e567eaa9c47b9e634e0313fbfb1a5d5d881295",
+      "stored_bytes": 204,
+      "stored_sha256": "eb5400fa8eeb66beed1376d8c5e567eaa9c47b9e634e0313fbfb1a5d5d881295",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/slurm-job.txt",
+      "retained": "endpoints/baseline-equivalence-v1/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "bf600159c2f308d1a2201004533c16855318a78ef0917e1022dc04a5665a9be2",
+      "stored_bytes": 5,
+      "stored_sha256": "bf600159c2f308d1a2201004533c16855318a78ef0917e1022dc04a5665a9be2",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/baseline-equivalence-v1/source.patch",
+      "retained": "endpoints/baseline-equivalence-v1/source.patch",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/auxiliary.exit",
+      "retained": "endpoints/candidate-holdouts-v1/auxiliary.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/auxiliary.txt",
+      "retained": "endpoints/candidate-holdouts-v1/auxiliary.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 114,
+      "original_sha256": "00a7d68f30c57941ac6c2801942623d9074e89ab663a97959a555873ac0bcb5f",
+      "stored_bytes": 114,
+      "stored_sha256": "00a7d68f30c57941ac6c2801942623d9074e89ab663a97959a555873ac0bcb5f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/auxiliary.xml",
+      "retained": "endpoints/candidate-holdouts-v1/auxiliary.xml.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 957,
+      "original_sha256": "d6abc2ec143e2ffd720b572e824f9cdff46ed7a20aa4e751b1347a72067bfdba",
+      "stored_bytes": 365,
+      "stored_sha256": "1846bf8b38bf5f767ac975f691a7cae7c22ba9b31724e97ca57fb698e7098629",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/replay.exit",
+      "retained": "endpoints/candidate-holdouts-v1/replay.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/replay.txt",
+      "retained": "endpoints/candidate-holdouts-v1/replay.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 115,
+      "original_sha256": "f0ef97d5f0ac16859cbe3a67542f68934babef5c2045b890a477b4823170c304",
+      "stored_bytes": 115,
+      "stored_sha256": "f0ef97d5f0ac16859cbe3a67542f68934babef5c2045b890a477b4823170c304",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/replay.xml",
+      "retained": "endpoints/candidate-holdouts-v1/replay.xml.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2393,
+      "original_sha256": "c6d41b7cff11af8f249e7f0faa26078c03b9866bfcb969010ddccf9d3f741c26",
+      "stored_bytes": 421,
+      "stored_sha256": "c157a85aee1eb98996d27ad3498336c8284573457aef59078e94f6d9cd68a821",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/shell.exit",
+      "retained": "endpoints/candidate-holdouts-v1/shell.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/shell.txt",
+      "retained": "endpoints/candidate-holdouts-v1/shell.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 113,
+      "original_sha256": "4e41435b1321ef7edb1adcf55a139b254cc1d9220c8ba38cca33b6d992699ec0",
+      "stored_bytes": 113,
+      "stored_sha256": "4e41435b1321ef7edb1adcf55a139b254cc1d9220c8ba38cca33b6d992699ec0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/shell.xml",
+      "retained": "endpoints/candidate-holdouts-v1/shell.xml.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 961,
+      "original_sha256": "10d08b961ce003cfc7387ef8898feb4024689eb4d017cdd2517a9a44c66e8f25",
+      "stored_bytes": 319,
+      "stored_sha256": "eaaa1d18bc87d964dfb12f6dd8f7c54e04ff5ff085caf8fba10cdef170012e07",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/candidate-holdouts-v1/slurm-job.txt",
+      "retained": "endpoints/candidate-holdouts-v1/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "6c180d788da6a48b6e8f2c4f905129d07f0b81bae51a164578e7aa3d3fe51662",
+      "stored_bytes": 5,
+      "stored_sha256": "6c180d788da6a48b6e8f2c4f905129d07f0b81bae51a164578e7aa3d3fe51662",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/auxiliary-holdouts-v2/auxiliary.exit",
+      "retained": "endpoints/auxiliary-holdouts-v2/auxiliary.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/auxiliary-holdouts-v2/auxiliary.txt",
+      "retained": "endpoints/auxiliary-holdouts-v2/auxiliary.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 113,
+      "original_sha256": "500d73d1aac95e88259e666b7d27b86f37811a1eda170404cad477f2b27c685f",
+      "stored_bytes": 113,
+      "stored_sha256": "500d73d1aac95e88259e666b7d27b86f37811a1eda170404cad477f2b27c685f",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/auxiliary-holdouts-v2/auxiliary.xml",
+      "retained": "endpoints/auxiliary-holdouts-v2/auxiliary.xml.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 515,
+      "original_sha256": "db8bce3b30b97407b5b3d131e0fa5fb1e72f1c4f9a2d0f8ba6224b6885599dd6",
+      "stored_bytes": 271,
+      "stored_sha256": "a8bdc3b6f142c26b83025bf08d2911bf0ae4212d9ba85ac689cbadd881242ef5",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/auxiliary-holdouts-v2/slurm-job.txt",
+      "retained": "endpoints/auxiliary-holdouts-v2/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "12773fea9e99b880a17efdc6a46b4838f2353a64af6b6a63078b576da3ce007d",
+      "stored_bytes": 5,
+      "stored_sha256": "12773fea9e99b880a17efdc6a46b4838f2353a64af6b6a63078b576da3ce007d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-auxiliary-holdouts.sh",
+      "retained": "reproduction/run-auxiliary-holdouts.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 1082,
+      "original_sha256": "6948a85dee194cb95fbca67634bc4a933166a986fb4a165857fbae1cab008a87",
+      "stored_bytes": 1082,
+      "stored_sha256": "6948a85dee194cb95fbca67634bc4a933166a986fb4a165857fbae1cab008a87",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/final-validation-v1/192-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 4874,
+      "original_sha256": "28e6e20c9b733a9198fa19c1ab95203b0cf75c9b86fbcb8f3075cee20f84a574",
+      "stored_bytes": 4874,
+      "stored_sha256": "28e6e20c9b733a9198fa19c1ab95203b0cf75c9b86fbcb8f3075cee20f84a574",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/final-validation-v1/192-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1258425,
+      "original_sha256": "6b32a471480ffef4946f46afa5faf777b5cef911baaa7dec3ff8e7ce995821e0",
+      "stored_bytes": 69557,
+      "stored_sha256": "36243215c167023f5bbb8153241ab02b52415a1b5bd7e103e90aa72a8c06eb60",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/final-validation-v1/192-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 103503,
+      "original_sha256": "dcc9b0b47a302877c18eadbd6d5567b041575321df10848c7a2a359226f41f5a",
+      "stored_bytes": 103503,
+      "stored_sha256": "dcc9b0b47a302877c18eadbd6d5567b041575321df10848c7a2a359226f41f5a",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.exit",
+      "retained": "endpoints/final-validation-v1/192-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.json",
+      "retained": "endpoints/final-validation-v1/192-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 63238,
+      "original_sha256": "4568a4e5786840761e171cdc1024494707ba878677b4400dd05bed5f7507fbe4",
+      "stored_bytes": 63238,
+      "stored_sha256": "4568a4e5786840761e171cdc1024494707ba878677b4400dd05bed5f7507fbe4",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.stderr",
+      "retained": "endpoints/final-validation-v1/192-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/192-forces.stdout",
+      "retained": "endpoints/final-validation-v1/192-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 73,
+      "original_sha256": "209df636cf271e8839f8b5c466b22583e394a37e5c2e7af31aa8a042c6cdccf6",
+      "stored_bytes": 73,
+      "stored_sha256": "209df636cf271e8839f8b5c466b22583e394a37e5c2e7af31aa8a042c6cdccf6",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/final-validation-v1/384-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 3006,
+      "original_sha256": "e821c34af5abf9832a03d40cfb71cb1b75d3977ff499036a5f005c1f31924389",
+      "stored_bytes": 3006,
+      "stored_sha256": "e821c34af5abf9832a03d40cfb71cb1b75d3977ff499036a5f005c1f31924389",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/final-validation-v1/384-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 765009,
+      "original_sha256": "e06d26f3fce802856d8cd5c64c0713a24c93951c09dd4250c3a5c36b397ac488",
+      "stored_bytes": 40963,
+      "stored_sha256": "25c41c232464ba0f1716c1ceba065745ca552d62936bbfafcf6d9290faa179c6",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/final-validation-v1/384-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 52469,
+      "original_sha256": "4ff60d2aa30ce55523b1899dbd66172d34aa9c767f7ca07fe8d52eb338637497",
+      "stored_bytes": 52469,
+      "stored_sha256": "4ff60d2aa30ce55523b1899dbd66172d34aa9c767f7ca07fe8d52eb338637497",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.exit",
+      "retained": "endpoints/final-validation-v1/384-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.json",
+      "retained": "endpoints/final-validation-v1/384-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 90309,
+      "original_sha256": "afbe6e0222495652c134b80c997349847e3b0d188c684d6dd9447b65685397b6",
+      "stored_bytes": 90309,
+      "stored_sha256": "afbe6e0222495652c134b80c997349847e3b0d188c684d6dd9447b65685397b6",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.stderr",
+      "retained": "endpoints/final-validation-v1/384-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/384-forces.stdout",
+      "retained": "endpoints/final-validation-v1/384-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 71,
+      "original_sha256": "043ef32c974fb28ab8ba9b28c063d680738fa7cd1e99e7c7f83ed4c26c1b2a62",
+      "stored_bytes": 71,
+      "stored_sha256": "043ef32c974fb28ab8ba9b28c063d680738fa7cd1e99e7c7f83ed4c26c1b2a62",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/final-validation-v1/768-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5693,
+      "original_sha256": "774dba967891cdcbfbcc3fe1230e590df3d502c21aaaaa25d5e00c98e6ec36c0",
+      "stored_bytes": 5693,
+      "stored_sha256": "774dba967891cdcbfbcc3fe1230e590df3d502c21aaaaa25d5e00c98e6ec36c0",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/final-validation-v1/768-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 1747544,
+      "original_sha256": "b467d8aa43135d87fc8f26539cc016b90dd338fa62f4433f03e858376e7bf219",
+      "stored_bytes": 116865,
+      "stored_sha256": "162365f5ddc747be5dd9cc1e2025f8d4ae0a7694dc95aab93560d784d5c02e62",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/final-validation-v1/768-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 49155,
+      "original_sha256": "1786de80c008a2b50ba5e78b619a082d8987492422e25f6ab1371fcd913d826d",
+      "stored_bytes": 49155,
+      "stored_sha256": "1786de80c008a2b50ba5e78b619a082d8987492422e25f6ab1371fcd913d826d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.exit",
+      "retained": "endpoints/final-validation-v1/768-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.json",
+      "retained": "endpoints/final-validation-v1/768-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 136451,
+      "original_sha256": "d9546283541f95d833dd102851977cfdc846f3743841477f45d40273b0058f2d",
+      "stored_bytes": 136451,
+      "stored_sha256": "d9546283541f95d833dd102851977cfdc846f3743841477f45d40273b0058f2d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.stderr",
+      "retained": "endpoints/final-validation-v1/768-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/768-forces.stdout",
+      "retained": "endpoints/final-validation-v1/768-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 70,
+      "original_sha256": "e62f4ff17d6a66a8b6b2bfe2c3dd067d4b0f3a832c95868883c7472593bbfe27",
+      "stored_bytes": 70,
+      "stored_sha256": "e62f4ff17d6a66a8b6b2bfe2c3dd067d4b0f3a832c95868883c7472593bbfe27",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.diagnostic-0-auto.host.jsonl",
+      "retained": "endpoints/final-validation-v1/96-forces.diagnostic-0-auto.host.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2655,
+      "original_sha256": "82410c03a5b7a6c68bf0f7acfcb043e250ebf973e56e05e4aaa5141a8e169841",
+      "stored_bytes": 2655,
+      "stored_sha256": "82410c03a5b7a6c68bf0f7acfcb043e250ebf973e56e05e4aaa5141a8e169841",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.diagnostic-0-auto.journal.jsonl",
+      "retained": "endpoints/final-validation-v1/96-forces.diagnostic-0-auto.journal.jsonl.gz",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 585445,
+      "original_sha256": "f00236c4d5c6ba476c0a1deda5d2bff1f2bcf180ddd05f8726e8a9b358aa7f05",
+      "stored_bytes": 32691,
+      "stored_sha256": "e65510f2cc9ecbaa1742669bea6ebf124d671708c2f700d090273f40dfe0b4be",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.diagnostic-0-auto.jsonl",
+      "retained": "endpoints/final-validation-v1/96-forces.diagnostic-0-auto.jsonl",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 50491,
+      "original_sha256": "2aa0e68d084b485de836d5f9cea787f8f4e8db1e04da1bc48d3c53453e655820",
+      "stored_bytes": 50491,
+      "stored_sha256": "2aa0e68d084b485de836d5f9cea787f8f4e8db1e04da1bc48d3c53453e655820",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.exit",
+      "retained": "endpoints/final-validation-v1/96-forces.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.json",
+      "retained": "endpoints/final-validation-v1/96-forces.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 36686,
+      "original_sha256": "c8dff79143cd56aa8349790e20f0c59b28fa9a4fe3887f6916072d6575b82399",
+      "stored_bytes": 36686,
+      "stored_sha256": "c8dff79143cd56aa8349790e20f0c59b28fa9a4fe3887f6916072d6575b82399",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.stderr",
+      "retained": "endpoints/final-validation-v1/96-forces.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/96-forces.stdout",
+      "retained": "endpoints/final-validation-v1/96-forces.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 72,
+      "original_sha256": "131e99ed7349109f63ebdbb6d5e0c8604faa5a7314f586c299f7dec9f4f5da10",
+      "stored_bytes": 72,
+      "stored_sha256": "131e99ed7349109f63ebdbb6d5e0c8604faa5a7314f586c299f7dec9f4f5da10",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/analysis.json",
+      "retained": "endpoints/final-validation-v1/analysis.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 21915,
+      "original_sha256": "23c241703a0c66049637688fce8c80d242afc9378c2889ac4ed707921c23c667",
+      "stored_bytes": 21915,
+      "stored_sha256": "23c241703a0c66049637688fce8c80d242afc9378c2889ac4ed707921c23c667",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/analysis.stderr",
+      "retained": "endpoints/final-validation-v1/analysis.stderr",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stored_bytes": 0,
+      "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/analysis.stdout",
+      "retained": "endpoints/final-validation-v1/analysis.stdout",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 437,
+      "original_sha256": "5f4441b136674908215f08863876f5b1f1a405f908cf91ba17a4bd17d22db3d9",
+      "stored_bytes": 437,
+      "stored_sha256": "5f4441b136674908215f08863876f5b1f1a405f908cf91ba17a4bd17d22db3d9",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/ctest.exit",
+      "retained": "endpoints/final-validation-v1/ctest.exit",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 2,
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_bytes": 2,
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/ctest.txt",
+      "retained": "endpoints/final-validation-v1/ctest.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5938,
+      "original_sha256": "f6f072a3a277d84787f18ef5ad61c1c091c1a48e965469977587c8bf7dd02d6d",
+      "stored_bytes": 5938,
+      "stored_sha256": "f6f072a3a277d84787f18ef5ad61c1c091c1a48e965469977587c8bf7dd02d6d",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/process-scan.json",
+      "retained": "endpoints/final-validation-v1/process-scan.json",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 841,
+      "original_sha256": "2deeeba5827400767651b54f6d45abeaa67dc7647ce08af4de7848126d64063e",
+      "stored_bytes": 841,
+      "stored_sha256": "2deeeba5827400767651b54f6d45abeaa67dc7647ce08af4de7848126d64063e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-validation-v1/slurm-job.txt",
+      "retained": "endpoints/final-validation-v1/slurm-job.txt",
+      "reason": "Complete campaign record; clean endpoints and intrusive diagnostics remain separate, all failures retained.",
+      "original_bytes": 5,
+      "original_sha256": "877d4b49006e48820473d5b5dedf22ec5f6402c0411fc378cca571c4c56c1c68",
+      "stored_bytes": 5,
+      "stored_sha256": "877d4b49006e48820473d5b5dedf22ec5f6402c0411fc378cca571c4c56c1c68",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-production/build.json",
+      "retained": "identity/final-production-build.json",
+      "reason": "Final production binary and source selection with byte-identical generated mathematics.",
+      "original_bytes": 5164,
+      "original_sha256": "7cdbed0c50e9ba50015fbdb5fe690667ef3627760f78dba2e4822630d41b99b9",
+      "stored_bytes": 5164,
+      "stored_sha256": "7cdbed0c50e9ba50015fbdb5fe690667ef3627760f78dba2e4822630d41b99b9",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-production/source.patch",
+      "retained": "identity/final-production-source.patch.gz",
+      "reason": "Final production binary and source selection with byte-identical generated mathematics.",
+      "original_bytes": 195763,
+      "original_sha256": "6d3bcbc8d8bf985619f986f876194d9637a48684fc21ead3b6e85e24693fd5da",
+      "stored_bytes": 72138,
+      "stored_sha256": "ce65002193fc9ad946919fb1e70f8968b0ca3a3525b1e4d2b764dc1d1d099845",
+      "encoding": "gzip"
+    },
+    {
+      "source": ".artifacts/issue418/final-policy-host-tests.txt",
+      "retained": "qualification/final-policy-host-tests.txt",
+      "reason": "Original CI failure and repaired host regression retained: versioned CUDA ownership snapshot was stale after the native source edit.",
+      "original_bytes": 99,
+      "original_sha256": "bdea51565d9356e22eb3ca38d329eef64b8b15db85f746a6ab6594456f14a415",
+      "stored_bytes": 99,
+      "stored_sha256": "bdea51565d9356e22eb3ca38d329eef64b8b15db85f746a6ab6594456f14a415",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/final-qualification-protocol.json",
+      "retained": "identity/final-qualification-protocol.json",
+      "reason": "Predeclared final-default equivalence checks; smaller automatic domains retain their old behavior.",
+      "original_bytes": 1216,
+      "original_sha256": "29cfa8c04c032b1334f005e373bbfc83bcaf863ce6007d2fa026412bbdac5338",
+      "stored_bytes": 1216,
+      "stored_sha256": "29cfa8c04c032b1334f005e373bbfc83bcaf863ce6007d2fa026412bbdac5338",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/freeze_final.py",
+      "retained": "reproduction/freeze_final.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 2479,
+      "original_sha256": "a65a7b938868abc405b7bbc56ebaecc7963f7061f639cee61b793b6e8e21547e",
+      "stored_bytes": 2479,
+      "stored_sha256": "a65a7b938868abc405b7bbc56ebaecc7963f7061f639cee61b793b6e8e21547e",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/run-final-validation.sh",
+      "retained": "reproduction/run-final-validation.sh.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 2270,
+      "original_sha256": "489e353bc2f7e7afae4c8ac12b4952d07da1f8eb3d79519d915cc13853719ff9",
+      "stored_bytes": 2270,
+      "stored_sha256": "489e353bc2f7e7afae4c8ac12b4952d07da1f8eb3d79519d915cc13853719ff9",
+      "encoding": "identity"
+    },
+    {
+      "source": ".artifacts/issue418/analyze_final.py",
+      "retained": "reproduction/analyze_final.py.txt",
+      "reason": "Actual reproduction, qualification, analysis or byte-preserving retention driver.",
+      "original_bytes": 4471,
+      "original_sha256": "548522cfbc8048fefcbcb45169bdeb242f422e68bc3b2d4e822dc05ffb856df0",
+      "stored_bytes": 4471,
+      "stored_sha256": "548522cfbc8048fefcbcb45169bdeb242f422e68bc3b2d4e822dc05ffb856df0",
+      "encoding": "identity"
+    }
+  ]
+}

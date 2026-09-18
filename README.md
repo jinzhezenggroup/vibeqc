@@ -129,7 +129,15 @@ cmake --build build -j10
 
 The source-tree Python interface finds `build/libvibeqc.so` automatically. An
 installed wheel loads its bundled library first; `VIBEQC_LIBRARY` remains the
-explicit override for a different development or benchmark build.
+explicit override for a different development or benchmark build. Linux CUDA
+wheels keep NVIDIA user-space provider DSOs outside `libvibeqc.so`, but declare
+the reviewed CUDA 12 `nvidia-*` packages as runtime dependencies because NVCC
+registration runs when the CUDA-bearing native library is loaded. The historical
+`vibeqc[cuda12]` extra remains an empty compatibility alias. The NVIDIA kernel
+driver remains system-owned. Runtime JIT/autotuning still requires the documented
+NVCC/PTXAS developer toolchain. The provider boundary
+and fallback rationale are recorded in the
+[CUDA wheel decision note](.agents/notes/implemented/architecture/2026-09-18-provider-free-cuda-wheels.md).
 
 ## Python API
 

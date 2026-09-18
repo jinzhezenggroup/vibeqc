@@ -136,3 +136,40 @@ source identity, molecule hash and endpoint-input hashes without importing
 PySCF. Each audited numerator term is also checked against explicit
 source-index loops and the executed NumPy seed on unequal occupied/virtual
 dimensions, so a wrong subscript cannot silently change the inventory hash.
+
+## Bounded CUDA tiles (slice B)
+
+`tools/vibeqc_cc/triples_tiles.py` decomposes the triangular `a>=b>=c`
+virtual sum into a-chunked tiles (`TriplesTileEnumerator`); occupied space
+is never chunked. `tile_triples_energy` / `tile_triples_energy_masked` are
+the per-tile CPU reference and the masked-domain oracle;
+`build_tile_triples_program` lowers one tile to the same unshared
+tiny-TensorIR inventory as slice A. It uses distinct virtual spaces for
+prefix-bounded label axes (`a,b,c`) and the full W1 summation axis `f`,
+so partial-tile resident feeds have exact TensorSpec shapes without truncating
+the canonical contraction.
+
+`tools/vibeqc_cc/triples_cuda.py` `CudaTriplesTiles` evaluates each tile on
+CUDA through the #420 resident TensorIR owner: one exact-shape plan and one
+`PreparedResident` per tile (compile-cached to disk). Label axes are sliced
+to `a_end`, while `ovvv` axis 2 and `t2` axis 3 retain full `nvir` for
+the W1 sum; a full `nocc³ × nvir³` T3 or denominator tensor is never
+allocated. The shared finite/canonical/denominator
+guards run before any GPU work. CPU oracle comparison is opt-in
+(`oracle=True`); the default path performs no CPU reference work.
+`CudaTriplesResult` records per-tile scalars, per-tile plan peak bytes,
+artifact keys, and the probed `runtime_device`.
+
+GPU validation (numerical gates ≤1e-9 total / ≤1e-10 per tile, two-run
+bitwise determinism, two-budget peak-memory evidence) runs on CUDA via
+`tools/validate_cc_triples_tiles.py`. Retained manifests bind the run to the
+exact git head and SHA-256 identities of the triples execution/validation
+sources. The `--molecules` option selects a declared endpoint subset; every
+requested shape/budget must pass, and an infeasible plan makes qualification
+exit unsuccessfully while retaining its diagnostic record. Rationale for the
+per-tile resident design and revisit conditions:
+[`.agents/notes/implemented/performance/2026-09-18-bounded-cuda-triples-tiles.md`](../.agents/notes/implemented/performance/2026-09-18-bounded-cuda-triples-tiles.md).
+
+```bash
+python -m pytest tests/python/test_cc_triples_tiles.py -q
+```

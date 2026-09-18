@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 
+from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.cuda_resources import KernelResources as KernelResources
 
 from .benchmark import emit_shell_class_benchmark_cuda
@@ -557,24 +558,26 @@ def _runtime_environment(nvcc: Path) -> dict[str, str]:
 def benchmark_command(
     executable: Path,
     *,
-    srun: str = "srun",
-    partition: str = "main",
-    gres: str = "gpu:5090:1",
-    slurm_time: str = "00:10:00",
+    local: bool | None = None,
+    srun: str | None = None,
+    partition: str | None = None,
+    gres: str | None = None,
+    nodes: int | None = None,
+    ntasks: int | None = None,
+    slurm_time: str | None = None,
 ) -> list[str]:
-    """Build the finite Slurm command used for one GPU benchmark process."""
+    """Build the shared local/Slurm command for one GPU benchmark process."""
 
-    if not slurm_time or not slurm_time.strip():
-        raise ValueError("Slurm benchmark time must be non-empty")
-    return [
-        srun,
-        f"--partition={partition}",
-        f"--gres={gres}",
-        "--nodes=1",
-        "--ntasks=1",
-        f"--time={slurm_time}",
-        str(executable),
-    ]
+    profile = resolve_cuda_execution_profile(
+        local=local,
+        srun=srun,
+        partition=partition,
+        gres=gres,
+        nodes=nodes,
+        ntasks=ntasks,
+        slurm_time=slurm_time,
+    )
+    return profile.wrap([str(executable)])
 
 
 def _artifact_size(path: Path) -> int | None:
@@ -643,6 +646,16 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             consumer=selected_consumer,
         )
         selection_mode = "explicit"
+
+    execution_profile = resolve_cuda_execution_profile(
+        local=getattr(arguments, "local", None),
+        srun=getattr(arguments, "srun", None),
+        partition=getattr(arguments, "partition", None),
+        gres=getattr(arguments, "gres", None),
+        nodes=getattr(arguments, "nodes", None),
+        ntasks=getattr(arguments, "ntasks", None),
+        slurm_time=getattr(arguments, "slurm_time", None),
+    )
 
     work_directory_owner = None
     if arguments.work_directory is None:
@@ -720,13 +733,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 raise RuntimeError(link.stdout + link.stderr)
             linked_binary_bytes = _artifact_size(executable)
             run = subprocess.run(
-                benchmark_command(
-                    executable,
-                    srun=arguments.srun,
-                    partition=arguments.partition,
-                    gres=arguments.gres,
-                    slurm_time=arguments.slurm_time,
-                ),
+                execution_profile.wrap([str(executable)]),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -807,8 +814,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             "nvcc": str(arguments.nvcc),
             "single_gpu_process": True,
             "srun": {
-                "partition": arguments.partition,
-                "gres": arguments.gres,
+                **execution_profile.to_dict(),
                 "returncode": run_returncode,
                 "stderr": run_stderr,
             },
@@ -844,12 +850,14 @@ def main() -> None:
         default=Path("/group/software/cuda-12.9.1/bin/nvcc"),
     )
     parser.add_argument("--architecture", default="sm_120")
-    parser.add_argument("--srun", default="srun")
-    parser.add_argument("--partition", default="main")
-    parser.add_argument("--gres", default="gpu:5090:1")
+    parser.add_argument("--local", action="store_true", default=None)
+    parser.add_argument("--srun")
+    parser.add_argument("--partition")
+    parser.add_argument("--gres")
+    parser.add_argument("--nodes", type=int)
+    parser.add_argument("--ntasks", type=int)
     parser.add_argument(
         "--slurm-time",
-        default="00:10:00",
         help="finite Slurm allocation time used for the benchmark process",
     )
     parser.add_argument(

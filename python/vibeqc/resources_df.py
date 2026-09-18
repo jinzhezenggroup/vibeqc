@@ -33,6 +33,7 @@ class DensityFittingResourceTile:
     contraction_scratch_bytes: int = 0
     projection_capacity_elements: int = 0
     panel_capacity_elements: int = 0
+    automatic_rhf_rank: int = 0
 
 
 def density_fitting_source_bytes(
@@ -71,6 +72,7 @@ def density_fitting_tile_plan(
     fixed_device_bytes,
     generated_source=False,
     pair_storage="dense",
+    rhf_occupied=None,
 ):
     """Compose a fixed reservation with the provider's own tiling decisions.
 
@@ -79,6 +81,9 @@ def density_fitting_tile_plan(
     shape/product is checked by the native implementation before allocation.
     Packed physical sources reserve complete U only up to ``occupied``; zero
     is an explicit bounded-only reservation. Arbitrary tensor queries stay dense.
+    ``rhf_occupied`` authorizes automatic SCF storage for a known RHF rank; None
+    means unknown reference or UHF. If optional factors would force streaming,
+    auto keeps the dense plan instead. Explicit occupied selection is unchanged.
     """
     for name, value in (
         ("batch", batch),
@@ -100,22 +105,37 @@ def density_fitting_tile_plan(
         raise TypeError("generated_source must be boolean")
     if packed and not generated_source:
         raise ValueError("packed DF storage requires a physical generated source")
-    # Residency must use the same source-specific setup accounting as native
-    # execution, rather than inferring the provider from reserved byte counts.
-    query = getattr(
-        library,
-        "vibeqc_resource_df_packed_tiles_v1"
+    method_aware = rhf_occupied is not None
+    if method_aware:
+        checked_bytes(rhf_occupied, "RHF occupation")
+        if rhf_occupied > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1:
+            raise ValueError("RHF occupation exceeds size_t")
+    # Versioned queries preserve the old shape-only ABI while sharing the
+    # method-authorized reservation used by native HF plan construction.
+    name = (
+        "vibeqc_resource_df_packed_tiles_v2"
+        if packed and method_aware
+        else "vibeqc_resource_df_packed_tiles_v1"
         if packed
+        else "vibeqc_resource_df_tiles_v3"
+        if method_aware
         else "vibeqc_resource_df_tiles_v2"
         if generated_source
-        else "vibeqc_resource_df_tiles_v1",
-        None,
+        else "vibeqc_resource_df_tiles_v1"
     )
+    query = getattr(library, name, None)
     if query is None:
-        raise NotImplementedError("native library has no shape-only DF resource query")
+        raise NotImplementedError("native library has no matching DF resource query")
+    extra_types, extra_values = [], []
+    if not packed and (generated_source or method_aware):
+        extra_types.append(ctypes.c_uint)
+        extra_values.append(int(generated_source))
+    if method_aware:
+        extra_types.append(ctypes.c_size_t)
+        extra_values.append(rhf_occupied)
     query.argtypes = (
         [ctypes.c_size_t] * 6
-        + ([ctypes.c_uint] if generated_source and not packed else [])
+        + extra_types
         + [
             ctypes.POINTER(ctypes.c_uint64),
             ctypes.c_size_t,
@@ -124,7 +144,7 @@ def density_fitting_tile_plan(
         ]
     )
     query.restype = ctypes.c_int
-    values = (ctypes.c_uint64 * (10 if packed else 6))()
+    values = (ctypes.c_uint64 * ((10 if packed else 6) + int(method_aware)))()
     error = ctypes.create_string_buffer(2048)
     if query(
         batch,
@@ -133,7 +153,7 @@ def density_fitting_tile_plan(
         occupied,
         budget_bytes,
         fixed_device_bytes,
-        *([1] if generated_source and not packed else []),
+        *extra_values,
         values,
         len(values),
         error,
@@ -153,6 +173,7 @@ def density_fitting_tile_plan(
         contraction_scratch_bytes=values[7] if packed else 0,
         projection_capacity_elements=values[8] if packed else 0,
         panel_capacity_elements=values[9] if packed else 0,
+        automatic_rhf_rank=values[-1] if method_aware else 0,
     )
 
 

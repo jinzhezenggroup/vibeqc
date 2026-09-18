@@ -1,0 +1,57 @@
+"""Check embedded campaign auto against the independently frozen old binary.
+
+These single replays establish baseline equivalence; they are not another
+performance campaign and do not replace any of the five paired observations.
+"""
+
+import hashlib
+import json
+import runpy
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+helpers = runpy.run_path(str(ROOT / "analyze_endpoints.py"))
+BUILD = json.loads((ROOT / "campaign/build.json").read_text())
+output = {"records": [], "scope": __doc__}
+for aos in (384, 768):
+    old_path = ROOT / f"baseline-equivalence-v1/{aos}-forces.json"
+    old = json.loads(old_path.read_text())
+    campaign = json.loads((ROOT / f"endpoints-v1/{aos}-forces.json").read_text())
+    old_diag = old["diagnostics"][0]
+    auto = next(s for s in campaign["diagnostics"] if s["policy"] == "auto")
+    differences = {
+        key: max(float(np.max(np.abs(np.asarray(s[key])-np.asarray(auto[key])))) for s in old["samples"] + old["diagnostics"])
+        for key in ("energies_hartree", "forces_hartree_per_bohr")
+    }
+    gates = {
+        "exit_zero": old_path.with_suffix(".exit").read_text().strip() == "0",
+        "correct_baseline_binary": old["library_sha256"] == BUILD["baseline_library_sha256"],
+        "same_density": old["warm_density_sha256"] == campaign["warm_density_sha256"],
+        "same_checkpoint": old["warm_checkpoint_sha256"] == campaign["warm_checkpoint_sha256"],
+        "same_reference": old["reference_sha256"] == campaign["reference_sha256"],
+        "same_scientific_settings": old["scientific_settings"] == campaign["scientific_settings"],
+        "energy_equivalence": differences["energies_hartree"] <= 1e-12,
+        "force_equivalence": differences["forces_hartree_per_bohr"] <= 1e-10,
+        "all_accuracy_gates": all(s["maximum_energy_error"] <= 1e-9 and s["maximum_force_error"] <= 1e-8 for s in old["samples"] + old["diagnostics"]),
+        "same_iterations": all(s["iterations"] == auto["iterations"] and all(c["converged"] for c in s["convergence"]) for s in old["samples"] + old["diagnostics"]),
+        "same_charged_memory_and_metric": old_diag["metric"] == auto["metric"],
+        "same_semantic_work": helpers["semantic_groups"](old_diag) == helpers["semantic_groups"](auto),
+        "same_graph_and_final_work": helpers["journal_work"](old_path.with_suffix(".diagnostic-0-auto.journal.jsonl")) == helpers["journal_work"](ROOT / f"endpoints-v1/{aos}-forces.diagnostic-0-auto.journal.jsonl"),
+    }
+    record = {
+        "aos": aos, "gates": gates, "all_gates_passed": all(gates.values()),
+        "maximum_differences": differences,
+        "source_sha256": hashlib.sha256(old_path.read_bytes()).hexdigest(),
+        "baseline_native_source_identity": old["native_source_identity"],
+        "baseline_library_sha256": old["library_sha256"],
+        "baseline_process_device_resident_bytes": old_diag["process_device_resident_bytes"],
+        "campaign_process_device_resident_bytes": auto["process_device_resident_bytes"],
+        "charged_memory": old_diag["metric"],
+    }
+    output["records"].append(record)
+    print(aos, "failed", [k for k,v in gates.items() if not v], "differences",differences)
+output["all_gates_passed"] = all(r["all_gates_passed"] for r in output["records"])
+(ROOT / "baseline-equivalence-v1/analysis.json").write_text(json.dumps(output, indent=2) + "\n")
+raise SystemExit(0 if output["all_gates_passed"] else 1)

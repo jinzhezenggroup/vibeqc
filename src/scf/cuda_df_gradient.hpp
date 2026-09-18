@@ -31,6 +31,12 @@ struct CudaDfMetricView {
   const double* eigenvectors{};
   const double* eigenvalues{};
   double relative_threshold{};
+  // Set only by the owner that checked every eigenvalue against this cutoff.
+  // An unspecified view retains the general retained/discarded spectral map.
+  bool full_rank{};
+  // The immutable plan generation also binds forward-tensor borrows when no
+  // raw-tensor view exists. Pointer equality alone cannot detect allocator reuse.
+  std::uint64_t owner_identity{};
 };
 /** Borrow of one canonical column-major C, with D=density_scale*C*C^T.
  * The plan owner validates the method token, exact density and device
@@ -40,6 +46,16 @@ struct CudaDfOccupiedResponseFactor {
   const double* coefficients{};
   std::size_t rank{};
   double density_scale{};
+};
+/** Canonical factors borrowed independently of mutable J/K tensor storage.
+ * The owner applies the same exact density, final-token and device-generation
+ * checks as resident occupied response. All coefficients remain immutable on
+ * the owner's stream. The bridge owns and budgets its projected-factor scratch.
+ */
+struct CudaDfOccupiedResponseView {
+  std::array<CudaDfOccupiedResponseFactor, 3> factors{};
+  std::size_t nbf{}, naux{};
+  std::uint64_t owner_identity{};
 };
 /** Immutable FP64 raw [Q,mu,nu] view borrowed from one resident value plan.
  * Strides are in doubles. owner_identity is the process-unique immutable
@@ -68,6 +84,19 @@ struct CudaDfPackedRawTensorView {
   std::uint64_t owner_identity{};
   CudaDfMetricView metric{};
 };
+/** Immutable resident forward values C[AO-pair,Q]=A M^-1/2.
+ * The owning J/K plan retains this allocation across SCF and force, and the
+ * same metric factors define its auxiliary axis. Full-rank bounded response
+ * may apply the inverse square root again without regenerating raw integrals.
+ * Packed rows are unit-weight lower pairs, not doubled density contractions.
+ */
+struct CudaDfWhitenedTensorView {
+  const double* data{};
+  std::size_t nbf{}, naux{}, pair_count{};
+  bool packed_pairs{};
+  std::uint64_t owner_identity{};
+  CudaDfMetricView metric{};
+};
 /** Exclusive, stream-ordered borrow from the existing J/K tensor allocation.
  * Dense plans keep two mutable buffers; the third is immutable when resident_raw
  * is present, or receives the explicit host upload. Packed plans retain raw
@@ -75,6 +104,9 @@ struct CudaDfPackedRawTensorView {
  * The owner validates capacity and provenance before lending distinct buffers.
  * The plan's stream orders the last J/K use, force, and next SCF use, and the
  * synchronous bridge drains on success and failure before releasing the borrow.
+ * Internally, the streamed occupied algorithm also uses this layout descriptor
+ * for bridge-owned scratch. It is passed separately from the borrowed lease and
+ * its allocations remain charged to the bridge's allowance.
  */
 struct CudaDfResponseBuffers {
   double* staging_weights{};
@@ -157,6 +189,11 @@ vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbi
  * maximum_bytes bounds this bridge's numeric host/device scratch separately
  * from the caller's plan; an active resource ledger also enforces total device
  * ownership. Output is transactional and generated failures are returned.
+ * An optional occupied view lends only validated canonical coefficients from
+ * a source-generated full-rank owner. When a full fitted tensor cannot fit,
+ * the bridge may retain all-Q occupied projections in its own allowance.
+ * Insufficient projection space and explicit scalar ablations keep the
+ * general bounded route; receiving a view alone does not prove its execution.
  */
 vibeqc_status execute_cuda_df_hf_gradient(
     int device, void* stream, CudaDensityFittingIntegralSource* source, std::size_t source_index,
@@ -167,6 +204,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     std::vector<double>& gradient, std::string& detail, DfGradientResources* resources = nullptr,
     const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr,
     const CudaDfResponseBuffers* borrowed = nullptr,
-    const CudaDfPackedRawTensorView* packed_raw = nullptr);
+    const CudaDfPackedRawTensorView* packed_raw = nullptr,
+    const CudaDfWhitenedTensorView* whitened = nullptr,
+    const CudaDfOccupiedResponseView* occupied = nullptr);
 }  // namespace vibeqc::scf
 #endif

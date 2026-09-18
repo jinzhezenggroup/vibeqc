@@ -56,6 +56,10 @@ remain explicit and the mixed CUDA adapter stays conservatively scientific in
 the ownership ledger. Revisit fusion only with independent full-force and
 resource evidence and a demonstrated complete-endpoint need.
 
+The host normalization/grid/harmonic boundary is subsequently superseded by
+the [2026-09-17 host-grid decision](2026-09-17-ecp-host-grid.md). This note retains
+the historical AO/weight migration rationale and its original measurements.
+
 ## References
 
 - Issue #171; PR #371.

@@ -1,0 +1,82 @@
+"""Bounded #418 object compilation; deliberately performs no GPU execution."""
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+from tools.benchmark_df_derivatives import source_identity, write_workloads
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model
+from vibeqc_compiler.integral.df_tuning.batch import compile_batch
+from vibeqc_compiler.integral.df_tuning.emission import API, emit_candidate, emit_driver
+from vibeqc_compiler.integral.df_tuning.policy import DfDerivativeTrial
+from vibeqc_compiler.integral.ir import KernelConsumer
+from vibeqc_compiler.integral.tuning.process import _tool_version
+
+ROOT = Path.cwd()
+HOT = ('111','210','211','201','102','101','110')
+REST = ('112','212','202','221','220','222')
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--phase', choices=('hot','rest'),required=True)
+parser.add_argument('--version',default='v1')
+parser.add_argument('--resume-link',action='store_true')
+args=parser.parse_args()
+classes=tuple(tuple(map(int,c)) for c in (HOT if args.phase=='hot' else REST))
+directory=ROOT/'.artifacts/issue418'/f'{args.phase}-objects-{args.version}'
+directory.mkdir(exist_ok=args.resume_link)
+generated=ROOT/'.artifacts/issue418/generated'
+nvcc=Path('/group/software/cuda-12.9.1/bin/nvcc')
+compiler=CudaCompilerAdapter(nvcc,cuda_target_info('sm_120'),300)
+trials=tuple(DfDerivativeTrial(c,lowering,2) for c in classes for lowering in ('polynomial','rys'))
+includes=(directory,generated,ROOT/'include',ROOT/'src',ROOT/'tools/vibeqc_validation')
+(directory/'df_benchmark_api.hpp').write_text(API)
+profiles={}
+for aos,mode in ((384,1),(768,2)):
+    payload=json.loads((ROOT/f'benchmarks/results/issue395-df-work/work/{aos}.json').read_text())
+    payload['benchmark_pair_mode']=mode
+    profiles[str(aos)]=payload
+write_workloads(directory/'workload.txt',profiles,angular=classes)
+identity=source_identity(generated)
+if args.resume_link:
+    prior=json.loads((directory/'report.json').read_text())
+    assert prior['source_identity']==identity, 'source changed since object compilation'
+    compiled=prior['compiled']
+else:
+    compiled=compile_batch(trials,emit_candidate,directory=directory,compiler=compiler,
+        includes=includes,generator_sha256=identity,toolchain=_tool_version(nvcc),
+        consumer=KernelConsumer.FORCE,kernel_name='shell_packet',jobs=2,maximum_stack_bytes=128)
+for row in compiled:
+    if row['object_bytes'] is not None and row['object_bytes']>2*1024**2:
+        row['rejections'].append('object exceeds predeclared 2 MiB bound')
+        row['eligible']=False
+    print(row['key'],row['eligible'],row['rejections'],flush=True)
+report=dict(source_identity=identity,classes=classes,phase=args.phase,
+    precision='FP64',schedule='compact',compiled=compiled,
+    root_work={''.join(map(str,c)):shell_rys_work_model(c) for c in classes},
+    limits={'registers':255,'shared_bytes':49152,'stack_bytes':128,'spill_bytes':0,'object_bytes':2*1024**2},
+    baselines={''.join(map(str,c)):''.join(map(str,c))+':polynomial:compact' for c in classes},
+    baseline_reason='Existing sm_120 promoted water profile selects compact (df_gradient_bridge.cu); all selected classes use polynomial on f5eb8df.',
+    profile_hashes={k:hashlib.sha256(json.dumps(v,sort_keys=True).encode()).hexdigest() for k,v in profiles.items()})
+(directory/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+runnable=[t for t,row in zip(trials,compiled,strict=True) if row['eligible']]
+if not runnable:
+    raise SystemExit(2)
+driver=directory/'driver.cu'
+driver.write_text(emit_driver(runnable))
+library=Path('/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/direct-force-final-build/libvibeqc.so')
+linked=compiler.link(driver,[directory/f'{t.symbol}.o' for t in runnable],directory/'benchmark',
+    includes=includes,standard='c++20',timeout=300,
+    options=(f'-Xlinker={library}',f'-Xlinker=-rpath={library.parent}'))
+(directory/'link.log').write_text(linked.stdout+linked.stderr)
+report['link']={'command':linked.args,'returncode':linked.returncode,'stdout':linked.stdout,'stderr':linked.stderr}
+report['resumed_link_after_recording_failure']=args.resume_link
+report['oracle_library']=str(library)
+report['oracle_library_sha256']=hashlib.sha256(library.read_bytes()).hexdigest()
+if (directory/'benchmark').exists():
+    report['executable_sha256']=hashlib.sha256((directory/'benchmark').read_bytes()).hexdigest()
+    report['executable_bytes']=(directory/'benchmark').stat().st_size
+(directory/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+raise SystemExit(linked.returncode or (2 if any(not row['eligible'] for row in compiled) else 0))

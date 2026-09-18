@@ -365,8 +365,8 @@ def main():
     (directory / "link.log").write_text(linked.stdout + linked.stderr)
     if linked.returncode:
         raise RuntimeError("value batch link failed")
-    executor = CudaBenchmarkExecutor(
-        timeout=1800, partition="main", gres="gpu:5090:1", slurm_time="00:30:00"
+    executor = CudaBenchmarkExecutor.from_environment(
+        timeout=1800, default_slurm_time="00:30:00"
     )
     command = [*executor.command(executable), str(directory / "workload.bin")]
     result = subprocess.run(
