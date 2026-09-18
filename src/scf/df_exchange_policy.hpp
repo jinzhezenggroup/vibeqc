@@ -39,7 +39,7 @@ inline bool df_occupied_exchange_auto_requested() noexcept {
 }
 
 /** Backend-independent work policy for the resident FP64 occupied algorithm.
- * Dense K costs 4*a*n^3 products; occupied projection plus a full Gram costs
+ * Dense K costs 4*a*n^3 FLOPs; occupied projection plus a full Gram costs
  * at most 4*a*n^2*r (SYRK can reduce this further). Require a twofold arithmetic
  * reduction to leave headroom for factor validation and smaller BLAS shapes.
  * This is a conservative work heuristic, not a device latency prediction.

@@ -49,7 +49,7 @@ ordinary FP64 BLAS algorithm.
   failed factor validation uses the bounded raw loader.
 - Explicit dense, occupied, panel, schedule and probe controls remain available.
 - Derivative schedule, pair layout and primitive packet policies are separate;
-  their remaining benchmark-specific gates require a follow-up refactor.
+  their remaining benchmark-specific gates are tracked in #445.
 
 ## Rejected alternatives
 
