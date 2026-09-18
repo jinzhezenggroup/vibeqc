@@ -14,9 +14,8 @@ from vibeqc_compiler.dft.ao import NativeAO
 from vibeqc_compiler.dft.grid import ExplicitGrid
 from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
 from vibeqc_compiler.xc.spec import FunctionalSpec
-from vibeqc_compiler.xc.spec import functional as canonical_functional
 
-from .ks import SCF_DOMAIN
+from .ks import SCF_DOMAIN, resolve_ks_method
 
 _METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
@@ -175,13 +174,13 @@ class StationaryDerivativeContract:
 
     @property
     def spin(self):
-        return (
-            "unpolarized" if self.state_identity.method.endswith("rks") else "polarized"
-        )
+        method_ir, _ = resolve_ks_method(self.state_identity.method)
+        return method_ir.spin
 
     @property
     def family(self):
-        return "lda" if self.state_identity.method.startswith("lda") else "gga"
+        _, functional = resolve_ks_method(self.state_identity.method)
+        return "lda" if functional.ingredients == ("rho",) else "gga"
 
     def to_payload(self):
         return {
@@ -516,11 +515,11 @@ def _scf_domain_xc_geometry(contract, state, functional, basis, grid):
     family = "lda" if functional.ingredients == ("rho",) else "gga"
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
-    expected_identifier = "LDA_XC_PW" if contract.family == "lda" else "PBE"
-    expected_functional = canonical_functional(expected_identifier, spin=contract.spin)
+    _, expected_functional = resolve_ks_method(state.identity.method)
     if functional.identity != expected_functional.identity:
         raise ValueError(
-            f"stationary {contract.family.upper()} requires canonical {expected_identifier}"
+            "stationary "
+            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
         )
     regularization_identity = scf_regularization_identity()
     if state.identity.regularization_identity != regularization_identity:
@@ -595,11 +594,11 @@ def _fixed_density_xc_geometry(contract, state, functional, basis, grid):
     family = "lda" if functional.ingredients == ("rho",) else "gga"
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
-    expected_identifier = "LDA_XC_PW" if contract.family == "lda" else "PBE"
-    expected_functional = canonical_functional(expected_identifier, spin=contract.spin)
+    _, expected_functional = resolve_ks_method(state.identity.method)
     if functional.identity != expected_functional.identity:
         raise ValueError(
-            f"stationary {contract.family.upper()} requires canonical {expected_identifier}"
+            "stationary "
+            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
         )
     if state.identity.regularization_identity != xc_regularization_identity(functional):
         raise ValueError("stationary regularization identity mismatch")

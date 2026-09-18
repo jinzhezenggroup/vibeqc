@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13015,
+  "all_handwritten_scientific_lines": 13017,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -168,7 +168,7 @@
       "oracle": 15,
       "performance_exception": 163,
       "runtime": -5409,
-      "scientific": 2645
+      "scientific": 2647
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -379,20 +379,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 12366,
+      "bytes": 12657,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 272
+        "scientific": 274
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 278,
+      "physical_lines": 280,
       "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "5411702c94cf9b75b478681b8bc2ae948a0cc1faa029244dc3c85934bb944e40",
+      "sha256": "a23beee43a6ef3187480ae3f255a2f7abff7b2b769fe0a6eb771ff340d0e1a3e",
       "subsystem": "ecp"
     },
     {
@@ -3574,15 +3574,8 @@
   ],
   "generated": [
     {
-      "files": [
-        {
-          "bytes": 1687,
-          "code_lines": 36,
-          "path": "generated/generated_one_electron_policy.cuh",
-          "sha256": "1b14c7b270eb4f910954877ce8e5e1a8edac24d45fef6e5ab9d94b0b6c8486f5"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_value_policy",
       "outputs": [
         "generated/generated_one_electron_policy.cuh"
@@ -3590,15 +3583,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 3100335,
-          "code_lines": 84286,
-          "path": "generated/generated_one_electron_values.cuh",
-          "sha256": "e169833c9d9313edaf1978d25dadea2234e45eb5541f5c573263316f4e43728f"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_values",
       "outputs": [
         "generated/generated_one_electron_values.cuh"
@@ -3606,15 +3592,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 7647364,
-          "code_lines": 207007,
-          "path": "generated/generated_one_electron_derivatives.cuh",
-          "sha256": "00d051c57ae32536ef14171fdbd09d03f504d516db36bd29e8d01d0191593b73"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_derivatives",
       "outputs": [
         "generated/generated_one_electron_derivatives.cuh"
@@ -3622,15 +3601,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 488603,
-          "code_lines": 6078,
-          "path": "generated/df_values.cuh",
-          "sha256": "c2026fce24ca75ea8973306fc6121e9f4db3aa54a2b62aa1520cede7c71d8bbd"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_values",
       "outputs": [
         "generated/df_values.cuh"
@@ -3638,15 +3610,8 @@
       "owner": "python/vibeqc_compiler/integral/df_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 716954,
-          "code_lines": 21998,
-          "path": "generated/generated_df_derivatives.cuh",
-          "sha256": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_derivatives",
       "outputs": [
         "generated/generated_df_derivatives.cuh"
@@ -3654,15 +3619,8 @@
       "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 57359,
-          "code_lines": 1764,
-          "path": "generated/generated_df_shell_derivatives.cuh",
-          "sha256": "0213de12f5b21e0c0ba40bd3edb1cf03fc7b029e42d9c51c8d1cebbf03020a3b"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_shell_derivatives",
       "outputs": [
         "generated/generated_df_shell_derivatives.cuh"
@@ -3670,15 +3628,8 @@
       "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py"
     },
     {
-      "files": [
-        {
-          "bytes": 196847,
-          "code_lines": 1699,
-          "path": "generated/generated_df_rys.cuh",
-          "sha256": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_rys_roots",
       "outputs": [
         "generated/generated_df_rys.cuh"
@@ -3686,21 +3637,8 @@
       "owner": "python/vibeqc_compiler/integral/df_rys.py"
     },
     {
-      "files": [
-        {
-          "bytes": 98504,
-          "code_lines": 2806,
-          "path": "generated/generated_df_rys_shell.cuh",
-          "sha256": "0916a69446038662dea2acf9006699e048425afe44cdecae6cfd3763a61e83b8"
-        },
-        {
-          "bytes": 452,
-          "code_lines": 8,
-          "path": "generated/generated_df_rys_policy.hpp",
-          "sha256": "b3bc4c3b2608e2387e1db31c54b7d70f517bdba8f702efb55c7d13e48fbc4890"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_rys_shell",
       "outputs": [
         "generated/generated_df_rys_shell.cuh",
@@ -3709,15 +3647,8 @@
       "owner": "python/vibeqc_compiler/integral/df_rys_shell.py"
     },
     {
-      "files": [
-        {
-          "bytes": 6976,
-          "code_lines": 140,
-          "path": "generated/weighted_eri.cuh",
-          "sha256": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "weighted_eri",
       "outputs": [
         "generated/weighted_eri.cuh"
@@ -3726,7 +3657,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "aot_integrals",
       "outputs": [
         "generated/production_shell_kernels/**/*.cu",
@@ -3737,7 +3668,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_tensor",
       "outputs": [],
       "owner": "python/vibeqc_compiler/tensor",
@@ -3745,7 +3676,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_xc",
       "outputs": [],
       "owner": "python/vibeqc_compiler/xc",
@@ -3753,7 +3684,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_dft",
       "outputs": [],
       "owner": "python/vibeqc_compiler/dft",
@@ -3761,22 +3692,15 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_integral",
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
     },
     {
-      "files": [
-        {
-          "bytes": 4542,
-          "code_lines": 174,
-          "path": "generated/generated_grid_policy.cu",
-          "sha256": "952d12fd6dd58e7b7121b1193aeae39e5157686bea7a3e68c12cf7c5e87d252c"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "ao_grid_policy",
       "outputs": [
         "generated/generated_grid_policy.cu"
@@ -3785,27 +3709,8 @@
       "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
     },
     {
-      "files": [
-        {
-          "bytes": 1701,
-          "code_lines": 28,
-          "path": "generated/generated_df_policy.cuh",
-          "sha256": "3213fbe8225e8c3bf653ff2cdfd8da97b011ef6c598ad7d184c1f1e051ceca32"
-        },
-        {
-          "bytes": 1611,
-          "code_lines": 32,
-          "path": "generated/generated_df_derivative_policy.cuh",
-          "sha256": "beb7ee985095e7ace0d466be897e4dadbbd5adcbe80fbacca55e2d64dcbbd30b"
-        },
-        {
-          "bytes": 407,
-          "code_lines": 9,
-          "path": "generated/generated_df_derivative_schedule.cuh",
-          "sha256": "5caba2a73da662358777f7640b91d5f77710b22f4ac38a8c401225f6472e89af"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_policies",
       "outputs": [
         "generated/generated_df_policy.cuh",
@@ -3815,15 +3720,8 @@
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
     },
     {
-      "files": [
-        {
-          "bytes": 34335,
-          "code_lines": 1196,
-          "path": "generated/generated_ecp_ao.cuh",
-          "sha256": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "ecp_quadrature",
       "outputs": [
         "generated/generated_ecp_ao.cuh"
@@ -3831,15 +3729,8 @@
       "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
     },
     {
-      "files": [
-        {
-          "bytes": 2349,
-          "code_lines": 46,
-          "path": "generated/generated_df_production.hpp",
-          "sha256": "61e2f925637ae73ed8873a638000e9be73c5fd7899cddaba21296e06d107fbe7"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_derivative_production_policy",
       "outputs": [
         "generated/generated_df_production.hpp"
@@ -3847,15 +3738,8 @@
       "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
     },
     {
-      "files": [
-        {
-          "bytes": 2297,
-          "code_lines": 56,
-          "path": "generated/generated_df_screening.cuh",
-          "sha256": "1dca9586bb2d53479e2ba171fa3478b8239e8aab4402028419c4b692f56a5aab"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_sss_force_screening",
       "outputs": [
         "generated/generated_df_screening.cuh"
@@ -3863,15 +3747,8 @@
       "owner": "python/vibeqc_compiler/integral/df_screening.py"
     },
     {
-      "files": [
-        {
-          "bytes": 66074,
-          "code_lines": 2076,
-          "path": "generated/generated_df_value_candidates.cuh",
-          "sha256": "0fd28623ed04ddc356bef47316351ef3dbe619562b4c4da7915224713dbc4c46"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_value_candidates",
       "outputs": [
         "generated/generated_df_value_candidates.cuh"
@@ -3879,13 +3756,13 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "generated_bytes": 12428397,
+  "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 15,
     "performance_exception": 253,
     "runtime": 10164,
-    "scientific": 12747
+    "scientific": 12749
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3977,7 +3854,7 @@
       "status": "partial"
     },
     "ecp": {
-      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
       "evidence": [
         "tests/python/test_ecp.py",
         "tests/python/test_ecp_ir.py",
@@ -3985,13 +3862,15 @@
         "tests/python/test_ecp_f.py",
         "tests/python/test_ecp_validation.py",
         "tests/native/test_ecp_capabilities.cpp",
-        "benchmarks/results/ecp-f-171/README.md"
+        "benchmarks/results/ecp-f-171/README.md",
+        "tests/python/test_ecp_f_projector.py",
+        "benchmarks/results/ecp-f-projector-171/README.md"
       ],
-      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding.",
-      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector f or higher families unavailable. No broad heavy-element qualification.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
       "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
       "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
-      "status": "Bounded s/p/d/f orbital extension over generated projector/radial, AO/fixed-weight and host grid arithmetic; projectors remain s/p/d. No DFT, broad heavy-element or performance-promotion claim."
+      "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
@@ -4117,7 +3996,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 272
+      "scientific": 274
     },
     "low_rank": {
       "fallback": 0,

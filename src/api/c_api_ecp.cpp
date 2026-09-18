@@ -40,8 +40,9 @@ vibeqc_status vibeqc_system_create_ecp(vibeqc_context* context,
     for (std::size_t i = 0; i < term_count; ++i) {
       const auto& t = terms[i];
       if (t.atom_index >= descriptor->atom_count || core_electrons[t.atom_index] == 0 ||
-          t.channel < -1 || t.channel > 2 || t.power > 4 || !std::isfinite(t.exponent) ||
-          t.exponent <= 0 || !std::isfinite(t.coefficient))
+          t.channel < -1 || t.channel > vibeqc::generated::ecp_max_projector_angular ||
+          t.power > 4 || !std::isfinite(t.exponent) || t.exponent <= 0 ||
+          !std::isfinite(t.coefficient))
         throw std::invalid_argument("unsupported or invalid scalar Gaussian ECP term");
       local[t.atom_index] = local[t.atom_index] || t.channel == -1;
       present[t.atom_index] = true;

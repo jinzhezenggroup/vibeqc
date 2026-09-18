@@ -15,7 +15,7 @@ struct EcpData {
 
 struct EcpSpherePoint {
   double x, y, z, weight;
-  double harmonics[9];
+  double harmonics[16];
 };
 struct EcpRadialPoint {
   double r, weight;

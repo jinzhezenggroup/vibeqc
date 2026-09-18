@@ -13,8 +13,8 @@ The highest supplied angular channel is local. Each lower channel denotes
 operator sums normalized real spherical projectors over `m = -l..l`. Orbital
 normalization and Cartesian/spherical ordering come from the ordinary basis
 layer. Supported orbitals are s/p/d/f in Cartesian and real spherical layouts;
-projectors are s/p/d, local labels at
-most f, radial powers 0..4, at most 256 AOs and 128 atoms. Unknown parameter
+projectors are s/p/d/f, local labels at
+most g, radial powers 0..4, at most 256 AOs and 128 atoms. Unknown parameter
 fields, multiple coefficient rows, spin-orbit formats and higher angular
 momenta are rejected. Parameter import performs no online lookup.
 
@@ -66,7 +66,7 @@ and the full AO fixed-weight derivative contraction with the energy-to-force
 sign. The CUDA adapter supplies total RHF/UHF density without an extra occupancy
 factor. Component/primitive/AO reduction order and FP64 storage are unchanged.
 `integral/ecp_grid.py` owns the production host Gauss-Legendre recurrence,
-mapped radial Jacobian, sphere coordinates/weights, real s/p/d harmonics and
+mapped radial Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and
 Cartesian component coefficient normalization. Scalar arithmetic uses the
 common DAG; finite root/grid loops are compiler-emitted host schedules.
 Trigonometric operations call the host standard library. The independent CPU
@@ -77,7 +77,7 @@ stopping policy, node order and append semantics are preserved.
 The CUDA adapter retains allocation/launch/scatter, AO expansion metadata and
 the method's two-grid convergence policy. It remains conservatively classified
 as scientific in the ownership ledger. This does not claim complete adapter
-retirement or expanded method/projector support.
+retirement or expanded method support.
 
 Orbital f uses the existing Gaussian DAG, generated component normalization and
 molecular real-spherical expansion. The compiler-owned orbital limit also
@@ -85,7 +85,16 @@ defines the native ECP constructor boundary. The Python preflight applies the
 same limit to both ECP atoms and all-electron atoms in mixed systems. Component
 dispatch checks the angular powers before encoding them, so unsupported g
 components cannot alias supported lower components. This orbital extension
-does not expand projector channels, radial powers, element families or methods.
+does not itself expand projector channels, radial powers, element families or methods.
+
+The separate projector extension includes seven orthonormal real f harmonics
+(slots 9..15) and compiler-owned f-channel reductions. The native constructor
+uses the emitted projector bound; BSE/NWChem local labels may extend through g
+so that f is a nonlocal difference. This local label does not enable g orbitals
+or g projectors. CPU and CUDA retain one radial shell with 16 projected jets
+per AO; the resource inventory includes the expanded projection storage.
+Synthetic signed f-channel parameters qualify this operator capability without
+claiming a physical heavy-element parameter family.
 
 See the [AO/weight ownership decision](../.agents/notes/implemented/architecture/2026-09-16-ecp-ao-weight-consumers.md)
 for the reduction-order and oracle rationale.
@@ -93,6 +102,8 @@ The [host-grid ownership decision](../.agents/notes/implemented/architecture/202
 records the quadrature boundary and independent moment/addition-theorem gates.
 The [orbital-f decision](../.agents/notes/implemented/numerics/2026-09-17-ecp-orbital-f.md)
 records the separate orbital/projector bounds and f qualification gates.
+The [f-projector decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-f-projectors.md)
+records the harmonic/storage extension and its independent operator gates.
 
 ## Mixed-family physical centers
 
@@ -143,9 +154,52 @@ explicitly rejected pending its own complete force/budget gates. Complete
 canonical MP2 with ECP is also rejected until its reference/provider gates are
 validated. The all-electron accuracy-model schema cannot represent an ECP
 Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
-DFT SCF/gradients remain dependent on #162/#163, so DFT/ECP completion is not
-claimed. No broad heavy-element validation follows from support for the
-parameter format.
+LDA/PBE RKS/UKS energy-only calculations use the same ECP Hamiltonian, as
+described below. Complete DFT gradients remain dependent on #163 and force
+requests are rejected. No broad heavy-element validation follows from support
+for the parameter format.
+
+## Semilocal DFT energies
+
+`lda-rks`, `pbe-rks`, `lda-uks` and `pbe-uks` accept supported scalar ECP
+basis records on CPU/CUDA for the energy observable. The shared one-electron
+provider supplies kinetic energy, effective-charge Coulomb attraction and
+the local/nonlocal ECP residual exactly once. Electron populations and nuclear
+repulsion use effective ionic charges. XC evaluates the valence density in the
+ordinary Gaussian AO basis; it does not reconstruct a core density or apply a
+nonlinear core correction. Atomic number still determines grid element identity.
+
+AO capability checks permit values and first spatial jets needed by LDA/GGA
+energies. They still validate ECP metadata and angular limits. Higher AO jets,
+complete nuclear forces, DF/ECP and other DFT methods do not inherit support.
+
+```python
+result = Calculator(method="pbe-rks", basis=basis, device="cuda").singlepoint(
+    atoms, properties=("energy",)
+)
+assert result.forces is None
+```
+
+The bounded qualification uses installed PySCF 2.14.0 LANL2DZ Na and STO-3G H:
+neutral NaH RKS and the +1 doublet UKS cation, Cartesian/spherical s/p orbitals,
+and the declared default GridSpec. Independent Libcint/Libxc solves on identical
+grid points and weights check total energy, nuclear/one-electron/Hartree/XC
+components, spin electron counts and physical residuals. Different reference
+initial guesses must reach the same energy. This is a matched-discretization
+gate, not a claim of convergence to the continuum XC integral or validation
+of arbitrary ECP/functional combinations.
+
+Exact-budget mixed ECP/all-electron batches check cold/warm execution,
+changed-geometry rebuilding, independent displaced energies, failed-item
+isolation and restoration. Existing KS resource plans include ECP setup
+workspace and preserve ECP parameter/core identity.
+
+Run `pytest tests/python/test_ecp_dft.py`; enable GPU cases only with
+`VIBEQC_ECP_CUDA_TEST=1`. `tools/qualify_ecp_dft.py --device cpu --output result.json`
+(or `--device cuda`) records source/library identities and eight independently
+checked energy endpoints. See the
+[decision note](../.agents/notes/implemented/numerics/2026-09-18-ecp-dft-energy.md)
+and [retained evidence](../benchmarks/results/ecp-dft-171/README.md).
 
 ## Stuttgart RLC parameter qualification
 
@@ -250,7 +304,7 @@ Architecture 89 is the measured RTX 4090 target; select the actual allocated
 GPU architecture for other devices. The measurements validate the generic
 CUDA build and do not promote an AOT shell profile.
 
-Run `pytest tests/python/test_ecp.py tests/python/test_ecp_ir.py tests/python/test_ecp_validation.py tests/python/test_ecp_f.py`; set
+Run `pytest tests/python/test_ecp.py tests/python/test_ecp_ir.py tests/python/test_ecp_validation.py tests/python/test_ecp_f.py tests/python/test_ecp_f_projector.py`; set
 `VIBEQC_ECP_CUDA_TEST=1` only on an allocated GPU. The tests use installed
 PySCF LANL2DZ Na ECP/orbitals with STO-3G H, asymmetric mixed centers, d shells,
 contracted f shells on ECP and all-electron atoms,
@@ -264,15 +318,19 @@ fixed-weight contractions. Complete RHF/UHF energies and forces are checked
 against PySCF for both representations; CUDA additionally checks complete
 energy finite differences. Prepared geometry replay is checked under the
 planned host/device budget. The native capability test checks f acceptance,
-g rejection and continued rejection of f projectors through the C API.
+g orbital/projector rejection and acceptance of f projectors through the C API.
 
 `vibeqc_ecp_projector_tests` independently checks the emitted host arithmetic
 using a double angular-node sum and the Legendre addition theorem, without
 forming the production AO projections. It covers all radial powers 0..4,
-local/s/p/d channels, signed mixed-exponent terms, center filtering, the
+local/s/p/d/f channels, signed mixed-exponent terms, center filtering, the
 radial origin, and poisoned derivative slots in value-only mode. The Python
 ECP suite also compares every radial power and d projectors with Libcint and
 finite differences of an independently displaced ECP center on CPU/CUDA.
+The f-projector suite includes powers 0..4, signed multi-exponent terms,
+all-center finite differences at two steps, nonsymmetric weights, value-only
+exports, f-orbital grid refinement, complete Cartesian/spherical RHF/UHF
+forces, and budgeted changed-geometry replay with complete-energy differences.
 
 Real numerical parameter tables are read from the test installation and are
 not redistributed by this change. PySCF is Apache-2.0; consult its installed
