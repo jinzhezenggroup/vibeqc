@@ -1,5 +1,6 @@
 """Canonical method composition above scientific compiler primitives."""
 
+from .dispersion import D3Spec, DispersionCorrectionPrimitive
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .spec import (
     METHOD_CATALOG,
@@ -13,6 +14,8 @@ from .spec import (
 
 __all__ = [
     "METHOD_CATALOG",
+    "D3Spec",
+    "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
     "MethodIR",
     "MethodSpec",
