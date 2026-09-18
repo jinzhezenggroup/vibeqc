@@ -92,7 +92,11 @@ def run(args):
     output.mkdir(parents=True, exist_ok=True)
     cache = Path(args.cache)
 
-    compiler = CudaCompilerAdapter(Path(args.nvcc), cuda_target_info(args.architecture))
+    compiler = CudaCompilerAdapter(
+        Path(args.nvcc),
+        cuda_target_info(args.architecture),
+        compile_timeout=args.compile_timeout,
+    )
     budgets = [int(b) * (1 << 20) for b in args.budget.split(",")]
 
     manifest = {
@@ -331,6 +335,12 @@ if __name__ == "__main__":
         "--budget",
         default="256,512",
         help="Comma-separated memory budgets in MiB (default: 256,512)",
+    )
+    parser.add_argument(
+        "--compile-timeout",
+        type=float,
+        default=1800.0,
+        help="NVCC timeout per tile shape in seconds (default: 1800)",
     )
     args = parser.parse_args()
     run(args)
