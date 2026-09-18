@@ -1,5 +1,3 @@
-#include "runtime/tracked_allocator.hpp"
-
 #include <array>
 #include <cstddef>
 #include <future>
@@ -9,6 +7,8 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+
+#include "runtime/tracked_allocator.hpp"
 
 namespace {
 using vibeqc::runtime::AllocationCounter;
