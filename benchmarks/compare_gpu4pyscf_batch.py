@@ -479,6 +479,22 @@ def _gpu_sample(
     }
 
 
+def _configure_reference_scf(
+    engine: Any,
+    *,
+    energy_tolerance: float,
+    gradient_tolerance: float,
+    max_iterations: int,
+    full_fock: bool = False,
+) -> None:
+    """Keep optional full-density rebuilding confined to the stock reference."""
+    engine.conv_tol = energy_tolerance
+    engine.conv_tol_grad = gradient_tolerance
+    engine.direct_scf_tol = 1.0e-14
+    engine.max_cycle = max_iterations
+    engine.direct_scf = not full_fock
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     cases = benchmark_cases()
@@ -510,6 +526,11 @@ def main() -> None:
         type=float,
         default=1.0e-10,
         help="GPU4PySCF orbital-gradient convergence threshold",
+    )
+    parser.add_argument(
+        "--reference-full-fock",
+        action="store_true",
+        help="stock reference only: rebuild its Fock from full density instead of incremental updates",
     )
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--minimum-speedup", type=float)
@@ -630,10 +651,13 @@ def main() -> None:
             engine = engine.density_fit(auxbasis=case.pyscf_basis)
         if hasattr(engine, "to_gpu"):
             engine = engine.to_gpu()
-        engine.conv_tol = args.energy_tolerance
-        engine.conv_tol_grad = args.reference_gradient_tolerance
-        engine.direct_scf_tol = 1.0e-14
-        engine.max_cycle = args.max_iterations
+        _configure_reference_scf(
+            engine,
+            energy_tolerance=args.energy_tolerance,
+            gradient_tolerance=args.reference_gradient_tolerance,
+            max_iterations=args.max_iterations,
+            full_fock=args.reference_full_fock,
+        )
         gpu_objects.append(engine)
 
     calculator = Calculator(
@@ -876,6 +900,7 @@ def main() -> None:
                 "energy_tolerance": args.energy_tolerance,
                 "density_tolerance": args.density_tolerance,
                 "reference_gradient_tolerance": args.reference_gradient_tolerance,
+                "reference_incremental_fock": not args.reference_full_fock,
                 "max_iterations": args.max_iterations,
                 "vibeqc_screening_tolerance": args.screening_tolerance,
                 "direct_scf_tolerance": 1.0e-14,

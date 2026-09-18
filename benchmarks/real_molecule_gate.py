@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shlex
 import subprocess
 import sys
@@ -28,12 +29,35 @@ _SCREENING_TOLERANCE = 1.0e-14
 _MAX_ITERATIONS = 100
 
 
+def _reference_override(value: str) -> tuple[int, float]:
+    """Parse an explicit AO=TOL setting; only tightening is accepted below."""
+    try:
+        ao, tolerance = value.split("=", 1)
+        result = int(ao), float(tolerance)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("expected AO=TOL, e.g. 96=1e-11") from error
+    if result[0] < 1 or not math.isfinite(result[1]) or result[1] <= 0:
+        raise argparse.ArgumentTypeError("AO and finite tolerance must be positive")
+    return result
+
+
+def _reference_tolerance(
+    point: BenchmarkGatePoint, overrides: dict[int, float]
+) -> float:
+    value = overrides.get(point.expected_ao_count, point.reference_gradient_tolerance)
+    if not math.isfinite(value) or not 0 < value <= point.reference_gradient_tolerance:
+        raise ValueError("reference overrides may only tighten historical convergence")
+    return value
+
+
 def _point_command(
     point: BenchmarkGatePoint,
     *,
     repeats: int,
     output: Path,
     density_fitting_memory_budget_bytes: int,
+    reference_gradient_overrides: dict[int, float] | None = None,
+    reference_full_fock_sizes: set[int] | None = None,
 ) -> list[str]:
     """Build one child command without importing GPU packages in this runner."""
 
@@ -53,7 +77,7 @@ def _point_command(
         "--density-tolerance",
         str(_DENSITY_TOLERANCE),
         "--reference-gradient-tolerance",
-        str(point.reference_gradient_tolerance),
+        str(_reference_tolerance(point, reference_gradient_overrides or {})),
         "--screening-tolerance",
         str(_SCREENING_TOLERANCE),
         "--maximum-energy-error",
@@ -65,6 +89,8 @@ def _point_command(
         "--progress-output",
         str(output.with_suffix(".progress.jsonl")),
     ]
+    if point.expected_ao_count in (reference_full_fock_sizes or set()):
+        command.append("--reference-full-fock")
     if point.minimum_speedup is not None:
         command.extend(("--minimum-speedup", str(point.minimum_speedup)))
     if density_fitting_memory_budget_bytes:
@@ -103,6 +129,22 @@ def main() -> None:
         default=0,
         help="positive CUDA-DF planner budget forwarded to each gate point",
     )
+    parser.add_argument(
+        "--reference-gradient-tolerance",
+        type=_reference_override,
+        action="append",
+        default=[],
+        metavar="AO=TOL",
+        help="explicit reference-only tightening per AO size; repeatable; defaults stay historical",
+    )
+    parser.add_argument(
+        "--reference-full-fock",
+        type=int,
+        action="append",
+        default=[],
+        metavar="AO",
+        help="disable stock incremental Fock updates only for the selected AO size; repeatable",
+    )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument(
         "--dry-run",
@@ -131,7 +173,18 @@ def main() -> None:
             f"no acceptance point for --size {args.size} with "
             f"--density-fitting {args.density_fitting}"
         )
+    full_fock_sizes = set(args.reference_full_fock)
+    if len(full_fock_sizes) != len(args.reference_full_fock):
+        raise ValueError("duplicate full-Fock reference AO size")
+    if full_fock_sizes - {point.expected_ao_count for point in points}:
+        raise ValueError("full-Fock reference AO size is not in the selected matrix")
+    reference_overrides = dict(args.reference_gradient_tolerance)
+    if len(reference_overrides) != len(args.reference_gradient_tolerance):
+        raise ValueError("duplicate reference override AO size")
+    if set(reference_overrides) - {point.expected_ao_count for point in points}:
+        raise ValueError("reference override AO size is not in the selected matrix")
     for point in points:
+        _reference_tolerance(point, reference_overrides)
         case = cases[point.case]
         if case.expected_ao_count != point.expected_ao_count:
             raise ValueError(
@@ -152,6 +205,8 @@ def main() -> None:
                     point,
                     repeats=args.repeats,
                     output=output,
+                    reference_gradient_overrides=reference_overrides,
+                    reference_full_fock_sizes=full_fock_sizes,
                     density_fitting_memory_budget_bytes=(
                         args.density_fitting_memory_budget_bytes
                         if args.density_fitting == "cuda"
@@ -182,7 +237,12 @@ def main() -> None:
                 "ao_count": point.expected_ao_count,
                 "batch_size": point.batch_size,
                 "minimum_speedup": point.minimum_speedup,
-                "reference_gradient_tolerance": point.reference_gradient_tolerance,
+                "reference_gradient_tolerance": _reference_tolerance(
+                    point, reference_overrides
+                ),
+                "historical_reference_gradient_tolerance": point.reference_gradient_tolerance,
+                "reference_incremental_fock": point.expected_ao_count
+                not in full_fock_sizes,
                 "maximum_energy_error_hartree": point.maximum_energy_error,
                 "maximum_force_error_hartree_per_bohr": point.maximum_force_error,
                 "returncode": completed.returncode,
@@ -198,6 +258,11 @@ def main() -> None:
     summary = {
         "schema_version": 1,
         "benchmark": "real_molecule_gate",
+        "reference_convergence_policy": "explicit_tightening"
+        if reference_overrides or full_fock_sizes
+        else "historical",
+        "reference_gradient_overrides": reference_overrides,
+        "reference_full_fock_sizes": sorted(full_fock_sizes),
         "repeats": args.repeats,
         "max_iterations": _MAX_ITERATIONS,
         "energy_tolerance": _ENERGY_TOLERANCE,
