@@ -56,9 +56,10 @@ def test_ecp_ao_values_and_first_jets_have_separate_capabilities(backend, order)
 
 
 def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata():
+    # Local label g is valid with f projectors; h remains outside the contract.
     basis = BasisSet(
         "unsupported scalar ECP",
-        (element([potential(angular_momentum=[4])]),),
+        (element([potential(angular_momentum=[5])]),),
         BasisProvenance("synthetic test", "1", "CC0", "0" * 64),
     )
     assert not basis_capability(basis, [("Na", (0, 0, 0))], operator="ao")["eligible"]

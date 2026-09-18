@@ -49,9 +49,13 @@ There is no performance claim or schedule promotion.
 ## Source identity and build reuse
 
 Measured candidate: baseline `b78215ef0bf2cb43c91234c9c2dc852151605468` plus
-the four overlays in `source-identity.json`. The local committed overlay bytes
-are checked against these SHA256 hashes before publication. Later documentation
-and result files do not affect the measured code.
+the four overlays in `source-identity.json`, as committed in `180fbc0`. Those
+original qualification bytes were checked against the recorded SHA256 hashes.
+The review follow-up changes only the unsupported-label preflight fixture from
+g to h, because #446 permits local label g with f projectors. Numerical endpoint
+fixtures and runtime code are unchanged; the retained hashes identify the
+original measured overlay. Later documentation and result files do not affect
+the measured code.
 
 The run reused the existing Release CPU/CUDA libraries originally built on
 `072f6def38802696aa86138c4c5cc8dc4305ac97`. All 604 relevant native/header/compiler/
