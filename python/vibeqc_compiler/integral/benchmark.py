@@ -5,11 +5,14 @@ math but recomputes primitive geometry, Boys values, and Cartesian Coulomb
 states independently in every component lane.  This isolates the scheduling
 benefit of shell-class fusion without involving production CUDA dispatch.
 
-Run, for example::
+Run with the shared scheduler profile, for example::
 
-    python -m vibeqc_compiler.integral.benchmark \
-      --nvcc /group/software/cuda-12.9.1/bin/nvcc --architecture sm_120 \
-      --partition main --gres gpu:5090:1
+    VIBEQC_BENCHMARK_GRES=gpu:5090:1 \
+      python -m vibeqc_compiler.integral.benchmark \
+      --nvcc /group/software/cuda-12.9.1/bin/nvcc --architecture sm_120
+
+The environment selector above is a site-specific example, not a required GPU
+marketing name. Explicit CLI resource flags override environment settings.
 """
 
 from __future__ import annotations
