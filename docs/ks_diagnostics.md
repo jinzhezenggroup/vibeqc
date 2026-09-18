@@ -72,23 +72,23 @@ Python result storage is owned by the caller.
 
 ## Internal final-state handoff
 
-The resident CUDA KS owner also provides an internal, versioned handoff for
-the later stationary-gradient implementation in issue #163. It is deliberately
-absent from the public C/Python result ABI and does not make force requests
-supported.
+The native CPU RKS and resident CUDA RKS/UKS owners provide an internal,
+versioned final-state handoff for issue #163. CPU UKS and CPU ECP handoffs
+remain unsupported. This interface is deliberately absent from the public
+C/Python result ABI and does not make public force requests supported.
 
 After a converged solve, `methods/dft_method.hpp` can return an eligibility
 token for either a prepared single calculation or one prepared batch item. The
 token binds the prepared provider, geometry/basis owner, GridSpec, functional,
 spin occupations, device, solve epoch and exact orbital/Fock/density
 generation. Every new `begin`, including a failed or nonconverged attempt,
-revokes the preceding token before CUDA work. Rebuilt geometry receives a new
+revokes the preceding token before backend work. Rebuilt geometry receives a new
 owner even when all matrix dimensions are unchanged. Prepared-call exceptions
 and batch items rejected before device submission explicitly revoke their old
 eligibility while preserving independent warm-start ownership.
 
 An exact-token read canonicalizes the retained physical, non-DIIS Fock on the
-owner's ordinary stream and detaches `D`, `F`, `C`, orbital energies,
+selected backend and detaches `D`, `F`, `C`, orbital energies,
 occupations, energy components, grid and provider identity. The read validates
 the AO-metric eigenframe, density reconstruction, commutator, electron trace,
 idempotency, canonicality, component energy and physical residual before
@@ -99,3 +99,107 @@ after every gate passes. A stale token is rejected before matrix transfer.
 explicit handoff from ordinary energy execution. The existing public
 `matrix_d2h_bytes` total still includes snapshot matrices, so legacy transport
 accounting remains conservative without an ABI change.
+
+## Native CPU stationary-gradient diagnostic
+
+`vibeqc._stationary_cpu.complete_rks_gradient_diagnostic` is an internal,
+complete first nuclear-gradient **diagnostic**, not a production native force
+endpoint. It consumes a live `StationaryKsState.from_native` lease. The supported
+domain is direct, all-electron, integer-occupation real-FP64 LDA/PBE RKS with
+s/p AOs, the native version-one unpruned grid and distinct nuclei. Unsupported
+angular, spin, backend and derivative capabilities do not inherit support from
+this entrypoint. Public `Calculator` DFT properties remain energy-only.
+
+The seven reported sources are one-electron, Coulomb, XC AO-center, XC point
+motion, XC partition-weight motion, overlap/Pulay and nuclear repulsion.
+`StationaryGradientPlan` supplies the integral weights through TensorIR AD and
+checks exactly-once final source coverage. The existing integral graphs generate
+native CPU S/T/V, ERI and nuclear-pair derivatives. There is no method-specific
+PBE force formula, SCF iteration tape, CPKS solve, HF rerun or PySCF runtime call.
+
+The execution boundary is explicit: SCF, AO jets, exact native SCF-domain XC
+point coefficients and generated integral derivatives execute natively. TensorIR
+weights/reduction, AO pullbacks and generated Becke JVPs still execute through
+the compiler interpreter. `execution` reports this split. Completing native
+CPU/CUDA lowering and public resource/capability qualification remains separate
+work under #163/#396.
+
+```python
+from vibeqc import Calculator, GridSpec, KsOptions
+from vibeqc._dft_gradient import StationaryKsState
+from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
+from vibeqc_compiler.dft import NativeAO
+
+atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]
+calc = Calculator(
+    method="pbe-rks", basis="sto-3g", device="cpu",
+    ks_options=KsOptions(grid=GridSpec(
+        radial_points=24, angular_polar=8, angular_azimuth=16,
+    )),
+    energy_tolerance=1e-12, density_tolerance=1e-10,
+)
+with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
+    energy = batch.execute(strict=True).items[0].energy
+    state = StationaryKsState.from_native(batch, basis)
+    diagnostic = complete_rks_gradient_diagnostic(
+        state, basis, cache=".cache/stationary-cpu",
+    )
+    gradient = diagnostic.gradient       # dE/dR, Hartree/bohr
+    forces = -gradient                   # negate exactly once
+    print(energy, diagnostic.components, diagnostic.work)
+```
+
+A caller may pass a `CppCompilerAdapter`; otherwise `CXX`, or `c++` when unset,
+selects a compatible C++17 compiler. Sources are published atomically before the
+shared native-artifact cache hashes and compiles them. Compiler identity,
+flags, source and the complete project-header closure participate in reuse.
+No generated source or binary belongs in Git.
+
+CPU preparation retains the final evaluated F[D] and a density copy without
+adding a Fock evaluation. Explicit snapshot export canonicalizes that actual
+Fock and constructs W only after the existing final-state validator passes.
+CPU wire version two uses the `UINT64_MAX` device sentinel and additionally
+carries the native grid prescription and raw atomic quadrature measures. The
+CUDA version-one payload and device semantics are unchanged. Raw measures are
+materialized only for explicit CPU export, not retained by ordinary energy
+grid execution; the existing physical-state observer includes retained D/F.
+
+Partition response multiplies the generated partition derivative by the native
+raw atomic measure. Dividing the final weight by a tiny or zero partition is
+not permitted. Frozen source data and before/after lease checks prevent stale,
+replayed, changed-geometry, detached or relabeled states from publishing a
+complete gradient. A late derivative failure publishes no partial result and
+does not corrupt the valid SCF state.
+
+Working records and AO/grid evaluations are tiled. This diagnostic still
+visits all ordered AO quartets and evaluates partition JVPs for all `3*Natom`
+directions. The SCF reference already retains a full molecular grid and dense
+reference data. Reported tile/work counts are **not** a global ResourceBudget,
+whole-process peak-memory guarantee or performance promotion. Compilation and
+Python/interpreter overhead must remain visible in any timing.
+
+### Qualification
+
+With a current CPU library and the test dependencies installed:
+
+```sh
+PYTHONPATH=.:python OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+VIBEQC_LIBRARY="$PWD/build/libvibeqc.so" python -m pytest -q \
+  tests/python/test_dft_complete_cpu.py \
+  tests/python/test_dft_stationary_native.py \
+  tests/python/test_dft_stationary_gradient.py
+```
+
+The independent PySCF/Libxc/Libcint gate uses the same primitive input and raw
+atomic quadrature but its own SCF, integral/XC derivatives and Becke response.
+It compares all seven sources and totals for asymmetric water with LDA and PBE.
+Every Cartesian component is also checked with three fully rebuilt and
+reconverged central-difference steps. The raw maximum gradient gate is
+`1e-6 Eh/bohr`; the independent analytic and Richardson gates are `1e-7`.
+Translation/permutation, different tile sizes, replay, malformed native inputs,
+late provider failure, unsupported domains and a fresh process forbidding
+external oracle imports have dedicated tests. The CUDA snapshot tier retains
+its existing explicit opt-in; CPU qualification is not CUDA execution evidence.
+
+See the [implementation decision](../.agents/notes/implemented/architecture/2026-09-19-native-cpu-stationary-gradient.md)
+for the state, quadrature and compiler-ownership rationale.

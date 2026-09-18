@@ -1,6 +1,7 @@
 #include "methods/dft_method.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <climits>
 #include <cmath>
 #include <cstddef>
@@ -15,6 +16,7 @@
 #include "scf/fock_prepared.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/mean_field.hpp"
+#include "scf/reference/mean_field.hpp"
 #include "scf/types.hpp"
 #include "vibeqc/vibeqc.hpp"
 
@@ -25,6 +27,16 @@
 
 namespace vibeqc::methods::detail {
 namespace {
+
+std::uint64_t next_cpu_ks_owner() {
+  static std::atomic<std::uint64_t> next{1};
+  auto value = next.load(std::memory_order_relaxed);
+  do {
+    if (value == std::numeric_limits<std::uint64_t>::max())
+      throw std::overflow_error("CPU KS owner identity exhausted");
+  } while (!next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed));
+  return value;
+}
 
 bool is_uks(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS;
@@ -204,6 +216,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
               ks_provider_bytes(system_, backend)),
         basis_(system_),
         grid_(system_, grid) {
+    options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA && !is_uks(method_);
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(
@@ -225,6 +238,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
         runtime::add_capacity(fock_.cpu_observation_capacity(),
                               runtime::vector_capacities(basis_.packed, grid_.points(),
                                                          grid_.weights(), grid_.owners(), warm_));
+    if (cpu_physical_)
+      for (const auto* matrices : {&cpu_physical_->density, &cpu_physical_->fock})
+        for (const auto& matrix : *matrices)
+          bytes = runtime::add_capacity(bytes, runtime::vector_bytes(matrix));
 #if VIBEQC_HAS_CUDA
     if (cuda_) bytes = runtime::add_capacity(bytes, cuda_->resources().retained_host_numeric_bytes);
 #endif
@@ -246,13 +263,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #endif
   }
 
-  void invalidate_result() override {
-#if VIBEQC_HAS_CUDA
-    if (cuda_) cuda_->invalidate_final_state();
-#endif
-  }
+  void invalidate_result() override { invalidate_final_state(); }
 
   void invalidate_final_state() noexcept {
+    cpu_physical_.reset();
 #if VIBEQC_HAS_CUDA
     if (cuda_) cuda_->invalidate_final_state();
 #endif
@@ -274,8 +288,17 @@ class KsPreparedCalculation final : public PreparedCalculation {
     if (cuda_) return cuda_->final_state_token(token, detail);
 #endif
     token = {};
-    detail = "KS final-state handoff requires the resident CUDA backend";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    if (is_uks(method_) || !system_.ecp_terms.empty()) {
+      detail = "CPU UKS/ECP final-state handoff is not qualified";
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    }
+    if (!cpu_physical_) {
+      detail = "CPU KS owner has no successful current final state";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    token = {1, cpu_physical_->identity};
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
   }
 
   vibeqc_status read_final_state(const dft::CudaKsFinalStateToken& expected,
@@ -283,13 +306,33 @@ class KsPreparedCalculation final : public PreparedCalculation {
                                  std::string& detail) {
 #if VIBEQC_HAS_CUDA
     if (cuda_) return cuda_->read_final_state(expected, compute_weighted_density, state, detail);
-#else
-    (void)expected;
-    (void)compute_weighted_density;
 #endif
     state = {};
-    detail = "KS final-state handoff requires the resident CUDA backend";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    dft::CudaKsFinalStateToken current;
+    const auto status = final_state_token(current, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (expected != current) {
+      detail = "CPU KS final-state token is stale";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    // The SCF frame predates the last F[D] rebuild. Diagonalize that actual
+    // retained physical F here; do not relabel the lagged orbital energies.
+    // Explicit export costs one eigen solve and validation, zero Fock builds.
+    const auto& ints = fock_.one_electron();
+    const auto x = scf::reference::symmetric_orthogonalizer(ints.overlap, ints.nbf);
+    dft::KsFinalStateCandidate candidate{
+        current.identity,
+        current.identity.determinant.factor.density_generation,
+        true,
+        {scf::reference::generalized_eigen(cpu_physical_->fock[0], x, ints.nbf)}};
+    scf::solver::FinalStateLimits limits{options_.density_tolerance, options_.energy_tolerance, 0,
+                                         true};
+    if (!dft::validate_ks_final_state(current.identity, ints.overlap, ints.hcore, *cpu_physical_,
+                                      candidate, limits, compute_weighted_density, state, detail)) {
+      invalidate_final_state();
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    }
+    return VIBEQC_STATUS_SUCCESS;
   }
 
   vibeqc_status read_derivative_state(const dft::CudaKsFinalStateToken& expected,
@@ -303,6 +346,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
     output = {std::move(state), system_,        fock_.one_electron().overlap,
               basis_.packed,    grid_.points(), grid_.weights(),
               grid_.owners()};
+    if (backend_ != VIBEQC_BACKEND_CUDA) output.atomic_weights = grid_.atomic_weights();
     return VIBEQC_STATUS_SUCCESS;
   }
 
@@ -321,6 +365,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   /** Single-system and native batch paths share the same scientific owner. */
   scf::ScfResult run(const std::vector<double>* initial_density, bool reuse_warm,
                      bool update_warm) {
+    invalidate_final_state();
 #if VIBEQC_HAS_CUDA
     if (cuda_) {
       // Native iterations read only scalar diagnostics. The public energy
@@ -332,6 +377,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
       return native;
     }
 #endif
+    if (cpu_epoch_ == std::numeric_limits<std::uint64_t>::max())
+      throw std::overflow_error("CPU KS solve epoch exhausted");
+    ++cpu_epoch_;
     const auto* seed =
         initial_density ? initial_density : (reuse_warm && !warm_.empty() ? &warm_ : nullptr);
     // The CPU driver already samples its provider/grid. Add only the retained
@@ -346,7 +394,26 @@ class KsPreparedCalculation final : public PreparedCalculation {
       native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
+    if (native.converged && options_.retain_ks_state) {
+      dft::KsFinalStateIdentity identity;
+      identity.determinant = {{cpu_owner_, 1, 1, 1},
+                              cpu_epoch_,
+                              fock_.strategy(),
+                              {static_cast<std::size_t>(system_.electron_count / 2)}};
+      identity.model = {
+          1, 1,  grid_.spec(), options_.xc_tile_points, method_ == VIBEQC_METHOD_PBE_RKS,
+          1, -1, cpu_owner_};
+      dft::KsPhysicalState physical{identity,
+                                    true,
+                                    {native.density},
+                                    {std::move(native.ks_physical_fock)},
+                                    native.dft_diagnostic.components,
+                                    native.energy,
+                                    native.physical_residual_rms};
+      cpu_physical_ = std::move(physical);
+    }
     if (native.converged && update_warm) warm_ = std::move(native.density);
+    runtime::sample_cpu_capacity(host_numeric_capacity());
     return native;
   }
 
@@ -360,6 +427,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
   dft::AoBasis basis_;
   dft::MolecularGrid grid_;
   std::vector<double> warm_;
+  const std::uint64_t cpu_owner_{next_cpu_ks_owner()};
+  std::uint64_t cpu_epoch_{};
+  std::optional<dft::KsPhysicalState> cpu_physical_;
 #if VIBEQC_HAS_CUDA
   std::unique_ptr<dft::CudaKsPlan> cuda_;
 #endif

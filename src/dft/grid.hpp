@@ -38,6 +38,10 @@ class MolecularGrid {
   const std::vector<double>& points() const noexcept { return points_; }
   const std::vector<double>& weights() const noexcept { return weights_; }
   const std::vector<std::uint32_t>& owners() const noexcept { return owners_; }
+  /** Explicit derivative export of the atomic measure before partitioning.
+   * Reconstruct only quadrature rules, not Becke weights, on request; energy
+   * execution retains no additional point-sized array. */
+  std::vector<double> atomic_weights() const;
 
  private:
   core::System system_;

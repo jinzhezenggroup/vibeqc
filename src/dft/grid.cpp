@@ -62,6 +62,12 @@ double distance(const double* a, const double* b) {
   return std::hypot(std::hypot(a[0] - b[0], a[1] - b[1]), a[2] - b[2]);
 }
 
+double radial_measure(double radius, double node, double weight) {
+  const double t = 0.5 * (node + 1.0);
+  const double r = radius * t / (1.0 - t);
+  return 0.5 * weight * radius * r * r / ((1.0 - t) * (1.0 - t));
+}
+
 double owner_partition(const double* point, const core::System& system, std::size_t owner,
                        const GridSpec& spec) {
   const std::size_t atoms = system.atoms.size();
@@ -129,9 +135,8 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
     const double radius = spec_.element_radii[z] > 0.0 ? spec_.element_radii[z] : 1.0;
     for (std::size_t radial = 0; radial < spec_.radial_points; ++radial) {
       const double t = 0.5 * (radial_nodes[radial] + 1.0);
-      const double wt = 0.5 * radial_weights[radial];
       const double r = radius * t / (1.0 - t);
-      const double wr = wt * radius * r * r / ((1.0 - t) * (1.0 - t));
+      const double wr = radial_measure(radius, radial_nodes[radial], radial_weights[radial]);
       for (std::size_t z = 0; z < spec_.angular_polar; ++z) {
         const double ring = std::sqrt(std::max(0.0, 1.0 - polar[z] * polar[z]));
         for (std::size_t azimuth = 0; azimuth < spec_.angular_azimuth; ++azimuth) {
@@ -146,6 +151,24 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
       }
     }
   }
+}
+
+std::vector<double> MolecularGrid::atomic_weights() const {
+  const auto [polar, polar_weights] = gauss_legendre(spec_.angular_polar);
+  const auto [nodes, weights] = gauss_legendre(spec_.radial_points);
+  const double azimuth_weight = 2.0 * std::numbers::pi / spec_.angular_azimuth;
+  std::vector<double> result;
+  result.reserve(point_count());
+  for (const auto& atom : system_.atoms) {
+    const double stored = spec_.element_radii[atom.atomic_number];
+    const double radius = stored > 0.0 ? stored : 1.0;
+    for (std::size_t radial = 0; radial < nodes.size(); ++radial)
+      for (double polar_weight : polar_weights)
+        for (std::size_t azimuth = 0; azimuth < spec_.angular_azimuth; ++azimuth)
+          result.push_back(radial_measure(radius, nodes[radial], weights[radial]) * polar_weight *
+                           azimuth_weight);
+  }
+  return result;
 }
 
 }  // namespace vibeqc::dft
