@@ -224,7 +224,7 @@
     },
     {
       "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
+      "reason": "Light host-only policy selection and ordered class dispatch. Numerical kernels are instantiated independently by generated per-class CUDA units; policy-only changes do not invalidate those objects.",
       "regions": [],
       "role": "runtime",
       "subsystem": "df_derivatives"
@@ -1477,6 +1477,20 @@
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_dispatch.cuh",
+      "reason": "Host launch-context and class-entry ABI shared by the light dispatcher and independently compiled generated class launchers; no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_launch.cuh",
+      "reason": "Unchanged generic shell launch, packet preparation, diagnostics and resource queries moved from the monolith. Compile-time schedule/Rys/screening instantiation is independent of production policy; mathematical implementations remain generated.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
     }
   ],
   "generated_families": [
@@ -1621,6 +1635,15 @@
         "generated/generated_df_value_candidates.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
+    },
+    {
+      "name": "df_shell_class_units",
+      "outputs": [
+        "generated/df_shells/*.cu",
+        "generated/df_shells/*.cuh",
+        "generated/df_shells/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",

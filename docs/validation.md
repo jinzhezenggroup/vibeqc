@@ -217,6 +217,16 @@ ctest --test-dir build --output-on-failure
 VIBEQC_LIBRARY=$PWD/build/libvibeqc.so python -m pytest tests/python -q
 ```
 
+DF shell derivatives compile as 64 stable class units under
+`generated/df_shells`, using the existing two-job CUDA pool. Their production
+policy is compiled only into the light dispatcher. Policy-only edits should
+leave numerical class objects cached; a class-local math edit should not
+invalidate unrelated classes. Shared primitive or execution-template edits
+still rebuild their real dependents. The numerical units retain normal CUDA
+optimization even when compile-fast mode is enabled. See the
+[compilation-boundary decision](../.agents/notes/implemented/performance/2026-09-19-df-shell-compilation-units.md)
+for the invariants and cold/incremental validation distinction.
+
 The existing CPU/Python CI jobs discover the new tests automatically. CUDA CI
 continues its separate compilation job. Its `VIBEQC_CUDA_FAST_COMPILE=ON` setting
 is a compilation smoke check only; never use that build for resource/performance

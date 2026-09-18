@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
           restore-keys: |
             ccache-cpu-${{ matrix.compiler }}-
       - name: Configure
@@ -122,7 +122,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-12.9-sm120-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
           restore-keys: |
             ccache-cuda-12.9-sm120-
       - name: Reset ccache statistics
@@ -153,7 +153,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/f-shell-cache
-          key: f-shell-cuda-12.9-sm120-${{ hashFiles('tools/**') }}
+          key: f-shell-cuda-12.9-sm120-${{ hashFiles('include/**', 'python/vibeqc_compiler/**', 'tools/**') }}
           restore-keys: |
             f-shell-cuda-12.9-sm120-
       - name: Compile five representative f classes with release resources
@@ -213,7 +213,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
       - name: Build the CPU native library

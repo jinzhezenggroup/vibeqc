@@ -36,9 +36,14 @@ def main() -> None:
     parser.add_argument("--schedule-output", type=Path)
     parser.add_argument("--shell-output", type=Path)
     parser.add_argument("--df-production-manifest", type=Path)
+    parser.add_argument("--shell-units-directory", type=Path)
     args = parser.parse_args()
     if (args.schedule_output or args.shell_output) and not args.derivatives:
         parser.error("--schedule-output/--shell-output require --derivatives")
+    if args.shell_units_directory and not (args.derivatives and args.shell_output):
+        parser.error(
+            "--shell-units-directory requires --derivatives and --shell-output"
+        )
     if args.derivatives:
         from vibeqc_compiler.integral.df_derivatives_cuda import (
             df_derivative_inventory,
@@ -98,6 +103,11 @@ def main() -> None:
             ("generated_df_rys_shell.cuh", emit_df_rys_shell_cuda),
         ):
             write_if_changed(args.shell_output.with_name(name), emitter())
+    if args.shell_units_directory:
+        from vibeqc_compiler.integral.df_shell_units import emit_df_shell_units
+
+        for name, text in emit_df_shell_units():
+            write_if_changed(args.shell_units_directory / name, text)
     if args.inventory:
         payload = {
             **inventory(),

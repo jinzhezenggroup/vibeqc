@@ -103,8 +103,23 @@ def shell_work_model(angular):
     }
 
 
-def emit_df_shell_derivatives_cuda():
+def select_shell_classes(classes=None):
+    """Return a validated canonical subset; ordering never depends on callers."""
+    if classes is None:
+        return SHELL_CLASSES
+    requested = tuple(tuple(angular) for angular in classes)
+    if (
+        not requested
+        or any(angular not in SHELL_CLASSES for angular in requested)
+        or len(set(requested)) != len(requested)
+    ):
+        raise ValueError("expected unique supported s/p/d/f shell classes")
+    return tuple(angular for angular in SHELL_CLASSES if angular in requested)
+
+
+def emit_df_shell_derivatives_cuda(*, classes=None):
     """Emit class-specialized cache construction from the shared polynomial IR."""
+    selected = select_shell_classes(classes)
     lines = [
         r"""// Generated shell-shared weighted DF derivatives.
 #ifndef VIBEQC_GENERATED_DF_SHELL_DERIVATIVES_CUH
@@ -230,6 +245,8 @@ struct Moments {
         "template<unsigned A,unsigned B,unsigned C> struct Shell : Moments<A,B,C> {};"
     ]
     for angular in product(range(2), repeat=3):
+        if angular not in selected:
+            continue
         offsets, _ = axis_cache_layout(angular)
         parameters = ",".join(map(str, angular))
         lines += [
@@ -255,7 +272,7 @@ struct Moments {
             "  }",
             "};",
         ]
-    for angular in SHELL_CLASSES:
+    for angular in selected:
         for variant in range(3):
             schedule = shell_schedule(angular, variant)
             parameters = ",".join(map(str, (*angular, variant)))
@@ -266,8 +283,12 @@ struct Moments {
                 f"  static constexpr unsigned shared_bytes={schedule.shared_bytes};",
                 "};",
             ]
-    lines += ["template<class Function> void for_each_class(Function function) {"]
-    for angular in SHELL_CLASSES:
-        lines += [f"  function.template operator()<{','.join(map(str, angular))}>();"]
-    lines += ["}", "} // namespace vibeqc::scf::generated_df_shell", "#endif", ""]
+    if classes is None:
+        lines += ["template<class Function> void for_each_class(Function function) {"]
+        for angular in selected:
+            lines += [
+                f"  function.template operator()<{','.join(map(str, angular))}>();"
+            ]
+        lines += ["}"]
+    lines += ["} // namespace vibeqc::scf::generated_df_shell", "#endif", ""]
     return "\n".join(lines)
