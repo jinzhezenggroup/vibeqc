@@ -36,6 +36,13 @@ Its two completed pairs and interrupted next initialization are retained in
 `cross-binary-partial.json`, but do not meet the planned seven-pair gate and
 are not counted as promotion evidence.
 
+The baseline binary also provides seven fully interleaved causal controls:
+96/96 auto versus explicit shell is 85.866/35.889 ms; 96/464 is
+398.946/103.385 ms; 192/928 auto versus explicit packets is
+322.231/282.736 ms. Thus the admission mechanism is measured within one binary,
+not inferred solely by subtracting the two campaigns. The final patched auto
+route is independently validated against these existing explicit consumers.
+
 The final 192/928 same-binary control compares auto/packet with explicit
 angular-only shell execution: 282.027/282.218 versus 321.445 ms. This is an
 interleaved attribution result at unchanged shell/primitive work. At 96/464,
