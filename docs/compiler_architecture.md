@@ -68,6 +68,53 @@ planner and local-profile hashing/atomic-JSON helpers are re-exported from their
 original `vibeqc` APIs; their implementations are not duplicated. Shared evidence
 and timing helpers do not import benchmark command modules.
 
+## Workload specialization contract
+
+`common.specialization` is the pure, backend-neutral selection contract. It is
+not wired into production DF or benchmark dispatch yet; those adapters remain
+separate work. The module contains no measured thresholds or method policy.
+
+- `WorkloadSignature` contains a consumer kind and named scalar workload facts.
+  `TargetCapabilities` wraps the existing `TargetInfo` plus explicit capability
+  and resource facts. Unknown facts are omitted, not guessed; product names,
+  UUIDs and benchmark identities stay in the existing provenance records.
+- `CompilationIdentity` references the existing scientific and compiler hashes.
+  The compiler identity owner must include relevant source, IR/generator/ABI
+  versions, toolchain and compile options. `ImplementationProfile` references
+  the original artifact key, schedule hash and versioned tuning-profile hash.
+- A `SpecializationGuard` is a conjunction of declarative equality or inclusive
+  lower/upper bounds. Equality distinguishes booleans, integers and floats;
+  bounds accept finite numbers, not truthy strings or booleans. Missing facts
+  fail the predicate. Input pairs are copied, sorted and kept immutable.
+- Correctness and performance guards are independent. A missing performance
+  guard means **not promoted**. A present guard asserts a qualification supplied
+  by the existing evidence owner; the selection module does not create evidence
+  or relax numerical/resource gates. Even a matching performance guard cannot
+  bypass correctness or scientific/compiler identity checks.
+
+`select_specialization(workload=..., target=..., identity=..., profiles=...,
+fallback=...)` chooses the first eligible promoted implementation in caller
+priority order. If none match, the explicit fallback must pass its own identity
+and correctness checks. Otherwise the result is `unsupported`: no *supplied*
+implementation is eligible, not proof that the mathematical method is impossible.
+There is no implicit CPU execution or compilation on a miss.
+
+The result exposes the original selected artifact and a detached JSON diagnostic
+record with profile/schedule/scientific/compiler identities and separate rejection
+reasons. `selection_key` uses the existing canonical hash over the versioned
+request, ordered profiles, guards and fallback. It changes after relevant
+workload, capability, identity, schedule, profile or priority changes, while
+nearby workloads can still select the same artifact. Persist the input records
+with the decision when retaining evidence. **The selection key is not an
+executable cache key**: existing loaders retain compatibility, ownership and
+binary-integrity checks and may reject an artifact selected from stale metadata.
+No cache layout or existing hash algorithm is replaced.
+
+CPU-only contract tests are in `tests/python/test_specialization.py`. Synthetic
+guard domains are not CUDA qualification or performance evidence. Rationale and
+consumer migration boundaries are recorded in the
+[specialization contract note](../.agents/notes/implemented/architecture/2026-09-19-specialization-contract.md).
+
 ## Checkout and installed usage
 
 With the existing NumPy dependency available, CMake can run the generator
