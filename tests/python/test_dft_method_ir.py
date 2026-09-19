@@ -53,6 +53,76 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
 
 
 @pytest.mark.parametrize(
+    "name,components,exchange",
+    [
+        (
+            "BLYP",
+            {"GGA_X_B88": Fraction(1), "GGA_C_LYP": Fraction(1)},
+            Fraction(0),
+        ),
+        (
+            "B3LYP5",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(18, 25),
+                "LDA_C_VWN": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 5),
+        ),
+        (
+            "B5050LYP",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(21, 50),
+                "LDA_C_VWN": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 2),
+        ),
+        (
+            "BHANDH",
+            {"LDA_X": Fraction(1, 2), "GGA_C_LYP": Fraction(1)},
+            Fraction(1, 2),
+        ),
+        (
+            "BHANDHLYP",
+            {"GGA_X_B88": Fraction(1, 2), "GGA_C_LYP": Fraction(1)},
+            Fraction(1, 2),
+        ),
+        (
+            "PBE50",
+            {"GGA_X_PBE": Fraction(1, 2), "GGA_C_PBE": Fraction(1)},
+            Fraction(1, 2),
+        ),
+    ],
+)
+def test_cross_code_catalog_compositions_are_explicit(name, components, exchange):
+    graph = resolve_method(name, spin="unpolarized")
+    semilocal = graph.primitives[0]
+    assert isinstance(semilocal, SemilocalXCPrimitive)
+    assert dict(semilocal.functional.components) == components
+    if exchange:
+        assert len(graph.primitives) == 2
+        assert isinstance(graph.primitives[1], ExactExchangePrimitive)
+        assert graph.primitives[1].coefficient == exchange
+    else:
+        assert len(graph.primitives) == 1
+
+
+def test_pbe1pbe_is_a_named_pbe0_semantic_alias():
+    pbe0 = resolve_method("PBE0")
+    pbe1pbe = resolve_method("PBE1PBE")
+    assert pbe1pbe.identity == pbe0.identity
+    assert pbe1pbe.manifest_identity != pbe0.manifest_identity
+
+
+def test_ambiguous_b3lyp_name_fails_closed_until_vwn_rpa_is_audited():
+    with pytest.raises(UnsupportedMethod, match="unknown DFT method"):
+        resolve_method("B3LYP")
+
+
+@pytest.mark.parametrize(
     "spin,reference",
     [("unpolarized", "restricted"), ("polarized", "unrestricted")],
 )
