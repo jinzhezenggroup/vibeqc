@@ -1,4 +1,4 @@
-"""CodSpeed walltime harness for the CuMetal FP32 CUDA proxy benchmark."""
+"""CodSpeed walltime harness for the CuMetal FP32 CUDA proxy suite."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _T = TypeVar("_T")
+_WORKLOADS = ("compute", "memory", "gather", "mixed")
 
 
 class _BenchmarkFixture(Protocol):
@@ -38,15 +39,16 @@ class _CuMetalServer:
             )
         print(ready, flush=True)
 
-    def run_once(self) -> float:
+    def run_once(self, workload: str) -> float:
         assert self._process.stdin is not None
         assert self._process.stdout is not None
-        self._process.stdin.write("run\n")
+        self._process.stdin.write(f"run {workload}\n")
         self._process.stdin.flush()
         reply = self._process.stdout.readline().strip()
-        if not reply.startswith("OK "):
+        prefix = f"OK {workload} "
+        if not reply.startswith(prefix):
             raise RuntimeError(f"invalid CuMetal FP32 benchmark reply: {reply!r}")
-        device_ms = float(reply.split(maxsplit=1)[1])
+        device_ms = float(reply[len(prefix) :])
         if not device_ms > 0.0:
             raise RuntimeError(f"invalid CuMetal device duration: {device_ms}")
         return device_ms
@@ -83,9 +85,12 @@ def cumetal_fp32_server() -> _CuMetalServer:
         server.close()
 
 
-def test_cumetal_fp32_contract_walltime(
-    benchmark: _BenchmarkFixture, cumetal_fp32_server: _CuMetalServer
+@pytest.mark.parametrize("workload", _WORKLOADS)
+def test_cumetal_fp32_proxy_walltime(
+    benchmark: _BenchmarkFixture,
+    cumetal_fp32_server: _CuMetalServer,
+    workload: str,
 ) -> None:
-    """Measure one fixed synchronized FP32 CUDA workload on the Apple GPU."""
-    device_ms = benchmark(cumetal_fp32_server.run_once)
+    """Measure synchronized FP32 proxy patterns without claiming CUDA parity."""
+    device_ms = benchmark(lambda: cumetal_fp32_server.run_once(workload))
     assert device_ms > 0.0
