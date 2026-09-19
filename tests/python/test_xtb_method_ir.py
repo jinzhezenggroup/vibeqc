@@ -154,9 +154,7 @@ def test_gfn2_parameter_manifest_fails_closed():
         supported_atomic_numbers=tuple(range(1, 86)),
     )
     with pytest.raises(UnsupportedXtbMethod, match="atomic numbers 1..86"):
-        resolve_xtb_method(
-            XtbMethodSpec("bad-elements", "gfn2", truncated_elements)
-        )
+        resolve_xtb_method(XtbMethodSpec("bad-elements", "gfn2", truncated_elements))
 
     missing_d4 = replace(
         GFN2_PARAMETER_SET,

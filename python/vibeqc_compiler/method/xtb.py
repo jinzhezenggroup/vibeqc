@@ -87,7 +87,9 @@ def _canonical_products(values: object) -> tuple[str, ...]:
         raise UnsupportedXtbMethod("compiler products contain duplicate entries")
     unknown = set(values) - set(_PRODUCT_ORDER)
     if unknown:
-        raise UnsupportedXtbMethod(f"unsupported compiler products: {sorted(unknown)!r}")
+        raise UnsupportedXtbMethod(
+            f"unsupported compiler products: {sorted(unknown)!r}"
+        )
     if "nuclear-gradient" in values and "energy" not in values:
         raise UnsupportedXtbMethod("nuclear-gradient requests must also request energy")
     return tuple(name for name in _PRODUCT_ORDER if name in values)
@@ -124,7 +126,9 @@ class XtbParameterSet:
             )
         numbers = self.supported_atomic_numbers
         if not numbers:
-            raise UnsupportedXtbMethod("parameter set must support at least one element")
+            raise UnsupportedXtbMethod(
+                "parameter set must support at least one element"
+            )
         if any(
             isinstance(number, bool)
             or not isinstance(number, int)
@@ -147,7 +151,11 @@ class XtbParameterSet:
                 field,
                 _canonical_strings(getattr(self, field), field.replace("_", " ")),
             )
-        if not self.basis_tables or not self.orbital_tables or not self.correction_tables:
+        if (
+            not self.basis_tables
+            or not self.orbital_tables
+            or not self.correction_tables
+        ):
             raise UnsupportedXtbMethod(
                 "basis, orbital, and correction table requirements must be explicit"
             )
@@ -199,7 +207,9 @@ class XtbPrimitive:
 
         requires = _canonical_strings(self.requires, f"{self.kind} dependencies")
         if any(requirement not in _PRIMITIVE_ORDER for requirement in requires):
-            raise UnsupportedXtbMethod(f"{self.kind} has an unknown primitive dependency")
+            raise UnsupportedXtbMethod(
+                f"{self.kind} has an unknown primitive dependency"
+            )
         object.__setattr__(
             self,
             "requires",
@@ -240,9 +250,7 @@ class XtbPrimitive:
         object.__setattr__(
             self,
             "derivative_capabilities",
-            tuple(
-                name for name in _DERIVATIVE_CAPABILITIES if name in derivatives
-            ),
+            tuple(name for name in _DERIVATIVE_CAPABILITIES if name in derivatives),
         )
 
     def semantic_payload(self) -> dict:
@@ -277,7 +285,9 @@ class XtbMethodSpec:
         if self.version != XTB_METHOD_CATALOG_VERSION:
             raise UnsupportedXtbMethod("unsupported xTB method manifest version")
         if self.model_flavor not in _SCHEMA_EXTENSION_MODELS:
-            raise UnsupportedXtbMethod(f"unknown xTB model flavor {self.model_flavor!r}")
+            raise UnsupportedXtbMethod(
+                f"unknown xTB model flavor {self.model_flavor!r}"
+            )
         if not isinstance(self.parameter_set, XtbParameterSet):
             raise TypeError("xTB method requires an XtbParameterSet")
         if self.reference not in _REFERENCES:
@@ -329,7 +339,9 @@ class XtbMethodIR:
 
         if not isinstance(self.primitives, tuple):
             raise UnsupportedXtbMethod("xTB primitives must be an immutable tuple")
-        if not all(isinstance(primitive, XtbPrimitive) for primitive in self.primitives):
+        if not all(
+            isinstance(primitive, XtbPrimitive) for primitive in self.primitives
+        ):
             raise UnsupportedXtbMethod("XtbMethodIR contains an unsupported primitive")
         kinds = tuple(primitive.kind for primitive in self.primitives)
         if kinds != _PRIMITIVE_ORDER:
@@ -575,7 +587,9 @@ def resolve_xtb_method(
             "GFN1 is a schema extension point only; no audited GFN1 graph is supported"
         )
     if spec.model_flavor != _SUPPORTED_MODEL:
-        raise UnsupportedXtbMethod(f"unsupported xTB model flavor {spec.model_flavor!r}")
+        raise UnsupportedXtbMethod(
+            f"unsupported xTB model flavor {spec.model_flavor!r}"
+        )
 
     _validate_gfn2_parameter_set(spec.parameter_set)
     return XtbMethodIR(

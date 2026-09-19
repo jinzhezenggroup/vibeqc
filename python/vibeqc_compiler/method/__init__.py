@@ -29,12 +29,12 @@ from .xtb import (
 )
 
 __all__ = [
+    "GFN2_PARAMETER_SET",
     "METHOD_CATALOG",
     "XTB_METHOD_CATALOG",
     "D3Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
-    "GFN2_PARAMETER_SET",
     "ImplicitSolveSpec",
     "ImplicitVJPPlan",
     "IntegralGradientBlock",
