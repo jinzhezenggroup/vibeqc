@@ -22,23 +22,37 @@ from .stationary_gradient import (
     StationaryGradientPlan,
     StationaryMeanField,
 )
+from .typecheck import (
+    BackendCapability,
+    FeatureType,
+    MethodTypeError,
+    TypedMethodIR,
+    infer_feature_types,
+    verify_method_ir,
+)
 
 __all__ = [
     "METHOD_CATALOG",
+    "BackendCapability",
     "D3Spec",
     "D4Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
+    "FeatureType",
     "ImplicitSolveSpec",
     "ImplicitVJPPlan",
     "IntegralGradientBlock",
     "MethodIR",
     "MethodSpec",
+    "MethodTypeError",
     "SemilocalXCPrimitive",
     "StationaryGradientPlan",
     "StationaryMeanField",
     "SymmetricMatrixFunctionSpec",
+    "TypedMethodIR",
     "UnsupportedMethod",
+    "infer_feature_types",
     "r2scan3c_d4_eeq",
     "resolve_method",
+    "verify_method_ir",
 ]
