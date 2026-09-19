@@ -361,7 +361,7 @@ def inverse_power_program(
     topology: PairTopology,
     coefficients: object,
     *,
-    exponent: object=-1,
+    exponent: object = -1,
     parameter_identity: str | None = None,
 ) -> PairProgram:
     """Qualification potential: E = sum_p c_p * r_p**exponent."""

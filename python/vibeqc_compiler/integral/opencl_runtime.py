@@ -541,8 +541,8 @@ class OpenCLRuntime:
         *,
         items: object,
         shape: ExecutionShape,
-        stream: object | None=None,
-        wait_for: tuple[object, ...]=(),
+        stream: object | None = None,
+        wait_for: tuple[object, ...] = (),
     ) -> object:
         """Submit a padded NDRange and retain referenced objects until explicit wait."""
         shape.validate_for(self.capabilities())

@@ -542,7 +542,7 @@ class PreparedRCCSDTBatch:
             self.shape = shapes[0]
         self.settings = dict(settings)
 
-    def execute(self, *, compute_forces: bool=False) -> BatchRCCSDTResult:
+    def execute(self, *, compute_forces: bool = False) -> BatchRCCSDTResult:
         """Return input-ordered results; any item exception leaves others runnable."""
         if compute_forces:
             raise NotImplementedError(
@@ -586,7 +586,7 @@ class PreparedRCCSDTBatch:
 
 
 def rccsd_t_batch_energy(
-    problems: object, *, compute_forces: bool=False, **settings: object
+    problems: object, *, compute_forces: bool = False, **settings: object
 ) -> BatchRCCSDTResult:
     """Prepare and execute a homogeneous energy-only RCCSD(T) batch."""
 

@@ -355,7 +355,7 @@ class PreparedBatch:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan: object | None=None,
+        resource_plan: object | None = None,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")

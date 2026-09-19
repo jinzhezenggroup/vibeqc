@@ -128,7 +128,11 @@ class CompiledWeightedEri:
 
 
 def compile_weighted_eri(
-    integral: IntegralIR, compiler: object, cache: Path, *, component_indices: object | None=None
+    integral: IntegralIR,
+    compiler: object,
+    cache: Path,
+    *,
+    component_indices: object | None = None,
 ) -> CompiledWeightedEri:
     """Compile one explicit range/subset using the common local artifact cache.
 
@@ -235,10 +239,10 @@ class PreparedWeightedEri:
         self,
         artifact: CompiledWeightedEri,
         *,
-        record_capacity: int=256,
-        tile_capacity: int=1,
-        budget: object | None=None,
-        device_id: int=0,
+        record_capacity: int = 256,
+        tile_capacity: int = 1,
+        budget: object | None = None,
+        device_id: int = 0,
     ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
@@ -445,7 +449,11 @@ class PreparedWeightedEri:
             )
 
     def contract(
-        self, streams: object, *, tile_count: object | None=None, profile: bool=False
+        self,
+        streams: object,
+        *,
+        tile_count: object | None = None,
+        profile: bool = False,
     ) -> WeightedEriExecution:
         """Contract normalized streams without retaining their primitive products."""
         with self._lock:
@@ -577,9 +585,9 @@ class PreparedWeightedEri:
         centers: object,
         component_indices: object,
         *,
-        projections: object | None=None,
-        adapter_budget_bytes: object=4 << 20,
-        profile: bool=False,
+        projections: object | None = None,
+        adapter_budget_bytes: object = 4 << 20,
+        profile: bool = False,
     ) -> WeightedEriExecution:
         """Evaluate a bounded selection of raw contracted public shell components.
 

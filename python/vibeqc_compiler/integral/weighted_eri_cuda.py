@@ -21,9 +21,9 @@ def emit_weighted_eri_function(
     kernel: WeightedEriKernel,
     name: str,
     *,
-    inline_single_use: bool=False,
-    backend: str="cuda",
-    packed_weights: bool=False,
+    inline_single_use: bool = False,
+    backend: str = "cuda",
+    packed_weights: bool = False,
 ) -> str:
     """Emit one complete center-gradient result with shared scalar CSE.
 
@@ -91,9 +91,9 @@ def emit_weighted_eri_function(
 def emit_weighted_eri_header(
     functions: tuple[tuple[WeightedEriKernel, str], ...],
     *,
-    inline_single_use: bool=False,
-    backend: str="cuda",
-    packed_weights: bool=False,
+    inline_single_use: bool = False,
+    backend: str = "cuda",
+    packed_weights: bool = False,
 ) -> str:
     """Wrap bounded helpers in one shared geometry/result interface.
 
@@ -140,7 +140,7 @@ struct Gradient { double value; double center[4][3]; };
     )
 
 
-def emit_psss_weighted_header(*, inline_single_use: bool=False) -> str:
+def emit_psss_weighted_header(*, inline_single_use: bool = False) -> str:
     """Generate the first native migration candidate without replacing queues."""
     return emit_weighted_eri_header(
         ((build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 0, 0))), "psss"),),

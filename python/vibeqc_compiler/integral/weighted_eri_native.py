@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 def emit_weighted_eri_primitive_header(
-    functions: tuple[tuple[WeightedEriKernel, str], ...], *, backend: str="cuda"
+    functions: tuple[tuple[WeightedEriKernel, str], ...], *, backend: str = "cuda"
 ) -> str:
     """Emit CPU/CUDA values and all twelve derivatives for packed weight subsets.
 
@@ -99,7 +99,9 @@ def weighted_eri_metadata_identity(
     )
 
 
-def emit_weighted_eri_runtime(kernel: WeightedEriKernel, *, backend: str="cuda") -> str:
+def emit_weighted_eri_runtime(
+    kernel: WeightedEriKernel, *, backend: str = "cuda"
+) -> str:
     """Bind tagged weighted records to the shared bounded native runtime.
 
     Record weights already contain normalization and all consumer factors.

@@ -408,8 +408,8 @@ class BoundImplicitState:
         *,
         reference_identity: str,
         solver: TransposeSolver | None = None,
-        executor: object | None=None,
-        response_operator: object | None=None,
+        executor: object | None = None,
+        response_operator: object | None = None,
         current_reference: Callable[[], str] | None = None,
         primal_atol: float = 1e-10,
         max_bytes: int = 256 << 20,
@@ -633,7 +633,11 @@ class BoundImplicitState:
         }
 
     def vjp(
-        self, state_cotangent: object, *, reference_identity: str, direct: object | None=None
+        self,
+        state_cotangent: object,
+        *,
+        reference_identity: str,
+        direct: object | None = None,
     ) -> ImplicitVJPResult:
         """Apply the first-order implicit rule without any solver-history tape."""
         with self._lock:

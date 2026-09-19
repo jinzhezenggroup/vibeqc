@@ -34,7 +34,9 @@ def _orbital_energies(values: object, *, nmo: int) -> np.ndarray:
     return array
 
 
-def metric_density_response_mo(overlap_derivative_mo: object, *, nocc: int) -> np.ndarray:
+def metric_density_response_mo(
+    overlap_derivative_mo: object, *, nocc: int
+) -> np.ndarray:
     """Return the known MO density connection ``-1/2 (S_R D + D S_R)``.
 
     ``D`` is the closed-shell occupation matrix with value 2 on occupied

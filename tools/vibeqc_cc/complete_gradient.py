@@ -923,7 +923,9 @@ class BoundCCSDGradient:
         raise AssertionError("validated derivative backend became unreachable")
 
 
-def complete_gradient_validation(source: str, *, options: object | None=None) -> CCSDGradientResult:
+def complete_gradient_validation(
+    source: str, *, options: object | None = None
+) -> CCSDGradientResult:
     """Run fresh native HF -> CC -> Lambda -> Z -> complete analytic gradient.
 
     Source is borrowed and remains open. All four solver states have independent

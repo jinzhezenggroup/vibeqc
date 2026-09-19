@@ -243,7 +243,9 @@ static inline Vec v_fma(Vec a, Vec b, Vec c) {{ return {fma}(a, b, c); }}
     )
 
 
-def cpu_lane_component_identity(integral: object, indices: object, target: object, schedule: object) -> str:
+def cpu_lane_component_identity(
+    integral: object, indices: object, target: object, schedule: object
+) -> str:
     return canonical_hash(
         {
             "schema": "vibeqc.first-components.cpu-lanes.v1",

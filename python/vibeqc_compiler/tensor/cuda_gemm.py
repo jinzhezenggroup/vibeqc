@@ -101,7 +101,9 @@ class GemmContract:
             "GEMM panel bytes",
         )
 
-    def matrix_coordinates(self, batch: int, row: int, column: int, reduction: int) -> object:
+    def matrix_coordinates(
+        self, batch: int, row: int, column: int, reduction: int
+    ) -> object:
         """Reference coordinate map for independently checking pack/scatter code.
 
         CUDA code emits the corresponding integer maps; this host helper is

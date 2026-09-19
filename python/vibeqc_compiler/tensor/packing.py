@@ -100,7 +100,9 @@ class PackedLayout:
                 result[i] = sign * values[packed]
         return result.reshape(self.spec.shape)
 
-    def pack(self, dense: object, *, atol: float = 1e-11, rtol: float = 1e-10) -> np.ndarray:
+    def pack(
+        self, dense: object, *, atol: float = 1e-11, rtol: float = 1e-10
+    ) -> np.ndarray:
         """Pack an already symmetric tensor, rejecting lossy projection."""
         if not all(np.isfinite(x) and x >= 0 for x in (atol, rtol)):
             raise ValueError("packing tolerances must be finite and nonnegative")

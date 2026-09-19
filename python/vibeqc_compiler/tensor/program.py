@@ -89,7 +89,12 @@ class Program:
     definitions: tuple[Node, ...]
     _provenance_json: str
 
-    def __init__(self, outputs: Mapping[str, Node], definitions: tuple[object, ...]=(), provenance: object | None=None) -> None:
+    def __init__(
+        self,
+        outputs: Mapping[str, Node],
+        definitions: tuple[object, ...] = (),
+        provenance: object | None = None,
+    ) -> None:
         if not isinstance(outputs, Mapping) or not outputs:
             raise ValueError("program requires named outputs")
         if any(not isinstance(k, str) or not k.isidentifier() for k in outputs):

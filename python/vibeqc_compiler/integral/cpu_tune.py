@@ -380,7 +380,9 @@ def cpu_static_cost(
     }
 
 
-def _workload_identity(integral: object, primitives: object, centers: object, reference_identity: str) -> str:
+def _workload_identity(
+    integral: object, primitives: object, centers: object, reference_identity: str
+) -> str:
     payload = {
         "schema": "vibeqc.cpu-tune-workload.v1",
         "integral": integral_to_payload(integral),

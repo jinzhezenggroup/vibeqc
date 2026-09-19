@@ -246,11 +246,11 @@ def _one_electron_primal(integral, indices, primal_form):
 
 def build_second_derivative_kernel(
     integral: IntegralIR,
-    component_indices: object | None=None,
+    component_indices: object | None = None,
     *,
-    output_indices: object | None=None,
-    primal_form: object=AlgebraForm.FACTORED_NARY,
-    output_form: object=AlgebraForm.BINARY,
+    output_indices: object | None = None,
+    primal_form: object = AlgebraForm.FACTORED_NARY,
+    output_form: object = AlgebraForm.BINARY,
 ) -> object:
     """Lower one bounded second-order consumer without changing first-force ABI.
 

@@ -115,7 +115,7 @@ def source_audit(name: str, architecture: str = "sm_120") -> tuple[dict, str]:
     }, source
 
 
-def catalog(*, architecture: str = "sm_120", names: object=F_SHELL_CLASSES) -> dict:
+def catalog(*, architecture: str = "sm_120", names: object = F_SHELL_CLASSES) -> dict:
     """Gate 0/1 report with recurrence/schedule legality and provisional selection."""
     names = tuple(names)
     if (
@@ -266,7 +266,7 @@ def compile_matrix(
     cache: Path,
     jobs: int = 2,
     timeout: float = 600,
-    progress: object | None=None,
+    progress: object | None = None,
 ) -> dict:
     """Gate 2/3: bounded independent release compilations with verified cache hits.
 

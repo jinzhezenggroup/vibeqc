@@ -35,7 +35,10 @@ from .shell_spec import AXES, cartesian_components
 
 
 def build_df_value_ir(
-    family: OperatorFamily | str, angular: tuple[int, ...], *, recurrence: str="subset_wick"
+    family: OperatorFamily | str,
+    angular: tuple[int, ...],
+    *,
+    recurrence: str = "subset_wick",
 ) -> IntegralIR:
     """Declare a Cartesian s/p/d/f/g raw metric or three-center shell block.
 
@@ -195,7 +198,9 @@ def _reference_boys(argument: float, count: int) -> tuple[float, ...]:
     return tuple(values)
 
 
-def evaluate_df_primitive(kernel: DFComponentKernel, exponents: object, centers: object) -> float:
+def evaluate_df_primitive(
+    kernel: DFComponentKernel, exponents: object, centers: object
+) -> float:
     """Interpret one unnormalized primitive integral in Bohr (test/reference use)."""
     exponents = tuple(float(a) for a in exponents)
     centers = tuple(tuple(float(x) for x in r) for r in centers)

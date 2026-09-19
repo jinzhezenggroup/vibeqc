@@ -284,7 +284,9 @@ def _force_max_abs(result: object) -> float | None:
     return float(abs(result.forces).max()) if result.forces.size else None
 
 
-def _strict_reference(case: object, arguments: object, atoms: object, properties: object, backend: object) -> dict[str, Any]:
+def _strict_reference(
+    case: object, arguments: object, atoms: object, properties: object, backend: object
+) -> dict[str, Any]:
     """Compute the tighter FP64 reference the relaxed runs are compared to."""
 
     calculator = _calculator(
@@ -597,7 +599,9 @@ def _synchronized_seconds(started: float, backend: object) -> float:
     return time.perf_counter() - started
 
 
-def _batch_items(result: object, expected: object, target: object) -> list[dict[str, Any]]:
+def _batch_items(
+    result: object, expected: object, target: object
+) -> list[dict[str, Any]]:
     """Describe each input-ordered item, keeping failures in their slot."""
 
     items = []

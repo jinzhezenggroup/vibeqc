@@ -743,7 +743,7 @@ def run_case(
     return record
 
 
-def _environment_record(calculator: object | None=None) -> dict:
+def _environment_record(calculator: object | None = None) -> dict:
     library = None
     if calculator is not None:
         library = Path(calculator._library._name).resolve()

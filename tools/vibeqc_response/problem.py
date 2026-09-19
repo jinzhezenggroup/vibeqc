@@ -250,13 +250,13 @@ class ResponseProblem:
         cls,
         reference: ReferenceSnapshot,
         *,
-        method: str="rhf",
+        method: str = "rhf",
         operator_identity: str,
-        model_hash: object | None=None,
-        rhs_layout: str="ov-response-vector",
-        gauge: str="canonical-nonredundant-ov",
-        overlap_metric: str="mo-orthonormal",
-        perturbation_labels: tuple[object, ...]=(),
+        model_hash: object | None = None,
+        rhs_layout: str = "ov-response-vector",
+        gauge: str = "canonical-nonredundant-ov",
+        overlap_metric: str = "mo-orthonormal",
+        perturbation_labels: tuple[object, ...] = (),
     ) -> object:
         """Bind a converged reference to one concrete operator backend."""
         layout = RotationLayout.from_reference(reference)

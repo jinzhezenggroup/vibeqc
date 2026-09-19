@@ -17,8 +17,8 @@ def measure_interleaved(
     workload: str,
     inputs_hash: str,
     repeats: int = 5,
-    clock: object=time.perf_counter,
-    prepare: object | None=None,
+    clock: object = time.perf_counter,
+    prepare: object | None = None,
 ) -> list[dict]:
     """Measure identical inputs; evaluate returns serializable result diagnostics.
 

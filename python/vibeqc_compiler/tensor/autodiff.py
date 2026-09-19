@@ -476,7 +476,9 @@ def _vjp_multiply(node: Node, values: object, bar: object) -> list[np.ndarray]:
     return [bar * values[1], bar * values[0]]
 
 
-def _vjp_divide(node: Node, values: object, bar: object, active: tuple[object, ...]=(True, True)) -> list[np.ndarray]:
+def _vjp_divide(
+    node: Node, values: object, bar: object, active: tuple[object, ...] = (True, True)
+) -> list[np.ndarray]:
     x, y = values
     zero = _zeros(node.spec)
     return [
@@ -618,7 +620,9 @@ AD_RULES = {
 AD_PRIMITIVES = frozenset(AD_RULES)
 
 
-def _vjp_node(node: Node, values: object, bar: object, active: object | None=None) -> list[np.ndarray]:
+def _vjp_node(
+    node: Node, values: object, bar: object, active: object | None = None
+) -> list[np.ndarray]:
     """Dispatch one primitive and reject any future primitive without a rule."""
     try:
         rule = _VJP_RULES[node.op]
@@ -662,7 +666,10 @@ def _jvp_arrays(
 
 
 def _vjp_arrays(
-    program: Program, values: Mapping[Node, np.ndarray], cotangents: object, selected: object | None=None
+    program: Program,
+    values: Mapping[Node, np.ndarray],
+    cotangents: object,
+    selected: object | None = None,
 ) -> dict[Node, np.ndarray]:
     """Propagate cotangents through one primal evaluation in reverse order."""
     live = program.live_nodes
@@ -714,7 +721,7 @@ def jvp(
     feeds: Mapping,
     tangents: Mapping,
     *,
-    outputs: object | None=None,
+    outputs: object | None = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> JVPResult:
     """Evaluate one forward tangent direction through a TensorIR program.
@@ -749,7 +756,7 @@ def vjp(
     feeds: Mapping,
     cotangents: Mapping,
     *,
-    inputs: object | None=None,
+    inputs: object | None = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> VJPResult:
     """Propagate one cotangent without materializing a dense Jacobian.
@@ -795,7 +802,9 @@ def _inner(left: object, right: object) -> float:
     return float(np.dot(left, right))
 
 
-def _default_atol(program: Program, tangent_names: object, cotangent_names: object) -> float:
+def _default_atol(
+    program: Program, tangent_names: object, cotangent_names: object
+) -> float:
     """Use a scale-aware absolute guard for the requested dense spaces."""
     inputs = _input_nodes(program)
     dtypes = {inputs[name].spec.dtype for name in tangent_names if name in inputs}

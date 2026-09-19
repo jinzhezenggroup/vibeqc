@@ -342,8 +342,8 @@ class Calculator:
         screening_tolerance: float | None = None,
         precision: str = "fp64",
         target_accuracy: TargetAccuracy | None = None,
-        resource_budget: object | None=None,
-        ks_options: object | None=None,
+        resource_budget: object | None = None,
+        ks_options: object | None = None,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -594,7 +594,10 @@ class Calculator:
         )
 
     def _method_descriptor(
-        self, auxiliary_basis: ctypes.c_void_p | None = None, *, resource_plan: object | None=None
+        self,
+        auxiliary_basis: ctypes.c_void_p | None = None,
+        *,
+        resource_plan: object | None = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -799,7 +802,9 @@ class Calculator:
         )
         return result
 
-    def resolved_model(self, atoms: object, *, charge: int=0, multiplicity: int=1) -> ResolvedModel:
+    def resolved_model(
+        self, atoms: object, *, charge: int = 0, multiplicity: int = 1
+    ) -> ResolvedModel:
         """Resolve the scientific HF or MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
@@ -1123,7 +1128,7 @@ class Calculator:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan: object | None=None,
+        resource_plan: object | None = None,
     ) -> object:  # Return annotation is deferred to avoid an import cycle.
         """Prepare a persistent native ragged batch for repeated execution.
 

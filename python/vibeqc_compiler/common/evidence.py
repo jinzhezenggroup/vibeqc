@@ -106,7 +106,12 @@ def block_error(actual: object, reference: object, *, atol: float, rtol: float) 
 
 
 def finite_difference(
-    energy: object, coordinates: object, analytic_gradient: object, *, settings: dict, steps: tuple[object, ...]=(1e-2, 3e-3, 1e-3)
+    energy: object,
+    coordinates: object,
+    analytic_gradient: object,
+    *,
+    settings: dict,
+    steps: tuple[object, ...] = (1e-2, 3e-3, 1e-3),
 ) -> dict:
     """Report the whole central-difference curve under one frozen method policy.
 

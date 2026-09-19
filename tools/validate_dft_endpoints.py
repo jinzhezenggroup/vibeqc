@@ -85,7 +85,12 @@ def transport_delta(previous, current):
     }
 
 
-def result_record(result: object, milliseconds: float, transport_before: object, transport_after: object) -> object:
+def result_record(
+    result: object,
+    milliseconds: float,
+    transport_before: object,
+    transport_after: object,
+) -> object:
     """Keep physical convergence and actual prepared grids with every phase."""
     return {
         "milliseconds": milliseconds,

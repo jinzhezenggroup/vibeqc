@@ -135,10 +135,10 @@ class BoundCCSDLambda:
         snapshot: object,
         cc_result: object,
         *,
-        options: object | None=None,
-        solver: object | None=None,
+        options: object | None = None,
+        solver: object | None = None,
         current_reference: Callable[[], str] | None = None,
-        backend: str="cpu",
+        backend: str = "cpu",
     ) -> None:
         if backend != "cpu":
             raise NotImplementedError(

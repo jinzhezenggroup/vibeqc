@@ -159,7 +159,9 @@ def _derivative_input(node: Node, name: str) -> Node:
     return input_tensor(name, spec)
 
 
-def _constant_ones_for_axes(operand: Node, axes: object, *, max_elements: int) -> Node | None:
+def _constant_ones_for_axes(
+    operand: Node, axes: object, *, max_elements: int
+) -> Node | None:
     """Create a minimal all-ones operand carrying only missing output labels."""
     axes = tuple(axes)
     if not axes:
@@ -693,8 +695,8 @@ def _rebuild(
     program: Program,
     replacements: Mapping[Node, Node],
     *,
-    extra_definitions: tuple[object, ...]=(),
-    provenance: object | None=None,
+    extra_definitions: tuple[object, ...] = (),
+    provenance: object | None = None,
 ) -> Program:
     """Rebuild a primal DAG with selected input definitions substituted."""
     mapping = {}
@@ -849,8 +851,8 @@ def linearize(
     program: Program,
     tangent_inputs: object,
     *,
-    outputs: object | None=None,
-    packed: object | None=None,
+    outputs: object | None = None,
+    packed: object | None = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> JVPProgram:
     """Generate a demand-driven forward derivative :class:`Program`.
@@ -938,8 +940,8 @@ def transpose_program(
     program: Program,
     cotangent_outputs: object,
     *,
-    inputs: object | None=None,
-    packed: object | None=None,
+    inputs: object | None = None,
+    packed: object | None = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> VJPProgram:
     """Generate a demand-driven reverse derivative :class:`Program`.

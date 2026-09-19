@@ -41,7 +41,9 @@ FIXTURE_VARIANTS = (
 )
 
 
-def numerical_error(actual: object, reference: object, *, atol: float, rtol: float) -> dict:
+def numerical_error(
+    actual: object, reference: object, *, atol: float, rtol: float
+) -> dict:
     """Retain absolute/scaled gates and raw relative errors on nonzero entries.
 
     Exactly zero reference entries have no defined relative error; their
@@ -192,7 +194,7 @@ def _reference_integrals(inputs):
 
 
 def make_fixture(
-    name: str, variant: str = "cartesian", *, displacement: object | None=None
+    name: str, variant: str = "cartesian", *, displacement: object | None = None
 ) -> ShellFixture:
     """Build asymmetric, reversed-cache, coincident-atom, or spherical fixtures."""
     if variant not in FIXTURE_VARIANTS:
@@ -392,8 +394,8 @@ def numerical_matrix(
     cache: Path,
     slurm_time: str | None = None,
     timeout: int = 900,
-    finite_difference_classes: tuple[object, ...]=("fsss", "fsps", "fpps"),
-    progress: object | None=None,
+    finite_difference_classes: tuple[object, ...] = ("fsss", "fsps", "fpps"),
+    progress: object | None = None,
 ) -> dict:
     """Gate 4: all ordinary/persistent RHF/UHF wrappers against libcint.
 

@@ -2303,7 +2303,9 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
     return result
 
 
-def evaluate_value(kernel: object, values: dict[str, float], boys_count: int = 3) -> float:
+def evaluate_value(
+    kernel: object, values: dict[str, float], boys_count: int = 3
+) -> float:
     argument = kernel.graph.evaluate(kernel.boys_argument, values)
     for order, value in enumerate(boys_values(argument, boys_count)):
         values[f"boys_{order}"] = value
@@ -2768,7 +2770,9 @@ def test_rys4_component_lanes_raise_a_second_center_d_shell():
 
 
 @pytest.mark.parametrize("name", ("psps", "ppss"))
-def test_low_order_production_force_is_generated_by_common_rys2_pipeline(name: str) -> None:
+def test_low_order_production_force_is_generated_by_common_rys2_pipeline(
+    name: str,
+) -> None:
     """Keep low-order production ownership in the shared IR and CUDA emitter."""
 
     selection = next(
@@ -3179,7 +3183,9 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback():
     assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
 
 
-def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path) -> None:
+def test_production_manifest_drives_generated_registry_and_shards(
+    tmp_path: Path,
+) -> None:
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
     manifest = (
@@ -5574,7 +5580,9 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         (FDDD_SPEC, (KernelConsumer.FORCE,)),
     ),
 )
-def test_f_shell_cuda_compiles_when_nvcc_is_configured(tmp_path: Path, spec: object, consumers: object) -> None:
+def test_f_shell_cuda_compiles_when_nvcc_is_configured(
+    tmp_path: Path, spec: object, consumers: object
+) -> None:
     """Compile pair-order-six and tiled f-shell gradients with CUDA 12.9."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")
@@ -7506,7 +7514,9 @@ def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "spec", (SSSS_SPEC, PSSS_SPEC, DPDS_SPEC, DDPS_SPEC, FDDD_SPEC)
 )
-def test_codegen_cli_writes_generated_fused_candidate(tmp_path: Path, spec: object) -> None:
+def test_codegen_cli_writes_generated_fused_candidate(
+    tmp_path: Path, spec: object
+) -> None:
     output = tmp_path / "generated" / f"{spec.name}_fused.cuh"
     command = [
         sys.executable,

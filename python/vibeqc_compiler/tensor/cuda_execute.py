@@ -287,8 +287,8 @@ class PreparedCuda:
         artifact: CudaArtifact,
         *,
         device: int = 0,
-        resource_plan: object | None=None,
-        resource_owner: object | None=None,
+        resource_plan: object | None = None,
+        resource_owner: object | None = None,
         execution_mode: str = "ordinary",
     ) -> None:
         if execution_mode not in ("ordinary", "cuda-graph"):

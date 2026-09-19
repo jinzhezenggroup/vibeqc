@@ -92,7 +92,7 @@ def source_identity(source: Path) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def read_xyz(path: Path, *, units: str="angstrom") -> list:
+def read_xyz(path: Path, *, units: str = "angstrom") -> list:
     """Read one ordinary XYZ geometry and convert coordinates to public-API Bohr."""
     lines = path.read_text().splitlines()
     count = int(lines[0])
@@ -115,7 +115,9 @@ def read_xyz(path: Path, *, units: str="angstrom") -> list:
     return atoms
 
 
-def rank_hotspots(rows: list[dict], *, coverage: float=0.97, maximum_classes: int=8) -> list[dict]:
+def rank_hotspots(
+    rows: list[dict], *, coverage: float = 0.97, maximum_classes: int = 8
+) -> list[dict]:
     """Use exact active primitive work; never compile absent shell classes by default."""
     if not 0 < coverage <= 1 or maximum_classes < 1:
         raise ValueError("coverage must be in (0,1] and class limit positive")
@@ -146,7 +148,7 @@ def rank_hotspots(rows: list[dict], *, coverage: float=0.97, maximum_classes: in
 
 
 def endpoint_gate(
-    baseline: list[dict], candidate: list[dict], *, minimum_speedup: float=1.02
+    baseline: list[dict], candidate: list[dict], *, minimum_speedup: float = 1.02
 ) -> dict:
     """Reject noisy/slower proposals and changed SCF branches without dropping samples."""
     if len(baseline) != len(candidate) or len(baseline) < 4:
@@ -206,9 +208,9 @@ def _worker(
     workload: Path,
     output: Path,
     *,
-    generic: bool=False,
-    profile: bool=False,
-    timeout: int=600,
+    generic: bool = False,
+    profile: bool = False,
+    timeout: int = 600,
 ) -> dict:
     env = {**os.environ, "VIBEQC_LIBRARY": str(library), "VIBEQC_PROFILE": "off"}
     # Ambient debugging masks would otherwise turn an A/B into a comparison of

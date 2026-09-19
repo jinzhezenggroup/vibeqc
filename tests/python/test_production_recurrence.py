@@ -713,7 +713,9 @@ def test_production_mixed_fock_uses_compact_fp32_geometry():
     assert "GeneratedSm120DppsPrimitiveGeometry" not in mixed_source
 
 
-def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path) -> None:
+def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(
+    tmp_path: Path,
+) -> None:
     """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
 
     manifest = tmp_path / "resident.json"

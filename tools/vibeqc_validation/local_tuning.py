@@ -40,7 +40,7 @@ def validate_schedule(
     nvcc: Path,
     directory: Path,
     *,
-    timeout: int=600,
+    timeout: int = 600,
     production_source: Path | None = None,
     production_object: Path | None = None,
 ) -> dict:

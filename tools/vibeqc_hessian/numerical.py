@@ -120,7 +120,9 @@ def hessian_difference(actual: object, reference: object) -> dict:
     }
 
 
-def _gradient_at(gradient: object, coordinates: object, policy: str, expected_shape: object) -> object:
+def _gradient_at(
+    gradient: object, coordinates: object, policy: str, expected_shape: object
+) -> object:
     """Evaluate the gradient under a freshly decoded copy of the frozen policy.
 
     Decoding a new copy per evaluation is what prevents a stateful evaluator
@@ -148,7 +150,11 @@ def _gradient_at(gradient: object, coordinates: object, policy: str, expected_sh
 
 
 def numerical_hessian(
-    gradient: object, coordinates: object, *, settings: dict, steps: object=DEFAULT_STEPS
+    gradient: object,
+    coordinates: object,
+    *,
+    settings: dict,
+    steps: object = DEFAULT_STEPS,
 ) -> dict:
     """Report the whole central-difference Hessian curve under one frozen policy.
 

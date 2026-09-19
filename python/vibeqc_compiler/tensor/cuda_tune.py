@@ -44,7 +44,9 @@ if TYPE_CHECKING:
     from .cuda_plan import TensorPlan, TensorSchedule
 
 
-def endpoint_gate(baseline: object, candidate: object, *, minimum_speedup: float=1.02) -> dict:
+def endpoint_gate(
+    baseline: object, candidate: object, *, minimum_speedup: float = 1.02
+) -> dict:
     """Require a paired median gain whose bootstrap lower bound exceeds one."""
     left, right = np.asarray(baseline), np.asarray(candidate)
     if left.ndim != 1 or left.shape != right.shape or not 5 <= left.size <= 30:
@@ -96,7 +98,7 @@ def tune_cuda(
     fixtures: object,
     cache: Path,
     *,
-    schedules: object | None=None,
+    schedules: object | None = None,
     search_space: TensorScheduleSpace | None = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
     screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,

@@ -90,8 +90,8 @@ def query_integral_capability(
     integral: IntegralIR,
     *,
     backend: str = "cuda",
-    component_indices: object | None=None,
-    output_indices: object | None=None,
+    component_indices: object | None = None,
+    output_indices: object | None = None,
 ) -> CapabilityCheck:
     """Query the existing backend's semantic input boundary without emitting code.
 

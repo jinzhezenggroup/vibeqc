@@ -144,7 +144,12 @@ def _common(inputs: tuple[Node, ...]) -> TensorSpec:
     return spec
 
 
-def _result(inputs: object, *, indices: object | None=None, symmetries: tuple[object, ...]=()) -> TensorSpec:
+def _result(
+    inputs: object,
+    *,
+    indices: object | None = None,
+    symmetries: tuple[object, ...] = (),
+) -> TensorSpec:
     return _common(inputs).result(
         indices=indices,
         symmetries=symmetries,
@@ -152,7 +157,7 @@ def _result(inputs: object, *, indices: object | None=None, symmetries: tuple[ob
     )
 
 
-def _axes(value: object, rank: int, *, permutation: bool=False) -> tuple[int, ...]:
+def _axes(value: object, rank: int, *, permutation: bool = False) -> tuple[int, ...]:
     value = tuple(value)
     if (
         any(type(i) is not int or not 0 <= i < rank for i in value)
@@ -357,7 +362,13 @@ def _validate(node: Node) -> None:
         raise ValueError(f"declared {node.op} result disagrees with inferred type")
 
 
-def _make(op: object, inputs: object, attrs: tuple[object, ...]=(), *, indices: object | None=None) -> Node:
+def _make(
+    op: object,
+    inputs: object,
+    attrs: tuple[object, ...] = (),
+    *,
+    indices: object | None = None,
+) -> Node:
     inputs = tuple(inputs)
     declared = _result(inputs, indices=indices)
     attrs = dict(attrs)
@@ -379,7 +390,7 @@ def constant(values: object, spec: TensorSpec | None = None) -> Node:
     return Node("constant", (), spec, (("values", tuple(rational(x) for x in values)),))
 
 
-def add(*inputs: Node, coefficients: object | None=None) -> Node:
+def add(*inputs: Node, coefficients: object | None = None) -> Node:
     """Ordered rational-scaled sum, with no floating-point reassociation."""
     coefficients = (1,) * len(inputs) if coefficients is None else tuple(coefficients)
     return _make(
@@ -433,7 +444,7 @@ def power(value: Node, exponent: object) -> Node:
     return _make("power", (value,), {"exponent": rational(exponent)})
 
 
-def einsum(equation: str, *inputs: Node, coefficient: int=1) -> Node:
+def einsum(equation: str, *inputs: Node, coefficient: int = 1) -> Node:
     """Explicit-output Einstein contraction without ellipses or conjugation.
 
     Alphabetic single-character labels are notation only. First-occurrence

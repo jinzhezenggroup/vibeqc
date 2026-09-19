@@ -68,7 +68,7 @@ def first_derivative_cpu_lane_shell_identity(
     target: object,
     schedule: object,
     *,
-    tile_size: int=64,
+    tile_size: int = 64,
 ) -> str:
     tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
     return canonical_hash(
