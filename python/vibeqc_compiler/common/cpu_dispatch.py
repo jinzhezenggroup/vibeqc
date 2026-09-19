@@ -87,17 +87,23 @@ class CpuRuntimeFeatures:
 
 def _linux_cpu_features() -> set[str]:
     try:
-        lines = Path("/proc/cpuinfo").read_text().lower().splitlines()
+        records = Path("/proc/cpuinfo").read_text().lower().split("\n\n")
     except OSError:
         return set()
-    flags: set[str] = set()
-    for line in lines:
-        if ":" not in line:
+    common: set[str] | None = None
+    for record in records:
+        fields = {}
+        for line in record.splitlines():
+            if ":" in line:
+                key, value = line.split(":", 1)
+                fields[key.strip()] = value.strip()
+        if not any(key in fields for key in ("processor", "flags", "features")):
             continue
-        key, value = line.split(":", 1)
-        if key.strip() in ("flags", "features"):
-            flags.update(value.split())
-    return flags
+        # Threads may migrate: a flag advertised by only one CPU is not safe.
+        # A processor without feature information conservatively admits none.
+        flags = set(fields.get("flags", fields.get("features", "")).split())
+        common = flags if common is None else common & flags
+    return common or set()
 
 
 def _darwin_cpu_features() -> set[str]:
