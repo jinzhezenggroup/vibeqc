@@ -52,10 +52,17 @@ jobs:
           CIBW_CACHE_PATH: ${{ runner.temp }}/cibw-cache
           # cibuildwheel mounts the host root at /host inside the manylinux
           # container, so the compiler cache survives the container lifetime.
+          #
+          # Pull requests only need the wheel-specific provider-free
+          # build/repair/install boundary here. The main CUDA CI already compiles
+          # the complete sm_120 AOT source set on every PR, so rebuilding the
+          # release-optimized AOT bundle in this job adds ~10 minutes of duplicate
+          # NVCC work. Keep push/manual artifacts release-realistic.
           CIBW_ENVIRONMENT: >-
             VIBEQC_ENABLE_CUDA=ON
-            VIBEQC_ENABLE_AOT_SHELLS=ON
+            VIBEQC_ENABLE_AOT_SHELLS=${{ github.event_name == 'pull_request' && 'OFF' || 'ON' }}
             VIBEQC_CUDA_ARCHITECTURES=120
+            CMAKE_ARGS=-DVIBEQC_CUDA_FAST_COMPILE=${{ github.event_name == 'pull_request' && 'ON' || 'OFF' }}
             CCACHE_DIR=/host${{ runner.temp }}/ccache
             CCACHE_MAXSIZE=3G
         with:
