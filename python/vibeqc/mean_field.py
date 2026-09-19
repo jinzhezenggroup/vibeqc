@@ -1,6 +1,8 @@
 """Fixed-density MethodIR mean-field consumer of native common J/K sources."""
 
 from dataclasses import dataclass
+from fractions import Fraction
+from hashlib import sha256
 
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
@@ -9,6 +11,7 @@ from vibeqc_compiler.method import (
     ExactExchangePrimitive,
     MethodIR,
     NonlocalCorrelationPrimitive,
+    RangeSeparatedExchangePrimitive,
     SemilocalXCPrimitive,
     UnsupportedMethod,
 )
@@ -35,6 +38,90 @@ class MeanFieldEvaluation:
     method_plan_identity: str | None = None
     nonlocal_energy: float = 0.0
     nonlocal_identity: str | None = None
+
+
+@dataclass(frozen=True, eq=False)
+class FixedDensityExchangeEvaluation:
+    """Exchange-only fixed-density energy and AO potential from raw K matrices."""
+
+    energy: float
+    potential: np.ndarray
+    identity: str
+    method_identity: str
+    operator_keys: tuple[tuple[str, Fraction], ...]
+
+
+def exchange_operator_key(primitive):
+    """Return the exact operator/omega key consumed by fixed-density exchange."""
+
+    if isinstance(primitive, ExactExchangePrimitive):
+        return primitive.operator, Fraction(0)
+    if isinstance(primitive, RangeSeparatedExchangePrimitive):
+        return primitive.operator, primitive.omega
+    raise TypeError("expected an exact-exchange primitive")
+
+
+def assemble_fixed_density_exchange(method, density, raw_exchange):
+    """Apply MethodIR exchange coefficients to provider-produced raw K matrices.
+
+    Restricted total-density K contributes Vx=-a*K/2; unrestricted same-spin K
+    contributes Vx_s=-a*K_s. In both cases Ex=1/2 Tr(D Vx), so one resolved
+    coefficient graph drives energy and potential. This function does not build K.
+    """
+    if not isinstance(method, MethodIR):
+        raise TypeError("fixed-density exchange assembly requires MethodIR")
+    d = np.asarray(density)
+    if method.reference == "restricted":
+        valid_density = d.ndim == 2 and d.shape[0] == d.shape[1]
+        density_factor = -0.5
+    else:
+        valid_density = d.ndim == 3 and d.shape[0] == 2 and d.shape[1] == d.shape[2]
+        density_factor = -1.0
+    if not valid_density or np.iscomplexobj(d) or not np.isfinite(d).all():
+        raise ValueError(
+            "density shape/reference mismatch or nonfinite/complex density"
+        )
+    expected_shape = d.shape
+
+    primitives = tuple(
+        p
+        for p in method.primitives
+        if isinstance(p, (ExactExchangePrimitive, RangeSeparatedExchangePrimitive))
+    )
+    keys = tuple(exchange_operator_key(p) for p in primitives)
+    if set(raw_exchange) != set(keys):
+        raise ValueError("raw exchange operator set does not match MethodIR")
+    potential = np.zeros(expected_shape, dtype=np.float64)
+    raw_hashes = []
+    for primitive, key in zip(primitives, keys, strict=True):
+        k = np.asarray(raw_exchange[key])
+        if k.shape != expected_shape or np.iscomplexobj(k) or not np.isfinite(k).all():
+            raise ValueError(f"invalid raw K for operator {key!r}")
+        k = np.asarray(k, dtype=np.float64)
+        potential += density_factor * float(primitive.coefficient) * k
+        raw_hashes.append(sha256(np.ascontiguousarray(k).tobytes()).hexdigest())
+    energy = 0.5 * float(np.sum(np.asarray(d, dtype=np.float64) * potential))
+    if not np.isfinite(energy):
+        raise ArithmeticError("nonfinite fixed-density exchange energy")
+    density_hash = sha256(np.ascontiguousarray(d).tobytes()).hexdigest()
+    identity = canonical_hash(
+        {
+            "schema": "vibeqc.fixed-density-exchange/v1",
+            "method": method.identity,
+            "density_sha256": density_hash,
+            "operators": [
+                [op, str(omega), raw_hash]
+                for (op, omega), raw_hash in zip(keys, raw_hashes, strict=True)
+            ],
+        }
+    )
+    return FixedDensityExchangeEvaluation(
+        energy,
+        immutable(potential),
+        identity,
+        method.identity,
+        keys,
+    )
 
 
 @dataclass(frozen=True)

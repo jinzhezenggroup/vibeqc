@@ -927,6 +927,10 @@ def _clone_expression(
             cloned = target.reciprocal(arguments[0])
         elif node.operation == "exp":
             cloned = target.exponential(arguments[0])
+        elif node.operation in ("log", "log1p", "expm1"):
+            cloned = target.stable_unary(node.operation, arguments[0])
+        elif node.operation in ("atan", "asinh", "erf"):
+            cloned = target.transcendental_unary(node.operation, arguments[0])
         elif node.operation == "power":
             cloned = target.power(arguments[0], float(node.payload))
         else:

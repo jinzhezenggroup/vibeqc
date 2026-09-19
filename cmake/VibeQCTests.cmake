@@ -186,6 +186,10 @@ macro(vibeqc_add_native_tests)
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_ecp_policy_cuda_tests tests/native/test_ecp_policy_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_ecp_policy_cuda_tests vibeqc_ecp_codegen)
+    target_include_directories(vibeqc_ecp_policy_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     vibeqc_native_test(vibeqc_cuda_fock_composition_tests tests/native/test_cuda_fock_composition.cpp)
   endif()
 
