@@ -1,6 +1,7 @@
 #ifndef VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 #define VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 
+#include <array>
 #include <cstddef>
 #include <span>
 #include <vector>
@@ -36,6 +37,22 @@ struct DensityFittingIntegralData {
   std::vector<double> three_center_derivative;
 };
 
+/** Analytic AO electrostatic-potential matrices at explicit probe points.
+ *
+ * Values are point-major row-major matrices:
+ *   values[(point * nbf + mu) * nbf + nu]
+ *     = <mu | 1 / |r - R_point| | nu>.
+ *
+ * Probe coordinates are supplied as flat xyz triples in Bohr. They are fixed
+ * external points: this value-only reference does not attach nuclear
+ * derivatives to the probe coordinates.
+ */
+struct EspIntegralData {
+  std::size_t nbf{};
+  std::size_t npoint{};
+  std::vector<double> values;
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -45,6 +62,33 @@ struct DensityFittingIntegralData {
  */
 IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
                              bool include_eri = true);
+
+/** Evaluate analytic AO ESP matrices on explicit probe points. */
+EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);
+
+/** Contract one ordered public-AO shell quartet with arbitrary weights.
+ *
+ * The twelve returned entries are positive integral derivatives in independent
+ * shell-slot order (Axyz, Bxyz, Cxyz, Dxyz). The caller scatters slots to
+ * physical atoms, so repeated atoms remain distinct through differentiation.
+ * Only this quartet's public-basis expansions and twelve derivative scalars
+ * are materialized; no molecular AO-rank-four or coordinate derivative tensor
+ * is formed.
+ */
+std::array<double, 12> contract_weighted_eri_shell_derivative(
+    const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+    std::span<const double> weights);
+
+/** Directly contract arbitrary public-AO overlap and hcore weights.
+ *
+ * The coordinate-sized result contains positive energy derivatives. When
+ * include_nuclear_repulsion is true the nuclear term is added exactly once.
+ * The implementation accumulates one differentiated scalar and never forms
+ * coordinate-major AO matrices.
+ */
+std::vector<double> contract_weighted_one_electron_derivative(
+    const core::System& system, std::span<const double> overlap_weights,
+    std::span<const double> hcore_weights, bool include_nuclear_repulsion);
 
 /**
  * Write a row-major rectangular <target AO | source AO> overlap on the CPU.

@@ -86,6 +86,10 @@ def tensor_source_identity() -> str:
                 "common",
                 assets=(
                     "src/tensor/cuda_runtime.cuh",
+                    "src/runtime/bounded_workspace.hpp",
+                    "src/runtime/cuda_resources.cuh",
+                    "src/runtime/resource_cuda.cuh",
+                    "src/runtime/resource_ledger.hpp",
                     "src/tensor/cuda_graph_context.cuh",
                     "src/runtime/cuda_graph_region.cuh",
                     "src/tensor/cuda_error.hpp",

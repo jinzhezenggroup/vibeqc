@@ -13,6 +13,7 @@ ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
     "tensor": {"tensor", "common"},
+    "geometry": {"geometry", "tensor", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
     "method": {"method", "xc", "tensor", "common"},

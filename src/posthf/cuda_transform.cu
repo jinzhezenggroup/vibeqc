@@ -15,14 +15,8 @@ struct Transform {
   std::array<size_t, 4> m{}, tile{}, c_offset{};
   double *c{}, *first{}, *second{}, *result{};
 };
-size_t mul(size_t a, size_t b) {
-  if (b && a > SIZE_MAX / b) throw std::overflow_error("post-HF allocation overflow");
-  return a * b;
-}
-size_t add(size_t a, size_t b) {
-  if (a > SIZE_MAX - b) throw std::overflow_error("post-HF allocation overflow");
-  return a + b;
-}
+using vibeqc::runtime::size_add;
+using vibeqc::runtime::size_mul;
 template <class F>
 int guarded(char* error, size_t size, F fn) noexcept {
   try {
@@ -64,20 +58,21 @@ int posthf_cuda_create_v1(int device, size_t nbf, const size_t* m, const size_t*
       p->m[k] = m[k];
       p->tile[k] = tile[k];
       p->c_offset[k] = p->coefficients;
-      p->coefficients = add(p->coefficients, mul(nbf, m[k]));
-      p->output = mul(p->output, m[k]);
-      input = mul(input, tile[k]);
+      p->coefficients = size_add(p->coefficients, size_mul(nbf, m[k]));
+      p->output = size_mul(p->output, m[k]);
+      input = size_mul(input, tile[k]);
     }
     p->stage = input;
     for (unsigned k = 0; k < 4; ++k) {
-      input = mul(input / tile[k], m[k]);
+      input = size_mul(input / tile[k], m[k]);
       p->stage = std::max(p->stage, input);
     }
     if (p->stage > INT_MAX || nbf > INT_MAX)
       throw std::invalid_argument("MO stage exceeds cuBLAS int32 indexing");
-    const size_t numeric = mul(8, add(add(p->coefficients, mul(2, p->stage)), p->output));
-    const size_t error_offset = mul(add(numeric, 255) / 256, 256);
-    const size_t workspace = add(error_offset, 256), bytes = add(workspace, 4U << 20);
+    const size_t numeric =
+        size_mul(8, size_add(size_add(p->coefficients, size_mul(2, p->stage)), p->output));
+    const size_t error_offset = size_mul(size_add(numeric, 255) / 256, 256);
+    const size_t workspace = size_add(error_offset, 256), bytes = size_add(workspace, 4U << 20);
     if (bytes != expected_bytes)
       throw std::invalid_argument("native/Python MO allocation plan mismatch");
     cudaDeviceProp prop{};
@@ -112,7 +107,7 @@ int posthf_cuda_add_v1(void* pointer, const double* values, const size_t* begin,
       if (!counts[k] || counts[k] > p.tile[k] || begin[k] > p.nbf || counts[k] > p.nbf - begin[k])
         throw std::invalid_argument("MO tile outside prepared bounds");
       shape[k] = counts[k];
-      elements = mul(elements, counts[k]);
+      elements = size_mul(elements, counts[k]);
     }
     ctx.section(true, ctx.metrics.input_ms, [&] {
       cuda_check(
@@ -128,7 +123,7 @@ int posthf_cuda_add_v1(void* pointer, const double* values, const size_t* begin,
         blas_check(cublasDgemm(ctx.handle, CUBLAS_OP_N, CUBLAS_OP_T, columns, rest, dim, &alpha,
                                p.c + p.c_offset[k] + begin[k] * p.m[k], columns, in, rest, &beta,
                                out, columns));
-        elements = mul(rest, p.m[k]);
+        elements = size_mul(rest, p.m[k]);
         for (unsigned axis = 0; axis < 3; ++axis) shape[axis] = shape[axis + 1];
         shape[3] = p.m[k];
         std::swap(in, out);

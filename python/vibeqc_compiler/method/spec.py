@@ -19,9 +19,14 @@ from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
 from .dispersion import (
     D3Spec,
+    D4Spec,
     DispersionCorrectionPrimitive,
     pbe0_d3_bj_spec,
     pbe_d3_bj_spec,
+)
+from .nonlocal_correlation import (
+    NonlocalCorrelationPrimitive,
+    NonlocalCorrelationSpec,
 )
 
 METHOD_IR_VERSION = "dft-method-ir-v1"
@@ -66,7 +71,8 @@ class MethodSpec:
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
-    dispersion: D3Spec | None = None
+    dispersion: D3Spec | D4Spec | None = None
+    nonlocal_correlation: NonlocalCorrelationSpec | None = None
 
     def __post_init__(self):
         if not isinstance(self.identifier, str) or not self.identifier.strip():
@@ -86,12 +92,22 @@ class MethodSpec:
             _require_fraction(coefficient, f"component {name}")
             if not coefficient:
                 raise UnsupportedMethod("zero-valued manifest components are ambiguous")
-        if self.dispersion is not None and not isinstance(self.dispersion, D3Spec):
-            raise TypeError("dispersion requires a D3Spec")
+        if self.nonlocal_correlation is not None and not isinstance(
+            self.nonlocal_correlation, NonlocalCorrelationSpec
+        ):
+            raise TypeError("nonlocal correlation requires NonlocalCorrelationSpec")
+        if self.dispersion is not None and not isinstance(
+            self.dispersion, (D3Spec, D4Spec)
+        ):
+            raise TypeError("dispersion requires a D3Spec or D4Spec")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
             raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
-        if not self.semilocal_components and not self.exact_exchange:
+        if (
+            not self.semilocal_components
+            and not self.exact_exchange
+            and self.nonlocal_correlation is None
+        ):
             raise UnsupportedMethod("method composition cannot be empty")
 
     def to_payload(self):
@@ -103,6 +119,11 @@ class MethodSpec:
                 for name, coefficient in self.semilocal_components
             ],
             "exact_exchange": str(self.exact_exchange),
+            **(
+                {"nonlocal_correlation": self.nonlocal_correlation.to_payload()}
+                if self.nonlocal_correlation
+                else {}
+            ),
             **({"dispersion": self.dispersion.to_payload()} if self.dispersion else {}),
         }
 
@@ -199,7 +220,10 @@ class ExactExchangePrimitive:
 
 
 MethodPrimitive = (
-    SemilocalXCPrimitive | ExactExchangePrimitive | DispersionCorrectionPrimitive
+    SemilocalXCPrimitive
+    | ExactExchangePrimitive
+    | NonlocalCorrelationPrimitive
+    | DispersionCorrectionPrimitive
 )
 
 
@@ -230,6 +254,7 @@ class MethodIR:
         allowed = (
             SemilocalXCPrimitive,
             ExactExchangePrimitive,
+            NonlocalCorrelationPrimitive,
             DispersionCorrectionPrimitive,
         )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
@@ -240,7 +265,9 @@ class MethodIR:
                 return 0
             if isinstance(primitive, ExactExchangePrimitive):
                 return 1
-            return 2
+            if isinstance(primitive, NonlocalCorrelationPrimitive):
+                return 2
+            return 3
 
         keys = [primitive_order(primitive) for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):
@@ -269,8 +296,13 @@ class MethodIR:
                 operators.append("semilocal-xc")
             elif isinstance(primitive, ExactExchangePrimitive):
                 operators.append(primitive.operator + "-exchange")
-            else:
+            elif isinstance(primitive, NonlocalCorrelationPrimitive):
+                ingredients.update(primitive.required_ingredients)
+                operators.append("nonlocal-correlation")
+            elif isinstance(primitive.specification, D3Spec):
                 operators.append("geometry-d3-bj")
+            else:
+                operators.append("geometry-d4-bj-eeq")
         return {
             "spin": self.spin,
             "reference": self.reference,
@@ -316,6 +348,10 @@ METHOD_CATALOG = MappingProxyType(
         "PBE": MethodSpec(
             "PBE",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+        ),
+        "R2SCAN": MethodSpec(
+            "R2SCAN",
+            (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
         ),
         "PBE0": MethodSpec(
             "PBE0",
@@ -363,6 +399,8 @@ def resolve_method(method, *, spin="unpolarized"):
         primitives.append(SemilocalXCPrimitive(functional))
     if spec.exact_exchange:
         primitives.append(ExactExchangePrimitive(spec.exact_exchange))
+    if spec.nonlocal_correlation is not None:
+        primitives.append(NonlocalCorrelationPrimitive(spec.nonlocal_correlation))
     if not primitives:
         raise UnsupportedMethod("method components cancel to an empty graph")
     if spec.dispersion is not None:

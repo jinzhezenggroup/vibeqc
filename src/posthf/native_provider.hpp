@@ -24,6 +24,8 @@ class NativeBlockProvider {
   std::size_t source_bytes() const { return source_bytes_; }
   std::size_t reference_bytes() const { return reference_bytes_; }
   const std::array<std::size_t, 4>& tile_shape() const { return tile_; }
+  const scf::PhysicalReference& reference() const { return ref_; }
+  const RawSource& source() const { return source_; }
 
  private:
   const RawSource& source_;
