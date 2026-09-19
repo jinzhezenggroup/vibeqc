@@ -12,14 +12,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: cumetal-cuda-${{ github.event.pull_request.number || github.run_id }}
+  group: cumetal-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   cuda-tests:
     name: CUDA runtime tests (CuMetal / Apple GPU)
     runs-on: macos-15
-    timeout-minutes: 60
+    # Keep the 50-minute full-suite step inside a separate finite job budget.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
@@ -248,6 +249,7 @@ jobs:
 
   upload-test-results:
     name: Upload CUDA test results
+    timeout-minutes: 8
     needs: cuda-tests
     if: ${{ !cancelled() && (needs.cuda-tests.result == 'success' || needs.cuda-tests.result == 'failure') }}
     continue-on-error: true
