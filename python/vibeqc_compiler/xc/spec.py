@@ -18,6 +18,8 @@ PUBLIC_COMPONENTS = (
     "LDA_C_PW_MOD",
     "GGA_X_PBE",
     "GGA_C_PBE",
+    "MGGA_X_R2SCAN",
+    "MGGA_C_R2SCAN",
 )
 RSH_COMPONENTS = ("GGA_X_B88", "GGA_X_ITYH", "LDA_C_VWN", "GGA_C_LYP")
 COMPONENTS = PUBLIC_COMPONENTS + RSH_COMPONENTS
@@ -25,6 +27,10 @@ CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
     "PBE": (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+    "R2SCAN": (
+        ("MGGA_X_R2SCAN", Fraction(1)),
+        ("MGGA_C_R2SCAN", Fraction(1)),
+    ),
 }
 
 
@@ -99,11 +105,17 @@ class FunctionalSpec:
 
     @property
     def ingredients(self):
-        return (
-            ("rho", "sigma")
-            if any(n.startswith("GGA") and c for n, c in self.components)
-            else ("rho",)
-        )
+        if any(
+            name.startswith("MGGA") and coefficient
+            for name, coefficient in self.components
+        ):
+            return ("rho", "sigma", "tau")
+        if any(
+            name.startswith("GGA") and coefficient
+            for name, coefficient in self.components
+        ):
+            return ("rho", "sigma")
+        return ("rho",)
 
     def to_payload(self):
         """Complete identity including parameter/license provenance and units."""

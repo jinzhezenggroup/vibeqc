@@ -6,4 +6,8 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
                                                              core::ContextState&,
                                                              const core::System&,
                                                              const vibeqc_method_descriptor&);
+std::unique_ptr<PreparedBatch> prepare_mp2_batch(const Capabilities&, core::ContextState&,
+                                                 std::vector<core::System>,
+                                                 const vibeqc_method_descriptor&,
+                                                 vibeqc_batch_flags);
 }  // namespace vibeqc::methods::detail

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from fractions import Fraction
 
 from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
@@ -41,6 +42,20 @@ class ScalarCEmitter:
     def emit(self, roots: Sequence[Expr]) -> None:
         normalized_roots = tuple(roots)
         topological_order = tuple(self.graph.topological_order(normalized_roots))
+        if any(
+            self.graph.nodes[identifier].operation == "select_le"
+            for identifier in topological_order
+        ):
+            if (
+                self.materialization_plan is not None
+                and tuple(root.identifier for root in normalized_roots)
+                != self.materialization_plan.root_identifiers
+            ):
+                raise ValueError(
+                    "materialization plan roots do not match emission roots"
+                )
+            self._emit_piecewise(normalized_roots)
+            return
         if self.materialization_plan is None:
             materialized = {
                 identifier
@@ -92,6 +107,58 @@ class ScalarCEmitter:
             self._temporary += 1
             self.names[identifier] = name
             self.lines.append(f"  const double {name} = {code};")
+
+    def _emit_piecewise(self, roots: Sequence[Expr]) -> None:
+        """Emit lexical branches so inactive piecewise arithmetic stays unevaluated."""
+
+        def temporary() -> str:
+            name = f"v{self._temporary}"
+            self._temporary += 1
+            return name
+
+        def visit(identifier: int, indent: str) -> None:
+            if identifier in self.names:
+                return
+            node = self.graph.nodes[identifier]
+            if node.operation == "constant":
+                if not isinstance(node.payload, (Fraction, float)):
+                    raise TypeError("constant node requires a numeric coefficient")
+                self.names[identifier] = format_constant(node.payload)
+                return
+            if node.operation == "variable":
+                name = str(node.payload)
+                self.names[identifier] = self.variables.get(name, name)
+                return
+            if node.operation == "select_le":
+                left, right, if_true, if_false = node.arguments
+                visit(left, indent)
+                visit(right, indent)
+                output = temporary()
+                self.lines.append(f"{indent}double {output};")
+                self.lines.append(
+                    f"{indent}if ({self.names[left]} <= {self.names[right]}) {{"
+                )
+                parent = self.names.copy()
+                self.names = parent.copy()
+                visit(if_true, indent + "  ")
+                self.lines.append(f"{indent}  {output} = {self.names[if_true]};")
+                self.lines.append(f"{indent}}} else {{")
+                self.names = parent.copy()
+                visit(if_false, indent + "  ")
+                self.lines.append(f"{indent}  {output} = {self.names[if_false]};")
+                self.lines.append(f"{indent}}}")
+                self.names = parent
+                self.names[identifier] = output
+                return
+            for argument in node.arguments:
+                visit(argument, indent)
+            code = self._operation_code(identifier)
+            output = temporary()
+            self.names[identifier] = output
+            self.lines.append(f"{indent}const double {output} = {code};")
+
+        for root in roots:
+            visit(root.identifier, "  ")
 
     def emit_assignment(self, expression: Expr, target: str) -> None:
         """Emit one expression and bind its root to an existing C lvalue.

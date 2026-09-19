@@ -86,6 +86,8 @@ def test_energy_rejects_forces_and_unknown_backend():
         energy(s, p, backend="graph")
     with pytest.raises(ValueError, match="CudaCompilerAdapter"):
         energy(s, p, backend="cuda")
+    with pytest.raises(ValueError, match="CudaCompilerAdapter"):
+        energy(s, p, backend="cuda-resident")
 
 
 def test_nonconvergence_is_a_failed_energy_result_not_an_exception():

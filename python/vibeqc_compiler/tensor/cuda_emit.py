@@ -415,7 +415,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
         ctx->prepare(device, {plan.target.compute_capability_major}, {plan.target.compute_capability_minor},
                      {plan.allocation_bytes}ULL, {error_offset}ULL, {library_offset}ULL,
                      {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
-        DeviceGuard guard(device);
+        vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
         {math_mode}
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
@@ -492,7 +492,7 @@ extern "C" int {_name(prefix, "tensor_graph_configure")}(void* pointer, int enab
 }}
 extern "C" int {_name(prefix, "tensor_probe")}(int device, char* result, size_t size) {{
     try {{
-        DeviceGuard guard(device);
+        vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
         cudaDeviceProp p{{}};
         cuda_check(cudaGetDeviceProperties(&p, device));
         int driver = 0, runtime = 0, major = 0, minor = 0, patch = 0;
