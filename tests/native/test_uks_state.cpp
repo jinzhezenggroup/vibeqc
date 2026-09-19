@@ -16,7 +16,8 @@ void require(bool passed, const char* message) {
   if (!passed) throw std::runtime_error(message);
 }
 
-void check_state(bool pbe, unsigned max_iterations, bool hydroxyl = false) {
+void check_state(bool pbe, unsigned max_iterations, bool hydroxyl = false,
+                 bool retain_state = false) {
   // Asymmetric H3 has two occupied alpha orbitals and one beta orbital.
   // Its initial core density is not stationary, unlike a one-AO atom.
   core::System system;
@@ -60,6 +61,7 @@ void check_state(bool pbe, unsigned max_iterations, bool hydroxyl = false) {
                                 hydroxyl ? dft::GridSpec{} : dft::GridSpec{1, 12, 6, 12, 3, 1e-12});
   scf::ScfOptions options;
   options.compute_forces = false;
+  options.retain_ks_state = retain_state;
   options.max_iterations = max_iterations;
   options.energy_tolerance = 1e-10;
   options.density_tolerance = 1e-7;
@@ -89,6 +91,15 @@ void check_state(bool pbe, unsigned max_iterations, bool hydroxyl = false) {
   for (std::size_t i = 0; i < alpha.size(); ++i) {
     fock.alpha[i] += xc.potential[0][i];
     fock.beta[i] += xc.potential[1][i];
+  }
+  if (retain_state && result.converged) {
+    const auto expected = scf::reference::concatenate(fock.alpha, fock.beta);
+    require(result.ks_physical_fock.size() == expected.size(), "missing retained physical Fock");
+    for (std::size_t i = 0; i < expected.size(); ++i)
+      require(std::abs(result.ks_physical_fock[i] - expected[i]) < 1e-12,
+              "retained Fock includes an occupation shift or stale density");
+  } else {
+    require(result.ks_physical_fock.empty(), "unrequested final Fock was retained");
   }
   const auto residual_a = scf::reference::commutator_residual(fock.alpha, alpha, ints.overlap, n);
   const auto residual_b = scf::reference::commutator_residual(fock.beta, beta, ints.overlap, n);
@@ -122,6 +133,7 @@ int main() {
     for (bool pbe : {false, true}) {
       for (unsigned iterations : {1U, 150U}) check_state(pbe, iterations);
       check_state(pbe, 200, true);
+      check_state(pbe, 200, true, true);
     }
     std::cout << "UKS accepted and exhausted-budget states are physically consistent\n";
   } catch (const std::exception& error) {

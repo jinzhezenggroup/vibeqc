@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_usage.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/rhf_policy.hpp"
@@ -136,19 +136,21 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   std::size_t coordinate_count = 0;
-  if (!checked_multiply(atom_count, 3U, coordinate_count) ||
+  if (!vibeqc::runtime::checked_multiply(atom_count, 3U, coordinate_count) ||
       coordinate_count == std::numeric_limits<std::size_t>::max()) {
     detail = "CUDA DF integral batch coordinate dimensions overflowed";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
   std::size_t output_elements_per_system = 0;
-  if (!checked_multiply(per_system, (include_derivatives ? coordinate_count : 0U) + 1U,
-                        output_elements_per_system)) {
+  if (!vibeqc::runtime::checked_multiply(per_system,
+                                         (include_derivatives ? coordinate_count : 0U) + 1U,
+                                         output_elements_per_system)) {
     detail = "CUDA DF integral batch output dimensions overflowed";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
   std::size_t per_system_bytes = 0;
-  if (!checked_multiply(output_elements_per_system, sizeof(double), per_system_bytes)) {
+  if (!vibeqc::runtime::checked_multiply(output_elements_per_system, sizeof(double),
+                                         per_system_bytes)) {
     detail = "CUDA DF integral batch output bytes overflowed";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }

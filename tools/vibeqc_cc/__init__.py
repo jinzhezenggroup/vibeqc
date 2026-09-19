@@ -36,6 +36,7 @@ from .lambda_equations import (
 )
 from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
+from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
 from .triples import (
     build_triples_program,
@@ -75,6 +76,7 @@ __all__ = [
     "CudaTriplesTiles",
     "LambdaOptions",
     "PreparedCCSD",
+    "PreparedResidentCCSD",
     "RCCSDResult",
     "SolverOptions",
     "TileSpec",
@@ -94,6 +96,7 @@ __all__ = [
     "evaluate",
     "method_capabilities",
     "solve",
+    "solve_gpu_resident",
     "tile_triples_energy",
     "tile_triples_energy_masked",
     "tile_triples_energy_tensorir",

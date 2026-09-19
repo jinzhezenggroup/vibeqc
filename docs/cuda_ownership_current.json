@@ -1,22 +1,22 @@
 {
-  "all_handwritten_scientific_lines": 13416,
+  "all_handwritten_scientific_lines": 13790,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
-      "bytes": 5274,
+      "bytes": 7072,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 102,
+        "runtime": 127,
         "scientific": 0
       },
       "path": "src/cc/cuda_state.cuh",
-      "physical_lines": 120,
+      "physical_lines": 154,
       "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
       "regions": [],
       "role": "runtime",
-      "sha256": "76766d10f1c2d1501794e948f13dfd89cfd1ae86589d02f005f95a660c808449",
+      "sha256": "09ee3814921e78160c76f5cc49f53d33ea610e35ab11c83f41a66e095eb601a9",
       "subsystem": "runtime"
     },
     {
@@ -100,20 +100,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 4209,
+      "bytes": 4243,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 66,
+        "runtime": 67,
         "scientific": 0
       },
       "path": "src/dft/cuda_xc.hpp",
-      "physical_lines": 100,
+      "physical_lines": 101,
       "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "43619d809f06c927d2615a5be7e03cd36816bfc2dd74a47ca28b405c79e471c7",
+      "sha256": "f4260a126fef065ec33d4e44509811ff5d4460d0466124852779752d7787580b",
       "subsystem": "xc"
     },
     {
@@ -144,20 +144,37 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 14915,
+      "bytes": 17951,
       "code_lines": {
         "fallback": 0,
-        "oracle": 297,
+        "oracle": 348,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/dft/dispersion/d4_eeq.hpp",
+      "physical_lines": 399,
+      "reason": "Pinned EEQ2019 charge solve/coordinate response and complete D4 chain-rule CPU/device qualification mathematics. Independent DFT-D4 4.2.0 oracle fixtures and real-device tests validate it; retained as a bounded oracle, not a performance-promoted production kernel.",
+      "regions": [],
+      "role": "oracle",
+      "sha256": "50e7891af4bfabe3247fd56accdb1c165eaf26524abb21dfe523ea67b5212a48",
+      "subsystem": "d4_dispersion"
+    },
+    {
+      "bytes": 15972,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 323,
         "performance_exception": 0,
         "runtime": 0,
         "scientific": 0
       },
       "path": "src/dft/dispersion/d4_reference.hpp",
-      "physical_lines": 334,
+      "physical_lines": 361,
       "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
       "regions": [],
       "role": "oracle",
-      "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e",
+      "sha256": "af7825ed3d1665c7d3132b4fdf1456df71bde5a2a95d67953cc37618479a2f35",
       "subsystem": "d4_dispersion"
     },
     {
@@ -360,37 +377,37 @@
       "subsystem": "low_rank"
     },
     {
-      "bytes": 8075,
+      "bytes": 7953,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 181,
+        "runtime": 176,
         "scientific": 0
       },
       "path": "src/posthf/cuda_transform.cu",
-      "physical_lines": 189,
+      "physical_lines": 184,
       "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "c5b20281ef510bd0ff5a7ca5107696c3c9a7e199d46d5661c84a2e956f8e7111",
+      "sha256": "ea43592d09603da88f9a16bbf752f8d2d5c36a9c7025d2fc57d02c3a27a63ff4",
       "subsystem": "runtime"
     },
     {
-      "bytes": 6666,
+      "bytes": 6440,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 146,
+        "runtime": 147,
         "scientific": 0
       },
       "path": "src/posthf/df_bridge.cu",
-      "physical_lines": 156,
+      "physical_lines": 157,
       "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
       "regions": [],
       "role": "runtime",
-      "sha256": "22ee5e0c2f0a2562d3a3f87c2d30593de3e798a157baa19b3c5f6344b3ef2117",
+      "sha256": "506a20b445768fd8fb578609af9028f74968157d98f5542abed5d938472c4d68",
       "subsystem": "runtime"
     },
     {
@@ -479,6 +496,23 @@
       "subsystem": "runtime"
     },
     {
+      "bytes": 6721,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 192,
+        "scientific": 0
+      },
+      "path": "src/runtime/cuda_resources.cuh",
+      "physical_lines": 221,
+      "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "b3b23b0a959a59d5b63d939815078e3ffad53516e92a63b131d66d0ffb0241e1",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 2911,
       "code_lines": {
         "fallback": 0,
@@ -513,7 +547,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6439,
+      "bytes": 6431,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -526,7 +560,7 @@
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
-      "sha256": "313c8df626309d3a3a3843602ffead4d87faf879429c93ff817464e2517156bd",
+      "sha256": "be96d6444f5e6e1c96aa4842c407f70a6496d8a6dfb379d8b2906668951a9ec1",
       "subsystem": "runtime"
     },
     {
@@ -3534,20 +3568,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 9449,
+      "bytes": 9155,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 188,
+        "runtime": 181,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 222,
+      "physical_lines": 212,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "73c3936c4b458287697ce9bf44b01140041815c0c9f55a2c2014ea7a56124848",
+      "sha256": "94401e4d17019efac6c1ac7e2a1da839214bfe166ff5df208fac8f7b110d3131",
       "subsystem": "runtime"
     }
   ],
@@ -3749,9 +3783,9 @@
   "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
-    "oracle": 312,
+    "oracle": 686,
     "performance_exception": 884,
-    "runtime": 10840,
+    "runtime": 11047,
     "scientific": 12220
   },
   "migration_ledger": {
@@ -3771,14 +3805,18 @@
       "status": "partial"
     },
     "d4_dispersion": {
-      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "current_default": "Internal bounded molecular complete EEQ-D4 qualification on CPU/CUDA for standard and r2SCAN-3c profiles; no public production DFT-D4 endpoint.",
       "evidence": [
         "docs/d4_reference.md",
         "tests/data/d4/oracle_manifest.json",
-        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+        "tests/data/d4/eeq_oracle_manifest.json",
+        "tests/native/test_d4_eeq.cpp",
+        "tests/native/test_d4_eeq_cuda.cu",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md"
       ],
-      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
-      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
+      "missing_capability": "Production provider/runtime integration, compiler-generated derivative execution, scalable GPU scheduling/performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
       "owner": "d4_dispersion",
       "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
       "status": "oracle"
@@ -3969,7 +4007,7 @@
     },
     "d4_dispersion": {
       "fallback": 0,
-      "oracle": 297,
+      "oracle": 671,
       "performance_exception": 0,
       "runtime": 0,
       "scientific": 0
@@ -4034,7 +4072,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4853,
+      "runtime": 5059,
       "scientific": 5
     },
     "scf_tensor": {
@@ -4048,7 +4086,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 449,
+      "runtime": 450,
       "scientific": 631
     }
   },

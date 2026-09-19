@@ -9,7 +9,11 @@
 
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "posthf/cuda_derivative.hpp"
 #include "posthf/mp2_cpu_generated.hpp"
+#include "posthf/mp2_derivative.hpp"
+#include "posthf/mp2_energy.hpp"
+#include "posthf/mp2_force.hpp"
 #include "posthf/native_provider.hpp"
 #include "scf/mean_field.hpp"
 
@@ -145,11 +149,199 @@ void provider_and_reference() {
   require(with_eri - without_eri >= 8 * (2 * cart * cart * cart * cart + n * n * n * n),
           "CPU reference budget omitted simultaneous Cartesian/spherical tensors");
 }
+
+void shell_local_weighted_eri_derivative() {
+  const auto system = h2();
+  const auto oracle = vibeqc::integrals::build_integrals(system);
+  const std::array<std::size_t, 4> shells{0, 1, 0, 1};
+  const std::array<double, 1> weights{0.37};
+  const auto center =
+      vibeqc::integrals::contract_weighted_eri_shell_derivative(system, shells, weights);
+  std::array<double, 6> scattered{};
+  for (std::size_t slot = 0; slot < 4; ++slot)
+    for (std::size_t axis = 0; axis < 3; ++axis)
+      scattered[3 * system.shells[shells[slot]].atom_index + axis] += center[3 * slot + axis];
+  const auto eri = ((0 * 2 + 1) * 2 + 0) * 2 + 1;
+  for (std::size_t coordinate = 0; coordinate < scattered.size(); ++coordinate) {
+    const double expected = weights[0] * oracle.eri_derivative[coordinate * 16 + eri];
+    require(std::abs(scattered[coordinate] - expected) < 1e-11,
+            "shell-local weighted ERI derivative differs from dense oracle");
+  }
+}
+
+void cuda_shell_derivative_stub_is_transactional() {
+  const auto system = h2();
+  const std::array<std::size_t, 4> shells{0, 1, 0, 1};
+  const std::array<double, 1> weights{0.37};
+  std::array<double, 12> center{};
+  center.fill(123.0);
+  std::string detail;
+  const auto status = vibeqc::posthf::contract_weighted_eri_shell_derivative_cuda(
+      0, system, shells, weights, 1ULL << 20, center, detail);
+#if VIBEQC_HAS_CUDA
+  require(status != VIBEQC_STATUS_SUCCESS,
+          "CUDA derivative test must not run without the explicit GPU gate");
+#else
+  require(status == VIBEQC_STATUS_NOT_IMPLEMENTED, "CPU build lost CUDA stub status");
+#endif
+  require(std::all_of(center.begin(), center.end(), [](double value) { return value == 123.0; }),
+          "failed CUDA shell derivative modified caller output");
+}
+
+void streamed_one_electron_derivative() {
+  const auto system = h2();
+  const auto oracle = vibeqc::integrals::build_integrals(system, true, false);
+  const std::array<double, 4> overlap_weights{0.2, -0.1, 0.3, 0.4};
+  const std::array<double, 4> hcore_weights{-0.5, 0.7, -0.2, 0.6};
+  const auto derivative = vibeqc::integrals::contract_weighted_one_electron_derivative(
+      system, overlap_weights, hcore_weights, true);
+  require(derivative.size() == 6, "streamed one-electron derivative shape");
+  for (std::size_t coordinate = 0; coordinate < derivative.size(); ++coordinate) {
+    double expected = oracle.nuclear_repulsion_derivative[coordinate];
+    for (std::size_t element = 0; element < 4; ++element)
+      expected += overlap_weights[element] * oracle.overlap_derivative[coordinate * 4 + element] +
+                  hcore_weights[element] * oracle.hcore_derivative[coordinate * 4 + element];
+    require(std::abs(derivative[coordinate] - expected) < 1e-11,
+            "streamed one-electron derivative differs from dense oracle");
+  }
+}
+
+void conventional_derivative_from_mo_weights() {
+  const auto system = h2();
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "MO derivative reference");
+  const auto& ref = *hf.reference;
+  vibeqc::mp2::LagrangianWeights weights;
+  weights.orbitals = 2;
+  weights.occupied = 1;
+  weights.one_electron = {0.2, -0.3, 0.4, 0.1};
+  weights.overlap = {-0.1, 0.5, 0.6, -0.2};
+  weights.two_electron.resize(16);
+  for (std::size_t i = 0; i < weights.two_electron.size(); ++i)
+    weights.two_electron[i] = 0.01 * static_cast<double>(i + 1);
+  const auto derivative = vibeqc::mp2::conventional_derivative_cpu(system, ref, weights);
+
+  const auto oracle = vibeqc::integrals::build_integrals(system);
+  std::array<double, 4> one_ao{}, overlap_ao{};
+  std::array<double, 16> two_ao{};
+  auto eri = [](std::size_t p, std::size_t q, std::size_t r, std::size_t s) {
+    return ((p * 2 + q) * 2 + r) * 2 + s;
+  };
+  for (std::size_t u = 0; u < 2; ++u)
+    for (std::size_t v = 0; v < 2; ++v)
+      for (std::size_t p = 0; p < 2; ++p)
+        for (std::size_t q = 0; q < 2; ++q) {
+          const double pullback = ref.coefficients[2 * u + p] * ref.coefficients[2 * v + q];
+          one_ao[2 * u + v] += pullback * weights.one_electron[2 * p + q];
+          overlap_ao[2 * u + v] += pullback * weights.overlap[2 * p + q];
+        }
+  for (std::size_t u = 0; u < 2; ++u)
+    for (std::size_t v = 0; v < 2; ++v)
+      for (std::size_t w = 0; w < 2; ++w)
+        for (std::size_t x = 0; x < 2; ++x)
+          for (std::size_t p = 0; p < 2; ++p)
+            for (std::size_t q = 0; q < 2; ++q)
+              for (std::size_t r = 0; r < 2; ++r)
+                for (std::size_t s = 0; s < 2; ++s)
+                  two_ao[eri(u, v, w, x)] +=
+                      ref.coefficients[2 * u + p] * ref.coefficients[2 * v + q] *
+                      ref.coefficients[2 * w + r] * ref.coefficients[2 * x + s] *
+                      weights.two_electron[eri(p, q, r, s)];
+  require(derivative.size() == 6, "conventional derivative shape");
+  for (std::size_t coordinate = 0; coordinate < derivative.size(); ++coordinate) {
+    double expected = oracle.nuclear_repulsion_derivative[coordinate];
+    for (std::size_t element = 0; element < 4; ++element)
+      expected += one_ao[element] * oracle.hcore_derivative[coordinate * 4 + element] +
+                  overlap_ao[element] * oracle.overlap_derivative[coordinate * 4 + element];
+    for (std::size_t element = 0; element < 16; ++element)
+      expected += two_ao[element] * oracle.eri_derivative[coordinate * 16 + element];
+    require(std::abs(derivative[coordinate] - expected) < 1e-10,
+            "conventional MO-weight derivative differs from dense oracle");
+  }
+#if !VIBEQC_HAS_CUDA
+  bool cuda_rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_derivative_cuda(system, ref, weights, 0, 1ULL << 20);
+  } catch (const std::runtime_error&) {
+    cuda_rejected = true;
+  }
+  require(cuda_rejected, "CPU build accepted a CUDA conventional derivative");
+#endif
+}
+
+double conventional_total_energy(vibeqc::core::System system) {
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-12;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "finite-difference MP2 reference");
+  vibeqc::posthf::RawSource source(std::move(system));
+  const auto correlation =
+      vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
+  return hf.reference->energy + correlation.opposite_spin + correlation.same_spin;
+}
+
+void complete_conventional_force_matches_resolved_energy() {
+  const auto system = h2();
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-12;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "analytic MP2 force reference");
+  vibeqc::posthf::RawSource source(system);
+  vibeqc::response::GmresOptions response;
+  response.relative_tolerance = 1e-12;
+  response.absolute_tolerance = 1e-13;
+  response.restart = 8;
+  response.max_iterations = 40;
+  response.max_workspace_bytes = 64ULL << 20;
+  const auto analytic = vibeqc::mp2::conventional_force_cpu(*hf.reference, source, 256ULL << 20,
+                                                            1e-10, 1e-10, response);
+  require(analytic.response.converged(), "MP2 Z-vector did not converge");
+  require(analytic.forces.size() == 6, "MP2 force shape");
+  const double step = 1e-4;
+  auto plus = system;
+  auto minus = system;
+  plus.atoms[0].position[2] += step;
+  minus.atoms[0].position[2] -= step;
+  const double finite =
+      (conventional_total_energy(std::move(plus)) - conventional_total_energy(std::move(minus))) /
+      (2.0 * step);
+  require(std::abs(analytic.forces[2] + finite) < 2e-6,
+          "complete conventional MP2 force differs from resolved finite difference");
+#if !VIBEQC_HAS_CUDA
+  bool cuda_rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_force_cuda(*hf.reference, source, 256ULL << 20, 1e-10, 1e-10,
+                                               response, 0);
+  } catch (const std::runtime_error&) {
+    cuda_rejected = true;
+  }
+  require(cuda_rejected, "CPU build accepted a CUDA conventional force owner");
+#endif
+}
 }  // namespace
 int main() {
   try {
     generated_equations();
     provider_and_reference();
+    shell_local_weighted_eri_derivative();
+    cuda_shell_derivative_stub_is_transactional();
+    streamed_one_electron_derivative();
+    conventional_derivative_from_mo_weights();
+    complete_conventional_force_matches_resolved_energy();
     std::cout << "MP2 native contracts passed\n";
     return 0;
   } catch (const std::exception& e) {
