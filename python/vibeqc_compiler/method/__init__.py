@@ -35,12 +35,24 @@ from .typecheck import (
     infer_feature_types,
     verify_method_ir,
 )
+from .xtb import (
+    GFN2_PARAMETER_SET,
+    XTB_METHOD_CATALOG,
+    UnsupportedXtbMethod,
+    XtbMethodIR,
+    XtbMethodSpec,
+    XtbParameterSet,
+    XtbPrimitive,
+    resolve_xtb_method,
+)
 
 __all__ = [
+    "GFN2_PARAMETER_SET",
     "METHOD_CATALOG",
     "NONLOCAL_CORRELATION_VERSION",
     "RVV10",
     "VV10",
+    "XTB_METHOD_CATALOG",
     "BackendCapability",
     "D3Spec",
     "DispersionCorrectionPrimitive",
@@ -61,8 +73,14 @@ __all__ = [
     "TypedMethodIR",
     "UnsupportedMethod",
     "UnsupportedNonlocalCorrelation",
+    "UnsupportedXtbMethod",
+    "XtbMethodIR",
+    "XtbMethodSpec",
+    "XtbParameterSet",
+    "XtbPrimitive",
     "infer_feature_types",
     "original_nonlocal_correlation",
     "resolve_method",
+    "resolve_xtb_method",
     "verify_method_ir",
 ]

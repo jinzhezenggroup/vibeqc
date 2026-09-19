@@ -66,7 +66,7 @@ class CoefficientProgram:
         """Map generated coefficient roots to their compact bilinear labels."""
         spins = 2 if self.spin == "polarized" else 1
         result = {"rho": np.zeros((spins, npoint))}
-        if self.family == "gga":
+        if self.family != "lda":
             result["gradient"] = np.zeros((spins, npoint, 3))
         if self.kinetic:
             result["tau"] = np.zeros((spins, npoint))
@@ -96,10 +96,15 @@ def coefficient_program(spin, family="gga", *, kinetic=False, response=False):
     contract for synthetic linear-form tests. Audited LDA/GGA consumers request
     False so they neither evaluate tau nor materialize kinetic coefficients.
     """
-    if spin not in ("polarized", "unpolarized") or family not in ("lda", "gga"):
+    if spin not in ("polarized", "unpolarized") or family not in (
+        "lda",
+        "gga",
+        "mgga",
+    ):
         raise ValueError("unsupported coefficient spin/family")
     if type(kinetic) is not bool or type(response) is not bool:
         raise ValueError("coefficient flags must be boolean")
+    kinetic = kinetic or family == "mgga"
     graph = Graph()
     spins = 2 if spin == "polarized" else 1
     rho = [graph.variable(f"r{s}") for s in range(spins)]
@@ -112,7 +117,7 @@ def coefficient_program(spin, family="gga", *, kinetic=False, response=False):
     ingredients = [*rho, *sigma, *tau]
     v = [graph.variable(f"v{i}") for i in range(len(ingredients))]
     active = list(range(spins))
-    if family == "gga":
+    if family != "lda":
         active.extend(range(spins, len(ingredients) - spins))
     if kinetic:
         active.extend(range(len(ingredients) - spins, len(ingredients)))
@@ -121,7 +126,7 @@ def coefficient_program(spin, family="gga", *, kinetic=False, response=False):
     for s in range(spins):
         roots.append(graph.differentiate(differential, rho[s]))
         labels.append((s, "rho", None))
-        if family == "gga":
+        if family != "lda":
             for k in range(3):
                 roots.append(graph.differentiate(differential, gradient[s][k]))
                 labels.append((s, "gradient", k))
