@@ -332,7 +332,7 @@ class ExplicitGrid:
 
     if TYPE_CHECKING:
         _provenance_json: ClassVar[str]
-        identity: str
+        identity: ClassVar[str]
 
     def __post_init__(self):
         points, weights = immutable(self.points), immutable(self.weights)
