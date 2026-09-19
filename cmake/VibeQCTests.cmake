@@ -101,6 +101,7 @@ macro(vibeqc_add_native_tests)
 
   vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_d4_eeq_tests tests/native/test_d4_eeq.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_gcp_r2scan3c_tests tests/native/test_gcp_r2scan3c.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_xc_point_tests tests/native/test_xc_point.cpp NO_VIBEQC)
   target_compile_definitions(vibeqc_xc_point_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")

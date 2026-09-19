@@ -9,12 +9,19 @@ from vibeqc_compiler.common.nonlocal_correlation import (
     original_nonlocal_correlation,
 )
 
+from .basis_binding import (
+    BasisBinding,
+    r2scan3c_def2_mtzvpp_h_ar,
+    validate_basis_snapshot,
+)
+from .correction import CorrectionProvenance, CorrectionResult
 from .dispersion import (
     D3Spec,
     D4Spec,
     DispersionCorrectionPrimitive,
     r2scan3c_d4_eeq,
 )
+from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .nonlocal_correlation import NonlocalCorrelationPrimitive
@@ -60,11 +67,16 @@ __all__ = [
     "VV10",
     "XTB_METHOD_CATALOG",
     "BackendCapability",
+    "BasisBinding",
+    "CorrectionProvenance",
+    "CorrectionResult",
     "D3Spec",
     "D4Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
     "FeatureType",
+    "GCPSpec",
+    "GeometricCounterpoisePrimitive",
     "ImplicitSolveSpec",
     "ImplicitVJPPlan",
     "IntegralGradientBlock",
@@ -89,7 +101,10 @@ __all__ = [
     "infer_feature_types",
     "original_nonlocal_correlation",
     "r2scan3c_d4_eeq",
+    "r2scan3c_def2_mtzvpp_h_ar",
+    "r2scan3c_gcp",
     "resolve_method",
     "resolve_xtb_method",
+    "validate_basis_snapshot",
     "verify_method_ir",
 ]
