@@ -139,7 +139,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   scf::ScfResult output;
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
   bool warm_updates{true};
-  bool stabilize_occupations{};
+  bool stabilize_occupations{}, final_closure{};
+  unsigned final_corrections{};
   bool pbe{}, final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
@@ -306,6 +307,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     started = true;
     is_failed = false;
     stabilize_occupations = false;
+    final_closure = false;
+    final_corrections = 0;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
@@ -362,10 +365,18 @@ struct CudaKsPlan::Impl : KsStateStorage {
       launch_subtract_matrix_batches_kernel(blocks, 128, 0, stream, 1, spins, n, tmp2, enabled,
                                             residual);
       check(cudaGetLastError());
-      launch_update_diis_kernel(1, 32, 0, stream, 1, n, spins, history, fock, residual, enabled,
-                                fock_history, residual_history, gram, weights, history_count,
-                                history_head, effective, true);
-      check(cudaGetLastError());
+      if (final_closure) {
+        // The public derivative state is validated against the unshifted
+        // physical F[D], not the preceding DIIS/stabilized proposal. During
+        // bounded final closure, diagonalize exactly that physical operator.
+        check(cudaMemcpyAsync(effective, fock, elements * sizeof(double), cudaMemcpyDeviceToDevice,
+                              stream));
+      } else {
+        launch_update_diis_kernel(1, 32, 0, stream, 1, n, spins, history, fock, residual, enabled,
+                                  fock_history, residual_history, gram, weights, history_count,
+                                  history_head, effective, true);
+        check(cudaGetLastError());
+      }
       if (stabilize_occupations) {
         // Match the CPU stationary-cycle policy. The unit-occupation virtual
         // projector is S-SDS for each spin. Shift only the DIIS proposal;
@@ -452,14 +463,34 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // A stationary physical state can still alternate integer occupations.
     // Enable the same 0.1-Eh proposal shift as CPU UKS only after both physical
     // gates pass. A subsequent density-change gate must still pass to finish.
-    if (spins == 2 && output.iterations > 1 && output.energy_change < options.energy_tolerance &&
+    if (!final_closure && spins == 2 && output.iterations > 1 &&
+        output.energy_change < options.energy_tolerance &&
         physical.residual < std::min(1e-9, options.density_tolerance) &&
         physical.density_change >= options.density_tolerance)
       stabilize_occupations = true;
-    output.converged = output.iterations > 1 && output.energy_change < options.energy_tolerance &&
-                       physical.density_change < options.density_tolerance &&
-                       physical.residual < std::min(1e-9, options.density_tolerance);
-    is_active = !output.converged && output.iterations < options.max_iterations;
+    const bool converged = output.iterations > 1 &&
+                           output.energy_change < options.energy_tolerance &&
+                           physical.density_change < options.density_tolerance &&
+                           physical.residual < std::min(1e-9, options.density_tolerance);
+    constexpr unsigned maximum_final_corrections = 4;
+    if (spins == 2 && converged && !final_closure) {
+      // A DIIS proposal can satisfy the ordinary SCF density-change gate while
+      // the canonical density of the unshifted physical Fock is microscopically
+      // outside the derivative-state tolerance. Mirror CPU UKS B3: enter a
+      // bounded physical fixed-point closure without relaxing any tolerance.
+      final_closure = true;
+      final_corrections = 0;
+      stabilize_occupations = false;
+      output.converged = false;
+      is_active = true;
+    } else if (final_closure) {
+      ++final_corrections;
+      output.converged = converged;
+      is_active = !output.converged && final_corrections < maximum_final_corrections;
+    } else {
+      output.converged = converged;
+      is_active = !output.converged && output.iterations < options.max_iterations;
+    }
     try {
       if (output.converged && warm_updates) {
         // E, F, residual and retained D all belong to this same generation.

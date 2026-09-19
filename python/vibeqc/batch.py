@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import ctypes
+import os
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Self
 
 import numpy as np
@@ -493,7 +495,15 @@ class PreparedBatch:
                 )
 
             if self.resource_plan is None:
-                _native.check(self._library, prepare())
+                _native.check(
+                    self._library,
+                    prepare(),
+                    context=(
+                        self._context
+                        if calculator._method == _native.METHOD_MP2
+                        else None
+                    ),
+                )
             else:
                 from .resources_native import check_resource_status, observe_method_call
 
@@ -507,6 +517,8 @@ class PreparedBatch:
                 )
                 check_resource_status(self._library, status, self.resource_diagnostics)
         except Exception:
+            # Construction owns native handles before resource-status conversion,
+            # which can raise MemoryError as well as ordinary validation errors.
             self.close()
             raise
         finally:
@@ -554,6 +566,59 @@ class PreparedBatch:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
 
+    def _stationary_cuda_compiler(self):
+        """Lazily bind the generated-force compiler to this native device."""
+        compiler = getattr(self, "_c2_stationary_compiler", None)
+        if compiler is not None:
+            return compiler
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+        from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+        from .profiles import find_nvcc, probe_device
+
+        nvcc = find_nvcc()
+        if nvcc is None:
+            raise NotImplementedError(
+                "public CUDA DFT forces require NVCC; set CUDACXX or CUDA_PATH"
+            )
+        device = probe_device(self._library, self._calculator._device_id)["device"]
+        target = cuda_target_info(f"sm_{device['major']}{device['minor']}")
+        compiler = CudaCompilerAdapter(Path(nvcc), target, compile_timeout=600)
+        self._c2_stationary_compiler = compiler
+        return compiler
+
+    def _public_dft_cuda_force(self, index, atoms):
+        """Execute the qualified seven-source plan against one live batch item."""
+        from vibeqc_compiler.dft import NativeAO
+
+        from ._dft_gradient import StationaryKsState
+        from ._stationary_cuda import complete_rks_cuda_gradient_diagnostic
+
+        calculator = self._calculator
+        with NativeAO(
+            atoms,
+            basis=calculator._basis,
+            representation=calculator._representation_name,
+            charge=self._charges[index],
+            multiplicity=self._multiplicities[index],
+        ) as basis:
+            state = StationaryKsState.from_native(self, basis, index=index)
+            try:
+                result = complete_rks_cuda_gradient_diagnostic(
+                    state,
+                    basis,
+                    compiler=self._stationary_cuda_compiler(),
+                    cache=Path(
+                        os.environ.get(
+                            "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
+                        )
+                    ),
+                )
+                # StationaryGradientPlan publishes +dE/dR. Public API is force.
+                return -np.asarray(result.gradient).copy()
+            finally:
+                state._source.close()
+
     def execute(
         self,
         coordinates: Sequence[Sequence[Sequence[float]] | np.ndarray | None]
@@ -599,6 +664,12 @@ class PreparedBatch:
                 + ", ".join(sorted(unsupported))
             )
         compute_forces = "forces" in requested
+        public_dft_cuda_forces = (
+            compute_forces
+            and self._calculator._capabilities.family == "density_functional"
+            and self._calculator._device_name == "cuda"
+        )
+        native_compute_forces = compute_forces and not public_dft_cuda_forces
         if self._calculator._model_signature() != self._model_signature:
             raise RuntimeError(
                 "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
@@ -650,7 +721,7 @@ class PreparedBatch:
             input_count = count
 
         force_storage = [
-            (ctypes.c_double * (3 * atom_count))() if compute_forces else None
+            (ctypes.c_double * (3 * atom_count))() if native_compute_forces else None
             for atom_count in self._atom_counts
         ]
         output_array = (_native.BatchItemResultDescriptor * count)(
@@ -661,7 +732,7 @@ class PreparedBatch:
                     _native.STATUS_INVALID_ARGUMENT,
                     0.0,
                     force_storage[index],
-                    len(force_storage[index]) if compute_forces else 0,
+                    len(force_storage[index]) if native_compute_forces else 0,
                     0,
                     0.0,
                     0.0,
@@ -725,6 +796,31 @@ class PreparedBatch:
             ):
                 _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
+            public_force = None
+            if succeeded and public_dft_cuda_forces:
+                atoms = self._systems[index]
+                if coordinates is not None and coordinates[index] is not None:
+                    xyz = np.asarray(coordinates[index], dtype=np.float64).reshape(
+                        -1, 3
+                    )
+                    atoms = tuple(
+                        Atom(atom.atomic_number, tuple(position))
+                        for atom, position in zip(atoms, xyz, strict=True)
+                    )
+                try:
+                    public_force = self._public_dft_cuda_force(index, atoms)
+                except NotImplementedError:
+                    output.status = _native.STATUS_NOT_IMPLEMENTED
+                    succeeded = False
+                except MemoryError:
+                    output.status = _native.STATUS_OUT_OF_MEMORY
+                    succeeded = False
+                except (TypeError, ValueError):
+                    output.status = _native.STATUS_INVALID_ARGUMENT
+                    succeeded = False
+                except (RuntimeError, OSError):
+                    output.status = _native.STATUS_NUMERICAL_FAILURE
+                    succeeded = False
             physical_residual_rms = None
             scf_getter = getattr(self._library, "vibeqc_batch_get_scf_diagnostic", None)
             if scf_getter is not None:
@@ -736,8 +832,10 @@ class PreparedBatch:
                     _native.check(self._library, status, context=self._context)
                     physical_residual_rms = diagnostic.physical_residual_rms
             forces = (
-                np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
-                if succeeded and compute_forces
+                public_force
+                if succeeded and public_dft_cuda_forces
+                else np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
+                if succeeded and native_compute_forces
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")

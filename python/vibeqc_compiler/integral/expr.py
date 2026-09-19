@@ -106,6 +106,9 @@ class RematerializationPolicy:
         ("expm1", 12.0),
         ("log", 12.0),
         ("log1p", 12.0),
+        ("atan", 12.0),
+        ("asinh", 12.0),
+        ("erf", 12.0),
     )
     live_range_weight: float = 1.0
     recomputation_weight: float = 1.0
@@ -657,6 +660,10 @@ class Graph:
                 result = target.stable_unary(node.operation, visit(node.arguments[0]))
             elif node.operation == "select_le":
                 result = target.select_le(*(visit(item) for item in node.arguments))
+            elif node.operation in ("atan", "asinh", "erf"):
+                result = target.transcendental_unary(
+                    node.operation, visit(node.arguments[0])
+                )
             elif node.operation == "power":
                 result = target.power(
                     visit(node.arguments[0]),
@@ -760,6 +767,8 @@ class Graph:
                 result = target.stable_unary(node.operation, arguments[0])
             elif node.operation == "select_le":
                 result = target.select_le(*arguments)
+            elif node.operation in ("atan", "asinh", "erf"):
+                result = target.transcendental_unary(node.operation, arguments[0])
             elif node.operation == "power":
                 exponent = float(node.payload)
                 if (
@@ -845,6 +854,23 @@ class Graph:
         """
         if operation not in ("log", "log1p", "expm1"):
             raise ValueError(f"unsupported stable unary operation {operation!r}")
+        self._require_graph(value)
+        node = self.node(value)
+        if node.operation == "constant":
+            return self.approximate_constant(
+                getattr(math, operation)(float(self._constant_value(node)))
+            )
+        return self._intern(Node(operation, (value.identifier,)))
+
+    def transcendental_unary(self, operation: str, value: Expr) -> Expr:
+        """Build an audited smooth transcendental scalar primitive.
+
+        These nodes are intentionally generic algebra operations. Scientific
+        domain policy remains with the XC consumer; this layer only owns exact
+        chain rules and native scalar lowering.
+        """
+        if operation not in ("atan", "asinh", "erf"):
+            raise ValueError(f"unsupported transcendental operation {operation!r}")
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
@@ -959,6 +985,20 @@ class Graph:
                 else:
                     denominator = operand + 1 if node.operation == "log1p" else operand
                     derivative = inner / denominator
+            elif node.operation in ("atan", "asinh", "erf"):
+                operand = Expr(self, node.arguments[0])
+                inner = visit(operand.identifier)
+                if node.operation == "atan":
+                    derivative = inner / (1 + operand.pow(2))
+                elif node.operation == "asinh":
+                    derivative = inner / (1 + operand.pow(2)).pow(0.5)
+                else:
+                    derivative = (
+                        2
+                        / math.sqrt(math.pi)
+                        * inner
+                        * self.exponential(-operand.pow(2))
+                    )
             elif node.operation == "power":
                 operand = Expr(self, node.arguments[0])
                 exponent = float(node.payload)
@@ -1497,7 +1537,14 @@ class Graph:
                     result = 1.0 / values[node.arguments[0]]
                 elif node.operation == "exp":
                     result = math.exp(values[node.arguments[0]])
-                elif node.operation in ("log", "log1p", "expm1"):
+                elif node.operation in (
+                    "log",
+                    "log1p",
+                    "expm1",
+                    "atan",
+                    "asinh",
+                    "erf",
+                ):
                     result = getattr(math, node.operation)(values[node.arguments[0]])
                 elif node.operation == "power":
                     result = values[node.arguments[0]] ** float(node.payload)
@@ -1524,7 +1571,7 @@ class Graph:
                 result = 1.0 / visit(node.arguments[0])
             elif node.operation == "exp":
                 result = math.exp(visit(node.arguments[0]))
-            elif node.operation in ("log", "log1p", "expm1"):
+            elif node.operation in ("log", "log1p", "expm1", "atan", "asinh", "erf"):
                 result = getattr(math, node.operation)(visit(node.arguments[0]))
             elif node.operation == "select_le":
                 left, right, if_true, if_false = node.arguments

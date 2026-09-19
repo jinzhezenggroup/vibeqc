@@ -23,22 +23,13 @@ ATOMS = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 
 
-@pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
-def test_cpu_uks_plan_cannot_publish_a_native_stationary_proof(method):
-    calculator = Calculator(
-        method=method, device="cpu", ks_options=KsOptions(grid=GRID)
-    )
-    with calculator.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
-        batch.execute(strict=True)
-        with pytest.raises(NotImplementedError):
-            StationaryKsState.from_native(batch, basis)
-
-
 @pytest.mark.parametrize(
     "method,device",
     [
         ("lda-rks", "cpu"),
         ("pbe-rks", "cpu"),
+        ("lda-uks", "cpu"),
+        ("pbe-uks", "cpu"),
         *(
             pytest.param(
                 method,

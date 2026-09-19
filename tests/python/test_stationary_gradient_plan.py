@@ -64,6 +64,34 @@ def independent_weights(source, feeds):
     return np.array(result)
 
 
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(spin):
+    ae = plan(spin)
+    ecp = StationaryGradientPlan(
+        ae.method,
+        StationaryMeanField(SCF_POINT_MODEL, hamiltonian="scalar-semilocal-ecp"),
+    )
+    assert ecp.identity != ae.identity
+    assert len(ecp.sources) == 9
+    assert ecp.sources[0].primitive == "kinetic_effective_charge_attraction"
+    assert ecp.sources[-1].primitive == "effective_charge_nuclear_repulsion"
+    for source in ("ecp_local", "ecp_nonlocal"):
+        with pytest.raises(ValueError, match="integral-gradient"):
+            ae.integral_block(source, terms=1)
+        feeds, integrals = fixture(source, ecp.spin_blocks)
+        block = ecp.integral_block(source, terms=len(integrals), coordinates=6)
+        expected = independent_weights(source, feeds) @ feeds["integral_derivatives"]
+        np.testing.assert_allclose(
+            execute(block.contraction, feeds).outputs["gradient"], expected, atol=2e-13
+        )
+        with pytest.raises(ValueError, match="coverage"):
+            ecp.reduction_program(
+                atoms=2, sources=[s for s in ecp.source_names if s != source]
+            )
+    with pytest.raises(NotImplementedError):
+        ecp.require_native_endpoint("cuda")
+
+
 @pytest.mark.parametrize("source", ["one_electron", "coulomb", "overlap_pulay"])
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_generated_weights_and_all_coordinate_components_have_independent_oracle(

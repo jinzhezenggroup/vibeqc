@@ -216,7 +216,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
               ks_provider_bytes(system_, backend)),
         basis_(system_),
         grid_(system_, grid) {
-    options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA && !is_uks(method_);
+    options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(
@@ -288,10 +288,6 @@ class KsPreparedCalculation final : public PreparedCalculation {
     if (cuda_) return cuda_->final_state_token(token, detail);
 #endif
     token = {};
-    if (is_uks(method_) || !system_.ecp_terms.empty()) {
-      detail = "CPU UKS/ECP final-state handoff is not qualified";
-      return VIBEQC_STATUS_NOT_IMPLEMENTED;
-    }
     if (!cpu_physical_) {
       detail = "CPU KS owner has no successful current final state";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -320,11 +316,13 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // Explicit export costs one eigen solve and validation, zero Fock builds.
     const auto& ints = fock_.one_electron();
     const auto x = scf::reference::symmetric_orthogonalizer(ints.overlap, ints.nbf);
-    dft::KsFinalStateCandidate candidate{
-        current.identity,
-        current.identity.determinant.factor.density_generation,
-        true,
-        {scf::reference::generalized_eigen(cpu_physical_->fock[0], x, ints.nbf)}};
+    std::vector<scf::reference::EigenResult> spins;
+    spins.reserve(current.identity.model.spins);
+    for (const auto& fock : cpu_physical_->fock)
+      spins.push_back(scf::reference::generalized_eigen(fock, x, ints.nbf));
+    dft::KsFinalStateCandidate candidate{current.identity,
+                                         current.identity.determinant.factor.density_generation,
+                                         true, std::move(spins)};
     scf::solver::FinalStateLimits limits{options_.density_tolerance, options_.energy_tolerance, 0,
                                          true};
     if (!dft::validate_ks_final_state(current.identity, ints.overlap, ints.hcore, *cpu_physical_,
@@ -408,21 +406,46 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
+      const auto spins = is_uks(method_) ? 2U : 1U;
+      const auto matrix = fock_.one_electron().nbf * fock_.one_electron().nbf;
+      if (native.density.size() != spins * matrix ||
+          native.ks_physical_fock.size() != spins * matrix ||
+          (spins == 2 && native.dft_diagnostic.occupations.size() != spins))
+        throw std::runtime_error("CPU KS retained spin-state shape mismatch");
+      std::vector<scf::reference::Matrix> densities, focks;
+      densities.reserve(spins);
+      focks.reserve(spins);
+      for (unsigned spin = 0; spin < spins; ++spin) {
+        const auto begin = spin * matrix;
+        densities.emplace_back(native.density.begin() + begin,
+                               native.density.begin() + begin + matrix);
+        focks.emplace_back(native.ks_physical_fock.begin() + begin,
+                           native.ks_physical_fock.begin() + begin + matrix);
+      }
+      std::vector<std::size_t> occupied;
+      if (spins == 1)
+        occupied = {static_cast<std::size_t>(system_.electron_count / 2)};
+      else
+        occupied.assign(native.dft_diagnostic.occupations.begin(),
+                        native.dft_diagnostic.occupations.end());
       dft::KsFinalStateIdentity identity;
-      identity.determinant = {{cpu_owner_, 1, 1, 1},
-                              cpu_epoch_,
-                              fock_.strategy(),
-                              {static_cast<std::size_t>(system_.electron_count / 2)}};
-      identity.model = {
-          1, 1,  grid_.spec(), options_.xc_tile_points, method_ == VIBEQC_METHOD_PBE_RKS,
-          1, -1, cpu_owner_};
+      identity.determinant = {
+          {cpu_owner_, 1, 1, 1}, cpu_epoch_, fock_.strategy(), std::move(occupied)};
+      identity.model = {1,
+                        1,
+                        grid_.spec(),
+                        options_.xc_tile_points,
+                        method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS,
+                        spins,
+                        -1,
+                        cpu_owner_};
       dft::KsPhysicalState physical{identity,
                                     true,
-                                    {native.density},
-                                    {std::move(native.ks_physical_fock)},
+                                    std::move(densities),
+                                    std::move(focks),
                                     native.dft_diagnostic.components,
                                     native.energy,
-                                    native.physical_residual_rms};
+                                    native.dft_diagnostic.physical_residual};
       cpu_physical_ = std::move(physical);
     }
     if (native.converged && update_warm) warm_ = std::move(native.density);

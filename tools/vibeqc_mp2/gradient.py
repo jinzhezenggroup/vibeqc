@@ -293,11 +293,14 @@ def canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, occup
         for offset, p in enumerate(block):
             for q in block[offset + 1 :]:
                 denominator = energies[p] - energies[q]
-                if abs(denominator) <= 1e-10:
-                    raise ValueError(
-                        "same-space canonical MP2 response is near-degenerate"
-                    )
                 derivative = rotation_gradient[p, q] - rotation_gradient[q, p]
+                if abs(denominator) <= 1e-10:
+                    if abs(derivative) > 1e-10:
+                        raise ValueError(
+                            "same-space canonical MP2 response has a "
+                            "nonstationary degenerate subspace"
+                        )
+                    continue
                 add_negative_fock_multiplier(q, p, derivative / denominator)
     rotation_gradient = _rotation_gradient_streamed(one, two, h, provider)
     rhs = (
@@ -384,11 +387,14 @@ def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
         for offset, p in enumerate(block):
             for q in block[offset + 1 :]:
                 denominator = energies[p] - energies[q]
-                if abs(denominator) <= 1e-10:
-                    raise ValueError(
-                        "same-space canonical MP2 response is near-degenerate"
-                    )
                 derivative = rotation_gradient[p, q] - rotation_gradient[q, p]
+                if abs(denominator) <= 1e-10:
+                    if abs(derivative) > 1e-10:
+                        raise ValueError(
+                            "same-space canonical MP2 response has a "
+                            "nonstationary degenerate subspace"
+                        )
+                    continue
                 add_negative_fock_multiplier(q, p, derivative / denominator)
     rotation_gradient = _rotation_gradient(one, two, h, eri)
     rhs = (

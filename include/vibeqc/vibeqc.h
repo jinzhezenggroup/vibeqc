@@ -480,6 +480,28 @@ typedef struct vibeqc_correlation_diagnostic {
   double transform_library_ms;
   double tensor_kernel_ms;
   char equation_hash[65];
+  /** Completed canonical orbital-response solve; zero for energy-only runs. */
+  uint64_t response_iterations;
+  uint64_t response_restarts;
+  double response_absolute_residual;
+  double response_relative_residual;
+  uint64_t response_workspace_bytes;
+  /** Peak numeric staging owned by the force derivative contraction. */
+  uint64_t derivative_workspace_bytes;
+  /** Conservative simultaneous endpoint numeric-capacity plan. */
+  uint64_t planned_endpoint_peak_bytes;
+  /** Observed endpoint peak; zero means measurement is unavailable, not zero usage. */
+  uint64_t measured_endpoint_peak_bytes;
+  /** Bit 0=response converged, 1=shell-streamed derivative, 2=no global derivative tensors. */
+  uint64_t force_provenance_flags;
+  char response_operator_hash[65];
+  /** Actual high-water payload of GMRES-owned arrays, including its result.
+   * Excludes input spans, operator callbacks, other MP2 stages and allocator
+   * overhead. Zero when unmeasured; never a complete endpoint measurement.
+   */
+  uint64_t measured_response_workspace_peak_bytes;
+  /** Successful allocation events in the same GMRES ownership domain. */
+  uint64_t response_workspace_allocation_count;
 } vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */

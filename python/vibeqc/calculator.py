@@ -7,7 +7,7 @@ import json
 import math
 import os
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache, lru_cache
 from importlib import resources
 from pathlib import Path
@@ -105,6 +105,18 @@ class CorrelationResult:
     transform_library_ms: float
     tensor_kernel_ms: float
     equation_hash: str
+    response_iterations: int
+    response_restarts: int
+    response_absolute_residual: float
+    response_relative_residual: float
+    response_workspace_bytes: int
+    derivative_workspace_bytes: int
+    planned_endpoint_peak_bytes: int
+    measured_endpoint_peak_bytes: int
+    force_provenance_flags: int
+    response_operator_hash: str
+    measured_response_workspace_peak_bytes: int
+    response_workspace_allocation_count: int
 
 
 @dataclass(frozen=True)
@@ -517,6 +529,26 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
         self._capabilities = method_capabilities(self._method_name)
+        if (
+            self._capabilities.family == "density_functional"
+            and self._device_name == "cuda"
+            and self._method
+            in (
+                _native.METHOD_LDA_RKS,
+                _native.METHOD_PBE_RKS,
+                _native.METHOD_LDA_UKS,
+                _native.METHOD_PBE_UKS,
+            )
+        ):
+            # #163 C2 is a Python public capability layered on the native KS
+            # prepared owner plus the compiler-owned CUDA gradient consumer.
+            # Keep the backend-neutral C registry conservative: CPU/native-C
+            # callers do not inherit a force capability they cannot execute.
+            self._capabilities = replace(
+                self._capabilities,
+                supported_properties=self._capabilities.supported_properties
+                | {"forces"},
+            )
         if self._capabilities.family == "density_functional":
             if self._precision_mode != _native.PRECISION_FP64:
                 raise NotImplementedError("DFT supports explicit FP64 precision only")
@@ -1150,7 +1182,12 @@ class Calculator:
         requests all properties reported by its native capability record.
         """
         if properties is None:
-            properties = self._capabilities.supported_properties
+            properties = (
+                frozenset({"energy"})
+                if self._method == _native.METHOD_MP2
+                and self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+                else self._capabilities.supported_properties
+            )
         if isinstance(properties, (str, bytes)):
             raise TypeError("properties must be an iterable of property names")
         try:
@@ -1170,10 +1207,6 @@ class Calculator:
             )
         unsupported_properties = requested_properties - supported_properties
         if unsupported_properties:
-            if self._method == _native.METHOD_MP2 and unsupported_properties == {
-                "forces"
-            }:
-                raise NotImplementedError("MP2 analytic forces are unavailable")
             names = ", ".join(sorted(unsupported_properties))
             raise ValueError(
                 f"method {self._method_name!r} does not support properties: {names}"
@@ -1188,6 +1221,40 @@ class Calculator:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
+        if (
+            compute_forces
+            and self._capabilities.family == "density_functional"
+            and self._device_name == "cuda"
+        ):
+            # Reuse the prepared-batch owner because the stationary snapshot ABI
+            # is intentionally tied to a live native owner.  This avoids a second
+            # scientific implementation in the single-system path.
+            with self.prepare_batch(
+                [native_atoms],
+                charges=[charge],
+                multiplicities=[multiplicity],
+                warm_start=False,
+                resource_plan=resource_plan,
+            ) as batch:
+                item = batch.execute(
+                    strict=True, properties=requested_properties
+                ).items[0]
+                return Result(
+                    energy=item.energy,
+                    forces=item.forces,
+                    converged=item.converged,
+                    iterations=item.iterations,
+                    energy_change=item.energy_change,
+                    density_rms=item.density_rms,
+                    executed_backend=item.executed_backend,
+                    basis_metadata=item.basis_metadata,
+                    accuracy=item.accuracy,
+                    resource_diagnostics=batch.resource_diagnostics,
+                    precision=item.precision,
+                    physical_residual_rms=item.physical_residual_rms,
+                    ks_diagnostic=item.ks_diagnostic,
+                    ks_transport_diagnostic=batch.ks_transport_diagnostics[0],
+                )
         context = ctypes.c_void_p()
         _native.check(
             self._library,
@@ -1318,6 +1385,9 @@ class Calculator:
                 }
                 values["mo_host_staging"] = bool(values["mo_host_staging"])
                 values["equation_hash"] = values["equation_hash"].decode("ascii")
+                values["response_operator_hash"] = values[
+                    "response_operator_hash"
+                ].decode("ascii")
                 correlation = CorrelationResult(**values)
             physical_residual_rms = None
             scf_getter = getattr(

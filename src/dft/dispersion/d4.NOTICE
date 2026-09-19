@@ -19,3 +19,20 @@ of every parsed source blob in d4_manifest.json.
 
 VibeQC stores the symmetric reference C6 matrix as a lossless lower triangle.
 GFN2 reference charges and polarizabilities are not generic EEQ reference data.
+
+The generated EEQ-D4 data in d4_eeq_data.hpp additionally derives from:
+
+  multicharge revision 6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf
+  SPDX-License-Identifier: Apache-2.0
+
+and mctc-lib revision e9de066d89f250d1cfb6de3a33f0c27c0e2f855d
+for the EEQ2019 coordination-number convention and covalent radii
+(SPDX-License-Identifier: Apache-2.0). The DFT-D4 EEQ reference charges,
+reference polarizabilities and C6 data retain the upstream DFT-D4
+LGPL-3.0-or-later provenance. Exact source blobs and hashes are recorded in
+d4_eeq_manifest.json.
+
+Standard EEQ-D4 and r2SCAN-3c do not share one C6 table: the latter changes
+the charge-scaling parameters from ga/gc=3/2 to 2/1. Both pinned profiles are
+therefore generated and identified separately; no runtime dftd4 or
+multicharge dependency is introduced.

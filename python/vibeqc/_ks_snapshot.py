@@ -80,9 +80,12 @@ class NativeKsSnapshot:
         "_residual",
         "atomic_weights",
         "backend",
+        "ecp_cores",
+        "ecp_terms",
         "export_work",
         "grid",
         "grid_spec",
+        "hamiltonian",
         "metadata",
         "values",
     )
@@ -139,11 +142,11 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2, 3) or metadata[7] != 1:
+            if metadata[0] not in (1, 2, 3, 4) or metadata[7] != 1:
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
-            cpu = metadata[0] == 2
+            cpu = metadata[0] in (2, 4)
             if (metadata[12] == 2**64 - 1) != cpu:
                 raise ValueError("native KS snapshot backend/device mismatch")
             self.backend = "cpu" if cpu else "cuda"
@@ -235,7 +238,7 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.metadata[0] in (2, 3):
+        if self.metadata[0] in (2, 3, 4):
             from vibeqc_compiler.dft.grid import GridSpec
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
@@ -260,8 +263,40 @@ class NativeKsSnapshot:
             if self.metadata[0] == 3
             else {}
         )
+        if self.metadata[0] == 4:
+            cores = take((natom,))
+            count = float(take((1,))[0])
+            if not np.isfinite(count) or count < 1 or not count.is_integer():
+                raise ValueError("invalid native ECP term count")
+            terms = take((int(count), 5))
+            if (
+                not np.isfinite(cores).all()
+                or np.any(cores != np.floor(cores))
+                or np.any(cores < 0)
+                or np.any(cores >= atoms[:, 0])
+            ):
+                raise ValueError("invalid native ECP core counts")
+            if not np.isfinite(terms).all():
+                raise ValueError("nonfinite native ECP terms")
+            self.ecp_cores = tuple(map(int, cores))
+            self.ecp_terms = tuple(tuple(row) for row in terms)
+            self.hamiltonian = "scalar-semilocal-ecp"
+        else:
+            self.ecp_cores = (0,) * natom
+            self.ecp_terms = ()
+            # CUDA v1/v3 do not export ECP Hamiltonian records. Their existing
+            # gradient consumer independently rejects core-adjusted occupations;
+            # this CPU extension must not label such snapshots all-electron.
+            self.hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
+        if self.backend == "cpu" and not np.isclose(
+            arrays["occupations"].sum(),
+            atoms[:, 0].sum() - sum(self.ecp_cores) - charge,
+            atol=1e-10,
+            rtol=0,
+        ):
+            raise ValueError("native stationary effective-charge occupation mismatch")
         actual_atoms = np.asarray([[a.atomic_number, *a.position] for a in basis.atoms])
         if (
             basis.nao != n
@@ -301,6 +336,15 @@ class NativeKsSnapshot:
                     "scf_domain": SCF_DOMAIN,
                     "grid": grid.identity,
                     "basis": basis_identity,
+                    **(
+                        {
+                            "hamiltonian": self.hamiltonian,
+                            "ecp_cores": self.ecp_cores,
+                            "ecp_terms": self.ecp_terms,
+                        }
+                        if self.metadata[0] == 4
+                        else {}
+                    ),
                 }
             ),
             geometry_identity=native_ao_geometry_identity(basis),
@@ -351,6 +395,39 @@ class NativeKsSnapshot:
         values = _scf_xc_points(self._library, pbe, rho, gradient)
         self.check_current()
         return values
+
+    def ecp_derivatives(self):
+        """Independent CPU provider bound to this live owner's exact ECP model.
+
+        This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
+        It is not a CUDA fallback or a bounded production force endpoint.
+        """
+        self.check_current()
+        if self.backend != "cpu" or self.hamiltonian != "scalar-semilocal-ecp":
+            raise NotImplementedError("ECP derivative snapshot requires CPU ECP state")
+        evaluate = self._library.vibeqc_ks_snapshot_ecp_derivatives_v1
+        evaluate.argtypes = [
+            ct.c_void_p,
+            ct.c_void_p,
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+        ]
+        evaluate.restype = ct.c_int
+        n, natom = self.metadata[1], self.metadata[3]
+        output = np.empty((2, natom, 3, n, n), dtype=np.float64)
+        _native.check(
+            self._library,
+            evaluate(
+                self._batch._batch,
+                self._handle,
+                output.ctypes.data_as(ct.POINTER(ct.c_double)),
+                output.size,
+            ),
+        )
+        self.check_current()
+        if not np.isfinite(output).all():
+            raise ArithmeticError("nonfinite native ECP derivatives")
+        return immutable(output)
 
     def validate(self, state):
         """Reject copied labels and even self-consistent replacement matrices."""
