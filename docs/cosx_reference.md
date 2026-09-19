@@ -103,22 +103,40 @@ screening, and grid prescription outside v1 is recorded in
 [the COSX discrete-reference Agent Note](../.agents/notes/implemented/numerics/2026-09-19-cosx-discrete-reference.md).
 
 
-## Bounded native CUDA candidate
+## Bounded native CUDA provider core
 
-CudaCosxStagingPlan remains an explicit diagnostic class rather than a
-registered Fock provider, but its scientific kernels are now fully device-side.
-It reuses the existing CUDA spatial-grid owner for AO values and its immutable
-packed normalized basis. The unit point-charge ESP operator is evaluated on the
-device through generated_one_electron_values.cuh: the existing generated
-nuclear-attraction DAG has an independent external center C, and COSX takes the
-negative of its signed unit-charge value to obtain positive
+CudaCosxStagingPlan is the bounded numerical owner used by the internal CUDA
+COSX provider. It reuses the existing CUDA spatial-grid owner for AO values
+and its immutable packed normalized basis. The unit point-charge ESP operator
+is evaluated on the device through generated_one_electron_values.cuh: the
+existing generated nuclear-attraction DAG has an independent external center C,
+and COSX takes the negative of its signed unit-charge value to obtain positive
 <mu|1/|r-C||nu>.
 
 For each bounded point tile the device computes ESP matrices, density
 projection, ESP application, one-sided K accumulation, and final
 symmetrization on one owner stream. No global Ngrid x NAO^2 tensor is allocated
-and no host ESP tensor or per-tile ESP H2D transfer remains.
+and no host ESP tensor or per-tile ESP H2D transfer remains. A pure resource
+query reports the grid and COSX storage before allocation; an explicit device
+budget is rejected transactionally when it cannot hold the bounded plan.
 
-This is still explicit-only. It does not register COSX with FockBuildSpec,
-AUTO, SCF, hybrid DFT, or derivative capability. Provider/grid identity and
-native performance qualification remain the next #246 slice.
+PreparedCosxFockPlan composes this K owner with an ordinary exact/DF J-only
+PreparedFockPlan under one mixed ResolvedFockBuild. The dedicated MolecularGrid
+is reconstructed from the complete FockCosxSpec identity, RHF evaluates K from
+the spin-summed density, and UHF evaluates independent alpha/beta K matrices.
+The result is the shared DirectJkMatrices consumed by ordinary Fock and
+two-electron-energy assembly.
+
+The internal energy-only `run_cosx_rhf` and `run_cosx_uhf` controllers now
+reuse this prepared provider with host DIIS/eigensolves. Convergence requires
+energy, density and physical commutator gates; a converged trajectory is
+finalized by rebuilding the unextrapolated RI-J/COSX-K Fock, re-diagonalizing,
+reconstructing D and evaluating the final physical energy/residual again.
+Cold and warm starts share the same model identity.
+
+This promotion remains **internal and energy-only**. It does not authorize AUTO
+selection, the public C Fock ABI, batching, hybrid method exposure,
+screening/fitting, analytic derivatives or forces, and it establishes no RI-K
+crossover/performance claim. Proposal hooks are also rejected by the first SCF
+slice so their target-operator semantics cannot be inherited accidentally.
+Those capabilities require separate evidence and registration.
