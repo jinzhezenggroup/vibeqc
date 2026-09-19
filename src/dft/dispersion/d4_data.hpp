@@ -9,28 +9,14 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "dft/dispersion/d4_types.hpp"
+
 namespace vibeqc::dft::dispersion::data {
 
 inline constexpr char kSourceRevision[] = "6e1f59c3f39d919a2dbef0601d2576727c8b30e8";
 inline constexpr char kSourceDigest[] = "9201fd82434f37dc0d8466326ebfc5038f2df174176a31e998c84e3accd06db6";
 inline constexpr std::size_t kElementCount = 86u;
 inline constexpr std::size_t kReferenceCount = 262u;
-
-struct D4ElementData {
-  std::uint16_t reference_offset;
-  std::uint8_t reference_count;
-  double covalent_radius;
-  double electronegativity;
-  double effective_charge;
-  double hardness;
-  double r4r2;
-};
-
-struct D4ReferenceData {
-  double coordination_number;
-  double charge;
-  std::uint8_t gaussian_count;
-};
 
 inline constexpr std::array<D4ElementData, kElementCount> kElements{{
     D4ElementData{0, 2, 0.80628314650472122, 2.2000000000000002, 1.0, 0.47259287999999999, 2.0073489980568899},

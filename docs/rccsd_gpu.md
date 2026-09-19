@@ -47,27 +47,131 @@ The fixed-amplitude API uploads all feeds and downloads all outputs on each
 call. It must **not** be used as a host-driven CC iteration or advertised as
 GPU-resident solving. It registers no public RCCSD method.
 
-## Remaining B/C acceptance
+## Boundary inherited from the pre-resident slices
 
-- The solver must keep amplitudes, physical residuals, denominators, integrals,
-  workspaces and DIIS histories on device. Only small diagnostics may control
-  iterations on the host. The #193 resident interface is a prerequisite.
-- `gpu_state.iteration_program` defines the damped Jacobi update in TensorIR
-  separately from the physical equations. Shifts affect denominator inputs;
-  the final expanded equation must be freshly evaluated without them.
-- `AmplitudeSnapshot` owns immutable amplitudes tied to an exact reference
-  identity. Geometry, generation, and orbital changes invalidate reuse even
-  at identical shape. No cross-geometry transport is implemented.
-- `src/cc/cuda_state.cuh` provides allocation-free DIIS Gram construction via
-  cuBLAS, a bounded GPU coefficient solve, extrapolation and physical maximum
-  residual reductions. It is preparatory code until integrated and validated
-  through the complete solver. Production storage must be a #146 reservation.
-- Public RCCSD must use its own method identifier, preserving all existing
-  values and the reserved RCCSD_T entry. Energy-only capabilities must reject
-  forces, unsupported references, precision and frozen-core configurations.
-- Single-system endpoints precede supported homogeneous prepared batches;
-  every item requires isolated T/DIIS/status. Ragged batching is unsupported
-  unless separately implemented and validated.
-- Snapshot lifetime, repeated execution, independent contexts, partial batch
-  failures and full VibeQC HF→integrals→GPU RCCSD require end-to-end evidence.
-  Neither kernel parity nor successful compilation completes #149.
+The fixed-amplitude and host-staged solvers established equation identity,
+reference validation, memory planning and replay, but they deliberately did
+not satisfy #149 B: T/R and integral inputs crossed the host boundary on each
+evaluation. The resident implementation below is the replacement for that
+historical limitation. The remaining open requirements after B are native
+method registration, homogeneous prepared batches and full public/API evidence;
+those are tracked under C.
+
+`gpu_state.iteration_program` remains the single damped-Jacobi TensorIR owner,
+`AmplitudeSnapshot` still forbids shape-only reuse across reference changes, and
+cross-geometry amplitude transport remains unsupported.
+
+## B: resident single-system solver
+
+`tools.vibeqc_cc.resident_solver.PreparedResidentCCSD` now binds the existing
+#149 primary iteration plan to the #420 resident TensorIR ABI. The physical
+energy/R1/R2 equations and damped Jacobi proposal remain generated from #148;
+no second CC residual implementation is introduced.
+
+The primary owner uploads Fock/integral blocks, denominators and initial T1/T2
+once. Across iterations it retains current/trial amplitudes, physical residuals,
+DIIS vectors/errors, Gram/system scratch and reduction buffers inside the exact
+#146 reservation. The resident post-run action computes R1/R2 max norms on the
+same stream. Host control reads only the correlation energy and two residual
+maxima; trial residual tensors feed GPU DIIS directly and are never staged to
+the host. `src/cc/cuda_state.cuh` supplies the shared Gram solve support plus
+history compaction and slice extrapolation for separately pinned T1/T2 spans.
+
+The control sequence preserves the CPU solver's semantics:
+
+1. run the exact physical equations at the current amplitudes;
+2. check energy-change and physical residual gates from scalar diagnostics;
+3. if unconverged, save the current finite state and device-copy generated
+   `next_t1/next_t2` into the pinned input spans;
+4. run the physical equations at that exact trial state;
+5. append the trial amplitude/residual pair to resident DIIS, dropping the
+   oldest pair and retrying after an ill-conditioned solve as the CPU `_DIIS`
+   policy does;
+6. form the extrapolated current amplitudes on device;
+7. on a convergence candidate, download final T once and execute the separately
+   retained expanded physical TensorIR replay on GPU before publishing success.
+
+An arithmetic or solver failure never invokes the host-staged CC solver. The
+last finite device amplitudes are retained separately and downloaded only for a
+failure/result record. `diis_size=0` is supported as resident Jacobi rather than
+a backend switch.
+
+The internal energy facade accepts `backend="cuda-resident"`. It remains
+energy-only; `method_capabilities("rccsd")` still reports no native prepared
+batch and force requests remain unsupported. `PreparedResidentCCSD` itself
+stays open after convergence. Its immutable `owner_identity` binds the
+reference/integrals/equations/artifact/device; a separate
+`solved_state_identity` additionally hashes the replay-qualified final T1/T2.
+A new solve clears that solved identity before any mutation and republishes one
+only after a fresh expanded replay. A later Lambda/gradient consumer can
+therefore fail closed on stale or merely prepared owners rather than mistaking
+owner identity for a solved amplitude state. The integral provider may be released after preparation:
+all numerical inputs needed by the resident/replay owners have already been
+copied or retained under their own lifetime.
+
+### Transfer boundary
+
+On the audited H2O endpoint (15 current iterations, 29 total primary runs), the
+resident path measured an initial large H2D upload of 11,920 B. Thereafter the
+reported large per-iteration H2D and D2H volumes are both exactly zero. Each
+resident run returns only its 4-byte ABI status; current-state control reads
+three FP64 scalars plus the reduction error status. DIIS pivot/arithmetic checks
+add only small integer transfers. The final accepted amplitudes total 880 B and
+are downloaded once for expanded replay/result publication. This is a transfer
+claim for the TensorIR owner, not a whole-process PCIe or CUDA-context claim.
+
+RTX 5090 / sm_120 validation covers H2, H2O and CH4 convergence against pinned
+energies/amplitudes, retained solved-owner amplitudes, provider release after
+setup, explicit nonconvergence and resident zero-DIIS execution. H2O agrees with
+its pinned amplitudes to about 6.5e-12 max absolute error and its pinned total
+energy to about 2.9e-13 Eh.
+
+## Remaining C acceptance
+
+- Native `VIBEQC_METHOD_RCCSD` registration and public prepared execution remain
+  unimplemented. Public force capability must stay unsupported.
+- Supported homogeneous prepared batches still need one isolated resident
+  T/DIIS/status owner per item plus partial-failure semantics. The Python
+  `batch_energy` helper is not that native batch.
+- The current resident solver starts from host-prepared conventional MO blocks;
+  direct producer-to-consumer device leases for HF/AO2MO remain future work.
+- Cross-geometry warm starts still require validated orbital transport.
+- Complete HF-to-native-registry performance and memory evidence remains a
+  promotion gate; resident transfer reduction alone is not a speedup claim.
+
+### Ordinary-stream comparison on the same H2O endpoint
+
+With cached compilation artifacts, both the existing ordinary-stream GPU solver
+and the resident solver converged in 15 current iterations to the same pinned
+energy (2.84e-13 Eh absolute difference) and amplitudes (about 6.5e-12 maximum
+absolute difference from the retained reference). The scientific control law is
+therefore not changed to obtain residency.
+
+The ordinary plan executed 29 primary evaluations. Its conservative transfer
+accounting gives 11,920 B uploaded per primary evaluation, 1,768 B of complete
+plan outputs per primary evaluation, plus one 11,040 B expanded-replay input:
+356,720 B primary+replay H2D and 51,272 B full-plan D2H upper bound in total.
+The resident owner instead reports 11,920 B of initial large H2D, zero
+per-iteration large H2D/D2H, 524 B of scalar control D2H, and one 880 B final
+amplitude download. The resident ABI itself additionally returns 4 B per run.
+
+Cached wall times in this one observation were 1.09 s ordinary and 0.73 s
+resident, but this PR does **not** promote a speedup: compilation is excluded,
+fixtures are tiny, CUDA context/module state is shared with the process, and no
+representative molecular benchmark matrix has been qualified yet.
+
+### Reuse and isolation
+
+A resident owner is reusable after convergence: calling `solve()` again starts
+from the retained converged amplitudes and does not repeat the one-time large
+input upload. `amplitude_snapshot()` detaches the current T1/T2 together with
+the exact reference identity for a later explicit warm start. A warm snapshot
+is accepted only by the identical `ReferenceSnapshot`; geometry, generation or
+orbital changes are rejected before JIT compilation/device upload. Supplying an
+identity-bearing warm snapshot together with raw T arrays is also rejected.
+
+Two independently prepared owners may coexist on one device. The RTX 5090 test
+keeps H2 and H2O owners alive simultaneously, verifies distinct resident-state
+identities, and converges both without cross-state contamination. These tests
+establish single-system owner reuse/context isolation; they are not the
+homogeneous native prepared batch required by #149 C.

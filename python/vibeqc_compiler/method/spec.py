@@ -17,7 +17,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import D3Spec, D4Spec, DispersionCorrectionPrimitive
 from .nonlocal_correlation import (
     NonlocalCorrelationPrimitive,
     NonlocalCorrelationSpec,
@@ -65,7 +65,7 @@ class MethodSpec:
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
-    dispersion: D3Spec | None = None
+    dispersion: D3Spec | D4Spec | None = None
     nonlocal_correlation: NonlocalCorrelationSpec | None = None
 
     def __post_init__(self):
@@ -90,8 +90,10 @@ class MethodSpec:
             self.nonlocal_correlation, NonlocalCorrelationSpec
         ):
             raise TypeError("nonlocal correlation requires NonlocalCorrelationSpec")
-        if self.dispersion is not None and not isinstance(self.dispersion, D3Spec):
-            raise TypeError("dispersion requires a D3Spec")
+        if self.dispersion is not None and not isinstance(
+            self.dispersion, (D3Spec, D4Spec)
+        ):
+            raise TypeError("dispersion requires a D3Spec or D4Spec")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
             raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
@@ -291,8 +293,10 @@ class MethodIR:
             elif isinstance(primitive, NonlocalCorrelationPrimitive):
                 ingredients.update(primitive.required_ingredients)
                 operators.append("nonlocal-correlation")
-            else:
+            elif isinstance(primitive.specification, D3Spec):
                 operators.append("geometry-d3-bj")
+            else:
+                operators.append("geometry-d4-bj-eeq")
         return {
             "spin": self.spin,
             "reference": self.reference,

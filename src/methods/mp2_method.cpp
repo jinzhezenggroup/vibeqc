@@ -3,12 +3,15 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
+#include <limits>
 #include <mutex>
 #include <optional>
 
 #include "api/handles.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/mp2_energy.hpp"
+#include "posthf/mp2_force.hpp"
 #include "scf/mean_field.hpp"
 #if VIBEQC_HAS_CUDA
 #include <cuda_runtime_api.h>
@@ -53,9 +56,6 @@ class Mp2Prepared final : public PreparedCalculation {
     last_.reset();
   }
   Result execute(bool compute_forces) override {
-    if (compute_forces) {
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "canonical MP2 implements energy only");
-    }
     std::lock_guard<std::mutex> lock(mutex_);
     last_.reset();
     try {
@@ -64,6 +64,9 @@ class Mp2Prepared final : public PreparedCalculation {
       if (!cuda && context_.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                           "MP2 requires an explicit CPU or CUDA backend");
+      if (compute_forces && density_fitted_)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "RI-MP2 analytic force is C2 work and is not implemented");
 #if VIBEQC_HAS_CUDA
       std::unique_ptr<DeviceScope> device_scope;
       if (execution_cuda) device_scope = std::make_unique<DeviceScope>(context_.device_id);
@@ -95,20 +98,37 @@ class Mp2Prepared final : public PreparedCalculation {
       Result result;
       result.energy = ref.energy + corr.opposite_spin + corr.same_spin;
       if (!std::isfinite(result.energy)) throw std::runtime_error("nonfinite MP2 total energy");
+      std::optional<mp2::ConventionalForceResult> force_diagnostic;
+      if (compute_forces) {
+        response::GmresOptions response_options;
+        response_options.relative_tolerance = 1e-10;
+        response_options.absolute_tolerance = 1e-12;
+        response_options.restart = 30;
+        response_options.max_iterations = 200;
+        response_options.max_workspace_bytes = budget_;
+        force_diagnostic =
+            cuda ? mp2::conventional_force_cuda(ref, source, budget_, threshold_, 1e-10,
+                                                response_options, context_.device_id)
+                 : mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10,
+                                               response_options);
+        result.forces = force_diagnostic->forces;
+      }
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
       const bool executed_cuda = execution_cuda;
       result.executed_backend = executed_cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
-      last_ =
-          vibeqc_correlation_diagnostic{sizeof(vibeqc_correlation_diagnostic),
-                                        VIBEQC_ABI_VERSION,
-                                        ref.energy,
-                                        corr.opposite_spin,
-                                        corr.same_spin,
-                                        corr.minimum_denominator,
-                                        ref.commutator_residual,
-                                        std::max(reference_capacity_, corr.numeric_capacity_bytes),
-                                        corr.tiles,
-                                        executed_cuda ? 1 : 0};
+      vibeqc_correlation_diagnostic diagnostic{};
+      diagnostic.struct_size = sizeof(vibeqc_correlation_diagnostic);
+      diagnostic.abi_version = VIBEQC_ABI_VERSION;
+      diagnostic.reference_energy = ref.energy;
+      diagnostic.opposite_spin_energy = corr.opposite_spin;
+      diagnostic.same_spin_energy = corr.same_spin;
+      diagnostic.minimum_absolute_denominator = corr.minimum_denominator;
+      diagnostic.reference_residual = ref.commutator_residual;
+      diagnostic.numeric_capacity_bytes =
+          std::max(reference_capacity_, corr.numeric_capacity_bytes);
+      diagnostic.energy_tile_count = corr.tiles;
+      diagnostic.mo_host_staging = executed_cuda ? 1 : 0;
+      last_ = diagnostic;
       last_->correlation_owned_device_bytes = corr.metrics.owned_device_bytes;
       last_->correlation_provider_retained_bytes = corr.metrics.provider_retained_bytes;
       last_->mo_transfer_bytes = corr.mo_transfer_bytes;
@@ -117,6 +137,28 @@ class Mp2Prepared final : public PreparedCalculation {
       last_->transform_library_ms = corr.metrics.library_ms;
       last_->tensor_kernel_ms = corr.metrics.kernel_ms;
       std::copy_n(corr.equation_hash, 64, last_->equation_hash);
+      if (force_diagnostic) {
+        last_->response_iterations = force_diagnostic->response.iterations;
+        last_->response_restarts = force_diagnostic->response.restarts;
+        last_->response_absolute_residual = force_diagnostic->response.residual_norm;
+        last_->response_relative_residual = force_diagnostic->response.relative_residual;
+        last_->response_workspace_bytes = force_diagnostic->response.workspace_bytes;
+        last_->measured_response_workspace_peak_bytes =
+            force_diagnostic->response.measured_workspace_peak_bytes;
+        last_->response_workspace_allocation_count =
+            force_diagnostic->response.workspace_allocation_count;
+        last_->derivative_workspace_bytes = force_diagnostic->derivative_workspace_bytes;
+        last_->planned_endpoint_peak_bytes =
+            std::max(reference_capacity_, force_diagnostic->planned_endpoint_peak_bytes);
+        // Preserve the producer's unavailable-measurement sentinel. A planned
+        // reference capacity cannot turn an unmeasured endpoint into an observation.
+        last_->measured_endpoint_peak_bytes = force_diagnostic->measured_endpoint_peak_bytes;
+        last_->numeric_capacity_bytes =
+            std::max(last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
+        last_->force_provenance_flags = 0x7;
+        constexpr char response_hash[] = "rhf-canonical-response-v1";
+        std::copy_n(response_hash, sizeof(response_hash), last_->response_operator_hash);
+      }
       return result;
     } catch (const std::length_error& e) {
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, e.what());
@@ -136,6 +178,140 @@ class Mp2Prepared final : public PreparedCalculation {
   bool fitted_cuda_{};
   std::optional<vibeqc_correlation_diagnostic> last_;
   mutable std::mutex mutex_;
+};
+
+bool valid_positions(const std::vector<double>& coordinates, const core::System& system) {
+  return coordinates.size() == 3 * system.atoms.size() &&
+         std::all_of(coordinates.begin(), coordinates.end(),
+                     [](double value) { return std::isfinite(value); });
+}
+
+std::vector<double> positions(const core::System& system) {
+  std::vector<double> result;
+  result.reserve(3 * system.atoms.size());
+  for (const auto& atom : system.atoms)
+    result.insert(result.end(), atom.position.begin(), atom.position.end());
+  return result;
+}
+
+void set_positions(core::System& system, const std::vector<double>& coordinates) {
+  for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+    std::copy_n(coordinates.begin() + 3 * atom, 3, system.atoms[atom].position.begin());
+}
+
+vibeqc_status item_exception_status() {
+  try {
+    throw;
+  } catch (const MethodError& error) {
+    return error.status();
+  } catch (const std::bad_alloc&) {
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::invalid_argument&) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  } catch (const std::exception&) {
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  } catch (...) {
+    return VIBEQC_STATUS_INTERNAL_ERROR;
+  }
+}
+
+class Mp2PreparedBatch final : public PreparedBatch {
+ public:
+  Mp2PreparedBatch(Capabilities capabilities, core::ContextState& context,
+                   std::vector<core::System> systems, const vibeqc_method_descriptor& descriptor)
+      : capabilities_(capabilities), context_(&context), systems_(std::move(systems)) {
+    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
+    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_.density_fitting_auxiliary_basis = nullptr;
+    descriptor_.ks_options = nullptr;
+    owners_.reserve(systems_.size());
+    owner_coordinates_.reserve(systems_.size());
+    for (const auto& system : systems_) {
+      owners_.push_back(prepare_mp2_calculation(capabilities_, *context_, system, descriptor_));
+      owner_coordinates_.push_back(positions(system));
+    }
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept override { return systems_.size(); }
+
+  void invalidate_result() override {
+    for (auto& owner : owners_) owner->invalidate_result();
+  }
+
+  std::vector<BatchItemResult> execute(const Coordinates& coordinates,
+                                       bool compute_forces) override {
+    invalidate_result();
+    if (!coordinates.empty() && coordinates.size() != size())
+      throw std::invalid_argument("MP2 batch coordinates do not match system count");
+    std::vector<BatchItemResult> results(size());
+    for (std::size_t index = 0; index < size(); ++index) {
+      auto& result = results[index];
+      result.bucket_id = index;
+      result.calculation.energy = std::numeric_limits<double>::quiet_NaN();
+      result.calculation.executed_backend = context_->requested_backend;
+      try {
+        auto target = systems_[index];
+        auto target_coordinates = positions(target);
+        if (!coordinates.empty() && coordinates[index]) {
+          if (!valid_positions(*coordinates[index], target))
+            throw std::invalid_argument("invalid MP2 batch item coordinates");
+          target_coordinates = *coordinates[index];
+          set_positions(target, target_coordinates);
+        }
+        if (target_coordinates != owner_coordinates_[index]) {
+          auto candidate = prepare_mp2_calculation(capabilities_, *context_, target, descriptor_);
+          owners_[index] = std::move(candidate);
+          owner_coordinates_[index] = std::move(target_coordinates);
+        }
+        result.calculation = owners_[index]->execute(compute_forces);
+        result.status = VIBEQC_STATUS_SUCCESS;
+      } catch (...) {
+        result.status = item_exception_status();
+      }
+    }
+    return results;
+  }
+
+  void clear_warm_starts() override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  [[nodiscard]] std::size_t warm_density_size(std::size_t) const override { return 0; }
+  [[nodiscard]] const std::optional<scf::HfWarmState>& warm_state(std::size_t) const override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  void restore_warm_states(std::vector<std::optional<scf::HfWarmState>>) override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  void set_warm_start_updates(bool) override {
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
+  }
+  [[nodiscard]] std::optional<std::vector<DirectShellClassProfileEntry>>
+  last_direct_shell_class_profile() const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] std::optional<DirectPppsQueueProfile> last_direct_ppps_queue_profile()
+      const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] std::vector<EigensolverDiagnostic> last_eigensolver_diagnostics() const override {
+    return {};
+  }
+  [[nodiscard]] std::vector<scf::CudaDensityFittingMetricDiagnostic>
+  last_density_fitting_metric_diagnostics() const override {
+    return {};
+  }
+  [[nodiscard]] std::vector<InactiveEigensolverProfileEntry> last_inactive_eigensolver_profile()
+      const override {
+    return {};
+  }
+
+ private:
+  Capabilities capabilities_;
+  core::ContextState* context_{};
+  std::vector<core::System> systems_;
+  vibeqc_method_descriptor descriptor_{};
+  std::vector<std::unique_ptr<PreparedCalculation>> owners_;
+  std::vector<std::vector<double>> owner_coordinates_;
 };
 }  // namespace
 
@@ -304,5 +480,35 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
                       "RI-MP2 DF reference state exceeds numeric memory budget");
   return std::make_unique<Mp2Prepared>(caps, context, system, std::move(auxiliary), options, budget,
                                        reference_capacity, threshold, density_fitted, fitted_cuda);
+}
+
+std::unique_ptr<PreparedBatch> prepare_mp2_batch(const Capabilities& capabilities,
+                                                 core::ContextState& context,
+                                                 std::vector<core::System> systems,
+                                                 const vibeqc_method_descriptor& descriptor,
+                                                 vibeqc_batch_flags flags) {
+  if ((flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "MP2 batch does not support warm starts");
+  constexpr vibeqc_batch_flags profiling_flags = VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING |
+                                                 VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING;
+  if ((flags & profiling_flags) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "MP2 batch does not support profiling");
+  if ((flags & ~(VIBEQC_BATCH_ENABLE_WARM_STARTS | profiling_flags)) != 0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unsupported MP2 batch flag");
+  const auto present = [&](std::size_t end) { return descriptor.struct_size >= end; };
+  const auto density_fitting_mode =
+      present(offsetof(vibeqc_method_descriptor, density_fitting_mode) +
+              sizeof(descriptor.density_fitting_mode))
+          ? descriptor.density_fitting_mode
+          : VIBEQC_DENSITY_FITTING_NONE;
+  if (density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "MP2 batch supports conventional correlation only");
+  if (present(offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
+              sizeof(descriptor.density_fitting_auxiliary_basis)) &&
+      descriptor.density_fitting_auxiliary_basis)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                      "conventional MP2 batch does not accept an auxiliary basis");
+  return std::make_unique<Mp2PreparedBatch>(capabilities, context, std::move(systems), descriptor);
 }
 }  // namespace vibeqc::methods::detail

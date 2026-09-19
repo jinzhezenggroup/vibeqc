@@ -39,7 +39,9 @@ def test_public_native_hf_to_mp2_components(name, device):
         basis_representation=args["representation"],
         device=device,
     )
-    result = calc.singlepoint(args["atoms"], charge=args["charge"])
+    result = calc.singlepoint(
+        args["atoms"], charge=args["charge"], properties=("energy",)
+    )
     ref = meta["records"]["conventional"]
     no = ref["electron_count"] // 2
     n = len(arrays["conventional_eps"])
@@ -88,7 +90,9 @@ def test_public_native_df_hf_to_ri_mp2_components(name, device):
         density_fitting="cuda" if device == "cuda" else "cpu",
         device=device,
     )
-    result = calc.singlepoint(args["atoms"], charge=args["charge"])
+    result = calc.singlepoint(
+        args["atoms"], charge=args["charge"], properties=("energy",)
+    )
     ref = meta["records"]["df"]
     no = ref["electron_count"] // 2
     n = len(arrays["df_eps"])
@@ -253,9 +257,9 @@ def test_cuda_calculator_uses_selected_cpu_df_basis_capability():
 def test_public_unsupported_budget_scf_and_neighbors(device):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device=device)
-    assert method_capabilities("mp2").supported_properties == frozenset({"energy"})
-    with pytest.raises(NotImplementedError, match="forces"):
-        calc.singlepoint(atoms, properties=("energy", "forces"))
+    assert method_capabilities("mp2").supported_properties == frozenset(
+        {"energy", "forces"}
+    )
     with pytest.raises(RuntimeError, match="error 7|memory budget"):
         Calculator(
             method="mp2", device=device, correlation_memory_budget_bytes=1024
@@ -297,8 +301,79 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
     assert abs(calc.singlepoint(atoms).energy - first.energy) <= 1e-12
 
 
-def test_c_api_force_request_never_returns_success_or_writes_placeholder(device):
-    calc = Calculator(method="mp2", device=device)
+def test_public_force_reports_response_measurement_without_promoting_endpoint():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    calc = Calculator(method="mp2", basis="sto-3g", device="cpu")
+    energy = calc.singlepoint(atoms, properties=("energy",)).correlation
+    assert energy.measured_response_workspace_peak_bytes == 0
+    assert energy.response_workspace_allocation_count == 0
+    force = calc.singlepoint(atoms, properties=("energy", "forces")).correlation
+    assert (
+        0
+        < force.measured_response_workspace_peak_bytes
+        < force.response_workspace_bytes
+    )
+    assert force.response_workspace_allocation_count > 0
+    # Response-only telemetry cannot satisfy complete-endpoint qualification.
+    assert force.measured_endpoint_peak_bytes == 0
+
+
+def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    calc = Calculator(method="mp2", device="cpu")
+    result = calc.singlepoint(atoms, properties=("energy", "forces"))
+    assert result.converged and result.forces.shape == (2, 3)
+    step = 1e-4
+    plus = [("H", (0, 0, -0.7 + step)), atoms[1]]
+    minus = [("H", (0, 0, -0.7 - step)), atoms[1]]
+    finite = (
+        calc.singlepoint(plus, properties=("energy",)).energy
+        - calc.singlepoint(minus, properties=("energy",)).energy
+    ) / (2 * step)
+    assert abs(result.forces[0, 2] + finite) < 2e-6
+    np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-9)
+    with pytest.raises(NotImplementedError, match=r"RI-MP2.*force"):
+        Calculator(method="mp2", density_fitting="cpu").singlepoint(
+            atoms, properties=("energy", "forces")
+        )
+
+
+def test_public_conventional_mp2_force_accepts_zero_derivative_degenerate_subspace():
+    meta, _ = load_fixture("lih")
+    args = source_arguments(meta)
+    result = Calculator(
+        method="mp2",
+        basis=args["basis"],
+        basis_representation=args["representation"],
+        device="cpu",
+    ).singlepoint(args["atoms"], charge=args["charge"], properties=("energy", "forces"))
+    assert result.converged and np.isfinite(result.forces).all()
+    np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-8)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA device and native library",
+)
+def test_public_conventional_mp2_force_cuda_matches_cpu():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    cpu = Calculator(method="mp2", device="cpu").singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    cuda = Calculator(method="mp2", device="cuda").singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    assert cuda.executed_backend == "cuda"
+    np.testing.assert_allclose(cuda.forces, cpu.forces, atol=2e-9, rtol=1e-9)
+    assert cuda.correlation.derivative_workspace_bytes > 0
+    assert (
+        cuda.correlation.planned_endpoint_peak_bytes
+        <= cuda.correlation.numeric_capacity_bytes
+    )
+
+
+def test_c_api_conventional_force_is_transactional_across_repeated_execution():
+    calc = Calculator(method="mp2", device="cpu")
     lib = calc._library
     context, system, calculation = ct.c_void_p(), ct.c_void_p(), ct.c_void_p()
     from vibeqc import Atom
@@ -325,19 +400,14 @@ def test_c_api_force_request_never_returns_success_or_writes_placeholder(device)
         out = _native.ResultDescriptor(
             ct.sizeof(_native.ResultDescriptor), 0, 987.0, forces, 6, 0, 0, 0, 0, 0
         )
-        assert (
-            lib.vibeqc_calculation_execute(calculation, ct.byref(out))
-            == _native.STATUS_NOT_IMPLEMENTED
-        )
-        assert out.energy == 987.0 and list(forces) == [123.0] * 6
-        energy_only = _native.ResultDescriptor(
-            ct.sizeof(_native.ResultDescriptor), 0, 0, None, 0, 0, 0, 0, 0, 0
-        )
         _native.check(
             lib,
-            lib.vibeqc_calculation_execute(calculation, ct.byref(energy_only)),
+            lib.vibeqc_calculation_execute(calculation, ct.byref(out)),
             context=context,
         )
+        first_energy = out.energy
+        first_forces = list(forces)
+        assert first_energy < 0 and first_forces != [123.0] * 6
         diag = _native.CorrelationDiagnostic()
         diag.struct_size = ct.sizeof(diag)
         diag.abi_version = 0
@@ -348,47 +418,126 @@ def test_c_api_force_request_never_returns_success_or_writes_placeholder(device)
             ),
         )
         assert diag.opposite_spin_energy < 0
+        assert diag.response_restarts <= diag.response_iterations
+        assert np.isfinite(diag.response_absolute_residual)
+        assert np.isfinite(diag.response_relative_residual)
+        assert diag.response_absolute_residual < 1e-10
+        assert 0.0 <= diag.response_relative_residual <= 1.0
+        assert diag.response_workspace_bytes > 0
         assert (
-            lib.vibeqc_calculation_execute(calculation, ct.byref(out))
-            == _native.STATUS_NOT_IMPLEMENTED
+            0
+            < diag.measured_response_workspace_peak_bytes
+            < diag.response_workspace_bytes
         )
+        assert diag.response_workspace_allocation_count > 0
+        assert diag.derivative_workspace_bytes > 0
+        # This bounded slice has a plan but no endpoint allocation telemetry.
+        assert diag.measured_endpoint_peak_bytes == 0
+        assert diag.planned_endpoint_peak_bytes <= diag.numeric_capacity_bytes
+        assert diag.force_provenance_flags == 0x7
+        assert diag.response_operator_hash == b"rhf-canonical-response-v1"
+
+        class LegacyCorrelationDiagnostic(ct.Structure):
+            _fields_ = _native.CorrelationDiagnostic._fields_[:18]
+
+        legacy_size = ct.sizeof(LegacyCorrelationDiagnostic)
+        assert ct.sizeof(_native.CorrelationDiagnostic) > legacy_size
+        storage = (ct.c_ubyte * (legacy_size + 32))(*([0xA5] * (legacy_size + 32)))
+        legacy = ct.cast(storage, ct.POINTER(LegacyCorrelationDiagnostic))
+        legacy.contents.struct_size = legacy_size
+        legacy.contents.abi_version = _native.ABI_VERSION
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation,
+                ct.cast(legacy, ct.POINTER(_native.CorrelationDiagnostic)),
+            ),
+        )
+        assert legacy.contents.opposite_spin_energy < 0
+        assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
+        assert legacy.contents.struct_size == legacy_size
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation, ct.cast(legacy, ct.POINTER(_native.CorrelationDiagnostic))
+            ),
+        )
+        assert legacy.contents.struct_size == legacy_size
+        assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
+
+        # The preceding B2 ABI prefix must also remain bounded by struct_size.
+        class PreviousB2Diagnostic(ct.Structure):
+            _fields_ = _native.CorrelationDiagnostic._fields_[:-2]
+
+        previous_size = ct.sizeof(PreviousB2Diagnostic)
+        storage = (ct.c_ubyte * (previous_size + 32))(*([0xA5] * (previous_size + 32)))
+        previous = ct.cast(storage, ct.POINTER(PreviousB2Diagnostic))
+        previous.contents.struct_size = previous_size
+        previous.contents.abi_version = _native.ABI_VERSION
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation,
+                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
+            ),
+        )
+        assert previous.contents.response_operator_hash == b"rhf-canonical-response-v1"
+        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
+        assert previous.contents.struct_size == previous_size
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_get_correlation_diagnostic(
+                calculation,
+                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
+            ),
+        )
+        assert previous.contents.struct_size == previous_size
+        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
+
+        failed_forces = (ct.c_double * 6)(*([456.0] * 6))
+        failed = _native.ResultDescriptor(
+            ct.sizeof(_native.ResultDescriptor),
+            0,
+            654.0,
+            failed_forces,
+            5,
+            11,
+            12.0,
+            13.0,
+            14,
+            15,
+        )
+        assert (
+            lib.vibeqc_calculation_execute(calculation, ct.byref(failed))
+            == _native.STATUS_INVALID_ARGUMENT
+        )
+        assert failed.energy == 654.0 and list(failed_forces) == [456.0] * 6
         assert (
             lib.vibeqc_calculation_get_correlation_diagnostic(
                 calculation, ct.byref(diag)
             )
             == _native.STATUS_NOT_IMPLEMENTED
         )
-        # Ctypes releases the GIL during native calls. Both plans and error
-        # state share one Context; its serialization must cover both writes.
-        from concurrent.futures import ThreadPoolExecutor
-
-        def concurrent_call(k):
-            force = (ct.c_double * 6)(*([123.0] * 6)) if k % 2 else None
-            value = _native.ResultDescriptor(
-                ct.sizeof(_native.ResultDescriptor),
-                0,
-                0,
-                force,
-                6 if force is not None else 0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            )
-            status = lib.vibeqc_calculation_execute(calculation, ct.byref(value))
-            detail = lib.vibeqc_context_last_error(context)
-            assert isinstance(detail, bytes)
-            assert status == (
-                _native.STATUS_NOT_IMPLEMENTED if force is not None else 0
-            )
-            if force is not None:
-                assert list(force) == [123.0] * 6
-            else:
-                assert abs(value.energy - energy_only.energy) < 1e-12
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            list(pool.map(concurrent_call, range(8)))
+        retry_forces = (ct.c_double * 6)(*([789.0] * 6))
+        retry = _native.ResultDescriptor(
+            ct.sizeof(_native.ResultDescriptor),
+            0,
+            321.0,
+            retry_forces,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        _native.check(
+            lib,
+            lib.vibeqc_calculation_execute(calculation, ct.byref(retry)),
+            context=context,
+        )
+        assert abs(retry.energy - first_energy) < 1e-12
+        np.testing.assert_allclose(list(retry_forces), first_forces, atol=1e-12)
     finally:
         if calculation:
             lib.vibeqc_calculation_destroy(calculation)
