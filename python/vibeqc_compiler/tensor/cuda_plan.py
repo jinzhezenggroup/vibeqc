@@ -1,4 +1,4 @@
-"""Deterministic FP64 tensor storage and contraction plans, without CUDA calls.
+"""Deterministic typed tensor storage and contraction plans, without CUDA calls.
 
 The byte budget is a combined numeric-buffer budget: device allocations plus
 prepared host input staging and one detached host output set. Caller-owned
@@ -18,12 +18,13 @@ from math import prod
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
-from .cuda_gemm import fp64_coefficient, gemm_contract
+from .cuda_dtype import program_precision, scalar_type
+from .cuda_gemm import gemm_contract
 from .ir import Node
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 1
+PLAN_SCHEMA = 2
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -133,6 +134,10 @@ class TensorPlan:
     estimated_traffic_bytes: int
 
     @property
+    def precision(self) -> str:
+        return program_precision(self.program)
+
+    @property
     def allocation_bytes(self) -> int:
         # Error flag has a full alignment unit to keep every segment aligned.
         return (
@@ -161,6 +166,9 @@ class TensorPlan:
         return {
             "schema": PLAN_SCHEMA,
             "equation": self.program.logical_hash,
+            "precision": self.precision,
+            "arithmetic": "per-node dtype; RN; fp32 SGEMM pedantic; no implicit casts",
+            "fp32_flush_to_zero": False,
             "target": self.target.to_payload(),
             "schedule": asdict(self.schedule),
             "reservations": asdict(self.reservations),
@@ -189,6 +197,8 @@ class TensorPlan:
                     "last_use": s.last_use,
                     "gemm": s.gemm,
                     "shape": s.node.spec.shape,
+                    "dtype": s.node.spec.dtype,
+                    "itemsize": s.node.spec.itemsize,
                     "strides": None if s.virtual else strides(s.node.spec.shape),
                     "view_map": s.node.attrs if s.virtual else None,
                 }
@@ -300,9 +310,8 @@ def plan_cuda(
     )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
     for node, _ in nodes:
-        if node.spec.dtype != "float64":
-            raise ValueError("CUDA tensor baseline supports only float64")
-        checked_size(node.spec.size * 8, "tensor bytes")
+        scalar = scalar_type(node.spec.dtype)
+        checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
             checked_size(stride, "tensor stride")
         if node.op == "reduce":
@@ -323,9 +332,9 @@ def plan_cuda(
                 "einsum reduction domain",
             )
         for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
-            fp64_coefficient(pair)
+            scalar.coefficient(pair)
         if "coefficient" in node.attrs:
-            fp64_coefficient(node.attrs["coefficient"])
+            scalar.coefficient(node.attrs["coefficient"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }
@@ -387,7 +396,7 @@ def plan_cuda(
         if virtual[i]:
             offsets[i] = -1
         else:
-            size = aligned(node.spec.size * 8)
+            size = aligned(node.spec.size * node.spec.itemsize)
             fitting = [
                 (length, start, j)
                 for j, (start, length) in enumerate(free)
@@ -404,8 +413,8 @@ def plan_cuda(
             offsets[i] = start
             if size:
                 active[i] = (start, size)
-            traffic += node.spec.size * 8 + sum(
-                nodes[c][0].spec.size * 8 for c in reads[i]
+            traffic += node.spec.size * node.spec.itemsize + sum(
+                nodes[c][0].spec.size * nodes[c][0].spec.itemsize for c in reads[i]
             )
         g = gemm_contract(node)
         kind = (
@@ -431,8 +440,8 @@ def plan_cuda(
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(Step(node, operands, virtual[i], offsets[i], last[i], kind))
     host = checked_size(
-        sum(nodes[i][0].spec.size * 8 for i in inputs)
-        + sum(nodes[i][0].spec.size * 8 for _, i in outputs)
+        sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs)
+        + sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs)
         + (VALIDATION_BYTES if inputs else 0),
         "host tensor bytes",
     )

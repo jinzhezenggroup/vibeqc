@@ -10,10 +10,12 @@ import pytest
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cuda
 from vibeqc_compiler.integral.df_rys import emit_df_rys_cuda
 from vibeqc_compiler.integral.df_rys_shell import (
+    AUXILIARY_F_RYS_SHELL_CLASSES,
     COMPONENT_RYS_SHELL_CLASSES,
     RYS_SHELL_CLASSES,
     emit_df_rys_policy_cpp,
     emit_df_rys_shell_cuda,
+    shell_rys_roots,
 )
 from vibeqc_compiler.integral.df_shell_derivatives import emit_df_shell_derivatives_cuda
 
@@ -200,8 +202,8 @@ def test_independent_high_precision_center_differentiation(
 ):
     """Differentiate the closed SSS integral; no generated DAG or Rys oracle.
 
-    Cartesian p/d functions are center derivatives of an s Gaussian (d also
-    includes its lower-order correction). High precision resolves the tiny
+    Cartesian p/d/f functions are center derivatives of an s Gaussian (d/f
+    include their lower-order corrections). High precision resolves the tiny
     coordinate perturbations at T=1e300, where the polynomial FP64 reference
     itself overflows. Relative checks keep underflow-sized errors visible.
     """
@@ -240,8 +242,14 @@ def test_independent_high_precision_center_differentiation(
                 operators.append(((0, mp.mpf(1)),))
             elif degree == 1:
                 operators.append(((1, 1 / (2 * exponent)),))
-            else:
+            elif degree == 2:
                 operators.append(((2, 1 / (4 * exponent**2)), (0, 1 / (2 * exponent))))
+            elif degree == 3:
+                operators.append(
+                    ((3, 1 / (8 * exponent**3)), (1, 3 / (4 * exponent**2)))
+                )
+            else:
+                raise AssertionError("independent Gaussian operator is not defined")
         expected = np.zeros((3, 3))
         point = tuple(map(mp.mpf, positions))
         for center in range(3):
@@ -266,3 +274,23 @@ def test_independent_high_precision_center_differentiation(
         propagated = np.abs(actual[:2] - expected[:2]).sum(axis=0)
         rounding = 2 * np.finfo(float).eps * np.abs(actual[:2]).sum(axis=0)
         assert np.all(np.abs(actual[2] - expected[2]) <= propagated + rounding + 1e-323)
+
+
+def test_auxiliary_f_capability_does_not_admit_unqualified_five_root_math():
+    assert AUXILIARY_F_RYS_SHELL_CLASSES == (
+        (0, 0, 3),
+        (1, 0, 3),
+        (1, 1, 3),
+        (2, 0, 3),
+        (2, 1, 3),
+    )
+    assert [shell_rys_roots(c) for c in AUXILIARY_F_RYS_SHELL_CLASSES] == [
+        3,
+        3,
+        4,
+        4,
+        4,
+    ]
+    for unsupported in ((2, 2, 3), (3, 0, 0), (3, 3, 3)):
+        with pytest.raises(ValueError, match="not generated"):
+            shell_rys_roots(unsupported)

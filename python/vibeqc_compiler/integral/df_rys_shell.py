@@ -25,6 +25,18 @@ COMPONENT_RYS_SHELL_CLASSES = (
     (2, 0, 0),
 )
 
+# Practical s/p/d orbital bases with f auxiliary shells need only the existing
+# independently qualified three/four-root quadrature for these five classes.
+# The d-d-f class needs five roots and deliberately retains its polynomial
+# fallback until that quadrature meets the same strict DF accuracy contract.
+AUXILIARY_F_RYS_SHELL_CLASSES = (
+    (0, 0, 3),
+    (1, 0, 3),
+    (1, 1, 3),
+    (2, 0, 3),
+    (2, 1, 3),
+)
+
 # The measured low-angular winners retain their delivered component lowering.
 # Controls 101/110 and all remaining canonical s/p/d classes use shared axes;
 # mathematical availability never changes the qualified production manifest.
@@ -42,7 +54,7 @@ COOPERATIVE_RYS_SHELL_CLASSES = (
     (2, 2, 0),
     (2, 2, 1),
     (2, 2, 2),
-)
+) + AUXILIARY_F_RYS_SHELL_CLASSES
 RYS_SHELL_CLASSES = tuple(
     sorted(set(COMPONENT_RYS_SHELL_CLASSES + COOPERATIVE_RYS_SHELL_CLASSES))
 )
@@ -276,7 +288,7 @@ def build_df_rys_shared_axis_ir(angular):
     recurrence states before CSE, matching the existing work-ledger convention.
     """
     if tuple(angular) not in COOPERATIVE_RYS_SHELL_CLASSES:
-        raise ValueError("cooperative Rys requires a declared canonical s/p/d class")
+        raise ValueError("cooperative Rys requires a declared canonical shell class")
     graph = Graph()
     root = graph.variable("root")
     pa, pb, dx, sx, sy, ip, iq = (

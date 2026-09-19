@@ -2,21 +2,17 @@
 
 `VIBEQC_DF_WEIGHTED_EXECUTION=shell` selects generated weighted three-center
 derivatives across all 64 s/p/d/f shell classes. `shell-sp` retains the original
-seven non-SSS s/p classes as a comparison subset. Clean endpoints qualify the
-combined `shell` / `compact` / `blas` / `pinned-panels` default for resident
-192--384-AO sm_120 device-metric execution and the qualified 768-AO occupied
-response. Other sizes, backends, source-backed
-values, serial mappings and attribution probes retain the previous defaults.
-In particular, small UHF remains generic because pinned allocations and shell
-launches regress its complete endpoint. The initial s/p-only prototype did not
-resolve the 192-to-384-AO force scaling problem in #308.
+seven non-SSS s/p classes as a comparison subset. Automatic consumer admission
+uses the centralized [work profile](df_tuning.md#derivative-consumer-admission),
+separate from device-metric/source/state/resource correctness gates. Small work
+and unknown target profiles retain the generic consumer. Serial mappings and
+attribution probes retain their explicit fallbacks. The packed occupied-response
+layout remains separately qualified; shell admission never grants that layout.
 
-The measured 384-AO batch-one/four complete-force means fall from 12.007/47.905 s
-to 3.261/13.498 s with compact scheduling. Corresponding 192-to-384 ratios fall
-from 14.94/14.87 to 12.14/12.94. This is a material endpoint improvement, with
-substantial scaling work still remaining. The selection evidence, numerical
-gates and qualification scope are retained in
-`benchmarks/results/issue308-shell-schedules/`.
+Historical #308 shell-schedule measurements remain in
+`benchmarks/results/issue308-shell-schedules/`; they are not current endpoint
+latencies. The current work-based decision is recorded in the
+[admission note](../.agents/notes/implemented/performance/2026-09-19-df-work-admission.md).
 
 The scalar and shell consumers use the same generated primitive geometry and
 Boys routine. The compiler builds each shell class's axis-moment cache from
@@ -66,16 +62,17 @@ angular-only traversal. Primitive counts are uniform runtime parameters; the
 generated derivative equations and component schedule are unchanged. The
 control is recorded in prepared replay metadata.
 
-The default `auto` selects packets only on RTX 5090 for the measured spherical
-384/384-AO dense symmetric response or the already qualified 768/768-AO packed
-occupied response, with one density term and the full `shell` / `compact`
-schedule. Both bases must match the measured six-bin water def2-SVP shell
-histogram: `(l,nprim) = (0,1),(0,3),(0,5),(1,1),(1,3),(2,1)` with counts
-`N/6,N/12,N/24,N/8,N/24,N/24`. Other shapes, signatures, representations,
-backends and diagnostic schedules retain angular-only execution. Explicit
-`on` and `packet` remain available for comparisons outside this profile.
-The decision and rejected alternatives are retained in the
-[signature scheduling note](../.agents/notes/implemented/performance/2026-09-15-df-signature-packets.md).
+The default `auto` selects packets through the centralized primitive-work
+profile, with one density term, spherical bases, symmetric/packed pairs and a
+full `shell` / `compact` consumer. It requires heterogeneous contraction lengths
+within at least one angular class. There is no water shell fingerprint, exact
+AO/rank pair or equal orbital/auxiliary dimension requirement. Unknown profiles,
+small primitive work, homogeneous contractions and incompatible diagnostic
+schedules retain angular-only execution. Explicit `on` and `packet` controls
+remain available for qualification. The original
+[signature scheduling note](../.agents/notes/implemented/performance/2026-09-15-df-signature-packets.md)
+preserves historical alternatives; the current work profile supersedes its
+endpoint-specific admission boundary.
 
 Each signature preserves the original shell order, so auxiliary-panel clipping
 still uses the same public AO offsets. A symmetric or packed same-signature
@@ -173,7 +170,10 @@ PYTHONPATH=python:. python -m benchmarks.df_shell_work_ledger \
 The reducer validates executed shell/signature counts against public basis
 metadata and recorded panels, checks generated work and counter conservation,
 and retains reconstruction/source/library hashes. It groups pure s/p,
-d-containing and the seven Rys-prototype classes separately. The optional
+d-containing, auxiliary-f and the seven historical Rys-prototype classes
+separately. Explicit `--orbital-basis-file` and `--auxiliary-basis-file` inputs
+are checked against the measured snapshot hashes; their shell domains and
+partial auxiliary-panel visits are reconstructed independently. The optional
 Nsight SQLite export must cover the same capture: its per-class kernel launch
 counts must match the component trace. Nsight kernel durations and resource
 rows remain separate from CUDA event intervals. A packet shares one duration;
@@ -277,8 +277,10 @@ Rys consumer, unchanged scientific work counters, and binary/resource costs.
 
 Mathematical lowering comes from the generated architecture/class manifest,
 without an AO-count or equal-auxiliary-dimension whitelist. The qualified sm_120
-profile selects cooperative Rys/compact for its 18 s/p/d entries. Missing targets
-and classes, including auxiliary f classes, retain the polynomial fallback.
+profile selects Rys/compact for 18 s/p/d entries and the five auxiliary-f
+classes `003/103/113/203/213`. The latter use the existing cooperative shared-axis
+IR and qualified three/four-root evaluators. Missing targets/classes, including
+five-root `223`, retain the polynomial fallback.
 Additional mathematical availability does not promote an unqualified entry.
 `VIBEQC_DF_SHELL_POLICY=legacy` forces the fallback; `candidate` admits candidate
 manifest entries for complete endpoint qualification. Consumer, packet and
@@ -301,7 +303,8 @@ high-precision differentiation oracles.
 The usual shell resource diagnostics include `shell_000_rys_selected` and
 per-class Rys evaluation/root/recurrence counts. Polynomial axis-cache and
 convolution counts become zero for selected Rys primitives. Recurrence counts
-include only active nonzero folded components. Clean endpoint
+include shared-axis work once per active primitive plus the work of active
+nonzero folded components. Clean endpoint
 timing must omit diagnostic counters and compare an identical SCF workload.
 
 The [Rys family note](../.agents/notes/implemented/numerics/2026-09-16-batch-df-rys.md)
@@ -310,3 +313,12 @@ records evaluator decisions and qualification boundaries. The
 retains historical endpoint evidence, and the
 [selector retirement note](../.agents/notes/implemented/compatibility/2026-09-16-df-math-selector-retirement.md)
 explains compatibility for checkpoints recording the former SSS override.
+
+The [auxiliary-f qualification note](../.agents/notes/implemented/performance/2026-09-19-df-auxiliary-f-rys.md)
+records the independent mathematics, complete endpoints and five-root fallback.
+For practical paired qualification, `benchmarks.df_policy_endpoint` accepts
+`--cpu-reference`, `--orbital-basis-file` and `--auxiliary-basis-file`. The fresh
+reference includes auxiliary-basis response; explicit practical inputs retain
+the 3e-11 Eh / 3e-11 Eh/Bohr gates for initialization, priming and measurements.
+`--shell-work --components-after` captures a separate intrusive ledger after
+all clean samples, never inside the promoted timing intervals.

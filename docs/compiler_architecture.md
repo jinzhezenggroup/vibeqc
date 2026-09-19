@@ -13,7 +13,7 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
 | `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
-| `method` | Canonical `MethodSpec -> MethodIR`, custom response primitives and generated stationary source plans; no SCF/runtime policy | `common`, `xc`, `tensor` |
+| `method` | Canonical MethodIR, stationary-gradient source plans and implicit-solve derivative rules; no solver/runtime policy | `common`, `xc`, `tensor` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
 The compiler owns mathematical IR and lowering. `method` is the composition front

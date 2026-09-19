@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13033,
+  "all_handwritten_scientific_lines": 13333,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -11,6 +11,7 @@
       "src/dft/xc_point.hpp",
       "src/integrals/ecp_cuda.cu",
       "src/runtime/cuda_ao_pairs.cuh",
+      "src/runtime/cuda_architecture.hpp",
       "src/runtime/cuda_component_trace.hpp",
       "src/runtime/cuda_gaussian_products.cuh",
       "src/runtime/cuda_subgroup.cuh",
@@ -167,8 +168,8 @@
       "fallback": 0,
       "oracle": 15,
       "performance_exception": 163,
-      "runtime": -5408,
-      "scientific": 2663
+      "runtime": -5396,
+      "scientific": 2666
     },
     "reclassified_files": [
       "src/dft/cuda_grid.cu",
@@ -326,6 +327,23 @@
       "role": "runtime",
       "sha256": "ff0fbe6bc6c2a2c20b9c1f22d242dbcd24f56ab35d25275440dc14d380cebb15",
       "subsystem": "xc"
+    },
+    {
+      "bytes": 14915,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 297,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/dft/dispersion/d4_reference.hpp",
+      "physical_lines": 334,
+      "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": [],
+      "role": "oracle",
+      "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e",
+      "subsystem": "d4_dispersion"
     },
     {
       "bytes": 1192,
@@ -514,6 +532,23 @@
       "regions": [],
       "role": "runtime",
       "sha256": "3ad5447f497d40eacda6c3a92a5136b3d9ff6cd5a50399757812365e5d73c0df",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 817,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 13,
+        "scientific": 0
+      },
+      "path": "src/runtime/cuda_architecture.hpp",
+      "physical_lines": 22,
+      "reason": "Allocation-free CUDA capability attribute query and error propagation for schedule selection; no scientific arithmetic or cached device ownership.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "71701673971c6e272304b7802af76a2beea17ce166609d5cef0c2856d7c4dc99",
       "subsystem": "runtime"
     },
     {
@@ -782,20 +817,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 89981,
+      "bytes": 89865,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 1395
+        "scientific": 1398
       },
       "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "physical_lines": 1524,
+      "physical_lines": 1523,
       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations. Full-rank response admission now selects inverse-applied linear factors before quadratic products; the bounded general and canonical-factor routes report their own source passes, scratch and provenance. Rank-deficient/crossing paths retain the spectral owner and explicit rejection rules.",
       "regions": [],
       "role": "scientific",
-      "sha256": "72c2eede1a29773187640a1b9e09b9da5c5845e4c0b0756d568f0d0aebe2b2b4",
+      "sha256": "dbec74cc7b71f9d7e6c2fd7fb957955a8cc5259e9455c95d3d3a0d1542ae2b2b",
       "subsystem": "df_derivatives"
     },
     {
@@ -1052,20 +1087,20 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 22215,
+      "bytes": 22144,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 380,
+        "runtime": 379,
         "scientific": 0
       },
       "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "physical_lines": 411,
+      "physical_lines": 410,
       "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
       "regions": [],
       "role": "runtime",
-      "sha256": "adfb0d64782f479525cc1f72c6bbaefc93b408d6025ee82c3c8b8a4dabe91cde",
+      "sha256": "600ce1de21e3ef2a8b0c8a7adac0bb8b03db31092726f4d11f7dcd4f8dd9ae0e",
       "subsystem": "df_derivatives"
     },
     {
@@ -3555,20 +3590,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 8064,
+      "bytes": 9449,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 159,
+        "runtime": 188,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 191,
+      "physical_lines": 222,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "c2b94683d21b74cb4ee4011fe19c9423845b3690c315bfffa9a99c3b7182577f",
+      "sha256": "73c3936c4b458287697ce9bf44b01140041815c0c9f55a2c2014ea7a56124848",
       "subsystem": "runtime"
     }
   ],
@@ -3766,10 +3801,10 @@
   "generated_bytes": 35716,
   "maintained_code_lines": {
     "fallback": 0,
-    "oracle": 15,
+    "oracle": 312,
     "performance_exception": 253,
-    "runtime": 10165,
-    "scientific": 12765
+    "runtime": 10206,
+    "scientific": 12768
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3786,6 +3821,19 @@
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
       "status": "partial"
+    },
+    "d4_dispersion": {
+      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "evidence": [
+        "docs/d4_reference.md",
+        "tests/data/d4/oracle_manifest.json",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+      ],
+      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
+      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "owner": "d4_dispersion",
+      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
+      "status": "oracle"
     },
     "df_derivatives": {
       "current_default": "Generated two-/three-center center derivatives on shared normalized primitive/AO traversal; bounded cooperative weighted response is the sole CUDA HF force route.",
@@ -3970,12 +4018,19 @@
       "runtime": 550,
       "scientific": 162
     },
+    "d4_dispersion": {
+      "fallback": 0,
+      "oracle": 297,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 0
+    },
     "df_derivatives": {
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 805,
-      "scientific": 1395
+      "runtime": 804,
+      "scientific": 1398
     },
     "df_response_weights": {
       "fallback": 0,
@@ -4030,7 +4085,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4434,
+      "runtime": 4476,
       "scientific": 5
     },
     "scf_tensor": {
