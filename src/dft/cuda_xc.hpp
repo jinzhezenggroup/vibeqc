@@ -9,6 +9,7 @@
 
 #include "dft/ao_grid.hpp"
 #include "dft/grid.hpp"
+#include "runtime/bounded_workspace.hpp"
 
 namespace vibeqc::dft {
 
@@ -83,7 +84,7 @@ class CudaXcPlan {
   int device_{};
   void* arena_{};
   cudaStream_t stream_{};
-  std::uint64_t generation_{}, submitted_generation_{};
+  vibeqc::runtime::AsyncGeneration generations_;
   double *basis_{}, *points_{}, *weights_{}, *ao_{}, *work_{}, *features_{}, *coefficients_{},
       *point_totals_{}, *potential_{}, *totals_{};
   int* error_{};
