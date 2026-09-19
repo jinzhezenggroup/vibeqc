@@ -73,7 +73,7 @@ def test_ecp_complete_cuda_gradient_analytic_fd_and_live_owner(
             multiplicity=spin + 1,
         ) as basis,
     ):
-        energy = batch.execute(strict=True).items[0].energy
+        energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 5
         assert state._source.ecp_cores == (10, 0)
@@ -150,7 +150,7 @@ def test_ecp_complete_cuda_gradient_analytic_fd_and_live_owner(
             )
             StationaryDerivativeContract(forged.identity).validate(forged)
         # A fresh ECP owner must never authorize the old derivative proof.
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         with pytest.raises(ValueError, match="stale"):
             state._source.ecp_derivatives()
         current = StationaryKsState.from_native(batch, basis)
@@ -193,8 +193,8 @@ def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner():
         Calculator(basis=other_record, **options).prepare_batch([atoms]) as other,
         NativeAO(atoms, basis=record) as basis,
     ):
-        batch.execute(strict=True)
-        other.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
+        other.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         changed_state = StationaryKsState.from_native(other, basis)
         assert state.identity.basis_identity == changed_state.identity.basis_identity
@@ -230,7 +230,7 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
         density_tolerance=1e-10,
     )
     with calc.prepare_batch([atoms]) as batch, NativeAO(atoms, basis=record) as basis:
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         original = NativeKsSnapshot.ecp_derivatives
 
@@ -299,7 +299,7 @@ def test_all_electron_cuda_v3_regression(method, compiler):
         calc.prepare_batch([ATOMS], charges=[spin], multiplicities=[spin + 1]) as batch,
         NativeAO(ATOMS, charge=spin, multiplicity=spin + 1) as basis,
     ):
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 3
         result = diagnostic(state, basis, compiler)

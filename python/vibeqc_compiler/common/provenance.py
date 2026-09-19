@@ -33,7 +33,7 @@ def file_hash(path: Path) -> str:
 
 def find_nvcc() -> Path | None:
     """Find a requested toolkit without guessing a different compiler version."""
-    candidates = [os.environ.get("VIBEQC_NVCC")]
+    candidates = [os.environ.get("VIBEQC_NVCC"), os.environ.get("CUDACXX")]
     if cuda := os.environ.get("CUDA_PATH"):
         candidates.append(str(Path(cuda) / "bin/nvcc"))
     candidates.append(shutil.which("nvcc"))

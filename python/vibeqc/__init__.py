@@ -59,6 +59,7 @@ from .projection import (
     project_density,
     project_occupied,
 )
+from .r2scan3c import load_r2scan3c_basis
 from .resources import (
     ResourceAllocationError,
     ResourceBudget,
@@ -141,6 +142,7 @@ __all__ = [
     "exchange_operator_key",
     "import_bse",
     "load_basis",
+    "load_r2scan3c_basis",
     "method_capabilities",
     "plan_resources",
     "project_density",

@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13606,
+  "all_handwritten_scientific_lines": 13614,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -205,20 +205,20 @@
       "subsystem": "d4_dispersion"
     },
     {
-      "bytes": 4976,
+      "bytes": 5240,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 113
+        "scientific": 121
       },
       "path": "src/dft/grid_response_adjoint.hpp",
-      "physical_lines": 125,
+      "physical_lines": 135,
       "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue.",
       "regions": [],
       "role": "scientific",
-      "sha256": "7fb630116d68d8fd966772570b23ccfcc73ebf6d7d284ec897b77975f2277ef9",
+      "sha256": "5967d07893dbcc624466c6bccfcf6aaf1ef4c3351381c7a92836a9ca9f2047ee",
       "subsystem": "xc"
     },
     {
@@ -3809,11 +3809,11 @@
   ],
   "generated_bytes": 0,
   "maintained_code_lines": {
-    "fallback": 0,
-    "oracle": 686,
-    "performance_exception": 884,
     "runtime": 11666,
-    "scientific": 12036
+    "scientific": 12044,
+    "oracle": 686,
+    "fallback": 0,
+    "performance_exception": 884
   },
   "migration_ledger": {
     "ao_grid": {
@@ -4046,103 +4046,103 @@
     }
   },
   "per_subsystem": {
-    "ao_grid": {
-      "fallback": 0,
+    "runtime": {
+      "runtime": 5059,
+      "scientific": 5,
       "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 582,
-      "scientific": 162
+      "fallback": 0,
+      "performance_exception": 0
     },
     "cosx": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
       "runtime": 313,
-      "scientific": 106
-    },
-    "d4_dispersion": {
-      "fallback": 0,
-      "oracle": 671,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 0
-    },
-    "df_derivatives": {
-      "fallback": 0,
+      "scientific": 106,
       "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 843,
-      "scientific": 1398
-    },
-    "df_response_weights": {
       "fallback": 0,
-      "oracle": 15,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 1103
+      "performance_exception": 0
     },
-    "df_values": {
-      "fallback": 0,
+    "ao_grid": {
+      "runtime": 582,
+      "scientific": 162,
       "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 226,
-      "scientific": 168
-    },
-    "direct_integrals": {
       "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 1644,
-      "scientific": 7090
-    },
-    "ecp": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 290,
-      "scientific": 0
-    },
-    "low_rank": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 179,
-      "scientific": 65
-    },
-    "one_electron_derivatives": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 787,
-      "runtime": 0,
-      "scientific": 491
-    },
-    "one_electron_values": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 35,
-      "scientific": 0
-    },
-    "runtime": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 5059,
-      "scientific": 5
-    },
-    "scf_tensor": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 97,
-      "runtime": 2045,
-      "scientific": 817
+      "performance_exception": 0
     },
     "xc": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
       "runtime": 450,
-      "scientific": 631
+      "scientific": 639,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "d4_dispersion": {
+      "runtime": 0,
+      "scientific": 0,
+      "oracle": 671,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "ecp": {
+      "runtime": 290,
+      "scientific": 0,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "low_rank": {
+      "runtime": 179,
+      "scientific": 65,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "scf_tensor": {
+      "runtime": 2045,
+      "scientific": 817,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 97
+    },
+    "direct_integrals": {
+      "runtime": 1644,
+      "scientific": 7090,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "df_derivatives": {
+      "runtime": 843,
+      "scientific": 1398,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "df_response_weights": {
+      "runtime": 0,
+      "scientific": 1103,
+      "oracle": 15,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "df_values": {
+      "runtime": 226,
+      "scientific": 168,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "one_electron_derivatives": {
+      "runtime": 0,
+      "scientific": 491,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 787
+    },
+    "one_electron_values": {
+      "runtime": 35,
+      "scientific": 0,
+      "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
     }
   },
   "schema": "vibeqc.cuda-ownership-report.v1"

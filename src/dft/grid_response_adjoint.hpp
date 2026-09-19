@@ -12,6 +12,16 @@
 #endif
 
 namespace vibeqc_grid_adjoint {
+VIBEQC_GRID_HD inline double portable_abs(double value) { return value < 0.0 ? -value : value; }
+
+VIBEQC_GRID_HD inline double portable_exp(double value) {
+#if defined(__CUDA_ARCH__)
+  return ::exp(value);
+#else
+  return std::exp(value);
+#endif
+}
+
 // Shared two-pass Becke reverse composition. Runtime owners supply O(natom)
 // scratch per worker and transactional reduction storage. Local mathematical
 // partials come exclusively from the compiler's grid_response Graphs.
@@ -21,7 +31,7 @@ VIBEQC_GRID_HD std::array<double, 4> distance(const double* a, const double* b, 
   double delta[3], scale = 0;
   for (size_t k = 0; k < 3; ++k) {
     delta[k] = a[k] - b[k];
-    scale = std::max(scale, std::abs(delta[k]));
+    scale = std::max(scale, portable_abs(delta[k]));
   }
   if (!(scale > 0) || !std::isfinite(scale)) {
     valid = false;
@@ -52,7 +62,7 @@ VIBEQC_GRID_HD bool contract_point(const double* point, const double* centers, s
   for (size_t a = 0; a < na; ++a) bar_distance[a] = 0;
   auto factor = [&](size_t a, size_t b, double separation) {
     auto r = ratio(distances[a][0] - distances[b][0], separation);
-    const bool clipped = std::abs(r[0]) >= 1;
+    const bool clipped = portable_abs(r[0]) >= 1;
     auto f = pair(std::clamp(r[0], -1.0, 1.0));
     if (clipped || f[0] < 0 || f[0] > 1) f[1] = 0;
     f[0] = std::clamp(f[0], 0.0, 1.0);
@@ -77,7 +87,7 @@ VIBEQC_GRID_HD bool contract_point(const double* point, const double* centers, s
   if (!std::isfinite(maximum)) return false;
   double total = 0;
   for (size_t a = 0; a < na; ++a) {
-    products[a] = zeros[a] ? 0 : std::exp(logs[a] - maximum);
+    products[a] = zeros[a] ? 0 : portable_exp(logs[a] - maximum);
     total += products[a];
   }
   // The selected normalized-product objective uses the SAME ratio
@@ -102,7 +112,7 @@ VIBEQC_GRID_HD bool contract_point(const double* point, const double* centers, s
         // ONE exact zero leaves the product of all other factors;
         // two zeros kill the first derivative. Never divide by zero.
         else if (zeros[atom] == 1 && v == 0)
-          derivative = std::exp(logs[atom] - maximum);
+          derivative = portable_exp(logs[atom] - maximum);
         bar_mu += (side ? -1 : 1) * bar_product[atom] * derivative * f[1];
       }
       bar_distance[a] += bar_mu * r[1];

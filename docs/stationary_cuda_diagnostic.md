@@ -3,9 +3,12 @@
 `vibeqc._stationary_cuda.complete_rks_cuda_gradient_diagnostic` executes all
 `StationaryGradientPlan` sources on CUDA: one-electron, Coulomb, XC AO motion,
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
-The result is an energy gradient in Eh/bohr; force is its negative. Public
-`Calculator` DFT forces remain disabled. This diagnostic does not close #163 or
-#396 or qualify a public production force driver.
+The result is an energy gradient in Eh/bohr; force is its negative. The public
+Python C2 endpoint reuses the all-electron subset for qualified CUDA LDA/PBE
+RKS/UKS forces. The ECP extension here remains diagnostic-only: ECP basis sets
+are energy-only at the public `Calculator` boundary, and its force wrapper
+independently rejects an ECP snapshot before compilation or contraction.
+This diagnostic does not close #163 or #396 or qualify public ECP forces.
 
 The admitted domain is direct, all-electron, real FP64 integer RKS/UKS with canonical
 LDA/PBE, s/p single-component AOs and the native unpruned version-one grid.
@@ -179,6 +182,12 @@ Run the opt-in numerical gate on an allocated device with `VIBEQC_ECP_CUDA_TEST=
 ```sh
 python -m pytest tests/python/test_ecp_stationary_cuda.py -q
 ```
+
+Diagnostic tests explicitly request `properties=("energy",)` when preparing
+snapshots, so the C2 default property set cannot trigger an unrelated public
+force calculation. Host-side admission and live-owner wrapper regressions in
+`tests/python/test_ecp_cuda_public_boundary.py` run without a CUDA device; they
+do not replace this real-device numerical gate.
 
 The gate compares complete gradients with independent PySCF full-grid-response
 analytic gradients and three-step reconverged energy differences. It also checks

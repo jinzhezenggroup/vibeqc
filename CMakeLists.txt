@@ -196,7 +196,8 @@ list(APPEND _vibeqc_identity_inputs "CMakeLists.txt"
      "tools/generate_shell_kernels.py" "tools/generate_ecp_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
      "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
-     "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py")
+     "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py"
+     "tools/generate_xc_gradient_cuda.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
