@@ -7,28 +7,17 @@ class definitions or cache implementation belongs here.
 
 from typing import TYPE_CHECKING
 
-__all__ = (
-    "BenchmarkExecutor",
-    "CompilerAdapter",
-    "DeviceProbe",
-    "RegistryEmitter",
-    "ResourceParser",
-    "SourceEmitter",
-    "TargetInfo",
-    "TargetScheduleShape",
-)
-
 if TYPE_CHECKING:
-    from vibeqc_compiler.common.backend import (
-        BenchmarkExecutor,
-        CompilerAdapter,
-        DeviceProbe,
-        RegistryEmitter,
-        ResourceParser,
-        SourceEmitter,
-        TargetInfo,
-        TargetScheduleShape,
-    )
+    from vibeqc_compiler.common import backend as _backend
+
+    BenchmarkExecutor = _backend.BenchmarkExecutor
+    CompilerAdapter = _backend.CompilerAdapter
+    DeviceProbe = _backend.DeviceProbe
+    RegistryEmitter = _backend.RegistryEmitter
+    ResourceParser = _backend.ResourceParser
+    SourceEmitter = _backend.SourceEmitter
+    TargetInfo = _backend.TargetInfo
+    TargetScheduleShape = _backend.TargetScheduleShape
 else:
     import sys
     from importlib import import_module
