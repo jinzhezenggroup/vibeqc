@@ -65,6 +65,7 @@ from .resources import (
     plan_resources,
 )
 from .resources_hf import estimate_hf_resources
+from .r2scan3c import load_r2scan3c_basis
 from .resources_ks import estimate_ks_resources
 
 _install_native_loader()
@@ -132,6 +133,7 @@ __all__ = [
     "estimate_ks_resources",
     "import_bse",
     "load_basis",
+    "load_r2scan3c_basis",
     "method_capabilities",
     "plan_resources",
     "project_density",
