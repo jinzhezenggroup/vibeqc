@@ -179,8 +179,13 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   result.converged = false;
   constexpr unsigned maximum_final_corrections = 4;
   for (unsigned correction = 0; correction < maximum_final_corrections; ++correction) {
-    ca = generalized_eigen(final.fock.alpha, x, n);
-    cb = generalized_eigen(final.fock.beta, x, n);
+    // A degenerate occupied/virtual boundary must retain the already qualified
+    // occupation choice. Only the proposal is shifted; next remains F[D].
+    ca = stabilize_occupations
+             ? stabilized_uks_orbitals(final.fock.alpha, alpha, ints.overlap, x, n)
+             : generalized_eigen(final.fock.alpha, x, n);
+    cb = stabilize_occupations ? stabilized_uks_orbitals(final.fock.beta, beta, ints.overlap, x, n)
+                               : generalized_eigen(final.fock.beta, x, n);
     Matrix projected_a = density_from_orbitals(ca.vectors, n, na, 1.0);
     Matrix projected_b = density_from_orbitals(cb.vectors, n, nb, 1.0);
     const double change_a = density_rms(projected_a, alpha);
