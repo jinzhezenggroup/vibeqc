@@ -63,8 +63,7 @@ std::vector<double> symmetric_density(std::size_t n) {
   for (std::size_t i = 0; i < n; ++i) {
     for (std::size_t j = 0; j <= i; ++j) {
       const double value =
-          i == j ? 0.15 + 0.01 * static_cast<double>(i)
-                 : 0.015 / static_cast<double>(1 + i + j);
+          i == j ? 0.15 + 0.01 * static_cast<double>(i) : 0.015 / static_cast<double>(1 + i + j);
       density[i * n + j] = density[j * n + i] = value;
     }
   }
@@ -128,14 +127,14 @@ int main() {
 
     {
       const auto high = spherical_sdf();
-      const vibeqc::dft::MolecularGrid high_grid(
-          high, vibeqc::dft::GridSpec{1, 3, 3, 6, 3, 1.0e-12});
+      const vibeqc::dft::MolecularGrid high_grid(high,
+                                                 vibeqc::dft::GridSpec{1, 3, 3, 6, 3, 1.0e-12});
       const auto high_density = symmetric_density(vibeqc::molecule::ao_count(high));
       const auto high_cpu = vibeqc::dft::build_cosx_reference(
           high, high_grid.points(), high_grid.weights(), high_density,
           vibeqc::dft::CosxDensityConvention::spin_resolved);
-      vibeqc::dft::CudaCosxStagingPlan high_plan(
-          high, high_grid.points(), high_grid.weights(), 5, device);
+      vibeqc::dft::CudaCosxStagingPlan high_plan(high, high_grid.points(), high_grid.weights(), 5,
+                                                 device);
       const auto high_gpu =
           high_plan.build(high_density, vibeqc::dft::CosxDensityConvention::spin_resolved);
       require(max_error(high_gpu.raw_exchange, high_cpu.raw_exchange) < 2.0e-11 &&
