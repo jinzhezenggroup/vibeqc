@@ -369,8 +369,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         // The public derivative state is validated against the unshifted
         // physical F[D], not the preceding DIIS/stabilized proposal. During
         // bounded final closure, diagonalize exactly that physical operator.
-        check(cudaMemcpyAsync(effective, fock, elements * sizeof(double),
-                              cudaMemcpyDeviceToDevice, stream));
+        check(cudaMemcpyAsync(effective, fock, elements * sizeof(double), cudaMemcpyDeviceToDevice,
+                              stream));
       } else {
         launch_update_diis_kernel(1, 32, 0, stream, 1, n, spins, history, fock, residual, enabled,
                                   fock_history, residual_history, gram, weights, history_count,
@@ -467,10 +467,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
         physical.residual < std::min(1e-9, options.density_tolerance) &&
         physical.density_change >= options.density_tolerance)
       stabilize_occupations = true;
-    const bool converged =
-        output.iterations > 1 && output.energy_change < options.energy_tolerance &&
-        physical.density_change < options.density_tolerance &&
-        physical.residual < std::min(1e-9, options.density_tolerance);
+    const bool converged = output.iterations > 1 &&
+                           output.energy_change < options.energy_tolerance &&
+                           physical.density_change < options.density_tolerance &&
+                           physical.residual < std::min(1e-9, options.density_tolerance);
     constexpr unsigned maximum_final_corrections = 4;
     if (spins == 2 && converged && !final_closure) {
       // A DIIS proposal can satisfy the ordinary SCF density-change gate while
