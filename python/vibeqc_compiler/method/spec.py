@@ -515,6 +515,52 @@ METHOD_CATALOG = MappingProxyType(
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
         ),
+        "PBE1PBE": MethodSpec(
+            "PBE1PBE",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+        ),
+        "PBE50": MethodSpec(
+            "PBE50",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BLYP": MethodSpec(
+            "BLYP",
+            (("GGA_X_B88", Fraction(1)), ("GGA_C_LYP", Fraction(1))),
+        ),
+        # Keep the VWN variant explicit.  The audited LDA_C_VWN component is
+        # Libxc VWN5, whereas Gaussian-compatible B3LYP uses VWN-RPA/VWN3.
+        "B3LYP5": MethodSpec(
+            "B3LYP5",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        "B5050LYP": MethodSpec(
+            "B5050LYP",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(21, 50)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BHANDH": MethodSpec(
+            "BHANDH",
+            (("LDA_X", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BHANDHLYP": MethodSpec(
+            "BHANDHLYP",
+            (("GGA_X_B88", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
         "PBE-D3(BJ)": MethodSpec(
             "PBE-D3(BJ)",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
