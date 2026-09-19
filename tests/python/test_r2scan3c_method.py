@@ -107,7 +107,7 @@ def test_r2scan3c_correction_parameters_are_method_defining():
 
 def test_method_ir_rejects_double_gcp_application():
     graph = resolve_method("R2SCAN-3c")
-    with pytest.raises(UnsupportedMethod, match="unique by primitive family"):
+    with pytest.raises(UnsupportedMethod, match="unique by operator family"):
         MethodIR(
             graph.identifier,
             graph.spin,
