@@ -597,3 +597,18 @@ def test_graph_global_budget_falls_back_without_untracked_graph_storage(
             assert result.metrics["graph_capture_attempts"] == 0
             assert "global resource plan" in result.metrics["graph_reason"]
             assert result.metrics["graph_retained_device_bytes"] == 0
+
+
+def test_graph_fp32_falls_back_without_relabeling_precision(compiler, cache):
+    i = Index("i", IndexSpace("axis", "batch", 4))
+    x = input_tensor("x", TensorSpec((i,), dtype="float32", role="input"))
+    plan = plan_cuda(Program({"out": add(x, x)}), compiler.target)
+    values = np.arange(4, dtype=np.float32)
+    with PreparedCuda(
+        plan, compile_cuda(plan, compiler, cache), execution_mode="cuda-graph"
+    ) as prepared:
+        for _ in range(3):
+            result = prepared.execute({"x": values})
+            assert result.backend == "cuda-fp32-ordinary-stream"
+            assert result.metrics["precision"] == "fp32"
+            np.testing.assert_array_equal(result.outputs["out"], 2 * values)

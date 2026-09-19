@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13036,
+  "all_handwritten_scientific_lines": 13333,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
     "added_files": [
@@ -327,6 +327,23 @@
       },
       "bytes": 7655,
       "sha256": "ff0fbe6bc6c2a2c20b9c1f22d242dbcd24f56ab35d25275440dc14d380cebb15"
+    },
+    {
+      "path": "src/dft/dispersion/d4_reference.hpp",
+      "role": "oracle",
+      "subsystem": "d4_dispersion",
+      "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": [],
+      "physical_lines": 334,
+      "code_lines": {
+        "runtime": 0,
+        "scientific": 0,
+        "oracle": 297,
+        "fallback": 0,
+        "performance_exception": 0
+      },
+      "bytes": 14915,
+      "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e"
     },
     {
       "path": "src/dft/grid_task_view.cuh",
@@ -3612,16 +3629,16 @@
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime",
-      "physical_lines": 191,
+      "physical_lines": 222,
       "code_lines": {
-        "runtime": 159,
+        "runtime": 188,
         "scientific": 0,
         "oracle": 0,
         "fallback": 0,
         "performance_exception": 0
       },
-      "bytes": 8064,
-      "sha256": "c2b94683d21b74cb4ee4011fe19c9423845b3690c315bfffa9a99c3b7182577f"
+      "bytes": 9449,
+      "sha256": "73c3936c4b458287697ce9bf44b01140041815c0c9f55a2c2014ea7a56124848"
     }
   ],
   "generated": [
@@ -3817,9 +3834,9 @@
   ],
   "generated_bytes": 35716,
   "maintained_code_lines": {
-    "runtime": 10379,
+    "runtime": 10408,
     "scientific": 12768,
-    "oracle": 15,
+    "oracle": 312,
     "fallback": 0,
     "performance_exception": 253
   },
@@ -4012,11 +4029,24 @@
         "tests/python/test_df_resources.py"
       ],
       "status": "native_baseline_with_opt_in_control"
+    },
+    "d4_dispersion": {
+      "owner": "d4_dispersion",
+      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
+      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
+      "evidence": [
+        "docs/d4_reference.md",
+        "tests/data/d4/oracle_manifest.json",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+      ],
+      "status": "oracle"
     }
   },
   "per_subsystem": {
     "runtime": {
-      "runtime": 4649,
+      "runtime": 4678,
       "scientific": 5,
       "oracle": 0,
       "fallback": 0,
@@ -4033,6 +4063,13 @@
       "runtime": 247,
       "scientific": 393,
       "oracle": 0,
+      "fallback": 0,
+      "performance_exception": 0
+    },
+    "d4_dispersion": {
+      "runtime": 0,
+      "scientific": 0,
+      "oracle": 297,
       "fallback": 0,
       "performance_exception": 0
     },

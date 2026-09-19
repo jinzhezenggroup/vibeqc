@@ -429,3 +429,7 @@ def test_native_cuda_generation_keeps_each_architecture_and_tile_distinct(tmp_pa
             assert f"namespace {prefix}generated" in source
             assert f'extern "C" int {prefix}tensor_create' in source
             assert f"{prefix}tensor_create,{prefix}tensor_destroy,{prefix}run" in table
+            # The generic Tensor CUDA ABI supports distinct FP32/FP64 inputs.
+            # C++ does not convert double** to void** at the adapter boundary.
+            assert "const void* inputs[]={" in source
+            assert "void* outputs[]={out,out+1};" in source

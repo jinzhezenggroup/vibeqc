@@ -1,4 +1,4 @@
-"""Conservative binary-einsum contracts for FP64 cuBLAS lowering.
+"""Conservative binary-einsum contracts for typed cuBLAS lowering.
 
 This module describes matrix coordinates, not allocation or execution. A
 contraction requiring a one-sided reduction, repeated input labels, or more
@@ -8,24 +8,17 @@ or spin symmetry is inferred when grouping labels into matrix dimensions.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from fractions import Fraction
 from math import prod
 
+from .cuda_dtype import scalar_type
 from .ir import Node
 from .types import checked_size
 
 
 def fp64_coefficient(pair) -> float:
     """Round an exact rational once, as in the independent CPU interpreter."""
-    try:
-        value = float(Fraction(*pair))
-    except OverflowError as error:
-        raise ValueError("tensor coefficient is outside finite FP64") from error
-    if not math.isfinite(value):
-        raise ValueError("tensor coefficient is outside finite FP64")
-    return value
+    return scalar_type("float64").coefficient(pair)
 
 
 @dataclass(frozen=True)
@@ -47,6 +40,7 @@ class GemmContract:
     k_labels: tuple[int, ...]
     extents: tuple[int, ...]
     coefficient: float
+    dtype: str = "float64"
 
     def extent(self, labels) -> int:
         """Flatten only declared groups, checking integer products eagerly."""
@@ -99,7 +93,10 @@ class GemmContract:
         if not self.batch or not self.m or not self.n or not self.k:
             return 0
         m, n, k = min(tile_m, self.m), min(tile_n, self.n), min(tile_k, self.k)
-        return checked_size(8 * (m * k + k * n + m * n), "GEMM panel bytes")
+        return checked_size(
+            scalar_type(self.dtype).itemsize * (m * k + k * n + m * n),
+            "GEMM panel bytes",
+        )
 
     def matrix_coordinates(self, batch: int, row: int, column: int, reduction: int):
         """Reference coordinate map for independently checking pack/scatter code.
@@ -135,7 +132,7 @@ def gemm_contract(node: Node) -> GemmContract | None:
     """
     if node.op != "einsum" or len(node.inputs) != 2:
         return None
-    if node.spec.dtype != "float64":
+    if node.spec.dtype not in ("float32", "float64"):
         return None
     a, b = node.attrs["labels"]
     output = node.attrs["output"]
@@ -161,7 +158,8 @@ def gemm_contract(node: Node) -> GemmContract | None:
         n,
         k,
         tuple(extents[i] for i in range(len(extents))),
-        fp64_coefficient(node.attrs["coefficient"]),
+        scalar_type(node.spec.dtype).coefficient(node.attrs["coefficient"]),
+        node.spec.dtype,
     )
     # Check every collapsed dimension even if a later schedule tiles it.
     for labels in (batch, m, n, k):

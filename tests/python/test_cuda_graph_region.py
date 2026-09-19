@@ -295,3 +295,13 @@ int main() {
     subprocess.run(
         [str(binary)], check=True, capture_output=True, text=True, timeout=10
     )
+
+
+def test_capture_does_not_relabel_fp32_as_qualified_fp64():
+    x = input_tensor("x", TensorSpec(dtype="float32", role="input"))
+    plan = plan_cuda(Program({"out": add(x, x)}), cuda_target_info("sm_120"))
+    artifact = CudaArtifact(Path("not-loaded.so"), {"key": "a" * 64})
+    capture = tensor_capture_contract(plan, artifact, {})
+    assert dict(capture.workload.features)["precision"] == "fp32"
+    assert not capture.eligible
+    assert any("precision" in reason for reason in capture.failures)
