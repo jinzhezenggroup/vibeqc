@@ -25,9 +25,21 @@ from .typecheck import (
     infer_feature_types,
     verify_method_ir,
 )
+from .xtb import (
+    GFN2_PARAMETER_SET,
+    XTB_METHOD_CATALOG,
+    UnsupportedXtbMethod,
+    XtbMethodIR,
+    XtbMethodSpec,
+    XtbParameterSet,
+    XtbPrimitive,
+    resolve_xtb_method,
+)
 
 __all__ = [
+    "GFN2_PARAMETER_SET",
     "METHOD_CATALOG",
+    "XTB_METHOD_CATALOG",
     "BackendCapability",
     "D3Spec",
     "DispersionCorrectionPrimitive",
@@ -45,7 +57,13 @@ __all__ = [
     "SymmetricMatrixFunctionSpec",
     "TypedMethodIR",
     "UnsupportedMethod",
+    "UnsupportedXtbMethod",
+    "XtbMethodIR",
+    "XtbMethodSpec",
+    "XtbParameterSet",
+    "XtbPrimitive",
     "infer_feature_types",
     "resolve_method",
+    "resolve_xtb_method",
     "verify_method_ir",
 ]

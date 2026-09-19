@@ -37,9 +37,11 @@ def _component_names(spec: ShellClassSpec) -> tuple[str, str, str, str]:
     """Create readable, unique CUDA names for decoded center components."""
 
     ordinals = ("first", "second", "third", "fourth")
-    return tuple(
-        f"{ordinal}_{_shell_letter(order)}"
-        for ordinal, order in zip(ordinals, spec.angular, strict=True)
+    return (
+        f"{ordinals[0]}_{_shell_letter(spec.angular[0])}",
+        f"{ordinals[1]}_{_shell_letter(spec.angular[1])}",
+        f"{ordinals[2]}_{_shell_letter(spec.angular[2])}",
+        f"{ordinals[3]}_{_shell_letter(spec.angular[3])}",
     )
 
 

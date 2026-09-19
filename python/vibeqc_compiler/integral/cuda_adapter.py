@@ -5,12 +5,18 @@ import compatibility tests are the only repository users. No duplicate IR,
 class definitions or cache implementation belongs here.
 """
 
-from importlib import import_module
+from typing import TYPE_CHECKING
 
-_target = import_module("vibeqc_compiler.common.cuda_adapter")
-import sys
+if TYPE_CHECKING:
+    from vibeqc_compiler.common import cuda_adapter as _cuda_adapter
 
-if __name__ == "__main__":
-    _target.main()
+    CudaBenchmarkExecutor = _cuda_adapter.CudaBenchmarkExecutor
+    CudaCompilerAdapter = _cuda_adapter.CudaCompilerAdapter
+    CudaCompileResult = _cuda_adapter.CudaCompileResult
+    CudaExecutionProfile = _cuda_adapter.CudaExecutionProfile
+    resolve_cuda_execution_profile = _cuda_adapter.resolve_cuda_execution_profile
 else:
-    sys.modules[__name__] = _target
+    import sys
+    from importlib import import_module
+
+    sys.modules[__name__] = import_module("vibeqc_compiler.common.cuda_adapter")

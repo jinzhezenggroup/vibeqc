@@ -14,7 +14,8 @@ from .expr import (
     AlgebraOrdering,
     RematerializationPolicy,
 )
-from .ir import IntegralIR
+from .ir import IntegralIR, OperatorFamily
+from .shell_spec import ShellClassSpec
 
 
 class ScheduleKind(str, Enum):
@@ -325,9 +326,13 @@ def default_schedule(
     for candidate in candidates:
         if candidate.kind == ScheduleKind.TILED_COMPONENTS:
             return candidate
-    raise ValueError(
-        f"{integral.spec.name} has no schedule legal on {target.architecture}"
+    name = (
+        integral.spec.name
+        if isinstance(integral.spec, ShellClassSpec)
+        else integral.spec.legacy_class
+        or OperatorFamily(integral.operator.family).value
     )
+    raise ValueError(f"{name} has no schedule legal on {target.architecture}")
 
 
 def tuning_schedule_candidates(
