@@ -102,9 +102,7 @@ using namespace cuda_execution;
 //   std::getenv("VIBEQC_PPPS_SIGNATURE_BUCKETING")
 //   std::getenv("VIBEQC_PPPS_BLOCK_THREADS")
 //   std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING")
-//   std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")
 //   std::getenv("VIBEQC_PSSS_RESIDENT_BRA")
-//   scalar_one_electron_force_environment == nullptr
 //   kTightConvergedFockReuseDensityRms = 1.0e-12
 //   kExpandedConvergedFockReuseDensityTolerance = 1.0e-9
 //   kExpandedConvergedFockReuseDensityRms = 2.0e-9
@@ -122,7 +120,6 @@ using cuda_policy::force_density_product_screening_requested;
 using cuda_policy::graph_native_eigensolver_override_requested;
 using cuda_policy::MixedPrecisionFockPolicy;
 using cuda_policy::MixedPrecisionItemPolicy;
-using cuda_policy::one_electron_force_scalar_requested;
 using cuda_policy::ppps_resident_block_threads_requested;
 using cuda_policy::ppps_signature_bucketing_requested;
 using cuda_policy::ppss_signature_bucketing_requested;
@@ -641,7 +638,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       requested_quartet_direct &&
       (detail::direct_topology_requires_bounded_streaming(total_shell_quartets) ||
        bounded_direct_streaming_override_requested());
-  const bool cooperative_one_electron_force = one_electron_force_scalar_requested();
   const bool requested_graph_native_eigensolver_override =
       !options.export_physical_reference && graph_native_eigensolver_override_requested();
   const bool xsyev_probe_skip_diagnostic = xsyev_probe_skip_diagnostic_requested();
@@ -3495,17 +3491,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         fill_global_failure(outputs, cuda_status(cuda_error));
         return outputs;
       }
-    } else if (cooperative_one_electron_force) {
+    } else {
+      // Keep the previously qualified cooperative implementation only as an
+      // explicit reference/performance exception. The slower scalar native
+      // family was retired when generated shell-warp became the default.
       constexpr std::size_t shared_bytes = 3 * sizeof(OneElectronDerivativeHermiteCoefficients);
       launch_one_electron_force_cooperative_kernel(
           static_cast<unsigned>(one_electron_force_elements), threads, shared_bytes,
           resources.stream_, device_batch, ao_pair_first, ao_pair_second, pair_count,
           unrestricted ? total_density : density,
-          unrestricted ? total_weighted_density : weighted_density, active, forces);
-    } else {
-      launch_one_electron_force_scalar_kernel(
-          blocks_for(one_electron_force_elements), threads, 0, resources.stream_, device_batch,
-          ao_pair_first, ao_pair_second, pair_count, unrestricted ? total_density : density,
           unrestricted ? total_weighted_density : weighted_density, active, forces);
     }
   }
