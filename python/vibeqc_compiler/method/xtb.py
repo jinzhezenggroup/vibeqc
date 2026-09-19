@@ -428,7 +428,9 @@ class XtbMethodIR:
 
     @property
     def manifest_identity(self) -> str:
-        return canonical_hash({"identifier": self.identifier, **self.semantic_payload()})
+        return canonical_hash(
+            {"identifier": self.identifier, **self.semantic_payload()}
+        )
 
 
 GFN2_PARAMETER_SET = XtbParameterSet(
