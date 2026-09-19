@@ -1,4 +1,4 @@
-# RCCSD Lambda equations and bound CPU response
+# RCCSD Lambda and fixed-orbital CPU input response
 
 `tools.vibeqc_cc.build_lambda_programs(nocc, nvir)` generates the fixed-amplitude
 energy gradient, residual Jacobian-vector product and transpose action for the
@@ -192,9 +192,9 @@ native HF -> CC -> Lambda endpoints with changed geometry and a determinant
 reference, and exercise stale/corrupt states, immutable outputs, false solver
 success, true nonconvergence and resource rejection. Dense Jacobians are
 strictly test-only. GPU execution/residency and native response-provider
-integration remain part of #152 B. Fixed-orbital Fock/integral weights belong to
-#152 C; physical RDM conventions and orbital/Z-vector/nuclear response remain
-separate work. No force capability or higher derivative is enabled here.
+integration remain part of #152 B. The CPU correlation-only input weights below implement the block-streamed
+portion of #152 C; physical RDM conventions and orbital/Z-vector/nuclear
+response remain separate work. No force capability or higher derivative is enabled here.
 
 See the [bound-state decision](../.agents/notes/implemented/numerics/2026-09-19-bound-ccsd-lambda.md)
 for why this consumer shares the generic checked-solve boundary rather than
@@ -202,3 +202,112 @@ building a dense packed-coordinate incidence matrix.
 
 See the [dense-symmetry adjoint decision](../.agents/notes/implemented/numerics/2026-09-19-dense-symmetry-cc-adjoints.md)
 for the representation choice and rejected alternatives.
+
+
+## Fixed-orbital correlation input weights
+
+`BoundCCSDResponse` takes the existing `BoundCCSDLambda` and its solved
+`CCSDLambdaResult`. Before retaining multipliers, it checks the exact reference,
+CC-state, equation, sign and execution conventions, copies the amplitudes into
+immutable arrays and **freshly re-evaluates both physical Lambda equations**.
+A successful status or fabricated zero-residual diagnostic is not sufficient.
+Weight generation neither calls a CC/adjoint solver nor differentiates its
+iterations. It uses the same shared and expanded primal DAGs with #151 VJPs.
+
+```python
+from tools.vibeqc_cc import BoundCCSDResponse
+
+response = BoundCCSDResponse(bound, lambda_result, max_bytes=256 << 20)
+for weight in response.iter_weights(reference_identity=snapshot.identity):
+    # dq must be this field's fixed-orbital, symmetry-compatible direction,
+    # associated with the exact same snapshot and mathematical input convention.
+    contribution = weight.contract(dq[weight.parameter])
+    # Contract/release each block rather than retaining the entire sequence.
+```
+
+The mathematical boundary is
+
+```text
+q = (foo, fov, fvv, ovov, ovvo, oovv, ovvv, ovoo, oooo, vvvv)
+L = E_corr(T; q) + <lambda1, R1(T; q)> + <lambda2, R2(T; q)>
+bar_q = partial E_corr / partial q + (partial R / partial q)*lambda
+```
+
+`build_parameter_vjp(primal, parameter)` seeds the energy with +1 and the two
+physical residuals with their Lambda arrays. Its sole output is
+`bar_<parameter>`. The shared AD machinery projects the dense Frobenius weight
+onto the parameter's declared symmetry; no independent-coordinate incidence
+matrix is constructed. `CCSDParameterWeight.contract` rejects incompatible
+shape/dtype, nonfinite values or a direction that violates those symmetries,
+rather than silently projecting a different perturbation.
+
+**These are amplitude-relaxed, orbital-unrelaxed derivatives of correlation
+energy with respect to independent mathematical input blocks.** In particular:
+
+- F is held independent of the chemists'-notation g blocks. The upstream
+  normal-ordering `g -> F` and `h -> F` chain is NOT included. Perturbing g while
+  fixing F is not the same experiment as perturbing g while fixing raw h.
+- The HF reference energy, orbital/overlap response, nuclear terms and physical
+  1-/2-RDM reconstruction are NOT included. Unconverted weights are not RDMs.
+- Diagonal F contributions appear through the physical residual equations.
+  Solver denominators, level shifts and DIIS updates are preconditioners, not
+  extra physical energy dependencies to differentiate.
+
+Several input blocks overlap or are permutations of the same physical ERI
+field. For a physical full-g perturbation, map its direction into ALL affected
+blocks and sum their dense contractions once. Do not treat the blocks as a
+completed raw-g pullback or add ad hoc spin/symmetry factors. The tiny
+independent determinant oracle reconstructs h from the supplied F and g,
+matching this fixed-F convention before comparing correlation energies.
+
+Every requested block is checked against the expanded-equation VJP using
+absolute tolerance 1e-12 and relative tolerance 1e-10. Each form's output is
+frozen before the other runs, so executor-buffer reuse cannot make the two
+results alias and pass accidentally. The reference/lifetime contract is checked
+before/after every execution and immediately before returning a weight. State,
+Lambda and generated-program identities accompany each result.
+
+## Streaming and validation boundary
+
+Only one parameter output is generated per request. Consumers can stream blocks
+without assembling a complete NMO^4 2-RDM. **The selected block itself remains
+dense**, including vvvv; intra-block tiling, resident GPU weights and a full
+native provider-resource contract remain unqualified. The response object does
+not cache all generated blocks. `iter_weights` is a sequence of individually
+qualified results, not an atomic full-gradient transaction. A late stale-state
+or numerical failure raises instead of returning that block; previously yielded
+immutable blocks retain their original response identity.
+
+The response budget includes the bound state's existing simultaneous logical
+reservation, owned Lambda values and scratch, the larger live generated graph,
+and independent/output-copy storage for the current block. Admission precedes
+numeric execution. As for the Lambda consumer, Python IR objects and opaque
+NumPy/BLAS allocations are excluded; earlier blocks deliberately retained by a
+caller are also outside the per-request reservation. No process-RSS, production
+peak-memory or endpoint speedup claim follows from this estimate.
+
+`tests/python/test_cc_lambda_response.py` validates all ten water input blocks at
+three finite-difference steps by re-solving physical CC equations after each q
+perturbation. It separately checks fixed-T energy partials and requires cases
+where omitting Lambda changes the answer. The fixed-q test seam changes only
+prepared equation feeds; it does not export a noncanonical displaced F as a
+converged RHF snapshot or weaken production reference validation. Additional
+native HF -> CC -> Lambda -> weight endpoints use H2, displaced H2 and H4, and
+re-solve an independent determinant-space CC problem for each perturbation.
+These native tests invoke no PySCF solver. Tests also cover input symmetries,
+uniform diagonal-F shifts, graph replay, stale/corrupt multipliers, output-buffer
+aliasing, false generated weights and state/block memory admission.
+
+```bash
+PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+VIBEQC_LIBRARY=/path/to/current/cpu/libvibeqc.so python -m pytest -q \
+  tests/python/test_cc_lambda_response.py tests/python/test_cc_lambda_solver.py \
+  tests/python/test_cc_lambda.py tests/python/test_implicit_vjp.py
+```
+
+The method-level `StationaryProblem` still requires independently parameterized
+state blocks; redundant dense T2 is not silently admitted into it. This consumer
+reuses the existing symmetry-qualified equations and #151 derivative machinery,
+not a second scientific algebra. See the
+[input-weight boundary decision](../.agents/notes/implemented/numerics/2026-09-19-ccsd-fixed-orbital-weights.md)
+for the ownership choice and conditions for migration to generic composition.
