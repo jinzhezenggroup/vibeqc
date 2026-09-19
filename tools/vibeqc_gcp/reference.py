@@ -115,6 +115,8 @@ def evaluate_r2scan3c_gcp(atomic_numbers, coordinates_bohr):
     xyz = tuple(tuple(float(v) for v in row) for row in coordinates_bohr)
     if len(zs) != len(xyz) or any(len(row) != 3 for row in xyz):
         raise ValueError("gCP geometry requires one xyz triplet per atom")
+    if any(not math.isfinite(value) for row in xyz for value in row):
+        raise ValueError("gCP geometry requires finite coordinates")
     bad = sorted(set(zs) - domain)
     if bad:
         raise ValueError(f"unsupported r2SCAN-3c gCP elements {tuple(bad)}")

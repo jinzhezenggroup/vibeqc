@@ -49,3 +49,9 @@ def test_gcp_gradient_matches_all_cartesian_finite_differences():
                 em = evaluate_r2scan3c_gcp(ZS, minus).energy
                 fd = (ep - em) / (2 * h)
                 assert fd == pytest.approx(result.gradient[atom][axis], abs=2.0e-8)
+
+
+@pytest.mark.parametrize("coordinate", [float("nan"), float("inf"), -float("inf")])
+def test_single_atom_gcp_rejects_nonfinite_geometry(coordinate):
+    with pytest.raises(ValueError, match="finite"):
+        evaluate_r2scan3c_gcp((1,), ((coordinate, 0.0, 0.0),))

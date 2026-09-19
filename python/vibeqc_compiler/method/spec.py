@@ -312,6 +312,15 @@ class MethodIR:
                 raise UnsupportedMethod(
                     "gCP primitive basis does not match MethodIR basis"
                 )
+        if self.identifier == "R2SCAN-3c":
+            canonical = METHOD_CATALOG["R2SCAN-3c"]
+            if self.basis != canonical.basis or self.primitives != _method_primitives(
+                canonical, self.spin
+            ):
+                raise UnsupportedMethod(
+                    "R2SCAN-3c is a canonical manifest; changed defining "
+                    "components require a different explicit identifier"
+                )
 
     @property
     def reference(self):
@@ -452,6 +461,13 @@ def resolve_method(method, *, spin="unpolarized"):
     else:
         raise TypeError("method must be a catalog name or MethodSpec")
 
+    return MethodIR(
+        spec.identifier, spin, _method_primitives(spec, spin), basis=spec.basis
+    )
+
+
+def _method_primitives(spec, spin):
+    """One construction path shared by resolution and canonical graph validation."""
     components = _canonical_components(spec.semilocal_components)
     primitives: list[MethodPrimitive] = []
     if components:
@@ -472,4 +488,4 @@ def resolve_method(method, *, spin="unpolarized"):
         primitives.append(DispersionCorrectionPrimitive(spec.dispersion))
     if spec.gcp is not None:
         primitives.append(GeometricCounterpoisePrimitive(spec.gcp))
-    return MethodIR(spec.identifier, spin, tuple(primitives), basis=spec.basis)
+    return tuple(primitives)

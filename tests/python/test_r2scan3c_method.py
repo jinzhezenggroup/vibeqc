@@ -172,3 +172,27 @@ def test_custom_r2scan3c_keeps_nonlocal_dispersion_and_gcp_distinct():
         "geometry-gcp",
     )
     assert graph.identity != resolve_method("R2SCAN-3c").identity
+
+
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_direct_method_ir_cannot_relabel_plain_r2scan_as_canonical_3c(spin):
+    plain = resolve_method("R2SCAN", spin=spin)
+    with pytest.raises(UnsupportedMethod, match="canonical manifest"):
+        replace(plain, identifier="R2SCAN-3c")
+
+
+@pytest.mark.parametrize("component", ["basis", "gcp", "dispersion"])
+def test_direct_canonical_method_ir_rejects_changed_components(component):
+    graph = resolve_method("R2SCAN-3c")
+    if component == "basis":
+        changes = {"basis": replace(graph.basis, representation="cartesian")}
+    elif component == "gcp":
+        node = graph.primitives[-1]
+        changed = replace(node, specification=replace(node.specification, alpha=1.0))
+        changes = {"primitives": (*graph.primitives[:-1], changed)}
+    else:
+        changes = {"primitives": (graph.primitives[0], graph.primitives[-1])}
+    with pytest.raises(UnsupportedMethod, match="canonical manifest"):
+        replace(graph, **changes)
+    custom = replace(graph, identifier="explicit-custom", **changes)
+    assert custom.identity != graph.identity
