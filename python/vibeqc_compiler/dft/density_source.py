@@ -233,6 +233,8 @@ class DensitySource:
             # Gather the complete local block, not only its diagonal or shells.
             d = self.density[:, ids[:, None], ids]
             return density_features(jets, d, ingredients=ingredients)
+        if coefficients is None:
+            raise RuntimeError("orbital coefficients missing after route validation")
         return orbital_features(
             jets,
             tuple(c[ids] for c in coefficients),
