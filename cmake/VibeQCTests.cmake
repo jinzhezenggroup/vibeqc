@@ -68,6 +68,7 @@ macro(vibeqc_add_native_tests)
   endif()
 
   vibeqc_native_test(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  vibeqc_native_test(vibeqc_self_consistent_tests tests/native/test_self_consistent.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_batch_tests tests/native/test_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cpp_api_tests tests/native/test_cpp_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cartesian_integral_tests tests/native/test_cartesian_integrals.cpp)
