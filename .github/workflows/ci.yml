@@ -267,17 +267,6 @@ jobs:
           uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
       - name: Show ccache statistics
         run: ccache --show-stats
-      - name: Install CPU CodSpeed benchmark dependency
-        if: github.event_name != 'schedule'
-        run: uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
-      - name: Run CPU CodSpeed endpoint suite
-        if: github.event_name != 'schedule'
-        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
-        env:
-          VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
-        with:
-          mode: walltime
-          run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
       - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
@@ -352,6 +341,67 @@ jobs:
           name: coverage-report-python
           path: coverage-python.xml
           retention-days: 1
+
+
+  cpu-benchmark:
+    name: CPU performance (CodSpeed)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CCACHE_MAXSIZE: 1G
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+      - name: Restore CPU benchmark ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ccache-cpu-benchmark-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**') }}
+          restore-keys: |
+            ccache-cpu-benchmark-
+      - name: Build CPU benchmark library
+        run: |
+          cmake -S . -B build-benchmark -G Ninja \
+            -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build-benchmark --target vibeqc --parallel
+      - name: Install benchmark dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python --editable .
+          uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+      - name: Run CPU CodSpeed endpoint suite
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-benchmark/libvibeqc.so
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
   upload-coverage:
     timeout-minutes: 8
