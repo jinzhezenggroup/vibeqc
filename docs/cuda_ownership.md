@@ -91,9 +91,11 @@ complete endpoint gates pass. Correct but slower generated candidates remain
 experimental. Once promoted, retire the superseded production implementation
 unless its independently documented role still requires it.
 
-One-electron values are the first consolidation target. Their derivative and
-force routines have separate gates and remain explicit exceptions until those
-gates pass. Generated DF values have archived promotion evidence; their superseded
+One-electron values and normal S/T/V derivative/weighted-force execution are
+compiler-owned production paths. The derivative shell-warp schedule is the
+default after #357; the native cooperative route remains only as an explicitly
+selected measured performance exception, and its slower scalar sibling is
+retired. Generated DF values have archived promotion evidence; their superseded
 value selector is removed. DF values, raw/source derivatives and weighted HF
 response now share generated scientific policies and generic normalized traversal;
 the superseded coordinate-wise CUDA response has been removed. New
