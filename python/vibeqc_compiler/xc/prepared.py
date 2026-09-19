@@ -419,6 +419,8 @@ class PreparedXCContractions:
             requested = (
                 ("rho",)
                 if self.program.contract.ingredients.family == "lda"
+                else ("rho", "gradient", "sigma", "tau")
+                if self.program.contract.ingredients.family == "mgga"
                 else ("rho", "gradient", "sigma")
             )
             for tile in self.spatial.iter_features(
@@ -591,6 +593,8 @@ class PreparedXCContractions:
                     requested = (
                         ("rho",)
                         if self.program.contract.ingredients.family == "lda"
+                        else ("rho", "gradient", "sigma", "tau")
+                        if self.program.contract.ingredients.family == "mgga"
                         else ("rho", "gradient", "sigma")
                     )
                     packed = density_feature_block(jets, local, ingredients=requested)
