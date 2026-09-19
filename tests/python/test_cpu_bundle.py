@@ -94,7 +94,10 @@ def test_bundle_materializes_portable_manifest_and_target_specific_cache(
         assert path.parent == cpu_bundle.directory / "libraries"
         flags = row["native_metadata"]["identity"]["flags"]
         assert "-march=native" not in flags
-        assert row["binary_target"] == row["native_metadata"]["identity"]["target"]["architecture"]
+        assert (
+            row["binary_target"]
+            == row["native_metadata"]["identity"]["target"]["architecture"]
+        )
         assert row["binary_target"] != "portable"
         keys.add(row["artifact_key"])
     assert len(keys) == 3
