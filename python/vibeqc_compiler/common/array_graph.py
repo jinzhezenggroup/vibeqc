@@ -5,6 +5,8 @@ executes the shared graph protocol and keeps scientific domain checks in the
 caller. Native lowerings continue to consume the same graph directly.
 """
 
+import math
+
 import numpy as np
 
 
@@ -26,6 +28,12 @@ def _operation(node, args, variables):
         return args[0] ** float(node.payload)
     if node.operation in ("exp", "log", "log1p", "expm1"):
         return getattr(np, node.operation)(args[0])
+    if node.operation == "atan":
+        return np.arctan(args[0])
+    if node.operation == "asinh":
+        return np.arcsinh(args[0])
+    if node.operation == "erf":
+        return np.vectorize(math.erf, otypes=[np.float64])(args[0])
     raise ValueError(f"unsupported scalar primitive {node.operation!r}")
 
 

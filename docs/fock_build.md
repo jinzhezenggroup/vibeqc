@@ -252,6 +252,34 @@ Source-backed DF plans regenerate bounded tiles; resident/host-streamed DF
 plans use the same typed binding. CPU ragged fleets accept explicit resolved independent requests
 and retain per-item failure isolation and warm-state ownership.
 
+## COSX provider identity
+
+The internal strategy schema can represent `SeminumericalCosx` as a distinct
+exchange approximation. COSX is not an exact/DF schedule variant: its
+`FockTermSpec` carries a versioned `FockCosxSpec` containing the complete
+quadrature prescription (grid version, radial/angular sizes, partition
+iterations, coincident-center tolerance and element radii) plus the
+symmetrization/fitting/screening choices. Changing any of these fields changes
+the mathematical Fock identity.
+
+COSX v1 is currently restricted to full-range exchange, explicit
+symmetrization, no overlap fitting, no screening and derivative order zero.
+The provider domain therefore advertises exchange but not Coulomb and does not
+inherit the direct/DF first-derivative capability. This lets a method resolve
+an explicit `RI-J + COSX-K` request without implying that COSX may provide J.
+
+The CUDA COSX registration is deliberately `reserved`, even in CUDA builds.
+The bounded native candidate is qualified separately, but it is not yet owned
+by `PreparedFockPlan`; `require_fock_provider_executable` therefore rejects
+it. The CPU COSX implementation remains a correctness oracle rather than a
+registered provider. The public C Fock ABI still exposes only exact and
+density-fitted approximations, so there is no public route that can silently
+opt into COSX before prepared execution and diagnostics are complete.
+
+See the
+[COSX provider-identity decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-provider-identity.md)
+and [COSX reference contract](cosx_reference.md).
+
 ## Validation and scope
 
 `vibeqc_fock_build_tests` uses independent pinned two-AO J/K values, distinct

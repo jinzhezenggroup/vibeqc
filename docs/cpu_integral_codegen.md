@@ -73,3 +73,53 @@ SCF CPU default has been replaced. Portable runtime ISA selection and
 multi-variant dispatch are tracked separately by #470; CPU cost-model and
 schedule autotuning are tracked by #471. The independent native oracle remains
 outside this generated production-candidate path.
+
+## Portable multi-ISA bundles and runtime dispatch
+
+A generated CPU artifact can be materialized as one relocatable directory with
+`compile_first_derivative_cpu_bundle`. On x86-64 the default bundle contains
+three independently compiled candidates:
+
+- `generic`: scalar baseline with no AVX requirement;
+- `x86_64-avx2-fma`: four FP64 lanes;
+- `x86_64-avx512f-fma`: eight FP64 lanes.
+
+The bundle manifest records the IntegralIR payload, component selection, target
+and schedule payloads, compiler/runtime artifact key, binary SHA-256, and
+relative library path for every candidate. Its bundle identity therefore
+changes if scientific source, target features, compiler identity, relevant
+flags, schedule, or binary content changes. The libraries live below the
+manifest with relative paths, so the complete directory can be relocated as
+package data without retaining the build cache.
+
+`load_first_derivative_cpu_bundle` parses and verifies this manifest without
+calling `ctypes.CDLL` on any candidate. Runtime dispatch proceeds in this
+order:
+
+1. detect the current architecture and only the ISA facts required by the
+   candidates;
+2. select the widest compatible target;
+3. reject an explicitly forced but unsupported target;
+4. only then load the selected shared library.
+
+Linux x86-64 feature detection uses kernel-advertised flags from
+`/proc/cpuinfo`; macOS x86-64 uses `sysctl`. Unknown operating systems and
+non-x86 architectures conservatively select a generic candidate when present.
+CPU brand/model strings never participate in scientific or cache identity.
+
+Set `VIBEQC_CPU_TARGET=generic` to force the portable fallback for validation
+or debugging. Forcing AVX2/AVX-512 on a runtime that does not advertise the
+required features fails before the candidate binary is loaded.
+
+`FirstDerivativeCpuDispatchEvaluator.diagnostics()` records the selected
+target, runtime feature source, available bundle targets, forced-target policy,
+bundle identity, and candidate artifact keys. The dispatch decision is
+therefore visible in result provenance rather than being an implicit
+`-march=native` side effect.
+
+The runtime-dispatch tests emulate no-SIMD, AVX2, AVX-512, ARM/non-x86, forced
+generic, and forced-unsupported cases. They also relocate a compiled bundle to
+a new package-data directory and load it there before executing the
+runtime-selected candidate. On node3, runtime detection reports x86-64 with
+AVX2+FMA and selects the AVX2 candidate; a feature-empty x86-64 runtime selects
+the generic candidate.
