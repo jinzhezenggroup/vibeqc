@@ -14,6 +14,7 @@ from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.cpu_dispatch import (
     CpuDispatchDecision,
     CpuRuntimeFeatures,
+    cpu_binary_target_supported,
     detect_cpu_features,
     normalize_cpu_architecture,
     select_cpu_target,
@@ -83,6 +84,19 @@ def _schedule_from_payload(payload: Mapping[str, object]) -> CpuScheduleIR:
     )
 
 
+def _candidate_binary_target(artifact: CompiledFirstDerivativeCpuLane) -> str:
+    identity = artifact.native.metadata.get("identity")
+    target = identity.get("target") if isinstance(identity, dict) else None
+    value = target.get("architecture") if isinstance(target, dict) else None
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or target.get("backend") != "cpu"
+    ):
+        raise ValueError("CPU bundle candidate lacks a concrete compiler target")
+    return value
+
+
 def _candidate_identity_record(
     artifact: CompiledFirstDerivativeCpuLane,
 ) -> dict[str, object]:
@@ -92,6 +106,7 @@ def _candidate_identity_record(
         "program_identity": artifact.program_identity,
         "artifact_key": artifact.native.metadata["key"],
         "binary_sha256": artifact.native.metadata["binary_sha256"],
+        "binary_target": _candidate_binary_target(artifact),
     }
 
 
@@ -289,6 +304,8 @@ def load_first_derivative_cpu_bundle(
         )
         if record.get("artifact_key") != metadata.get("key"):
             raise ValueError("CPU bundle candidate artifact key mismatch")
+        if record.get("binary_target") != _candidate_binary_target(candidate):
+            raise ValueError("CPU bundle candidate binary target mismatch")
         candidate.validate()
         candidates.append(candidate)
     bundle = CompiledFirstDerivativeCpuBundle(
@@ -362,14 +379,23 @@ class FirstDerivativeCpuDispatchEvaluator:
             raise TypeError("CPU dispatch evaluator requires a compiled bundle")
         bundle.validate()
         runtime = runtime or detect_cpu_features()
+        compatible = tuple(
+            candidate
+            for candidate in bundle.candidates
+            if cpu_binary_target_supported(_candidate_binary_target(candidate), runtime)
+        )
+        if not compatible:
+            raise ValueError(
+                "CPU bundle has no compiled binary compatible with this runtime architecture/ABI"
+            )
         decision = select_cpu_target(
-            bundle.targets,
+            (candidate.target for candidate in compatible),
             runtime,
             forced_target=forced_target,
         )
         selected = next(
             candidate
-            for candidate in bundle.candidates
+            for candidate in compatible
             if candidate.target.name == decision.selected_target
         )
         self.bundle = bundle
