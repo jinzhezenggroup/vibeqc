@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "posthf/raw_source.hpp"
+#include "runtime/cuda_resources.cuh"
 #include "scf/cuda_density_fitting.hpp"
 
 namespace {
@@ -22,10 +23,10 @@ void check(cudaError_t s) {
 }
 struct DFSource {
   CudaDensityFittingIntegralSource* source = nullptr;
-  cudaStream_t stream = nullptr;
-  cudaEvent_t begin = nullptr, end = nullptr;
+  vibeqc::runtime::OwnedCudaStream stream;
+  vibeqc::runtime::OwnedCudaEvent begin, end;
+  vibeqc::runtime::OwnedCudaBuffer<double> tile;
   double generation_ms = 0, transfer_ms = 0;
-  double* tile = nullptr;
   int device = 0;
   size_t nbf = 0, naux = 0, capacity = 0;
   std::vector<double> metric;
@@ -34,12 +35,13 @@ struct DFSource {
     int previous = 0;
     cudaGetDevice(&previous);
     cudaSetDevice(device);
-    if (stream) cudaStreamSynchronize(stream);
-    if (tile) cudaFree(tile);
-    if (begin) cudaEventDestroy(begin);
-    if (end) cudaEventDestroy(end);
+    if (stream) cudaStreamSynchronize(stream.get());
+    tile.reset();
+    begin.reset();
+    end.reset();
     destroy_cuda_density_fitting_integral_source(source);
-    if (stream) cudaStreamDestroy(stream);
+    source = nullptr;
+    stream.reset();
     cudaSetDevice(previous);
   }
 };
@@ -85,10 +87,10 @@ int vibeqc_posthf_df_create_v1(void* raw, int device, size_t capacity, size_t bu
     // the separate source budget. Transformation budgets are planned earlier.
     if (host > budget || device_bytes > budget - host)
       throw std::runtime_error("DF source setup exceeds its separate budget");
-    check(cudaStreamCreateWithFlags(&p->stream, cudaStreamNonBlocking));
-    check(cudaEventCreate(&p->begin));
-    check(cudaEventCreate(&p->end));
-    check(cudaMalloc(reinterpret_cast<void**>(&p->tile), capacity * 8));
+    p->stream.create(device);
+    p->begin.create(device);
+    p->end.create(device);
+    p->tile.allocate(device, capacity, p->stream.get());
     diagnostic[0] = host;
     diagnostic[1] = device_bytes;
     diagnostic[2] = p->nbf;
@@ -124,23 +126,22 @@ int vibeqc_posthf_df_read_v1(void* pointer, int kind, const size_t* b, const siz
       throw std::invalid_argument("DF tile exceeds prepared capacity");
     if (!elements) return;
     std::string detail;
-    check(cudaEventRecord(p.begin, p.stream));
+    p.begin.record(p.stream.get());
     for (size_t i = 0; i < n[0]; ++i) {
-      if (generate_cuda_density_fitting_raw_tile(p.source, 0, (b[0] + i) * p.nbf + b[1], n[1], b[2],
-                                                 n[2], -1, p.stream, p.tile + i * n[1] * n[2],
-                                                 detail) != VIBEQC_STATUS_SUCCESS)
+      if (generate_cuda_density_fitting_raw_tile(
+              p.source, 0, (b[0] + i) * p.nbf + b[1], n[1], b[2], n[2], -1, p.stream.get(),
+              p.tile.get() + i * n[1] * n[2], detail) != VIBEQC_STATUS_SUCCESS)
         throw std::runtime_error(detail);
     }
-    check(cudaEventRecord(p.end, p.stream));
-    check(cudaEventSynchronize(p.end));
-    float milliseconds = 0;
-    check(cudaEventElapsedTime(&milliseconds, p.begin, p.end));
+    p.end.record(p.stream.get());
+    p.end.synchronize();
+    float milliseconds = p.end.elapsed_since(p.begin);
     p.generation_ms += milliseconds;
-    check(cudaEventRecord(p.begin, p.stream));
-    check(cudaMemcpyAsync(out, p.tile, elements * 8, cudaMemcpyDeviceToHost, p.stream));
-    check(cudaEventRecord(p.end, p.stream));
-    check(cudaEventSynchronize(p.end));
-    check(cudaEventElapsedTime(&milliseconds, p.begin, p.end));
+    p.begin.record(p.stream.get());
+    check(cudaMemcpyAsync(out, p.tile.get(), elements * 8, cudaMemcpyDeviceToHost, p.stream.get()));
+    p.end.record(p.stream.get());
+    p.end.synchronize();
+    milliseconds = p.end.elapsed_since(p.begin);
     p.transfer_ms += milliseconds;
   });
 }

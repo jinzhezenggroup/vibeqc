@@ -31,6 +31,9 @@ struct D4Parameters {
   D4ReferenceModel reference_model;
   double s6, s8, s9, a1, a2;
   double cn_cutoff, pair_cutoff, atm_cutoff;
+  // Charge-scaling zeta parameters. Standard D4 uses 3/2; r2SCAN-3c uses 2/1.
+  double ga = 3.0;
+  double gc = 2.0;
 };
 
 // No generic/default DFT parameter alias is exposed.
@@ -39,14 +42,28 @@ VIBEQC_D4_HD inline D4Parameters gfn2_d4_parameters() {
 }
 
 struct D4Tables {
+  D4ReferenceModel reference_model;
   const data::D4ElementData* elements;
   const data::D4ReferenceData* references;
   const double* reference_c6;
+  std::size_t element_count;
+  std::size_t reference_count;
+  std::size_t reference_c6_count;
+  double ga;
+  double gc;
 };
 
 // Host view; a device consumer must explicitly upload each array once at setup.
 inline D4Tables gfn2_d4_host_tables() {
-  return {data::kElements.data(), data::kReferences.data(), data::kReferenceC6.data()};
+  return {D4ReferenceModel::gfn2,
+          data::kElements.data(),
+          data::kReferences.data(),
+          data::kReferenceC6.data(),
+          data::kElementCount,
+          data::kReferenceCount,
+          data::kReferenceC6.size(),
+          3.0,
+          2.0};
 }
 
 VIBEQC_D4_HD inline std::size_t d4_workspace_elements(int atoms) {
@@ -71,23 +88,24 @@ VIBEQC_D4_HD inline bool valid_parameters(const D4Parameters& p) {
   return finite(p.s6) && finite(p.s8) && finite(p.s9) && finite(p.a1) && finite(p.a2) &&
          finite(p.cn_cutoff) && finite(p.pair_cutoff) && finite(p.atm_cutoff) && p.s6 >= 0.0 &&
          p.s9 >= 0.0 && p.a1 >= 0.0 && p.a2 > 0.0 && p.cn_cutoff > 0.0 && p.pair_cutoff > 0.0 &&
-         p.atm_cutoff > 0.0;
+         p.atm_cutoff > 0.0 && finite(p.ga) && finite(p.gc) && p.ga > 0.0 && p.gc > 0.0;
 }
 
 // The qmod=0 branch is the continuous saturated limit. The source derivative
 // formed 0/0 here; evaluating the limit also avoids a 0*inf near the boundary.
-VIBEQC_D4_HD inline void charge_scale(double c, double qref, double qmod, double& value,
+VIBEQC_D4_HD inline void charge_scale(double a, double c, double qref, double qmod, double& value,
                                       double& derivative) {
-  value = exp(3.0);
+  value = exp(a);
   derivative = 0.0;
   if (qmod <= 0.0) return;
   const double inner = exp(c * (1.0 - qref / qmod));
-  value = exp(3.0 * (1.0 - inner));
-  if (inner != 0.0 && value != 0.0) derivative = -3.0 * c * inner * value * (qref / qmod) / qmod;
+  value = exp(a * (1.0 - inner));
+  if (inner != 0.0 && value != 0.0) derivative = -a * c * inner * value * (qref / qmod) / qmod;
 }
 
 VIBEQC_D4_HD inline void weights(int n, const std::int32_t* z, const double* cn, const double* q,
-                                 D4Tables t, double* w, double* wc, double* wq) {
+                                 const D4Parameters& p, D4Tables t, double* w, double* wc,
+                                 double* wq) {
   for (int i = 0; i < 7 * n; ++i) w[i] = wc[i] = wq[i] = 0.0;
   for (int i = 0; i < n; ++i) {
     const auto e = t.elements[z[i] - 1];
@@ -115,7 +133,7 @@ VIBEQC_D4_HD inline void weights(int n, const std::int32_t* z, const double* cn,
       const double gw = inv ? num * inv : (fabs(maxcn - r.coordination_number) < 1e-12 ? 1.0 : 0.0);
       const double gc = inv ? inv * (dnum - num * dnorm * inv) : 0.0;
       double scale, ds;
-      charge_scale(2.0 * e.hardness, r.charge + e.effective_charge,
+      charge_scale(p.ga, p.gc * e.hardness, r.charge + e.effective_charge,
                    (q ? q[i] : 0.0) + e.effective_charge, scale, ds);
       w[7 * i + j] = gw * scale;
       wc[7 * i + j] = gc * scale;
@@ -198,18 +216,27 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
                                                       double* workspace, std::size_t workspace_size,
                                                       double* energy, double* grad, double* dq) {
   using namespace d4_detail;
-  if (p.reference_model != D4ReferenceModel::gfn2 || n > kD4MaximumAtoms)
+  if (n > kD4MaximumAtoms || p.reference_model != t.reference_model ||
+      fabs(p.ga - t.ga) > 1.0e-15 || fabs(p.gc - t.gc) > 1.0e-15)
     return D4Status::unsupported;
   if (n < 0 || !valid_parameters(p) || workspace_size < d4_workspace_elements(n))
     return D4Status::invalid_argument;
+  if (t.element_count != data::kElementCount || t.reference_count != data::kReferenceCount ||
+      t.reference_c6_count != data::kReferenceCount * (data::kReferenceCount + 1) / 2)
+    return D4Status::unsupported;
   const std::size_t count = static_cast<std::size_t>(n);
   const void* ptrs[] = {z,    xyz, q,          workspace,    energy,
                         grad, dq,  t.elements, t.references, t.reference_c6};
-  const std::size_t bytes[] = {count * sizeof(*z),        3 * count * sizeof(double),
-                               count * sizeof(double),    d4_workspace_elements(n) * sizeof(double),
-                               2 * sizeof(double),        3 * count * sizeof(double),
-                               count * sizeof(double),    sizeof(data::kElements),
-                               sizeof(data::kReferences), sizeof(data::kReferenceC6)};
+  const std::size_t bytes[] = {count * sizeof(*z),
+                               3 * count * sizeof(double),
+                               count * sizeof(double),
+                               d4_workspace_elements(n) * sizeof(double),
+                               2 * sizeof(double),
+                               3 * count * sizeof(double),
+                               count * sizeof(double),
+                               t.element_count * sizeof(data::D4ElementData),
+                               t.reference_count * sizeof(data::D4ReferenceData),
+                               t.reference_c6_count * sizeof(double)};
   Range ranges[10];
   for (int a = 0; a < 10; ++a) {
     if (!range(ptrs[a], bytes[a], ranges[a]) ||
@@ -226,7 +253,7 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
   for (int a = 3; a <= 6; ++a)
     if (overlaps(pr, ranges[a])) return D4Status::invalid_argument;
   for (int i = 0; i < n; ++i) {
-    if (z[i] < 1 || z[i] > static_cast<int>(data::kElementCount)) return D4Status::unsupported;
+    if (z[i] < 1 || z[i] > static_cast<int>(t.element_count)) return D4Status::unsupported;
     if (!finite(q[i])) return D4Status::invalid_argument;
     for (int a = 0; a < 3; ++a)
       if (!finite(xyz[3 * i + a])) return D4Status::invalid_argument;
@@ -255,7 +282,7 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
         cn[j] += cv;
       }
     }
-  weights(n, z, cn, q, t, w, wc, wq);
+  weights(n, z, cn, q, p, t, w, wc, wq);
   double e2 = 0.0, e3 = 0.0;
   for (int i = 1; i < n; ++i)
     for (int j = 0; j < i; ++j) {
@@ -278,7 +305,7 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
     }
   // ATM uses zero-charge reference weights, independently of input charges.
   if (p.s9 != 0.0) {
-    weights(n, z, cn, nullptr, t, w, wc, wq);
+    weights(n, z, cn, nullptr, p, t, w, wc, wq);
     for (int i = 2; i < n; ++i)
       for (int j = 1; j < i; ++j) {
         double vij[3];

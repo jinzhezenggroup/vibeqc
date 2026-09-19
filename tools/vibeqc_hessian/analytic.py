@@ -37,6 +37,7 @@ from vibeqc_compiler.integral.shell_spec import cartesian_components
 from tools.vibeqc_response.backends import NativeJKBackend
 from tools.vibeqc_response.operators import RHFResponseOperator
 
+from .first_order import checked_direction
 from .native import NativeRHFState
 from .perturbation import solve_rhf_nuclear_perturbation
 
@@ -45,7 +46,9 @@ __all__ = [
     "build_reference",
     "cphf_relaxation",
     "nuclear_closed_form",
+    "nuclear_hvp",
     "provider_components",
+    "provider_hvp_components",
 ]
 
 _COMPILE_CACHE: dict = {}
@@ -87,7 +90,7 @@ def _tile_components(count, chunk=64):
 
 
 def _scatter(full, ci, center_atoms, data):
-    """Scatter a dense (k3, k3) kernel result to a (nat, nat, 3, 3) tensor."""
+    """Scatter a dense kernel result to a molecular Hessian tensor."""
     nat = data["state"].nat
     k = len(ci)
     mapping = SecondAtomMap(ci, center_atoms)
@@ -98,6 +101,18 @@ def _scatter(full, ci, center_atoms, data):
         for j, aj in enumerate(mapping.atom_indices):
             out[ai, :, aj, :] += blk[i, :, j, :]
     return out.transpose(0, 2, 1, 3)
+
+
+def _scatter_hvp(full, ci, center_atoms, data):
+    """Scatter one recovered shell-center HVP onto physical atom rows."""
+    nat = data["state"].nat
+    k = len(ci)
+    mapping = SecondAtomMap(ci, center_atoms)
+    blk = mapping.scatter_hvp(full.reshape(k, 3))
+    out = np.zeros((nat, 3))
+    for i, atom in enumerate(mapping.atom_indices):
+        out[atom] += blk[i]
+    return out
 
 
 def _run_kernel_summed(
@@ -111,27 +126,42 @@ def _run_kernel_summed(
     centers,
     weight_full_flat,
     component_count,
+    *,
+    direction=None,
 ):
-    """Run one shell tuple through the #178 provider.
+    """Run one shell tuple through the weighted Hessian or HVP provider.
 
-    The kernel is compiled per (AO-component-chunk x coordinate-tile) and the
-    contributions accumulated.  ``weight_full_flat`` is the full component
-    vector; each chunk sees only its own (sparse) slice so a shell whose
-    Cartesian component count exceeds 64 (e.g. 2p^4) still lowers correctly.
+    The directional path expands physical displacements to mathematical
+    centers before execution and never materializes a coordinate Hessian.
     """
     ca = ir_extra.get("_center_atoms")
     extra = {k: v for k, v in ir_extra.items() if k != "_center_atoms"}
     ir = build_ir(**extra)
     ci = ir.requested_derivative_centers
     k = len(ci)
-    full = np.zeros(k * 3 * k * 3)
+    hvp = direction is not None
+    full = np.zeros(k * 3 if hvp else k * 3 * k * 3)
     sig = ir.signature
-    tiles = list(second_coordinate_tiles(ci, packing="dense"))
+    tiles = list(second_coordinate_tiles(ci, packing="dense", hvp=hvp))
+    center_direction = None
+    if hvp:
+        mapping = SecondAtomMap(ci, ca)
+        center_direction = mapping.expand_direction(
+            direction[list(mapping.atom_indices)]
+        )
     for ao_chunk in _tile_components(component_count):
         wc = np.zeros(component_count)
         wc[list(ao_chunk)] = weight_full_flat[list(ao_chunk)]
         for oi in tiles:
-            art = _compile_cached(key, build_ir, extra, adapter, cache, oi, ao_chunk)
+            art = _compile_cached(
+                (key, "hvp" if hvp else "hessian"),
+                build_ir,
+                extra,
+                adapter,
+                cache,
+                oi,
+                ao_chunk,
+            )
             tile = WeightTile(TensorLayout(sig.tensor_indices, sig.component_shape), wc)
             stream = prepare_second_shell_stream(
                 art,
@@ -140,11 +170,13 @@ def _run_kernel_summed(
                 tile,
                 public_signature=sig,
                 projections=None,
-                direction=None,
+                direction=center_direction,
             )
             with PreparedSecondDerivative(art, record_capacity=8) as plan:
                 r = plan.contract(stream, profile=True)
             full[list(oi)] += np.asarray(r.values).sum(axis=0)
+    if hvp:
+        return _scatter_hvp(full, ci, ca, data)
     return _scatter(full, ci, ca, data)
 
 
@@ -164,8 +196,8 @@ def _provider_data(s):
     }
 
 
-def _run_one_electron(data, family, weight):
-    """Provider output for a one-electron family: (nat, nat, 3, 3)."""
+def _run_one_electron(data, family, weight, *, direction=None):
+    """Provider output for one one-electron family as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
     adapter, cache = data["adapter"], data["cache"]
@@ -173,7 +205,8 @@ def _run_one_electron(data, family, weight):
     nbas = len(shells)
     loc = state.offsets
     z = state.Z
-    total = np.zeros((nat, nat, 3, 3))
+    output = "weighted_hvp" if direction is not None else "weighted_hessian"
+    total = np.zeros((nat, 3) if direction is not None else (nat, nat, 3, 3))
     for a in range(nbas):
         for b in range(nbas):
             la = shells[a].angular_momentum
@@ -181,27 +214,24 @@ def _run_one_electron(data, family, weight):
             na = len(cartesian_components(la))
             nb = len(cartesian_components(lb))
             wa = weight[loc[a] : loc[a] + na, loc[b] : loc[b] + nb].reshape(na, nb)
-            prims = (
-                data["primitives"][a],
-                data["primitives"][b],
-            )
+            prims = (data["primitives"][a], data["primitives"][b])
             ca_atom = shells[a].atom_index
             cb_atom = shells[b].atom_index
             if family == "nuclear_attraction":
-                for N in range(nat):  # operator nucleus is the third center
+                for nucleus in range(nat):
                     ir_extra = {
                         "family": family,
                         "angular": (la, lb),
-                        "charge": float(z[N]),
-                        "output": "weighted_hessian",
-                        "_center_atoms": (ca_atom, cb_atom, N),
+                        "charge": float(z[nucleus]),
+                        "output": output,
+                        "_center_atoms": (ca_atom, cb_atom, nucleus),
                     }
-                    key = (family, la, lb, float(z[N]))
+                    key = (family, la, lb, float(z[nucleus]))
                     centers = np.array(
                         [
                             state.coords[ca_atom],
                             state.coords[cb_atom],
-                            state.coords[N],
+                            state.coords[nucleus],
                         ]
                     )
                     total += _run_kernel_summed(
@@ -215,12 +245,13 @@ def _run_one_electron(data, family, weight):
                         centers,
                         wa.ravel(),
                         na * nb,
+                        direction=direction,
                     )
             else:
                 ir_extra = {
                     "family": family,
                     "angular": (la, lb),
-                    "output": "weighted_hessian",
+                    "output": output,
                     "_center_atoms": (ca_atom, cb_atom),
                 }
                 key = (family, la, lb)
@@ -236,19 +267,21 @@ def _run_one_electron(data, family, weight):
                     centers,
                     wa.ravel(),
                     na * nb,
+                    direction=direction,
                 )
     return total
 
 
-def _run_eri(data, density):
-    """Provider output for the four-center ERI family: (nat, nat, 3, 3)."""
+def _run_eri(data, density, *, direction=None):
+    """Provider output for four-center ERIs as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
     adapter, cache = data["adapter"], data["cache"]
     shells = data["shells"]
     nbas = len(shells)
     loc = state.offsets
-    total = np.zeros((nat, nat, 3, 3))
+    output = "weighted_hvp" if direction is not None else "weighted_hessian"
+    total = np.zeros((nat, 3) if direction is not None else (nat, nat, 3, 3))
     for a in range(nbas):
         for b in range(nbas):
             for c in range(nbas):
@@ -262,7 +295,6 @@ def _run_eri(data, density):
                     nc = len(cartesian_components(lc))
                     nd = len(cartesian_components(ld))
                     sa, sb, sc, sd = (slice(loc[i], loc[i + 1]) for i in (a, b, c, d))
-                    # Fold only this shell's density weights, never molecular N^4 W2.
                     w4 = 0.5 * np.einsum(
                         "uv,wx->uvwx", density[sa, sb], density[sc, sd]
                     )
@@ -281,7 +313,7 @@ def _run_eri(data, density):
                     )
                     ir_extra = {
                         "angular": (la, lb, lc, ld),
-                        "output": "weighted_hessian",
+                        "output": output,
                         "_center_atoms": (ca, cb, cc, cd),
                     }
                     key = ("eri", la, lb, lc, ld)
@@ -296,6 +328,7 @@ def _run_eri(data, density):
                         centers,
                         w4.ravel(),
                         na * nb * nc * nd,
+                        direction=direction,
                     )
     return total
 
@@ -314,6 +347,20 @@ def provider_components(s):
     )
     pulay = -_run_one_electron(data, "overlap", data["W_e"])
     two_electron = _run_eri(data, data["density"])
+    return {"core": core, "pulay": pulay, "two_electron": two_electron}
+
+
+def provider_hvp_components(s, direction):
+    """Return frozen-skeleton second-integral HVP components directly."""
+    _validate_analytic_domain(s)
+    vector = checked_direction(direction, s.nat)
+    data = _provider_data(s)
+    p0 = s.P0
+    core = _run_one_electron(data, "kinetic", p0, direction=vector) + _run_one_electron(
+        data, "nuclear_attraction", p0, direction=vector
+    )
+    pulay = -_run_one_electron(data, "overlap", data["W_e"], direction=vector)
+    two_electron = _run_eri(data, data["density"], direction=vector)
     return {"core": core, "pulay": pulay, "two_electron": two_electron}
 
 
@@ -344,6 +391,23 @@ def nuclear_closed_form(s):
             H[a, b] -= blk
             H[b, a] -= blk.T
     return H
+
+
+def nuclear_hvp(s, direction):
+    """Apply the exact nucleus-nucleus Hessian to one Cartesian direction."""
+    _validate_analytic_domain(s)
+    vector = checked_direction(direction, s.nat)
+    out = np.zeros((s.nat, 3))
+    for a in range(s.nat):
+        for b in range(a + 1, s.nat):
+            r = s.coords[a] - s.coords[b]
+            d = np.linalg.norm(r)
+            unit = r / d
+            block = s.Z[a] * s.Z[b] / d**3 * (3.0 * np.outer(unit, unit) - np.eye(3))
+            contribution = block @ (vector[a] - vector[b])
+            out[a] += contribution
+            out[b] -= contribution
+    return out
 
 
 # ---------------------------------------------------------------------------

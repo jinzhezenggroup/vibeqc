@@ -201,8 +201,20 @@ def format_array(
 
 def build_tables(
     sources: dict[str, str],
+    *,
+    reference_model: str = "gfn2",
+    ga: float = GA,
+    gc: float = GC,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]], list[float]]:
     """Construct packed element/reference records and their dense C6 matrix."""
+    if reference_model == "gfn2":
+        reference_charge = "refq"
+        secondary_hydrogen_charge = "refh"
+    elif reference_model == "eeq":
+        reference_charge = "clsq"
+        secondary_hydrogen_charge = "clsh"
+    else:
+        raise D4DataError(f"unsupported D4 reference model {reference_model!r}")
     scalars, arrays = parse_reference_data(sources["src/dftd4/reference.inc"])
     covalent = parameter_array(
         sources["src/dftd4/data/covrad.f90"], "covalent_rad_2009"
@@ -229,7 +241,14 @@ def build_tables(
         for reference_index in range(1, ref_count + 1):
             required_scalars = {
                 name: scalars[(name, reference_index, atomic_number)]
-                for name in ("refq", "refh", "hcount", "ascale", "refcovcn", "refsys")
+                for name in (
+                    reference_charge,
+                    secondary_hydrogen_charge,
+                    "hcount",
+                    "ascale",
+                    "refcovcn",
+                    "refsys",
+                )
             }
             raw_alpha = arrays[("alphaiw", reference_index, atomic_number)]
             if len(raw_alpha) != len(FREQUENCIES):
@@ -244,10 +263,10 @@ def build_tables(
             secondary_scale = scalars[("sscale", secondary, 0)]
             secondary_z = effective_charge[secondary - 1]
             hydrogen_alpha_scale = zeta(
-                GA,
-                hardness[secondary - 1] * GC,
+                ga,
+                hardness[secondary - 1] * gc,
                 secondary_z,
-                required_scalars["refh"] + secondary_z,
+                required_scalars[secondary_hydrogen_charge] + secondary_z,
             )
             alpha = [
                 max(
@@ -274,7 +293,7 @@ def build_tables(
             references.append(
                 {
                     "coordination_number": required_scalars["refcovcn"],
-                    "charge": required_scalars["refq"],
+                    "charge": required_scalars[reference_charge],
                     "gaussian_count": gaussian_count,
                 }
             )
@@ -356,28 +375,14 @@ def render_header(
 #include <cstddef>
 #include <cstdint>
 
+#include "dft/dispersion/d4_types.hpp"
+
 namespace vibeqc::dft::dispersion::data {{
 
 inline constexpr char kSourceRevision[] = "{revision}";
 inline constexpr char kSourceDigest[] = "{digest}";
 inline constexpr std::size_t kElementCount = {len(elements)}u;
 inline constexpr std::size_t kReferenceCount = {len(references)}u;
-
-struct D4ElementData {{
-  std::uint16_t reference_offset;
-  std::uint8_t reference_count;
-  double covalent_radius;
-  double electronegativity;
-  double effective_charge;
-  double hardness;
-  double r4r2;
-}};
-
-struct D4ReferenceData {{
-  double coordination_number;
-  double charge;
-  std::uint8_t gaussian_count;
-}};
 
 inline constexpr std::array<D4ElementData, kElementCount> kElements{{{{
 {chr(10).join(element_rows)}

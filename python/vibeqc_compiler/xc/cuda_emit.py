@@ -37,6 +37,10 @@ def emit_cuda(program, schedule=None):
         else schedule.group_size
     )
     groups = [tuple(range(i, min(i + width, nout))) for i in range(0, nout, width)]
+    piecewise = any(
+        program.graph.nodes[identifier].operation == "select_le"
+        for identifier in program.graph.topological_order(program.roots)
+    )
     contract = {
         "schema": LAYOUT_VERSION,
         "generator_sources": source_hashes(
@@ -46,6 +50,10 @@ def emit_cuda(program, schedule=None):
             "dft",
             assets=(
                 "src/tensor/cuda_runtime.cuh",
+                "src/runtime/bounded_workspace.hpp",
+                "src/runtime/cuda_resources.cuh",
+                "src/runtime/resource_cuda.cuh",
+                "src/runtime/resource_ledger.hpp",
                 "src/tensor/metrics.hpp",
                 "src/runtime/allocation_measurement.hpp",
                 "src/dft/xc_runtime.cuh",
@@ -59,7 +67,9 @@ def emit_cuda(program, schedule=None):
         "variant": schedule.variant,
         "groups": groups,
         "threads": schedule.threads,
-        "placement": "inline_single_use",
+        "placement": (
+            "branch_local_materialized" if piecewise else "inline_single_use"
+        ),
         "fp64": "--fmad=false; no fast math",
     }
     identity = canonical_hash(contract)
@@ -75,10 +85,23 @@ def emit_cuda(program, schedule=None):
     models = []
     for index, group in enumerate(groups):
         roots = tuple(program.roots[i] for i in group)
-        placement = program.graph.materialization_plan(
-            roots, RematerializationPolicy.inline_single_use_values()
+        group_piecewise = any(
+            program.graph.nodes[identifier].operation == "select_le"
+            for identifier in program.graph.topological_order(roots)
         )
-        models.append(placement.to_payload())
+        if group_piecewise:
+            placement = None
+            models.append(
+                {
+                    "policy": "branch_local_materialized",
+                    "ssa_upper_bound": program.graph.analyze_ssa(roots).to_payload(),
+                }
+            )
+        else:
+            placement = program.graph.materialization_plan(
+                roots, RematerializationPolicy.inline_single_use_values()
+            )
+            models.append(placement.to_payload())
         emitter = CudaEmitter(
             program.graph,
             {
@@ -124,6 +147,10 @@ def emit_cuda(program, schedule=None):
         {**contract, "identity": identity, "static_models": models},
         (
             asset_path("src/tensor/cuda_runtime.cuh"),
+            asset_path("src/runtime/bounded_workspace.hpp"),
+            asset_path("src/runtime/cuda_resources.cuh"),
+            asset_path("src/runtime/resource_cuda.cuh"),
+            asset_path("src/runtime/resource_ledger.hpp"),
             asset_path("src/tensor/metrics.hpp"),
             asset_path("src/runtime/allocation_measurement.hpp"),
             asset_path("src/dft/xc_runtime.cuh"),
