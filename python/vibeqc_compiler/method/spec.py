@@ -95,7 +95,11 @@ class MethodSpec:
             raise TypeError("gCP requires GCPSpec")
         if self.gcp is not None and self.basis is None:
             raise UnsupportedMethod("gCP requires an explicit basis binding")
-        if self.gcp is not None and self.gcp.basis != self.basis.name:
+        if (
+            self.gcp is not None
+            and self.basis is not None
+            and self.gcp.basis != self.basis.name
+        ):
             raise UnsupportedMethod("gCP basis does not match the method basis binding")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
