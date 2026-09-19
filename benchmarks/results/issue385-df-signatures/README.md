@@ -149,9 +149,13 @@ library grows from about 287 to 352 MiB. Peaks are 100 ms process-sampler lower
 bounds, not exact allocator high-water marks. Slurm accounting is disabled, so
 no historical MaxRSS or billed CPU values are inferred.
 
-Per-launch registers, static/dynamic shared memory, local memory and duration
-are retained in `*-nsys-summary.json`; final occupancy API limits are in
-`final/summary.json`. The standalone occupancy calculator was checked against
+Aggregate timings, signature totals, original validation outcomes and source
+identities remain in `*-nsys-summary.json`; final occupancy API limits remain
+in `final/summary.json`. The six summaries omit only the historical
+`launch_records` arrays. Their original per-launch registers, shared/local
+memory and durations remain byte-recoverable through the existing
+[Git snapshot](../retention-checkout/README.md); each summary records its
+original path, SHA-256, size and launch-row count. The standalone occupancy calculator was checked against
 every uniform native result. Dynamic shared memory is zero. The table below
 shows the 768-AO classes (same launch resource limits apply at 384):
 
