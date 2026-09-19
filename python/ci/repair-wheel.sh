@@ -9,7 +9,7 @@ wheel=${2:?usage: repair-wheel.sh <destination> <wheel>}
 # system dependency. prepare-wheel-build.sh stages provider wheels only into
 # the ephemeral build toolkit; the installed-wheel test installs [cuda12] and
 # VibeQC's Python loader registers those SONAMEs before loading libvibeqc.
-exec auditwheel repair -w "$destination" "$wheel" \
+auditwheel repair -w "$destination" "$wheel" \
   --exclude libcublas.so.12 \
   --exclude libcublasLt.so.12 \
   --exclude libcusolver.so.11 \
@@ -19,3 +19,6 @@ exec auditwheel repair -w "$destination" "$wheel" \
   --exclude libcufft.so.11 \
   --exclude libcurand.so.10 \
   --exclude libcuda.so.1
+
+# Surface whether repeated wheel builds actually reuse C++/CUDA compilation.
+ccache --show-stats
