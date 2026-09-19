@@ -37,8 +37,9 @@ Explicitly outside this slice, and left fail-closed rather than approximated:
 
 - **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
   #161's derivative kernels;
-- **bounded full-Hessian execution** (slice B4); the bounded conventional RHF
-  matrix-free HVP (B3) is implemented under the small-system tools boundary;
+- **device-resident AO/MO/Krylov execution** (slice B2) remains separate;
+  bounded conventional RHF matrix-free HVP (B3) and block/full-Hessian
+  assembly (B4) are implemented under the small-system tools boundary;
 - **DF, ECP, range-separated and meta-GGA Hessians** — each needs its own
   complete second-derivative/response chain and is *not* inherited from energy
   or first-force support;
@@ -489,11 +490,27 @@ against `D1(v)` / `W1(v)` for electronic relaxation. The result is raw
 bilinear identity, dense #449 `H @ v`, and three-step reconverged-gradient
 checks are in `tests/python/test_hessian_hvp.py`.
 
-This closes B3 only within the declared small-system conventional-RHF tools
-domain. B2 device-resident AO/MO/Krylov execution, B4 bounded block/full
-Hessians, production-size qualification and DFT Hessians remain separate.
-See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md)
-and the [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
+B4 builds on that same HVP contract. rhf_hvp_many prepares several
+directional H1/S1 pairs, binds them to one shared RHF response operator and
+uses #179 solve_many with sequential, blocked or recycled strategy.
+The solver workspace is combined with a conservative retained numeric-storage
+bound; insufficient block budget fails before first-integral work.
+
+rhf_hessian applies canonical atom/xyz unit directions in bounded blocks and
+stores each returned Hv as one raw Hessian column. It never silently returns a
+diagonal or partial matrix. Full-output storage is reserved before the first
+block, raw symmetry is reported without post-hoc symmetrization, and block
+diagnostics retain each multi-RHS strategy/workspace/action record. The current
+tools default uses four directions per block; callers can choose any block size
+from one through 3*natoms.
+
+These B3/B4 paths remain within the declared small-system conventional-RHF tools
+domain. B2 device-resident AO/MO/Krylov execution, production-size
+qualification, a public Calculator Hessian endpoint and DFT Hessians remain
+separate. See the
+[directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
+[matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md)
+and [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md).
 
 
 For explicit CUDA first-source qualification, add these arguments to the
