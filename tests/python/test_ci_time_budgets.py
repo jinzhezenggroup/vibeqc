@@ -1,21 +1,28 @@
-"""Keep fast PR feedback bounded without truncating full qualification jobs."""
+"""Keep routine feedback bounded without truncating full qualification jobs."""
 
 import re
 from pathlib import Path
 
+import pytest
 
-def test_full_python_qualification_has_a_separate_finite_budget():
-    text = (
-        Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
-    ).read_text()
-    python_job = text.split("\n  python:\n", 1)[1].split("\n  upload-coverage:", 1)[0]
+
+@pytest.mark.parametrize(
+    "filename, job, routine_minutes",
+    [("ci.yml", "python", 20), ("cumetal-cuda.yml", "cuda-tests", 30)],
+)
+def test_full_qualification_has_a_separate_finite_budget(
+    filename, job, routine_minutes
+):
+    path = Path(__file__).resolve().parents[2] / ".github/workflows" / filename
+    section = path.read_text().split(f"\n  {job}:\n", 1)[1]
     match = re.search(
         r"timeout-minutes: \$\{\{ \(github.event_name == 'schedule' \|\| "
         r"github.event_name == 'workflow_dispatch'\) && (\d+) \|\| (\d+) \}\}",
-        python_job,
+        section,
     )
-    assert match, "schedule/manual full suite must not inherit the routine PR timeout"
+    assert match, "full qualification must not inherit the routine timeout"
     full, routine = map(int, match.groups())
-    assert routine == 20
+    assert routine == routine_minutes
     assert 60 <= full <= 120
-    assert '!= "schedule"' in python_job and '!= "workflow_dispatch"' in python_job
+    if filename == "ci.yml":
+        assert '!= "schedule"' in section and '!= "workflow_dispatch"' in section

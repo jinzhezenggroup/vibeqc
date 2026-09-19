@@ -19,7 +19,8 @@ jobs:
   cuda-tests:
     name: CUDA runtime tests (CuMetal / Apple GPU)
     runs-on: macos-15
-    timeout-minutes: 30
+    # Keep the 50-minute full-suite step inside a separate finite job budget.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
