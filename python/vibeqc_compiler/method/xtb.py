@@ -349,6 +349,10 @@ class XtbMethodIR:
             raise UnsupportedXtbMethod(
                 "GFN2-xTB graph must contain the complete canonical primitive sequence"
             )
+        if self.primitives != _gfn2_primitives():
+            raise UnsupportedXtbMethod(
+                "GFN2-xTB graph must preserve audited primitive semantics"
+            )
         present = set(kinds)
         for primitive in self.primitives:
             if any(requirement not in present for requirement in primitive.requires):

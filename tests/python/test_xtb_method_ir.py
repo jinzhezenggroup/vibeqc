@@ -247,3 +247,20 @@ def test_catalog_is_read_only_and_payload_is_json_serializable():
     assert round_trip["identifier"] == "GFN2-xTB"
     assert round_trip["model_flavor"] == "gfn2"
     assert round_trip["parameter_set"]["source"] == "doi:10.1021/acs.jctc.8b01176"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"self_consistent": False},
+        {"model": "posthoc-d4"},
+        {"requires": ()},
+        {"state_requirements": ()},
+        {"derivative_capabilities": ("energy",)},
+    ],
+)
+def test_direct_gfn2_graph_cannot_change_audited_primitive_semantics(changes):
+    method = resolve_xtb_method("GFN2-xTB")
+    primitives = (*method.primitives[:-1], replace(method.primitives[-1], **changes))
+    with pytest.raises(UnsupportedXtbMethod, match="audited primitive semantics"):
+        replace(method, primitives=primitives)
