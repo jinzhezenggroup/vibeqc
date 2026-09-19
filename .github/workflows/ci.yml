@@ -18,8 +18,8 @@ permissions:
 env:
   CCACHE_VERSION: "4.14"
 
-# Keep only the newest validation for a pull request. Master pushes use their
-# unique run ID, so one merge never cancels another merge's validation record.
+# Coalesce superseded PR and master-push runs separately. Scheduled/manual
+# qualification keeps its own run ID and is not cancelled by ordinary pushes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
@@ -211,7 +211,9 @@ jobs:
 
   python:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Full nightly/manual qualification includes expensive Hessian and Au replay.
+    # Keep routine PR/push feedback capped separately; do not truncate that tier.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
