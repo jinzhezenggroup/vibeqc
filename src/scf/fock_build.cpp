@@ -140,9 +140,8 @@ constexpr FockProviderRegistration make_registration(
 #if VIBEQC_HAS_CUDA
 constexpr auto kCudaAvailability = runtime::ProviderAvailability::Executable;
 constexpr std::string_view kCudaReason{};
-constexpr auto kCosxCudaAvailability = runtime::ProviderAvailability::Reserved;
-constexpr std::string_view kCosxCudaReason =
-    "bounded CUDA COSX is qualified but not yet wired into PreparedFockPlan";
+constexpr auto kCosxCudaAvailability = runtime::ProviderAvailability::Executable;
+constexpr std::string_view kCosxCudaReason{};
 #else
 constexpr auto kCudaAvailability = runtime::ProviderAvailability::NotBuilt;
 constexpr std::string_view kCudaReason = "CUDA support was not compiled into this build";
@@ -165,7 +164,7 @@ constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
                       "src/dft/cosx_reference.cpp", cosx_fock_domain()),
     make_registration("cuda.cosx", FockApproximation::SeminumericalCosx,
                       runtime::ProviderBackend::Cuda, kCosxCudaAvailability, kCosxCudaReason,
-                      "src/dft/cuda_cosx.cu", cosx_fock_domain()),
+                      "src/dft/cosx_fock_provider.cpp", cosx_fock_domain()),
 }};
 
 runtime::ProviderBackend registry_backend(FockBackend backend) {

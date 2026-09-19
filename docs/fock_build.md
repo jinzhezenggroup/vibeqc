@@ -268,16 +268,26 @@ The provider domain therefore advertises exchange but not Coulomb and does not
 inherit the direct/DF first-derivative capability. This lets a method resolve
 an explicit `RI-J + COSX-K` request without implying that COSX may provide J.
 
-The CUDA COSX registration is deliberately `reserved`, even in CUDA builds.
-The bounded native candidate is qualified separately, but it is not yet owned
-by `PreparedFockPlan`; `require_fock_provider_executable` therefore rejects
-it. The CPU COSX implementation remains a correctness oracle rather than a
-registered provider. The public C Fock ABI still exposes only exact and
-density-fitted approximations, so there is no public route that can silently
-opt into COSX before prepared execution and diagnostics are complete.
+In CUDA builds, `cuda.cosx` is executable through the DFT-owned
+`PreparedCosxFockPlan`. That owner constructs the dedicated COSX grid directly
+from `FockCosxSpec`, reserves the bounded COSX device storage first, gives the
+remaining device budget to an ordinary J-only `PreparedFockPlan`, and returns
+the shared `DirectJkMatrices` used by standard Fock/energy assembly. RHF
+consumes the spin-summed density; UHF evaluates independent alpha/beta exchange.
+
+The ordinary `PreparedFockPlan` explicitly rejects COSX so its historical
+exact-vs-DF branch cannot silently misroute a new approximation. The CPU COSX
+implementation remains a correctness oracle rather than an executable provider.
+The public C Fock ABI still exposes only exact and density-fitted choices.
+The DFT layer additionally owns internal energy-only RHF/UHF controllers over
+this prepared provider. They use host DIIS/eigensolves, physical commutator
+convergence gates and unextrapolated final Fock rebuilding. Consequently this
+promotion supports internal fixed-density and energy-only SCF execution, but
+not AUTO selection, public method support, batching, proposal hooks or forces.
 
 See the
-[COSX provider-identity decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-provider-identity.md)
+[COSX provider-identity decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-provider-identity.md),
+[prepared-provider decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-prepared-provider.md)
 and [COSX reference contract](cosx_reference.md).
 
 ## Validation and scope
@@ -302,6 +312,19 @@ truncated metric, and complete SCF/replay/changed-geometry force endpoints.
 The optional `vibeqc_cuda_fock_provider_tests --through-f-response` numerical
 tier adds signed d/f UHF responses against the complete CPU derivative tensors
 for both public representations and both independently prepared batch items.
+
+`vibeqc_cosx_fock_provider_tests` qualifies the internal fixed-density
+RI-J/COSX-K composition for RHF and UHF against independent CPU DF and discrete
+COSX oracles. It also checks that the dedicated grid exactly reproduces the
+resolved COSX identity, total device usage stays within the admitted budget,
+and the legacy exact/DF prepared owner rejects COSX rather than falling through
+to its DF branch.
+
+`vibeqc_cosx_scf_tests` covers cold RHF/UHF convergence, warm replay,
+strict warm determinant validation, nonconverged one-iteration state behavior
+and explicit force rejection. The returned density and energy are re-evaluated
+with independent CPU DF-J and discrete COSX-K oracles, including the final
+physical commutator residual.
 
 `tests/python/test_fock.py` exercises public independent choices, transactional
 failure, identity, source lifetime, SCF/replay/force consistency and semilocal XC

@@ -1,14 +1,12 @@
-"""Internal conventional CPU RCCSD equations, prepared state and solver.
+"""Internal conventional RCCSD/RCCSD(T) equations, state and validation APIs.
 
 The facade accepts validated closed-shell RHF snapshots and conventional CPU
-integral providers. It does not register a Calculator method or imply GPU,
-native Lambda or public nuclear-gradient support. An explicitly dense
-small-system CPU complete-gradient validation endpoint is provided separately. An internal CPU solved-state Lambda
-consumer and block-streamed correlation-only input weights are available
-separately. Generated fixed-amplitude actions use ``build_lambda_programs``
-and ``build_parameter_vjp``.
-The original fixed-amplitude energy/T1 entry points remain available alongside the complete R1/R2 solver and the
-audited CPU (T) triples reference (issue #150 slice A).
+integral providers. RCCSD supports CPU, ordinary-stream CUDA and resident CUDA;
+RCCSD(T) composes CPU or resident CUDA RCCSD with audited bounded triples tiles
+and offers an isolated homogeneous Python batch helper. These internal APIs do
+not register Calculator methods, native CC prepared owners or force support.
+Complete-gradient validation, Lambda/response consumers and fixed-amplitude
+generated actions remain separate explicit boundaries.
 """
 
 from .api import (
@@ -19,6 +17,16 @@ from .api import (
     batch_energy,
     energy,
     method_capabilities,
+)
+from .ccsd_t_api import (
+    BatchRCCSDTResult,
+    PreparedRCCSDTBatch,
+    RCCSDTBatchItemResult,
+    RCCSDTCapabilities,
+    RCCSDTResult,
+    rccsd_t_batch_energy,
+    rccsd_t_energy,
+    rccsd_t_method_capabilities,
 )
 from .complete_gradient import (
     BoundCCSDGradient,
@@ -62,6 +70,7 @@ from .triples_tiles import (
 __all__ = [
     "BatchItemResult",
     "BatchRCCSDResult",
+    "BatchRCCSDTResult",
     "BoundCCSDGradient",
     "BoundCCSDLambda",
     "BoundCCSDResponse",
@@ -76,8 +85,12 @@ __all__ = [
     "CudaTriplesTiles",
     "LambdaOptions",
     "PreparedCCSD",
+    "PreparedRCCSDTBatch",
     "PreparedResidentCCSD",
     "RCCSDResult",
+    "RCCSDTBatchItemResult",
+    "RCCSDTCapabilities",
+    "RCCSDTResult",
     "SolverOptions",
     "TileSpec",
     "TriplesTileConfig",
@@ -95,6 +108,9 @@ __all__ = [
     "energy",
     "evaluate",
     "method_capabilities",
+    "rccsd_t_batch_energy",
+    "rccsd_t_energy",
+    "rccsd_t_method_capabilities",
     "solve",
     "solve_gpu_resident",
     "tile_triples_energy",
