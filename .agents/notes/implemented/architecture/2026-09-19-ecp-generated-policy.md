@@ -72,6 +72,12 @@ unchanged; complete-HF energy/force errors remain within the independent gates.
 Downloaded evidence verifies 51 raw members and 1,460 baseline/1,463 candidate
 source inputs against exact Git blobs, resolving the recorded symlink target.
 
+The first CuMetal CI build rejected the standard-library `std::fabs` wrapper as
+host-only when the generated predicate was called on device. Use unqualified
+`fabs`, matching the existing emitted arithmetic, to resolve the CUDA device
+overload. This preserves the absolute-error predicate and its independent
+boundary cases; do not infer device-callability from the NVIDIA build alone.
+
 Physical ownership changes are 7 removed scientific-classed lines and 7 added
 runtime lines, plus 283 unchanged adapter lines reclassified as runtime. The
 ledger's scientific -290/runtime +290 is not a 290-line physical deletion.

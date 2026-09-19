@@ -18,6 +18,8 @@ def emit_ecp_policy_cpp():
     Nonfinite inputs must reject even when equal or when subtraction yields
     NaN. Equality at the absolute tolerance remains accepted. These control
     predicates lower directly to C++ math/comparison operations, not an AD DAG.
+    As in the emitted arithmetic, unqualified fabs resolves the CUDA device
+    overload; CuMetal's standard-library fabs wrapper is host-only.
     """
     constants = (
         ("coarse_radial_points", COARSE_RADIAL_POINTS),
@@ -34,6 +36,6 @@ def emit_ecp_policy_cpp():
         "    bool derivative) {",
         f"  const double tolerance = derivative ? {DERIVATIVE_ABS_TOLERANCE!r} : {MATRIX_ABS_TOLERANCE!r};",
         "  return std::isfinite(coarse) && std::isfinite(fine) &&",
-        "      std::fabs(coarse - fine) <= tolerance;",
+        "      fabs(coarse - fine) <= tolerance;",
         "}",
     ]

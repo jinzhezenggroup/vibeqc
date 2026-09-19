@@ -10,10 +10,16 @@ new elements, DFT/ECP forces or a performance improvement.
 
 Baseline: `2bf9a2a4784fc79f6048ec9c4e74701e1caa92ec`.
 Candidate: `f10e7346839f059521c4a4800ae1a0655e21f1fd`.
-Later commits add only documentation and evidence. Both measured trees came
+The initial follow-up commit adds only documentation and evidence. Both measured trees came
 from exact Git archives, with no scientific source overlay. The baseline used
 fresh CPU/CUDA build directories; the candidate reused them after refreshing
 source mtimes to force generation and recompilation.
+
+The subsequent CuMetal compatibility fix uses unqualified `fabs`, as the other
+generated arithmetic does, to resolve the CUDA device overload. CuMetal's
+`std::fabs` wrapper is host-only. The records below retain the original measured
+revision; compatibility requalification is recorded separately and must not be
+confused with those original header/library hashes.
 
 `summary.json` records the test results, generated-header identities, numerical
 errors and matched resource peaks. The four `*-endpoints.json` files retain
