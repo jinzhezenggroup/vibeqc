@@ -137,6 +137,47 @@ unsigned int workload_launches(Workload workload) {
   return 0;
 }
 
+// Independent host references are evaluated only during initialization.
+float reference_value(Workload workload, unsigned int index, unsigned int size,
+                      const std::vector<float>& lhs, const std::vector<float>& rhs) {
+  float x = lhs[index];
+  float y = rhs[index];
+  switch (workload) {
+    case Workload::Compute: {
+      float accumulator = 0.125F;
+      for (unsigned int iteration = 0; iteration < kComputeIterations; ++iteration) {
+        accumulator += x * y;
+        x = x * 0.99991F + 0.00013F;
+        y = y * 1.00007F - 0.00011F;
+      }
+      return accumulator;
+    }
+    case Workload::Memory:
+      return x * 1.0001F + y * 0.9999F;
+    case Workload::Gather: {
+      const unsigned int source = (index * 40503U) & (size - 1U);
+      return lhs[source] * 0.625F + y * 0.375F;
+    }
+    case Workload::Mixed: {
+      float z = lhs[(index + 1U) & (size - 1U)];
+      for (unsigned int iteration = 0; iteration < kMixedIterations; ++iteration) {
+        x = x * 0.9997F + y * 0.0003F;
+        y = y * 0.9991F + z * 0.0009F;
+        z = z * 0.9989F + x * 0.0011F;
+      }
+      return x + y + z;
+    }
+  }
+  return std::nanf("");
+}
+
+bool validate_value(float actual, float expected) {
+  // Preserve the original compute-series tolerance; do not admit arbitrary finite output.
+  const float tolerance = 2.0e-3F * std::fmax(1.0F, std::fabs(expected));
+  return std::isfinite(actual) && std::isfinite(expected) &&
+         std::fabs(actual - expected) <= tolerance;
+}
+
 class BenchmarkServer {
  public:
   bool initialize() {
@@ -180,12 +221,23 @@ class BenchmarkServer {
         return false;
       }
 
-      float actual = 0.0F;
-      if (!check_cuda(cudaMemcpy(&actual, output_, sizeof(float), cudaMemcpyDeviceToHost),
-                      "cudaMemcpy(validation)") ||
-          !std::isfinite(actual)) {
-        std::fprintf(stderr, "FAIL: FP32 %s validation is not finite\n", workload_name(workload));
-        return false;
+      // Include nonzero, block-boundary and wraparound indices: index zero alone
+      // cannot distinguish the gather permutation from a contiguous read.
+      const unsigned int size = workload_elements(workload);
+      for (unsigned int index :
+           {0U, 1U, 96U, 97U, 255U, 256U, size / 2U, size - 2U, size - 1U}) {
+        float actual = 0.0F;
+        if (!check_cuda(cudaMemcpy(&actual, output_ + index, sizeof(float), cudaMemcpyDeviceToHost),
+                        "cudaMemcpy(validation)")) {
+          return false;
+        }
+        const float expected = reference_value(workload, index, size, lhs, rhs);
+        if (!validate_value(actual, expected)) {
+          std::fprintf(stderr, "FAIL: FP32 %s validation index=%u actual=%.8g expected=%.8g\n",
+                       workload_name(workload), index, static_cast<double>(actual),
+                       static_cast<double>(expected));
+          return false;
+        }
       }
     }
 
