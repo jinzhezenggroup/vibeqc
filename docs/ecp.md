@@ -254,9 +254,9 @@ and [retained evidence](../benchmarks/results/ecp-stuttgart-171/README.md).
 ## Bounded heavy-element parameter qualification
 
 The real-parameter qualification covers the installed PySCF 2.14.0 LANL2DZ
-Rb, Cs and Au orbital/ECP records, paired with STO-3G hydrogen. These are separate
-from synthetic high-angular-momentum operator tests. The reference parameters
-are consumed only by tests and the qualification driver; normal execution
+Rb, Cs, Au, Br and I orbital/ECP records, paired with STO-3G hydrogen. These
+are separate from synthetic high-angular-momentum operator tests. The reference
+parameters are consumed only by tests and the qualification driver; normal execution
 continues to use caller-owned basis/ECP records without a PySCF dependency.
 
 | ECP element | Atomic number | Removed electrons | Ionic charge | Molecular AO count |
@@ -264,14 +264,18 @@ continues to use caller-owned basis/ECP records without a PySCF dependency.
 | Rb | 37 | 28 | 9 | 13 |
 | Cs | 55 | 46 | 9 | 13 |
 | Au | 79 | 60 | 19 | 23 |
+| Br | 35 | 28 | 7 | 9 |
+| I | 53 | 46 | 7 | 9 |
 
 The Rb/Cs fixtures use the unmodified s/p orbital records, local f label and
 s/p/d nonlocal channels. They cover neutral singlet RbH/CsH (10 explicit electrons)
 and their singly charged doublet cations (9 explicit electrons), with direct
-RHF/UHF on CPU/CUDA. The nuclei are placed off-axis; raw matrix and derivative
-gates use two bond geometries per element. Qualification is limited to these
+RHF/UHF on CPU/CUDA. Br/I use unmodified s/p orbital records and s/p/d
+nonlocal channels: neutral singlet HBr/HI have eight explicit electrons, and
+the +1 doublet cations have seven. The nuclei are placed off-axis; raw matrix
+and derivative gates use two bond geometries per element. Qualification is limited to these
 parameter records, states and geometries. It does not establish arbitrary
-Rb/Cs/Au chemistry, other LANL2DZ elements, other ECP families, spin-orbit physics,
+Rb/Cs/Au/Br/I chemistry, other LANL2DZ elements, other ECP families, spin-orbit physics,
 or a relativistic method beyond the supplied scalar potential.
 
 `tests/python/test_ecp_heavy.py` pins the combined orbital/ECP parameter hashes,
@@ -279,9 +283,9 @@ checks removed-core/effective-charge bookkeeping, and compares local and
 nonlocal matrices separately with Libcint. Both grid levels, all-center
 two-step finite differences, arbitrary nonsymmetric AO weights, complete HF
 energies/forces, and geometry replay with complete-energy differences must
-pass, using a planned budget where supported. The 13-AO Rb/Cs fixtures fit the
-current CUDA resource inventory; their tests check the allocation ledger
-against the declared budget.
+pass, using a planned budget where supported. The 13-AO Rb/Cs and 9-AO Br/I
+fixtures fit the current CUDA resource inventory; their tests check the
+allocation ledger against the declared budget.
 
 AuH uses the unmodified s/p/d orbital records with a local g label and real
 s/p/d/f nonlocal projectors. The neutral singlet has 20 explicit electrons
@@ -311,6 +315,7 @@ VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_heavy.py -q -k cud
 python tools/qualify_ecp_heavy.py --device cpu --output heavy-cpu.json
 python tools/qualify_ecp_heavy.py --device cuda --output heavy-cuda.json
 python tools/qualify_ecp_heavy.py --device cuda --elements Au --output gold-cuda.json
+python tools/qualify_ecp_heavy.py --device cuda --elements Br I --output halogen-cuda.json
 ```
 
 Use the pinned reference-test extra and the corresponding `VIBEQC_LIBRARY` as
@@ -322,6 +327,8 @@ See the [qualification decision](../.agents/notes/implemented/numerics/2026-09-1
 for the boundaries and the retained evidence.
 The [real f-channel decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-real-f-gold.md)
 records the separate AuH parameter, projector and resource-boundary qualification.
+The [halogen qualification decision](../.agents/notes/implemented/numerics/2026-09-18-ecp-halogen-parameters.md)
+records the separate Br/I physical-parameter extension and evidence.
 
 ## Reproduction and parameter sources
 

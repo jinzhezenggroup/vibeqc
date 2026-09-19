@@ -82,6 +82,7 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_spherical_tests tests/native/test_spherical.cpp)
   vibeqc_native_test(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
   vibeqc_native_test(vibeqc_grid_tests tests/native/test_grid.cpp)
+  vibeqc_native_test(vibeqc_cosx_reference_tests tests/native/test_cosx_reference.cpp)
 
   add_executable(vibeqc_dft_tests
     tests/native/test_dft.cpp src/scf/density_factor.cpp src/dft/ao_grid.cpp

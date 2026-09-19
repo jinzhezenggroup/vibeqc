@@ -18,8 +18,9 @@ def _validate_profile(profile):
     for row in rows:
         if not re.fullmatch(r"[0-3]{3}", row["class"]):
             raise ValueError("invalid derivative class")
+        angular = tuple(map(int, row["class"]))
         trial = DfDerivativeTrial(
-            tuple(map(int, row["class"])),
+            (angular[0], angular[1], angular[2]),
             row["lowering"],
             SCHEDULES.index(row["schedule"]),
         )
