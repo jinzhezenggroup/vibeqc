@@ -2916,8 +2916,8 @@
         "fallback": 0,
         "performance_exception": 63
       },
-      "bytes": 4359,
-      "sha256": "a239939371829a8ce07b4a66ff05cd2429cb56a7e8a597213c9594627eb2a1f6"
+      "bytes": 4370,
+      "sha256": "3958554735d7dc56d5497d91e974046fc4fd8154875bcbf5774f30ef04f9aaad"
     },
     {
       "path": "src/scf/cuda/one_electron_force_reference.hpp",
@@ -3036,7 +3036,7 @@
         "performance_exception": 141
       },
       "bytes": 8640,
-      "sha256": "458aea6a02170ff7b8c2beda6bf8b202445627aeabd1ab6004523b59fd04a074"
+      "sha256": "b290e41b74b22bfa44ec43f0cc18bec81557bf10ca26cd430dce1b3733564a44"
     },
     {
       "path": "src/scf/cuda/one_electron_native_overlap.cuh",
