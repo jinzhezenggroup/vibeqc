@@ -194,7 +194,10 @@ def test_nonlocal_primitive_participates_in_method_identity_and_requirements():
     )
     resolved = resolve_method(spec, spin="polarized")
     assert isinstance(resolved.primitives[-1], NonlocalCorrelationPrimitive)
-    assert resolved.primitives[-1].derivative_capabilities == ("energy",)
+    assert resolved.primitives[-1].derivative_capabilities == (
+        "energy",
+        "ks-potential",
+    )
     assert resolved.requirements["ingredients"] == ("rho", "sigma")
     assert resolved.requirements["operators"] == (
         "semilocal-xc",

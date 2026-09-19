@@ -135,3 +135,95 @@ def nonlocal_energy_reference(
         tile_size=tile_size,
     )
     return float(np.dot(weights * density, eps))
+
+
+def nonlocal_feature_derivatives_reference(
+    coords,
+    weights,
+    density,
+    gradient,
+    spec,
+    *,
+    tile_size=256,
+):
+    """Return fixed-grid derivatives dE/d(rho,sigma) before quadrature weights."""
+    coords, weights, density, gradient = _validated_arrays(
+        coords, weights, density, gradient
+    )
+    if not isinstance(tile_size, int) or isinstance(tile_size, bool) or tile_size <= 0:
+        raise ValueError("tile_size must be a positive integer")
+    omega, kappa, beta = _local_scales(density, gradient, spec)
+    sigma = np.einsum("pi,pi->p", gradient, gradient)
+    c = float(spec.c)
+    domega_drho = (
+        (4.0 * math.pi / 3.0) - 4.0 * c * np.square(sigma) / np.power(density, 5)
+    ) / (2.0 * omega)
+    domega_dsigma = c * sigma / (omega * np.power(density, 4))
+    dkappa_drho = kappa / (6.0 * density)
+
+    vrho = np.empty_like(density)
+    vsigma = np.empty_like(density)
+    weighted_density = weights * density
+    ngrid = density.size
+
+    for i in range(ngrid):
+        sum_phi = 0.0
+        sum_rho = 0.0
+        sum_sigma = 0.0
+        for start in range(0, ngrid, tile_size):
+            stop = min(start + tile_size, ngrid)
+            delta = coords[start:stop] - coords[i]
+            r2 = np.einsum("pi,pi->p", delta, delta)
+            gi = omega[i] * r2 + kappa[i]
+            gj = omega[start:stop] * r2 + kappa[start:stop]
+            pair_sum = gi + gj
+            phi = -1.5 / (gi * gj * pair_sum)
+            dphi_dgi = -phi * (1.0 / gi + 1.0 / pair_sum)
+            dgi_drho = r2 * domega_drho[i] + dkappa_drho[i]
+            dgi_dsigma = r2 * domega_dsigma[i]
+            factor = weighted_density[start:stop]
+            sum_phi += float(np.sum(factor * phi, dtype=np.float64))
+            sum_rho += float(np.sum(factor * dphi_dgi * dgi_drho, dtype=np.float64))
+            sum_sigma += float(np.sum(factor * dphi_dgi * dgi_dsigma, dtype=np.float64))
+        vrho[i] = beta + sum_phi + density[i] * sum_rho
+        vsigma[i] = density[i] * sum_sigma
+    return vrho, vsigma
+
+
+def assemble_nonlocal_potential_reference(
+    jets,
+    weights,
+    density_gradient,
+    vrho,
+    vsigma,
+):
+    """Assemble the total-density AO matrix for a fixed-grid VV10 potential."""
+    jets = np.asarray(jets, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64)
+    density_gradient = np.asarray(density_gradient, dtype=np.float64)
+    vrho = np.asarray(vrho, dtype=np.float64)
+    vsigma = np.asarray(vsigma, dtype=np.float64)
+    if jets.ndim != 3 or jets.shape[0] < 4:
+        raise ValueError("nonlocal potential requires first-order AO jets")
+    ngrid = jets.shape[1]
+    if (
+        weights.shape != (ngrid,)
+        or density_gradient.shape != (ngrid, 3)
+        or vrho.shape != (ngrid,)
+        or vsigma.shape != (ngrid,)
+    ):
+        raise ValueError("nonlocal potential point shapes do not match")
+    if not all(
+        np.all(np.isfinite(array))
+        for array in (jets, weights, density_gradient, vrho, vsigma)
+    ):
+        raise ValueError("nonlocal potential inputs must be finite")
+
+    phi = jets[0]
+    derivatives = jets[1:4]
+    matrix = phi.T @ ((weights * vrho)[:, None] * phi)
+    spatial = 2.0 * vsigma[:, None] * density_gradient
+    panel = sum(spatial[:, k, None] * derivatives[k] for k in range(3))
+    cross = phi.T @ (weights[:, None] * panel)
+    matrix += cross + cross.T
+    return 0.5 * (matrix + matrix.T)

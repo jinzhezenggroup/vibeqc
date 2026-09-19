@@ -39,8 +39,8 @@ class NonlocalCorrelationPrimitive:
 
     @property
     def derivative_capabilities(self):
-        # Slice A implements only the independently validated energy oracle.
-        return ("energy",)
+        # Energy and the self-consistent KS/Fock potential share one definition.
+        return ("energy", "ks-potential")
 
     @property
     def required_ingredients(self):

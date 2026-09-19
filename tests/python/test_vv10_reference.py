@@ -3,8 +3,10 @@
 import numpy as np
 import pytest
 from vibeqc_compiler.dft import (
+    assemble_nonlocal_potential_reference,
     nonlocal_energy_density_reference,
     nonlocal_energy_reference,
+    nonlocal_feature_derivatives_reference,
     nonlocal_kernel_matrix_reference,
 )
 from vibeqc_compiler.method import original_nonlocal_correlation
@@ -114,3 +116,100 @@ def test_reference_oracle_fails_closed_outside_its_domain(fixed_grid):
         nonlocal_energy_reference(coords, weights, density, gradient, spec, tile_size=0)
     with pytest.raises(ValueError, match="small fixed grids"):
         nonlocal_kernel_matrix_reference(coords, density, gradient, spec, max_points=3)
+
+
+def test_feature_derivatives_match_fixed_grid_directional_difference(fixed_grid):
+    coords, weights, density, gradient = fixed_grid
+    spec = original_nonlocal_correlation("vv10")
+    vrho, vsigma = nonlocal_feature_derivatives_reference(
+        coords, weights, density, gradient, spec, tile_size=2
+    )
+    drho = np.array([0.03, -0.02, 0.01, -0.015])
+    dgradient = np.array(
+        [
+            [0.01, 0.02, -0.01],
+            [-0.02, 0.01, 0.015],
+            [0.005, -0.01, 0.02],
+            [0.01, 0.005, -0.015],
+        ]
+    )
+    dsigma = 2.0 * np.einsum("pi,pi->p", gradient, dgradient)
+    predicted = float(np.dot(weights, vrho * drho + vsigma * dsigma))
+
+    errors = []
+    for step in (2e-4, 1e-4, 5e-5):
+        plus = nonlocal_energy_reference(
+            coords,
+            weights,
+            density + step * drho,
+            gradient + step * dgradient,
+            spec,
+            tile_size=2,
+        )
+        minus = nonlocal_energy_reference(
+            coords,
+            weights,
+            density - step * drho,
+            gradient - step * dgradient,
+            spec,
+            tile_size=2,
+        )
+        finite_difference = (plus - minus) / (2.0 * step)
+        errors.append(abs(finite_difference - predicted))
+    assert max(errors) < 2e-10
+
+
+def _features_from_total_density(jets, density):
+    phi = jets[0]
+    weighted = phi @ density
+    rho = np.sum(phi * weighted, axis=1)
+    gradient = np.stack(
+        [2.0 * np.sum(derivative * weighted, axis=1) for derivative in jets[1:4]],
+        axis=1,
+    )
+    return rho, gradient
+
+
+def test_ao_potential_is_derivative_of_same_nonlocal_energy():
+    coords = np.array(
+        [[0.0, 0.0, 0.0], [0.6, 0.1, -0.2], [-0.4, 0.7, 0.3], [0.9, -0.5, 0.8]]
+    )
+    weights = np.array([0.4, 0.3, 0.5, 0.2])
+    jets = np.array(
+        [
+            [[1.0, 0.2], [0.8, -0.1], [0.6, 0.3], [1.1, 0.05]],
+            [[0.10, -0.04], [-0.03, 0.08], [0.05, 0.02], [-0.06, 0.04]],
+            [[-0.02, 0.07], [0.06, -0.01], [-0.04, 0.03], [0.02, 0.05]],
+            [[0.03, 0.01], [-0.05, 0.02], [0.07, -0.02], [0.01, -0.04]],
+        ]
+    )
+    density_matrix = np.array([[0.9, 0.1], [0.1, 0.7]])
+    direction = np.array([[0.04, -0.015], [-0.015, -0.03]])
+    spec = original_nonlocal_correlation("rvv10")
+
+    rho, gradient = _features_from_total_density(jets, density_matrix)
+    vrho, vsigma = nonlocal_feature_derivatives_reference(
+        coords, weights, rho, gradient, spec, tile_size=2
+    )
+    potential = assemble_nonlocal_potential_reference(
+        jets, weights, gradient, vrho, vsigma
+    )
+    predicted = float(np.sum(potential * direction))
+
+    errors = []
+    for step in (2e-4, 1e-4, 5e-5):
+        plus_rho, plus_gradient = _features_from_total_density(
+            jets, density_matrix + step * direction
+        )
+        minus_rho, minus_gradient = _features_from_total_density(
+            jets, density_matrix - step * direction
+        )
+        plus = nonlocal_energy_reference(
+            coords, weights, plus_rho, plus_gradient, spec, tile_size=2
+        )
+        minus = nonlocal_energy_reference(
+            coords, weights, minus_rho, minus_gradient, spec, tile_size=2
+        )
+        finite_difference = (plus - minus) / (2.0 * step)
+        errors.append(abs(finite_difference - predicted))
+    assert max(errors) < 2e-10
