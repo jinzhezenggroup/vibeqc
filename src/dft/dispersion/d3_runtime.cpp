@@ -62,7 +62,8 @@ std::unique_ptr<D3Plan> D3Plan::prepare(vibeqc_backend backend, int device_id,
   status = VIBEQC_STATUS_INVALID_ARGUMENT;
   if ((backend != VIBEQC_BACKEND_CPU_REFERENCE && backend != VIBEQC_BACKEND_CUDA) ||
       maximum_bytes == 0 || offsets.size() < 2 || offsets.front() != 0 ||
-      offsets.back() != atomic_numbers.size() || default_coordinates.size() != 3 * atomic_numbers.size() ||
+      offsets.back() != atomic_numbers.size() ||
+      default_coordinates.size() != 3 * atomic_numbers.size() ||
       !d3_detail::valid_parameters(parameters)) {
     detail = "invalid D3(BJ) production plan descriptor";
     return nullptr;
@@ -105,9 +106,9 @@ std::unique_ptr<D3Plan> D3Plan::prepare(vibeqc_backend backend, int device_id,
   }
 
   try {
-    auto result = std::unique_ptr<D3Plan>(new D3Plan(
-        backend, device_id, std::move(offsets), std::move(atomic_numbers),
-        std::move(default_coordinates), parameters, resources));
+    auto result = std::unique_ptr<D3Plan>(
+        new D3Plan(backend, device_id, std::move(offsets), std::move(atomic_numbers),
+                   std::move(default_coordinates), parameters, resources));
     if (backend == VIBEQC_BACKEND_CUDA) {
       result->cuda_ = create_d3_cuda_owner(device_id, result->offsets_, result->atomic_numbers_,
                                            resources, detail, status);
@@ -145,8 +146,8 @@ vibeqc_status D3Plan::execute(std::span<const double> packed_coordinates,
     energies.assign(systems, 0.0);
     packed_gradients.assign(3 * atoms, 0.0);
     if (backend_ == VIBEQC_BACKEND_CUDA)
-      return execute_d3_cuda(cuda_, parameters_, packed_coordinates, active, want_gradient, statuses,
-                             energies, packed_gradients, detail);
+      return execute_d3_cuda(cuda_, parameters_, packed_coordinates, active, want_gradient,
+                             statuses, energies, packed_gradients, detail);
 
     std::vector<double> workspace(d3_workspace_elements(resources_.maximum_atoms));
     std::vector<double> candidate_gradient(3 * resources_.maximum_atoms);
@@ -158,8 +159,8 @@ vibeqc_status D3Plan::execute(std::span<const double> packed_coordinates,
       double candidate_energy = 0.0;
       double* gradient = want_gradient[system] ? candidate_gradient.data() : nullptr;
       const auto item_status = evaluate_d3_bj(
-          n, atomic_numbers_.data() + begin, packed_coordinates.data() + 3 * begin, parameters_, tables,
-          workspace.data(), workspace.size(), &candidate_energy, gradient);
+          n, atomic_numbers_.data() + begin, packed_coordinates.data() + 3 * begin, parameters_,
+          tables, workspace.data(), workspace.size(), &candidate_energy, gradient);
       statuses[system] = item_status;
       if (item_status != D3Status::success) continue;
       energies[system] = candidate_energy;

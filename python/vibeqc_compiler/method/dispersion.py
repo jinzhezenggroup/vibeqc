@@ -11,7 +11,6 @@ D3_TABLE_SHA256 = "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd
 D3_RADII_SHA256 = "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
 
 
-
 @dataclass(frozen=True)
 class D3Spec:
     """Versioned two-body D3(BJ) model and numerical approximation identity.
@@ -103,6 +102,7 @@ class DispersionCorrectionPrimitive:
     def to_payload(self):
         return self.semantic_payload()
 
+
 def pbe_d3_bj_spec():
     """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(
@@ -125,4 +125,3 @@ def pbe0_d3_bj_spec():
         table_sha256=D3_TABLE_SHA256,
         radii_sha256=D3_RADII_SHA256,
     )
-

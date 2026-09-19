@@ -84,9 +84,9 @@ class D3Plan {
 };
 
 D3CudaOwner* create_d3_cuda_owner(int device_id, std::span<const std::uint32_t> offsets,
-                                   std::span<const std::int32_t> atomic_numbers,
-                                   const D3ResourceUsage& resources, std::string& detail,
-                                   vibeqc_status& status);
+                                  std::span<const std::int32_t> atomic_numbers,
+                                  const D3ResourceUsage& resources, std::string& detail,
+                                  vibeqc_status& status);
 void destroy_d3_cuda_owner(D3CudaOwner* owner) noexcept;
 vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters,
                               std::span<const double> coordinates,

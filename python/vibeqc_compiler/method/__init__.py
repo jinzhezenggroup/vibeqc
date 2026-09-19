@@ -26,9 +26,9 @@ from .stationary_gradient import (
 )
 
 __all__ = [
-    "METHOD_CATALOG",
     "D3_RADII_SHA256",
     "D3_TABLE_SHA256",
+    "METHOD_CATALOG",
     "D3Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",

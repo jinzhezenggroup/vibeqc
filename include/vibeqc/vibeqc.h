@@ -1056,13 +1056,14 @@ VIBEQC_API const char* vibeqc_d3_radii_sha256(void);
  * The owner copies atomic numbers and prepared geometries. maximum_bytes bounds
  * the plan plus worst-case execution staging and, on CUDA, device ownership.
  */
-VIBEQC_API vibeqc_status vibeqc_d3_batch_prepare(
-    vibeqc_context* context, const vibeqc_d3_system_descriptor* systems,
-    uint32_t system_count, const vibeqc_d3_bj_descriptor* model,
-    vibeqc_d3_batch** batch);
+VIBEQC_API vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
+                                                 const vibeqc_d3_system_descriptor* systems,
+                                                 uint32_t system_count,
+                                                 const vibeqc_d3_bj_descriptor* model,
+                                                 vibeqc_d3_batch** batch);
 VIBEQC_API void vibeqc_d3_batch_destroy(vibeqc_d3_batch* batch);
-VIBEQC_API vibeqc_status vibeqc_d3_batch_get_diagnostic(
-    const vibeqc_d3_batch* batch, vibeqc_d3_runtime_diagnostic* diagnostic);
+VIBEQC_API vibeqc_status vibeqc_d3_batch_get_diagnostic(const vibeqc_d3_batch* batch,
+                                                        vibeqc_d3_runtime_diagnostic* diagnostic);
 
 /**
  * Execute correction-only energy / analytic dE/dR with item failure isolation.
@@ -1072,10 +1073,11 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_get_diagnostic(
  * geometry for that member. A successful function return means the replay was
  * structurally valid; inspect each item status for scientific failures.
  */
-VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(
-    vibeqc_d3_batch* batch, const vibeqc_d3_batch_input_descriptor* inputs,
-    uint32_t input_count, vibeqc_d3_batch_item_result_descriptor* results,
-    uint32_t result_count);
+VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
+                                                 const vibeqc_d3_batch_input_descriptor* inputs,
+                                                 uint32_t input_count,
+                                                 vibeqc_d3_batch_item_result_descriptor* results,
+                                                 uint32_t result_count);
 
 #ifdef __cplusplus
 }

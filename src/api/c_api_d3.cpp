@@ -37,18 +37,13 @@ vibeqc_status public_status(vibeqc::dft::dispersion::D3Status status) {
 
 extern "C" {
 
-const char* vibeqc_d3_table_sha256(void) {
-  return vibeqc::dft::dispersion::d3_data::kTableSha256;
-}
+const char* vibeqc_d3_table_sha256(void) { return vibeqc::dft::dispersion::d3_data::kTableSha256; }
 
-const char* vibeqc_d3_radii_sha256(void) {
-  return vibeqc::dft::dispersion::d3_data::kRadiiSha256;
-}
+const char* vibeqc_d3_radii_sha256(void) { return vibeqc::dft::dispersion::d3_data::kRadiiSha256; }
 
 vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
                                       const vibeqc_d3_system_descriptor* systems,
-                                      uint32_t system_count,
-                                      const vibeqc_d3_bj_descriptor* model,
+                                      uint32_t system_count, const vibeqc_d3_bj_descriptor* model,
                                       vibeqc_d3_batch** batch) {
   if (!context || !systems || !system_count || !model || !batch)
     return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -92,14 +87,14 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
     }
 
     vibeqc::dft::dispersion::D3Parameters parameters{
-        model->s6, model->s8, model->a1, model->a2, model->s9,
-        model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+        model->s6, model->s8,        model->a1,          model->a2,
+        model->s9, model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
 
     vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
     auto plan = vibeqc::dft::dispersion::D3Plan::prepare(
         context->state.executed_backend, context->state.device_id, std::move(offsets),
-        std::move(atomic_numbers), std::move(coordinates), parameters,
-        model->maximum_bytes, context->last_detail, status);
+        std::move(atomic_numbers), std::move(coordinates), parameters, model->maximum_bytes,
+        context->last_detail, status);
     if (!plan) return status;
 
     auto candidate = std::make_unique<vibeqc_d3_batch>();
@@ -114,8 +109,8 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
 
 void vibeqc_d3_batch_destroy(vibeqc_d3_batch* batch) { delete batch; }
 
-vibeqc_status vibeqc_d3_batch_get_diagnostic(
-    const vibeqc_d3_batch* batch, vibeqc_d3_runtime_diagnostic* diagnostic) {
+vibeqc_status vibeqc_d3_batch_get_diagnostic(const vibeqc_d3_batch* batch,
+                                             vibeqc_d3_runtime_diagnostic* diagnostic) {
   if (!batch || !diagnostic) return VIBEQC_STATUS_INVALID_ARGUMENT;
   if (!vibeqc::api::valid_descriptor(diagnostic)) return VIBEQC_STATUS_ABI_MISMATCH;
   std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
@@ -133,10 +128,11 @@ vibeqc_status vibeqc_d3_batch_get_diagnostic(
   return VIBEQC_STATUS_SUCCESS;
 }
 
-vibeqc_status vibeqc_d3_batch_execute(
-    vibeqc_d3_batch* batch, const vibeqc_d3_batch_input_descriptor* inputs,
-    uint32_t input_count, vibeqc_d3_batch_item_result_descriptor* results,
-    uint32_t result_count) {
+vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
+                                      const vibeqc_d3_batch_input_descriptor* inputs,
+                                      uint32_t input_count,
+                                      vibeqc_d3_batch_item_result_descriptor* results,
+                                      uint32_t result_count) {
   if (!batch || !results) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const auto systems = batch->plan->system_count();
   if (result_count != systems) return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -187,8 +183,8 @@ vibeqc_status vibeqc_d3_batch_execute(
     std::vector<vibeqc::dft::dispersion::D3Status> statuses;
     std::vector<double> energies;
     std::vector<double> gradients;
-    const auto status = batch->plan->execute(coordinates, active, want_gradient, statuses,
-                                             energies, gradients, batch->context->last_detail);
+    const auto status = batch->plan->execute(coordinates, active, want_gradient, statuses, energies,
+                                             gradients, batch->context->last_detail);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
 
     std::size_t atom_cursor = 0;

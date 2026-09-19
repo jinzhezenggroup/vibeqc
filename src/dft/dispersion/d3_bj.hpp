@@ -48,17 +48,14 @@ VIBEQC_D3_HD inline std::size_t d3_workspace_elements(std::size_t atoms) {
 
 namespace d3_detail {
 
-VIBEQC_D3_HD inline bool finite(double x) {
-  return x == x && x <= DBL_MAX && x >= -DBL_MAX;
-}
+VIBEQC_D3_HD inline bool finite(double x) { return x == x && x <= DBL_MAX && x >= -DBL_MAX; }
 
 VIBEQC_D3_HD inline bool valid_parameters(const D3Parameters& p) {
   const bool cn = p.cn_cutoff == 0.0 || (finite(p.cn_cutoff) && p.cn_cutoff > 0.0);
   const bool pair = p.pair_cutoff == 0.0 || (finite(p.pair_cutoff) && p.pair_cutoff > 0.0);
   return finite(p.s6) && finite(p.s8) && finite(p.a1) && finite(p.a2) && finite(p.s9) &&
-         finite(p.pair_switch_width) && p.s6 >= 0.0 && p.s8 >= 0.0 && p.a1 >= 0.0 &&
-         p.a2 >= 0.0 && (p.a1 > 0.0 || p.a2 > 0.0) && p.s9 == 0.0 && cn && pair &&
-         p.pair_switch_width >= 0.0 &&
+         finite(p.pair_switch_width) && p.s6 >= 0.0 && p.s8 >= 0.0 && p.a1 >= 0.0 && p.a2 >= 0.0 &&
+         (p.a1 > 0.0 || p.a2 > 0.0) && p.s9 == 0.0 && cn && pair && p.pair_switch_width >= 0.0 &&
          (p.pair_switch_width == 0.0 ||
           (p.pair_cutoff > 0.0 && p.pair_switch_width < p.pair_cutoff));
 }
@@ -168,11 +165,10 @@ VIBEQC_D3_HD inline void add_pair_gradient(std::size_t first, std::size_t second
 
 // Complete two-body D3(BJ) dE/dR including coordination-number response.
 // Workspace is exactly 16*n doubles: weights[7n], dweight/dCN[7n], adjoints[n], CN[n].
-VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z,
-                                            const double* xyz, const D3Parameters& parameters,
-                                            D3Tables tables, double* workspace,
-                                            std::size_t workspace_elements, double* energy,
-                                            double* gradient) {
+VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z, const double* xyz,
+                                            const D3Parameters& parameters, D3Tables tables,
+                                            double* workspace, std::size_t workspace_elements,
+                                            double* energy, double* gradient) {
   using namespace d3_detail;
   if (!z || !xyz || !workspace || !energy || n == 0 || n > kD3MaximumAtomsPerSystem ||
       workspace_elements < d3_workspace_elements(n) || !valid_parameters(parameters))
@@ -203,8 +199,8 @@ VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z
       const double r2 = dx * dx + dy * dy + dz * dz;
       if (!finite(r2) || r2 < 1.0e-12) return D3Status::numerical_failure;
       if (parameters.cn_cutoff > 0.0 && r2 > parameters.cn_cutoff * parameters.cn_cutoff) continue;
-      const double radius =
-          tables.elements[z[first] - 1].covalent_radius + tables.elements[z[second] - 1].covalent_radius;
+      const double radius = tables.elements[z[first] - 1].covalent_radius +
+                            tables.elements[z[second] - 1].covalent_radius;
       const double argument = 16.0 * (radius / sqrt(r2) - 1.0);
       const double value = logistic(argument);
       cn[first] += value;
@@ -212,8 +208,7 @@ VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z
     }
   }
 
-  if (!prepare_weights(n, z, cn, tables, weights, derivatives))
-    return D3Status::numerical_failure;
+  if (!prepare_weights(n, z, cn, tables, weights, derivatives)) return D3Status::numerical_failure;
 
   for (std::size_t second = 1; second < n; ++second) {
     for (std::size_t first = 0; first < second; ++first) {
@@ -237,8 +232,7 @@ VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z
       const double t6 = 1.0 / (r6 + rd6), t8 = 1.0 / (r8 + rd8);
       const double phi = parameters.s6 * t6 + parameters.s8 * rr * t8;
       const double derivative_over_distance =
-          parameters.s6 * (-6.0 * r4 * t6 * t6) +
-          parameters.s8 * rr * (-8.0 * r6 * t8 * t8);
+          parameters.s6 * (-6.0 * r4 * t6 * t6) + parameters.s8 * rr * (-8.0 * r6 * t8 * t8);
       double cutoff_derivative = 0.0;
       const double cutoff =
           smooth_cutoff(r, parameters.pair_cutoff, parameters.pair_switch_width, cutoff_derivative);
@@ -263,10 +257,11 @@ VIBEQC_D3_HD inline D3Status evaluate_d3_bj(std::size_t n, const std::int32_t* z
         const double dy = xyz[3 * first + 1] - xyz[3 * second + 1];
         const double dz = xyz[3 * first + 2] - xyz[3 * second + 2];
         const double r2 = dx * dx + dy * dy + dz * dz;
-        if (parameters.cn_cutoff > 0.0 && r2 > parameters.cn_cutoff * parameters.cn_cutoff) continue;
+        if (parameters.cn_cutoff > 0.0 && r2 > parameters.cn_cutoff * parameters.cn_cutoff)
+          continue;
         const double r = sqrt(r2);
-        const double radius =
-            tables.elements[z[first] - 1].covalent_radius + tables.elements[z[second] - 1].covalent_radius;
+        const double radius = tables.elements[z[first] - 1].covalent_radius +
+                              tables.elements[z[second] - 1].covalent_radius;
         const double argument = 16.0 * (radius / r - 1.0);
         const double e = exp(-fabs(argument));
         const double logistic_derivative = e / ((1.0 + e) * (1.0 + e));
