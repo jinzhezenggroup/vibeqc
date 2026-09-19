@@ -21,9 +21,9 @@ double divided_difference(double left, double right, bool keep_left, bool keep_r
   if (keep_left && keep_right) {
     if (!(left > 0.0) || !(right > 0.0))
       throw std::invalid_argument("retained spectral value must be positive");
-    if (function == SymmetricMatrixFunction::pseudoinverse) return -1.0 / (left * right);
+    if (function == SymmetricMatrixFunction::pseudoinverse) return -1.0 / left / right;
     const double sl = std::sqrt(left), sr = std::sqrt(right);
-    return -1.0 / (sl * sr * (sl + sr));
+    return -1.0 / sl / sr / (sl + sr);
   }
   const double gap = left - right;
   if (std::abs(gap) <= resolution)
@@ -57,7 +57,7 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
   std::vector<double> symmetric(elements), temp(elements, 0.0), transformed(elements, 0.0);
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = 0; j < n; ++j)
-      symmetric[index(i, j, n)] = 0.5 * (response[index(i, j, n)] + response[index(j, i, n)]);
+      symmetric[index(i, j, n)] = 0.5 * response[index(i, j, n)] + 0.5 * response[index(j, i, n)];
 
   // temp = sym(E) Q; transformed = Q^T temp.
   for (std::size_t i = 0; i < n; ++i)
@@ -86,7 +86,7 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = i + 1; j < n; ++j)
       result[index(i, j, n)] = result[index(j, i, n)] =
-          0.5 * (result[index(i, j, n)] + result[index(j, i, n)]);
+          0.5 * result[index(i, j, n)] + 0.5 * result[index(j, i, n)];
   if (!std::all_of(result.begin(), result.end(), [](double x) { return std::isfinite(x); }))
     throw std::runtime_error("symmetric matrix-function response is non-finite");
   return result;

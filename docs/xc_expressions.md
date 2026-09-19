@@ -1,8 +1,9 @@
 # Audited semilocal XC expressions (DFT02)
 
 `vibeqc_compiler.xc` represents LDA exchange, PW92 correlation (ordinary and modified
-parameters), PBE exchange and PBE correlation. `LDA_XC_PW` and `PBE` are exact
-component sums. This is an explicit scientific tooling API, not a public DFT
+parameters), PBE exchange/correlation, and tau-dependent r²SCAN
+exchange/correlation. `LDA_XC_PW`, `PBE`, and `R2SCAN` are exact component
+sums. This is an explicit scientific tooling API, not a public molecular KS
 method or a promoted kernel schedule. There is no Hartree, nuclear or exact
 exchange energy in these outputs.
 
@@ -24,8 +25,10 @@ notices, license and SHA-256 URL manifest are in `external/libxc-7.0.0/`.
 formatter excludes these upstream files to preserve their audited bytes.
 PBE correlation uses *modified* PW92 constants; ordinary `LDA_C_PW` retains the
 original rounded constants. PBE uses beta=0.06672455060314922,
-mu=beta*pi²/3, kappa=0.804 and gamma=(1-log(2))/pi². No runtime Libxc call or
-Python autograd appears in device execution.
+mu=beta*pi²/3, kappa=0.804 and gamma=(1-log(2))/pi². r²SCAN pins the Libxc 7.0.0
+Furness definitions, including eta=0.001, dp2=0.361 and the exact rSCAN switching
+polynomials; SCAN, rSCAN and r²SCAN are not aliases. No runtime Libxc call or
+Python autograd appears in production expression execution.
 
 ## Scalar and derivative conventions
 
@@ -40,11 +43,11 @@ All quantities use atomic units. The scalar is **energy per volume**
 
 `sigma_ab = grad(rho_a) dot grad(rho_b)` has **no factor two**. Total sigma is
 `sigma_aa + 2 sigma_ab + sigma_bb`. `tau_s = 1/2 sum D_s,mu,nu grad(phi_mu) dot
-grad(phi_nu)`. Tau is unused by this inventory; its derivatives are exact zeros
-of a represented expression, not placeholders for an unsupported functional.
-Unpolarized lowering substitutes `rho_s=rho/2`, `sigma_ss'=sigma/4`, `tau_s=tau/2`
-*before differentiation*. `pack_grid_features` maps DFT01 data and requires equal
-spin fields before accepting an unpolarized conversion.
+grad(phi_nu)`. LDA/GGA prune tau; r²SCAN activates it and generated first/second
+partials include `vtau` and mixed tau derivatives. Unpolarized lowering substitutes
+`rho_s=rho/2`, `sigma_ss'=sigma/4`, `tau_s=tau/2` *before differentiation*.
+`pack_grid_features` maps DFT01 data and requires equal spin fields before
+accepting an unpolarized conversion.
 
 `build_program(spec, order=2)` emits energy, all first partials, then the packed
 upper triangular Hessian in lexicographic feature-index order. Explicit
@@ -66,9 +69,10 @@ V_s,mu,nu = e_rho_s phi_mu phi_nu
 
 The caller multiplies by grid weights once. There is no further cross-spin
 factor and no factor for symmetrizing the already symmetric AO bilinear.
-`potential_coefficients` supplies these factors; tests differentiate an actual
-AO-density contraction, adding a linear tau term to exercise the half factor.
-For unpolarized inputs, `G = 2 e_sigma grad(rho)`.
+`potential_coefficients` supplies these factors. r²SCAN tests differentiate the
+complete generated XC energy through a density-matrix direction and therefore
+fail if the real `vtau` weak-form contribution is omitted. For unpolarized inputs,
+`G = 2 e_sigma grad(rho)`.
 
 ## Finite domain: `libxc-7.0.0/interior-v1`
 
@@ -88,10 +92,13 @@ support boundaries, zero/small sigma, extreme exponents and near polarization.
 There is no regularization branch whose derivative is omitted.
 
 Squared reduced gradients avoid singular `sqrt(sigma)` differentiation at zero.
-PW uses `log1p`; PBE uses `expm1` and `log1p`. Stable primitive nodes survive both
-shared algebra rebuild passes. Fractions retain exact source coefficients;
-transcendental constants and fractional exponents lower to FP64. Both orders
-of optimization/differentiation are checked against the ordinary interpreter.
+PW uses `log1p`; PBE uses `expm1` and `log1p`. r²SCAN additionally uses a lazy
+piecewise scalar primitive for the alpha<=0, 0<alpha<=2.5 and alpha>2.5 branches.
+Inactive branches are not evaluated by the scalar interpreter, array interpreter,
+or C/CUDA emitter; differentiation preserves the branch predicate. Stable
+primitive nodes survive shared algebra rebuild passes. Fractions retain exact
+source coefficients; transcendental constants and fractional exponents lower to
+FP64.
 
 ## Execution, budgets and capability stages
 
@@ -123,7 +130,12 @@ changed input, failures, closure and concurrent independent plans are tested.
 
 `query_capability` separates represented/emitted/compiled/validated/promoted.
 Validation requires the shared evidence schema and exact generated/binary
-identity. No candidate is automatically promoted. The PBE Hessian's fully fused
+identity. No candidate is automatically promoted. r²SCAN is represented through the same
+`SemilocalXC` primitive and generated scalar/CUDA machinery as LDA/GGA. Its
+fixed-density energy and generalized-KS potential contraction are available on
+the common CPU path, while tau-dependent density response, geometry/nuclear
+gradients, CPKS/Hessians and public native KS execution remain fail-closed until
+their separate validation gates are completed. The PBE Hessian's fully fused
 candidate spills on the measured RTX 5090; separate and grouped outputs provide
 spill-free alternatives. Eight-output PBE correlation still spills, so the
 full matrix does not assume a universal grouping. Resource success alone is not

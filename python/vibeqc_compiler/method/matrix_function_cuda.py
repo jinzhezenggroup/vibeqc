@@ -35,7 +35,7 @@ static __global__ void pseudoinverse_vjp_stage(
   double value = 0.0;
   for (std::size_t k = 0; k < n; ++k) {{
     if (stage == 0)
-      value += .5 * (input[i * n + k] + input[k * n + i]) *
+      value += (.5 * input[i * n + k] + .5 * input[k * n + i]) *
                eigenvectors[k + j * n];
     if (stage == 1) value += eigenvectors[k + i * n] * input[k * n + j];
     if (stage == 2) value += eigenvectors[i + k * n] * input[k * n + j];
@@ -47,7 +47,7 @@ static __global__ void pseudoinverse_vjp_stage(
     const bool ki = li > cutoff, kj = lj > cutoff;
     double divided = 0.0;
     if (ki && kj)
-      divided = -1.0 / (li * lj);
+      divided = -1.0 / li / lj;
     else if (ki != kj)
       divided = ((ki ? 1.0 / li : 0.0) - (kj ? 1.0 / lj : 0.0)) /
                 (li - lj);
@@ -60,7 +60,7 @@ static __global__ void symmetrize_response(std::size_t n, double* values) {{
   const auto ij = std::size_t{{blockIdx.x}} * blockDim.x + threadIdx.x;
   if (ij >= n * n || ij / n >= ij % n) return;
   const auto ji = (ij % n) * n + ij / n;
-  values[ij] = values[ji] = .5 * (values[ij] + values[ji]);
+  values[ij] = values[ji] = .5 * values[ij] + .5 * values[ji];
 }}
 }}  // namespace detail
 

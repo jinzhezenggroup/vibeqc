@@ -29,6 +29,14 @@ _EXPORTS = {
     "infer_feature_types": ".typecheck",
     "resolve_method": ".spec",
     "verify_method_ir": ".typecheck",
+    "GFN2_PARAMETER_SET": ".xtb",
+    "XTB_METHOD_CATALOG": ".xtb",
+    "UnsupportedXtbMethod": ".xtb",
+    "XtbMethodIR": ".xtb",
+    "XtbMethodSpec": ".xtb",
+    "XtbParameterSet": ".xtb",
+    "XtbPrimitive": ".xtb",
+    "resolve_xtb_method": ".xtb",
 }
 
 __all__ = list(_EXPORTS)

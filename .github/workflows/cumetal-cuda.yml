@@ -12,14 +12,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: cumetal-cuda-${{ github.event.pull_request.number || github.run_id }}
+  group: cumetal-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   cuda-tests:
     name: CUDA runtime tests (CuMetal / Apple GPU)
     runs-on: macos-15
-    timeout-minutes: 60
+    # Keep the 50-minute full-suite step inside a separate finite job budget.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
@@ -198,29 +199,6 @@ jobs:
           grep -q 'launch_success=true' /tmp/vibeqc-cuda-runtime.log
           grep -q 'PASS: CUDA runtime contracts' /tmp/vibeqc-cuda-runtime.log
 
-      - name: Build CuMetal FP32 CodSpeed benchmark
-        if: github.event_name != 'schedule'
-        run: |
-          CUMETAL_ROOT="$CUMETAL_PREFIX" \
-            "$CUMETAL_PREFIX/bin/cumetalc" benchmarks/cumetal_fp32_codspeed.cu \
-            -I"$CUMETAL_PREFIX/include" \
-            -o "$VIBEQC_BUILD/vibeqc_cumetal_fp32_benchmark"
-
-      - name: Install CodSpeed benchmark dependencies
-        if: github.event_name != 'schedule'
-        run: uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
-
-      - name: Run CodSpeed FP32 CuMetal walltime
-        if: github.event_name != 'schedule'
-        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
-        env:
-          CUMETAL_ROOT: /tmp/cumetal-install
-          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
-          VIBEQC_CUMETAL_FP32_BENCH: ${{ github.workspace }}/build-cumetal/vibeqc_cumetal_fp32_benchmark
-        with:
-          mode: walltime
-          run: .venv/bin/python -m pytest benchmarks/test_cumetal_fp32_codspeed.py --codspeed -q
-
       - name: Preserve CUDA test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -246,8 +224,106 @@ jobs:
           CUMETAL_CUDA_TEST_TIMEOUT_SECONDS: "300"
         run: .venv/bin/python .github/scripts/run_cumetal_cuda_pytests.py
 
+
+  cumetal-benchmark:
+    name: CuMetal performance (CodSpeed / Apple GPU)
+    if: github.event_name != 'schedule'
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
+      CUMETAL_SOURCE: /tmp/cuda-metal
+      CUMETAL_PREFIX: /tmp/cumetal-install
+      CUMETAL_CCACHE_DIR: /tmp/cumetal-ccache
+      VIBEQC_BENCH_BUILD: ${{ github.workspace }}/build-cumetal-benchmark
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify Apple Silicon runner
+        run: |
+          test "$(uname -m)" = arm64
+          xcrun --find metal
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Prepare benchmark environment
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+          brew install llvm z3 ninja ccache
+
+      - name: Cache CuMetal toolchain
+        id: cache-cumetal
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            /tmp/cuda-metal
+            /tmp/cumetal-install
+          key: cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}
+
+      - name: Restore CuMetal build ccache
+        if: steps.cache-cumetal.outputs.cache-hit != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CUMETAL_CCACHE_DIR }}
+          key: ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}
+          restore-keys: |
+            ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build pinned CuMetal on a cold cache
+        if: steps.cache-cumetal.outputs.cache-hit != 'true'
+        env:
+          CCACHE_DIR: ${{ env.CUMETAL_CCACHE_DIR }}
+          CCACHE_COMPILERCHECK: content
+        run: |
+          ccache --zero-stats
+          git clone --recurse-submodules https://github.com/Lulzx/cuda-metal.git "$CUMETAL_SOURCE"
+          git -C "$CUMETAL_SOURCE" checkout "$CUMETAL_COMMIT"
+          git -C "$CUMETAL_SOURCE" submodule update --init --recursive
+          cmake -S "$CUMETAL_SOURCE" -B "$CUMETAL_SOURCE/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$CUMETAL_PREFIX" \
+            -DCMAKE_C_COMPILER_LAUNCHER="$(command -v ccache)" \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="$(command -v ccache)" \
+            -DCMAKE_OBJCXX_COMPILER_LAUNCHER="$(command -v ccache)" \
+            -DCUMETAL_BUILD_TESTS=OFF \
+            -DCUMETAL_ENABLE_BINARY_SHIM=OFF \
+            -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm"
+          cmake --build "$CUMETAL_SOURCE/build" --parallel 3
+          cmake --install "$CUMETAL_SOURCE/build"
+
+      - name: Verify CuMetal
+        run: CUMETAL_ROOT="$CUMETAL_PREFIX" "$CUMETAL_PREFIX/bin/cumetal" doctor
+
+      - name: Build CuMetal FP32 CodSpeed benchmark
+        run: |
+          mkdir -p "$VIBEQC_BENCH_BUILD"
+          CUMETAL_ROOT="$CUMETAL_PREFIX" \
+            "$CUMETAL_PREFIX/bin/cumetalc" benchmarks/cumetal_fp32_codspeed.cu \
+            -I"$CUMETAL_PREFIX/include" \
+            -o "$VIBEQC_BENCH_BUILD/vibeqc_cumetal_fp32_benchmark"
+
+      - name: Run CodSpeed FP32 CuMetal proxy suite
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          CUMETAL_ROOT: /tmp/cumetal-install
+          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
+          VIBEQC_CUMETAL_FP32_BENCH: ${{ github.workspace }}/build-cumetal-benchmark/vibeqc_cumetal_fp32_benchmark
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cumetal_fp32_codspeed.py --codspeed -q
+
   upload-test-results:
     name: Upload CUDA test results
+    timeout-minutes: 8
     needs: cuda-tests
     if: ${{ !cancelled() && (needs.cuda-tests.result == 'success' || needs.cuda-tests.result == 'failure') }}
     continue-on-error: true

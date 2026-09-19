@@ -108,3 +108,7 @@ header carries the same versioned `pseudoinverse-frechet-v1` rule identity.
 
 See the [decision note](../.agents/notes/implemented/numerics/2026-09-19-symmetric-matrix-function-rule.md)
 for the ownership rationale and rejected alternatives.
+
+Native CPU and generated CUDA spectral coefficients use ordered divisions and
+overflow-safe symmetrization for representable FP64 responses. See the
+[spectral-range decision](../.agents/notes/implemented/numerics/2026-09-19-native-spectral-range.md).
