@@ -12,6 +12,7 @@
 namespace vibeqc::scf {
 namespace {
 
+#if VIBEQC_HAS_CUDA
 dft::GridSpec grid_spec(const FockCosxSpec& spec) {
   dft::GridSpec grid;
   grid.version = spec.grid_version;
@@ -24,7 +25,6 @@ dft::GridSpec grid_spec(const FockCosxSpec& spec) {
   return grid;
 }
 
-#if VIBEQC_HAS_CUDA
 class CosxExchangeAdapter final : public CudaSeminumericalExchangeProvider {
  public:
   CosxExchangeAdapter(const core::System& system, const FockCosxSpec& spec,
