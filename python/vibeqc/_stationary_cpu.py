@@ -1,4 +1,4 @@
-"""Complete bounded CPU RKS gradient diagnostic for issue #163 B2.2.
+"""Complete bounded CPU RKS/UKS gradient diagnostic for issue #163 B2/B3.
 
 SCF state, AO jets, XC point coefficients and generated integral derivatives
 execute natively. The explicit native selector also compiles TensorIR weights/
@@ -206,10 +206,10 @@ def complete_rks_gradient_diagnostic(
     compiler=None,
     execution="reference",
 ):
-    """Consume one live native CPU state with all seven plan-owned sources.
+    """Consume one live native CPU RKS/UKS state with all seven plan-owned sources.
 
-    Admitted domain: direct all-electron real FP64 integer RKS, canonical LDA
-    or PBE, s/p AOs, native unpruned version-one grid, distinct nuclei and no
+    Admitted domain: direct all-electron real FP64 integer RKS/UKS, canonical
+    LDA or PBE, s/p AOs, native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -226,8 +226,8 @@ def complete_rks_gradient_diagnostic(
         raise ValueError("execution must be reference or native")
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
-    if state._source.backend != "cpu" or contract.spin != "unpolarized":
-        raise NotImplementedError("complete diagnostic requires a native CPU RKS state")
+    if state._source.backend != "cpu":
+        raise NotImplementedError("complete diagnostic requires a native CPU KS state")
     if (
         basis.identity != state.identity.basis_identity
         or native_ao_geometry_identity(basis) != state.identity.geometry_identity
@@ -242,6 +242,7 @@ def complete_rks_gradient_diagnostic(
             raise ValueError(f"{name} must be an integer in [1,{cap}]")
     method, functional = resolve_ks_method(state.identity.method)
     plan = StationaryGradientPlan(method, StationaryMeanField(SCF_POINT_MODEL))
+    density = state.density if contract.spin == "polarized" else state.density[0]
     if compiler is None:
         compiler = CppCompilerAdapter(Path(os.environ.get("CXX", "c++")))
     if not isinstance(compiler, CppCompilerAdapter):
@@ -341,7 +342,7 @@ def complete_rks_gradient_diagnostic(
             np.asarray(grid.owners[begin:end]),
         )
         jets = basis.evaluate(points, program.contract.ao_order)
-        features = program.features(jets, state.density[0])
+        features = program.features(jets, density)
         coefficients = state._source.evaluate_xc_points(
             pbe,
             features["rho"],
@@ -349,7 +350,7 @@ def complete_rks_gradient_diagnostic(
         )
         partials = program.geometry_from_cartesian_coefficients(
             jets,
-            state.density[0],
+            density,
             weights,
             coefficients["energy"],
             coefficients["rho"],

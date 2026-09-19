@@ -1,6 +1,7 @@
 #ifndef VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 #define VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 
+#include <array>
 #include <cstddef>
 #include <span>
 #include <vector>
@@ -64,6 +65,30 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
 
 /** Evaluate analytic AO ESP matrices on explicit probe points. */
 EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);
+
+/** Contract one ordered public-AO shell quartet with arbitrary weights.
+ *
+ * The twelve returned entries are positive integral derivatives in independent
+ * shell-slot order (Axyz, Bxyz, Cxyz, Dxyz). The caller scatters slots to
+ * physical atoms, so repeated atoms remain distinct through differentiation.
+ * Only this quartet's public-basis expansions and twelve derivative scalars
+ * are materialized; no molecular AO-rank-four or coordinate derivative tensor
+ * is formed.
+ */
+std::array<double, 12> contract_weighted_eri_shell_derivative(
+    const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+    std::span<const double> weights);
+
+/** Directly contract arbitrary public-AO overlap and hcore weights.
+ *
+ * The coordinate-sized result contains positive energy derivatives. When
+ * include_nuclear_repulsion is true the nuclear term is added exactly once.
+ * The implementation accumulates one differentiated scalar and never forms
+ * coordinate-major AO matrices.
+ */
+std::vector<double> contract_weighted_one_electron_derivative(
+    const core::System& system, std::span<const double> overlap_weights,
+    std::span<const double> hcore_weights, bool include_nuclear_repulsion);
 
 /**
  * Write a row-major rectangular <target AO | source AO> overlap on the CPU.

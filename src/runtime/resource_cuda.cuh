@@ -7,7 +7,7 @@
 #include <limits>
 #include <new>
 
-#include "runtime/resource_ledger.hpp"
+#include "resource_ledger.hpp"
 
 namespace vibeqc::runtime {
 

@@ -301,6 +301,46 @@ jobs:
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
               --deselect
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
+              # Keep one direct f-shell complete-HF endpoint on routine CI.
+              # The matching full projector replay is independently covered by
+              # lighter projector contracts here and by the complete nightly run.
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-cartesian-cpu]'
+              # Correlated-gradient acceptance contains reconverged molecular
+              # finite differences and larger-molecule independent references.
+              # H2/small-contract coverage stays routine; broad endpoint replay
+              # belongs to scheduled/manual qualification.
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[ch4]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2o]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2_d_spherical]'
+              # These are qualification-scale replays (roughly 1-2 minutes
+              # each on hosted runners); smaller MP2/DFT/ECP/HVP contracts still
+              # execute on every PR.
+              --deselect
+              'tests/python/test_mp2_gradient_fast.py::test_water_complete_gradient_matches_directional_finite_differences'
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_complete_hf_and_core_bookkeeping[cpu-1-Au]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_complete_asymmetric_water_analytic_and_reconverged_fd[lda-rks-reference]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_public_hvp_arbitrary_rotation_and_bra_shell_permutation[cpu-eri]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_contracted_public_hvp_matches_three_step_independent_gradient_fd[cpu-False-eri]'
+              # Retain one representative high-angular/range path routinely;
+              # move exhaustive symbolic/long-range qualification to nightly.
+              --deselect
+              'tests/python/test_high_angular.py::test_g_one_electron_all_components_libcint[nuclear_attraction-angular3]'
+              --deselect
+              'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
+              --deselect
+              'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
