@@ -87,3 +87,10 @@ See [data provenance](../external/xtbloom-d3/README.md), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),
 and the
 [production runtime decision](../.agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md).
+
+## Ragged workspace and output isolation
+
+The 4096-atom cap applies to each system, not the fleet total. Aggregate CUDA
+workspace uses checked total-atom byte extents; skipped, failed and energy-only
+gradient slots are zeroed before publication with successful peers.
+See the [workspace decision](../.agents/notes/implemented/architecture/2026-09-19-d3-ragged-workspace.md).

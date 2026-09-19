@@ -2,8 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -11,6 +13,14 @@
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::dft::dispersion {
+
+// Aggregate ragged storage is not subject to the per-system physics cap.
+inline std::size_t d3_ragged_workspace_elements(std::size_t atoms) {
+  const auto per_atom = d3_workspace_elements(1);
+  if (atoms > std::numeric_limits<std::size_t>::max() / sizeof(double) / per_atom)
+    throw std::overflow_error("D3 aggregate workspace byte extent overflow");
+  return per_atom * atoms;
+}
 
 struct D3ResourceUsage {
   std::uint64_t plan_host_bytes{};

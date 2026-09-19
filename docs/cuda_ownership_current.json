@@ -161,20 +161,20 @@
       "subsystem": "d3_dispersion"
     },
     {
-      "bytes": 10913,
+      "bytes": 11289,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 236,
+        "runtime": 239,
         "scientific": 0
       },
       "path": "src/dft/dispersion/d3_cuda.cu",
-      "physical_lines": 266,
+      "physical_lines": 271,
       "reason": "Persistent ragged CUDA owner, compact-table transport, bounded workspace, stream ownership and launch/result transfers around the shared D3(BJ) arithmetic; no separate dispersion equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "1fb1800d42c9b10b16dde875c9d8d261a7bdff8ee023e01e68432e05f36f2b47",
+      "sha256": "68efa1595f062bac7d697cc6d923e13f44eb6e3d85f4ba49fbfe4cd875134256",
       "subsystem": "d3_dispersion"
     },
     {
@@ -3785,7 +3785,7 @@
     "fallback": 0,
     "oracle": 312,
     "performance_exception": 253,
-    "runtime": 11083,
+    "runtime": 11086,
     "scientific": 13252
   },
   "migration_ledger": {
@@ -4018,7 +4018,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 236,
+      "runtime": 239,
       "scientific": 246
     },
     "d4_dispersion": {

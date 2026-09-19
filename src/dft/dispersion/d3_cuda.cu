@@ -138,7 +138,7 @@ D3CudaOwner* create_d3_cuda_owner(int device_id, std::span<const std::uint32_t> 
       !allocate(owner->want_gradient, systems, detail) ||
       !allocate(owner->statuses, systems, detail) || !allocate(owner->energies, systems, detail) ||
       !allocate(owner->gradients, 3 * atoms, detail) ||
-      !allocate(owner->workspace, d3_workspace_elements(atoms), detail) ||
+      !allocate(owner->workspace, d3_ragged_workspace_elements(atoms), detail) ||
       !allocate(owner->elements, d3_data::kElements.size(), detail) ||
       !allocate(owner->pairs, d3_data::kPairs.size(), detail) ||
       !allocate(owner->reference_cn, d3_data::kReferenceCn.size(), detail) ||
@@ -229,6 +229,11 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters
                     "upload D3 gradient mask");
   if (status != VIBEQC_STATUS_SUCCESS) return status;
 
+  // Failed, inactive and energy-only rows are copied with successful peers.
+  // Initialize every publication slot rather than returning stale device data.
+  const auto clear =
+      cudaMemsetAsync(owner->gradients, 0, gradients.size() * sizeof(double), owner->stream);
+  if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 gradient publication", detail);
   const D3Tables tables{owner->elements, owner->pairs, owner->reference_cn, owner->reference_c6};
   d3_ragged_kernel<<<owner->systems, 1, 0, owner->stream>>>(
       owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates, owner->active,
