@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_resources import (
-        KernelResources as KernelResources,
+        KernelResources,
     )
     from vibeqc_compiler.common.cuda_resources import (
-        parse_resources as parse_resources,
+        parse_resources,
     )
 else:
     import sys
