@@ -128,7 +128,6 @@ def test_complete_cuda_independent_analytic(method, molecule, compiler):
             primitive_tile=29,
             integral_terms=17,
         )
-        endpoint_seconds = perf_counter() - started
         # Stop endpoint timing before the independent CPU reference. Otherwise
         # the timing would silently include PySCF validation rather than only
         # CUDA SCF, explicit export and the complete diagnostic call.
