@@ -3779,11 +3779,15 @@ def test_ssss_force_retirement_has_one_generated_scientific_owner():
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
     assert "SsssWeightedGradient" not in types_source
-    assert "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
+    assert (
+        "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
+    )
     assert "contract_two_electron_force_ssss_fallback_task" in fallback_source
     assert "contracted_eri_cartesian_source_order01_gradient<0>" in fallback_source
 
-    driver_source = (REPOSITORY_ROOT / "src/scf/cuda_rhf.cpp").read_text(encoding="utf-8")
+    driver_source = (REPOSITORY_ROOT / "src/scf/cuda_rhf.cpp").read_text(
+        encoding="utf-8"
+    )
     assert "kBoundedNativePagedForceShellClassMask &" in driver_source
     assert "~explicit_generated_force_shell_class_mask" in driver_source
 
