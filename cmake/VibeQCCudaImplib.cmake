@@ -65,6 +65,7 @@ function(vibeqc_attach_cuda_implib target)
     cudaGetLastError
     cudaGraphDestroy
     cudaGraphExecDestroy
+    cudaGraphGetNodes
     cudaGraphInstantiate
     cudaGraphLaunch
     cudaGraphUpload

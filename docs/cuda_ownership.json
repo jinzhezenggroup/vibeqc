@@ -1,1491 +1,4 @@
 {
-  "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function.",
-  "files": [
-    {
-      "path": "src/runtime/cuda_architecture.hpp",
-      "reason": "Allocation-free CUDA capability attribute query and error propagation for schedule selection; no scientific arithmetic or cached device ownership.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/dft/cuda_ks_kernels.hpp",
-      "reason": "Native KS scalar diagnostic, physical-Fock and occupation-stabilization launch contracts; no mathematical bodies.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/dft/cuda_ks_kernels.cu",
-      "reason": "Semilocal physical Fock/energy, per-spin diagnostics and CPU-compatible virtual-projector proposal stabilization; numerical glue remains maintained and is not claimed as retired code.",
-      "regions": [
-        {
-          "start": "void assemble_fock(cudaStream_t",
-          "stop": null,
-          "role": "runtime",
-          "reason": "Host launch forwarding to the numerical component kernels."
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/scf/cuda_direct_jk_device.hpp",
-      "reason": "Borrowed direct-provider stream, resident matrix and numerical-status contract; no new J/K dispatch or scientific equations.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/dft/cuda_xc.hpp",
-      "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/dft/cuda_xc_kernels.cuh",
-      "reason": "Allocation-free native semilocal XC launch adapters. Existing generated AO and ingredient policies are reused; current point coefficients use the separately counted shared XC domain algebra.",
-      "regions": [
-        {
-          "reason": "Dense D*AO contraction, point-layout adaptation and full symmetric E/V reductions remain maintained scientific glue. No scientific-code retirement is claimed for this baseline.",
-          "role": "scientific",
-          "start": "__global__ void density_product",
-          "stop": "void enqueue(const CudaXcLayout& l"
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/runtime/cuda_component_trace.hpp",
-      "reason": "Opt-in CUDA event/NVTX profiling and logical work accounting; no scientific equations or provider ownership.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/cc/cuda_state.cuh",
-      "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/dft/cuda_grid.cu",
-      "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
-      "regions": [
-        {
-          "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.",
-          "role": "scientific",
-          "start": "__global__ void ao_kernel",
-          "stop": "// Gather every local matrix element"
-        },
-        {
-          "reason": "Native CUDA LDA/PBE point dispatch, deterministic energy/electron integration and spin-potential matrix contraction. Scalar XC algebra is shared with the CPU implementation, but this endpoint-specific device contraction remains maintained scientific glue.",
-          "role": "scientific",
-          "start": "__device__ vibeqc::dft::point::Value evaluate_xc_point",
-          "stop": "extern \"C\" {"
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "ao_grid"
-    },
-    {
-      "path": "src/dft/grid_task_view.cuh",
-      "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "ao_grid"
-    },
-    {
-      "path": "src/dft/xc_point.hpp",
-      "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/dft/xc_runtime.cuh",
-      "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "xc"
-    },
-    {
-      "path": "src/integrals/eri_geometry.hpp",
-      "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/integrals/range_moments.hpp",
-      "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/posthf/cuda_low_rank.cu",
-      "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
-      "regions": [
-        {
-          "reason": "Factorized Coulomb output composition.",
-          "role": "scientific",
-          "start": "__global__ void add_coulomb",
-          "stop": "__global__ void symmetric_output"
-        },
-        {
-          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
-          "role": "scientific",
-          "start": "int posthf_cholesky_jk_v1",
-          "stop": "int posthf_cholesky_metrics_v1"
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "low_rank"
-    },
-    {
-      "path": "src/posthf/cuda_transform.cu",
-      "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/posthf/df_bridge.cu",
-      "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/cuda_ao_pairs.cuh",
-      "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/cuda_gaussian_products.cuh",
-      "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/cuda_runtime.cu",
-      "reason": "Device availability, discovery and stable runtime ABI.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/cuda_subgroup.cuh",
-      "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/resource_cuda.cuh",
-      "reason": "Allocation accounting and lifetime guards.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/strided_range.hpp",
-      "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions.",
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/aot_shell_registry.hpp",
-      "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/df_derivatives.cu",
-      "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal. The explicit distributed-sink diagnostic changes only destination addressing; both specializations call the same generated derivative policy.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "df_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/df_derivatives.cuh",
-      "reason": "Stable derivative view and launch ABI declarations.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/df_shell_derivatives.cu",
-      "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "df_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/df_shell_derivatives.cuh",
-      "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/df_shell_diagnostics.cuh",
-      "reason": "Bounded optional diagnostic counter storage, observer and operation labels; scientific operation counts are defined by the generated lowering.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/df_gradient_bridge.cu",
-      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations. Full-rank response admission now selects inverse-applied linear factors before quadratic products; the bounded general and canonical-factor routes report their own source passes, scratch and provenance. Rank-deficient/crossing paths retain the spectral owner and explicit rejection rules.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "df_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/df_response_weights.cu",
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed. Full-rank dense and bounded responses apply metric eigenfactors before density/Gram products to avoid amplified quadratic rounding. These BLAS method adapters remain conservatively scientific; retained spectral rank-deficient and serial-reference alternatives have separate numerical roles.",
-      "regions": [
-        {
-          "start": "__global__ void exchange_metric_kernel(",
-          "stop": "__global__ void metric_response_kernel(",
-          "role": "oracle",
-          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry."
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "df_response_weights"
-    },
-    {
-      "path": "src/scf/cuda/df_response_weights.cuh",
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "df_response_weights"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_derivatives.cu",
-      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_derivatives.cuh",
-      "reason": "First-derivative views and launch declarations.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_force_reference.cu",
-      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
-      "regions": [],
-      "role": "performance_exception",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
-      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_reference.cu",
-      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
-      "regions": [],
-      "role": "performance_exception",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_values.cu",
-      "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "one_electron_values"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_values.cuh",
-      "reason": "Immutable public normalized AO view and value launch ABI.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/weighted_eri_kernels.cu",
-      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda_eigensolver_probe.cu",
-      "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda_fock.cu",
-      "reason": "Dense bucket owner and stable execution interface.",
-      "regions": [
-        {
-          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
-          "role": "scientific",
-          "start": "__global__ void rhf_fock_bucket_kernel",
-          "stop": "struct CudaFockBucketHandle"
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "scf_tensor"
-    },
-    {
-      "path": "src/scf/direct_task_layout.hpp",
-      "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/weighted_eri_runtime.hpp",
-      "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/tensor/cuda_runtime.cuh",
-      "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/device_timer.cuh",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/matrix_index.cuh",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/eigensolver_kernels.cu",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/eigensolver.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/eigensolver_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_source_internal.hpp",
-      "role": "runtime",
-      "subsystem": "df_values",
-      "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_source_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "df_values",
-      "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_source_kernels.cu",
-      "role": "scientific",
-      "subsystem": "df_values",
-      "reason": "Existing generated-policy traversal and bounded raw/public-layout DF value/response contractions, moved from cuda_rhf.cu without copying formulas.",
-      "regions": [
-        {
-          "start": "#include <cuda_runtime.h>",
-          "stop": "__global__ void build_cuda_df_integrals_kernel",
-          "role": "runtime",
-          "reason": "Includes, common basis ABI adapter and generated-policy instantiation; the generated scalar families retain scientific ownership upstream."
-        },
-        {
-          "start": "void launch_build_cuda_df_integrals_kernel",
-          "stop": null,
-          "role": "runtime",
-          "reason": "Host-callable wrappers preserve exact specialization selection, launch geometry, stream and argument forwarding."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/metadata_upload.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Shared checked metadata upload/cleanup and CUDA status mapping used by direct and DF sources; no provider equations.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_jk_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": [
-        {
-          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
-          "stop": "void launch_sum_spin_density_kernel",
-          "role": "scientific",
-          "reason": "Existing streamed RI J/K equations and reductions, preserved in their dedicated owner."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/df_jk_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_metric_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Runtime storage and launch glue for CUDA DF metric factors. The new physical inverse/whitening projection kernel is separately counted as scientific; existing storage/symmetrization launch ownership is unchanged.",
-      "regions": [
-        {
-          "start": "__global__ void scale_metric_projection_kernel(",
-          "stop": "void launch_symmetrize_metrics_kernel(",
-          "role": "scientific",
-          "reason": "New FP64 per-eigendirection inverse or inverse-root scaling for a caller-validated full-rank metric. This bounded matrix adapter is native scientific arithmetic, with no integral evaluator or new rank/cutoff policy. Only newly added code is reclassified."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/df_metric_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_plan_internal.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_runtime.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_scf_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": [
-        {
-          "start": "__global__ void density_exchange_factor_kernel",
-          "stop": "void launch_density_exchange_factor",
-          "role": "scientific",
-          "reason": "Algebraic PSD density factor scaling and complete reconstruction error reduction, qualified independently against four-index RI exchange."
-        },
-        {
-          "start": "__global__ void assemble_rhf_fock_kernel",
-          "stop": "__global__ void update_device_convergence_kernel",
-          "role": "scientific",
-          "reason": "Existing RHF/UHF Fock, density and energy equations, preserved independently of host replay control."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/df_scf_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/basis_transform_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/basis_transform_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_convergence_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": [
-        {
-          "start": "__global__ void compute_energy_kernel",
-          "stop": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
-          "role": "scientific",
-          "reason": "Existing RHF/UHF electronic energy contractions; convergence routing remains generic runtime."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/scf_convergence_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_density_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": [
-        {
-          "start": "__global__ void build_density_kernel",
-          "stop": "__device__ double warm_density_block_sum",
-          "role": "scientific",
-          "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations."
-        },
-        {
-          "start": "__global__ void build_weighted_density_kernel",
-          "stop": "__global__ void sum_uhf_spin_matrices_kernel",
-          "role": "scientific",
-          "reason": "Existing energy-weighted density used by stationary Pulay forces."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/scf_density_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_diis_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Native launch wrappers select DIIS schedules; method-specific residual Gram construction, history retirement, solve and Fock extrapolation are classified below.",
-      "regions": [
-        {
-          "start": "__global__ void diis_dot_partials_kernel",
-          "stop": "void launch_diis_dot_partials(",
-          "role": "scientific",
-          "reason": "DIIS-specific circular live-history selection and deterministic residual Gram partials, including substitution of the pending current residual. This is not a generic reduction API."
-        },
-        {
-          "start": "template <bool CooperativeDots>",
-          "stop": "void launch_update_diis_kernel(",
-          "role": "scientific",
-          "reason": "Native DIIS Gram assembly, normalization, augmented solve, dependent-history retirement and Fock extrapolation, including local state glue. Conservatively includes pre-existing arithmetic reclassified from runtime; this is not physical code growth or retirement."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/scf_diis_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "DIIS launch declarations and scratch/schedule interface; numerical implementation is classified in scf_diis_kernels.cu.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_matrix_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_matrix_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_state_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scf_state_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/matrix_library.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/resources.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/runtime_support.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/reference_export.cuh",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_pages.cu",
-      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-      "regions": [
-        {
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_compact_bounded_exact_class_force_wave_kernel",
-          "stop": null
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_pages.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_tasks.cu",
-      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-      "regions": [
-        {
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_compact_bounded_generated_tasks_kernel",
-          "stop": null
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_tasks.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_density_bounds.cu",
-      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-      "regions": [
-        {
-          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
-          "role": "runtime",
-          "start": "void launch_reduce_shell_pair_density_bounds_kernel",
-          "stop": null
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_density_bounds.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_generated_tasks.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_generated_tasks.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_page_screening.cuh",
-      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_diagnostics.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_diagnostics.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_index.cuh",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_profile.cuh",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_scan.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_queue_scan.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_resident_tasks.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_resident_tasks.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_screening.cuh",
-      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_task_encoding.cuh",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_tile_compaction.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [
-        {
-          "reason": "Per-item FP32 contribution cutoff tied to the physical Fock error budget.",
-          "role": "scientific",
-          "start": "__device__ __forceinline__ double mixed_fock_item_cutoff",
-          "stop": "template <bool Unrestricted, DirectScreeningPurpose Purpose>"
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_tile_compaction.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_tile_validation.cu",
-      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_tile_validation.hpp",
-      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/direct_jk_plan.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Opaque direct J/K provider allocation layout; owns no integral equations.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_jk_kernels.cu",
-      "role": "scientific",
-      "subsystem": "scf_tensor",
-      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
-      "regions": [
-        {
-          "start": "namespace cuda_execution {",
-          "stop": null,
-          "role": "runtime",
-          "reason": "Host launch forwarding; no scientific arithmetic."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/direct_jk_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed direct J/K kernel ABI and shared reduction width.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/one_electron_export_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed retained-response and nuclear launch ABI; no new operator formula.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/scalar_math.cuh",
-      "reason": "Unchanged generic scalar/AD, precision traits, elementary math and order-zero Boys helper extracted from the previously classified runtime region.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/gaussian_geometry.cuh",
-      "reason": "Unchanged coordinate seeds, distances and Gaussian product geometry extracted from the existing runtime region.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/cartesian_angular.cuh",
-      "reason": "Unchanged angular indexing and packed/public AO mappings; preserve the original conservative classification of the angular record.",
-      "regions": [
-        {
-          "start": "struct Angular {",
-          "stop": "__device__ inline unsigned angular_axis(",
-          "role": "scientific",
-          "reason": "Retain the original conservative scientific classification of the Cartesian powers record."
-        }
-      ],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/boys_table.cuh",
-      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/hermite_recurrence.cuh",
-      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/coulomb_auxiliary.cuh",
-      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_native_overlap.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_native_attraction.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_native_contraction.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_native_force.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_force_workspace.hpp",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/nuclear_kernels.cu",
-      "reason": "Existing nuclear repulsion and force equations, including Dual coordinate response; preserved as native scientific arithmetic.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/direct_pair_cache.cu",
-      "reason": "Existing exponent, normalization and Gaussian product geometry cached per primitive pair. Conservatively retains its scientific classification after extraction.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
-    },
-    {
-      "path": "src/scf/cuda/one_electron_force_reference.hpp",
-      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/nuclear_kernels.hpp",
-      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/direct_pair_cache.hpp",
-      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/scf/cuda/direct_native_cartesian.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_contraction.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_dsss_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_eri_order2.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_eri_order3.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_eri_order4.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_gradient_types.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_high_order_coulomb.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_order2_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_order2_shell.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_order3_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_pair_order2.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_pair_order3.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_ppss_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_psps_gradient.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_psss.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_shell_class.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_native_source_contraction.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/eri_tensor_index.cuh",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_eri_symmetry.cuh",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_fock_accumulation.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_fock_quartet.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_fock_psss.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_fock_order2.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": [
-        {
-          "start": "__device__ __forceinline__ unsigned order2_component_index",
-          "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task",
-          "role": "runtime",
-          "reason": "Unchanged component-index mapping, retaining the original runtime classification."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/direct_force_density.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_force_low_order.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_force_order2.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_force_quartet.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_contraction.cuh",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_cached_tensor_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_schwarz_kernels.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": [
-        {
-          "start": "__device__ void atomic_max_double",
-          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel",
-          "role": "runtime",
-          "reason": "Generic atomic maximum helper, retaining its original runtime classification."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/direct_schwarz_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_packed_fock_kernels.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_packed_fock_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_angular_fock.cu",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_angular_fock.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_reference_force.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_reference_force.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_dddd.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_dddd.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_exact_force.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_exact_force.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_fallback.cu",
-      "role": "scientific",
-      "subsystem": "direct_integrals",
-      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_bounded_fallback.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_angular_force.cu",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/direct_angular_force.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/weighted_eri_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Borrowed weighted-primitive launch ABI; public weight semantics and output layout are unchanged.",
-      "regions": []
-    },
-    {
-      "path": "src/tensor/cuda_error.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
-      "regions": []
-    },
-    {
-      "path": "src/integrals/ecp_cuda.cu",
-      "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
-      "regions": [],
-      "role": "scientific",
-      "subsystem": "ecp"
-    },
-    {
-      "path": "src/scf/cuda/df_shell_kernel.cuh",
-      "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "df_derivatives"
-    },
-    {
-      "path": "src/scf/cuda/final_validation_kernels.cu",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Launch boundary for shared final-state validation products.",
-      "regions": [
-        {
-          "start": "__device__ void add(",
-          "stop": "void launch_validation_eigen(",
-          "role": "scientific",
-          "reason": "FP64 final-state norms, finite/generation checks, trace/energy reductions and occupied-column weighting; common acceptance policy remains in the shared solver."
-        }
-      ]
-    },
-    {
-      "path": "src/scf/cuda/final_validation_kernels.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Fixed-size device reduction payloads and launch declarations.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_packed_values.cu",
-      "role": "performance_exception",
-      "subsystem": "scf_tensor",
-      "reason": "Explicit experimental exact packed-value layout and FP64 occupied projection; preserves existing DF tensor equations and has no automatic promotion. Evidence: benchmarks/results/issue409-packed-values/README.md. Retire if no complete endpoint/capacity domain qualifies, or when compiler-owned triangular gathering passes the same numerical, resource and endpoint gates.",
-      "regions": []
-    },
-    {
-      "path": "src/scf/cuda/df_packed_values.hpp",
-      "role": "runtime",
-      "subsystem": "scf_tensor",
-      "reason": "Checked owner-facing launch boundary for packed value density, expansion and projection.",
-      "regions": []
-    },
-    {
-      "path": "src/tensor/cuda_resident.cuh",
-      "reason": "Resident span transfer and checked device-to-device copy over the existing tensor Context owner; host-side allocation-bound and lock contracts with no scientific equations.",
-      "regions": [],
-      "role": "runtime",
-      "subsystem": "runtime"
-    },
-    {
-      "path": "src/dft/dispersion/d4_reference.hpp",
-      "role": "oracle",
-      "subsystem": "d4_dispersion",
-      "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
-      "regions": []
-    }
-  ],
   "generated_families": [
     {
       "name": "one_electron_value_policy",
@@ -1630,7 +143,6 @@
       "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
     }
   ],
-  "schema": "vibeqc.cuda-ownership.v1",
   "subsystems": {
     "ao_grid": {
       "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
@@ -1834,5 +346,1507 @@
       ],
       "status": "oracle"
     }
-  }
+  },
+  "files": [
+    {
+      "path": "src/cc/cuda_state.cuh",
+      "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/dft/cuda_grid.cu",
+      "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
+      "regions": [
+        {
+          "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.",
+          "role": "scientific",
+          "start": "__global__ void ao_kernel",
+          "stop": "// Gather every local matrix element"
+        },
+        {
+          "reason": "Native CUDA LDA/PBE point dispatch, deterministic energy/electron integration and spin-potential matrix contraction. Scalar XC algebra is shared with the CPU implementation, but this endpoint-specific device contraction remains maintained scientific glue.",
+          "role": "scientific",
+          "start": "__device__ vibeqc::dft::point::Value evaluate_xc_point",
+          "stop": "extern \"C\" {"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/cuda_ks_kernels.cu",
+      "reason": "Semilocal physical Fock/energy, per-spin diagnostics and CPU-compatible virtual-projector proposal stabilization; numerical glue remains maintained and is not claimed as retired code.",
+      "regions": [
+        {
+          "start": "void assemble_fock(cudaStream_t",
+          "stop": null,
+          "role": "runtime",
+          "reason": "Host launch forwarding to the numerical component kernels."
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/dft/cuda_ks_kernels.hpp",
+      "reason": "Native KS scalar diagnostic, physical-Fock and occupation-stabilization launch contracts; no mathematical bodies.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/dft/cuda_xc.hpp",
+      "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/dft/cuda_xc_kernels.cuh",
+      "reason": "Allocation-free native semilocal XC launch adapters. Existing generated AO and ingredient policies are reused; current point coefficients use the separately counted shared XC domain algebra.",
+      "regions": [
+        {
+          "reason": "Dense D*AO contraction, point-layout adaptation and full symmetric E/V reductions remain maintained scientific glue. No scientific-code retirement is claimed for this baseline.",
+          "role": "scientific",
+          "start": "__global__ void density_product",
+          "stop": "void enqueue(const CudaXcLayout& l"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/dft/dispersion/d4_reference.hpp",
+      "role": "oracle",
+      "subsystem": "d4_dispersion",
+      "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": []
+    },
+    {
+      "path": "src/dft/grid_task_view.cuh",
+      "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/xc_point.hpp",
+      "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/dft/xc_runtime.cuh",
+      "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/integrals/ecp_cuda.cu",
+      "reason": "Generated AO jets, node displacement and primitive/component accumulation, residual radial potentials, harmonic projections, local/nonlocal pair contractions and full AO fixed-weight force consumption; generated host quadrature, harmonics and component normalization. Native AO expansion metadata, two-grid convergence policy, launches and physical-center scatter remain; count the mixed adapter conservatively as scientific.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "ecp"
+    },
+    {
+      "path": "src/integrals/eri_geometry.hpp",
+      "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/integrals/range_moments.hpp",
+      "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/cuda_low_rank.cu",
+      "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
+      "regions": [
+        {
+          "reason": "Factorized Coulomb output composition.",
+          "role": "scientific",
+          "start": "__global__ void add_coulomb",
+          "stop": "__global__ void symmetric_output"
+        },
+        {
+          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
+          "role": "scientific",
+          "start": "int posthf_cholesky_jk_v1",
+          "stop": "int posthf_cholesky_metrics_v1"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "low_rank"
+    },
+    {
+      "path": "src/posthf/cuda_transform.cu",
+      "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/df_bridge.cu",
+      "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_ao_pairs.cuh",
+      "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_architecture.hpp",
+      "reason": "Allocation-free CUDA capability attribute query and error propagation for schedule selection; no scientific arithmetic or cached device ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_component_trace.hpp",
+      "reason": "Opt-in CUDA event/NVTX profiling and logical work accounting; no scientific equations or provider ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_gaussian_products.cuh",
+      "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_graph_region.cuh",
+      "reason": "Shared graph capture, replay, invalidation and diagnostics. No scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_runtime.cu",
+      "reason": "Device availability, discovery and stable runtime ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_subgroup.cuh",
+      "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/resource_cuda.cuh",
+      "reason": "Allocation accounting and lifetime guards.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/strided_range.hpp",
+      "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions.",
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/aot_shell_registry.hpp",
+      "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/basis_transform_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/basis_transform_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/boys_table.cuh",
+      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/cartesian_angular.cuh",
+      "reason": "Unchanged angular indexing and packed/public AO mappings; preserve the original conservative classification of the angular record.",
+      "regions": [
+        {
+          "start": "struct Angular {",
+          "stop": "__device__ inline unsigned angular_axis(",
+          "role": "scientific",
+          "reason": "Retain the original conservative scientific classification of the Cartesian powers record."
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/coulomb_auxiliary.cuh",
+      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/device_timer.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cu",
+      "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal. The explicit distributed-sink diagnostic changes only destination addressing; both specializations call the same generated derivative policy.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cuh",
+      "reason": "Stable derivative view and launch ABI declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_gradient_bridge.cu",
+      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added. Borrowed full J/K tensors remain charged to the value plan and are reported separately from bounded new response scratch. Packed-response selection, shell-boundary panel clipping and dense diagnostic handoff reuse that same owner and generated derivative sink. Primitive-signature metadata, exact measured-profile selection and bounded packet dispatch remain conservatively counted in this method-glue owner; they do not introduce derivative equations. Full-rank response admission now selects inverse-applied linear factors before quadratic products; the bounded general and canonical-factor routes report their own source passes, scratch and provenance. Rank-deficient/crossing paths retain the spectral owner and explicit rejection rules.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_jk_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": [
+        {
+          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
+          "stop": "void launch_sum_spin_density_kernel",
+          "role": "scientific",
+          "reason": "Existing streamed RI J/K equations and reductions, preserved in their dedicated owner."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/df_jk_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_metric_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Runtime storage and launch glue for CUDA DF metric factors. The new physical inverse/whitening projection kernel is separately counted as scientific; existing storage/symmetrization launch ownership is unchanged.",
+      "regions": [
+        {
+          "start": "__global__ void scale_metric_projection_kernel(",
+          "stop": "void launch_symmetrize_metrics_kernel(",
+          "role": "scientific",
+          "reason": "New FP64 per-eigendirection inverse or inverse-root scaling for a caller-validated full-rank metric. This bounded matrix adapter is native scientific arithmetic, with no integral evaluator or new rank/cutoff policy. Only newly added code is reclassified."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/df_metric_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_packed_values.cu",
+      "role": "performance_exception",
+      "subsystem": "scf_tensor",
+      "reason": "Explicit experimental exact packed-value layout and FP64 occupied projection; preserves existing DF tensor equations and has no automatic promotion. Evidence: benchmarks/results/issue409-packed-values/README.md. Retire if no complete endpoint/capacity domain qualifies, or when compiler-owned triangular gathering passes the same numerical, resource and endpoint gates.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_packed_values.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Checked owner-facing launch boundary for packed value density, expansion and projection.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_plan_internal.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_response_weights.cu",
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed. Full-rank dense and bounded responses apply metric eigenfactors before density/Gram products to avoid amplified quadratic rounding. These BLAS method adapters remain conservatively scientific; retained spectral rank-deficient and serial-reference alternatives have separate numerical roles.",
+      "regions": [
+        {
+          "start": "__global__ void exchange_metric_kernel(",
+          "stop": "__global__ void metric_response_kernel(",
+          "role": "oracle",
+          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry."
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "df_response_weights"
+    },
+    {
+      "path": "src/scf/cuda/df_response_weights.cuh",
+      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "df_response_weights"
+    },
+    {
+      "path": "src/scf/cuda/df_runtime.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_scf_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": [
+        {
+          "start": "__global__ void density_exchange_factor_kernel",
+          "stop": "void launch_density_exchange_factor",
+          "role": "scientific",
+          "reason": "Algebraic PSD density factor scaling and complete reconstruction error reduction, qualified independently against four-index RI exchange."
+        },
+        {
+          "start": "__global__ void assemble_rhf_fock_kernel",
+          "stop": "__global__ void update_device_convergence_kernel",
+          "role": "scientific",
+          "reason": "Existing RHF/UHF Fock, density and energy equations, preserved independently of host replay control."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/df_scf_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_shell_derivatives.cu",
+      "reason": "Compact shell task indexing, normalized sparse AO weight projection, shared-cache lifetime, cooperative reduction and generic gradient sink. All Gaussian geometry, moment polynomials, analytic differentiation and auxiliary-center recovery come from the existing extended compiler; no handwritten scientific evaluator. Unordered shell-pair traversal folds dense adjoints or consumes folded public AO pairs; the full ordered diagnostic remains available. Individual and bounded signature-packet entrypoints share one contraction helper and unchanged generated equations; block-prefix lookup and homogeneous primitive bounds change scheduling only.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_derivatives.cuh",
+      "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_diagnostics.cuh",
+      "reason": "Bounded optional diagnostic counter storage, observer and operation labels; scientific operation counts are defined by the generated lowering.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_shell_kernel.cuh",
+      "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_source_internal.hpp",
+      "role": "runtime",
+      "subsystem": "df_values",
+      "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/df_source_kernels.cu",
+      "role": "scientific",
+      "subsystem": "df_values",
+      "reason": "Existing generated-policy traversal and bounded raw/public-layout DF value/response contractions, moved from cuda_rhf.cu without copying formulas.",
+      "regions": [
+        {
+          "start": "#include <cuda_runtime.h>",
+          "stop": "__global__ void build_cuda_df_integrals_kernel",
+          "role": "runtime",
+          "reason": "Includes, common basis ABI adapter and generated-policy instantiation; the generated scalar families retain scientific ownership upstream."
+        },
+        {
+          "start": "void launch_build_cuda_df_integrals_kernel",
+          "stop": null,
+          "role": "runtime",
+          "reason": "Host-callable wrappers preserve exact specialization selection, launch geometry, stream and argument forwarding."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/df_source_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "df_values",
+      "reason": "DF source ownership or host-callable generation boundary; scalar policies and bounded public-layout contractions are separately classified.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_fock.cu",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_fock.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_force.cu",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_dddd.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_dddd.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_exact_force.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_exact_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_fallback.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_fallback.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_pages.cu",
+      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
+      "regions": [
+        {
+          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
+          "role": "runtime",
+          "start": "void launch_compact_bounded_exact_class_force_wave_kernel",
+          "stop": null
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_pages.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_tasks.cu",
+      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
+      "regions": [
+        {
+          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
+          "role": "runtime",
+          "start": "void launch_compact_bounded_generated_tasks_kernel",
+          "stop": null
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_tasks.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_density_bounds.cu",
+      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
+      "regions": [
+        {
+          "reason": "Host forwarding preserves the resolved template policy and launch geometry.",
+          "role": "runtime",
+          "start": "void launch_reduce_shell_pair_density_bounds_kernel",
+          "stop": null
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_density_bounds.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_eri_symmetry.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_accumulation.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [
+        {
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task",
+          "role": "runtime",
+          "reason": "Unchanged component-index mapping, retaining the original runtime classification."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_psss.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_quartet.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_density.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_low_order.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_quartet.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_generated_tasks.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_generated_tasks.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_jk_kernels.cu",
+      "role": "scientific",
+      "subsystem": "scf_tensor",
+      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
+      "regions": [
+        {
+          "start": "namespace cuda_execution {",
+          "stop": null,
+          "role": "runtime",
+          "reason": "Host launch forwarding; no scientific arithmetic."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/direct_jk_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed direct J/K kernel ABI and shared reduction width.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_jk_plan.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Opaque direct J/K provider allocation layout; owns no integral equations.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_cartesian.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_dsss_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order3.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order4.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_gradient_types.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_high_order_coulomb.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order2_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order2_shell.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order3_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order3.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_ppss_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_psps_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_psss.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_shell_class.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_source_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_packed_fock_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_packed_fock_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_page_screening.cuh",
+      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_pair_cache.cu",
+      "reason": "Existing exponent, normalization and Gaussian product geometry cached per primitive pair. Conservatively retains its scientific classification after extraction.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_pair_cache.hpp",
+      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_diagnostics.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_diagnostics.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_index.cuh",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_profile.cuh",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_scan.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_queue_scan.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_reference_force.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_reference_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_resident_tasks.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_resident_tasks.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_schwarz_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [
+        {
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel",
+          "role": "runtime",
+          "reason": "Generic atomic maximum helper, retaining its original runtime classification."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/direct_schwarz_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_screening.cuh",
+      "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_task_encoding.cuh",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_tile_compaction.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [
+        {
+          "reason": "Per-item FP32 contribution cutoff tied to the physical Fock error budget.",
+          "role": "scientific",
+          "start": "__device__ __forceinline__ double mixed_fock_item_cutoff",
+          "stop": "template <bool Unrestricted, DirectScreeningPurpose Purpose>"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_tile_compaction.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_tile_validation.cu",
+      "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/direct_tile_validation.hpp",
+      "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/eigensolver.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/eigensolver_kernels.cu",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/eigensolver_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/eri_tensor_index.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/final_validation_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Launch boundary for shared final-state validation products.",
+      "regions": [
+        {
+          "start": "__device__ void add(",
+          "stop": "void launch_validation_eigen(",
+          "role": "scientific",
+          "reason": "FP64 final-state norms, finite/generation checks, trace/energy reductions and occupied-column weighting; common acceptance policy remains in the shared solver."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/final_validation_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Fixed-size device reduction payloads and launch declarations.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/gaussian_geometry.cuh",
+      "reason": "Unchanged coordinate seeds, distances and Gaussian product geometry extracted from the existing runtime region.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/hermite_recurrence.cuh",
+      "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/matrix_index.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/matrix_library.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/metadata_upload.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Shared checked metadata upload/cleanup and CUDA status mapping used by direct and DF sources; no provider equations.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/nuclear_kernels.cu",
+      "reason": "Existing nuclear repulsion and force equations, including Dual coordinate response; preserved as native scientific arithmetic.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/nuclear_kernels.hpp",
+      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cu",
+      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cuh",
+      "reason": "First-derivative views and launch declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_export_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed retained-response and nuclear launch ABI; no new operator formula.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/one_electron_force_reference.cu",
+      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "regions": [],
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_force_reference.hpp",
+      "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_force_workspace.hpp",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
+      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_native_attraction.cuh",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_native_contraction.cuh",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_native_force.cuh",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_native_overlap.cuh",
+      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_reference.cu",
+      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "regions": [],
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cu",
+      "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cuh",
+      "reason": "Immutable public normalized AO view and value launch ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/reference_export.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/resources.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/runtime_support.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scalar_math.cuh",
+      "reason": "Unchanged generic scalar/AD, precision traits, elementary math and order-zero Boys helper extracted from the previously classified runtime region.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/scf_convergence_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": [
+        {
+          "start": "__global__ void compute_energy_kernel",
+          "stop": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
+          "role": "scientific",
+          "reason": "Existing RHF/UHF electronic energy contractions; convergence routing remains generic runtime."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/scf_convergence_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_density_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": [
+        {
+          "start": "__global__ void build_density_kernel",
+          "stop": "__device__ double warm_density_block_sum",
+          "role": "scientific",
+          "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations."
+        },
+        {
+          "start": "__global__ void build_weighted_density_kernel",
+          "stop": "__global__ void sum_uhf_spin_matrices_kernel",
+          "role": "scientific",
+          "reason": "Existing energy-weighted density used by stationary Pulay forces."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/scf_density_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_diis_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Native launch wrappers select DIIS schedules; method-specific residual Gram construction, history retirement, solve and Fock extrapolation are classified below.",
+      "regions": [
+        {
+          "start": "__global__ void diis_dot_partials_kernel",
+          "stop": "void launch_diis_dot_partials(",
+          "role": "scientific",
+          "reason": "DIIS-specific circular live-history selection and deterministic residual Gram partials, including substitution of the pending current residual. This is not a generic reduction API."
+        },
+        {
+          "start": "template <bool CooperativeDots>",
+          "stop": "void launch_update_diis_kernel(",
+          "role": "scientific",
+          "reason": "Native DIIS Gram assembly, normalization, augmented solve, dependent-history retirement and Fock extrapolation, including local state glue. Conservatively includes pre-existing arithmetic reclassified from runtime; this is not physical code growth or retirement."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/scf_diis_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "DIIS launch declarations and scratch/schedule interface; numerical implementation is classified in scf_diis_kernels.cu.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_matrix_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_matrix_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_state_kernels.cu",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/scf_state_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "scf_tensor",
+      "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/weighted_eri_kernels.cu",
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda/weighted_eri_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed weighted-primitive launch ABI; public weight semantics and output layout are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda_direct_jk_device.hpp",
+      "reason": "Borrowed direct-provider stream, resident matrix and numerical-status contract; no new J/K dispatch or scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda_eigensolver_probe.cu",
+      "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda_fock.cu",
+      "reason": "Dense bucket owner and stable execution interface.",
+      "regions": [
+        {
+          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
+          "role": "scientific",
+          "start": "__global__ void rhf_fock_bucket_kernel",
+          "stop": "struct CudaFockBucketHandle"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/direct_task_layout.hpp",
+      "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/weighted_eri_runtime.hpp",
+      "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/tensor/cuda_error.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
+      "regions": []
+    },
+    {
+      "path": "src/tensor/cuda_graph_context.cuh",
+      "reason": "Adapter binding the shared graph owner to TensorIR arena, stream and library lifetimes.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/tensor/cuda_resident.cuh",
+      "reason": "Resident span transfer and checked device-to-device copy over the existing tensor Context owner; host-side allocation-bound and lock contracts with no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/tensor/cuda_runtime.cuh",
+      "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    }
+  ],
+  "schema": "vibeqc.cuda-ownership.v1",
+  "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function."
 }

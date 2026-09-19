@@ -33,6 +33,7 @@ from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 from .contractions import GeometryPartials
 from .integration import _tiles
 from .native import NativeContractionProgram
+from .program_ir import fixed_density_tile_program
 from .spec import UnsupportedXC, functional
 
 
@@ -261,7 +262,39 @@ class PreparedXCContractions:
         self.resource_plan = plan_resources(
             (*requests, request), self.budget
         ).require_feasible()
+        # Phase A ProgramIR describes only the synchronous dense CPU E/V
+        # boundary. Its estimates are NOT added to the conservative total
+        # resource plan above: those allocations are already accounted for.
+        self._tile_program = (
+            fixed_density_tile_program(
+                program.contract,
+                nao=basis.nao,
+                tile_points=tile_points,
+                basis_bytes=basis.numeric_bytes,
+                grid_bytes=grid_bytes,
+                basis_identity=basis.identity,
+                native_identity=canonical_hash(program.metadata),
+            )
+            if spatial is None
+            and density_grid is None
+            and program.contract.request.observable == "potential"
+            else None
+        )
+        self._tile_program_identity = (
+            None if self.tile_program is None else self.tile_program.identity
+        )
+        self._tile_releases = (
+            () if self.tile_program is None else self.tile_program.release_after("xc")
+        )
+        # This CPU template implements only this checked release contract.
+        # A different graph must supply its own independently qualified lowering.
+        self._release_tile_boundaries = self._tile_releases == ("jets",)
         self.statistics = {}
+
+    @property
+    def tile_program(self):
+        """Immutable boundary-only ProgramIR, or None for unqualified routes."""
+        return self._tile_program
 
     def _density_contract(self):
         """Borrow only fixed CUDA topology/code; each call uploads its current D/B."""
@@ -353,6 +386,9 @@ class PreparedXCContractions:
                     jets,
                     None,
                 )
+                # A suspended generator is an owner too. The consumer has
+                # finished this tile before requesting the next allocation.
+                del jets
         elif self.program.contract.request.observable != "potential":
             # Response/geometry need their own generated contractions. Borrow
             # validated immutable maps without computing an unused feature
@@ -556,6 +592,12 @@ class PreparedXCContractions:
                     weights[ids] = partials.weights
                 cpu_contraction_seconds += perf_counter() - contraction_started
                 tiles += 1
+                if self._release_tile_boundaries:
+                    # ProgramIR's final XC use is complete. No callback or
+                    # asynchronous lease retains these dense CPU boundaries.
+                    # Release both sides of the generator handoff before the
+                    # next AO tile, and the consumed contribution as well.
+                    del jets, features, values
             self._check()
             if not np.isfinite(result["energy"]):
                 raise ArithmeticError("nonfinite accumulated XC energy")
@@ -584,6 +626,9 @@ class PreparedXCContractions:
                 "planned_host_peak_bytes": self.resource_plan.peak_bytes["host"],
                 "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
             }
+            if self.tile_program is not None:
+                self.statistics["tile_program_identity"] = self._tile_program_identity
+                self.statistics["tile_boundary_releases"] = self._tile_releases
             # Count logical matrix products in the actual nonempty tile
             # schedule, including feature reductions and geometric D*AO jets.
             # These are separate from generated point-function calls; BLAS

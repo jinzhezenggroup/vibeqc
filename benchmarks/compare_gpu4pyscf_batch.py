@@ -32,6 +32,7 @@ try:  # Keep both direct CLI execution and shared benchmark-module imports.
         benchmark_gate_failures,
         cuda_accelerator_metadata,
         environment_metadata,
+        raw_output_path,
         write_result,
     )
 except ModuleNotFoundError:
@@ -40,6 +41,7 @@ except ModuleNotFoundError:
         benchmark_gate_failures,
         cuda_accelerator_metadata,
         environment_metadata,
+        raw_output_path,
         write_result,
     )
 
@@ -586,12 +588,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
+        type=raw_output_path,
         default=".artifacts/benchmarks/compare_gpu4pyscf_batch.json",
         help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
     parser.add_argument(
         "--progress-output",
-        type=Path,
+        type=raw_output_path,
         help="Optional fresh JSONL journal of completed stages, written outside endpoint timers",
     )
     args = parser.parse_args()

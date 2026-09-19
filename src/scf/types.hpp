@@ -68,6 +68,9 @@ struct ScfOptions {
   dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
   /** Bounded AO/XC tile schedule; does not alter the grid or functional. */
   std::size_t xc_tile_points{256};
+  /** Retain the already evaluated CPU RKS F[D] for an explicit snapshot read.
+   * No extra Fock build, canonicalization or W is performed by energy-only SCF. */
+  bool retain_ks_state{};
 };
 
 /** Internal mean-field result, including state retained for warm starts. */
@@ -93,6 +96,8 @@ struct ScfResult {
   // RHF stores one N x N AO density; UHF stores alpha then beta matrices.
   // The state is explicit and remains private to prepared execution plans.
   std::vector<double> density;
+  /** Present only for a successful CPU RKS solve requesting state retention. */
+  std::vector<double> ks_physical_fock;
   unsigned iterations{};
   double energy_change{};
   double density_rms{};

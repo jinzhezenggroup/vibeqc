@@ -12,6 +12,7 @@ from vibeqc.profiles import canonical_hash
 from tools.vibeqc_posthf.reference import immutable
 
 from .backends import CudaDFJKBackend
+from .direct_cuda import CudaDirectJKBackend
 from .problem import ResponseCompatibilityError
 
 
@@ -422,7 +423,7 @@ class UHFResponseOperator:
     def __init__(self, problem, backend):
         if not isinstance(problem, UHFResponseProblem):
             raise TypeError("expected UHFResponseProblem")
-        if isinstance(backend, CudaDFJKBackend):
+        if isinstance(backend, (CudaDFJKBackend, CudaDirectJKBackend)):
             raise NotImplementedError(
                 "UHF response requires a validated spin-resolved CUDA J/K plan"
             )

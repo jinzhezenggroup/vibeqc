@@ -12,6 +12,7 @@ linear solve.
 """
 
 from .backends import CudaDFJKBackend, DenseAOResponseBackend, NativeJKBackend
+from .direct_cuda import CudaDirectJKBackend
 from .krylov import (
     DiagonalPreconditioner,
     GMRESOptions,
@@ -45,6 +46,7 @@ from .xc import FixedDensityXCDerivativeKernel
 __all__ = [
     "CPKSResponseOperator",
     "CudaDFJKBackend",
+    "CudaDirectJKBackend",
     "DenseAOResponseBackend",
     "DenseMatrixResponseOperator",
     "DiagonalPreconditioner",
