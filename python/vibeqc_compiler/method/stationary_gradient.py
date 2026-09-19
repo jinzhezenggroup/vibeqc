@@ -63,8 +63,9 @@ class StationaryMeanField:
     def __post_init__(self):
         if self.point_model not in ("interior-v1", SCF_POINT_MODEL):
             raise UnsupportedMethod("unsupported XC point-model contract")
+        if self.hamiltonian not in ("all-electron", "scalar-semilocal-ecp"):
+            raise UnsupportedMethod("unsupported stationary hamiltonian contract")
         supported = {
-            "hamiltonian": "all-electron",
             "coulomb": "direct-full-range",
             "occupations": "fixed-integer",
             "topology_policy": "stable-explicit-grid-v1",
@@ -94,6 +95,12 @@ _SOURCES = (
     GradientSource("nuclear", "nuclear_repulsion", ("nuclear_center",)),
 )
 _INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+_ECP_SOURCES = (
+    GradientSource("ecp_local", "ecp_local_residual", ("ao_center", "ecp_center")),
+    GradientSource(
+        "ecp_nonlocal", "ecp_projector_residual", ("ao_center", "ecp_center")
+    ),
+)
 
 
 def _positive(value, name):
@@ -195,6 +202,13 @@ class StationaryGradientPlan:
 
     @property
     def sources(self):
+        if self.mean_field.hamiltonian == "scalar-semilocal-ecp":
+            return (
+                replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
+                *_ECP_SOURCES,
+                *_SOURCES[1:-1],
+                replace(_SOURCES[-1], primitive="effective_charge_nuclear_repulsion"),
+            )
         return _SOURCES
 
     @property
@@ -244,7 +258,10 @@ class StationaryGradientPlan:
         Only I is differentiated. D/W must come from a validated stationary
         owner when a later native endpoint binds the plan.
         """
-        if source not in _INTEGRAL_SOURCES:
+        if (
+            source not in (*_INTEGRAL_SOURCES, *(s.name for s in _ECP_SOURCES))
+            or source not in self.source_names
+        ):
             raise ValueError("source is not an integral-gradient primitive")
         _positive(terms, "terms")
         _positive(coordinates, "coordinates")
