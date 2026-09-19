@@ -106,6 +106,10 @@ def tune_cuda(
     timeout for device work; this deadline stops launching further candidates.
     The CPU interpreter is an oracle during tuning, never a runtime fallback.
     """
+    if baseline.precision != "fp64":
+        raise ValueError(
+            "automatic TensorIR schedule promotion is currently qualified only for FP64"
+        )
     if not isinstance(search_limits, TensorSearchLimits):
         raise TypeError("search_limits must be TensorSearchLimits")
     if schedules is not None and search_space is not None:

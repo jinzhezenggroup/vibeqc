@@ -106,6 +106,8 @@ function(vibeqc_attach_cuda_implib target)
     cublasSetPointerMode_v2
     cublasSetStream_v2
     cublasSetWorkspace_v2
+    cublasSgemm_v2
+    cublasSgemmStridedBatched
   )
   set(VIBEQC_CUSOLVER_SYMBOLS
     cusolverDnCreate

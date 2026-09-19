@@ -21,6 +21,7 @@ kernels; when it defines ``vibeqc_resident_post_run`` the action runs after a
 *successful* evaluation.
 """
 
+from vibeqc_compiler.tensor.cuda_dtype import scalar_type, symmetry_tolerance
 from vibeqc_compiler.tensor.cuda_emit import _launch as _emit_launch
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 
@@ -50,18 +51,20 @@ def _validation_body(plan):
     for slot, i in enumerate(plan.inputs):
         step = plan.steps[i]
         node = step.node
+        ty = scalar_type(node.spec.dtype).ctype
+        atol, rtol = symmetry_tolerance(node.spec.dtype)
         comparisons = []
         for symmetry in node.spec.symmetries:
             partner = _flat_parts(symmetry.permutation, node.spec.shape)
             comparisons.append(
                 f"double peer = values[{partner}]; if (!isfinite(peer) || "
-                f"fabs(value - ({symmetry.sign}) * peer) > 1e-11 + "
-                f"1e-10 * fabs(peer)) atomicCAS(error, 0, {i + 1});"
+                f"fabs(value - ({symmetry.sign}) * peer) > {atol} + "
+                f"{rtol} * fabs(peer)) atomicCAS(error, 0, {i + 1});"
             )
         body = "".join(f"{{{c}}}" for c in comparisons)
         validations.append(f"""
 __global__ void resident_validate_{slot}(unsigned char* p, int* error) {{
-    auto* values = reinterpret_cast<const double*>(p + {step.offset});
+    auto* values = reinterpret_cast<const {ty}*>(p + {step.offset});
     for (int z = int(blockIdx.x) * blockDim.x + threadIdx.x; z < {node.spec.size};
          z += int(blockDim.x) * gridDim.x) {{
         double value = values[z];
@@ -106,7 +109,10 @@ def resident_source(plan, *, prefix="", extension=""):
     outputs = [plan.steps[i] for _, i in plan.outputs]
 
     def span_rows(steps):
-        return ", ".join(f"{{{s.offset}ULL,{s.node.spec.size * 8}ULL}}" for s in steps)
+        return ", ".join(
+            f"{{{s.offset}ULL,{s.node.spec.size * s.node.spec.itemsize}ULL}}"
+            for s in steps
+        )
 
     # The ordinary ``tensor_run`` performs H2D/D2H copies around the launch
     # sequence.  Resident execution skips those copies by inlining the
