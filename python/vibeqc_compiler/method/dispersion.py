@@ -71,6 +71,85 @@ class D3Spec:
 
 
 @dataclass(frozen=True)
+class D4Spec:
+    """Versioned molecular D4(BJ)-EEQ correction identity."""
+
+    s6: float
+    s8: float
+    s9: float
+    a1: float
+    a2: float
+    ga: float
+    gc: float
+    table_sha256: str
+    charge_parameter_sha256: str
+    profile: str = "standard"
+    reference_model: str = "eeq"
+    charge_model: str = "eeq2019"
+    cn_cutoff: float = 30.0
+    pair_cutoff: float = 60.0
+    atm_cutoff: float = 40.0
+    charge_cn_cutoff: float = 25.0
+    version: str = "d4-bj-eeq-spec-v1"
+
+    def __post_init__(self):
+        if self.version != "d4-bj-eeq-spec-v1":
+            raise ValueError("unsupported D4 specification version")
+        if self.reference_model != "eeq" or self.charge_model != "eeq2019":
+            raise ValueError("only the pinned D4 EEQ2019 charge model is supported")
+        if self.profile not in {"standard", "r2scan3c"}:
+            raise ValueError("unsupported D4 EEQ reference profile")
+        for field in ("s6", "s8", "s9", "a1", "a2", "ga", "gc"):
+            value = getattr(self, field)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"{field} must be a finite real scalar")
+            if not math.isfinite(value):
+                raise ValueError(f"{field} must be finite")
+            object.__setattr__(self, field, float(value) if value else 0.0)
+        if self.s6 < 0 or self.s9 < 0 or self.a1 < 0 or self.a2 <= 0:
+            raise ValueError("invalid D4 damping coefficient")
+        if self.ga <= 0 or self.gc <= 0:
+            raise ValueError("D4 zeta parameters must be positive")
+        expected = {"standard": (3.0, 2.0), "r2scan3c": (2.0, 1.0)}[self.profile]
+        if (self.ga, self.gc) != expected:
+            raise ValueError("D4 profile and zeta parameters disagree")
+        for field in ("cn_cutoff", "pair_cutoff", "atm_cutoff", "charge_cn_cutoff"):
+            value = getattr(self, field)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"{field} must be a finite real scalar")
+            if not math.isfinite(value) or not 0 < value <= 1e6:
+                raise ValueError(f"{field} must be in (0, 1e6] bohr")
+            object.__setattr__(self, field, float(value))
+        for field in ("table_sha256", "charge_parameter_sha256"):
+            value = getattr(self, field)
+            if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise ValueError(f"{field} requires a lowercase SHA-256 digest")
+
+    def to_payload(self):
+        return asdict(self)
+
+    @property
+    def identity(self):
+        return canonical_hash(self.to_payload())
+
+
+def r2scan3c_d4_eeq() -> D4Spec:
+    """Exact pinned D4 part of r2SCAN-3c; the electronic method is separate."""
+    return D4Spec(
+        s6=1.0,
+        s8=0.0,
+        s9=2.0,
+        a1=0.42,
+        a2=5.65,
+        ga=2.0,
+        gc=1.0,
+        profile="r2scan3c",
+        table_sha256="d1691a6cf08748e7c35a340f78824a4a8da1813b0ca32d1074c346bfb3874871",
+        charge_parameter_sha256="02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a",
+    )
+
+
+@dataclass(frozen=True)
 class DispersionCorrectionPrimitive:
     """Geometry-only correction request, separate from semilocal XC and Fock.
 
@@ -78,12 +157,12 @@ class DispersionCorrectionPrimitive:
     capabilities. The migrated qualification provider is deliberately separate.
     """
 
-    specification: D3Spec
+    specification: D3Spec | D4Spec
     kind: ClassVar[str] = "dispersion_correction"
 
     def __post_init__(self):
-        if not isinstance(self.specification, D3Spec):
-            raise TypeError("dispersion primitive requires a D3Spec")
+        if not isinstance(self.specification, (D3Spec, D4Spec)):
+            raise TypeError("dispersion primitive requires a D3Spec or D4Spec")
 
     @property
     def derivative_capabilities(self):
