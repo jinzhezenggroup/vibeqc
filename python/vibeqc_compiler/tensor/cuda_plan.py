@@ -20,13 +20,13 @@ from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
-from .cuda_layout import LayoutDecision, select_layouts
+from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
 from .ir import TRANSCENDENTALS, Node
 from .layout import DenseLayout
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 2
+PLAN_SCHEMA = 3
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -68,6 +68,9 @@ class TensorSchedule:
     recompute: bool = False
     direct_gemm: bool = True
     layouts: bool = False
+    elements_per_thread: int = 1
+    reduction_unroll: int = 1
+    staging_width: int = 1
 
     def __post_init__(self):
         for name in ("tile_m", "tile_n", "tile_k", "threads"):
@@ -75,6 +78,10 @@ class TensorSchedule:
             checked_size(value, name)
             if not 1 <= value <= INT_MAX:
                 raise ValueError(f"{name} must be a positive cuBLAS-compatible integer")
+        for name in ("elements_per_thread", "reduction_unroll", "staging_width"):
+            value = getattr(self, name)
+            if type(value) is not int or value not in (1, 2, 4, 8):
+                raise ValueError(f"{name} must be one of 1, 2, 4, 8")
         for name in ("views", "fuse", "recompute", "direct_gemm", "layouts"):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
@@ -168,6 +175,43 @@ class TensorPlan:
         return _hash(self.to_payload())
 
     @property
+    def semantic_traffic(self) -> dict:
+        """Deterministic semantic byte accounting for this execution topology.
+
+        Declared host copies and pack/scatter conversions are exact byte counts;
+        the logical-tensor component reuses the planner's coarse node-traffic
+        model. This is not a DRAM/cache counter and excludes cuBLAS internals.
+        """
+        input_bytes = sum(
+            self.steps[i].node.spec.size * self.steps[i].node.spec.itemsize
+            for i in self.inputs
+        )
+        output_bytes = sum(
+            self.steps[i].node.spec.size * self.steps[i].node.spec.itemsize
+            for _, i in self.outputs
+        )
+        conversion = sum(
+            conversion_bytes(
+                gemm_contract(step.node), self.schedule, step.node.spec.itemsize
+            )
+            for step in self.steps
+            if step.gemm == "packed"
+        )
+        total = checked_size(
+            self.estimated_traffic_bytes + input_bytes + output_bytes + conversion,
+            "tensor semantic traffic bytes",
+        )
+        return {
+            "schema": "vibeqc.tensor.cuda.semantic-traffic.v1",
+            "logical_tensor_bytes": self.estimated_traffic_bytes,
+            "layout_conversion_bytes": conversion,
+            "host_to_device_bytes": input_bytes,
+            "device_to_host_bytes": output_bytes,
+            "total_bytes": total,
+            "scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic",
+        }
+
+    @property
     def layout_identity(self) -> str:
         """Physical-layout fact usable by #459 guards, without changing the IR."""
         return _hash(
@@ -212,6 +256,7 @@ class TensorPlan:
             "double_buffer_bytes": 0,
             "estimated_flops": self.estimated_flops,
             "estimated_traffic_bytes": self.estimated_traffic_bytes,
+            "semantic_traffic": self.semantic_traffic,
             "inputs": self.inputs,
             "outputs": self.outputs,
             "index_tables": self.index_tables,
