@@ -35,4 +35,14 @@ vibeqc_status enqueue_cuda_direct_jk_device(CudaDirectJkPlan* plan, FockBuildSpe
                                             std::size_t matrix_elements, double* coulomb,
                                             double* alpha_exchange, double* beta_exchange,
                                             int* numerical_error, std::string& detail);
+
+/** Experimental value-only variant: evaluate Coulomb ERI recurrences in FP32
+ * while retaining FP64 density reads, screening, accumulation and output.
+ * Exchange remains FP64. The caller must perform a strict FP64 target audit
+ * before publishing a converged state. */
+vibeqc_status enqueue_cuda_direct_jk_device_mixed_j(CudaDirectJkPlan* plan, FockBuildSpec spec,
+                                                    const double* density, const double* beta,
+                                                    std::size_t matrix_elements, double* coulomb,
+                                                    double* alpha_exchange, double* beta_exchange,
+                                                    int* numerical_error, std::string& detail);
 }  // namespace vibeqc::scf
