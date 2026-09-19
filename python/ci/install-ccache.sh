@@ -9,11 +9,11 @@
 # glibc dependency.
 set -euo pipefail
 
-ccache_version=4.13.6
+ccache_version=4.14
 
 declare -A ccache_sha256=(
-  [x86_64]=156ec57c5198cc849d92834023d09910b83dc5504c6cf405d09e6ae7b208a3e5
-  [aarch64]=2098d561e4a8e36bd06a29aedce53ea90c7e365f9573a93d91c230efbf96a958
+  [x86_64]=888eaf9697919d6eba77be797e9d9c9e40e734d11d67d25a79b075c3f79f6c77
+  [aarch64]=40623f11012a97d60c7d90058d7e3c8c70a3802af53a34067b89e6345c89db69
 )
 
 arch="$(uname -m)"
@@ -43,3 +43,5 @@ else
 fi
 
 mkdir -p "${CCACHE_DIR:-/root/.cache/ccache}"
+ccache --zero-stats
+ccache --show-config

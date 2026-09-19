@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
-from vibeqc_compiler.xc import functional
+from vibeqc_compiler.xc import UnsupportedXC, functional
 from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as fixture
 
@@ -43,6 +43,35 @@ def test_minimal_contractions_preserve_independent_fixtures(case, name, layout, 
         assert consumer.contract.scalar_outputs == (
             ((), (0,), (1,)) if spin == "polarized" else ((), (0,))
         )
+
+
+def test_r2scan_vtau_potential_matches_complete_density_directional_derivative():
+    rng = np.random.default_rng(164)
+    jets = rng.normal(size=(4, 13, 3))
+    density = np.stack((np.eye(3), 0.7 * np.eye(3)))
+    direction = rng.normal(size=density.shape)
+    direction = 0.03 * (direction + direction.swapaxes(-1, -2))
+    weights = rng.uniform(0.1, 1.0, jets.shape[1])
+    consumer = program("R2SCAN")
+    features = consumer.features(jets, density)
+    assert set(features) >= {"rho", "gradient", "sigma", "tau"}
+    rows = consumer.scalar_values(features)
+    assert np.max(np.abs(rows[(5,)])) > 1e-8
+    assert np.max(np.abs(rows[(6,)])) > 1e-8
+    value = consumer.evaluate(jets, density, weights)
+    analytic = np.sum(value["potential"] * direction)
+    errors = []
+    for step in (1e-4, 3e-5, 1e-5):
+        plus = consumer.evaluate(jets, density + step * direction, weights)["energy"]
+        minus = consumer.evaluate(jets, density - step * direction, weights)["energy"]
+        errors.append(abs((plus - minus) / (2 * step) - analytic))
+    assert np.all(np.asarray(errors) < [2e-7, 3e-8, 5e-9]), errors
+
+
+@pytest.mark.parametrize("observable", ["response", "geometry"])
+def test_r2scan_unvalidated_derivative_consumers_fail_closed(observable):
+    with pytest.raises(UnsupportedXC, match="tau-dependent"):
+        program("R2SCAN", observable=observable)
 
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
@@ -180,8 +209,14 @@ def test_contraction_requests_reject_unsupported_axes_domains_and_directions():
 
     with pytest.raises(UnsupportedXC):
         DerivativeRequest("hessian")
-    with pytest.raises(UnsupportedXC):
-        IngredientContract(family="mgga")
+    mgga = IngredientContract(family="mgga")
+    assert mgga.feature_indices == tuple(range(7))
+    assert mgga.ao_order == 1
+    assert IngredientContract(spin="unpolarized", family="mgga").feature_indices == (
+        0,
+        1,
+        2,
+    )
     meta, data, grid = fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         jets = basis.evaluate(grid.points, 1)

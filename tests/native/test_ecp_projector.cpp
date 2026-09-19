@@ -86,8 +86,8 @@ void check_grid() {
       }
     }
     for (unsigned i = 0; i < radii.size(); ++i)
-      if (!(radii[i].r > 0 && radii[i].weight > 0) || !std::isfinite(radii[i].weight) ||
-          (i && radii[i].r <= radii[i - 1].r))
+      if (!(radii[i].r > 0 && radii[i].weight > 0) || !std::isfinite(radii[i].r) ||
+          !std::isfinite(radii[i].weight) || (i && radii[i].r <= radii[i - 1].r))
         throw std::runtime_error("generated mapped radial grid failed");
     if (orders[0] >= 160)
       for (unsigned power = 0; power <= 4; ++power) {
@@ -95,7 +95,7 @@ void check_grid() {
         for (const auto& p : radii)
           sum += (long double)p.weight * std::pow((long double)p.r, power) *
                  std::exp(-(long double)p.r * p.r);
-        if (std::abs(sum - std::tgamma((power + 1) / 2.0L) / 2) > 2e-13L)
+        if (!std::isfinite(sum) || std::abs(sum - std::tgamma((power + 1) / 2.0L) / 2) > 2e-13L)
           throw std::runtime_error("generated radial Jacobian/moment failed");
       }
   }

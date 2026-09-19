@@ -14,13 +14,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   build_wheels:
     name: Build CUDA manylinux wheel
     runs-on: ubuntu-24.04
+    # A cold cache must be able to finish once so actions/cache can seed the
+    # normalized v2 compiler cache; warm runs should return well below this cap.
+    timeout-minutes: 45
     env:
       CCACHE_MAXSIZE: 3G
     steps:
@@ -33,9 +36,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/ccache
-          key: ccache-wheel-manylinux_x86_64-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-wheel-v2-manylinux_x86_64-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
-            ccache-wheel-manylinux_x86_64-
+            ccache-wheel-v2-manylinux_x86_64-
 
       - name: Restore cibuildwheel tool cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -51,12 +54,18 @@ jobs:
           CIBW_CACHE_PATH: ${{ runner.temp }}/cibw-cache
           # cibuildwheel mounts the host root at /host inside the manylinux
           # container, so the compiler cache survives the container lifetime.
+          # scikit-build-core creates a fresh /tmp/tmp*/build directory on every
+          # invocation. Normalize those transient absolute paths before ccache
+          # hashes the CMake/NVCC command line; otherwise generated-source and
+          # generated-include paths make identical compilations miss across runs.
           CIBW_ENVIRONMENT: >-
             VIBEQC_ENABLE_CUDA=ON
             VIBEQC_ENABLE_AOT_SHELLS=ON
             VIBEQC_CUDA_ARCHITECTURES=120
             CCACHE_DIR=/host${{ runner.temp }}/ccache
             CCACHE_MAXSIZE=3G
+            CCACHE_BASEDIR=/tmp
+            CCACHE_COMPILERCHECK=content
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -129,6 +138,7 @@ jobs:
 
   pass:
     name: Pass building wheels
+    timeout-minutes: 5
     needs: [build_wheels]
     runs-on: ubuntu-24.04
     if: always()

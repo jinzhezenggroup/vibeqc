@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstring>
 #include <memory>
 
 #include "api/error.hpp"
@@ -172,10 +173,16 @@ vibeqc_status vibeqc_calculation_get_correlation_diagnostic(
     const vibeqc_calculation* calculation, vibeqc_correlation_diagnostic* diagnostic) {
   if (!calculation || !diagnostic) return VIBEQC_STATUS_INVALID_ARGUMENT;
   std::lock_guard<std::recursive_mutex> lock(calculation->context->mutex);
-  if (!vibeqc::api::valid_descriptor(diagnostic)) return VIBEQC_STATUS_ABI_MISMATCH;
+  const auto caller_size = diagnostic->struct_size;
+  constexpr auto legacy_size = offsetof(vibeqc_correlation_diagnostic, response_iterations);
+  if (caller_size < legacy_size || diagnostic->abi_version != VIBEQC_ABI_VERSION)
+    return VIBEQC_STATUS_ABI_MISMATCH;
   const auto value = calculation->plan->correlation_diagnostic();
   if (!value) return VIBEQC_STATUS_NOT_IMPLEMENTED;
-  *diagnostic = *value;
+  std::memcpy(diagnostic, &*value, std::min<std::size_t>(caller_size, sizeof(*diagnostic)));
+  // Keep the caller's actual capacity. Publishing the producer's larger size
+  // would make a repeated query overrun a legacy caller's unchanged buffer.
+  diagnostic->struct_size = caller_size;
   return VIBEQC_STATUS_SUCCESS;
 }
 

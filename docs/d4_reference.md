@@ -1,63 +1,75 @@
-# D4 numerical qualification baseline
+# D4 numerical qualification and EEQ integration
 
-`src/dft/dispersion/d4_reference.hpp` provides a bounded molecular D4
-energy/derivative evaluator callable on CPU and from a CUDA device kernel.
-It is an internal migration baseline, not a public DFT-D4 method or a
-performance-promoted runtime. It has no runtime dependency on xTBloom,
-DFT-D4, PySCF, Python, or Fortran.
+`src/dft/dispersion/d4_reference.hpp` retains the bounded CPU/device fixed-charge
+D4 baseline migrated from xTBloom. `src/dft/dispersion/d4_eeq.hpp` adds the
+generic molecular EEQ2019 charge provider, its analytic coordinate response,
+and a complete CPU/CUDA D4 gradient qualification endpoint. Neither file is a
+public Calculator registration or a performance-promoted production scheduler.
 
-## Supported contract
+## Scientific contract
 
-The caller supplies atomic numbers (H–Rn), Cartesian positions in bohr,
-and independent partial charges. `gfn2_d4_parameters()` explicitly selects
-the xTBloom/GFN2 compatibility profile; there is no generic DFT default.
-Method parameters and the three sharp cutoffs are explicit. The input
-reference model must be GFN2; EEQ is rejected rather than silently using
-GFN2 reference polarizabilities.
+The fixed-charge evaluator accepts explicit D4 reference tables, damping/zeta
+parameters, atomic positions in bohr and independent partial charges. It returns
+two-body and zero-charge-reference ATM energies, `(partial E/partial R)_q`, and
+`partial E/partial q`. GFN2 compatibility remains explicit and separate.
 
-`evaluate_d4_fixed_charge` returns the two-body energy, zero-charge-reference
-ATM energy, the total Cartesian gradient at fixed charges, and the
-charge derivative. Energies are Hartree, gradients are Hartree/bohr, and
-charge derivatives are Hartree/electron. **Gradients are not forces.**
-The Cartesian gradient includes all coordination-number response. Complete
-DFT-D4 forces additionally need the selected charge model and its response:
+The EEQ provider reproduces the pinned multicharge EEQ2019 equations: the 25-bohr
+error-function coordination number, CN saturation at 8, element-specific
+`chi/eta/kcnchi/radius`, the constrained Coulomb matrix, and the complete
+`dq/dR` response from the differentiated linear system. The complete endpoint
+then evaluates
 
 ```text
 dE/dR = (partial E/partial R)_q + (dq/dR)^T (partial E/partial q)
 force = -dE/dR
 ```
 
-The data tables are GFN2-specific, not merely the charge input. Standard D4
-requires independently qualified EEQ reference charges/polarizabilities as
-well as an EEQ charge solver. Canonical r2SCAN-3c requires its exact parameter
-manifest and the remaining electronic/basis/gCP components. None of those
-public capabilities are granted by this baseline.
+and publishes outputs only after the charge and response solves succeed.
 
-## Memory and execution
+## Reference models and r2SCAN-3c
 
-Each call owns one molecule of 0–256 atoms. Scratch requires exactly `27*N`
-doubles; no pair matrix or triple tensor is materialized and the evaluator
-does not allocate. All numerical buffers and immutable tables must be
-disjoint. Outputs are committed only on success; disposable scratch may
-change on a failed call. The caller must provide the documented array extents.
+`d4_eeq_data.hpp` contains independently generated EEQ reference charges and
+polarizability/C6 tables. Standard D4 uses the pinned `ga=3, gc=2` profile.
+Canonical r2SCAN-3c uses a separate table generated with `ga=2, gc=1`; mixing
+a profile and the wrong zeta parameters fails explicitly.
 
-CPU and CUDA share migrated scalar mathematics, with an explicit table view.
-Device consumers upload the immutable tables once and supply device-resident
-geometry, charges, scratch and outputs. The CUDA tests run unequal packed
-members concurrently and exercise an empty member and peer-local failure.
-There is no production batch scheduler or public SCF integration yet.
+`r2scan3c_d4_parameters()` and the Python `r2scan3c_d4_eeq()` MethodIR spec pin
+`s6=1, s8=0, s9=2, a1=0.42, a2=5.65`, the DFT-D4 4.2.0 molecular default
+cutoffs `CN=30`, `two-body=60`, `ATM=40` bohr, and the EEQ charge-CN cutoff
+`25` bohr. This is the D4 component needed by #172; it does not by itself add
+the electronic r2SCAN functional, the r2SCAN-3c basis, or gCP.
 
-Work is quadratic for coordination/two-body terms and cubic for ATM, with
-reference interpolation work inside the loops. One CUDA lane per molecule
-is a correctness baseline, **not evidence of competitive GPU performance**.
-The cutoffs preserve the historical sharp GFN2 convention, which is not
-differentiable at a cutoff crossing. There is no PBC, Hessian, or full
-DFT-D4-force capability.
+## Validation
+
+Independent fixtures are generated with the DFT-D4 4.2.0 executable, not with
+VibeQC mathematics. They cover r2SCAN-3c water, an asymmetric PBE molecule and
+a charged Zn-ammonia PBE case. Tests compare EEQ charges, complete energies and
+Cartesian gradients. Separate multi-step finite differences validate `dq/dR`
+and the complete chain-rule gradient; charge and response conservation are also
+checked.
+
+The existing GFN2 fixed-charge CPU/CUDA oracle suite remains unchanged and
+continues to qualify the shared pair/ATM mathematics and actual device path.
+
+## Memory and execution boundary
+
+All molecular qualification paths are bounded to 256 atoms. The fixed-charge
+D4 baseline uses `27*N` doubles and materializes no pair/triple tensors. The
+EEQ provider uses a dense `(N+1)^2` constrained matrix and a bounded
+`3*N*(N+1)` response block; it is a correctness implementation, not a promoted
+large-system schedule. Its asymptotic linear solves are cubic.
+
+The same bounded EEQ charge/response mathematics is qualified on CPU and CUDA.
+The CUDA test uploads immutable EEQ/D4 tables, evaluates both standard and
+r2SCAN-3c profiles on a real device, and covers ragged members plus peer-local
+failure. The one-worker-per-molecule route is a correctness baseline; a
+production GPU scheduler, generated derivative lowering and performance
+qualification remain open under #493. There is no PBC, Hessian, public SCF
+integration, or complete r2SCAN-3c method registration in this slice.
 
 ## Reproduction
 
-The compact table stores only the symmetric lower triangle, including the
-diagonal. Regenerate it without importing the runtime:
+Regenerate the retained GFN2 compatibility table:
 
 ```sh
 python tools/parameters/generate_d4.py \
@@ -66,21 +78,24 @@ python tools/parameters/generate_d4.py \
   --output-dir src/dft/dispersion
 ```
 
-CTest targets are `vibeqc_d4_reference_tests` and (CUDA builds)
-`vibeqc_d4_reference_cuda_tests`. They do not link or build the main QC
-library. Tests cover coordinate/charge finite differences, ATM decomposition,
-signed s8, symmetry, table domains, bad inputs and transactional failure.
-Independent energy and derivative fixtures from DFT-D4 4.2.0 are checked by
-both targets. Their adapter, library hashes and package builds are retained in
-`tools/oracle/` and `tests/data/d4/oracle_manifest.json`. Regenerate these
-test-only fixtures with:
+Regenerate the EEQ tables from pinned dftd4, multicharge and mctc-lib sources:
 
 ```sh
-python tools/oracle/generate_d4_reference.py --prefix /path/to/reference-prefix
+python tools/parameters/generate_d4_eeq.py \
+  --dftd4-git-dir /path/to/dftd4/.git \
+  --multicharge-git-dir /path/to/multicharge/.git \
+  --mctc-git-dir /path/to/mctc-lib/.git \
+  --output-dir src/dft/dispersion
 ```
 
-The CUDA target exercises real device arithmetic rather than calling a CPU
-reference from a CUDA-labelled wrapper.
+CTest targets are `vibeqc_d4_reference_tests`, `vibeqc_d4_eeq_tests`, and on
+CUDA builds `vibeqc_d4_reference_cuda_tests` plus `vibeqc_d4_eeq_cuda_tests`.
+Regenerate the independent EEQ
+fixtures with:
 
-See the [migration decision](../.agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md)
-for ownership boundaries and retirement conditions.
+```sh
+python tools/oracle/generate_d4_eeq_reference.py --prefix /path/to/dftd4-4.2.0-prefix
+```
+
+Source revisions, blob hashes, licenses, oracle hashes and generated-table
+digests are retained in the D4 manifests.

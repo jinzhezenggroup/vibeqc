@@ -22,16 +22,25 @@ CODES = {
     "GGA_C_PBE": "GGA_C_PBE",
     "LDA_XC_PW": "LDA_X,LDA_C_PW",
     "PBE": "GGA_X_PBE,GGA_C_PBE",
+    "MGGA_X_R2SCAN": "MGGA_X_R2SCAN",
+    "MGGA_C_R2SCAN": "MGGA_C_R2SCAN",
+    "R2SCAN": "MGGA_X_R2SCAN,MGGA_C_R2SCAN",
 }
 
 
 def reference(code, rho, spin):
     """Convert documented Libxc vxc/fxc order to full feature Hessians."""
-    lda = libxc.xc_type(code) == "LDA"
+    family = libxc.xc_type(code)
+    lda = family == "LDA"
+    mgga = family == "MGGA"
     n = rho[:, 0].sum(axis=0) if spin else rho[0]
-    exc, vxc, fxc, _ = libxc.eval_xc(
-        code, rho[:, 0] if spin and lda else rho[0] if lda else rho, spin=spin, deriv=2
-    )
+    if lda:
+        libxc_rho = rho[:, 0] if spin else rho[0]
+    elif mgga:
+        libxc_rho = rho
+    else:
+        libxc_rho = rho[:, :4] if spin else rho[:4]
+    exc, vxc, fxc, _ = libxc.eval_xc(code, libxc_rho, spin=spin, deriv=2)
     size = 7 if spin else 3
     v = np.zeros((size, len(n)))
     h = np.zeros((size, size, len(n)))
@@ -45,11 +54,25 @@ def reference(code, rho, spin):
                 h[i, j] = h[j, i] = fxc[1][:, k]
             for k, (i, j) in enumerate(combinations_with_replacement(range(2, 5), 2)):
                 h[i, j] = h[j, i] = fxc[2][:, k]
+        if mgga:
+            v[5:7] = vxc[3].T
+            for k, (i, j) in enumerate(((5, 5), (5, 6), (6, 6))):
+                h[i, j] = h[j, i] = fxc[4][:, k]
+            for k, (i, j) in enumerate(((0, 5), (0, 6), (1, 5), (1, 6))):
+                h[i, j] = h[j, i] = fxc[6][:, k]
+            for k, (i, j) in enumerate(
+                ((2, 5), (2, 6), (3, 5), (3, 6), (4, 5), (4, 6))
+            ):
+                h[i, j] = h[j, i] = fxc[9][:, k]
     else:
         v[0], h[0, 0] = vxc[0], fxc[0]
         if not lda:
             v[1], h[1, 1] = vxc[1], fxc[2]
             h[0, 1] = h[1, 0] = fxc[1]
+        if mgga:
+            v[2], h[2, 2] = vxc[3], fxc[4]
+            h[0, 2] = h[2, 0] = fxc[6]
+            h[1, 2] = h[2, 1] = fxc[9]
     return np.concatenate(
         (
             (n * exc)[None],
@@ -78,7 +101,7 @@ def main():
             gradient[:, :, 3:6] *= 1e-8
         else:
             n = np.array([1e-8, 1e-4, 1, 1e4, 1e8, 1e-3, 1, 1e3, 0.4, 0.4])
-            fraction = np.array([0.3, 0.4, 0.5, 0.3, 0.6, 1e-9, 1e-9, 1e-9, 0.2, 0.7])
+            fraction = np.array([0.3, 0.4, 0.5, 0.3, 0.6, 1e-4, 1e-4, 1e-4, 0.2, 0.7])
             densities = np.stack((n * fraction, n * (1 - fraction)))
             gradient = rng.normal(size=(2, 3, len(n))) * densities[:, None, :] ** (
                 4 / 3
@@ -87,22 +110,42 @@ def main():
         for spin in (0, 1):
             tag = f"{domain}_{spin}"
             if spin:
-                rho = np.concatenate((densities[:, None, :], gradient), axis=1)
+                rho_gradient = np.concatenate((densities[:, None, :], gradient), axis=1)
                 aa = np.sum(gradient[0] ** 2, axis=0)
                 ab = np.sum(gradient[0] * gradient[1], axis=0)
                 bb = np.sum(gradient[1] ** 2, axis=0)
-                features = np.concatenate(
-                    (densities, np.stack((aa, ab, bb)), densities ** (5 / 3))
+                tau = np.stack(
+                    (
+                        aa / (8 * densities[0]) + 0.8 * densities[0] ** (5 / 3),
+                        bb / (8 * densities[1]) + 0.8 * densities[1] ** (5 / 3),
+                    )
+                )
+                features = np.concatenate((densities, np.stack((aa, ab, bb)), tau))
+                rho = np.concatenate(
+                    (
+                        rho_gradient,
+                        np.zeros((2, 1, rho_gradient.shape[2])),
+                        tau[:, None, :],
+                    ),
+                    axis=1,
                 )
             else:
-                rho = np.concatenate(
+                rho_gradient = np.concatenate(
                     (densities.sum(axis=0)[None], gradient.sum(axis=0))
                 )
-                features = np.stack(
-                    (rho[0], np.sum(rho[1:] ** 2, axis=0), rho[0] ** (5 / 3))
+                sigma = np.sum(rho_gradient[1:] ** 2, axis=0)
+                tau = sigma / (8 * rho_gradient[0]) + 0.8 * rho_gradient[0] ** (5 / 3)
+                features = np.stack((rho_gradient[0], sigma, tau))
+                rho = np.concatenate(
+                    (
+                        rho_gradient,
+                        np.zeros((1, rho_gradient.shape[1])),
+                        tau[None],
+                    ),
+                    axis=0,
                 )
             arrays[f"{tag}_features"] = features
-            arrays[f"{tag}_rho_gradient"] = rho
+            arrays[f"{tag}_rho_gradient"] = rho_gradient
             for name, code in CODES.items():
                 arrays[f"{tag}_{name}"] = reference(code, rho, spin)
     path = args.output / "libxc.npz"

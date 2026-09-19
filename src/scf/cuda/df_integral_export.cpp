@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_usage.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/rhf_policy.hpp"
