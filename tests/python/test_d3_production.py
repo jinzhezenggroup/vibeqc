@@ -1,0 +1,126 @@
+"""Production D3(BJ) runtime qualification against independent goldens."""
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+from vibeqc import D3CorrectionBatch, evaluate_d3_correction
+
+_DATA = json.loads(
+    (Path(__file__).resolve().parents[1] / "data" / "d3_bj_reference.json").read_text()
+)
+_DFT_FIXTURES = [
+    fixture
+    for fixture in _DATA["fixtures"]
+    if fixture["name"].startswith(("pbe-bj-two-body/", "pbe0-bj-two-body/"))
+]
+
+
+def _method(fixture):
+    return (
+        "PBE0-D3(BJ)"
+        if fixture["name"].startswith("pbe0-bj-two-body/")
+        else "PBE-D3(BJ)"
+    )
+
+
+def _system(fixture):
+    return fixture["numbers"], fixture["positions"]
+
+
+@pytest.mark.parametrize(
+    "fixture", _DFT_FIXTURES, ids=[fixture["name"] for fixture in _DFT_FIXTURES]
+)
+def test_production_cpu_matches_independent_simple_dftd3(fixture):
+    result = evaluate_d3_correction(
+        _method(fixture), fixture["numbers"], fixture["positions"], device="cpu"
+    )
+    assert result.ok
+    assert result.backend == "cpu"
+    assert result.energy == pytest.approx(fixture["energy"], abs=2.0e-15)
+    np.testing.assert_allclose(
+        result.gradient, np.asarray(fixture["gradient"]), atol=2.0e-14, rtol=0.0
+    )
+
+
+def test_production_ragged_replay_diagnostics_budget_and_lifetime():
+    first, second = _DFT_FIXTURES[0], _DFT_FIXTURES[1]
+    systems = [_system(first), _system(second)]
+    batch = D3CorrectionBatch("PBE-D3(BJ)", systems, device="cpu")
+    diagnostic = batch.diagnostic()
+    assert diagnostic.backend == "cpu"
+    assert diagnostic.system_count == 2
+    assert diagnostic.total_atoms == len(first["numbers"]) + len(second["numbers"])
+    assert diagnostic.maximum_atoms == max(
+        len(first["numbers"]), len(second["numbers"])
+    )
+    assert diagnostic.workspace_bytes > 0
+    assert diagnostic.plan_host_bytes > 0
+    initial = batch.execute()
+    for result, fixture in zip(initial, (first, second), strict=True):
+        assert result.ok
+        assert result.energy == pytest.approx(fixture["energy"], abs=2.0e-15)
+        np.testing.assert_allclose(
+            result.gradient,
+            np.asarray(fixture["gradient"]),
+            atol=2.0e-14,
+            rtol=0.0,
+        )
+
+    moved = np.asarray(first["positions"], dtype=np.float64).copy()
+    moved[1, 0] += 0.013
+    replay = batch.execute([moved, None])
+    reference = evaluate_d3_correction(
+        "PBE-D3(BJ)", first["numbers"], moved, device="cpu"
+    )
+    assert replay[0].energy == pytest.approx(reference.energy, abs=2.0e-15)
+    np.testing.assert_allclose(replay[0].gradient, reference.gradient, atol=2.0e-14)
+    assert replay[1].energy == pytest.approx(second["energy"], abs=2.0e-15)
+
+    energy_only = batch.execute(gradients=False)
+    assert all(result.gradient is None for result in energy_only)
+    batch.close()
+    batch.close()
+    with pytest.raises(RuntimeError, match="closed"):
+        batch.execute()
+    with pytest.raises(RuntimeError, match="closed"):
+        batch.diagnostic()
+
+
+def test_production_budget_is_explicitly_bounded():
+    first = _DFT_FIXTURES[0]
+    with pytest.raises(RuntimeError, match="maximum_bytes"):
+        D3CorrectionBatch("PBE-D3(BJ)", [_system(first)], maximum_bytes=1)
+
+
+def test_production_cuda_ragged_replay_matches_independent_goldens():
+    first, second = _DFT_FIXTURES[0], _DFT_FIXTURES[1]
+    try:
+        batch = D3CorrectionBatch(
+            "PBE-D3(BJ)", [_system(first), _system(second)], device="cuda"
+        )
+    except (RuntimeError, NotImplementedError) as error:
+        pytest.skip(f"CUDA D3 runtime unavailable: {error}")
+
+    with batch:
+        assert batch.diagnostic().backend == "cuda"
+        initial = batch.execute()
+        for result, fixture in zip(initial, (first, second), strict=True):
+            assert result.ok
+            assert result.backend == "cuda"
+            assert result.energy == pytest.approx(fixture["energy"], abs=2.0e-15)
+            np.testing.assert_allclose(
+                result.gradient,
+                np.asarray(fixture["gradient"]),
+                atol=2.0e-14,
+                rtol=0.0,
+            )
+
+        moved = np.asarray(first["positions"], dtype=np.float64).copy()
+        moved[2, 1] -= 0.017
+        replay = batch.execute([moved, None])
+        cpu = evaluate_d3_correction("PBE-D3(BJ)", first["numbers"], moved)
+        assert replay[0].energy == pytest.approx(cpu.energy, abs=2.0e-15)
+        np.testing.assert_allclose(replay[0].gradient, cpu.gradient, atol=2.0e-14)
+        assert replay[1].energy == pytest.approx(second["energy"], abs=2.0e-15)

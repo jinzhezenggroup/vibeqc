@@ -234,7 +234,12 @@ class D3CorrectionBatch:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
+    def _require_open(self) -> None:
+        if not self._batch.value or not self._context.value:
+            raise RuntimeError("D3 correction batch is closed")
+
     def diagnostic(self) -> D3RuntimeDiagnostic:
+        self._require_open()
         native = _native.D3RuntimeDiagnostic(
             ctypes.sizeof(_native.D3RuntimeDiagnostic),
             _native.ABI_VERSION,
@@ -269,6 +274,7 @@ class D3CorrectionBatch:
         *,
         gradients: bool = True,
     ) -> tuple[D3CorrectionResult, ...]:
+        self._require_open()
         if geometries is not None and len(geometries) != len(self._counts):
             raise ValueError(
                 "changed geometry list must match the prepared system count"

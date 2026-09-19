@@ -1,83 +1,89 @@
-# D3(BJ) migration and qualification boundary
+# D3(BJ) production correction runtime
 
-The compiler can represent a geometry-only `DispersionCorrectionPrimitive`
-containing an immutable `D3Spec`. The repository also contains an executable,
-xTBloom-derived native CPU/CUDA **qualification baseline**. Neither capability
-registers a public DFT+D3 calculator or completes issue #492.
+VibeQC represents additive geometry-only dispersion with
+`DispersionCorrectionPrimitive` and an immutable `D3Spec`. The native library
+now exposes a standalone production D3(BJ) correction owner for CPU and CUDA,
+including ragged batches and fixed-topology changed-geometry replay. This is an
+additive correction endpoint: it does not yet make `Calculator` automatically
+sum electronic DFT and D3 energies or forces, so issue #492 remains open.
 
-## Model semantics
+## Supported model and MethodIR composition
 
-The initial model is nonperiodic, real FP64, two-body D3(BJ), `s9=0`.
+The production model is nonperiodic, real FP64, two-body D3(BJ), with `s9=0`.
 `D3Spec` records explicit `s6/s8/a1/a2`, source-data SHA-256 identities,
-coordination and pair cutoffs, and the pair-switch width. It rejects nonzero ATM,
-zero damping, unsupported versions, invalid coefficients and missing data
-identity. CN uses the pinned exponential convention (steepness 16) and Gaussian
-reference weights (factor 4). Changing those equations requires a new version.
+coordination and pair cutoffs, and the pair-switch width. ATM, zero damping,
+unsupported versions, invalid coefficients and mismatched table identities are
+rejected rather than silently approximated.
 
-`None` cutoffs mean no cutoff. The separate `gfn1_compatibility()` helper specifies
-the GFN1 damping parameters, 25-bohr CN cutoff, 50-bohr pair cutoff and 0.05-bohr
-switch. These are not silently applied to arbitrary DFT parameter sets. Hard
-cutoff models are only piecewise differentiable; gradient tests do not claim
-smoothness at a discontinuous CN or hard pair cutoff.
+The audited method catalog includes `PBE-D3(BJ)` and `PBE0-D3(BJ)`. Their
+`MethodIR` graphs contain the normal semilocal/exact-exchange primitives followed
+by one `DispersionCorrectionPrimitive`. The correction identity is independent
+of a descriptive manifest name and is checked against the compiled table hashes
+when a production owner is prepared.
 
-Energy is in Hartree; coordinates are in bohr. The baseline returns
-**gradient = dE/dR**, including explicit distance and reference-CN interpolation
-response. Forces have the opposite sign. The unrelated GFN1 halogen correction,
-Hamiltonian, SCC state and D4 terms are not imported.
+Energy is in Hartree; coordinates are in bohr. The correction returns
+**gradient = dE/dR**, including explicit pair-distance and coordination-number
+response. Forces therefore have the opposite sign. The GFN1 halogen correction,
+Hamiltonian, SCC state and D4 terms are not part of this endpoint.
 
-## Method composition
+## Production API and ownership
 
 ```python
-from dataclasses import replace
-from vibeqc_compiler.method import METHOD_CATALOG, resolve_method
-from tools.vibeqc_d3.reference import gfn1_compatibility
+from vibeqc import D3CorrectionBatch, evaluate_d3_correction
 
-# An explicit composition example, not a validated PBE parameterization:
-spec = replace(METHOD_CATALOG["PBE"], dispersion=gfn1_compatibility())
-graph = resolve_method(spec)
-assert graph.primitives[-1].kind == "dispersion_correction"
+one = evaluate_d3_correction("PBE-D3(BJ)", atomic_numbers, coordinates)
+with D3CorrectionBatch(
+    "PBE-D3(BJ)", systems, device="cuda", maximum_bytes=256 * 1024 * 1024
+) as batch:
+    cold = batch.execute()
+    moved = batch.execute([new_coordinates, None])
+    diagnostic = batch.diagnostic()
 ```
 
-The graph keeps table/parameter/cutoff identity separate from descriptive names.
-Existing pure LDA/PBE/PBE0 graph payloads are unchanged. The native LDA/PBE KS
-boundary still rejects graphs with correction nodes; it cannot silently execute
-the semilocal part while omitting D3. Generic named DFT+D3 public manifests and
-current-state/provider binding remain separate work.
+Preparation fixes each system's atom count and atomic numbers. Replay may replace
+coordinates independently for every item while preserving ragged offsets.
+`maximum_bytes` is an explicit plan bound. Diagnostics report plan/execution host
+bytes, persistent device bytes, table/workspace bytes, system and atom counts,
+and the MethodIR/correction/table identities.
 
-## Reproduction
+The native owner copies all preparation inputs. CPU execution uses O(N) scratch
+and direct pair loops. CUDA keeps offsets, atomic numbers, compact tables,
+coordinates, masks, results and scratch resident behind one nonblocking stream;
+only changed coordinates/masks and requested results cross the device boundary
+per replay. The initial CUDA scheduling baseline uses one serial worker per
+molecule while independent molecules run as separate blocks. It is a bounded
+production ownership baseline, not a claim of pair-parallel performance.
 
-No xTBloom or simple-dftd3 runtime dependency is added. From a source checkout:
+## Data provenance and validation
+
+No xTBloom or simple-dftd3 runtime dependency is added. Build-time generation
+verifies the pinned xTBloom-derived table and covalent-radius SHA-256 values and
+emits only the compact production data needed by the native evaluator. The
+runtime rejects a MethodIR whose recorded data identity differs from those
+compiled tables.
+
+`tests/data/d3_bj_reference.json` contains nine tiny independent fixtures from
+simple-dftd3 1.4.0 with ATM explicitly disabled. The production tests use the
+PBE/PBE0 fixtures for energy and complete analytic-gradient gates; the separate
+migration suite also covers finite differences, covariance, cutoffs, parameter
+scaling and malformed inputs.
 
 ```sh
-PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1   python -m pytest tests/python/test_d3_reference.py   tests/python/test_dft_method_ir.py tests/python/test_compiler_structure.py -q
+PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  python -m pytest tests/python/test_d3_reference.py \
+  tests/python/test_d3_production.py tests/python/test_dft_method_ir.py -q
+python tools/check_compiler_structure.py
 ```
 
-This explicitly compiles a tiny C++ diagnostic library in the test temporary
-directory. To exercise CUDA, build the diagnostic library with
-`tools.vibeqc_d3.reference.build_reference(path, backend="cuda", nvcc=..., cuda_arch="sm_120")`,
-then run the same suite on an allocated GPU with `VIBEQC_D3_LIBRARY` set to its
-absolute path and `VIBEQC_D3_EXPECT_BACKEND=cuda`. CUDA compilation is separate
-from source import/generation. The test wrapper never falls back to CPU.
+## Remaining boundary
 
-`tools/vibeqc_d3/generate_goldens.py` requires **dftd3==1.4.0** only when
-regenerating the nine tiny independent fixtures. It explicitly disables ATM,
-including for the upstream PBE/PBE0 parameter entries whose default `s9` is one.
-The tests also use multi-step coordinate finite differences, mixed-element
-permutations, translation/rotation covariance, cutoff switching, parameter
-scaling and invalid-input controls.
+The public correction owner is deliberately separate from the electronic DFT
+SCF/Fock equation. Automatic `Calculator` composition of DFT + D3, the complete
+combined electronic-plus-dispersion force endpoint, pair-parallel CUDA lowering,
+ATM, and zero-damping variants remain separate work. Native DFT paths must not
+accept a correction node and then omit it silently.
 
-## Resource and production boundaries
-
-The baseline is synchronous and single-molecule, with a serial GPU worker. It
-expands `[npair,49]` reference data, caps fixtures at 512 atoms and preflights a
-native logical-allocation budget. That budget excludes Python/JSON host overhead
-and is not a measured process/device peak. It is an O(N^2) correctness baseline,
-not a performance promotion or the final memory-bounded production design.
-
-Native state/stream ownership, ragged batching, generated production lowering,
-pair-parallel scheduling, compact shared tables, ATM, zero damping and public
-DFT energy/force registration remain open. CPU and CUDA intentionally share the
-migrated arithmetic; agreement between them is not an independent oracle.
-
-See [data provenance](../external/xtbloom-d3/README.md) and the
-[architecture decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md).
+See [data provenance](../external/xtbloom-d3/README.md), the
+[baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),
+and the
+[production runtime decision](../.agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md).
