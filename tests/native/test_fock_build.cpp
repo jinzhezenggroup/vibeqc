@@ -425,33 +425,36 @@ void verify_cosx_provider_semantics() {
   spec.exchange.approximation = FockApproximation::SeminumericalCosx;
   spec.exchange.cosx = make_cosx_v1_spec(12, 8, 16, 3, 1.0e-12);
 
-  const auto resolved = resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10);
+  const auto resolved = resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 7);
   require(resolved.spec == spec && resolved.schedule == FockSchedule::CudaIndependent &&
               resolved.metric_relative_threshold == 1.0e-10 &&
-              !resolved.legacy_density_fitting,
+              resolved.cosx_tile_points == 7 && !resolved.legacy_density_fitting,
           "RI-J/COSX-K semantics were not preserved by resolution");
 
   const auto& registration =
       fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   const auto& capability = registration.domain.capabilities;
-  require(!vibeqc::runtime::provider_executable(registration) && capability.restricted &&
-              capability.unrestricted && capability.full_range &&
+  require(capability.restricted && capability.unrestricted && capability.full_range &&
               capability.maximum_derivative_order == 0 &&
               capability.maximum_angular_momentum == 3 && capability.cartesian &&
               capability.spherical && !capability.batching && !capability.coulomb &&
               capability.exchange && capability.independent_terms &&
               capability.arbitrary_coefficients,
-          "reserved COSX registration overclaims or loses its exchange-only domain");
-  std::string unavailable;
-  try {
-    require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
-  } catch (const std::runtime_error& error) {
-    unavailable = error.what();
-  }
-  require(unavailable.find("cuda.cosx") != std::string::npos &&
-              (unavailable.find("reserved") != std::string::npos ||
-               unavailable.find("not built") != std::string::npos),
-          "unpromoted COSX execution did not fail with provider-specific diagnostics");
+          "COSX registration overclaims or loses its exchange-only domain");
+#if VIBEQC_HAS_CUDA
+  require(vibeqc::runtime::provider_executable(registration),
+          "CUDA COSX provider is not executable in a CUDA build");
+  require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+#else
+  require(!vibeqc::runtime::provider_executable(registration) &&
+              registration.availability == vibeqc::runtime::ProviderAvailability::NotBuilt,
+          "CPU-only build mislabeled the CUDA COSX provider");
+#endif
+  const auto& cpu_registration =
+      fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cpu);
+  require(cpu_registration.availability == vibeqc::runtime::ProviderAvailability::Unavailable &&
+              !vibeqc::runtime::provider_executable(cpu_registration),
+          "CPU COSX oracle was mislabeled as a production provider");
 
   auto derivative = spec;
   derivative.derivative_order = 1;
@@ -489,8 +492,13 @@ void verify_cosx_provider_semantics() {
 
   auto changed_grid = spec;
   ++changed_grid.exchange.cosx.angular_azimuth;
-  require(resolve_fock_build(changed_grid, FockBackend::Cuda) != resolved,
+  require(resolve_fock_build(changed_grid, FockBackend::Cuda, 1.0e-12, 1.0e-10, 7) != resolved,
           "COSX grid change did not invalidate the resolved mathematical identity");
+  require(resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 8) != resolved,
+          "COSX tile change did not invalidate resolved execution identity");
+  require_rejected(
+      [&] { (void)resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 0); },
+      "COSX accepted a zero point tile");
 
   auto exact = make_hf_fock_spec(FockSpin::Restricted);
   exact.exchange.cosx = spec.exchange.cosx;
