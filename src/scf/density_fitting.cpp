@@ -12,6 +12,7 @@
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
 #include "scf/df_streamed_k_policy.hpp"
+#include "tensor/symmetric_matrix_function.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -492,12 +493,11 @@ std::vector<double> density_fitting_metric_inverse_response(const std::vector<do
   require_finite(metric, "DF metric response requires a finite metric");
   require_finite(inverse, "DF metric response requires a finite inverse");
   require_finite(response, "DF metric response requires finite weights");
-  std::vector<double> symmetric(elements), weights(elements);
+  std::vector<double> symmetric(elements);
   for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j) {
+    for (std::size_t j = 0; j < n; ++j)
       symmetric[i * n + j] = 0.5 * (metric[i * n + j] + metric[j * n + i]);
-      weights[i * n + j] = 0.5 * (response[i * n + j] + response[j * n + i]);
-    }
+
   const auto eigen = symmetric_eigen(std::move(symmetric), n);
   const auto& q = eigen.vectors;
   const double largest = eigen.values.back();
@@ -506,8 +506,7 @@ std::vector<double> density_fitting_metric_inverse_response(const std::vector<do
   // Match the eigensolver's relative resolution. A cutoff inside this interval
   // cannot define a reproducible derivative even if this call chooses a rank.
   const double resolution = 128 * std::numeric_limits<double>::epsilon() * largest;
-  std::vector<bool> retained(n);
-  std::vector<double> temp(elements, 0.0), transformed(elements, 0.0);
+  std::vector<std::uint8_t> retained(n);
   for (std::size_t i = 0; i < n; ++i) {
     double inverse_eigenvalue = 0.0;
     for (std::size_t row = 0; row < n; ++row)
@@ -517,46 +516,16 @@ std::vector<double> density_fitting_metric_inverse_response(const std::vector<do
     if (relative_threshold > 0.0) {
       if (std::abs(eigen.values[i] - cutoff) <= resolution)
         throw std::runtime_error("DF metric rank crossing: eigenvalue is unresolved at the cutoff");
-      if (retained[i] != (eigen.values[i] > cutoff))
+      if (static_cast<bool>(retained[i]) != (eigen.values[i] > cutoff))
         throw std::invalid_argument("DF metric inverse active subspace differs from its threshold");
     }
   }
-  if (std::none_of(retained.begin(), retained.end(), [](bool keep) { return keep; }))
+  if (std::none_of(retained.begin(), retained.end(), [](std::uint8_t keep) { return keep != 0; }))
     throw std::invalid_argument("DF metric inverse retains no positive subspace");
-  // Q^T E Q and Q (L .* Ehat) Q^T are four cubic matrix products. The divided
-  // differences handle subspace motion, including finite discarded eigenvalues.
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k) temp[i * n + j] += weights[i * n + k] * q[k * n + j];
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j) {
-      for (std::size_t k = 0; k < n; ++k) transformed[i * n + j] += q[k * n + i] * temp[k * n + j];
-      double divided = 0.0;
-      if (retained[i] && retained[j]) {
-        divided = -1.0 / (eigen.values[i] * eigen.values[j]);
-      } else if (retained[i] != retained[j]) {
-        const double gap = eigen.values[i] - eigen.values[j];
-        if (std::abs(gap) <= resolution)
-          throw std::runtime_error("DF metric retained/discarded subspaces are unresolved");
-        divided = ((retained[i] ? 1.0 / eigen.values[i] : 0.0) -
-                   (retained[j] ? 1.0 / eigen.values[j] : 0.0)) /
-                  gap;
-      }
-      transformed[i * n + j] *= divided;
-    }
-  std::fill(temp.begin(), temp.end(), 0.0);
-  std::vector<double> result(elements, 0.0);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k) temp[i * n + j] += q[i * n + k] * transformed[k * n + j];
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k) result[i * n + j] += temp[i * n + k] * q[j * n + k];
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = i + 1; j < n; ++j)
-      result[i * n + j] = result[j * n + i] = 0.5 * (result[i * n + j] + result[j * n + i]);
-  require_finite(result, "DF metric inverse response is non-finite");
-  return result;
+
+  return tensor::symmetric_matrix_function_vjp(eigen.values, q, retained, response,
+                                               tensor::SymmetricMatrixFunction::pseudoinverse,
+                                               resolution);
 }
 
 DensityFittingMetricFactor factor_density_fitting_metric(const std::vector<double>& metric,

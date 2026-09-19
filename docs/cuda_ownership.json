@@ -150,6 +150,21 @@
         "generated/df_shells/*.hpp"
       ],
       "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
+    },
+    {
+      "name": "symmetric_matrix_function",
+      "outputs": [
+        "generated/generated_symmetric_matrix_function.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/method/matrix_function_cuda.py"
+    },
+    {
+      "name": "df_hf_stationary_response",
+      "outputs": [
+        "generated/generated_df_hf_response_contract.hpp",
+        "generated/generated_df_hf_response.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/method/df_hf_response_cuda.py"
     }
   ],
   "subsystems": {
@@ -315,9 +330,9 @@
     },
     "df_response_weights": {
       "owner": "scf_tensor",
-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. Compatible singleton resident RHF response borrows existing full J/K capacity even when occupied factors are unavailable; this dense reuse requires no factor reservation or new allocation. Occupied response additionally requires the shared twofold-work-reduction policy and actual projection capacity; immutable raw values are reused only with matching source identity. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Automatic occupied-space response shares SCF/seed/final exchange workload and capacity admission, without an AO/rank endpoint, equal-basis or GPU-name whitelist. Automatic factor reservation is method/rank-aware and declines optional storage when it would force a dense resident plan into streaming; UHF, unknown and unprofitable ranks retain dense accounting. Execution additionally requires a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
-      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
-      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+      "current_default": "RHF response coefficients and method-level Coulomb/exchange A/M weight kernels are compiler-generated from the DensityFittingRHFResponsePlan identity. Native CUDA owns dynamic-size BLAS, packed/resident storage, tiling, streams and callbacks. Rank-deficient metric response calls the separately generated symmetric pseudoinverse custom rule.",
+      "generated_capability": "StationaryProblem derives RHF one-electron, Pulay, three-center A and metric M source weights; its native lowering emits the production RHF coefficient contract plus dynamic-size Coulomb/exchange source-weight kernels. #143 owns coordinate-integral derivatives and SymmetricMatrixFunctionSpec owns pseudoinverse spectral response.",
+      "missing_capability": "UHF/multiple-density composition and direct dynamic-shape execution of the full TensorIR stationary graph remain native/generic follow-up work; BLAS, eigensolver, allocation, tiling, packed layout and stream policy intentionally remain native runtime.",
       "retained_duplicate_reason": "oracle",
       "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
       "evidence": [
@@ -340,7 +355,7 @@
         ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
         "tests/python/test_df_resources.py"
       ],
-      "status": "native_baseline_with_opt_in_control"
+      "status": "partial_compiler_migration"
     },
     "d4_dispersion": {
       "owner": "d4_dispersion",
@@ -354,6 +369,20 @@
         ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
       ],
       "status": "oracle"
+    },
+    "matrix_function_custom_rule": {
+      "owner": "python/vibeqc_compiler/method/matrix_function.py + matrix_function_cuda.py",
+      "current_default": "Shared fixed-branch symmetric pseudoinverse first-order response. The compiler owns the serialized rule and emits its runtime-sized CUDA lowering; native DF retains eigensystem ownership, branch validation, scratch, streams, and launch integration.",
+      "generated_capability": "SymmetricMatrixFunctionSpec emits ordinary TensorIR response programs for inverse_sqrt and pseudoinverse, including retained/discarded subspace motion and full-Frobenius transpose semantics.",
+      "missing_capability": "Direct dynamic-shape TensorIR execution is not yet available; the compiler-owned custom-rule emitter provides the runtime-sized CUDA lowering without generating BLAS/eigensolver/allocation/runtime policy.",
+      "retirement_condition": "Replace the dynamic adapter only after compiler/runtime dynamic-shape custom-rule dispatch reproduces fixed-rank branch semantics and passes complete DF force/resource gates; do not restore a method-local spectral kernel.",
+      "evidence": [
+        "tests/python/test_matrix_function.py",
+        "tests/native/test_density_fitting.cpp",
+        "docs/matrix_function.md",
+        ".agents/notes/implemented/architecture/2026-09-19-df-hf-stationary-response.md"
+      ],
+      "status": "shared_custom_rule"
     }
   },
   "files": [
@@ -741,21 +770,14 @@
     },
     {
       "path": "src/scf/cuda/df_response_weights.cu",
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed. Full-rank dense and bounded responses apply metric eigenfactors before density/Gram products to avoid amplified quadratic rounding. These BLAS method adapters remain conservatively scientific; retained spectral rank-deficient and serial-reference alternatives have separate numerical roles.",
-      "regions": [
-        {
-          "start": "__global__ void exchange_metric_kernel(",
-          "stop": "__global__ void metric_response_kernel(",
-          "role": "oracle",
-          "reason": "Opt-in VIBEQC_DF_SERIAL_RESPONSE_DOT=1 retains the independently ordered serial AO-pair reduction for same-library numerical/regression and timing controls. It is not an automatic provider-error fallback or a substitute for external scientific references. Removal is governed by the df_response_weights ledger entry."
-        }
-      ],
+      "reason": "Native HF response execution adapter and FP64 cuBLAS/runtime scheduling. Method-level Coulomb/exchange A/M weight kernels and spectral Frechet arithmetic are compiler-generated; resident/occupied/packed paths retain bounded storage, BLAS, tiling, stream and callback policy.",
+      "regions": [],
       "role": "scientific",
       "subsystem": "df_response_weights"
     },
     {
       "path": "src/scf/cuda/df_response_weights.cuh",
-      "reason": "Native HF density response and spectral Frechet method adapters. FP64 cuBLAS computes charge/density products and auxiliary contractions. Eligible resident plans borrow existing full J/K scratch, evaluate each exchange projection once, and reuse it across response consumers; bounded panels remain for other plans and explicit comparison. Provider, layout and accumulation glue remain conservatively scientific. Integral values and coordinate derivatives retain their generated owners. Qualified occupied response emits packed pairs directly from bounded lower rectangular BLAS blocks, including explicit diagonal overshoot accounting; no dense weight panel is generated and then compressed.",
+      "reason": "Native HF density/source response runtime contract, buffers and bounded scheduling. Spectral Fr\u00e9chet mathematics is owned by the shared tensor matrix-function custom rule.",
       "regions": [],
       "role": "scientific",
       "subsystem": "df_response_weights"

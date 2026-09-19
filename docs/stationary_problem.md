@@ -132,6 +132,17 @@ execution evidence. No public force capability or native execution path changes.
 
 ## Ownership and next integration
 
+`DensityFittingRHFResponsePlan` is the first production-shaped #358 consumer.
+It declares the fitted tensor residual `M B - A = 0` and the stationary RHF
+two-electron objective, so the common reverse derives one-electron, overlap,
+three-center and metric source weights. Its provider DAG stops at #143's
+generated geometry derivatives. Full-rank fitted-state algebra is represented
+directly; a truncated DF metric binds the shared `pseudoinverse` matrix-function
+custom rule, whose CUDA lowering is compiler-generated. The production RHF force
+entry also consumes generated `cJ/cK` constants and generated A/M source-weight
+kernels carrying this derivative-plan identity; native code retains dynamic-size
+storage, BLAS/eigensolver calls and streams.
+
 MethodIR (#396) remains the method/component front end. The existing semilocal
 `StationaryGradientPlan` (#163) remains a specialized fixed-stationary-density
 source-contraction consumer and is not replaced by this schema.
@@ -139,9 +150,10 @@ source-contraction consumer and is not replaced by this schema.
 The implicit-solve primitive (#465) owns response execution, true residuals,
 solver failure propagation and current-state binding. The symmetric matrix rule
 (#466) owns its qualified spectral mathematics. Neither is reimplemented here.
-Subsequent #181 slices must bind these primitives to the generic problem, provide
-qualified native HF/RI-MP2 state/provider consumers, and validate complete nuclear
-derivatives. #460's optional execution/lifetime graph is not required here.
+Subsequent #181 slices can extend the same boundary to UHF/multiple-density
+response and direct dynamic-shape execution; they must preserve qualified native
+state/provider contracts and complete nuclear-derivative gates. #460's optional
+execution/lifetime graph is not required here.
 Higher-order derivatives, Hessian composition, joint native resource admission,
 stale-state rejection and automatic provider-rule dispatch are not supplied by
 this first-order compiler-only slice.

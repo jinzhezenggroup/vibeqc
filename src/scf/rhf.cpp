@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_df_hf_response_contract.hpp"
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
@@ -429,7 +430,8 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
     for (std::size_t i = 0; i < density.size(); ++i) total[i] = density[i] + (*beta)[i];
     terms = {{total, 1.0, 0.0}, {density, 0.0, 0.5}, {*beta, 0.0, 0.5}};
   } else {
-    terms = {{density, 1.0, 0.25}};
+    terms = {
+        {density, generated::df_rhf_coulomb_coefficient, generated::df_rhf_exchange_coefficient}};
   }
   std::string detail;
   const auto status = execute_cuda_density_fitting_generated_force_response(

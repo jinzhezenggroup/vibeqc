@@ -77,6 +77,15 @@ projection, and multiple finite-difference steps.
 
 ## HF reverse chain
 
+`DensityFittingRHFResponsePlan` now represents the RHF method-level reverse
+algebra through the common `StationaryProblem` boundary. The native response
+adapters remain execution owners for dynamic-size tiling, cuBLAS/cuSolVER,
+resident/packed storage and callbacks; they are not a second source of integral
+derivative mathematics. Geometry pullbacks terminate at the generated #143
+three-center/metric derivative providers. The RHF force entry takes its `cJ=1` and
+`cK=1/4` contract from this plan, and the dense A/M Coulomb/exchange accumulation
+kernels are emitted from the same stationary-plan identity.
+
 For a symmetric density D, write `rho_P = sum_ij D_ij A_ijP` and
 `Q_PQ = A_P : (D^T A_Q D)`. A contribution to the two-electron energy has form
 
@@ -108,7 +117,10 @@ per HF response. Raw coordinate derivatives remain available through the generat
 integral API; complete CUDA HF response no longer materializes those tensors.
 
 The metric weight is the self-adjoint spectral Frechet response of the
-truncated pseudoinverse applied to `bar_(M+)`. In an eigenbasis its divided
+truncated pseudoinverse applied to `bar_(M+)`. Its versioned custom rule is
+owned by `SymmetricMatrixFunctionSpec`; the runtime-sized CUDA lowering is
+compiler-generated and the DF owner supplies the validated eigensystem, cutoff,
+scratch and stream. In an eigenbasis its divided
 difference is `(f(lambda_i)-f(lambda_j))/(lambda_i-lambda_j)`, with
 `f(lambda)=1/lambda` in the retained subspace and zero in the discarded
 subspace. Retained/retained pairs use `-1/(lambda_i*lambda_j)`; discarded pairs

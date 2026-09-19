@@ -1,51 +1,42 @@
-"""Canonical method composition above scientific compiler primitives."""
+"""Canonical method composition above scientific compiler primitives.
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
-from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
-from .matrix_function import SymmetricMatrixFunctionSpec
-from .spec import (
-    METHOD_CATALOG,
-    ExactExchangePrimitive,
-    MethodIR,
-    MethodSpec,
-    SemilocalXCPrimitive,
-    UnsupportedMethod,
-    resolve_method,
-)
-from .stationary_gradient import (
-    IntegralGradientBlock,
-    StationaryGradientPlan,
-    StationaryMeanField,
-)
-from .typecheck import (
-    BackendCapability,
-    FeatureType,
-    MethodTypeError,
-    TypedMethodIR,
-    infer_feature_types,
-    verify_method_ir,
-)
+The public symbols are loaded lazily so build-time-safe method code generators
+can import lightweight contracts without importing NumPy/TensorIR.
+"""
 
-__all__ = [
-    "METHOD_CATALOG",
-    "BackendCapability",
-    "D3Spec",
-    "DispersionCorrectionPrimitive",
-    "ExactExchangePrimitive",
-    "FeatureType",
-    "ImplicitSolveSpec",
-    "ImplicitVJPPlan",
-    "IntegralGradientBlock",
-    "MethodIR",
-    "MethodSpec",
-    "MethodTypeError",
-    "SemilocalXCPrimitive",
-    "StationaryGradientPlan",
-    "StationaryMeanField",
-    "SymmetricMatrixFunctionSpec",
-    "TypedMethodIR",
-    "UnsupportedMethod",
-    "infer_feature_types",
-    "resolve_method",
-    "verify_method_ir",
-]
+from importlib import import_module
+
+_EXPORTS = {
+    "BackendCapability": ".typecheck",
+    "D3Spec": ".dispersion",
+    "DensityFittingRHFResponsePlan": ".df_hf_response",
+    "DispersionCorrectionPrimitive": ".dispersion",
+    "ExactExchangePrimitive": ".spec",
+    "FeatureType": ".typecheck",
+    "ImplicitSolveSpec": ".implicit",
+    "ImplicitVJPPlan": ".implicit",
+    "IntegralGradientBlock": ".stationary_gradient",
+    "METHOD_CATALOG": ".spec",
+    "MethodIR": ".spec",
+    "MethodSpec": ".spec",
+    "MethodTypeError": ".typecheck",
+    "SemilocalXCPrimitive": ".spec",
+    "StationaryGradientPlan": ".stationary_gradient",
+    "StationaryMeanField": ".stationary_gradient",
+    "SymmetricMatrixFunctionSpec": ".matrix_function",
+    "TypedMethodIR": ".typecheck",
+    "UnsupportedMethod": ".spec",
+    "infer_feature_types": ".typecheck",
+    "resolve_method": ".spec",
+    "verify_method_ir": ".typecheck",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name):
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(_EXPORTS[name], __name__), name)
+    globals()[name] = value
+    return value
