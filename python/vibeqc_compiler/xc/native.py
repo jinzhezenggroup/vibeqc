@@ -154,7 +154,9 @@ class _PointFunction:
             or values.shape[0] != len(self.variables)
             or not values.flags.c_contiguous
         ):
-            raise ValueError("native XC matrix requires contiguous [variable,point] FP64")
+            raise ValueError(
+                "native XC matrix requires contiguous [variable,point] FP64"
+            )
         npoint = values.shape[1]
         output = np.empty((self.outputs, npoint))
         code = self.function(
@@ -265,7 +267,9 @@ class NativeContractionProgram(ContractionProgram):
     def scalar_values_packed(self, features):
         """Consume ProgramIR-owned polarized features with no hidden materialization."""
         if self.spec.spin != "polarized":
-            raise ValueError("packed native scalar input currently requires polarized XC")
+            raise ValueError(
+                "packed native scalar input currently requires polarized XC"
+            )
         x, active = validate_features(
             self.spec, features, order=self.program.order, copy=False
         )

@@ -292,7 +292,9 @@ class PreparedXCContractions:
         )
         terminal = "vxc" if self._packed_feature_layout else "xc"
         self._tile_releases = (
-            () if self.tile_program is None else self.tile_program.release_after(terminal)
+            ()
+            if self.tile_program is None
+            else self.tile_program.release_after(terminal)
         )
         # This CPU template implements only these checked synchronous releases.
         # Async/aliasing providers still require a different explicit contract.

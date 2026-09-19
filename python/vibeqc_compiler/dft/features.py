@@ -70,10 +70,7 @@ DENSITY_FEATURE_SCALAR_ROWS = (
 
 def _sigma(gradient):
     return np.stack(
-        [
-            np.sum(gradient[a] * gradient[b], axis=1)
-            for a, b in ((0, 0), (0, 1), (1, 1))
-        ]
+        [np.sum(gradient[a] * gradient[b], axis=1) for a, b in ((0, 0), (0, 1), (1, 1))]
     )
 
 
@@ -165,9 +162,7 @@ def density_features(jets, density, *, ingredients=None):
     additional density-matrix products per spin. The default preserves the
     full diagnostic feature ABI.
     """
-    requested, rho, gradient, tau = _density_feature_arrays(
-        jets, density, ingredients
-    )
+    requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
     return _publish(requested, rho, gradient, tau)
 
 
