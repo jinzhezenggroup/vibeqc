@@ -11,6 +11,7 @@
 #include "core/types.hpp"
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "posthf/raw_source.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/rhf.hpp"
 
@@ -33,6 +34,18 @@ std::size_t matrix_index(std::size_t row, std::size_t column, std::size_t n) {
 
 std::size_t eri_index(std::size_t i, std::size_t j, std::size_t k, std::size_t l, std::size_t n) {
   return ((i * n + j) * n + k) * n + l;
+}
+
+std::pair<std::vector<double>, std::vector<double>> raw_one_electron(
+    const vibeqc::core::System& system) {
+  vibeqc::posthf::RawSource source(system);
+  const std::size_t n = source.nbf();
+  std::vector<double> overlap(n * n), hcore(n * n);
+  source.read(vibeqc::posthf::RawSource::Operator::overlap, {0, 0, 0, 0}, {n, n, 1, 1},
+              overlap.data(), overlap.size());
+  source.read(vibeqc::posthf::RawSource::Operator::hcore, {0, 0, 0, 0}, {n, n, 1, 1}, hcore.data(),
+              hcore.size());
+  return {std::move(overlap), std::move(hcore)};
 }
 
 vibeqc::core::System hydrogen_sp_dimer() {
@@ -200,6 +213,62 @@ int main() {
                 sdf_tasks.shell_class_tile_counts[vibeqc::scf::detail::direct_quartet_shell_class(
                     3, 3, 3, 3)] == 7,
             "Cartesian exact shell-class partitions are inconsistent");
+    {
+      vibeqc::core::System g;
+      g.atoms = {{2, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
+      g.shells = {{{0, 4, {{0.6, 1.0}}}, {1, 0, {{1.2, 1.0}}}}};
+      g.charge = 1;
+      g.multiplicity = 1;
+      std::string detail;
+      require(vibeqc::molecule::validate_and_normalize(g, detail) == VIBEQC_STATUS_SUCCESS,
+              "g fallback system normalization failed");
+      const auto production = vibeqc::integrals::build_integrals(g, false, false);
+      const auto [oracle_overlap, oracle_hcore] = raw_one_electron(g);
+      require(production.overlap.size() == oracle_overlap.size(),
+              "g fallback dimensions disagree with the independent oracle");
+      for (std::size_t element = 0; element < oracle_overlap.size(); ++element) {
+        require_close(production.overlap[element], oracle_overlap[element], 3.0e-12,
+                      "classified g overlap fallback differs from RawSource");
+        require_close(production.hcore[element], oracle_hcore[element], 3.0e-11,
+                      "classified g hcore fallback differs from RawSource");
+      }
+    }
+    {
+      const vibeqc::core::System sdf = helium_hydrogen_sdf();
+      const vibeqc::integrals::IntegralData production =
+          vibeqc::integrals::build_integrals(sdf, true, false);
+      const auto [oracle_overlap, oracle_hcore] = raw_one_electron(sdf);
+      require(production.overlap.size() == oracle_overlap.size() &&
+                  production.hcore.size() == oracle_hcore.size(),
+              "generated S/T production dimensions disagree with the independent oracle");
+      for (std::size_t element = 0; element < oracle_overlap.size(); ++element) {
+        require_close(production.overlap[element], oracle_overlap[element], 2.0e-12,
+                      "generated overlap differs from independent RawSource");
+        require_close(production.hcore[element], oracle_hcore[element], 4.0e-12,
+                      "generated S/T hcore differs from independent RawSource");
+      }
+
+      constexpr double step = 1.0e-5;
+      const std::size_t matrix_size = production.nbf * production.nbf;
+      for (std::size_t coordinate = 0; coordinate < production.ncoord; ++coordinate) {
+        auto plus = sdf;
+        auto minus = sdf;
+        plus.atoms[coordinate / 3].position[coordinate % 3] += step;
+        minus.atoms[coordinate / 3].position[coordinate % 3] -= step;
+        const auto [plus_overlap, plus_hcore] = raw_one_electron(plus);
+        const auto [minus_overlap, minus_hcore] = raw_one_electron(minus);
+        for (std::size_t element = 0; element < matrix_size; ++element) {
+          const double overlap_fd = (plus_overlap[element] - minus_overlap[element]) / (2.0 * step);
+          const double hcore_fd = (plus_hcore[element] - minus_hcore[element]) / (2.0 * step);
+          require_close(production.overlap_derivative[coordinate * matrix_size + element],
+                        overlap_fd, 2.0e-8,
+                        "generated overlap derivative differs from independent finite difference");
+          require_close(
+              production.hcore_derivative[coordinate * matrix_size + element], hcore_fd, 2.0e-7,
+              "generated S/T hcore derivative differs from independent finite difference");
+        }
+      }
+    }
     vibeqc::core::System spherical_sdf = helium_hydrogen_sdf();
     spherical_sdf.basis_representation = VIBEQC_BASIS_SPHERICAL;
     const vibeqc::scf::CudaRhfBasisLayoutStats spherical_layout =
