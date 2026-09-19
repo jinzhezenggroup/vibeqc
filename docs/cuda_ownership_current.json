@@ -530,7 +530,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6439,
+      "bytes": 6431,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -543,7 +543,7 @@
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
-      "sha256": "313c8df626309d3a3a3843602ffead4d87faf879429c93ff817464e2517156bd",
+      "sha256": "be96d6444f5e6e1c96aa4842c407f70a6496d8a6dfb379d8b2906668951a9ec1",
       "subsystem": "runtime"
     },
     {
