@@ -42,8 +42,9 @@ class UnsupportedXC(ValueError):
 class FunctionalSpec:
     """Exact semilocal composition with explicit scalar range parameters.
 
-    Coefficients and range parameters must be rational. range_omega is a
-    semilocal ITYH parameter and therefore changes scalar energy; exact-exchange
+    Coefficients and range parameters must be rational. range_omega is consumed
+    by ITYH when that semilocal component is present, while generic public
+    compositions may also carry it as exact range-exchange metadata. Exchange
     operator weights remain separate method primitives and are never inferred
     from a functional name.
     """
@@ -92,10 +93,9 @@ class FunctionalSpec:
             name == "GGA_X_ITYH" and coefficient
             for name, coefficient in self.components
         )
-        if has_range_semilocal != bool(self.range_omega):
+        if has_range_semilocal and not self.range_omega:
             raise UnsupportedXC(
-                "ITYH short-range exchange requires one positive range_omega, "
-                "and range_omega is otherwise forbidden"
+                "ITYH short-range exchange requires one positive range_omega"
             )
 
     @property
