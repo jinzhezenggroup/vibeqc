@@ -284,7 +284,10 @@ class NativeKsSnapshot:
         else:
             self.ecp_cores = (0,) * natom
             self.ecp_terms = ()
-            self.hamiltonian = "all-electron"
+            # CUDA v1/v3 do not export ECP Hamiltonian records. Their existing
+            # gradient consumer independently rejects core-adjusted occupations;
+            # this CPU extension must not label such snapshots all-electron.
+            self.hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         if self.backend == "cpu" and not np.isclose(
@@ -333,9 +336,15 @@ class NativeKsSnapshot:
                     "scf_domain": SCF_DOMAIN,
                     "grid": grid.identity,
                     "basis": basis_identity,
-                    "hamiltonian": self.hamiltonian,
-                    "ecp_cores": self.ecp_cores,
-                    "ecp_terms": self.ecp_terms,
+                    **(
+                        {
+                            "hamiltonian": self.hamiltonian,
+                            "ecp_cores": self.ecp_cores,
+                            "ecp_terms": self.ecp_terms,
+                        }
+                        if self.metadata[0] == 4
+                        else {}
+                    ),
                 }
             ),
             geometry_identity=native_ao_geometry_identity(basis),
