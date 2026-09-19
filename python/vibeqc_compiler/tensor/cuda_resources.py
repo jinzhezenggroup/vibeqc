@@ -7,11 +7,14 @@ class definitions or cache implementation belongs here.
 
 from typing import TYPE_CHECKING
 
+__all__ = (
+    "KernelResources",
+    "parse_resources",
+)
+
 if TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_resources import (
         KernelResources,
-    )
-    from vibeqc_compiler.common.cuda_resources import (
         parse_resources,
     )
 else:
