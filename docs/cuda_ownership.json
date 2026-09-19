@@ -285,17 +285,18 @@
       "status": "experimental"
     },
     "one_electron_derivatives": {
-      "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
+      "current_default": "Generated compiler-owned S/T/V weighted gradient with shell-warp scheduling; native cooperative execution is explicit only via VIBEQC_ONE_ELECTRON_DERIVATIVES=reference",
       "evidence": [
         "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
         "docs/one_electron_derivatives.md",
         "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
-        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"
+        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json",
+        ".agents/notes/implemented/performance/2026-09-19-one-electron-derivative-promotion.md"
       ],
       "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
-      "missing_capability": "Generated response needs schedules that remove measured complete-endpoint regressions: resident DF warm replay 4.586/5.429 ms and Direct sdf18 changed geometry 36.667/39.352 ms (native/generated, archived revisions). These measurements justify retention, not a completed derivative migration. Retained kernels now compile in one_electron_reference.cu and one_electron_force_reference.cu with bounded shared numerical headers; this decomposition does not change promotion or retirement status.",
+      "missing_capability": "No missing S/T/V first-derivative formula capability. The cooperative native route remains a measured performance exception for archived resident-DF unchanged replay (4.586/5.429 ms reference/generated) and Direct sdf18 changed geometry (36.667/39.352 ms). The slower scalar native force family is retired.",
       "owner": "one_electron_derivatives",
-      "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
+      "retirement_condition": "Completed for normal production; remove the retained cooperative exception only after requalification eliminates its documented endpoint wins while independent CPU/libcint oracle coverage remains.",
       "status": "performance_exception"
     },
     "one_electron_values": {
@@ -568,6 +569,13 @@
     {
       "path": "src/runtime/cuda_graph_region.cuh",
       "reason": "Shared graph capture, replay, invalidation and diagnostics. No scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_resources.cuh",
+      "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime"
@@ -1565,7 +1573,7 @@
     },
     {
       "path": "src/scf/cuda/nuclear_kernels.cu",
-      "reason": "Existing nuclear repulsion and force equations, including Dual coordinate response; preserved as native scientific arithmetic.",
+      "reason": "Separate nuclear-repulsion energy/force term; intentionally retained native scientific arithmetic and not conflated with S/T/V derivative generation.",
       "regions": [],
       "role": "scientific",
       "subsystem": "one_electron_derivatives"
@@ -1579,7 +1587,7 @@
     },
     {
       "path": "src/scf/cuda/one_electron_derivatives.cu",
-      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "reason": "Production contraction/scheduling glue around compiler-generated S/T/V derivative primitives; primitive derivative mathematics is compiler-owned.",
       "regions": [],
       "role": "scientific",
       "subsystem": "one_electron_derivatives"
@@ -1600,7 +1608,7 @@
     },
     {
       "path": "src/scf/cuda/one_electron_force_reference.cu",
-      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "reason": "Retained cooperative force schedule selected only by the explicit reference policy; the scalar native kernel and launch were retired after generated shell-warp promotion.",
       "regions": [],
       "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
@@ -1614,56 +1622,56 @@
     },
     {
       "path": "src/scf/cuda/one_electron_force_workspace.hpp",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
-      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "reason": "Conservative bounded staging and stationary-weight glue around compiler-owned generated derivatives; no independent S/T/V recurrence.",
       "regions": [],
       "role": "scientific",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_native_attraction.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_native_contraction.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_native_force.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_native_overlap.cuh",
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_reference.cu",
-      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "reason": "Retained legacy Dual first-coordinate response used only by the explicit reference/validation route after generated derivative promotion.",
       "regions": [],
       "role": "performance_exception",
       "subsystem": "one_electron_derivatives"

@@ -21,20 +21,12 @@ extern "C" void xc_cuda_fail_next_allocation_for_test_v1() {
 
 namespace vibeqc::dft {
 namespace {
+using vibeqc::runtime::size_add;
+using vibeqc::runtime::size_mul;
 void check(cudaError_t status) {
   if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
   if (status != cudaSuccess)
     throw vibeqc::Error(VIBEQC_STATUS_CUDA_ERROR, cudaGetErrorString(status));
-}
-std::size_t multiply(std::size_t a, std::size_t b) {
-  if (b && a > std::numeric_limits<std::size_t>::max() / b)
-    throw std::overflow_error("CUDA XC storage overflow");
-  return a * b;
-}
-std::size_t add(std::size_t a, std::size_t b) {
-  if (a > std::numeric_limits<std::size_t>::max() - b)
-    throw std::overflow_error("CUDA XC storage overflow");
-  return a + b;
 }
 void device_pointer(const void* pointer, int device) {
   if (!pointer) throw std::invalid_argument("null CUDA XC device buffer");
@@ -62,19 +54,27 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX)
     throw std::invalid_argument("invalid CUDA XC resource shape");
-  const auto packed = add(add(multiply(3, atoms), multiply(2, primitives)), multiply(16, nao));
+  constexpr auto overflow = "CUDA XC storage overflow";
+  const auto packed =
+      size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
+               size_mul(16, nao, overflow), overflow);
   CudaXcLayout out{
       atoms,         primitives, nao, points, std::min(tile_points, points), unrestricted ? 2U : 1U,
       pbe ? 4U : 1U, packed,     0,   pbe};
-  std::size_t elements = add(out.packed_elements, multiply(4, out.npoint));
-  const auto panel = multiply(out.tile_points, out.nao);
-  elements = add(elements, multiply(out.jets + out.spins, panel));
-  elements = add(elements, multiply(2 * out.spins * out.jets + 3, out.tile_points));
-  elements = add(elements, multiply(out.spins, multiply(out.nao, out.nao)));
-  elements = add(elements, 3);
-  // The final double-sized slot aligns the numerical-error integer and makes
-  // the exact byte request independent of host struct padding.
-  out.device_bytes = multiply(add(elements, 1), sizeof(double));
+  std::size_t elements = size_add(out.packed_elements, size_mul(4, out.npoint, overflow), overflow);
+  const auto panel = size_mul(out.tile_points, out.nao, overflow);
+  const auto panel_terms = size_add(out.jets, out.spins, overflow);
+  elements = size_add(elements, size_mul(panel_terms, panel, overflow), overflow);
+  auto feature_terms = size_mul(2, out.spins, overflow);
+  feature_terms = size_mul(feature_terms, out.jets, overflow);
+  feature_terms = size_add(feature_terms, 3, overflow);
+  elements = size_add(elements, size_mul(feature_terms, out.tile_points, overflow), overflow);
+  const auto matrix = size_mul(out.nao, out.nao, overflow);
+  elements = size_add(elements, size_mul(out.spins, matrix, overflow), overflow);
+  elements = size_add(elements, 3, overflow);
+  // Preserve the historical double-sized error slot so resource bounds and
+  // diagnostics remain byte-for-byte unchanged.
+  out.device_bytes = size_mul(size_add(elements, 1, overflow), sizeof(double), overflow);
   return out;
 }
 
@@ -90,17 +90,33 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, bool pbe
   check(cudaGetDevice(&device_));
   device_pointer(arena, device_);
   const auto& l = layout_;
-  basis_ = static_cast<double*>(arena);
-  points_ = basis_ + l.packed_elements;
-  weights_ = points_ + 3 * l.npoint;
-  ao_ = weights_ + l.npoint;
-  work_ = ao_ + l.jets * l.tile_points * l.nao;
-  features_ = work_ + l.spins * l.tile_points * l.nao;
-  coefficients_ = features_ + l.spins * l.jets * l.tile_points;
-  point_totals_ = coefficients_ + l.spins * l.jets * l.tile_points;
-  potential_ = point_totals_ + 3 * l.tile_points;
-  totals_ = potential_ + l.spins * l.nao * l.nao;
-  error_ = reinterpret_cast<int*>(totals_ + 3);
+  vibeqc::runtime::BorrowedWorkspace arena_view(arena, arena_bytes);
+  vibeqc::runtime::WorkspaceLayout workspace;
+  auto take_double = [&](std::size_t count) {
+    std::size_t offset = 0;
+    if (!workspace.append<double>(count, offset))
+      throw std::overflow_error("CUDA XC workspace layout overflow");
+    return arena_view.view<double>(offset, count).data;
+  };
+  basis_ = take_double(l.packed_elements);
+  points_ = take_double(size_mul(3, l.npoint, "CUDA XC workspace layout overflow"));
+  weights_ = take_double(l.npoint);
+  const auto panel = size_mul(l.tile_points, l.nao, "CUDA XC workspace layout overflow");
+  ao_ = take_double(size_mul(l.jets, panel, "CUDA XC workspace layout overflow"));
+  work_ = take_double(size_mul(l.spins, panel, "CUDA XC workspace layout overflow"));
+  const auto feature_panel = size_mul(l.spins, l.jets, "CUDA XC workspace layout overflow");
+  features_ =
+      take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
+  coefficients_ =
+      take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
+  point_totals_ = take_double(size_mul(3, l.tile_points, "CUDA XC workspace layout overflow"));
+  const auto matrix = size_mul(l.nao, l.nao, "CUDA XC workspace layout overflow");
+  potential_ = take_double(size_mul(l.spins, matrix, "CUDA XC workspace layout overflow"));
+  totals_ = take_double(3);
+  auto* error_storage = take_double(1);
+  error_ = reinterpret_cast<int*>(error_storage);
+  if (workspace.bytes() != layout_.device_bytes)
+    throw std::logic_error("CUDA XC workspace layout mismatch");
   try {
     check(cudaMemcpyAsync(basis_, basis.packed.data(), l.packed_elements * sizeof(double),
                           cudaMemcpyHostToDevice, stream_));
@@ -114,7 +130,10 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, bool pbe
     cudaStreamSynchronize(stream_);
     throw;
   }
-  transfers_.setup_h2d_bytes = (l.packed_elements + 4 * l.npoint) * sizeof(double);
+  transfers_.setup_h2d_bytes =
+      size_mul(size_add(l.packed_elements, size_mul(4, l.npoint, "CUDA XC transfer size overflow"),
+                        "CUDA XC transfer size overflow"),
+               sizeof(double), "CUDA XC transfer size overflow");
   transfers_.synchronizations = 1;
 }
 
@@ -134,18 +153,16 @@ void CudaXcPlan::check_device() const {
 
 void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation) {
   check_device();
-  const auto count = layout_.spins * layout_.nao * layout_.nao;
-  if (elements != count || !generation || generation <= submitted_generation_)
-    throw std::invalid_argument("CUDA XC density size or generation is stale");
+  const auto matrix = size_mul(layout_.nao, layout_.nao, "CUDA XC density size overflow");
+  const auto count = size_mul(layout_.spins, matrix, "CUDA XC density size overflow");
+  if (elements != count) throw std::invalid_argument("CUDA XC density size is invalid");
+  if (!generation || generation <= generations_.submitted())
+    throw std::invalid_argument("CUDA XC density generation is stale");
   device_pointer(density, device_);
-  const auto input = reinterpret_cast<std::uintptr_t>(density);
-  const auto arena = reinterpret_cast<std::uintptr_t>(arena_);
-  const auto input_bytes = multiply(count, sizeof(double));
-  if (input < add(arena, layout_.device_bytes) && arena < add(input, input_bytes))
+  const auto input_bytes = size_mul(count, sizeof(double), "CUDA XC density size overflow");
+  if (vibeqc::runtime::ranges_overlap(density, input_bytes, arena_, layout_.device_bytes))
     throw std::invalid_argument("CUDA XC density aliases its workspace");
-  // Invalidate a previously exported view even when a subsequent launch fails.
-  generation_ = 0;
-  submitted_generation_ = generation;
+  generations_.begin(generation);
   try {
 #if defined(VIBEQC_TEST_HOOKS)
     // Exercise the generated executor's real exception types without leaving a
@@ -163,14 +180,13 @@ void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint6
   } catch (const vibeqc_tensor::DeviceRuntimeError& error) {
     throw vibeqc::Error(VIBEQC_STATUS_CUDA_ERROR, error.what());
   }
-  generation_ = generation;
+  generations_.commit(generation);
   ++transfers_.evaluations;
 }
 
 CudaXcView CudaXcPlan::view(std::uint64_t generation) const {
   check_device();
-  if (!generation || generation != generation_)
-    throw std::invalid_argument("CUDA XC result generation is stale");
+  generations_.require(generation);
   return {generation, layout_.nao, layout_.spins, potential_, totals_, error_, stream_};
 }
 

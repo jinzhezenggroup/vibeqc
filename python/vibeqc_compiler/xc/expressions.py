@@ -87,11 +87,12 @@ def energy_expression(spec):
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
-        ra, rb, saa, sab, sbb, _, _ = variables
+        ra, rb, saa, sab, sbb, ta, tb = variables
     else:
-        rho, sigma, _ = variables
+        rho, sigma, tau = variables
         ra = rb = rho / 2
         saa = sab = sbb = sigma / 4
+        ta = tb = tau / 2
     n = ra + rb
     if spec.spin == "polarized":
         # Ratios avoid cancellation in 1 +/- z near complete spin polarization.
@@ -109,9 +110,12 @@ def energy_expression(spec):
     kappa = F("0.8040")
     mu = beta * graph.constant(math.pi**2) / 3
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
-    x2s2 = 1 / (4 * (6 * math.pi**2) ** (2 / 3))
+    x2s = 1 / (2 * (6 * math.pi**2) ** (1 / 3))
+    x2s2 = x2s**2
+    k_factor = 3 / 10 * (6 * math.pi**2) ** (2 / 3)
+    fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
 
-    def pw(modified):
+    def pw(modified, *, with_rs_derivative=False):
         parameters = _PW_PARAMETERS[modified]
         a = parameters["a"]
         alpha = parameters["alpha"]
@@ -120,6 +124,7 @@ def energy_expression(spec):
         b3 = parameters["b3"]
         b4 = parameters["b4"]
         values = []
+        derivatives = []
         for i in range(3):
             aux = (
                 F(b1[i]) * rs.pow(0.5)
@@ -127,16 +132,32 @@ def energy_expression(spec):
                 + F(b3[i]) * rs.pow(1.5)
                 + F(b4[i]) * rs.pow(2)
             )
-            values.append(
-                -2
-                * F(a[i])
-                * (1 + F(alpha[i]) * rs)
-                * graph.stable_unary("log1p", 1 / (2 * F(a[i]) * aux))
-            )
-        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
+            u = 1 / (2 * F(a[i]) * aux)
+            log_term = graph.stable_unary("log1p", u)
+            values.append(-2 * F(a[i]) * (1 + F(alpha[i]) * rs) * log_term)
+            if with_rs_derivative:
+                aux_prime = (
+                    F(b1[i]) / 2 * rs.pow(-0.5)
+                    + F(b2[i])
+                    + F(3, 2) * F(b3[i]) * rs.pow(0.5)
+                    + 2 * F(b4[i]) * rs
+                )
+                derivatives.append(
+                    -2
+                    * F(a[i])
+                    * (
+                        F(alpha[i]) * log_term
+                        - (1 + F(alpha[i]) * rs) * (u / (1 + u)) * aux_prime / aux
+                    )
+                )
         fz20 = F("1.709920934161365617563962776245" if modified else "1.709921")
-        g0, g1, gm = values  # gm parameterizes minus the spin stiffness.
-        return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
+
+        def combine(items):
+            g0, g1, gm = items
+            return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
+
+        value = combine(values)
+        return (value, combine(derivatives)) if with_rs_derivative else value
 
     def exchange(gga):
         terms = []
@@ -167,12 +188,156 @@ def energy_expression(spec):
             )
         return n * eps
 
+    def r2_switch(alpha, coefficients, c1, c2, d):
+        polynomial = graph.sum(
+            coefficient * alpha.pow(power)
+            for power, coefficient in enumerate(coefficients)
+        )
+        negative = graph.exponential(-c1 * alpha / (1 - alpha))
+        large = -d * graph.exponential(c2 / (1 - alpha))
+        return graph.select_le(
+            alpha,
+            0,
+            negative,
+            graph.select_le(alpha, F(5, 2), polynomial, large),
+        )
+
+    r2_x_coefficients = tuple(
+        F(value)
+        for value in (
+            "1",
+            "-0.667",
+            "-0.4445555",
+            "-0.663086601049",
+            "1.451297044490",
+            "-0.887998041597",
+            "0.234528941479",
+            "-0.023185843322",
+        )
+    )
+    r2_c_coefficients = tuple(
+        F(value)
+        for value in (
+            "1",
+            "-0.64",
+            "-0.4352",
+            "-1.535685604549",
+            "3.061560252175",
+            "-1.915710236206",
+            "0.516884468372",
+            "-0.051848879792",
+        )
+    )
+
+    def r2scan_exchange():
+        eta = F("0.001")
+        dp2 = F("0.361")
+        k1 = F("0.065")
+        h0 = F("1.174")
+        c1 = F("0.667")
+        c2 = F("0.8")
+        d = F("1.24")
+        a1 = F("4.9479")
+        mu_ge = F(10, 81)
+        cn = F(20, 27) + eta * F(5, 3)
+        c2_coefficient = -sum(
+            (power + 1) * coefficient
+            for power, coefficient in enumerate(r2_x_coefficients)
+        ) * (1 - h0)
+
+        terms = []
+        for density, sigma, tau in ((ra, saa, ta), (rb, sbb, tb)):
+            x2 = sigma * density.pow(-8 / 3)
+            p = x2s2 * x2
+            alpha = (tau * density.pow(-5 / 3) - x2 / 8) / (k_factor + eta * x2 / 8)
+            x_r2 = (
+                cn * c2_coefficient * graph.exponential(-p.pow(2) / dp2**4) + mu_ge
+            ) * p
+            h1 = 1 + k1 * (1 - k1 / (k1 + x_r2))
+            f_alpha = r2_switch(alpha, r2_x_coefficients, c1, c2, d)
+            gx = graph.select_le(
+                x2,
+                0,
+                1,
+                1 - graph.exponential(-a1 / (math.sqrt(x2s) * x2.pow(0.25))),
+            )
+            enhancement = (h1 + f_alpha * (h0 - h1)) * gx
+            terms.append(-cx * density.pow(4 / 3) * enhancement)
+        return graph.sum(terms)
+
+    def r2scan_correlation():
+        eta = F("0.001")
+        dp2 = F("0.361")
+        phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
+        phi3 = phi.pow(3)
+        spin_fifth = (up.pow(5 / 3) + down.pow(5 / 3)) / 2
+        total_sigma = saa + 2 * sab + sbb
+        xt2 = total_sigma * n.pow(-8 / 3)
+        normalized_tau = (ta + tb) * n.pow(-5 / 3)
+        alpha = (normalized_tau - xt2 / 8) / (
+            k_factor * 2 ** (-2 / 3) * spin_fifth + eta * xt2 / 8
+        )
+        f_alpha = r2_switch(
+            alpha,
+            r2_c_coefficients,
+            F("0.64"),
+            F("1.5"),
+            F("0.7"),
+        )
+
+        pw_value, pw_rs_derivative = pw(True, with_rs_derivative=True)
+        w1 = graph.stable_unary("expm1", -pw_value / (gamma * phi3))
+        s2 = x2s2 * 2 ** (2 / 3) * xt2
+        t2 = xt2 / (16 * 2 ** (2 / 3) * phi.pow(2) * rs)
+
+        b1c = F("0.0285764")
+        b2c = F("0.0889")
+        b3c = F("0.125541")
+        e0_denominator = 1 + b2c * rs.pow(0.5) + b3c * rs
+        eclda0 = -b1c / e0_denominator
+        eclda0_rs_derivative = (
+            b1c * (b2c / (2 * rs.pow(0.5)) + b3c) / e0_denominator.pow(2)
+        )
+        gc = (1 - F("2.363") * (2 ** (1 / 3) - 1) * fz) * (1 - z.pow(12))
+        elsda0 = eclda0 * gc
+        delsda0 = eclda0_rs_derivative * gc
+        beta_rs = (
+            F("0.066724550603149220") * (1 + F("0.1") * rs) / (1 + F("0.1778") * rs)
+        )
+        dfc2 = sum(
+            power * coefficient
+            for power, coefficient in enumerate(r2_c_coefficients)
+            if power
+        )
+        dy = (
+            dfc2
+            / (27 * gamma * spin_fifth * phi3 * w1)
+            * (20 * rs * (delsda0 - pw_rs_derivative) - 45 * eta * (elsda0 - pw_value))
+            * s2
+            * graph.exponential(-s2.pow(2) / dp2**4)
+        )
+        y = beta_rs * t2 / (gamma * w1)
+        g = (1 + 4 * (y - dy)).pow(-0.25)
+        h = gamma * phi3 * graph.stable_unary("log1p", w1 * (1 - g))
+        ec1 = pw_value + h
+
+        chi_infinity = F("0.12802585262625815")
+        g_infinity = (1 + 4 * chi_infinity * s2).pow(-0.25)
+        h0 = b1c * graph.stable_unary(
+            "log1p",
+            graph.stable_unary("expm1", -eclda0 / b1c) * (1 - g_infinity),
+        )
+        ec0 = (eclda0 + h0) * gc
+        return n * (ec1 + f_alpha * (ec0 - ec1))
+
     builders = {
         "LDA_X": lambda: exchange(False),
         "GGA_X_PBE": lambda: exchange(True),
         "LDA_C_PW": lambda: correlation(False, False),
         "LDA_C_PW_MOD": lambda: correlation(False, True),
         "GGA_C_PBE": lambda: correlation(True, True),
+        "MGGA_X_R2SCAN": r2scan_exchange,
+        "MGGA_C_R2SCAN": r2scan_correlation,
     }
     return (
         graph,
