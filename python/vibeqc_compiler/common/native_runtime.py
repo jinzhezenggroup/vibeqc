@@ -70,7 +70,7 @@ def compile_runtime(compiler, cache, source, *, headers=(), libraries=(), option
         host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
         if host_compiler is None:
             raise RuntimeError("CUDA host compiler not found")
-        host_compiler = str(Path(host_compiler).resolve())
+        host_compiler_path = Path(host_compiler).resolve()
         identity = {
             "schema": 1,
             "source": file_hash(source),
@@ -79,9 +79,9 @@ def compile_runtime(compiler, cache, source, *, headers=(), libraries=(), option
                 for p in headers
             },
             "toolchain": toolchain_identity(compiler.nvcc),
-            "host_compiler": file_hash(host_compiler),
+            "host_compiler": file_hash(host_compiler_path),
             "host_version": subprocess.check_output(
-                [host_compiler, "--version"],
+                [str(host_compiler_path), "--version"],
                 text=True,
                 timeout=30,
             ),
