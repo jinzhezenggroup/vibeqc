@@ -147,7 +147,7 @@ def density_feature_block(jets, density, *, ingredients=None):
         scalar[5:7] = tau
     scalar.setflags(write=False)
     owned_gradient = None
-    if gradient.size:
+    if gradient.ndim == 3:
         owned_gradient = np.ascontiguousarray(gradient, dtype=np.float64)
         owned_gradient.setflags(write=False)
     return DensityFeatureBlock(scalar, owned_gradient, requested)
