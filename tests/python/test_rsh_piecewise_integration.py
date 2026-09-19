@@ -32,9 +32,15 @@ def test_rsh_unary_works_inside_lazy_piecewise_and_iterative_graph(operation):
     )
 
 
-def test_range_exchange_and_nonlocal_correlation_are_canonically_composable():
+@pytest.mark.parametrize("with_dispersion", [False, True])
+def test_range_exchange_and_nonlocal_correlation_are_canonically_composable(
+    with_dispersion,
+):
+    from vibeqc_compiler.method import r2scan3c_d4_eeq
+
     spec = replace(
         METHOD_CATALOG["CAM-B3LYP"],
+        dispersion=r2scan3c_d4_eeq() if with_dispersion else None,
         nonlocal_correlation=original_nonlocal_correlation(VV10),
     )
     combined = resolve_method(spec)
@@ -43,7 +49,7 @@ def test_range_exchange_and_nonlocal_correlation_are_canonically_composable():
         "short-range-exchange",
         "long-range-exchange",
         "nonlocal-correlation",
-    )
+    ) + (("geometry-d4-bj-eeq",) if with_dispersion else ())
     assert (
         combined.identity
         != resolve_method(replace(spec, nonlocal_correlation=None)).identity

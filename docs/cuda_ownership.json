@@ -345,14 +345,18 @@
     },
     "d4_dispersion": {
       "owner": "d4_dispersion",
-      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
-      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
-      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "current_default": "Internal bounded molecular complete EEQ-D4 qualification on CPU/CUDA for standard and r2SCAN-3c profiles; no public production DFT-D4 endpoint.",
+      "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
+      "missing_capability": "Production provider/runtime integration, compiler-generated derivative execution, scalable GPU scheduling/performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
       "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
       "evidence": [
         "docs/d4_reference.md",
         "tests/data/d4/oracle_manifest.json",
-        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+        "tests/data/d4/eeq_oracle_manifest.json",
+        "tests/native/test_d4_eeq.cpp",
+        "tests/native/test_d4_eeq_cuda.cu",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md"
       ],
       "status": "oracle"
     }
@@ -432,6 +436,13 @@
       "role": "oracle",
       "subsystem": "d4_dispersion",
       "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": []
+    },
+    {
+      "path": "src/dft/dispersion/d4_eeq.hpp",
+      "role": "oracle",
+      "subsystem": "d4_dispersion",
+      "reason": "Pinned EEQ2019 charge solve/coordinate response and complete D4 chain-rule CPU/device qualification mathematics. Independent DFT-D4 4.2.0 oracle fixtures and real-device tests validate it; retained as a bounded oracle, not a performance-promoted production kernel.",
       "regions": []
     },
     {

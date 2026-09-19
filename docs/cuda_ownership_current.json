@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13416,
+  "all_handwritten_scientific_lines": 13790,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -144,20 +144,37 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 14915,
+      "bytes": 17951,
       "code_lines": {
         "fallback": 0,
-        "oracle": 297,
+        "oracle": 348,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/dft/dispersion/d4_eeq.hpp",
+      "physical_lines": 399,
+      "reason": "Pinned EEQ2019 charge solve/coordinate response and complete D4 chain-rule CPU/device qualification mathematics. Independent DFT-D4 4.2.0 oracle fixtures and real-device tests validate it; retained as a bounded oracle, not a performance-promoted production kernel.",
+      "regions": [],
+      "role": "oracle",
+      "sha256": "50e7891af4bfabe3247fd56accdb1c165eaf26524abb21dfe523ea67b5212a48",
+      "subsystem": "d4_dispersion"
+    },
+    {
+      "bytes": 15972,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 323,
         "performance_exception": 0,
         "runtime": 0,
         "scientific": 0
       },
       "path": "src/dft/dispersion/d4_reference.hpp",
-      "physical_lines": 334,
+      "physical_lines": 361,
       "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
       "regions": [],
       "role": "oracle",
-      "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e",
+      "sha256": "af7825ed3d1665c7d3132b4fdf1456df71bde5a2a95d67953cc37618479a2f35",
       "subsystem": "d4_dispersion"
     },
     {
@@ -3766,7 +3783,7 @@
   "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
-    "oracle": 312,
+    "oracle": 686,
     "performance_exception": 884,
     "runtime": 11047,
     "scientific": 12220
@@ -3788,14 +3805,18 @@
       "status": "partial"
     },
     "d4_dispersion": {
-      "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "current_default": "Internal bounded molecular complete EEQ-D4 qualification on CPU/CUDA for standard and r2SCAN-3c profiles; no public production DFT-D4 endpoint.",
       "evidence": [
         "docs/d4_reference.md",
         "tests/data/d4/oracle_manifest.json",
-        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
+        "tests/data/d4/eeq_oracle_manifest.json",
+        "tests/native/test_d4_eeq.cpp",
+        "tests/native/test_d4_eeq_cuda.cu",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md"
       ],
-      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
-      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
+      "missing_capability": "Production provider/runtime integration, compiler-generated derivative execution, scalable GPU scheduling/performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
       "owner": "d4_dispersion",
       "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
       "status": "oracle"
@@ -3986,7 +4007,7 @@
     },
     "d4_dispersion": {
       "fallback": 0,
-      "oracle": 297,
+      "oracle": 671,
       "performance_exception": 0,
       "runtime": 0,
       "scientific": 0

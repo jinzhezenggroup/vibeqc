@@ -9,7 +9,12 @@ from vibeqc_compiler.common.nonlocal_correlation import (
     original_nonlocal_correlation,
 )
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import (
+    D3Spec,
+    D4Spec,
+    DispersionCorrectionPrimitive,
+    r2scan3c_d4_eeq,
+)
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .nonlocal_correlation import NonlocalCorrelationPrimitive
@@ -56,6 +61,7 @@ __all__ = [
     "XTB_METHOD_CATALOG",
     "BackendCapability",
     "D3Spec",
+    "D4Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
     "FeatureType",
@@ -82,6 +88,7 @@ __all__ = [
     "XtbPrimitive",
     "infer_feature_types",
     "original_nonlocal_correlation",
+    "r2scan3c_d4_eeq",
     "resolve_method",
     "resolve_xtb_method",
     "verify_method_ir",
