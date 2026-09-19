@@ -69,6 +69,15 @@ vibeqc::scf::ResolvedFockBuild cpu_j_strategy(
 void verify_restricted(const vibeqc::core::System& system, int device) {
   using namespace vibeqc;
   const auto strategy = mixed_strategy(scf::FockSpin::Restricted);
+  bool legacy_rejected = false;
+  try {
+    scf::PreparedFockPlan invalid(system, &system, strategy, device);
+  } catch (const std::invalid_argument&) {
+    legacy_rejected = true;
+  }
+  require(legacy_rejected,
+          "legacy PreparedFockPlan silently routed COSX through an exact/DF provider");
+
   dft::PreparedCosxFockPlan gpu(system, &system, strategy, 7, device);
 
   const std::vector<double> density{0.8, 0.2, 0.2, 0.6};
