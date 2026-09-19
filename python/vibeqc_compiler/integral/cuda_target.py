@@ -9,28 +9,28 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_target import (
-        CUDA_TARGETS as CUDA_TARGETS,
+        CUDA_TARGETS,
     )
     from vibeqc_compiler.common.cuda_target import (
-        DEFAULT_CUDA_TARGET as DEFAULT_CUDA_TARGET,
+        DEFAULT_CUDA_TARGET,
     )
     from vibeqc_compiler.common.cuda_target import (
-        CudaArchitecture as CudaArchitecture,
+        CudaArchitecture,
     )
     from vibeqc_compiler.common.cuda_target import (
-        CudaTargetInfo as CudaTargetInfo,
+        CudaTargetInfo,
     )
     from vibeqc_compiler.common.cuda_target import (
-        cuda_architecture as cuda_architecture,
+        cuda_architecture,
     )
     from vibeqc_compiler.common.cuda_target import (
-        cuda_target_info as cuda_target_info,
+        cuda_target_info,
     )
     from vibeqc_compiler.common.cuda_target import (
-        normalize_cuda_architecture as normalize_cuda_architecture,
+        normalize_cuda_architecture,
     )
     from vibeqc_compiler.common.cuda_target import (
-        normalize_cuda_compile_architecture as normalize_cuda_compile_architecture,
+        normalize_cuda_compile_architecture,
     )
 else:
     import sys
