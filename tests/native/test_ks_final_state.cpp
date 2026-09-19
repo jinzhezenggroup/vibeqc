@@ -83,6 +83,14 @@ void analytic_rks_and_uks() {
     require(state.weighted_density.size() == 2, "UKS lost a spin W block");
     near(state.weighted_density[0][0], -.5, "wrong alpha W");
     near(state.weighted_density[1][0], -.5 * beta, "wrong beta W");
+
+    Fixture cpu_uks = uks;
+    cpu_uks.id.determinant.model =
+        resolve_fock_build(cpu_uks.id.determinant.model.spec, FockBackend::Cpu);
+    cpu_uks.id.model.device = -1;
+    cpu_uks.sync();
+    require(cpu_uks.validate(true, &state), "CPU UKS final-state proof rejected");
+    require(state.weighted_density.size() == 2, "CPU UKS lost a spin W block");
   }
 }
 

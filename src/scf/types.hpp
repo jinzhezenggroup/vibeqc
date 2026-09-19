@@ -96,7 +96,7 @@ struct ScfResult {
   // RHF stores one N x N AO density; UHF stores alpha then beta matrices.
   // The state is explicit and remains private to prepared execution plans.
   std::vector<double> density;
-  /** Present only for a successful CPU RKS solve requesting state retention. */
+  /** Present only for a successful CPU RKS/UKS solve requesting state retention. */
   std::vector<double> ks_physical_fock;
   unsigned iterations{};
   double energy_change{};
