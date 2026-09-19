@@ -51,6 +51,9 @@ struct HostBatch {
   std::vector<double> warm_density;
 };
 
+/** Count public Cartesian primitive references with overflow-checked topology arithmetic. */
+std::size_t checked_expanded_primitive_references(const std::vector<core::System>& systems);
+
 /** Pack topology and warm densities. Matrix-only exporters omit quartet-only
  * transforms and resident task tables; public AO expansion remains intact. */
 bool pack_host_batch(const std::vector<core::System>& systems,

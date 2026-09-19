@@ -1,0 +1,3384 @@
+{
+  "benchmark": {
+    "native_library_sha256": "7e653f7794176c6d7ad638d99ec43c81895a3144d270abf2da15f950bc325475",
+    "primitive_record_count": 192,
+    "schema": "vibeqc.issue471.benchmark.v1",
+    "shell": "psss",
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    }
+  },
+  "cache": {
+    "l1_data_bytes": 32768,
+    "l2_bytes": 524288,
+    "source": "linux-sysfs"
+  },
+  "candidates": [
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "aa4440ea3d07101a03b2e80af4368a31f970d84e37e22865bc98aaa4dae59851"
+        ],
+        "cold_compile_seconds_sum": 0.3366434872150421,
+        "cold_load_seconds": 0.0009286897256970406,
+        "shared_library_bytes_sum": 24232,
+        "shell_program_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74"
+      },
+      "index": 0,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 136,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 29,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 784,
+        "estimated_vector_live_bytes": 232,
+        "generated_source_bytes": 26239,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        },
+        "vector_width_fp64": 1
+      },
+      "status": "ready"
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005936212837696075,
+              "median_seconds": 0.0005425438284873962,
+              "minimum_seconds": 0.0005390183068811893,
+              "raw_seconds": [
+                0.0005936212837696075,
+                0.0005460209213197231,
+                0.0005491068586707115,
+                0.0005414220504462719,
+                0.0005425438284873962,
+                0.0005393777973949909,
+                0.0005390183068811893
+              ],
+              "relative_mad": 0.006408869937790961,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005642357282340527,
+              "median_seconds": 0.0005370238795876503,
+              "minimum_seconds": 0.0005314219743013382,
+              "raw_seconds": [
+                0.0005642357282340527,
+                0.0005489559844136238,
+                0.0005364217795431614,
+                0.0005398588255047798,
+                0.0005323141813278198,
+                0.0005370238795876503,
+                0.0005314219743013382
+              ],
+              "relative_mad": 0.00876999783221331,
+              "samples": 7
+            },
+            "noise_floor": 0.03035773554000854,
+            "relative_improvement": 0.010174199041458998,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "dba2be94876be623581be5fa5b98c54cbe89b8b8ec7cf4354f9b64fab41be773"
+        ],
+        "cold_compile_seconds_sum": 0.6548429150134325,
+        "cold_load_seconds": 0.0009422758594155312,
+        "shared_library_bytes_sum": 24280,
+        "shell_program_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8"
+      },
+      "index": 1,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 544,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 2200,
+        "estimated_vector_live_bytes": 928,
+        "generated_source_bytes": 27125,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        },
+        "vector_width_fp64": 4
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005936212837696075,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005642357282340527,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005489559844136238,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005460209213197231,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005491068586707115,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005364217795431614,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005398588255047798,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005414220504462719,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005425438284873962,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005323141813278198,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005370238795876503,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005393777973949909,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005390183068811893,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "1db4f861fa80ed9d9e911aa8b5b7868a9b9fd854b4f1436e91263192c98301c8",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005314219743013382,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        }
+      },
+      "index": 2,
+      "reason": "runtime does not advertise the candidate ISA",
+      "stage": "target-compatibility",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 1088,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 4088,
+        "estimated_vector_live_bytes": 1856,
+        "generated_source_bytes": 27143,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        },
+        "vector_width_fp64": 8
+      },
+      "status": "rejected"
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005662990733981133,
+              "median_seconds": 0.0005436558276414871,
+              "minimum_seconds": 0.0005383957177400589,
+              "raw_seconds": [
+                0.000547132920473814,
+                0.0005465219728648663,
+                0.0005400986410677433,
+                0.0005662990733981133,
+                0.0005383957177400589,
+                0.0005388869903981686,
+                0.0005436558276414871
+              ],
+              "relative_mad": 0.006543085520072086,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005521718412637711,
+              "median_seconds": 0.0005427240394055843,
+              "minimum_seconds": 0.0005410220474004745,
+              "raw_seconds": [
+                0.0005521718412637711,
+                0.0005410220474004745,
+                0.0005469419993460178,
+                0.0005410909652709961,
+                0.0005451790057122707,
+                0.0005427240394055843,
+                0.0005417619831860065
+              ],
+              "relative_mad": 0.0031360173523433473,
+              "samples": 7
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": 0.001713930373826944,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "17e793e9074de286412899cda934be89969ec3e4ebcc0d4d5dcf3ee309861399"
+        ],
+        "cold_compile_seconds_sum": 0.33279154216870666,
+        "cold_load_seconds": 0.000917067751288414,
+        "shared_library_bytes_sum": 24232,
+        "shell_program_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31"
+      },
+      "index": 3,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 136,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 32,
+        "estimated_peak_live_vector_values": 32,
+        "estimated_runtime_working_set_bytes": 808,
+        "estimated_vector_live_bytes": 256,
+        "generated_source_bytes": 42421,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 257,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        },
+        "vector_width_fp64": 1
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000547132920473814,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005521718412637711,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005410220474004745,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005465219728648663,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005400986410677433,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005469419993460178,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005410909652709961,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005662990733981133,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005383957177400589,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005451790057122707,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005427240394055843,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005388869903981686,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005436558276414871,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "28a25a9ab5e244b26d4a84fac2adb17dc80b44668e9ec40422ffbf1900061d31",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005417619831860065,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.000550159253180027,
+              "median_seconds": 0.0005410518497228622,
+              "minimum_seconds": 0.0005378951318562031,
+              "raw_seconds": [
+                0.000550159253180027,
+                0.0005390369333326817,
+                0.0005420730449259281,
+                0.0005444283597171307,
+                0.0005388972349464893,
+                0.0005410518497228622,
+                0.0005378951318562031
+              ],
+              "relative_mad": 0.003982270419141062,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005517220124602318,
+              "median_seconds": 0.0005430448800325394,
+              "minimum_seconds": 0.0005378550849854946,
+              "raw_seconds": [
+                0.0005471119657158852,
+                0.0005430448800325394,
+                0.0005378550849854946,
+                0.000543475616723299,
+                0.0005423938855528831,
+                0.0005517220124602318,
+                0.00054142065346241
+              ],
+              "relative_mad": 0.0029909619441252635,
+              "samples": 7
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": -0.003683621654187119,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "0847ce06c0e4d3312f25816bdf74d9af9e76286549787d4c0f208eb70d4ae282"
+        ],
+        "cold_compile_seconds_sum": 0.33569532819092274,
+        "cold_load_seconds": 0.0008884342387318611,
+        "shared_library_bytes_sum": 24232,
+        "shell_program_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de"
+      },
+      "index": 4,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 136,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 29,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 784,
+        "estimated_vector_live_bytes": 232,
+        "generated_source_bytes": 27886,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 284,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 52,
+        "maximum_component_rematerialized_values": 2,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        },
+        "vector_width_fp64": 1
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000550159253180027,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005471119657158852,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005430448800325394,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005390369333326817,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005420730449259281,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005378550849854946,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000543475616723299,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005444283597171307,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005388972349464893,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005423938855528831,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005517220124602318,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005410518497228622,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005378951318562031,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "09a0281be2b565f7cf4285afcb3f019c032dee68682b4d10246b6242bd67b6de",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.00054142065346241,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005507897585630417,
+              "median_seconds": 0.0005444367416203022,
+              "minimum_seconds": 0.0005392478778958321,
+              "raw_seconds": [
+                0.0005444367416203022,
+                0.0005507897585630417,
+                0.0005458099767565727,
+                0.0005392478778958321,
+                0.000542402733117342,
+                0.0005445177666842937,
+                0.0005438569933176041
+              ],
+              "relative_mad": 0.0025223043033128657,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005582841113209724,
+              "median_seconds": 0.0005444479174911976,
+              "minimum_seconds": 0.0005385568365454674,
+              "raw_seconds": [
+                0.0005514821968972683,
+                0.0005385568365454674,
+                0.0005406909622251987,
+                0.000547514297068119,
+                0.0005444479174911976,
+                0.0005582841113209724,
+                0.0005418728105723858
+              ],
+              "relative_mad": 0.006900486061753705,
+              "samples": 7
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": -2.052740023050781e-05,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "71746b6cb896547447175d3672ec710d92914337768838c1d2eaed49fc393180"
+        ],
+        "cold_compile_seconds_sum": 0.33548258524388075,
+        "cold_load_seconds": 0.0009293020702898502,
+        "shared_library_bytes_sum": 24232,
+        "shell_program_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff"
+      },
+      "index": 5,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 136,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 29,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 784,
+        "estimated_vector_live_bytes": 232,
+        "generated_source_bytes": 25969,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 1
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "portable",
+          "compiler_options": [],
+          "features": [],
+          "name": "generic",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 1
+        },
+        "vector_width_fp64": 1
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005444367416203022,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005514821968972683,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005385568365454674,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005507897585630417,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005458099767565727,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005406909622251987,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000547514297068119,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005392478778958321,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000542402733117342,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005444479174911976,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005582841113209724,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005445177666842937,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005438569933176041,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "94f0beb539432a047bb00eb5de1f4809a9ea6512cace51d54df8d06b4debf3ff",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005418728105723858,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005544670857489109,
+              "median_seconds": 0.0005395091138780117,
+              "minimum_seconds": 0.0005374448373913765,
+              "raw_seconds": [
+                0.0005544670857489109,
+                0.0005429252050817013,
+                0.0005374448373913765,
+                0.0005436660721898079,
+                0.0005389866419136524,
+                0.0005395091138780117,
+                0.0005380059592425823
+              ],
+              "relative_mad": 0.003826212446713108,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005546072497963905,
+              "median_seconds": 0.0005376753397285938,
+              "minimum_seconds": 0.0005300804041326046,
+              "raw_seconds": [
+                0.0005546072497963905,
+                0.0005376753397285938,
+                0.0005421130917966366,
+                0.0005300804041326046,
+                0.0005405298434197903,
+                0.0005341880023479462,
+                0.0005358010530471802
+              ],
+              "relative_mad": 0.006485953740054337,
+              "samples": 7
+            },
+            "noise_floor": 0.020624332373534893,
+            "relative_improvement": 0.00339896788070293,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "63e6b2300095b82350a3cb37c058c3e18614cca9b37b1f9402628b3958148ca7"
+        ],
+        "cold_compile_seconds_sum": 0.6627792753279209,
+        "cold_load_seconds": 0.0009341901168227196,
+        "shared_library_bytes_sum": 24280,
+        "shell_program_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62"
+      },
+      "index": 6,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 544,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 32,
+        "estimated_runtime_working_set_bytes": 2296,
+        "estimated_vector_live_bytes": 1024,
+        "generated_source_bytes": 43307,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 257,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        },
+        "vector_width_fp64": 4
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005544670857489109,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005546072497963905,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005376753397285938,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005429252050817013,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005374448373913765,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005421130917966366,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005300804041326046,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005436660721898079,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005389866419136524,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005405298434197903,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005341880023479462,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005395091138780117,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005380059592425823,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "129fcbbedea94320e215f73c833522d5d9767cb665d9931df1cdda857780eb62",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005358010530471802,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005493168719112873,
+              "median_seconds": 0.0005410010926425457,
+              "minimum_seconds": 0.0005347798578441143,
+              "raw_seconds": [
+                0.0005493168719112873,
+                0.0005377549678087234,
+                0.0005415421910583973,
+                0.0005379859358072281,
+                0.0005410010926425457,
+                0.0005429647862911224,
+                0.0005347798578441143
+              ],
+              "relative_mad": 0.005573291581704455,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005503487773239613,
+              "median_seconds": 0.0005365731194615364,
+              "minimum_seconds": 0.0005325651727616787,
+              "raw_seconds": [
+                0.0005503487773239613,
+                0.0005447277799248695,
+                0.0005347291007637978,
+                0.0005385261029005051,
+                0.0005365731194615364,
+                0.0005325651727616787,
+                0.0005357610061764717
+              ],
+              "relative_mad": 0.0036397340234421783,
+              "samples": 7
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": 0.008184776779988856,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "3577bb82b39640b9a2856997fffdcdfc5a0cdf5664776921fb9faa082fe102cc"
+        ],
+        "cold_compile_seconds_sum": 0.6598843350075185,
+        "cold_load_seconds": 0.000897429883480072,
+        "shared_library_bytes_sum": 24280,
+        "shell_program_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42"
+      },
+      "index": 7,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 544,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 2200,
+        "estimated_vector_live_bytes": 928,
+        "generated_source_bytes": 28772,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 284,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 52,
+        "maximum_component_rematerialized_values": 2,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        },
+        "vector_width_fp64": 4
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005493168719112873,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005503487773239613,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005447277799248695,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005377549678087234,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005415421910583973,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005347291007637978,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005385261029005051,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005379859358072281,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005410010926425457,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005365731194615364,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005325651727616787,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005429647862911224,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005347798578441143,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "7db12934e8653f44a9d6070b6be3d7e3e0645944d36ddd59755c14b6d6598d42",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005357610061764717,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005419631488621235,
+              "median_seconds": 0.00054154172539711,
+              "minimum_seconds": 0.0005390779115259647,
+              "raw_seconds": [
+                0.00054154172539711,
+                0.0005419631488621235,
+                0.0005390779115259647,
+                0.0005407910794019699,
+                0.0005415622144937515,
+                0.0005405796691775322,
+                0.0005418430082499981
+              ],
+              "relative_mad": 0.0007781920491989351,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.0005524931475520134,
+              "median_seconds": 0.0005365717224776745,
+              "minimum_seconds": 0.0005320138297975063,
+              "raw_seconds": [
+                0.0005524931475520134,
+                0.0005353298038244247,
+                0.0005393479950726032,
+                0.0005392273887991905,
+                0.0005320138297975063,
+                0.0005365717224776745,
+                0.0005322638899087906
+              ],
+              "relative_mad": 0.00517409412130222,
+              "samples": 7
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": 0.009177506896243304,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "f12528f1927bbdf004a0da5539230cf160cef47e2cc356cc8d9a0383af805017"
+        ],
+        "cold_compile_seconds_sum": 0.6714134747162461,
+        "cold_load_seconds": 0.0009253839962184429,
+        "shared_library_bytes_sum": 24280,
+        "shell_program_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456"
+      },
+      "index": 8,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 2.7755575615628914e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 544,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 2200,
+        "estimated_vector_live_bytes": 928,
+        "generated_source_bytes": 26855,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        },
+        "vector_width_fp64": 4
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.00054154172539711,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005524931475520134,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005353298038244247,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005419631488621235,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005390779115259647,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005393479950726032,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005392273887991905,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005407910794019699,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005415622144937515,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005320138297975063,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005365717224776745,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005405796691775322,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005418430082499981,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005322638899087906,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "fma",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "comparison": {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0005510607734322548,
+              "median_seconds": 0.0005430746823549271,
+              "minimum_seconds": 0.0005372441373765469,
+              "raw_seconds": [
+                0.0005510607734322548,
+                0.0005456400103867054,
+                0.0005406299605965614,
+                0.0005460507236421108,
+                0.0005372441373765469,
+                0.0005430746823549271,
+                0.0005388772115111351
+              ],
+              "relative_mad": 0.005479985320396075,
+              "samples": 7
+            },
+            "candidate": {
+              "maximum_seconds": 0.000550378579646349,
+              "median_seconds": 0.0005402700044214725,
+              "minimum_seconds": 0.0005327649414539337,
+              "raw_seconds": [
+                0.000550378579646349,
+                0.0005433661863207817,
+                0.0005389773286879063,
+                0.0005345093086361885,
+                0.0005402700044214725,
+                0.0005327649414539337,
+                0.0005412916652858257
+              ],
+              "relative_mad": 0.005730804734615216,
+              "samples": 7
+            },
+            "noise_floor": 0.02242158011002258,
+            "relative_improvement": 0.005164442432286864,
+            "significant": false
+          }
+        }
+      },
+      "compiled_resources": {
+        "artifact_keys": [
+          "d63628da22ea2985dbf0f192c032bbc0e840282fd37e2427a13f7e76b83508f4"
+        ],
+        "cold_compile_seconds_sum": 0.6556590651161969,
+        "cold_load_seconds": 0.0009256741032004356,
+        "shared_library_bytes_sum": 24280,
+        "shell_program_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9"
+      },
+      "index": 9,
+      "numerical": {
+        "atol": 5e-11,
+        "maximum_absolute_error": 1.942890293094024e-16,
+        "passed": true,
+        "rtol": 2e-10
+      },
+      "stage": "numerical",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 544,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 2200,
+        "estimated_vector_live_bytes": 928,
+        "generated_source_bytes": 25403,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 212,
+        "maximum_component_fma_operations": 45,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "fma",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        },
+        "vector_width_fp64": 4
+      },
+      "status": "ready",
+      "timing_samples": [
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005510607734322548,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.000550378579646349,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005433661863207817,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005456400103867054,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005406299605965614,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005389773286879063,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005345093086361885,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005460507236421108,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005372441373765469,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005402700044214725,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005327649414539337,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005430746823549271,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+            "selected_target": "generic"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005388772115111351,
+          "selection": "baseline",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        },
+        {
+          "diagnostics": {
+            "finite": true,
+            "schedule_identity": "8d57ce343bf0574f2441269d99446c8ffd5591888fdf9170829b48acd154cbe9",
+            "selected_target": "x86_64-avx2-fma"
+          },
+          "inputs_hash": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95",
+          "seconds": 0.0005412916652858257,
+          "selection": "candidate",
+          "synchronized": true,
+          "workload": "unchanged-geometry"
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        }
+      },
+      "index": 10,
+      "reason": "runtime does not advertise the candidate ISA",
+      "stage": "target-compatibility",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 1088,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 32,
+        "estimated_runtime_working_set_bytes": 4280,
+        "estimated_vector_live_bytes": 2048,
+        "generated_source_bytes": 43325,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 257,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        },
+        "vector_width_fp64": 8
+      },
+      "status": "rejected"
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        }
+      },
+      "index": 11,
+      "reason": "runtime does not advertise the candidate ISA",
+      "stage": "target-compatibility",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 1088,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 4088,
+        "estimated_vector_live_bytes": 1856,
+        "generated_source_bytes": 28790,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 284,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 52,
+        "maximum_component_rematerialized_values": 2,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "pressure_rematerialized",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        },
+        "vector_width_fp64": 8
+      },
+      "status": "rejected"
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        }
+      },
+      "index": 12,
+      "reason": "runtime does not advertise the candidate ISA",
+      "stage": "target-compatibility",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 1088,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 4088,
+        "estimated_vector_live_bytes": 1856,
+        "generated_source_bytes": 26873,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 257,
+        "maximum_component_fma_operations": 0,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        },
+        "vector_width_fp64": 8
+      },
+      "status": "rejected"
+    },
+    {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "fma",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        }
+      },
+      "index": 13,
+      "reason": "runtime does not advertise the candidate ISA",
+      "stage": "target-compatibility",
+      "static_resources": {
+        "aos_to_soa_bytes_per_lane_tile": 1088,
+        "cache": {
+          "l1_data_bytes": 32768,
+          "l2_bytes": 524288,
+          "source": "linux-sysfs"
+        },
+        "compiled_register_spill_evidence": null,
+        "component_count": 3,
+        "component_tile_size": 3,
+        "component_tiles": 1,
+        "estimated_l1_fit": true,
+        "estimated_l2_fit": true,
+        "estimated_logical_load_store_bytes": 245760,
+        "estimated_peak_live_scalar_values": 0,
+        "estimated_peak_live_vector_values": 29,
+        "estimated_runtime_working_set_bytes": 4088,
+        "estimated_vector_live_bytes": 1856,
+        "generated_source_bytes": 25421,
+        "lane_utilization": 1.0,
+        "maximum_component_arithmetic_operations": 212,
+        "maximum_component_fma_operations": 45,
+        "maximum_component_materialized_values": 54,
+        "maximum_component_rematerialized_values": 0,
+        "record_count": 192,
+        "register_spill_scope": "portable C++ compiler path exposes no stable register/spill report; live-value metrics are static estimates, not measured registers",
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "fma",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "small_integer",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 8
+        },
+        "schema": "vibeqc.cpu.static-cost.v1",
+        "tail_fraction": 0.0,
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx512f",
+            "-mfma"
+          ],
+          "features": [
+            "avx512f",
+            "fma"
+          ],
+          "name": "x86_64-avx512f-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 8
+        },
+        "vector_width_fp64": 8
+      },
+      "status": "rejected"
+    }
+  ],
+  "integral": {
+    "contractions": [
+      {
+        "consumer": "weighted_derivative",
+        "memory_budget_bytes": 4194304,
+        "output": "nuclear_derivative",
+        "output_layout": {
+          "dtype": "float64",
+          "indices": [
+            "center",
+            "xyz"
+          ],
+          "shape": [
+            4,
+            3
+          ],
+          "strides": [
+            3,
+            1
+          ]
+        },
+        "output_sign": 1,
+        "weights": {
+          "layout": {
+            "dtype": "float64",
+            "indices": [
+              "shell_0",
+              "shell_1",
+              "shell_2",
+              "shell_3"
+            ],
+            "shape": [
+              3,
+              1,
+              1,
+              1
+            ],
+            "strides": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          "prefactor": 1.0,
+          "sign": 1,
+          "source": "external_eri_weights"
+        }
+      }
+    ],
+    "derivative": {
+      "centers": "all",
+      "invariants": [
+        {
+          "centers": "all",
+          "dependent_center": null
+        }
+      ],
+      "order": 1
+    },
+    "operator": {
+      "centers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "external_centers": [],
+      "family": "four_center_eri",
+      "invariants": [
+        {
+          "centers": "all",
+          "dependent_center": null
+        }
+      ],
+      "permutations": []
+    },
+    "recurrence": "subset_wick",
+    "schema": "vibeqc.integral_ir",
+    "schema_version": 1,
+    "spec": {
+      "angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "kind": "shell_class",
+      "name": "psss"
+    }
+  },
+  "limits": {
+    "maximum_candidates": 16,
+    "maximum_compile_seconds": 30.0,
+    "maximum_source_bytes": 2097152,
+    "maximum_working_set_bytes": 2097152,
+    "parallel_tasks": 8,
+    "parallel_workers": [
+      1,
+      2,
+      4
+    ],
+    "repeats": 7
+  },
+  "parallel_interaction": {
+    "baseline": [
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.004325733985751867,
+        "samples": [
+          0.00433563394472003,
+          0.004340101964771748,
+          0.004325733985751867,
+          0.004331636242568493,
+          0.0043250638991594315,
+          0.0043058269657194614,
+          0.004298962652683258
+        ],
+        "systems_per_second": 1849.3971257480132,
+        "tasks": 8,
+        "workers": 1
+      },
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.006041133776307106,
+        "samples": [
+          0.007378743961453438,
+          0.0063568660989403725,
+          0.006442379206418991,
+          0.005971882026642561,
+          0.006039369851350784,
+          0.00602534506469965,
+          0.006041133776307106
+        ],
+        "systems_per_second": 1324.2547336686082,
+        "tasks": 8,
+        "workers": 2
+      },
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.008304938673973083,
+        "samples": [
+          0.008286253083497286,
+          0.006918857805430889,
+          0.008064661175012589,
+          0.00894977804273367,
+          0.008615000173449516,
+          0.008535188157111406,
+          0.008304938673973083
+        ],
+        "systems_per_second": 963.2822485578691,
+        "tasks": 8,
+        "workers": 4
+      }
+    ],
+    "best_simd": {
+      "candidate": {
+        "component_tile_size": 3,
+        "lane": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "pressure_aware",
+          "algebra_placement": "inline_single_use",
+          "lane_packing": "primitive_records",
+          "power_lowering": "native",
+          "schema": "vibeqc.cpu-schedule.v1",
+          "tail_policy": "safe_pad",
+          "vector_lanes": 4
+        },
+        "target": {
+          "architecture": "x86_64",
+          "compiler_options": [
+            "-mavx2",
+            "-mfma"
+          ],
+          "features": [
+            "avx2",
+            "fma"
+          ],
+          "name": "x86_64-avx2-fma",
+          "schema": "vibeqc.cpu-target.v1",
+          "vector_lanes": 4
+        }
+      },
+      "measurements": [
+        {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "median_seconds": 0.009373285807669163,
+          "samples": [
+            0.009557316079735756,
+            0.009382342919707298,
+            0.009353497065603733,
+            0.009373285807669163,
+            0.00939486688002944,
+            0.006740468088537455,
+            0.0067189461551606655
+          ],
+          "systems_per_second": 853.4893914633917,
+          "tasks": 8,
+          "workers": 1
+        },
+        {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "median_seconds": 0.006149210035800934,
+          "samples": [
+            0.007296897936612368,
+            0.006396972108632326,
+            0.006369058974087238,
+            0.006149210035800934,
+            0.006053206976503134,
+            0.006072022952139378,
+            0.0060530370101332664
+          ],
+          "systems_per_second": 1300.980118327996,
+          "tasks": 8,
+          "workers": 2
+        },
+        {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "median_seconds": 0.00826414069160819,
+          "samples": [
+            0.007788724731653929,
+            0.006452488712966442,
+            0.00821925513446331,
+            0.008615831844508648,
+            0.008568982128053904,
+            0.008472197689116001,
+            0.00826414069160819
+          ],
+          "systems_per_second": 968.0377305439134,
+          "tasks": 8,
+          "workers": 4
+        }
+      ],
+      "program_identity": "eda197bf28b9911b862b37d6897c93f893a8d6a89d92d55d73929317c0cb3456"
+    },
+    "selected": [
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.009465591050684452,
+        "samples": [
+          0.009630214888602495,
+          0.009513262193650007,
+          0.009465591050684452,
+          0.009491781238466501,
+          0.007800777908414602,
+          0.006738123018294573,
+          0.006729416083544493
+        ],
+        "systems_per_second": 845.1664515362222,
+        "tasks": 8,
+        "workers": 1
+      },
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.0061475969851017,
+        "samples": [
+          0.007271429058164358,
+          0.006384558975696564,
+          0.006281733047217131,
+          0.0061475969851017,
+          0.006122800055891275,
+          0.006088244263082743,
+          0.006136024836450815
+        ],
+        "systems_per_second": 1301.3214788457144,
+        "tasks": 8,
+        "workers": 2
+      },
+      {
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "median_seconds": 0.008250145241618156,
+        "samples": [
+          0.007833539973944426,
+          0.006651849020272493,
+          0.007676451001316309,
+          0.008902217261493206,
+          0.00879073515534401,
+          0.008352329023182392,
+          0.008250145241618156
+        ],
+        "systems_per_second": 969.6798984390857,
+        "tasks": 8,
+        "workers": 4
+      }
+    ]
+  },
+  "reference_identity": "052a0dfd57d05bb9f0dfffbca1742b09715f262d2df54293b3079cfa1bd6a427",
+  "runtime": {
+    "architecture": "x86_64",
+    "features": [
+      "avx2",
+      "fma"
+    ],
+    "source": "linux-proc-cpuinfo"
+  },
+  "schema": "vibeqc.cpu-autotune.v1",
+  "selected": {
+    "candidate": {
+      "component_tile_size": 3,
+      "lane": {
+        "algebra_form": "binary",
+        "algebra_fusion": "separate",
+        "algebra_ordering": "pressure_aware",
+        "algebra_placement": "inline_single_use",
+        "lane_packing": "primitive_records",
+        "power_lowering": "small_integer",
+        "schema": "vibeqc.cpu-schedule.v1",
+        "tail_policy": "safe_pad",
+        "vector_lanes": 1
+      },
+      "target": {
+        "architecture": "portable",
+        "compiler_options": [],
+        "features": [],
+        "name": "generic",
+        "schema": "vibeqc.cpu-target.v1",
+        "vector_lanes": 1
+      }
+    },
+    "compiler_artifact_keys": [
+      "aa4440ea3d07101a03b2e80af4368a31f970d84e37e22865bc98aaa4dae59851"
+    ],
+    "program_identity": "a746b80860415d478998abd4b2633bfb3755867abcbba0a98a6df6ea3f2c8e74",
+    "reason": "scalar baseline retained; no candidate cleared the benefit/noise gate",
+    "selection_identity": "8298e676053f9e26ef2d7ccca7dd268d20b78d3d60f62eb4d7cf06320f6a022d"
+  },
+  "workload_identity": "c4c103d1988c19e2c81a02a6b32ee594c779c028af8621b8bdaafe372ba81f95"
+}
