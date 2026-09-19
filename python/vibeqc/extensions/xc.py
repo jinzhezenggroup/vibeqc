@@ -25,6 +25,8 @@ def _coefficient(value: Coefficient, label: str) -> Fraction:
 
 def _normalize_components(
     components: Mapping[str, Coefficient] | Iterable[tuple[str, Coefficient]],
+    *,
+    allow_empty: bool = False,
 ) -> tuple[tuple[str, Fraction], ...]:
     items = components.items() if isinstance(components, Mapping) else components
     totals: dict[str, Fraction] = {}
@@ -38,7 +40,7 @@ def _normalize_components(
             value, f"component {name}"
         )
     result = tuple((name, value) for name, value in sorted(totals.items()) if value)
-    if not result:
+    if not result and not allow_empty:
         raise UnsupportedXC("functional composition cannot be empty")
     return result
 

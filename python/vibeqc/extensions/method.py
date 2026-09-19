@@ -58,7 +58,8 @@ def compose(
     elif semilocal_components is None:
         components = ()
     else:
-        components = _normalize_components(semilocal_components)
+        # Exact exchange can remain after all semilocal fragments cancel.
+        components = _normalize_components(semilocal_components, allow_empty=True)
 
     if exact_exchange is None:
         exchange = inherited_exchange

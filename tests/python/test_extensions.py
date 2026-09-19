@@ -105,3 +105,43 @@ def test_tensor_extension_surface_is_replayable_and_backend_neutral():
     assert report["logical_hash"] == program.logical_hash
     assert report["program"]["schema_version"] == tensor.SCHEMA_VERSION
     assert tensor.Program.loads(program.dumps()).logical_hash == program.logical_hash
+
+
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+@pytest.mark.parametrize(
+    "components",
+    [
+        {},
+        (),
+        (("GGA_X_PBE", 1), ("GGA_X_PBE", -1)),
+        {"GGA_X_PBE": 0},
+    ],
+    ids=["empty-mapping", "empty-sequence", "cancelled", "zero-weight"],
+)
+def test_empty_semilocal_contribution_preserves_exact_exchange(components, spin):
+    ir = method.compose(
+        "pure-exchange",
+        semilocal_components=components,
+        exact_exchange=1,
+        spin=spin,
+    )
+    expected = method.compose("pure-exchange", exact_exchange=1, spin=spin)
+    assert ir.identity == expected.identity
+    assert ir.requirements["operators"] == ("full-range-exchange",)
+
+
+@pytest.mark.parametrize(
+    "components",
+    [
+        {},
+        (),
+        (("GGA_X_PBE", 1), ("GGA_X_PBE", -1)),
+        {"GGA_X_PBE": 0},
+    ],
+    ids=["empty-mapping", "empty-sequence", "cancelled", "zero-weight"],
+)
+def test_empty_method_and_standalone_xc_still_fail_closed(components):
+    with pytest.raises(method.UnsupportedMethod, match="empty"):
+        method.compose("empty", semilocal_components=components)
+    with pytest.raises(xc.UnsupportedXC, match="empty"):
+        xc.compose("empty", components)
