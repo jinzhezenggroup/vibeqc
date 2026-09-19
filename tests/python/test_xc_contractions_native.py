@@ -58,6 +58,40 @@ def compare(actual, expected):
             )
 
 
+def test_native_r2scan_generated_point_program_matches_interpreter(native_factory):
+    rho = np.array([[0.4, 0.2, 0.7], [0.3, 0.5, 0.4]])
+    gradient = np.array(
+        [
+            [[0.08, -0.03, 0.04], [0.02, 0.01, -0.05], [0.03, -0.02, 0.01]],
+            [[-0.02, 0.06, 0.01], [0.04, -0.02, 0.02], [0.01, 0.02, -0.03]],
+        ]
+    )
+    sigma = np.stack(
+        (
+            np.sum(gradient[0] ** 2, axis=1),
+            np.sum(gradient[0] * gradient[1], axis=1),
+            np.sum(gradient[1] ** 2, axis=1),
+        )
+    )
+    tau = np.stack(
+        (
+            sigma[0] / (8 * rho[0]) + 0.8 * rho[0] ** (5 / 3),
+            sigma[2] / (8 * rho[1]) + 0.8 * rho[1] ** (5 / 3),
+        )
+    )
+    features = {"rho": rho, "gradient": gradient, "sigma": sigma, "tau": tau}
+    diagnostic = ContractionProgram(functional("R2SCAN"))
+    native = native_factory("R2SCAN", "potential")
+    expected = diagnostic.scalar_values(features)
+    actual = native.scalar_values(features)
+    assert set(actual) == set(expected)
+    for output in expected:
+        np.testing.assert_allclose(
+            actual[output], expected[output], atol=2e-13, rtol=2e-13
+        )
+    assert any(node.operation == "select_le" for node in diagnostic.program.graph.nodes)
+
+
 @pytest.mark.parametrize("case", ["h2", "f_spherical"])
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])

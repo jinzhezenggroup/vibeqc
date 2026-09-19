@@ -18,7 +18,7 @@ class CpuTargetInfo:
     def __post_init__(self) -> None:
         if not self.name or not self.architecture:
             raise ValueError("CPU target name and architecture are required")
-        if self.vector_lanes not in (1, 4, 8):
+        if type(self.vector_lanes) is not int or self.vector_lanes not in (1, 4, 8):
             raise ValueError("CPU FP64 vector lanes must be one, four, or eight")
         if tuple(sorted(set(self.features))) != self.features:
             raise ValueError("CPU target features must be unique and sorted")
@@ -31,6 +31,16 @@ class CpuTargetInfo:
         }[self.vector_lanes]
         if any(feature not in self.features for feature in required):
             raise ValueError("CPU vector target is missing a required ISA feature")
+        # This initial target contract describes ISA only, not arbitrary compiler
+        # arithmetic. Extra flags can override -ffp-contract=off and even erase
+        # the runtime's finite-input checks, while -march=native hides an ISA.
+        expected_options = {
+            1: (),
+            4: ("-mavx2", "-mfma"),
+            8: ("-mavx512f", "-mfma"),
+        }[self.vector_lanes]
+        if self.compiler_options != expected_options:
+            raise ValueError("CPU compiler options must exactly match the declared ISA")
 
     def to_payload(self) -> dict[str, object]:
         return {

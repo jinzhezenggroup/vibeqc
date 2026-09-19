@@ -15,6 +15,7 @@
 #include <string>
 
 #include "../runtime/allocation_measurement.hpp"
+#include "../runtime/cuda_resources.cuh"
 #include "cuda_error.hpp"
 #include "metrics.hpp"
 
@@ -29,17 +30,6 @@ inline void blas_check(cublasStatus_t status) {
 inline void error_text(char* out, size_t size, const char* text) noexcept {
   if (out && size) std::snprintf(out, size, "%s", text);
 }
-
-// Switching is scoped to preparation/destruction. Execution rejects a caller
-// device mismatch instead of running pointers against another CUDA context.
-struct DeviceGuard {
-  int previous = 0;
-  explicit DeviceGuard(int device) {
-    cuda_check(cudaGetDevice(&previous));
-    cuda_check(cudaSetDevice(device));
-  }
-  ~DeviceGuard() { cudaSetDevice(previous); }
-};
 
 struct Context {
   int device = 0;
@@ -59,7 +49,7 @@ struct Context {
                bool needs_blas) {
     std::lock_guard<std::mutex> allocation_lock(vibeqc::runtime::allocation_measurement_mutex);
     device = ordinal;
-    DeviceGuard guard(device);
+    vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
     cudaDeviceProp property{};
     cuda_check(cudaGetDeviceProperties(&property, device));
     if (property.major != major || property.minor != minor)
