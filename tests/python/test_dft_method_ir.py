@@ -61,6 +61,16 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
             Fraction(0),
         ),
         (
+            "B3LYP",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(18, 25),
+                "LDA_C_VWN_RPA": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 5),
+        ),
+        (
             "B3LYP5",
             {
                 "LDA_X": Fraction(2, 25),
@@ -110,16 +120,32 @@ def test_cross_code_catalog_compositions_are_explicit(name, components, exchange
         assert len(graph.primitives) == 1
 
 
-def test_pbe1pbe_is_a_named_pbe0_semantic_alias():
+@pytest.mark.parametrize("alias", ["PBE1PBE", "PBEH"])
+def test_pbe0_named_aliases_share_semantic_identity(alias):
     pbe0 = resolve_method("PBE0")
-    pbe1pbe = resolve_method("PBE1PBE")
-    assert pbe1pbe.identity == pbe0.identity
-    assert pbe1pbe.manifest_identity != pbe0.manifest_identity
+    named = resolve_method(alias)
+    assert named.identity == pbe0.identity
+    assert named.manifest_identity != pbe0.manifest_identity
 
 
-def test_ambiguous_b3lyp_name_fails_closed_until_vwn_rpa_is_audited():
-    with pytest.raises(UnsupportedMethod, match="unknown DFT method"):
-        resolve_method("B3LYP")
+def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct():
+    b3lyp = resolve_method("B3LYP")
+    gaussian = resolve_method("B3LYPG")
+    vwn5 = resolve_method("B3LYP5")
+    assert gaussian.identity == b3lyp.identity
+    assert gaussian.manifest_identity != b3lyp.manifest_identity
+    assert vwn5.identity != b3lyp.identity
+
+
+@pytest.mark.parametrize(
+    "canonical,alias",
+    [("BHANDHLYP", "BHHLYP"), ("CAM-B3LYP", "CAMB3LYP")],
+)
+def test_cross_code_named_aliases_preserve_semantics(canonical, alias):
+    reference = resolve_method(canonical)
+    named = resolve_method(alias)
+    assert named.identity == reference.identity
+    assert named.manifest_identity != reference.manifest_identity
 
 
 @pytest.mark.parametrize(
