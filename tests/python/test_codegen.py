@@ -3542,9 +3542,9 @@ def test_one_electron_force_batches_point_charges_in_retained_reference_warp():
 def test_generated_one_electron_derivatives_are_the_production_default():
     """Promote compiler-owned derivatives while retaining an explicit escape hatch."""
 
-    policy = (
-        REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp"
-    ).read_text(encoding="utf-8")
+    policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
     begin = policy.index("bool generated_one_electron_derivatives_requested()")
     end = policy.index("bool resident_psss_bra_requested()", begin)
     selection = policy[begin:end]
