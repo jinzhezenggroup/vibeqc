@@ -101,10 +101,12 @@ PhysicalCheck independent_uhf(const vibeqc::core::System& system,
       scf::reference::commutator_residual(fock.alpha, alpha, gpu.one_electron().overlap, n);
   const auto rb =
       scf::reference::commutator_residual(fock.beta, beta, gpu.one_electron().overlap, n);
+  const double residual_a = scf::reference::residual_rms(ra);
+  const double residual_b = scf::reference::residual_rms(rb);
   return {scf::reference::uhf_electronic_energy(alpha, beta, gpu.one_electron().hcore, fock.alpha,
                                                 fock.beta) +
               gpu.one_electron().nuclear_repulsion,
-          std::max(scf::reference::residual_rms(ra), scf::reference::residual_rms(rb))};
+          std::hypot(residual_a, residual_b) / std::sqrt(2.0)};
 }
 
 vibeqc::scf::ScfOptions options() {
@@ -159,6 +161,10 @@ void verify_rhf(int device) {
   require(!failed.converged && failed.iterations == 1 && failed.fock_builds == 1 &&
               failed.density.size() == plan.one_electron().nbf * plan.one_electron().nbf,
           "failed COSX RHF published a converged/finalized state");
+  const auto failed_check = independent_rhf(system, plan, failed.density);
+  require(std::abs(failed_check.energy - failed.energy) < 5.0e-9 &&
+              std::abs(failed_check.residual - failed.physical_residual_rms) < 5.0e-9,
+          "failed COSX RHF returned diagnostics from a different density");
 }
 
 void verify_uhf(int device) {
@@ -190,6 +196,17 @@ void verify_uhf(int device) {
     rejected = true;
   }
   require(rejected, "COSX UHF silently advertised analytic forces");
+
+  auto one = control;
+  one.max_iterations = 1;
+  const auto failed = dft::run_cosx_uhf(plan, one);
+  require(!failed.converged && failed.iterations == 1 && failed.fock_builds == 1 &&
+              failed.density.size() == 2 * plan.one_electron().nbf * plan.one_electron().nbf,
+          "failed COSX UHF published a converged/finalized state");
+  const auto failed_check = independent_uhf(system, plan, failed.density);
+  require(std::abs(failed_check.energy - failed.energy) < 5.0e-9 &&
+              std::abs(failed_check.residual - failed.physical_residual_rms) < 5.0e-9,
+          "failed COSX UHF returned diagnostics from a different density");
 }
 
 }  // namespace
