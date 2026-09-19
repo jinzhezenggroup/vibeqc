@@ -15,6 +15,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CCACHE_VERSION: "4.14"
+
 # Keep only the newest validation for a pull request. Master pushes use their
 # unique run ID, so one merge never cancels another merge's validation record.
 concurrency:
@@ -39,8 +42,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+          ccache --version
       - name: Restore ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -106,10 +118,9 @@ jobs:
             https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring.deb
           sudo apt-get update
-      - name: Install CUDA 12.9 build dependencies and ccache
+      - name: Install CUDA 12.9 build dependencies
         run: |
           sudo apt-get install --yes \
-            ccache \
             cuda-nvcc-12-9 \
             cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
@@ -119,6 +130,16 @@ jobs:
             libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
           ccache --version
       - name: Restore CUDA ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -210,8 +231,17 @@ jobs:
           version: "0.10.7"
           python-version: "3.11"
           enable-cache: true
-      - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+          ccache --version
       - name: Restore ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
