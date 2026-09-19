@@ -18,6 +18,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
+#include "scf/solver/self_consistent.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -222,56 +223,86 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     result.xc_density_factor = factor;
     diagnostic.final_identity = identity;
   };
-  double previous_energy = std::numeric_limits<double>::infinity();
-  for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
-    const auto current_factor = factor;
-    const auto current_identity = identity;
-    ++result.fock_builds;
-    const auto physical = evaluate_current();
-    const Matrix residual = commutator_residual(physical.fock, density, ints.overlap, n);
-    const Matrix effective_fock = diis.update(physical.fock, residual);
-    orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
-    const auto iteration_bytes =
-        runtime::vector_capacities(physical.fock, residual, effective_fock);
-    Matrix next_density = next_density_from_orbitals(iteration_bytes);
+  struct RksLoopEvaluation {
+    std::shared_ptr<const OccupiedDensityFactor> current_factor;
+    DensityFactorIdentity current_identity{};
+    dft::EnergyComponents components;
+    Matrix next_density;
+    double energy{};
+    double state_rms{};
+    double residual_rms{};
+    double spin_electrons{};
+  };
 
-    runtime::sample_cpu_capacity(runtime::add_capacity(
-        retained_capacity(),
-        runtime::add_capacity(iteration_bytes, runtime::vector_bytes(next_density))));
-    result.iterations = iteration;
-    result.energy = physical.energy;
-    result.energy_change = std::isfinite(previous_energy)
-                               ? std::abs(physical.energy - previous_energy)
-                               : std::numeric_limits<double>::infinity();
-    result.density_rms = density_rms(next_density, density);
-    ks.physical_residual = residual_rms(residual);
-    result.physical_residual_rms = ks.physical_residual;
-    ks.components = physical.components;
-    const double spin_electrons = dot(density, ints.overlap) / 2.0;
-    ks.electrons = {spin_electrons, spin_electrons};
-    ks.density_change = result.density_rms;
-    ks.history.push_back({iteration,
-                          physical.components,
-                          result.energy_change,
-                          result.density_rms,
-                          ks.physical_residual,
-                          {spin_electrons, spin_electrons}});
-    if (iteration > 1 && result.energy_change < options.energy_tolerance &&
-        result.density_rms < options.density_tolerance &&
-        ks.physical_residual < std::min(1.0e-9, options.density_tolerance)) {
-      density = std::move(next_density);
-      result.converged = true;
-      break;
-    }
-    if (iteration == options.max_iterations) {
-      // A failed return still binds E/residual/D/factor to one physical generation.
-      factor = current_factor;
-      identity = current_identity;
-      break;
-    }
-    previous_energy = physical.energy;
-    density = std::move(next_density);
-  }
+  const solver::SelfConsistentPolicy policy{
+      options.max_iterations,
+      options.energy_tolerance,
+      options.density_tolerance,
+      std::min(1.0e-9, options.density_tolerance),
+      true};
+  auto outcome = solver::run_self_consistent(
+      std::move(density), policy,
+      [&](const Matrix& current_density, unsigned) {
+        // evaluate_current/occupied-factor helpers intentionally borrow the
+        // adapter's current state. Rebind density only for this physical step.
+        density = current_density;
+        const auto current_factor = factor;
+        const auto current_identity = identity;
+        ++result.fock_builds;
+        const auto physical = evaluate_current();
+        const Matrix residual = commutator_residual(physical.fock, density, ints.overlap, n);
+        const Matrix effective_fock = diis.update(physical.fock, residual);
+        orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
+        const auto iteration_bytes =
+            runtime::vector_capacities(physical.fock, residual, effective_fock);
+        Matrix next_density = next_density_from_orbitals(iteration_bytes);
+
+        runtime::sample_cpu_capacity(runtime::add_capacity(
+            retained_capacity(),
+            runtime::add_capacity(iteration_bytes, runtime::vector_bytes(next_density))));
+        const double state_rms = density_rms(next_density, density);
+        const double physical_residual = residual_rms(residual);
+        const double spin_electrons = dot(density, ints.overlap) / 2.0;
+        return RksLoopEvaluation{current_factor,
+                                 current_identity,
+                                 physical.components,
+                                 std::move(next_density),
+                                 physical.energy,
+                                 state_rms,
+                                 physical_residual,
+                                 spin_electrons};
+      },
+      [&](const Matrix& current_density, RksLoopEvaluation evaluation,
+          const solver::SelfConsistentProgress& progress) {
+        if (!progress.converged && progress.iteration == options.max_iterations) {
+          // A failed return must keep E/residual/D/factor on the same physical
+          // generation rather than publishing the last unchecked proposal.
+          factor = std::move(evaluation.current_factor);
+          identity = evaluation.current_identity;
+          return Matrix(current_density);
+        }
+        return std::move(evaluation.next_density);
+      },
+      [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+        result.iterations = progress.iteration;
+        result.energy = progress.energy;
+        result.energy_change = progress.energy_change;
+        result.density_rms = progress.state_rms;
+        ks.physical_residual = progress.residual_rms;
+        result.physical_residual_rms = ks.physical_residual;
+        ks.components = evaluation.components;
+        ks.electrons = {evaluation.spin_electrons, evaluation.spin_electrons};
+        ks.density_change = progress.state_rms;
+        ks.history.push_back({progress.iteration,
+                              evaluation.components,
+                              progress.energy_change,
+                              progress.state_rms,
+                              progress.residual_rms,
+                              {evaluation.spin_electrons, evaluation.spin_electrons}});
+      });
+  density = std::move(outcome.state);
+  result.converged = outcome.converged;
+
   if (!result.converged) {
     diagnostic.physical_residual = ks.physical_residual;
     retain_factor();
