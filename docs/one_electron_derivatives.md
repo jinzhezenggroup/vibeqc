@@ -1,20 +1,27 @@
 # Generated one-electron derivatives
 
-VibeQC provides an opt-in generated CUDA consumer for first nuclear derivatives
-of overlap S, kinetic T and nuclear attraction V. It accepts arbitrary external
-weights, and the Direct/DF RHF/UHF adapters use that same contract. The
-handwritten implementation remains the default.
+VibeQC uses the compiler-owned generated CUDA consumer for first nuclear
+derivatives of overlap S, kinetic T and nuclear attraction V as the production
+default. It accepts arbitrary external weights, and the Direct/DF RHF/UHF
+adapters use that same contract. The qualified default schedule is
+`shell_warp`.
 
 ```bash
-VIBEQC_ONE_ELECTRON_DERIVATIVES=generated \
+# Explicit retained native exception for comparison or a documented workload.
+VIBEQC_ONE_ELECTRON_DERIVATIVES=reference your-command
+
+# Generated diagnostic schedules.
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=thread your-command
+VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial your-command
 ```
 
-Select `reference` to use the previous force implementation. The `thread`
-mapping owns triangular AO pairs by thread; `shell_warp` assigns a shell pair
-to a warp whose lanes own AO components. `serial` is a deterministic diagnostic
-mapping with one owner per system. None of these switches changes the value
-implementation selected by `VIBEQC_ONE_ELECTRON_VALUES`.
+The retained `reference` route uses the cooperative native force consumer (or
+the previous DF derivative-tensor route where applicable). The old scalar
+native force family and `VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
+`thread` owns triangular AO pairs by thread; `shell_warp` assigns a shell
+pair to a warp whose lanes own AO components; `serial` is a deterministic
+diagnostic mapping with one owner per system. None of these switches changes
+the value implementation selected by `VIBEQC_ONE_ELECTRON_VALUES`.
 
 ## Mathematical and weight contract
 
@@ -206,10 +213,19 @@ complete process host high-water is not claimed. Resource-budgeted runs omit
 optional iteration-history profiling, while retaining final residuals and
 iteration counts.
 
-The generated implementation remains **opt-in**: gains are workload-dependent,
-and unchanged resident DF replay regresses. Reproduction scripts are archived
-alongside the results and resolve the checkout relative to their own location.
-Set `PYTHON`, optional `CUDA_HOME`/`NSYS`, and run each through a finite Slurm
+The generated shell-warp implementation is the production default after #357.
+The archived endpoint evidence is deliberately not rewritten: resident DF
+unchanged replay measured 4.586 / 5.429 ms (reference / generated), and Direct
+sdf18 changed geometry measured 36.667 / 39.352 ms. Those cases justify keeping
+the cooperative native route as an explicit `reference` performance exception;
+they do not justify keeping handwritten S/T/V formulas as the normal owner. The
+old scalar kernel (335.6 us in the archived sp8 profile) is slower than both the
+cooperative kernel (85.2 us) and generated shell warp (58.0 us) and is removed.
+
+No new GPU timing claim is made by the retirement change itself; promotion uses
+the pinned #141 numerical/resource/endpoint evidence above. Reproduction scripts
+for the removed scalar path require an archived pre-#357 checkout. Set `PYTHON`,
+optional `CUDA_HOME`/`NSYS`, and run GPU measurements through a finite Slurm
 allocation. `VIBEQC_LIBRARY` can select a nondefault build.
 
 Integration with the merged basis-projection implementation and review fixes
