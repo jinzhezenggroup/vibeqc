@@ -99,10 +99,12 @@ def _normalize_system(value) -> tuple[np.ndarray, np.ndarray]:
         raise ValueError("D3 atomic numbers must be a non-empty one-dimensional array")
     if not np.issubdtype(z_raw.dtype, np.integer):
         raise TypeError("D3 atomic numbers must be integers")
-    z = np.ascontiguousarray(z_raw, dtype=np.int32)
-    if np.any(z < 1) or np.any(z > 86):
+    if np.any(z_raw < 1) or np.any(z_raw > 86):
         raise NotImplementedError("production D3(BJ) supports H through Rn only")
 
+    z = np.ascontiguousarray(z_raw, dtype=np.int32)
+    if np.iscomplexobj(coordinates):
+        raise TypeError("D3 coordinates must be real")
     xyz = np.ascontiguousarray(coordinates, dtype=np.float64)
     if xyz.shape != (z.size, 3):
         raise ValueError("D3 coordinates must have shape (natoms, 3)")
@@ -125,8 +127,8 @@ class D3CorrectionBatch:
     ):
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
-        if not isinstance(maximum_bytes, int) or maximum_bytes <= 0:
-            raise ValueError("maximum_bytes must be a positive integer")
+        if type(maximum_bytes) is not int or not 0 < maximum_bytes < 2**64:
+            raise ValueError("maximum_bytes must be a positive uint64 integer")
 
         graph = _method_ir(method)
         correction = _correction(graph)
@@ -297,6 +299,8 @@ class D3CorrectionBatch:
                     )
                     continue
 
+                if np.iscomplexobj(geometry):
+                    raise TypeError("changed D3 coordinates must be real")
                 xyz = np.ascontiguousarray(geometry, dtype=np.float64)
                 if xyz.shape != (atoms, 3):
                     raise ValueError("changed D3 geometry has the wrong shape")

@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13571,
+  "all_handwritten_scientific_lines": 13817,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -142,6 +142,40 @@
       "role": "runtime",
       "sha256": "ff0fbe6bc6c2a2c20b9c1f22d242dbcd24f56ab35d25275440dc14d380cebb15",
       "subsystem": "xc"
+    },
+    {
+      "bytes": 11974,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 246
+      },
+      "path": "src/dft/dispersion/d3_bj.hpp",
+      "physical_lines": 280,
+      "reason": "Shared CPU/CUDA production two-body D3(BJ) energy and complete analytic dE/dR including coordination-number response. The arithmetic is maintained scientific code and is independently qualified against simple-dftd3 fixtures.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "1efe976e0bfb55c8aaa846aadc73c47c2220d35efdbc2930dc5adef697613a73",
+      "subsystem": "d3_dispersion"
+    },
+    {
+      "bytes": 10913,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 236,
+        "scientific": 0
+      },
+      "path": "src/dft/dispersion/d3_cuda.cu",
+      "physical_lines": 266,
+      "reason": "Persistent ragged CUDA owner, compact-table transport, bounded workspace, stream ownership and launch/result transfers around the shared D3(BJ) arithmetic; no separate dispersion equations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "1fb1800d42c9b10b16dde875c9d8d261a7bdff8ee023e01e68432e05f36f2b47",
+      "subsystem": "d3_dispersion"
     },
     {
       "bytes": 14915,
@@ -3751,8 +3785,8 @@
     "fallback": 0,
     "oracle": 312,
     "performance_exception": 253,
-    "runtime": 10847,
-    "scientific": 13006
+    "runtime": 11083,
+    "scientific": 13252
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3768,6 +3802,20 @@
       "missing_capability": "Whole AO traversal remains counted as scientific glue; native CPU D and XC expressions retain their existing owners. Broader execution promotion remains evidence-based; GPU SCF, complete forces and automatic D/C selection remain #162/#163/#168.",
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
+      "status": "partial"
+    },
+    "d3_dispersion": {
+      "current_default": "Production nonperiodic two-body D3(BJ) correction owner with shared CPU/CUDA arithmetic, compact pinned tables, bounded persistent plans and ragged changed-geometry replay.",
+      "evidence": [
+        "docs/dft_d3.md",
+        "tests/data/d3_bj_reference.json",
+        "tests/python/test_d3_production.py",
+        ".agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md"
+      ],
+      "generated_capability": "Build-time lowering verifies the pinned xTBloom-derived table/radii identities and emits compact native data; production arithmetic is currently a shared maintained CPU/device implementation rather than generated equations.",
+      "missing_capability": "Automatic Calculator-level electronic DFT + D3 energy/force composition, pair-parallel CUDA lowering, ATM and zero-damping variants remain open under #492.",
+      "owner": "d3_dispersion",
+      "retirement_condition": "Retain the shared D3(BJ) scientific arithmetic until an independently qualified generated replacement reproduces complete energy and coordination-number-response derivatives without changing MethodIR or public correction semantics.",
       "status": "partial"
     },
     "d4_dispersion": {
@@ -3965,6 +4013,13 @@
       "performance_exception": 0,
       "runtime": 566,
       "scientific": 162
+    },
+    "d3_dispersion": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 236,
+      "scientific": 246
     },
     "d4_dispersion": {
       "fallback": 0,
