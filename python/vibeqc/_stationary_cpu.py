@@ -1,9 +1,11 @@
 """Complete bounded CPU RKS gradient diagnostic for issue #163 B2.2.
 
 SCF state, AO jets, XC point coefficients and generated integral derivatives
-execute natively. StationaryGradientPlan contractions, AO pullbacks and Becke
-JVPs use the compiler interpreter. This explicit diagnostic boundary is not a
-public Calculator force capability or a claim of native endpoint qualification.
+execute natively. The explicit native selector also compiles TensorIR weights/
+reduction, local AO pullbacks and Becke adjoints from their existing graphs.
+Python orchestration and NumPy BLAS/map reductions remain host boundaries.
+The reference selector retains interpreter execution for A/B diagnostics; neither
+selector enables public Calculator forces or global resource qualification.
 """
 
 import ctypes as ct
@@ -27,8 +29,11 @@ from vibeqc_compiler.method.stationary_gradient import (
     StationaryMeanField,
 )
 from vibeqc_compiler.tensor import execute
+from vibeqc_compiler.tensor.cpu import NativeTensorProgram
 from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.grid_native import NativeGridContraction
 from vibeqc_compiler.xc.grid_response import partition_response
+from vibeqc_compiler.xc.native import NativeContractionProgram
 
 from ._dft_gradient import (
     StationaryDerivativeContract,
@@ -199,6 +204,7 @@ def complete_rks_gradient_diagnostic(
     integral_terms=32,
     primitive_tile=128,
     compiler=None,
+    execution="reference",
 ):
     """Consume one live native CPU state with all seven plan-owned sources.
 
@@ -211,7 +217,13 @@ def complete_rks_gradient_diagnostic(
     Working arrays scale with a point tile times (AO + atom), one primitive
     record tile, D/W, and seven atom gradients, never coordinate-grid-AO pairs.
     The native state already retains its full discrete grid and dense SCF data.
+    execution="native" selects compiled consumers of the same mathematical
+    graphs. execution="reference" retains the validated interpreter route.
+    Both retain Python primitive enumeration/scatter and NumPy XC BLAS/maps;
+    neither establishes an overall endpoint/SCF memory budget.
     """
+    if execution not in ("reference", "native"):
+        raise ValueError("execution must be reference or native")
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if state._source.backend != "cpu" or contract.spin != "unpolarized":
@@ -242,18 +254,38 @@ def complete_rks_gradient_diagnostic(
         "ordered_pairs": n * n,
         "ordered_quartets": n**4,
         "xc_points": len(state.grid.points),
-        "grid_directional_points": 3 * natom * len(state.grid.points),
+        "grid_directional_points": (
+            3 * natom * len(state.grid.points) if execution == "reference" else 0
+        ),
+        "grid_adjoint_points": len(state.grid.points) if execution == "native" else 0,
+        "grid_pair_visits": (2 if execution == "native" else 3 * natom)
+        * (natom * (natom - 1) // 2)
+        * len(state.grid.points),
+        "grid_center_pair_validations": (
+            ((len(state.grid.points) + tile_points - 1) // tile_points)
+            * (natom * (natom - 1) // 2)
+            if execution == "native"
+            else 0
+        ),
         "point_tile_capacity": tile_points,
         "primitive_tile_capacity": primitive_tile,
         "integral_term_capacity": integral_terms,
     }
+    tensor_consumers = {}
     # TensorIR AD supplies D, D*D/2, and -W. The runtime never rebuilds these
     # scientific coefficients from a method-name-specific gradient formula.
     for source, rank in (("one_electron", 2), ("overlap_pulay", 2), ("coulomb", 4)):
         iterator = product(range(n), repeat=rank)
         while tuples := tuple(islice(iterator, integral_terms)):
             ids = np.asarray(tuples)
-            block = plan.integral_block(source, terms=len(tuples))
+            key = (source, len(tuples))
+            if key not in tensor_consumers:
+                block = plan.integral_block(source, terms=len(tuples))
+                tensor_consumers[key] = (
+                    NativeTensorProgram(block.weights, compiler=compiler, cache=cache)
+                    if execution == "native"
+                    else block.weights
+                )
             if source == "overlap_pulay":
                 feeds = {
                     "weighted_density": state.weighted_density[:, ids[:, 0], ids[:, 1]]
@@ -262,7 +294,12 @@ def complete_rks_gradient_diagnostic(
                 feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
                 if rank == 4:
                     feeds["density_right"] = state.density[:, ids[:, 2], ids[:, 3]]
-            weights = execute(block.weights, feeds).outputs["weights"]
+            consumer = tensor_consumers[key]
+            weights = (
+                consumer.execute(feeds)["weights"]
+                if execution == "native"
+                else execute(consumer, feeds).outputs["weights"]
+            )
             for indices, weight in zip(tuples, weights, strict=True):
                 operator = {
                     "one_electron": "kinetic",
@@ -281,8 +318,19 @@ def complete_rks_gradient_diagnostic(
         for b in range(a):
             np.add.at(components["nuclear"], [a, b], native.nuclear(a, b, charges))
 
-    program = ContractionProgram(functional, "geometry")
+    program = (
+        NativeContractionProgram(functional, "geometry", compiler=compiler, cache=cache)
+        if execution == "native"
+        else ContractionProgram(functional, "geometry")
+    )
     grid, spec = state.grid, state._source.grid_spec
+    grid_consumer = (
+        NativeGridContraction(
+            compiler=compiler, cache=cache, iterations=spec.partition_iterations
+        )
+        if execution == "native"
+        else None
+    )
     ao_atoms = _native_ao_atoms(basis)
     pbe = contract.family == "gga"
     for begin in range(0, len(grid.points), tile_points):
@@ -311,6 +359,17 @@ def complete_rks_gradient_diagnostic(
         )
         components["xc_ao"] += partials.centers
         np.add.at(components["xc_grid"], atoms, partials.points)
+        if grid_consumer is not None:
+            with np.errstate(over="raise", invalid="raise"):
+                seeds = partials.weights * state._source.atomic_weights[begin:end]
+            components["xc_weight"] += grid_consumer.contract(
+                points,
+                native.centers,
+                atoms.astype(np.int64),
+                seeds,
+                coincident_tolerance=spec.coincident_tolerance,
+            )
+            continue
         # One coordinate at a time bounds storage; this interpreter boundary
         # explicitly costs 3*natom partition traversals per point tile.
         for a in range(natom):
@@ -333,7 +392,15 @@ def complete_rks_gradient_diagnostic(
                     partials.weights,
                     state._source.atomic_weights[begin:end] * derivative,
                 )
-    gradient = plan.reduce_diagnostic(components, atoms=natom)
+    gradient = (
+        NativeTensorProgram(
+            plan.reduction_program(atoms=natom, sources=components.keys()),
+            compiler=compiler,
+            cache=cache,
+        ).execute(components)["gradient"]
+        if execution == "native"
+        else plan.reduce_diagnostic(components, atoms=natom)
+    )
     contract.validate(state)  # No partial publication after replay/failure/replacement.
     work["primitive_records"] = native.records
     return DiagnosticStationaryGradient(
@@ -342,4 +409,9 @@ def complete_rks_gradient_diagnostic(
         plan.identity,
         state.identity,
         MappingProxyType(work),
+        execution=(
+            "compiled-cpu-consumers/python-numpy-orchestration-v1"
+            if execution == "native"
+            else "native-cpu-primitives/compiler-interpreter-diagnostic-v1"
+        ),
     )

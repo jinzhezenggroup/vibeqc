@@ -105,15 +105,18 @@ def independent_gradient(basis, state, method):
     return mf.e_tot, total, components
 
 
+@pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
-def test_complete_asymmetric_water_analytic_and_reconverged_fd(method, record_property):
+def test_complete_asymmetric_water_analytic_and_reconverged_fd(
+    method, record_property, execution
+):
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     calc = calculator(method)
     with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
         energy = batch.execute(strict=True).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         result = complete_rks_gradient_diagnostic(
-            state, basis, cache=".cache/b22-tests"
+            state, basis, cache=".cache/b22-tests", execution=execution
         )
         reference_energy, reference, components = independent_gradient(
             basis, state, method
@@ -137,7 +140,9 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(method, record_pr
             ),
         )
         assert result.work["ordered_quartets"] == basis.nao**4
-        assert result.work["grid_directional_points"] == 9 * len(state.grid.points)
+        assert result.work["grid_directional_points"] == (
+            9 * len(state.grid.points) if execution == "reference" else 0
+        )
         # All seven signed sources are nontrivial here. An omitted/reversed
         # grid, Pulay or nuclear term cannot pass by molecular symmetry.
         for name in ("xc_grid", "xc_weight", "overlap_pulay", "nuclear"):
@@ -193,6 +198,7 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(method, record_pr
                 moved_state,
                 moved_basis,
                 cache=".cache/b22-tests",
+                execution=execution,
                 tile_points=137,
                 integral_terms=17,
                 primitive_tile=29,
@@ -204,10 +210,12 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(method, record_pr
         replay = batch.execute(strict=True).items[0]
         assert replay.warm_start_used
         with pytest.raises(ValueError, match="stale"):
-            complete_rks_gradient_diagnostic(state, basis, cache=".cache/b22-tests")
+            complete_rks_gradient_diagnostic(
+                state, basis, cache=".cache/b22-tests", execution=execution
+            )
         current = StationaryKsState.from_native(batch, basis)
         warm = complete_rks_gradient_diagnostic(
-            current, basis, cache=".cache/b22-tests"
+            current, basis, cache=".cache/b22-tests", execution=execution
         )
         np.testing.assert_allclose(warm.gradient, result.gradient, atol=1e-9, rtol=0)
 
@@ -286,7 +294,10 @@ def test_compiler_source_publication_is_atomic(tmp_path, monkeypatch, fail_publi
     assert sorted(tmp_path.iterdir()) == [path]
 
 
-def test_cpu_diagnostic_bounds_and_late_provider_failure(tmp_path, monkeypatch):
+@pytest.mark.parametrize("execution", ["reference", "native"])
+def test_cpu_diagnostic_bounds_and_late_provider_failure(
+    tmp_path, monkeypatch, execution
+):
     from pathlib import Path
 
     from vibeqc import _stationary_cpu as module
@@ -306,11 +317,11 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(tmp_path, monkeypatch):
         ):
             with pytest.raises(ValueError, match=name):
                 complete_rks_gradient_diagnostic(
-                    state, basis, cache=tmp_path, **{name: value}
+                    state, basis, cache=tmp_path, execution=execution, **{name: value}
                 )
         with pytest.raises(TypeError, match="compiler adapter"):
             complete_rks_gradient_diagnostic(
-                state, basis, cache=tmp_path, compiler=object()
+                state, basis, cache=tmp_path, execution=execution, compiler=object()
             )
         original = module._PrimitiveExecutor._run
         calls = 0
@@ -326,12 +337,12 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(tmp_path, monkeypatch):
             patch.setattr(module._PrimitiveExecutor, "_run", fail_late)
             with pytest.raises(ArithmeticError, match="late primitive"):
                 complete_rks_gradient_diagnostic(
-                    state, basis, cache=tmp_path, compiler=compiler
+                    state, basis, cache=tmp_path, execution=execution, compiler=compiler
                 )
         assert calls == 3
         assert StationaryDerivativeContract(state.identity).validate(state) is state
         good = complete_rks_gradient_diagnostic(
-            state, basis, cache=tmp_path, compiler=compiler
+            state, basis, cache=tmp_path, execution=execution, compiler=compiler
         )
         assert np.isfinite(good.gradient).all()
         with pytest.raises(ValueError):
@@ -343,7 +354,8 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(tmp_path, monkeypatch):
         module._PrimitiveExecutor(d_basis, tmp_path, 128, compiler)
 
 
-def test_fresh_process_gradient_has_no_external_oracle_dependency(tmp_path):
+@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
+def test_fresh_process_gradient_has_no_external_oracle_dependency(tmp_path, method):
     import subprocess
     import sys
 
@@ -361,21 +373,106 @@ from vibeqc_compiler.dft import NativeAO
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 atoms = [('H', (.1, .2, -.6)), ('H', (.2, -.1, .8))]
-calc = Calculator(method='pbe-rks', device='cpu',
+calc = Calculator(method=sys.argv[2], device='cpu',
     ks_options=KsOptions(grid=GridSpec(radial_points=12, angular_polar=4, angular_azimuth=8)),
     energy_tolerance=1e-12, density_tolerance=1e-10)
 with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
     batch.execute(strict=True)
     state = StationaryKsState.from_native(batch, basis)
-    result = complete_rks_gradient_diagnostic(state, basis, cache=sys.argv[1])
+    def blocked(*args, **kwargs):
+        raise AssertionError("native path invoked an interpreter")
+    from vibeqc_compiler.xc.grid_response import GridResponseProgram
+    from vibeqc_compiler.xc.coefficients import AOJetPullbackProgram
+    GridResponseProgram.evaluate = blocked
+    AOJetPullbackProgram.evaluate = blocked
+    for module in tuple(sys.modules.values()):
+        if module is not None and getattr(module, '__name__', '').startswith(('vibeqc.', 'vibeqc_compiler.')):
+            for name in ('evaluate_array_graph',):
+                if hasattr(module, name):
+                    setattr(module, name, blocked)
+            if getattr(module, '__name__', '') in {'vibeqc_compiler.tensor', 'vibeqc_compiler.tensor.interpreter', 'vibeqc_compiler.method.stationary_gradient', 'vibeqc._stationary_cpu'}:
+                module.execute = blocked
+    result = complete_rks_gradient_diagnostic(state, basis, cache=sys.argv[1], execution="native")
     assert np.isfinite(result.gradient).all()
     np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=1e-10)
 assert not any(name.split('.')[0] in {'pyscf', 'gpu4pyscf', 'cupy'} for name in sys.modules)
 """
     subprocess.run(
-        [sys.executable, "-c", code, str(tmp_path)],
+        [sys.executable, "-c", code, str(tmp_path), method],
         check=True,
         capture_output=True,
         text=True,
         timeout=120,
     )
+
+
+def test_native_late_grid_failure_stale_lease_and_changed_geometry(
+    tmp_path, monkeypatch
+):
+    from vibeqc import _stationary_cpu as module
+
+    atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]
+    calc = calculator("pbe-rks")
+    run = module.NativeGridContraction.contract
+    with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
+        batch.execute(strict=True)
+        state = StationaryKsState.from_native(batch, basis)
+        calls = 0
+
+        def fail_late(self, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise ValueError("injected late grid failure")
+            return run(self, *args, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(module.NativeGridContraction, "contract", fail_late)
+            with pytest.raises(ValueError, match="late grid"):
+                complete_rks_gradient_diagnostic(
+                    state, basis, cache=tmp_path, execution="native"
+                )
+        assert calls == 2
+        StationaryDerivativeContract(state.identity).validate(state)
+        calls = 0
+
+        def revoke(self, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            result = run(self, *args, **kwargs)
+            if calls == 1:
+                batch.execute(strict=True)
+            return result
+
+        with monkeypatch.context() as patch:
+            patch.setattr(module.NativeGridContraction, "contract", revoke)
+            with pytest.raises(ValueError, match="stale"):
+                complete_rks_gradient_diagnostic(
+                    state, basis, cache=tmp_path, execution="native"
+                )
+        changed = [("H", (0.15, 0.2, -0.6)), atoms[1]]
+        batch.execute(coordinates=[np.array([p for _, p in changed])], strict=True)
+        with NativeAO(changed) as moved_basis:
+            current = StationaryKsState.from_native(batch, moved_basis)
+            native = complete_rks_gradient_diagnostic(
+                current,
+                moved_basis,
+                cache=tmp_path,
+                execution="native",
+                tile_points=137,
+            )
+            reference = complete_rks_gradient_diagnostic(
+                current,
+                moved_basis,
+                cache=tmp_path,
+                execution="reference",
+                tile_points=137,
+            )
+            assert native.plan_identity == reference.plan_identity
+            for name in native.components:
+                np.testing.assert_allclose(
+                    native.components[name],
+                    reference.components[name],
+                    atol=1e-12,
+                    rtol=0,
+                )

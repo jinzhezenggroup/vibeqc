@@ -118,11 +118,13 @@ native CPU S/T/V, ERI and nuclear-pair derivatives. There is no method-specific
 PBE force formula, SCF iteration tape, CPKS solve, HF rerun or PySCF runtime call.
 
 The execution boundary is explicit: SCF, AO jets, exact native SCF-domain XC
-point coefficients and generated integral derivatives execute natively. TensorIR
-weights/reduction, AO pullbacks and generated Becke JVPs still execute through
-the compiler interpreter. `execution` reports this split. Completing native
-CPU/CUDA lowering and public resource/capability qualification remains separate
-work under #163/#396.
+point coefficients and generated integral derivatives execute natively.
+`execution="reference"` (the default) retains interpreted TensorIR weights,
+AO pullbacks and Becke JVPs. `execution="native"` compiles the same TensorIR
+weights/reduction, reuses native generated AO-jet pullbacks, and contracts the
+Becke adjoint in native CPU code. Python orchestration and NumPy feature/BLAS/map
+operations remain; neither selector enables public forces or establishes a
+whole-endpoint resource reservation. See [compiled consumer contracts](stationary_native_consumers.md).
 
 ```python
 from vibeqc import Calculator, GridSpec, KsOptions
@@ -171,12 +173,14 @@ replayed, changed-geometry, detached or relabeled states from publishing a
 complete gradient. A late derivative failure publishes no partial result and
 does not corrupt the valid SCF state.
 
-Working records and AO/grid evaluations are tiled. This diagnostic still
-visits all ordered AO quartets and evaluates partition JVPs for all `3*Natom`
-directions. The SCF reference already retains a full molecular grid and dense
-reference data. Reported tile/work counts are **not** a global ResourceBudget,
-whole-process peak-memory guarantee or performance promotion. Compilation and
-Python/interpreter overhead must remain visible in any timing.
+Working records and AO/grid evaluations are tiled. Both routes still visit all
+ordered AO quartets. The reference route evaluates partition JVPs for all
+`3*Natom` directions; native grid contraction uses two pair passes per point
+and atom-sized scratch, with a separate center-validation count. The SCF
+reference retains a full molecular grid and dense reference data. Reported
+component byte/work bounds are **not** a global ResourceBudget or whole-process
+peak-memory guarantee. Compilation, Python/NumPy and any reference-interpreter
+overhead must remain visible in timing.
 
 ### Qualification
 
