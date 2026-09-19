@@ -251,13 +251,17 @@ class MethodIR:
         )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
             raise UnsupportedMethod("MethodIR contains an unsupported primitive")
-        order = {
-            SemilocalXCPrimitive: 0,
-            ExactExchangePrimitive: 1,
-            NonlocalCorrelationPrimitive: 2,
-            DispersionCorrectionPrimitive: 3,
-        }
-        keys = [order[type(primitive)] for primitive in self.primitives]
+
+        def primitive_order(primitive: MethodPrimitive) -> int:
+            if isinstance(primitive, SemilocalXCPrimitive):
+                return 0
+            if isinstance(primitive, ExactExchangePrimitive):
+                return 1
+            if isinstance(primitive, NonlocalCorrelationPrimitive):
+                return 2
+            return 3
+
+        keys = [primitive_order(primitive) for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):
             raise UnsupportedMethod(
                 "MethodIR primitives must be canonical and unique by primitive family"
@@ -359,7 +363,7 @@ def resolve_method(method, *, spin="unpolarized"):
         raise TypeError("method must be a catalog name or MethodSpec")
 
     components = _canonical_components(spec.semilocal_components)
-    primitives = []
+    primitives: list[MethodPrimitive] = []
     if components:
         functional = FunctionalSpec(
             identifier="method-ir-semilocal",

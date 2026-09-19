@@ -63,7 +63,10 @@ class ScalarCEmitter:
             for identifier in topological_order:
                 node = self.graph.nodes[identifier]
                 if node.operation == "constant":
-                    self.names[identifier] = format_constant(float(node.payload))
+                    payload = node.payload
+                    if payload is None:
+                        raise ValueError("constant node requires a numeric payload")
+                    self.names[identifier] = format_constant(float(payload))
                 elif node.operation == "variable":
                     name = str(node.payload)
                     self.names[identifier] = self.variables.get(name, name)
@@ -73,7 +76,10 @@ class ScalarCEmitter:
                 continue
             node = self.graph.nodes[identifier]
             if node.operation == "constant":
-                self.names[identifier] = format_constant(float(node.payload))
+                payload = node.payload
+                if payload is None:
+                    raise ValueError("constant node requires a numeric payload")
+                self.names[identifier] = format_constant(float(payload))
                 continue
             if node.operation == "variable":
                 name = str(node.payload)
@@ -126,7 +132,10 @@ class ScalarCEmitter:
         if node.operation in ("exp", "log", "log1p", "expm1"):
             return f"{node.operation}({arguments[0]})"
         if node.operation == "power":
-            exponent = float(node.payload)
+            payload = node.payload
+            if payload is None:
+                raise ValueError("power node requires a numeric exponent")
+            exponent = float(payload)
             if exponent == 0.5:
                 return f"sqrt({arguments[0]})"
             return f"pow({arguments[0]}, {format_constant(exponent)})"

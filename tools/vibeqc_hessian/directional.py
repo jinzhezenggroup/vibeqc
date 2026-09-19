@@ -1,8 +1,9 @@
 """Native directional nuclear RHS and one CPHF solve, not a molecular HVP.
 
-First-integral execution and direction/density contractions are CPU-side.
-The same metric and response J/K actions can use the qualified direct CUDA
-adapter. The original NativeRHFState small-system admission remains unchanged.
+First-integral execution/direction/weight contractions select explicit CPU or
+CUDA providers. AO/MO and shared Krylov execution remain host-side. Metric and
+response J/K independently select the qualified direct CUDA adapter. The
+original NativeRHFState small-system admission remains unchanged.
 """
 
 from contextlib import ExitStack
@@ -50,6 +51,9 @@ def directional_rhf_response(
     device_id=0,
     device_budget_bytes=64 << 20,
     solver_options=None,
+    first_backend="cpu",
+    first_compiler=None,
+    first_budget_bytes=64 << 20,
 ):
     """Build directional H1/S1 and solve one complete canonical RHF response.
 
@@ -59,10 +63,12 @@ def directional_rhf_response(
     allocated. A fresh successful result is published only after the response
     solve and density/energy-weighted-density reconstruction finish.
 
-    ``jk_backend="cuda"`` selects CUDA J/K only, including metric-density and
-    final density response. It does not move first derivatives, AO/MO transforms
-    or Krylov execution off the host. The device/solver budgets retain their
-    existing distinct scopes; this is not a global peak-memory guarantee.
+    ``jk_backend="cuda"`` selects CUDA J/K, including metric-density and final
+    density response. Independently, ``first_backend="cuda"`` with an explicit
+    ``first_compiler`` selects generated device first-integral/direction/weight
+    contractions with one final matrix download. AO/MO and Krylov remain host-
+    side. Provider/solver budgets retain distinct scopes; no global peak-memory
+    guarantee or complete molecular HVP follows from either CUDA selection.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("directional response requires NativeRHFState")
@@ -70,6 +76,15 @@ def directional_rhf_response(
     vector = checked_direction(direction, state.nat)
     if jk_backend not in ("cpu", "cuda"):
         raise ValueError("jk_backend must be cpu or cuda")
+    if first_backend not in ("cpu", "cuda"):
+        raise ValueError("first_backend must be cpu or cuda")
+    if first_backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        if not isinstance(first_compiler, CudaCompilerAdapter):
+            raise TypeError("first_compiler must be an explicit CudaCompilerAdapter")
+    elif first_compiler is not None:
+        raise ValueError("first_compiler is only meaningful for CUDA first derivatives")
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
     # Tight absolute tolerance is needed for translation and other nearly zero
@@ -88,7 +103,19 @@ def directional_rhf_response(
             backend = NativeJKBackend(state.source)
         problem = RHFResponseOperator.build_problem(state.reference, backend)
         operator = RHFResponseOperator(problem, backend)
-        frozen, overlap = generated_directional_first_order(state, vector)
+        first_diagnostics = None
+        if first_backend == "cuda":
+            from .first_order_cuda import generated_directional_first_order_cuda
+
+            frozen, overlap, first_diagnostics = generated_directional_first_order_cuda(
+                state,
+                vector,
+                first_compiler,
+                device_id=device_id,
+                budget_bytes=first_budget_bytes,
+            )
+        else:
+            frozen, overlap = generated_directional_first_order(state, vector)
         response = solve_rhf_nuclear_perturbation(
             operator, frozen, overlap, options=options
         )
@@ -101,6 +128,13 @@ def directional_rhf_response(
                 "reference": state.reference.identity,
                 "operator": problem.operator_identity,
                 "solver_options": asdict(options),
+                "first_backend": first_backend,
+                "first_programs": first_diagnostics["program_identities"]
+                if first_diagnostics
+                else None,
+                "first_artifacts": first_diagnostics["native_artifacts"]
+                if first_diagnostics
+                else None,
                 "direction": sha256(
                     vector.astype("<f8", copy=False).tobytes()
                 ).hexdigest(),
@@ -111,8 +145,12 @@ def directional_rhf_response(
             "reference_identity": state.reference.identity,
             "operator_identity": problem.operator_identity,
             "hamiltonian_id": state.reference.hamiltonian_id,
-            "first_integral_derivatives": "cpu-generated",
-            "direction_density_reduction": "host",
+            "first_integral_derivatives": "cuda-generated"
+            if first_backend == "cuda"
+            else "cpu-generated",
+            "direction_density_reduction": "cuda-generated"
+            if first_backend == "cuda"
+            else "host",
             "jk_backend": jk_backend,
             "ao_mo_transforms": "host",
             "krylov_execution": "host",
@@ -129,6 +167,8 @@ def directional_rhf_response(
             "jk_statistics": deepcopy(backend.statistics),
             "memory_scope": "matrix and solver diagnostics only; not total live peak",
         }
+        if first_diagnostics is not None:
+            diag["first_derivative_provider"] = first_diagnostics
         if jk_backend == "cuda":
             diag["jk_provider"] = backend.diagnostics
     return DirectionalRHFResponse(

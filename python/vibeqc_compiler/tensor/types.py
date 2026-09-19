@@ -69,27 +69,26 @@ class Index:
             raise ValueError("index name must be an identifier")
         if not isinstance(self.space, IndexSpace):
             raise TypeError("index requires an IndexSpace")
-        if self.stop is None:
-            object.__setattr__(self, "stop", self.space.size)
+        stop = self.space.size if self.stop is None else self.stop
+        object.__setattr__(self, "stop", stop)
         checked_size(self.start, "range start")
-        checked_size(self.stop, "range stop")
-        if not self.start <= self.stop <= self.space.size:
+        checked_size(stop, "range stop")
+        if not self.start <= stop <= self.space.size:
             raise ValueError("index range must lie inside its space")
-        if self.selection is not None:
-            object.__setattr__(self, "selection", tuple(self.selection))
-            if any(
-                type(i) is not int or not self.start <= i < self.stop
-                for i in self.selection
-            ):
+        selection = self.selection
+        if selection is not None:
+            selection = tuple(selection)
+            object.__setattr__(self, "selection", selection)
+            if any(type(i) is not int or not self.start <= i < stop for i in selection):
                 raise ValueError("gather coordinates must lie inside the index range")
 
     @property
     def extent(self) -> int:
-        return (
-            len(self.selection)
-            if self.selection is not None
-            else self.stop - self.start
-        )
+        if self.selection is not None:
+            return len(self.selection)
+        stop = self.stop
+        assert stop is not None
+        return stop - self.start
 
     @property
     def domain(self) -> tuple:
