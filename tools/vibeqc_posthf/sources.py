@@ -527,9 +527,8 @@ class NativeSource:
             or not np.isfinite(value).all()
         ):
             raise ValueError("DF gradient tile range/weights are invalid")
-        if (
-            not _valid_cuda_device(device_id)
-            or not _valid_size_t_budget(stage_budget_bytes)
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
         ):
             raise ValueError("DF gradient tile requires valid device/budget")
         gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
@@ -648,9 +647,8 @@ class NativeSource:
         value = np.ascontiguousarray(raw_weights, dtype=np.float64)
         if value.shape != (self.nbf,) * 4 or not np.isfinite(value).all():
             raise ValueError("weighted ERI gradient requires finite [AO]*4 weights")
-        if (
-            not _valid_cuda_device(device_id)
-            or not _valid_size_t_budget(stage_budget_bytes)
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
         ):
             raise ValueError("weighted ERI gradient requires valid device/budget")
         gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
@@ -711,9 +709,8 @@ class NativeSource:
             raise ValueError(
                 "weighted ERI shell weights have the wrong shape or values"
             )
-        if (
-            not _valid_cuda_device(device_id)
-            or not _valid_size_t_budget(stage_budget_bytes)
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
         ):
             raise ValueError("weighted ERI shell gradient requires valid device/budget")
         gradient = np.empty((4, 3), dtype=np.float64)

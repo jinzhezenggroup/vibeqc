@@ -22,7 +22,11 @@ from vibeqc_compiler.tensor import execute
 from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_posthf.sources import NativeSource, _valid_cuda_device, _valid_size_t_budget
+from tools.vibeqc_posthf.sources import (
+    NativeSource,
+    _valid_cuda_device,
+    _valid_size_t_budget,
+)
 from tools.vibeqc_response import GMRESOptions, NativeJKBackend, RHFResponseOperator
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,

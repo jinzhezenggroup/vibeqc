@@ -29,7 +29,11 @@ from tools.vibeqc_cc.lambda_equations import PARAMETERS
 from tools.vibeqc_cc.oracle import dense_feeds, random_case
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_posthf.sources import NativeSource, _valid_cuda_device, _valid_size_t_budget
+from tools.vibeqc_posthf.sources import (
+    NativeSource,
+    _valid_cuda_device,
+    _valid_size_t_budget,
+)
 from tools.vibeqc_response.implicit import ImplicitSolveError
 from tools.vibeqc_response.oracle import _expm_small, explicit_rhf_response_matrix
 from tools.vibeqc_response.problem import ResponseCompatibilityError
