@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13571,
+  "all_handwritten_scientific_lines": 13416,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -100,20 +100,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 4243,
+      "bytes": 4209,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 67,
+        "runtime": 66,
         "scientific": 0
       },
       "path": "src/dft/cuda_xc.hpp",
-      "physical_lines": 101,
+      "physical_lines": 100,
       "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "f4260a126fef065ec33d4e44509811ff5d4460d0466124852779752d7787580b",
+      "sha256": "43619d809f06c927d2615a5be7e03cd36816bfc2dd74a47ca28b405c79e471c7",
       "subsystem": "xc"
     },
     {
@@ -360,37 +360,37 @@
       "subsystem": "low_rank"
     },
     {
-      "bytes": 7953,
+      "bytes": 8075,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 176,
+        "runtime": 181,
         "scientific": 0
       },
       "path": "src/posthf/cuda_transform.cu",
-      "physical_lines": 184,
+      "physical_lines": 189,
       "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "ea43592d09603da88f9a16bbf752f8d2d5c36a9c7025d2fc57d02c3a27a63ff4",
+      "sha256": "c5b20281ef510bd0ff5a7ca5107696c3c9a7e199d46d5661c84a2e956f8e7111",
       "subsystem": "runtime"
     },
     {
-      "bytes": 6440,
+      "bytes": 6666,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 147,
+        "runtime": 146,
         "scientific": 0
       },
       "path": "src/posthf/df_bridge.cu",
-      "physical_lines": 157,
+      "physical_lines": 156,
       "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
       "regions": [],
       "role": "runtime",
-      "sha256": "506a20b445768fd8fb578609af9028f74968157d98f5542abed5d938472c4d68",
+      "sha256": "22ee5e0c2f0a2562d3a3f87c2d30593de3e798a157baa19b3c5f6344b3ef2117",
       "subsystem": "runtime"
     },
     {
@@ -479,23 +479,6 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6721,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 192,
-        "scientific": 0
-      },
-      "path": "src/runtime/cuda_resources.cuh",
-      "physical_lines": 221,
-      "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
-      "regions": [],
-      "role": "runtime",
-      "sha256": "b3b23b0a959a59d5b63d939815078e3ffad53516e92a63b131d66d0ffb0241e1",
-      "subsystem": "runtime"
-    },
-    {
       "bytes": 2911,
       "code_lines": {
         "fallback": 0,
@@ -530,7 +513,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6431,
+      "bytes": 6439,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -543,7 +526,7 @@
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
-      "sha256": "be96d6444f5e6e1c96aa4842c407f70a6496d8a6dfb379d8b2906668951a9ec1",
+      "sha256": "313c8df626309d3a3a3843602ffead4d87faf879429c93ff817464e2517156bd",
       "subsystem": "runtime"
     },
     {
@@ -2806,7 +2789,7 @@
       },
       "path": "src/scf/cuda/nuclear_kernels.cu",
       "physical_lines": 111,
-      "reason": "Existing nuclear repulsion and force equations, including Dual coordinate response; preserved as native scientific arithmetic.",
+      "reason": "Separate nuclear-repulsion energy/force term; intentionally retained native scientific arithmetic and not conflated with S/T/V derivative generation.",
       "regions": [],
       "role": "scientific",
       "sha256": "de00d8aad3f186d8ef92e4ee7e551570dbc296b8176dab501828949f37759746",
@@ -2840,7 +2823,7 @@
       },
       "path": "src/scf/cuda/one_electron_derivatives.cu",
       "physical_lines": 167,
-      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "reason": "Production contraction/scheduling glue around compiler-generated S/T/V derivative primitives; primitive derivative mathematics is compiler-owned.",
       "regions": [],
       "role": "scientific",
       "sha256": "d7fdd74854670ee1732a561cdaf9d370e6f59cc29ac42c39c3e73707240283bc",
@@ -2881,37 +2864,37 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 7381,
+      "bytes": 4370,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 115,
+        "performance_exception": 63,
         "runtime": 0,
         "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_force_reference.cu",
-      "physical_lines": 130,
-      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "physical_lines": 79,
+      "reason": "Retained cooperative force schedule selected only by the explicit reference policy; the scalar native kernel and launch were retired after generated shell-warp promotion.",
       "regions": [],
       "role": "performance_exception",
-      "sha256": "6ebdf092712cf7030fc522f8b2be337e5c81468219e77fdb71993c9fc35bd5d5",
+      "sha256": "3958554735d7dc56d5497d91e974046fc4fd8154875bcbf5774f30ef04f9aaad",
       "subsystem": "one_electron_derivatives"
     },
     {
-      "bytes": 1576,
+      "bytes": 919,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 21,
+        "runtime": 14,
         "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_force_reference.hpp",
-      "physical_lines": 30,
+      "physical_lines": 21,
       "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
       "regions": [],
       "role": "runtime",
-      "sha256": "02d5a79786e2cc4605ecb5f126daa616aeb55149f545786d535b45a95e696178",
+      "sha256": "e936e1bf9b844f7df49c56ac9a376acc4e7be4374a906f2bf78d3ac3d026469a",
       "subsystem": "runtime"
     },
     {
@@ -2919,15 +2902,15 @@
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 17,
         "runtime": 0,
-        "scientific": 17
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_force_workspace.hpp",
       "physical_lines": 28,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "sha256": "578e317de34237bacce3e7e3cc781587595a53ed6cfc4830da687e9f334d6176",
       "subsystem": "one_electron_derivatives"
     },
@@ -2942,7 +2925,7 @@
       },
       "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
       "physical_lines": 259,
-      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "reason": "Conservative bounded staging and stationary-weight glue around compiler-owned generated derivatives; no independent S/T/V recurrence.",
       "regions": [],
       "role": "scientific",
       "sha256": "f1aeaf7a593696e020d2b8fde2d852024ec22167f933d855fcb27c96dd76cae5",
@@ -2953,15 +2936,15 @@
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 75,
         "runtime": 0,
-        "scientific": 75
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_native_attraction.cuh",
       "physical_lines": 86,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "sha256": "0a263695aebc9be75246007954d9f7bef46476468b664178622e793460074976",
       "subsystem": "one_electron_derivatives"
     },
@@ -2970,15 +2953,15 @@
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 126,
         "runtime": 0,
-        "scientific": 126
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_native_attraction_gradient.cuh",
       "physical_lines": 145,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "sha256": "d14b53744be01737ac0d7ef1ddfae7575df8ae8f019e553a5746b2fd2463cd53",
       "subsystem": "one_electron_derivatives"
     },
@@ -2987,33 +2970,33 @@
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 153,
         "runtime": 0,
-        "scientific": 153
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_native_contraction.cuh",
       "physical_lines": 164,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "sha256": "f20c82b1890eab75f55952274d56f4dffeb9b933d23ee3e17435db3ed352cbcc",
       "subsystem": "one_electron_derivatives"
     },
     {
-      "bytes": 15170,
+      "bytes": 8640,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 141,
         "runtime": 0,
-        "scientific": 244
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_native_force.cuh",
-      "physical_lines": 288,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "physical_lines": 168,
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
-      "sha256": "b500901236cdfcd7dd9a5aaf12f195998474f3be167ad70f29187659406cc2a5",
+      "role": "performance_exception",
+      "sha256": "b290e41b74b22bfa44ec43f0cc18bec81557bf10ca26cd430dce1b3733564a44",
       "subsystem": "one_electron_derivatives"
     },
     {
@@ -3021,15 +3004,15 @@
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
-        "performance_exception": 0,
+        "performance_exception": 171,
         "runtime": 0,
-        "scientific": 171
+        "scientific": 0
       },
       "path": "src/scf/cuda/one_electron_native_overlap.cuh",
       "physical_lines": 198,
-      "reason": "Retained one-electron derivative/force numerical implementation or workspace from cuda_rhf.cu. The separate generated value owner and derivative performance exceptions are unchanged.",
+      "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
       "regions": [],
-      "role": "scientific",
+      "role": "performance_exception",
       "sha256": "f5660f4e7f1eb9228ed45144fba4a82281124c480aef7119458ffc601ceb27ea",
       "subsystem": "one_electron_derivatives"
     },
@@ -3044,7 +3027,7 @@
       },
       "path": "src/scf/cuda/one_electron_reference.cu",
       "physical_lines": 47,
-      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed. Now separately compiled with the same gating and launch geometry; this is extraction, not scientific retirement.",
+      "reason": "Retained legacy Dual first-coordinate response used only by the explicit reference/validation route after generated derivative promotion.",
       "regions": [],
       "role": "performance_exception",
       "sha256": "bf26d5f4c32f8320351edf16a8789b46d40cb13c83be20d7c895fa85030c6bba",
@@ -3551,20 +3534,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 9155,
+      "bytes": 9449,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 181,
+        "runtime": 188,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 212,
+      "physical_lines": 222,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "94401e4d17019efac6c1ac7e2a1da839214bfe166ff5df208fac8f7b110d3131",
+      "sha256": "73c3936c4b458287697ce9bf44b01140041815c0c9f55a2c2014ea7a56124848",
       "subsystem": "runtime"
     }
   ],
@@ -3767,9 +3750,9 @@
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 312,
-    "performance_exception": 253,
-    "runtime": 11029,
-    "scientific": 13006
+    "performance_exception": 884,
+    "runtime": 10840,
+    "scientific": 12220
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3904,17 +3887,18 @@
       "status": "experimental"
     },
     "one_electron_derivatives": {
-      "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
+      "current_default": "Generated compiler-owned S/T/V weighted gradient with shell-warp scheduling; native cooperative execution is explicit only via VIBEQC_ONE_ELECTRON_DERIVATIVES=reference",
       "evidence": [
         "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
         "docs/one_electron_derivatives.md",
         "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
-        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"
+        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json",
+        ".agents/notes/implemented/performance/2026-09-19-one-electron-derivative-promotion.md"
       ],
       "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
-      "missing_capability": "Generated response needs schedules that remove measured complete-endpoint regressions: resident DF warm replay 4.586/5.429 ms and Direct sdf18 changed geometry 36.667/39.352 ms (native/generated, archived revisions). These measurements justify retention, not a completed derivative migration. Retained kernels now compile in one_electron_reference.cu and one_electron_force_reference.cu with bounded shared numerical headers; this decomposition does not change promotion or retirement status.",
+      "missing_capability": "No missing S/T/V first-derivative formula capability. The cooperative native route remains a measured performance exception for archived resident-DF unchanged replay (4.586/5.429 ms reference/generated) and Direct sdf18 changed geometry (36.667/39.352 ms). The slower scalar native force family is retired.",
       "owner": "one_electron_derivatives",
-      "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
+      "retirement_condition": "Completed for normal production; remove the retained cooperative exception only after requalification eliminates its documented endpoint wins while independent CPU/libcint oracle coverage remains.",
       "status": "performance_exception"
     },
     "one_electron_values": {
@@ -4035,9 +4019,9 @@
     "one_electron_derivatives": {
       "fallback": 0,
       "oracle": 0,
-      "performance_exception": 156,
+      "performance_exception": 787,
       "runtime": 0,
-      "scientific": 1277
+      "scientific": 491
     },
     "one_electron_values": {
       "fallback": 0,
@@ -4050,7 +4034,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 5041,
+      "runtime": 4853,
       "scientific": 5
     },
     "scf_tensor": {
@@ -4064,7 +4048,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 450,
+      "runtime": 449,
       "scientific": 631
     }
   },
