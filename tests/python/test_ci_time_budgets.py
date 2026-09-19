@@ -36,6 +36,7 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache():
     assert "shard: [core, posthf, compiler-heavy]" in section
     assert 'name: python (${{ matrix.shard }})' in section
     assert 'coverage-report-python-${{ matrix.shard }}' in section
+    assert 'benchmark-debug-${{ github.run_id }}-${{ matrix.shard }}' in section
     cache_line = next(
         line for line in section.splitlines() if "key: ccache-python-" in line
     )
