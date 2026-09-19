@@ -11,7 +11,7 @@ namespace {
 constexpr unsigned int kElements = 1U << 20;
 constexpr unsigned int kThreads = 256;
 constexpr unsigned int kInnerIterations = 64;
-constexpr unsigned int kLaunchesPerSample = 24;
+constexpr unsigned int kLaunchesPerSample = 512;
 constexpr unsigned int kWarmupLaunches = 4;
 
 extern "C" __global__ void vibeqc_cumetal_fp32_contract(const float* lhs, const float* rhs,
