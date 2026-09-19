@@ -25,6 +25,7 @@ from vibeqc_compiler.integral.first_gradient import (
 from vibeqc_compiler.integral.first_gradient_execute import (
     FirstGradientAccumulator,
     compile_first_gradient,
+    first_gradient_storage,
 )
 from vibeqc_compiler.integral.one_electron_derivatives import (
     build_one_electron_derivative_ir,
@@ -177,6 +178,12 @@ def generated_rhf_relaxation_contraction_cuda(
         raise TypeError("CUDA RHF relaxation requires an explicit CudaCompilerAdapter")
     if type(component_tile) is not int or not 1 <= component_tile <= 8:
         raise ValueError("relaxation component_tile must be between one and eight")
+    from vibeqc_compiler.common.resources import checked_bytes
+
+    checked_bytes(budget_bytes)
+    storage = first_gradient_storage(state.nbf, state.nat, 3, record_capacity)
+    if storage["numeric_peak_bytes"] > budget_bytes:
+        raise MemoryError("CUDA relaxation numeric storage exceeds budget_bytes")
     d1 = _checked_ao_weight(density_response, state.nbf, "density response")
     w1 = _checked_ao_weight(
         energy_weighted_density_response,

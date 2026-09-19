@@ -100,6 +100,15 @@ def rhf_hvp(
             or not 0 < relaxation_budget_bytes < 2**63
         ):
             raise ValueError("relaxation_budget_bytes must be a positive int64")
+        from vibeqc_compiler.integral.first_gradient_execute import (
+            first_gradient_storage,
+        )
+
+        storage = first_gradient_storage(state.nbf, state.nat, 3, 128)
+        if storage["numeric_peak_bytes"] > relaxation_budget_bytes:
+            raise MemoryError(
+                "CUDA relaxation numeric storage exceeds relaxation_budget_bytes"
+            )
     elif relaxation_compiler is not None:
         raise ValueError("relaxation_compiler is only meaningful for CUDA relaxation")
 
