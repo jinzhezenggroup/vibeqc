@@ -1,5 +1,7 @@
 # DF consumer and packet admission by work
 
+> Full historical raw records are recoverable from the [verified Git snapshot](../retention-df-integration/README.md). Restore it before replaying the original raw-record commands. Compact summaries and all production-manifest references remain in this checkout.
+
 This is a bounded follow-up to #480 for #444/#445 and the practical-basis
 admission problem in #435. It replaces bridge consumer/packet fingerprints,
 not the separate packed-response layout selector, derivative screening or

@@ -431,3 +431,11 @@ def test_region_search_has_an_explicit_trial_limit():
         plan.layout_decision.selected_cost
         <= plan.layout_decision.baseline_conversion_bytes
     )
+
+
+def test_fp32_layout_admission_does_not_change_ordinary_fp32():
+    x = input_tensor("x", TensorSpec(dtype="float32", role="input"))
+    program = Program({"out": add(x, x)})
+    assert plan_cuda(program, TARGET).precision == "fp32"
+    with pytest.raises(ValueError, match="layout.*float64"):
+        plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
