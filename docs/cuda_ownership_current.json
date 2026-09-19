@@ -3572,32 +3572,38 @@
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "ao_grid_policy",
+      "name": "one_electron_value_policy",
       "outputs": [
-        "generated/generated_grid_policy.cu"
+        "generated/generated_one_electron_policy.cuh"
       ],
-      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
+      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
     },
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "aot_integrals",
+      "name": "one_electron_values",
       "outputs": [
-        "generated/production_shell_kernels/**/*.cu",
-        "generated/production_shell_kernels/**/*.cuh",
-        "generated/production_shell_kernels/**/*.hpp"
+        "generated/generated_one_electron_values.cuh"
       ],
-      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
+      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "df_derivative_production_policy",
+      "name": "one_electron_derivatives",
       "outputs": [
-        "generated/generated_df_production.hpp"
+        "generated/generated_one_electron_derivatives.cuh"
       ],
-      "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
+      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "df_values",
+      "outputs": [
+        "generated/df_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
     },
     {
       "files": [],
@@ -3611,13 +3617,11 @@
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "df_policies",
+      "name": "df_shell_derivatives",
       "outputs": [
-        "generated/generated_df_policy.cuh",
-        "generated/generated_df_derivative_policy.cuh",
-        "generated/generated_df_derivative_schedule.cuh"
+        "generated/generated_df_shell_derivatives.cuh"
       ],
-      "owner": "python/vibeqc_compiler/integral/df_policy.py"
+      "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py"
     },
     {
       "files": [],
@@ -3641,22 +3645,93 @@
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "df_shell_class_units",
+      "name": "weighted_eri",
       "outputs": [
-        "generated/df_shells/*.cu",
-        "generated/df_shells/*.cuh",
-        "generated/df_shells/*.hpp"
+        "generated/weighted_eri.cuh"
       ],
-      "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
+      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
     },
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "df_shell_derivatives",
+      "name": "aot_integrals",
       "outputs": [
-        "generated/generated_df_shell_derivatives.cuh"
+        "generated/production_shell_kernels/**/*.cu",
+        "generated/production_shell_kernels/**/*.cuh",
+        "generated/production_shell_kernels/**/*.hpp"
       ],
-      "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py"
+      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "jit_tensor",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/tensor",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "jit_xc",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/xc",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "jit_dft",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/dft",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "jit_integral",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/integral",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "ao_grid_policy",
+      "outputs": [
+        "generated/generated_grid_policy.cu"
+      ],
+      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "df_policies",
+      "outputs": [
+        "generated/generated_df_policy.cuh",
+        "generated/generated_df_derivative_policy.cuh",
+        "generated/generated_df_derivative_schedule.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_policy.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "ecp_quadrature",
+      "outputs": [
+        "generated/generated_ecp_ao.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "df_derivative_production_policy",
+      "outputs": [
+        "generated/generated_df_production.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
     },
     {
       "files": [],
@@ -3679,88 +3754,13 @@
     {
       "files": [],
       "measurement": "not materialized",
-      "name": "df_values",
+      "name": "df_shell_class_units",
       "outputs": [
-        "generated/df_values.cuh"
+        "generated/df_shells/*.cu",
+        "generated/df_shells/*.cuh",
+        "generated/df_shells/*.hpp"
       ],
-      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "ecp_quadrature",
-      "outputs": [
-        "generated/generated_ecp_ao.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_dft",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/dft",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_integral",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/integral",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_tensor",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/tensor",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_xc",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/xc",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_derivatives",
-      "outputs": [
-        "generated/generated_one_electron_derivatives.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_value_policy",
-      "outputs": [
-        "generated/generated_one_electron_policy.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_values",
-      "outputs": [
-        "generated/generated_one_electron_values.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "weighted_eri",
-      "outputs": [
-        "generated/weighted_eri.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
+      "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
     }
   ],
   "generated_bytes": 0,
