@@ -26,6 +26,12 @@ Accordingly, XtbMethodIR may require an SCC fixed point and a generalized
 eigensolution, but it does not contain iteration counts, tolerances, Broyden or
 DIIS history, or an eigensolver implementation choice.
 
+Runtime fixed-point control is shared with mean-field SCF through
+`src/scf/solver/self_consistent.hpp` (#581). A future GFN2 runtime adapter owns
+its charge/multipole state, occupations, Hamiltonian construction and mixing
+policy while reusing that method-neutral convergence driver; this compiler IR
+still owns none of those policies.
+
 ## Canonical GFN2 graph
 
 The initial graph is ordered as:

@@ -14,6 +14,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
+#include "scf/solver/self_consistent.hpp"
 
 namespace vibeqc::scf::solver {
 namespace {
@@ -145,48 +146,66 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
 
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
-  double previous_energy = std::numeric_limits<double>::infinity();
-  for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
-    ++result.fock_builds;
-    const Matrix fock = build_fock(plan, ints.hcore, density);
-    const double energy = electronic_energy(density, ints.hcore, fock) + ints.nuclear_repulsion;
-    const Matrix residual = commutator_residual(fock, density, ints.overlap, n);
-    const Matrix effective_fock = diis.update(fock, residual);
-    orbitals = diagonalize(plan, effective_fock, ints, orthogonalizer,
-                           PreparedFockPlan::EigenUse::Iteration);
-    Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
+  const bool require_residual = options.hooks && options.hooks->propose;
 
-    sample_scf_buffers(plan, diis, orthogonalizer, density, fock, residual, effective_fock,
-                       orbitals.values, orbitals.vectors, next_density);
+  struct RhfEvaluation {
+    Matrix fock;
+    Matrix residual;
+    Matrix next_density;
+    double energy{};
+    double state_rms{};
+    double residual_rms{};
+  };
 
-    result.iterations = iteration;
-    result.energy = energy;
-    result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
-                                                          : std::numeric_limits<double>::infinity();
-    result.density_rms = density_rms(next_density, density);
-    const bool terminal = iteration > 1 && result.energy_change < options.energy_tolerance &&
-                          result.density_rms < options.density_tolerance &&
-                          (!options.hooks || !options.hooks->propose ||
-                           residual_rms(residual) < options.density_tolerance);
-    if (options.hooks) {
-      next_density = safeguarded_update(
-          options, generation, iteration, ints.overlap, density, fock, residual,
-          std::move(next_density), {static_cast<unsigned>(system.electron_count)}, 2.0, result,
-          diis, proposal_failures, terminal, [&](const Matrix& trial) {
-            const Matrix trial_fock = build_fock(plan, ints.hcore, trial);
-            return std::make_pair(
-                electronic_energy(trial, ints.hcore, trial_fock) + ints.nuclear_repulsion,
-                commutator_residual(trial_fock, trial, ints.overlap, n));
-          });
-    }
-    if (terminal) {
-      density = std::move(next_density);
-      result.converged = true;
-      break;
-    }
-    previous_energy = energy;
-    density = std::move(next_density);
-  }
+  const SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+                                    options.density_tolerance, options.density_tolerance,
+                                    require_residual};
+  auto outcome = run_self_consistent(
+      std::move(density), policy,
+      [&](const Matrix& current_density, unsigned) {
+        ++result.fock_builds;
+        Matrix fock = build_fock(plan, ints.hcore, current_density);
+        const double energy =
+            electronic_energy(current_density, ints.hcore, fock) + ints.nuclear_repulsion;
+        Matrix residual = commutator_residual(fock, current_density, ints.overlap, n);
+        const Matrix effective_fock = diis.update(fock, residual);
+        orbitals = diagonalize(plan, effective_fock, ints, orthogonalizer,
+                               PreparedFockPlan::EigenUse::Iteration);
+        Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
+
+        sample_scf_buffers(plan, diis, orthogonalizer, current_density, fock, residual,
+                           effective_fock, orbitals.values, orbitals.vectors, next_density);
+
+        const double state_rms = density_rms(next_density, current_density);
+        const double physical_residual_rms = require_residual ? residual_rms(residual) : 0.0;
+        return RhfEvaluation{std::move(fock), std::move(residual), std::move(next_density),
+                             energy,          state_rms,           physical_residual_rms};
+      },
+      [&](const Matrix& current_density, RhfEvaluation evaluation,
+          const SelfConsistentProgress& progress) {
+        Matrix next_density = std::move(evaluation.next_density);
+        if (options.hooks) {
+          next_density = safeguarded_update(
+              options, generation, progress.iteration, ints.overlap, current_density,
+              evaluation.fock, evaluation.residual, std::move(next_density),
+              {static_cast<unsigned>(system.electron_count)}, 2.0, result, diis, proposal_failures,
+              progress.converged, [&](const Matrix& trial) {
+                const Matrix trial_fock = build_fock(plan, ints.hcore, trial);
+                return std::make_pair(
+                    electronic_energy(trial, ints.hcore, trial_fock) + ints.nuclear_repulsion,
+                    commutator_residual(trial_fock, trial, ints.overlap, n));
+              });
+        }
+        return next_density;
+      },
+      [&](const SelfConsistentProgress& progress, const RhfEvaluation&) {
+        result.iterations = progress.iteration;
+        result.energy = progress.energy;
+        result.energy_change = progress.energy_change;
+        result.density_rms = progress.state_rms;
+      });
+  density = std::move(outcome.state);
+  result.converged = outcome.converged;
 
   if (!result.converged) {
     // Failed traces retain the last iterate, never a converged reference.
@@ -230,66 +249,94 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
 
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
-  double previous_energy = std::numeric_limits<double>::infinity();
-  for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
-    ++result.fock_builds;
-    auto [alpha_fock, beta_fock] = build_uhf_focks(plan, ints.hcore, alpha_density, beta_density);
-    const double energy =
-        uhf_electronic_energy(alpha_density, beta_density, ints.hcore, alpha_fock, beta_fock) +
-        ints.nuclear_repulsion;
-    const Matrix alpha_residual = commutator_residual(alpha_fock, alpha_density, ints.overlap, n);
-    const Matrix beta_residual = commutator_residual(beta_fock, beta_density, ints.overlap, n);
-    const Matrix physical_fock = concatenate(alpha_fock, beta_fock);
-    const Matrix physical_residual = concatenate(alpha_residual, beta_residual);
-    const Matrix effective_joined = diis.update(physical_fock, physical_residual);
-    std::tie(alpha_fock, beta_fock) = split_spin_matrices(effective_joined, n * n);
-    alpha_orbitals =
-        diagonalize(plan, alpha_fock, ints, orthogonalizer, PreparedFockPlan::EigenUse::Iteration);
-    beta_orbitals =
-        diagonalize(plan, beta_fock, ints, orthogonalizer, PreparedFockPlan::EigenUse::Iteration);
-    Matrix next_alpha = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
-    Matrix next_beta = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
+  const bool require_residual = options.hooks && options.hooks->propose;
 
-    sample_scf_buffers(plan, diis, orthogonalizer, alpha_density, beta_density, alpha_fock,
-                       beta_fock, alpha_residual, beta_residual, physical_fock, physical_residual,
-                       effective_joined, alpha_orbitals.values, alpha_orbitals.vectors,
-                       beta_orbitals.values, beta_orbitals.vectors, next_alpha, next_beta);
+  struct UhfState {
+    Matrix alpha;
+    Matrix beta;
+  };
+  struct UhfEvaluation {
+    Matrix physical_fock;
+    Matrix physical_residual;
+    Matrix next_alpha;
+    Matrix next_beta;
+    double energy{};
+    double state_rms{};
+    double residual_rms{};
+  };
 
-    result.iterations = iteration;
-    result.energy = energy;
-    result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
-                                                          : std::numeric_limits<double>::infinity();
-    result.density_rms =
-        density_rms(concatenate(next_alpha, next_beta), concatenate(alpha_density, beta_density));
-    const bool terminal = iteration > 1 && result.energy_change < options.energy_tolerance &&
-                          result.density_rms < options.density_tolerance &&
-                          (!options.hooks || !options.hooks->propose ||
-                           residual_rms(physical_residual) < options.density_tolerance);
-    if (options.hooks) {
-      const Matrix next = safeguarded_update(
-          options, generation, iteration, ints.overlap, concatenate(alpha_density, beta_density),
-          physical_fock, physical_residual, concatenate(next_alpha, next_beta),
-          {static_cast<unsigned>(alpha_occupied), static_cast<unsigned>(beta_occupied)}, 1.0,
-          result, diis, proposal_failures, terminal, [&](const Matrix& trial) {
-            const auto [a, b] = split_spin_matrices(trial, n * n);
-            const auto [fa, fb] = build_uhf_focks(plan, ints.hcore, a, b);
-            return std::make_pair(
-                uhf_electronic_energy(a, b, ints.hcore, fa, fb) + ints.nuclear_repulsion,
-                concatenate(commutator_residual(fa, a, ints.overlap, n),
-                            commutator_residual(fb, b, ints.overlap, n)));
-          });
-      std::tie(next_alpha, next_beta) = split_spin_matrices(next, n * n);
-    }
-    if (terminal) {
-      alpha_density = std::move(next_alpha);
-      beta_density = std::move(next_beta);
-      result.converged = true;
-      break;
-    }
-    previous_energy = energy;
-    alpha_density = std::move(next_alpha);
-    beta_density = std::move(next_beta);
-  }
+  const SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+                                    options.density_tolerance, options.density_tolerance,
+                                    require_residual};
+  auto outcome = run_self_consistent(
+      UhfState{std::move(alpha_density), std::move(beta_density)}, policy,
+      [&](const UhfState& state, unsigned) {
+        auto [alpha_fock, beta_fock] = build_uhf_focks(plan, ints.hcore, state.alpha, state.beta);
+        ++result.fock_builds;
+        const double energy =
+            uhf_electronic_energy(state.alpha, state.beta, ints.hcore, alpha_fock, beta_fock) +
+            ints.nuclear_repulsion;
+        const Matrix alpha_residual = commutator_residual(alpha_fock, state.alpha, ints.overlap, n);
+        const Matrix beta_residual = commutator_residual(beta_fock, state.beta, ints.overlap, n);
+        Matrix physical_fock = concatenate(alpha_fock, beta_fock);
+        Matrix physical_residual = concatenate(alpha_residual, beta_residual);
+        const Matrix effective_joined = diis.update(physical_fock, physical_residual);
+        std::tie(alpha_fock, beta_fock) = split_spin_matrices(effective_joined, n * n);
+        alpha_orbitals = diagonalize(plan, alpha_fock, ints, orthogonalizer,
+                                     PreparedFockPlan::EigenUse::Iteration);
+        beta_orbitals = diagonalize(plan, beta_fock, ints, orthogonalizer,
+                                    PreparedFockPlan::EigenUse::Iteration);
+        Matrix next_alpha = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
+        Matrix next_beta = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
+
+        sample_scf_buffers(plan, diis, orthogonalizer, state.alpha, state.beta, alpha_fock,
+                           beta_fock, alpha_residual, beta_residual, physical_fock,
+                           physical_residual, effective_joined, alpha_orbitals.values,
+                           alpha_orbitals.vectors, beta_orbitals.values, beta_orbitals.vectors,
+                           next_alpha, next_beta);
+
+        const double state_rms =
+            density_rms(concatenate(next_alpha, next_beta), concatenate(state.alpha, state.beta));
+        const double physical_residual_rms =
+            require_residual ? residual_rms(physical_residual) : 0.0;
+        return UhfEvaluation{std::move(physical_fock),
+                             std::move(physical_residual),
+                             std::move(next_alpha),
+                             std::move(next_beta),
+                             energy,
+                             state_rms,
+                             physical_residual_rms};
+      },
+      [&](const UhfState& state, UhfEvaluation evaluation, const SelfConsistentProgress& progress) {
+        if (!options.hooks) {
+          return UhfState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
+        }
+
+        const Matrix next = safeguarded_update(
+            options, generation, progress.iteration, ints.overlap,
+            concatenate(state.alpha, state.beta), evaluation.physical_fock,
+            evaluation.physical_residual, concatenate(evaluation.next_alpha, evaluation.next_beta),
+            {static_cast<unsigned>(alpha_occupied), static_cast<unsigned>(beta_occupied)}, 1.0,
+            result, diis, proposal_failures, progress.converged, [&](const Matrix& trial) {
+              const auto [a, b] = split_spin_matrices(trial, n * n);
+              const auto [fa, fb] = build_uhf_focks(plan, ints.hcore, a, b);
+              return std::make_pair(
+                  uhf_electronic_energy(a, b, ints.hcore, fa, fb) + ints.nuclear_repulsion,
+                  concatenate(commutator_residual(fa, a, ints.overlap, n),
+                              commutator_residual(fb, b, ints.overlap, n)));
+            });
+        auto [next_alpha, next_beta] = split_spin_matrices(next, n * n);
+        return UhfState{std::move(next_alpha), std::move(next_beta)};
+      },
+      [&](const SelfConsistentProgress& progress, const UhfEvaluation&) {
+        result.iterations = progress.iteration;
+        result.energy = progress.energy;
+        result.energy_change = progress.energy_change;
+        result.density_rms = progress.state_rms;
+      });
+  alpha_density = std::move(outcome.state.alpha);
+  beta_density = std::move(outcome.state.beta);
+  result.converged = outcome.converged;
 
   if (!result.converged) {
     // Failed traces retain the last iterate, never a converged reference.

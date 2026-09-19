@@ -11,8 +11,9 @@ from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
-from .expressions import energy_expression
-from .spec import FunctionalSpec, UnsupportedXC
+from .expressions import energy_expression as semilocal_energy_expression
+from .rsh_expressions import energy_expression as rsh_energy_expression
+from .spec import RSH_COMPONENTS, FunctionalSpec, UnsupportedXC
 
 
 def output_set(spec, order):
@@ -83,6 +84,31 @@ def validate_features(spec, features, *, order=2, copy=True):
         for density, sigma in ((ra, aa), (rb, bb)):
             if np.any(np.sqrt(sigma[active]) / density[active] ** (4 / 3) > 1e6):
                 raise UnsupportedXC("reduced gradient exceeds interior-v1 1e6")
+    components = {name for name, coefficient in spec.components if coefficient}
+    if (
+        components & {"GGA_X_B88", "GGA_X_ITYH"}
+        and order
+        and np.any((aa[active] == 0) | (bb[active] == 0))
+    ):
+        raise UnsupportedXC("B88 derivative support requires positive same-spin sigma")
+    if "GGA_X_ITYH" in components:
+        beta_b88 = 0.0042
+        gamma_b88 = 6.0
+        cx = 3 / 8 * (3 / np.pi) ** (1 / 3) * 4 ** (2 / 3)
+        for density, sigma in ((ra, aa), (rb, bb)):
+            y = sigma[active] * density[active] ** (-8 / 3)
+            reduced = np.sqrt(y)
+            enhancement = 1 + beta_b88 / cx * y / (
+                1 + gamma_b88 * beta_b88 * reduced * np.arcsinh(reduced)
+            )
+            k_gga = np.sqrt(9 * np.pi / (2 * cx * enhancement)) * density[active] ** (
+                1 / 3
+            )
+            attenuation_argument = float(spec.range_omega) / (2 * k_gga)
+            if np.any(attenuation_argument >= 1.35):
+                raise UnsupportedXC(
+                    "ITYH attenuation exceeds audited direct branch a < 1.35"
+                )
     return x, active
 
 
@@ -162,6 +188,14 @@ class XCProgram:
         return answer
 
 
+def _energy_expression(spec):
+    if any(
+        name in RSH_COMPONENTS and coefficient for name, coefficient in spec.components
+    ):
+        return rsh_energy_expression(spec)
+    return semilocal_energy_expression(spec)
+
+
 def build_program(spec, *, order=2, outputs=None, optimization="after"):
     """Differentiate only consumer roots, using the shared algebra passes.
 
@@ -181,7 +215,7 @@ def build_program(spec, *, order=2, outputs=None, optimization="after"):
         raise UnsupportedXC("unsupported derivative output")
     if optimization not in ("none", "before", "after"):
         raise UnsupportedXC("unsupported optimization order")
-    graph, energy, variables = energy_expression(spec)
+    graph, energy, variables = _energy_expression(spec)
     if optimization == "before":
         graph, (energy,) = graph.apply_algebra_form(
             (energy,), AlgebraForm.FACTORED_NARY

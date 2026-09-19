@@ -262,7 +262,7 @@ def ks_resource_request(
         "density_tolerance": density_tolerance,
         "screening_tolerance": screening_tolerance,
         "ks_options": model.to_payload(),
-        "outputs": "energy",
+        "outputs": "energy+forces" if backend == "cuda" else "energy",
         "inventory_version": 1,
         "schedule": "ordinary-stream-round-robin"
         if backend == "cuda"
@@ -279,7 +279,7 @@ def ks_resource_request(
         backend,
         "fp64",
         json.dumps({"items": items}),
-        ("energy",),
+        ("energy", "forces") if backend == "cuda" else ("energy",),
         json.dumps(controls, sort_keys=True),
     )
     exclusions = (
@@ -393,6 +393,26 @@ def ks_resource_request(
                     "KS one-electron setup excess over retired owner",
                     extra,
                     f"device:{device_id}",
+                    first_phase,
+                    last_phase,
+                )
+            )
+            # C2 executes one generated-force item at a time after the resident
+            # SCF owner. The public consumer enforces these same staging caps.
+            estimates.append(
+                ResourceEstimate(
+                    "serialized generated KS force device staging cap",
+                    512 << 20,
+                    f"device:{device_id}",
+                    first_phase,
+                    last_phase,
+                )
+            )
+            estimates.append(
+                ResourceEstimate(
+                    "serialized generated KS force host staging cap",
+                    256 << 20,
+                    "pageable",
                     first_phase,
                     last_phase,
                 )

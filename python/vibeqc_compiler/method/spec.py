@@ -17,13 +17,16 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
+from .basis_binding import BasisBinding, r2scan3c_def2_mtzvpp_h_ar
 from .dispersion import (
     D3Spec,
     D4Spec,
     DispersionCorrectionPrimitive,
     pbe0_d3_bj_spec,
     pbe_d3_bj_spec,
+    r2scan3c_d4_eeq,
 )
+from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
 from .nonlocal_correlation import (
     NonlocalCorrelationPrimitive,
     NonlocalCorrelationSpec,
@@ -32,6 +35,9 @@ from .nonlocal_correlation import (
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
 FULL_RANGE = "full-range"
+SHORT_RANGE = "short-range"
+LONG_RANGE = "long-range"
+_RANGE_OPERATORS = (SHORT_RANGE, LONG_RANGE)
 _SPINS = ("polarized", "unpolarized")
 _INGREDIENT_ORDER = ("rho", "sigma", "tau")
 
@@ -70,9 +76,14 @@ class MethodSpec:
     identifier: str
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
+    short_range_exchange: Fraction = Fraction(0)
+    long_range_exchange: Fraction = Fraction(0)
+    range_omega: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
     dispersion: D3Spec | D4Spec | None = None
     nonlocal_correlation: NonlocalCorrelationSpec | None = None
+    basis: BasisBinding | None = None
+    gcp: GCPSpec | None = None
 
     def __post_init__(self):
         if not isinstance(self.identifier, str) or not self.identifier.strip():
@@ -100,13 +111,42 @@ class MethodSpec:
             self.dispersion, (D3Spec, D4Spec)
         ):
             raise TypeError("dispersion requires a D3Spec or D4Spec")
-        _require_fraction(self.exact_exchange, "exact exchange")
-        if self.exact_exchange < 0:
-            raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
+        if self.basis is not None and not isinstance(self.basis, BasisBinding):
+            raise TypeError("basis requires BasisBinding")
+        if self.gcp is not None and not isinstance(self.gcp, GCPSpec):
+            raise TypeError("gCP requires GCPSpec")
+        if self.gcp is not None and self.basis is None:
+            raise UnsupportedMethod("gCP requires an explicit basis binding")
         if (
-            not self.semilocal_components
-            and not self.exact_exchange
-            and self.nonlocal_correlation is None
+            self.gcp is not None
+            and self.basis is not None
+            and self.gcp.basis != self.basis.name
+        ):
+            raise UnsupportedMethod("gCP basis does not match the method basis binding")
+        for label, value in (
+            ("exact exchange", self.exact_exchange),
+            ("short-range exchange", self.short_range_exchange),
+            ("long-range exchange", self.long_range_exchange),
+            ("range omega", self.range_omega),
+        ):
+            _require_fraction(value, label)
+            if value < 0:
+                raise UnsupportedMethod(f"{label} must be nonnegative")
+        has_range_exchange = bool(self.short_range_exchange or self.long_range_exchange)
+        has_range_semilocal = any(
+            name == "GGA_X_ITYH" and coefficient
+            for name, coefficient in self.semilocal_components
+        )
+        if bool(self.range_omega) != (has_range_exchange or has_range_semilocal):
+            raise UnsupportedMethod(
+                "range-separated composition requires one positive range_omega, "
+                "which is otherwise forbidden"
+            )
+        if not (
+            self.semilocal_components
+            or self.exact_exchange
+            or has_range_exchange
+            or self.nonlocal_correlation
         ):
             raise UnsupportedMethod("method composition cannot be empty")
 
@@ -124,7 +164,12 @@ class MethodSpec:
                 if self.nonlocal_correlation
                 else {}
             ),
+            "short_range_exchange": str(self.short_range_exchange),
+            "long_range_exchange": str(self.long_range_exchange),
+            "range_omega": str(self.range_omega),
             **({"dispersion": self.dispersion.to_payload()} if self.dispersion else {}),
+            **({"basis": self.basis.to_payload()} if self.basis else {}),
+            **({"gcp": self.gcp.to_payload()} if self.gcp else {}),
         }
 
 
@@ -145,12 +190,11 @@ class SemilocalXCPrimitive:
         if any(
             (
                 self.functional.exact_exchange,
-                self.functional.range_omega,
                 self.functional.long_range_exchange,
             )
         ):
             raise UnsupportedMethod(
-                "semilocal primitive cannot hide exchange-operator metadata"
+                "semilocal primitive cannot hide exact-exchange operators"
             )
         # FunctionalSpec intentionally preserves its declaration order. Normalize
         # at this boundary so catalog specs and explicit MethodIR construction
@@ -181,6 +225,45 @@ class SemilocalXCPrimitive:
             **self.semantic_payload(),
             "functional_identifier": self.functional.identifier,
         }
+
+
+@dataclass(frozen=True)
+class RangeSeparatedExchangePrimitive:
+    """Explicit SR/LR exact exchange with one immutable inverse-Bohr omega."""
+
+    coefficient: Fraction
+    omega: Fraction
+    operator: str
+    kind: ClassVar[str] = "range_separated_exchange"
+
+    def __post_init__(self):
+        _require_fraction(self.coefficient, "range-separated exchange")
+        _require_fraction(self.omega, "range omega")
+        if self.coefficient <= 0 or self.omega <= 0:
+            raise UnsupportedMethod(
+                "range-separated exchange requires positive coefficient and omega"
+            )
+        if self.operator not in _RANGE_OPERATORS:
+            raise UnsupportedMethod(
+                f"unsupported range-separated operator {self.operator!r}"
+            )
+
+    @property
+    def derivative_capabilities(self):
+        return ("energy", "fock")
+
+    def semantic_payload(self):
+        return {
+            "kind": self.kind,
+            "operator": self.operator,
+            "coefficient": str(self.coefficient),
+            "omega": str(self.omega),
+            "omega_units": "bohr^-1",
+            "derivative_capabilities": self.derivative_capabilities,
+        }
+
+    def to_payload(self):
+        return self.semantic_payload()
 
 
 @dataclass(frozen=True)
@@ -223,7 +306,9 @@ MethodPrimitive = (
     SemilocalXCPrimitive
     | ExactExchangePrimitive
     | NonlocalCorrelationPrimitive
+    | RangeSeparatedExchangePrimitive
     | DispersionCorrectionPrimitive
+    | GeometricCounterpoisePrimitive
 )
 
 
@@ -240,6 +325,7 @@ class MethodIR:
     identifier: str
     spin: str
     primitives: tuple[MethodPrimitive, ...]
+    basis: BasisBinding | None = None
     version: str = METHOD_IR_VERSION
 
     def __post_init__(self):
@@ -255,7 +341,9 @@ class MethodIR:
             SemilocalXCPrimitive,
             ExactExchangePrimitive,
             NonlocalCorrelationPrimitive,
+            RangeSeparatedExchangePrimitive,
             DispersionCorrectionPrimitive,
+            GeometricCounterpoisePrimitive,
         )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
             raise UnsupportedMethod("MethodIR contains an unsupported primitive")
@@ -265,14 +353,18 @@ class MethodIR:
                 return 0
             if isinstance(primitive, ExactExchangePrimitive):
                 return 1
+            if isinstance(primitive, RangeSeparatedExchangePrimitive):
+                return 2 if primitive.operator == SHORT_RANGE else 3
             if isinstance(primitive, NonlocalCorrelationPrimitive):
-                return 2
-            return 3
+                return 4
+            if isinstance(primitive, DispersionCorrectionPrimitive):
+                return 5
+            return 6
 
         keys = [primitive_order(primitive) for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):
             raise UnsupportedMethod(
-                "MethodIR primitives must be canonical and unique by primitive family"
+                "MethodIR primitives must be canonical and unique by operator family"
             )
         semilocal = [
             primitive
@@ -281,10 +373,59 @@ class MethodIR:
         ]
         if semilocal and semilocal[0].functional.spin != self.spin:
             raise UnsupportedMethod("semilocal primitive spin does not match MethodIR")
+        if self.basis is not None and not isinstance(self.basis, BasisBinding):
+            raise TypeError("MethodIR basis requires BasisBinding")
+        gcp = [
+            p for p in self.primitives if isinstance(p, GeometricCounterpoisePrimitive)
+        ]
+        if gcp:
+            if self.basis is None:
+                raise UnsupportedMethod(
+                    "gCP primitive requires a MethodIR basis binding"
+                )
+            if gcp[0].specification.basis != self.basis.name:
+                raise UnsupportedMethod(
+                    "gCP primitive basis does not match MethodIR basis"
+                )
+        if self.identifier == "R2SCAN-3c":
+            canonical = METHOD_CATALOG["R2SCAN-3c"]
+            if self.basis != canonical.basis or self.primitives != _method_primitives(
+                canonical, self.spin
+            ):
+                raise UnsupportedMethod(
+                    "R2SCAN-3c is a canonical manifest; changed defining "
+                    "components require a different explicit identifier"
+                )
 
     @property
     def reference(self):
         return "unrestricted" if self.spin == "polarized" else "restricted"
+
+    def preflight_atomic_numbers(self, atomic_numbers):
+        """Reject unsupported chemistry before lowering or correction execution."""
+
+        values = tuple(atomic_numbers)
+        if any(type(z) is not int or not 1 <= z <= 118 for z in values):
+            raise UnsupportedMethod("atomic numbers must be integers in [1, 118]")
+        if self.basis is not None:
+            try:
+                self.basis.require_atomic_numbers(values)
+            except (TypeError, ValueError) as error:
+                raise UnsupportedMethod(str(error)) from error
+        for primitive in self.primitives:
+            if isinstance(primitive, GeometricCounterpoisePrimitive):
+                unsupported = tuple(
+                    sorted(
+                        set(values)
+                        - set(primitive.specification.supported_atomic_numbers)
+                    )
+                )
+                if unsupported:
+                    raise UnsupportedMethod(
+                        f"gCP does not support atomic numbers {unsupported} "
+                        "in this canonical method domain"
+                    )
+        return values
 
     @property
     def requirements(self):
@@ -294,16 +435,21 @@ class MethodIR:
             if isinstance(primitive, SemilocalXCPrimitive):
                 ingredients.update(primitive.functional.ingredients)
                 operators.append("semilocal-xc")
-            elif isinstance(primitive, ExactExchangePrimitive):
+            elif isinstance(
+                primitive, (ExactExchangePrimitive, RangeSeparatedExchangePrimitive)
+            ):
                 operators.append(primitive.operator + "-exchange")
             elif isinstance(primitive, NonlocalCorrelationPrimitive):
                 ingredients.update(primitive.required_ingredients)
                 operators.append("nonlocal-correlation")
-            elif isinstance(primitive.specification, D3Spec):
-                operators.append("geometry-d3-bj")
+            elif isinstance(primitive, DispersionCorrectionPrimitive):
+                if isinstance(primitive.specification, D3Spec):
+                    operators.append("geometry-d3-bj")
+                else:
+                    operators.append("geometry-d4-bj-eeq")
             else:
-                operators.append("geometry-d4-bj-eeq")
-        return {
+                operators.append("geometry-gcp")
+        result = {
             "spin": self.spin,
             "reference": self.reference,
             "ingredients": tuple(
@@ -311,12 +457,16 @@ class MethodIR:
             ),
             "operators": tuple(operators),
         }
+        if self.basis is not None:
+            result["basis"] = self.basis.to_payload()
+        return result
 
     def semantic_payload(self):
         return {
             "version": self.version,
             "spin": self.spin,
             "reference": self.reference,
+            "basis": self.basis.semantic_payload() if self.basis else None,
             "primitives": [
                 primitive.semantic_payload() for primitive in self.primitives
             ],
@@ -353,6 +503,13 @@ METHOD_CATALOG = MappingProxyType(
             "R2SCAN",
             (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
         ),
+        "R2SCAN-3c": MethodSpec(
+            "R2SCAN-3c",
+            (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
+            dispersion=r2scan3c_d4_eeq(),
+            basis=r2scan3c_def2_mtzvpp_h_ar(),
+            gcp=r2scan3c_gcp(),
+        ),
         "PBE0": MethodSpec(
             "PBE0",
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
@@ -369,6 +526,30 @@ METHOD_CATALOG = MappingProxyType(
             exact_exchange=Fraction(1, 4),
             dispersion=pbe0_d3_bj_spec(),
         ),
+        "CAM-B3LYP": MethodSpec(
+            "CAM-B3LYP",
+            (
+                ("GGA_X_B88", Fraction(35, 100)),
+                ("GGA_X_ITYH", Fraction(46, 100)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            short_range_exchange=Fraction(19, 100),
+            long_range_exchange=Fraction(65, 100),
+            range_omega=Fraction(33, 100),
+        ),
+        "CAMH-B3LYP": MethodSpec(
+            "CAMH-B3LYP",
+            (
+                ("GGA_X_B88", Fraction(50, 100)),
+                ("GGA_X_ITYH", Fraction(31, 100)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            short_range_exchange=Fraction(19, 100),
+            long_range_exchange=Fraction(50, 100),
+            range_omega=Fraction(33, 100),
+        ),
     }
 )
 
@@ -384,9 +565,21 @@ def resolve_method(method, *, spin="unpolarized"):
             raise UnsupportedMethod(f"unknown DFT method {method!r}") from error
     elif isinstance(method, MethodSpec):
         spec = method
+        if spec.identifier == "R2SCAN-3c" and spec != METHOD_CATALOG["R2SCAN-3c"]:
+            raise UnsupportedMethod(
+                "R2SCAN-3c is a canonical manifest; changed defining "
+                "components require a different explicit identifier"
+            )
     else:
         raise TypeError("method must be a catalog name or MethodSpec")
 
+    return MethodIR(
+        spec.identifier, spin, _method_primitives(spec, spin), basis=spec.basis
+    )
+
+
+def _method_primitives(spec, spin):
+    """One construction path shared by resolution and canonical graph validation."""
     components = _canonical_components(spec.semilocal_components)
     primitives: list[MethodPrimitive] = []
     if components:
@@ -395,14 +588,29 @@ def resolve_method(method, *, spin="unpolarized"):
             components=components,
             spin=spin,
             version=XC_VERSION,
+            range_omega=spec.range_omega,
         )
         primitives.append(SemilocalXCPrimitive(functional))
     if spec.exact_exchange:
         primitives.append(ExactExchangePrimitive(spec.exact_exchange))
+    if spec.short_range_exchange:
+        primitives.append(
+            RangeSeparatedExchangePrimitive(
+                spec.short_range_exchange, spec.range_omega, SHORT_RANGE
+            )
+        )
+    if spec.long_range_exchange:
+        primitives.append(
+            RangeSeparatedExchangePrimitive(
+                spec.long_range_exchange, spec.range_omega, LONG_RANGE
+            )
+        )
     if spec.nonlocal_correlation is not None:
         primitives.append(NonlocalCorrelationPrimitive(spec.nonlocal_correlation))
     if not primitives:
         raise UnsupportedMethod("method components cancel to an empty graph")
     if spec.dispersion is not None:
         primitives.append(DispersionCorrectionPrimitive(spec.dispersion))
-    return MethodIR(spec.identifier, spin, tuple(primitives))
+    if spec.gcp is not None:
+        primitives.append(GeometricCounterpoisePrimitive(spec.gcp))
+    return tuple(primitives)
