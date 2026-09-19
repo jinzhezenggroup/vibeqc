@@ -124,8 +124,9 @@ and performance measurements pass.
   `sm_120` profiles improve from 20.043 to 2.181 ms at 96 AOs (`9.19x`) and
   from 55.676 to 6.384 ms at 192 AOs (`8.72x`). Same-binary warm endpoint
   medians improve by `4.6%` and `2.4%`, respectively. All 96/192-AO batch-1/4
-  energy/force gates pass; the scalar AO-pair implementation remains available
-  only through `VIBEQC_ONE_ELECTRON_FORCE_SCALAR`.
+  energy/force gates pass. #357 later promoted compiler-owned generated
+  derivatives and retired this scalar AO-pair implementation; only the
+  cooperative native route remains as an explicit reference exception.
   The final analytic force now replaces topology-capacity launches for total
   orders zero through five with device-resident persistent task queues. Eight
   one-warp worker blocks per multiprocessor dynamically consume only the
