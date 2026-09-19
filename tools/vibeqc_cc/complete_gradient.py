@@ -22,7 +22,7 @@ from vibeqc_compiler.tensor import execute
 from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_posthf.sources import NativeSource, _valid_cuda_device, _valid_size_t_budget
 from tools.vibeqc_response import GMRESOptions, NativeJKBackend, RHFResponseOperator
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
@@ -132,13 +132,12 @@ class CCSDGradientOptions:
             )
         if self.derivative_backend not in ("cpu", "cuda"):
             raise ValueError("derivative_backend must be 'cpu' or 'cuda'")
-        if type(self.device_id) is not int or self.device_id < 0:
-            raise ValueError("device_id must be a nonnegative integer")
-        if (
-            type(self.derivative_stage_budget_bytes) is not int
-            or self.derivative_stage_budget_bytes < 1
-        ):
-            raise ValueError("derivative_stage_budget_bytes must be positive")
+        if not _valid_cuda_device(self.device_id):
+            raise ValueError("device_id must fit the nonnegative native c_int range")
+        if not _valid_size_t_budget(self.derivative_stage_budget_bytes):
+            raise ValueError(
+                "derivative_stage_budget_bytes must fit the positive native size_t range"
+            )
         if type(
             self.one_electron_schedule
         ) is not int or self.one_electron_schedule not in (0, 1, 2):
