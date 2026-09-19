@@ -29,7 +29,7 @@ from tools.vibeqc_cc.lambda_equations import PARAMETERS
 from tools.vibeqc_cc.oracle import dense_feeds, random_case
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_posthf.sources import NativeSource, _valid_cuda_device, _valid_size_t_budget
 from tools.vibeqc_response.implicit import ImplicitSolveError
 from tools.vibeqc_response.oracle import _expm_small, explicit_rhf_response_matrix
 from tools.vibeqc_response.problem import ResponseCompatibilityError
@@ -401,6 +401,19 @@ def test_complete_gradient_capability_is_separate_from_energy_facade():
     assert caps.supported_properties == frozenset({"energy", "forces"})
     assert caps.derivative_backends == frozenset({"cpu", "cuda"})
     assert any("perturbative-(T)" in item for item in caps.restrictions)
+
+
+def test_cuda_ffi_integer_ranges_reject_python_wraparound():
+    assert _valid_cuda_device(0)
+    assert not _valid_cuda_device(2**31)
+    assert _valid_size_t_budget(4096)
+    assert not _valid_size_t_budget(2**64 + 4096)
+    with pytest.raises(ValueError, match="c_int"):
+        CCSDGradientOptions(derivative_backend="cuda", device_id=2**32)
+    with pytest.raises(ValueError, match="size_t"):
+        CCSDGradientOptions(
+            derivative_backend="cuda", derivative_stage_budget_bytes=2**64 + 4096
+        )
 
 
 def test_exact_nuclear_gradient_matches_dense_native_oracle(tiny_state):
