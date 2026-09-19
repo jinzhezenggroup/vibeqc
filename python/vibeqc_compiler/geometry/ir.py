@@ -62,9 +62,9 @@ class PairCutoff:
 
     def to_payload(self) -> dict:
         return {
-            "radius": self.radius.hex(),
+            "radius": float(self.radius).hex(),
             "switch_start": (
-                None if self.switch_start is None else self.switch_start.hex()
+                None if self.switch_start is None else float(self.switch_start).hex()
             ),
         }
 
