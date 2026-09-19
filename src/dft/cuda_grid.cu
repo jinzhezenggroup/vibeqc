@@ -638,6 +638,17 @@ int grid_cuda_view_v1(void* pointer, vibeqc::dft::GridTaskView* output, char* er
   });
 }
 
+int grid_cuda_basis_v1(void* pointer, vibeqc::dft::GridBasisView* output, char* error,
+                       size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !output) throw std::invalid_argument("null grid basis view");
+    auto& p = *static_cast<GridPlan*>(pointer);
+    std::lock_guard<std::mutex> lock(p.context.mutex);
+    p.context.check_device();
+    *output = {1, p.natom, p.nprimitive, p.nao, p.basis, p.context.stream};
+  });
+}
+
 // The task lease owns the lifetime/stream. This optional extension leaves the
 // v1 view ABI intact and refuses orbital tiles or overwritten XC work storage.
 int grid_cuda_density_jets_v1(void* pointer, std::uint64_t generation, unsigned jets,
