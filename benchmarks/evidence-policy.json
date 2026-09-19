@@ -1,5 +1,6 @@
 {
   "benchmark_results_max_bytes": 134217728,
+  "change_review_max_bytes": 2097152,
   "exceptions": {
     "benchmarks/results/accuracy-173/arithmetic/states.npz": {
       "owner": "accuracy-173",
@@ -25,6 +26,116 @@
       "owner": "issue206-device-diis-baseline",
       "reason": "Clean 96/192-AO energy/full-force batch-1/4 samples, actual external factor ranks, exact basis stack, unmatched branches and separately traced host-response bottleneck.",
       "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/00-configure.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "2ef62c2b10a75c35bc50addfa0f4bbb7faf8d2ae0f9628e85c5bcdfa419cd6e6"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/01-build.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "99015f86d507ef407b83a86ed30934a6c4624b4b900b3c95715948be480f3fc2"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/02-hooks.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "09bd046b55dda1716fc3603e11957ac44ad5bc1af6b9d7c286dcaa11a69ba8b9"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/03-host.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "b320dddbc8f84a45c6b3781d1eecc3886b30d07f80daf90234b72921bad42dd3"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/04-host.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "9d88f750c6dcb6a8441c663de6eb8cfd5a4e01189949351a32a4477cae984e2d"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/08-validation-job-10215.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "901217c33e21d188155e2af6132313451d81791ad33c9ed1c0c5a4bbada0c336"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/12-native-tests.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "7cd2b96c73fe99f1a00b4051b2f2c99228fec5a233b822bde244260279ff3523"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/13-native-tests.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "3f46a850cbc16cc73e052733a99284656181890d02fa83e52fa3a167a735d995"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/14-host-regressions.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "8dbbcac3892ef03fb4262f01b3ab9922cb48674042d543614c856f308b8886b4"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/15-host-regressions.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "608ef6ec4e1593033f6d5c16bc42b022dd75beb0aa736d8d21761010cf502c30"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/16-public-oh.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "9b6c181a40e014ccd951695e07c6cbb71cd109dffb3b31bd8fef4a089116b8c1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/17-public-oh.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "4123a25d429ba0839e7798db26c7642eef0f7fae3269cc79653d8f6c34205dec"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/18-independent-accuracy.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "a24cfb165cfee70c7d0e12d7cb498ad724c4bd35dbaebba4b681bc69edeae026"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/20-matrix.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "a0d572f1d79cfb5a6e6a6a9ab3169748b1aa1b5c28be8ce74cc9df180de8af40"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/24-baseline-comparison-run.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "21089c34fd6cc37c8b062a671a5c54dd11612a762b45a11bc2044150f46843f9"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/27-native-tests.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "8d38af42c2c8a7f64ae595bb31a41fd19f8b6ecfa5eb7d501f6ab5630a93d8ba"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/28-native-tests.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "cf6528b96384e9a57bd8e49fd8c30d50e6d3a6dae38436f94a7a52a4d6b21da1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/29-public-oh.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "6944971fb4d1a4f827ddff2ba1549ee81e4252b9b560b4b4b7484623cdbaddd5"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/30-public-oh.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "98bad39ac37e2a05346cbf89687ac4f2f719d5bc01724387aada835374402fd1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/31-gpu-run.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "378bdad1a7e1d1f0f2f20a4eb60de5e6d73f0aa689845bd81fdd16a9f4691b91"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/32-configure.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "4ffc05c6dfd903b22a28857192c64ba6d5f86c19ce69a6f8b7ec0f51ab0d2cf1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/33-build.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "56dbda21ad111017313644649fb7574ce2d74a1a8a7851b43e612de6820206be"
     },
     "benchmarks/results/issue308-property-budgets/evidence.zip": {
       "owner": "issue308-property-budgets",
@@ -318,6 +429,5 @@
     }
   },
   "review_size_bytes": 1048576,
-  "change_review_max_bytes": 2097152,
   "schema": "vibeqc.retention-policy.v1"
 }
