@@ -38,7 +38,7 @@ def main():
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/df_endpoint_memory.json"),
+        default=str(Path(".artifacts/benchmarks/df_endpoint_memory.json")),
     )
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID") or args.batch < 1 or args.df_budget < 0:

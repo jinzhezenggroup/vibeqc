@@ -325,7 +325,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/issue41_component_ledger.json"),
+        default=str(Path(".artifacts/benchmarks/issue41_component_ledger.json")),
     )
     return parser
 

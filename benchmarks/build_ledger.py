@@ -380,7 +380,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/build_ledger.json"),
+        default=str(Path(".artifacts/benchmarks/build_ledger.json")),
     )
     parser.add_argument(
         "--build", action="store_true", help="time one cmake --build invocation"

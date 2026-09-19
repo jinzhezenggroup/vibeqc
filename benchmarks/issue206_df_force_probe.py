@@ -253,7 +253,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/issue206-force-ledger.json"),
+        default=str(Path(".artifacts/issue206-force-ledger.json")),
     )
     args = parser.parse_args()
     if args.repeats < 1:

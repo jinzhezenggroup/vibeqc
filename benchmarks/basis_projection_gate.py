@@ -56,7 +56,7 @@ def main():
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/basis_projection_gate.json"),
+        default=str(Path(".artifacts/benchmarks/basis_projection_gate.json")),
     )
     args = parser.parse_args()
     if args.device == "cuda" and not os.environ.get("SLURM_JOB_ID"):
