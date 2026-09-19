@@ -43,6 +43,34 @@ double max_error(const std::vector<double>& a, const std::vector<double>& b) {
   return error;
 }
 
+vibeqc::core::System spherical_sdf() {
+  vibeqc::core::System system;
+  system.atoms = {{2, {0.2, -0.1, 0.3}}};
+  system.shells = {
+      {0, 0, {{1.4, 1.0}}},
+      {0, 2, {{0.8, 1.0}}},
+      {0, 3, {{0.6, 1.0}}},
+  };
+  system.basis_representation = VIBEQC_BASIS_SPHERICAL;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "CUDA COSX spherical s/d/f normalization failed");
+  return system;
+}
+
+std::vector<double> symmetric_density(std::size_t n) {
+  std::vector<double> density(n * n);
+  for (std::size_t i = 0; i < n; ++i) {
+    for (std::size_t j = 0; j <= i; ++j) {
+      const double value =
+          i == j ? 0.15 + 0.01 * static_cast<double>(i)
+                 : 0.015 / static_cast<double>(1 + i + j);
+      density[i * n + j] = density[j * n + i] = value;
+    }
+  }
+  return density;
+}
+
 }  // namespace
 
 int main() {
@@ -97,6 +125,24 @@ int main() {
     require(max_error(gpu_spin.exchange, cpu_spin.exchange) < 3.0e-12 &&
                 std::abs(gpu_spin.exchange_energy - cpu_spin.exchange_energy) < 3.0e-12,
             "native CUDA COSX single-spin convention differs from the CPU oracle");
+
+    {
+      const auto high = spherical_sdf();
+      const vibeqc::dft::MolecularGrid high_grid(
+          high, vibeqc::dft::GridSpec{1, 3, 3, 6, 3, 1.0e-12});
+      const auto high_density = symmetric_density(vibeqc::molecule::ao_count(high));
+      const auto high_cpu = vibeqc::dft::build_cosx_reference(
+          high, high_grid.points(), high_grid.weights(), high_density,
+          vibeqc::dft::CosxDensityConvention::spin_resolved);
+      vibeqc::dft::CudaCosxStagingPlan high_plan(
+          high, high_grid.points(), high_grid.weights(), 5, device);
+      const auto high_gpu =
+          high_plan.build(high_density, vibeqc::dft::CosxDensityConvention::spin_resolved);
+      require(max_error(high_gpu.raw_exchange, high_cpu.raw_exchange) < 2.0e-11 &&
+                  max_error(high_gpu.exchange, high_cpu.exchange) < 2.0e-11 &&
+                  std::abs(high_gpu.exchange_energy - high_cpu.exchange_energy) < 2.0e-11,
+              "native CUDA COSX spherical d/f expansion differs from the CPU oracle");
+    }
 
     bool bad_density = false;
     try {
