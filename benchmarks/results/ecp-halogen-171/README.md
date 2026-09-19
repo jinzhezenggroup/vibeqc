@@ -2,7 +2,9 @@
 
 This slice extends the existing real LANL2DZ fixture suite to Br and I, using
 the unmodified orbital/ECP records from the pinned PySCF 2.14.0 test library
-and STO-3G hydrogen. It starts from master `97adc1a`, independently of PR #458.
+and STO-3G hydrogen. The initial measurements below use master `97adc1a`,
+independently of the then-open PR #458. They are historical evidence; results
+for the rebased implementation are recorded separately under `refresh/`.
 Production native/runtime/compiler code is unchanged. There is no native LOC
 or generated-science retirement, new method registration, or performance claim.
 
@@ -45,7 +47,7 @@ planned resource bounds and owned-device ledgers. Ledger peaks exclude driver,
 library-internal, graph and pool allocations. Single-call times are context
 for reproduction and do not establish performance leadership.
 
-## Measured acceptance
+## Initial measured acceptance (2026-09-18)
 
 Both fresh Release builds completed. CPU and CUDA each pass 20 tests (20
 other-backend cases deselected), retaining the original Rb/Cs cases. Native
@@ -76,7 +78,7 @@ Every budgeted endpoint records zero rejected allocations. The complete
 reports preserve each state's charge, multiplicity, parameter checksum,
 reference/result energy and forces, refinement/backend differences and ledger.
 
-## Provenance and retained evidence
+## Initial provenance and retained evidence
 
 `source-identity.json` binds base commit, 613 verified native/compiler/build
 inputs, the two measured test/driver files, fresh library hashes and matching

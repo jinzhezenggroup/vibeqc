@@ -37,8 +37,8 @@ reference results only; normal execution consumes owned records.
 
 See [the qualification bundle](../../../../benchmarks/results/ecp-halogen-171/README.md)
 for exact fixtures, library/source identities, independent numerical gates,
-allocation observations and retained logs. This branch starts from master
-`97adc1a` and does not depend on the radial batching PR #458. Timings describe
+allocation observations and retained logs. The original qualification started from master
+`97adc1a`, independently of the then-open radial batching PR #458. Timings describe
 single calls for reproducibility, not a speedup claim.
 
 Other halogen molecules, orbital/potential families, spin-orbit interactions,
@@ -55,3 +55,13 @@ both backends. Budgeted endpoints reject no allocations and remain below
 their planned bounds. All 613 build inputs and both changed source files
 match their retained identity. No scientific source or tolerance changes
 were needed, and no speedup or broader chemical accuracy claim is made.
+
+## Requalification after integration (2026-09-19)
+
+The branch was rebased onto `45af86a`, retaining the merged
+Au fixture semantics and radial batching. The combined suite passes 26 CPU and
+26 CUDA cases; native ECP CTest passes 2/2 and 3/3, and all ten complete CUDA
+RHF/UHF cases pass Compute Sanitizer with zero errors. Every recorded source
+input matches the measured Git export. See the
+[refresh evidence](../../../../benchmarks/results/ecp-halogen-171/refresh/README.md)
+for exact source identities, numerical/resource gates and reproduction.
