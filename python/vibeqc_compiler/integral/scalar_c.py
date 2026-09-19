@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from fractions import Fraction
 
 from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
@@ -120,6 +121,8 @@ class ScalarCEmitter:
                 return
             node = self.graph.nodes[identifier]
             if node.operation == "constant":
+                if not isinstance(node.payload, (Fraction, float)):
+                    raise TypeError("constant node requires a numeric coefficient")
                 self.names[identifier] = format_constant(node.payload)
                 return
             if node.operation == "variable":
