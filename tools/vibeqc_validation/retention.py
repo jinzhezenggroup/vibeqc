@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 from collections import defaultdict
@@ -108,7 +109,13 @@ def tracked_blobs(root: Path, revision: str | None = None) -> dict[str, bytes]:
         if revision
         else ["git", "ls-files", "--stage", "-z"]
     )
-    rows = subprocess.check_output(command, cwd=root).split(b"\0")
+    environment = {
+        **os.environ,
+        "GIT_NO_LAZY_FETCH": "1",
+        "GIT_ALLOW_PROTOCOL": "",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    rows = subprocess.check_output(command, cwd=root, env=environment).split(b"\0")
     entries = []
     for row in filter(None, rows):
         metadata, path = row.split(b"\t", 1)
@@ -121,6 +128,7 @@ def tracked_blobs(root: Path, revision: str | None = None) -> dict[str, bytes]:
         subprocess.check_output(
             ["git", "cat-file", "--batch"],
             cwd=root,
+            env=environment,
             input=b"\n".join(oid for _, oid in entries) + b"\n",
         )
         if entries
@@ -170,10 +178,35 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
     limit = policy["review_size_bytes"]
     if type(limit) is not int or limit <= 0:
         raise ValueError("review_size_bytes must be positive")
+    if "change_review_max_bytes" in policy:
+        change_limit = policy["change_review_max_bytes"]
+        if type(change_limit) is not int or change_limit <= 0:
+            raise ValueError("change_review_max_bytes must be a positive integer")
     exceptions = policy["exceptions"]
     errors = []
+    # A per-file cap alone admits an unlimited number of sub-limit run dumps.
+    # Keep the aggregate budget explicit and reviewed, without counting tests'
+    # permanent reference fixtures or waiving any individual-file checks.
+    budget = policy.get("benchmark_results_max_bytes")
+    if budget is not None:
+        if type(budget) is not int or budget <= 0:
+            raise ValueError("benchmark_results_max_bytes must be positive")
+        used = sum(
+            len(data) for path, data in blobs.items() if path.startswith(RESULT_ROOT)
+        )
+        if used > budget:
+            errors.append(
+                f"{RESULT_ROOT}: {used} bytes exceeds {budget}-byte aggregate budget; "
+                "retain compact records and recover historical payloads from "
+                "existing Git history; do not publish archives implicitly"
+            )
     for path, exception in exceptions.items():
         safe_relative(path)
+        if (
+            "review_change" in exception
+            and type(exception["review_change"]) is not bool
+        ):
+            errors.append(f"{path}: review_change must be a boolean")
         if (
             not isinstance(exception.get("reason"), str)
             or not exception["reason"].strip()

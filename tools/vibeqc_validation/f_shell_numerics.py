@@ -15,7 +15,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from itertools import product
-from math import exp, pi, prod, sqrt
+from math import exp, prod, sqrt
 from pathlib import Path
 
 import numpy as np
@@ -148,17 +148,12 @@ def contract_reference(eri, derivatives, density, spin_density, offsets, atom_in
 
 
 def _normalized_primitives(shell):
-    """Factor unit-Cartesian normalization into radial and angular parts."""
-    l, primitives = shell["angular_momentum"], shell["primitives"]
-    norm2 = sum(
-        ca * cb * (2 * sqrt(a * b) / (a + b)) ** (l + 1.5)
-        for a, ca in primitives
-        for b, cb in primitives
+    """Use the shared native radial convention; the oracle remains independent."""
+    from vibeqc_compiler.integral.weight_pullback import normalized_radial_primitives
+
+    return list(
+        normalized_radial_primitives(shell["angular_momentum"], shell["primitives"])
     )
-    return [
-        (a, c * (2 * a / pi) ** 0.75 * (4 * a) ** (0.5 * l) / sqrt(norm2))
-        for a, c in primitives
-    ]
 
 
 def _pair_rows(first, second, A, B, *, reverse=False):

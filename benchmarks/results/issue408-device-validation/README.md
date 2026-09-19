@@ -1,5 +1,12 @@
 # Device final-state validation and W (#408)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 CUDA DF uses device algebra under the existing shared final-state selector.
 Physical J/K, retained C/epsilon and the actual returned D retain their existing
 identity checks. FP64 residuals, metric orthogonality, density reconstruction,

@@ -1,5 +1,12 @@
 # Derivative work diagnostics (#395)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 The opt-in ledger records actual Boys-series work and generated polynomial,
 weight-folding and gradient-scatter operations by angular class and primitive
 signature. The normal path keeps diagnostics disabled. No numerical algorithm,
@@ -34,7 +41,7 @@ exactly in the paired observations; the maximum force difference is
 ## Exact work and measured class activities
 
 [384 AO](work/384.md) and [768 AO](work/768.md) provide readable class tables.
-Their [384 JSON](work/384.json) and [768 JSON](work/768.json) also retain all
+Their [384 JSON](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue395-df-work/work/384.json) and [768 JSON](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue395-df-work/work/768.json) also retain all
 primitive signatures, Boys branches/order, active components, schedules,
 resource limits and the independent host-reconstruction checksum. The six
 existing executed-domain counters agree across baseline, candidate, enabled

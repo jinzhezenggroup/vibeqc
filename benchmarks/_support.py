@@ -299,10 +299,29 @@ def benchmark_gate_failures(
     return failures
 
 
+def raw_output_path(path: str | Path) -> Path:
+    """Keep execution output out of this checkout's reviewed evidence tree.
+
+    Accept explicit scratch paths, but reject symlink aliases into the retained
+    tree as well as direct paths. Publication is a separate, deliberate step.
+    This function is also an argparse type, so runners fail before calculation.
+    """
+    destination = Path(path)
+    retained = _REPOSITORY_ROOT / "benchmarks" / "results"
+    if destination.absolute().is_relative_to(retained.absolute()) or (
+        destination.resolve().is_relative_to(retained.resolve())
+    ):
+        raise ValueError(
+            "raw benchmark output cannot target benchmarks/results/; use "
+            ".artifacts/benchmarks/ and tools/evidence.py publish for reviewed evidence"
+        )
+    return destination
+
+
 def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
     """Write a stable, human-readable JSON benchmark artifact."""
 
-    destination = Path(path)
+    destination = raw_output_path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",

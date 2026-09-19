@@ -51,6 +51,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   amplitudes, CPU interpretation, conservative rewrites, and replay.
 - [TensorIR CUDA execution](tensor_cuda.md): prepared FP64 contractions, memory
   budgets, shape buckets, bounded tuning, and complete tensor endpoint evidence.
+- [StationaryProblem composition](stationary_problem.md): explicit residuals,
+  constraints, provider dependencies and generated first-order source plans.
 - [Validation gates](validation.md): pinned conventions and references,
   independent oracles, tiered execution, and shared evidence registration.
 - [F-shell validation](f_shell_validation.md): all-34 source/numerical gates,
@@ -64,6 +66,7 @@ compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
 - [Conventional CPU RCCSD equations and solver](rccsd_bc.md)
+- [Generated RCCSD Lambda equation actions](rccsd_lambda.md)
 - [Localized occupied and pair-natural-orbital spaces](local_spaces.md)
 - [Safe SCF proposals, local traces and replay](scf_proposals.md)
 - [Shared orbital response and bounded Krylov solves](response.md)

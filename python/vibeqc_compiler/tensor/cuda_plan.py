@@ -1,4 +1,4 @@
-"""Deterministic FP64 tensor storage and contraction plans, without CUDA calls.
+"""Deterministic typed tensor storage and contraction plans, without CUDA calls.
 
 The byte budget is a combined numeric-buffer budget: device allocations plus
 prepared host input staging and one detached host output set. Caller-owned
@@ -12,18 +12,21 @@ the plan's numeric-buffer peak.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
-from .cuda_gemm import fp64_coefficient, gemm_contract
-from .ir import Node
+from .cuda_dtype import program_precision, scalar_type
+from .cuda_gemm import gemm_contract
+from .cuda_layout import LayoutDecision, select_layouts
+from .ir import TRANSCENDENTALS, Node
+from .layout import DenseLayout
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 1
+PLAN_SCHEMA = 2
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -31,7 +34,9 @@ VALIDATION_CHUNK = 4096
 # Two NumPy iterator buffers, two reusable FP64 scratch buffers and one mask.
 VALIDATION_BYTES = VALIDATION_CHUNK * (4 * 8 + 1)
 VIEWS = frozenset(("transpose", "reshape", "slice", "broadcast"))
-ELEMENTWISE = frozenset(("add", "multiply", "divide"))
+ELEMENTWISE = (
+    frozenset(("add", "multiply", "divide", "scaled_bilinear")) | TRANSCENDENTALS
+)
 
 
 def strides(shape) -> tuple[int, ...]:
@@ -47,7 +52,7 @@ def aligned(size: int) -> int:
 
 @dataclass(frozen=True)
 class TensorSchedule:
-    """Small explicit search space; ordinary single-stream execution only.
+    """Small explicit search space over one stable stream, optionally replayed.
 
     Recompute duplicates shared intermediates between output roots. It does
     not duplicate work within a root or promise arbitrary out-of-core output
@@ -62,6 +67,7 @@ class TensorSchedule:
     fuse: bool = False
     recompute: bool = False
     direct_gemm: bool = True
+    layouts: bool = False
 
     def __post_init__(self):
         for name in ("tile_m", "tile_n", "tile_k", "threads"):
@@ -69,7 +75,7 @@ class TensorSchedule:
             checked_size(value, name)
             if not 1 <= value <= INT_MAX:
                 raise ValueError(f"{name} must be a positive cuBLAS-compatible integer")
-        for name in ("views", "fuse", "recompute", "direct_gemm"):
+        for name in ("views", "fuse", "recompute", "direct_gemm", "layouts"):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
 
@@ -109,6 +115,7 @@ class Step:
     offset: int
     last_use: int
     gemm: str  # none, packed, direct-NN, direct-NT, direct-TN, direct-TT
+    layout: DenseLayout | None
 
 
 @dataclass(frozen=True)
@@ -131,6 +138,11 @@ class TensorPlan:
     host_bytes: int
     estimated_flops: int
     estimated_traffic_bytes: int
+    layout_decision: LayoutDecision
+
+    @property
+    def precision(self) -> str:
+        return program_precision(self.program)
 
     @property
     def allocation_bytes(self) -> int:
@@ -155,12 +167,35 @@ class TensorPlan:
     def identity(self) -> str:
         return _hash(self.to_payload())
 
+    @property
+    def layout_identity(self) -> str:
+        """Physical-layout fact usable by #459 guards, without changing the IR."""
+        return _hash(
+            {
+                "steps": [
+                    {
+                        "shape": s.node.spec.shape,
+                        "inputs": s.inputs,
+                        "layout": None if s.virtual else s.layout.to_payload(),
+                        "view_map": s.node.attrs if s.virtual else None,
+                    }
+                    for s in self.steps
+                ],
+                "outputs": self.outputs,
+            }
+        )
+
     def to_payload(self) -> dict:
         """Include layouts, aliases, lifetimes, shapes, schedule and reservations."""
         names = self.program.debug_names
         return {
             "schema": PLAN_SCHEMA,
+            "layout_planning": self.layout_decision.to_payload(),
+            "layout_identity": self.layout_identity,
             "equation": self.program.logical_hash,
+            "precision": self.precision,
+            "arithmetic": "per-node dtype; RN; fp32 SGEMM pedantic; no implicit casts",
+            "fp32_flush_to_zero": False,
             "target": self.target.to_payload(),
             "schedule": asdict(self.schedule),
             "reservations": asdict(self.reservations),
@@ -189,7 +224,10 @@ class TensorPlan:
                     "last_use": s.last_use,
                     "gemm": s.gemm,
                     "shape": s.node.spec.shape,
-                    "strides": None if s.virtual else strides(s.node.spec.shape),
+                    "dtype": s.node.spec.dtype,
+                    "itemsize": s.node.spec.itemsize,
+                    "strides": None if s.virtual else s.layout.element_strides,
+                    "layout": None if s.virtual else s.layout.to_payload(),
                     "view_map": s.node.attrs if s.virtual else None,
                 }
                 for s in self.steps
@@ -231,40 +269,6 @@ def _occurrences(program, recompute):
     return nodes, tuple(inputs), tuple(outputs)
 
 
-def _direct_kind(node, virtual_operands):
-    """Recognize contiguous grouped matrices with explicit cuBLAS transposes.
-
-    Extent-one labels do not constrain strides. Other layouts use the packed
-    path, including affine views until their full physical map is supported.
-    """
-    g = gemm_contract(node)
-    if g is None or virtual_operands or min(g.batch, g.m, g.n, g.k) == 0:
-        return None
-    if max(g.batch, g.m, g.n, g.k) > INT_MAX:
-        return None
-
-    def norm(labels):
-        return tuple(i for i in labels if g.extents[i] != 1)
-
-    if norm(g.output_labels) != norm(g.c_order):
-        return None
-    a = (
-        "N"
-        if norm(g.a_labels) == norm(g.a_order)
-        else "T"
-        if norm(g.a_labels) == norm(g.batch_labels + g.k_labels + g.m_labels)
-        else None
-    )
-    b = (
-        "N"
-        if norm(g.b_labels) == norm(g.b_order)
-        else "T"
-        if norm(g.b_labels) == norm(g.batch_labels + g.n_labels + g.k_labels)
-        else None
-    )
-    return None if a is None or b is None else "direct-" + a + b
-
-
 BASELINE_SCHEDULE = TensorSchedule()
 NO_RESERVATIONS = Reservations()
 
@@ -299,10 +303,17 @@ def plan_cuda(
         target.target_info
     )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
+    if schedule.layouts and any(n.spec.dtype != "float64" for n, _ in nodes):
+        raise ValueError("producer layout optimization is qualified only for float64")
+    if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
+        raise ValueError("too many steps for transcendental domain diagnostics")
     for node, _ in nodes:
-        if node.spec.dtype != "float64":
-            raise ValueError("CUDA tensor baseline supports only float64")
-        checked_size(node.spec.size * 8, "tensor bytes")
+        if node.op in TRANSCENDENTALS and node.spec.dtype != "float64":
+            raise ValueError(
+                "CUDA transcendental primitives are qualified only for float64"
+            )
+        scalar = scalar_type(node.spec.dtype)
+        checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
             checked_size(stride, "tensor stride")
         if node.op == "reduce":
@@ -323,9 +334,11 @@ def plan_cuda(
                 "einsum reduction domain",
             )
         for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
-            fp64_coefficient(pair)
+            scalar.coefficient(pair)
         if "coefficient" in node.attrs:
-            fp64_coefficient(node.attrs["coefficient"])
+            scalar.coefficient(node.attrs["coefficient"])
+        if "exponent" in node.attrs:
+            scalar.coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }
@@ -387,7 +400,7 @@ def plan_cuda(
         if virtual[i]:
             offsets[i] = -1
         else:
-            size = aligned(node.spec.size * 8)
+            size = aligned(node.spec.size * node.spec.itemsize)
             fitting = [
                 (length, start, j)
                 for j, (start, length) in enumerate(free)
@@ -404,22 +417,13 @@ def plan_cuda(
             offsets[i] = start
             if size:
                 active[i] = (start, size)
-            traffic += node.spec.size * 8 + sum(
-                nodes[c][0].spec.size * 8 for c in reads[i]
+            traffic += node.spec.size * node.spec.itemsize + sum(
+                nodes[c][0].spec.size * nodes[c][0].spec.itemsize for c in reads[i]
             )
         g = gemm_contract(node)
-        kind = (
-            "none"
-            if g is None
-            else (
-                _direct_kind(node, any(virtual[c] for c in operands))
-                if schedule.direct_gemm
-                else None
-            )
-            or "packed"
-        )
-        if virtual[i]:
-            kind = "none"
+        # Library admission depends on GEMM eligibility, not physical order.
+        # The bounded layout pass assigns the final packed/direct kind below.
+        kind = "packed" if g is not None and not virtual[i] else "none"
         if g:
             flops += g.flops
         elif node.op == "einsum":
@@ -429,10 +433,22 @@ def plan_cuda(
             flops += len(node.inputs) * prod(domains.values())
         elif node.op not in VIEWS and node.op not in ("input", "constant", "gather"):
             flops += sum(child.spec.size for child in node.inputs)
-        steps.append(Step(node, operands, virtual[i], offsets[i], last[i], kind))
+        steps.append(
+            Step(
+                node,
+                operands,
+                virtual[i],
+                offsets[i],
+                last[i],
+                kind,
+                None
+                if virtual[i]
+                else DenseLayout(node.spec.shape, alignment=ALIGNMENT),
+            )
+        )
     host = checked_size(
-        sum(nodes[i][0].spec.size * 8 for i in inputs)
-        + sum(nodes[i][0].spec.size * 8 for _, i in outputs)
+        sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs)
+        + sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs)
         + (VALIDATION_BYTES if inputs else 0),
         "host tensor bytes",
     )
@@ -454,6 +470,15 @@ def plan_cuda(
     )
     tile = [schedule.tile_m, schedule.tile_n, schedule.tile_k]
     while True:
+        selected = replace(
+            schedule, **dict(zip(("tile_m", "tile_n", "tile_k"), tile, strict=True))
+        )
+        layouts, kinds, layout_decision = select_layouts(
+            nodes, virtual, pinned, selected, alignment=ALIGNMENT
+        )
+        steps = [
+            replace(s, layout=layouts[i], gemm=kinds[i]) for i, s in enumerate(steps)
+        ]
         panel = aligned(
             max(
                 (
@@ -473,12 +498,6 @@ def plan_cuda(
             )
         axis = max(range(3), key=lambda k: tile[k])
         tile[axis] = max(1, tile[axis] // 2)
-    selected = TensorSchedule(
-        **{
-            **asdict(schedule),
-            **dict(zip(("tile_m", "tile_n", "tile_k"), tile, strict=True)),
-        }
-    )
     return TensorPlan(
         program,
         target,
@@ -496,4 +515,5 @@ def plan_cuda(
         host,
         flops,
         traffic,
+        layout_decision,
     )

@@ -175,9 +175,9 @@ def test_direct_gemm_flags(equation, expected):
     assert plan.panel_bytes == 0
 
 
-def test_invalid_types_overflow_and_float32_fail_before_allocation():
-    with pytest.raises(ValueError, match="float64"):
-        plan_cuda(Program({"x": vector(dtype="float32")}), TARGET)
+def test_invalid_types_overflow_and_float32_admission():
+    fp32 = plan_cuda(Program({"x": vector(dtype="float32")}), TARGET)
+    assert fp32.precision == "fp32"
     for value in (True, -1, 2**63):
         with pytest.raises(ValueError):
             Reservations(t=value)

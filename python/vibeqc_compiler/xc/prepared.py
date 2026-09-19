@@ -26,13 +26,14 @@ from vibeqc_compiler.common.resources import (
 )
 from vibeqc_compiler.dft import DensitySource, ExplicitGrid, MolecularGrid, NativeAO
 from vibeqc_compiler.dft.cuda import CudaGrid
-from vibeqc_compiler.dft.features import spin_densities
+from vibeqc_compiler.dft.features import density_feature_block, spin_densities
 from vibeqc_compiler.dft.grid import checked_int
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 
 from .contractions import GeometryPartials
 from .integration import _tiles
 from .native import NativeContractionProgram
+from .program_ir import fixed_density_tile_program
 from .spec import UnsupportedXC, functional
 
 
@@ -142,6 +143,8 @@ class PreparedXCContractions:
                 # consumes an explicit sigma feature in its collocation tiles.
                 if not _native_device_xc(program, spatial, density_grid):
                     required.add("sigma")
+            if program.contract.ingredients.family == "mgga":
+                required.add("tau")
             if (
                 density_grid.basis_identity != basis.identity
                 or density_grid.plan.nao != basis.nao
@@ -261,7 +264,49 @@ class PreparedXCContractions:
         self.resource_plan = plan_resources(
             (*requests, request), self.budget
         ).require_feasible()
+        # Phase A ProgramIR describes only the synchronous dense CPU E/V
+        # boundary. Its estimates are NOT added to the conservative total
+        # resource plan above: those allocations are already accounted for.
+        self._packed_feature_layout = (
+            spatial is None
+            and density_grid is None
+            and program.contract.request.observable == "potential"
+            and program.spec.spin == "polarized"
+        )
+        self._tile_program = (
+            fixed_density_tile_program(
+                program.contract,
+                nao=basis.nao,
+                tile_points=tile_points,
+                basis_bytes=basis.numeric_bytes,
+                grid_bytes=grid_bytes,
+                basis_identity=basis.identity,
+                native_identity=canonical_hash(program.metadata),
+                packed_features=self._packed_feature_layout,
+            )
+            if spatial is None
+            and density_grid is None
+            and program.contract.request.observable == "potential"
+            else None
+        )
+        self._tile_program_identity = (
+            None if self.tile_program is None else self.tile_program.identity
+        )
+        terminal = "vxc" if self._packed_feature_layout else "xc"
+        self._tile_releases = (
+            ()
+            if self.tile_program is None
+            else self.tile_program.release_after(terminal)
+        )
+        # This CPU template implements only these checked synchronous releases.
+        # Async/aliasing providers still require a different explicit contract.
+        self._release_tile_boundaries = bool(self._tile_releases)
         self.statistics = {}
+
+    @property
+    def tile_program(self):
+        """Immutable boundary-only ProgramIR, or None for unqualified routes."""
+        return self._tile_program
 
     def _density_contract(self):
         """Borrow only fixed CUDA topology/code; each call uploads its current D/B."""
@@ -353,6 +398,9 @@ class PreparedXCContractions:
                     jets,
                     None,
                 )
+                # A suspended generator is an owner too. The consumer has
+                # finished this tile before requesting the next allocation.
+                del jets
         elif self.program.contract.request.observable != "potential":
             # Response/geometry need their own generated contractions. Borrow
             # validated immutable maps without computing an unused feature
@@ -371,6 +419,8 @@ class PreparedXCContractions:
             requested = (
                 ("rho",)
                 if self.program.contract.ingredients.family == "lda"
+                else ("rho", "gradient", "sigma", "tau")
+                if self.program.contract.ingredients.family == "mgga"
                 else ("rho", "gradient", "sigma")
             )
             for tile in self.spatial.iter_features(
@@ -534,11 +584,31 @@ class PreparedXCContractions:
                         natom=self.basis.natom,
                     )
                 contraction_started = perf_counter()
-                values = (
-                    self.program.potential_tile(jets, features, quadrature)
-                    if observable == "potential" and features is not None
-                    else self.program.evaluate(jets, local, quadrature, **options)
-                )
+                packed = rows = packed_features = None
+                if (
+                    self._packed_feature_layout
+                    and observable == "potential"
+                    and features is None
+                ):
+                    requested = (
+                        ("rho",)
+                        if self.program.contract.ingredients.family == "lda"
+                        else ("rho", "gradient", "sigma", "tau")
+                        if self.program.contract.ingredients.family == "mgga"
+                        else ("rho", "gradient", "sigma")
+                    )
+                    packed = density_feature_block(jets, local, ingredients=requested)
+                    packed_features = packed.features()
+                    rows = self.program.scalar_values_packed(packed.scalar)
+                    values = self.program.potential_from_rows(
+                        jets, packed_features, quadrature, rows
+                    )
+                else:
+                    values = (
+                        self.program.potential_tile(jets, features, quadrature)
+                        if observable == "potential" and features is not None
+                        else self.program.evaluate(jets, local, quadrature, **options)
+                    )
                 evaluated_tiles += 1
                 result["energy"] += values["energy"]
                 result["electrons"] += values["electrons"]
@@ -556,6 +626,12 @@ class PreparedXCContractions:
                     weights[ids] = partials.weights
                 cpu_contraction_seconds += perf_counter() - contraction_started
                 tiles += 1
+                if self._release_tile_boundaries:
+                    # ProgramIR's final use is complete. No callback or
+                    # asynchronous lease retains these dense CPU boundaries.
+                    if packed is not None:
+                        del packed_features, rows, packed
+                    del jets, features, values
             self._check()
             if not np.isfinite(result["energy"]):
                 raise ArithmeticError("nonfinite accumulated XC energy")
@@ -584,6 +660,14 @@ class PreparedXCContractions:
                 "planned_host_peak_bytes": self.resource_plan.peak_bytes["host"],
                 "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
             }
+            if self.tile_program is not None:
+                self.statistics["tile_program_identity"] = self._tile_program_identity
+                self.statistics["tile_boundary_releases"] = self._tile_releases
+                self.statistics["tile_layouts"] = {
+                    buffer.name: buffer.layout.to_payload()
+                    for buffer in self.tile_program.buffers
+                    if buffer.layout is not None
+                }
             # Count logical matrix products in the actual nonempty tile
             # schedule, including feature reductions and geometric D*AO jets.
             # These are separate from generated point-function calls; BLAS

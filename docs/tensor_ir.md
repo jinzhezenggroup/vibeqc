@@ -29,7 +29,9 @@ the CUDA document records the subsequent execution capabilities.
 ## Types and index conventions
 
 `IndexSpace(name, kind, size, spin=None)` names an explicitly sized population.
-Kinds are `occupied`, `virtual`, `ao`, `auxiliary`, `batch`, and `spin`;
+Kinds are `occupied`, `virtual`, `orbital`, `ao`, `auxiliary`, `batch`, and `spin`;
+`orbital` denotes a complete MO population and remains distinct from AO and
+occupied/virtual populations even when dimensions coincide;
 optional spin labels are `alpha` and `beta`. Distinct populations remain distinct
 even when their extents match. Space names must have one definition throughout
 a program. Nuclear centers and atom identities remain on the integral side.

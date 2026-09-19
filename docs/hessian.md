@@ -1,4 +1,4 @@
-# Analytic HF Hessians (issue #180, slice A)
+# Analytic HF Hessians and HVPs (issue #180)
 
 This document is the second-derivative dependency graph requested by step 1 of
 issue #180: it maps every term of the RHF energy to the Hessian contribution it
@@ -6,6 +6,26 @@ produces, and records which layer supplies that term. It is deliberately
 written before any assembly code exists, so the term list and the sign
 conventions are fixed in one place instead of being reverse-engineered from
 three different providers later.
+
+## Current implementation status
+
+The native tools path now consumes a VibeQC RHF snapshot and generated
+first/second integral derivatives, with native J/K response. In addition to the
+tiny dense analytic reference, `rhf_hvp` composes #178's direct
+`weighted_hvp` consumers with one directional #179 CPHF solve and shell-local
+first-integral relaxation contractions. It returns a complete conventional RHF
+`H @ v` without allocating the molecular Hessian or all-coordinate H1/S1
+tensors. PySCF remains confined to external comparison oracles.
+
+The HVP keeps the existing `NativeRHFState` admission boundary (all-electron
+closed-shell conventional RHF, at most 12 Cartesian AOs/four atoms). Second
+integrals and the final relaxation contraction are currently CPU-generated.
+Directional H1/S1 and direct J/K may independently use their qualified CUDA
+providers, in which case the result is explicitly labelled mixed host/device;
+AO/MO transforms and Krylov remain host-side. There is still no public
+Calculator Hessian/HVP API, production-size memory claim, or all-device HVP
+claim. See
+[the matrix-free RHF HVP decision note](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
 ## Scope of this slice
 
@@ -17,7 +37,8 @@ Explicitly outside this slice, and left fail-closed rather than approximated:
 
 - **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
   #161's derivative kernels;
-- **HVP and bounded full-Hessian execution** (slice B);
+- **bounded full-Hessian execution** (slice B4); the bounded conventional RHF
+  matrix-free HVP (B3) is implemented under the small-system tools boundary;
 - **DF, ECP, range-separated and meta-GGA Hessians** — each needs its own
   complete second-derivative/response chain and is *not* inherited from energy
   or first-force support;
@@ -55,6 +76,14 @@ Krylov solver with multi-RHS strategies, and two independent oracles
 right-hand side**: `docs/response.md` assigns nuclear-perturbation RHS
 construction to the caller. This work reuses that operator and does not add a
 second response solver.
+
+The shared response layer now also has an explicit direct-CUDA J/K adapter,
+`CudaDirectJKBackend`; see [response backend boundaries](response.md#backend-boundary).
+It does not change this document's CPU-only molecular Hessian scope. Its
+AO/MO transforms and Krylov solve remain host-orchestrated, and nuclear
+directional RHS, complete HVP assembly and device-resident execution are
+separate #180 integration gates.
+
 
 **#141 / #144 — first derivatives**, used to build the response RHS:
 
@@ -246,7 +275,13 @@ provider chain. That integration must consume #178 generated second-integral
 blocks and #179's shared response operator/solver. The dense reference stays
 independent so it can test that future implementation. The occupied CPHF block
 is fixed by the metric gauge, and its induced density contributes to the virtual
-response; a correctly constructed reduced occupied/virtual solve is equivalent.
+response. `_first_order_mo1_e1_vir_only` implements the equivalent reduced
+(nvir, nocc) solve: the known occupied metric response is eliminated into the
+right-hand side as `b_v - F_vo b_o`. Independent dense full/reduced regressions
+compare orbital response, occupied-energy response and the assembled Hessian
+for H2, water and the multi-virtual d-shell fixture. These tests establish the
+need to include the occupied metric contribution, not a need to iterate the
+redundant full response space.
 
 `System.derive()` differences fresh-molecule integrals. `hessian_components()`
 returns nuclear, core, overlap/Pulay, two-electron and relaxation contributions.
@@ -274,3 +309,216 @@ and seven virtual orbitals. The tests additionally cover genuine 7-AO water
 STO-3G. No complete-method performance or generated-provider claim is made.
 
 See the [reference-boundary rationale](../.agents/notes/implemented/numerics/2026-09-17-hessian-reference-boundary.md).
+
+## Bounded native CPU analytic RHF integration
+
+`NativeRHFState` and `analytic_hessian` provide a native-input tools integration
+for **at most 12 Cartesian AOs and four atoms**, with a closed-shell, all-electron,
+conventional unscreened RHF reference. The supported integral primitives cover
+s/p/d/f; end-to-end default tests qualify H2 and STO-3G water, while the 12-AO
+custom d-shell case is an explicitly requested slow test. This is not a public
+production-size Hessian, CUDA Hessian, DFT/DF/ECP/UHF Hessian, or molecular HVP
+capability. Those remain separate #180 acceptance items.
+
+### State and derivative ownership
+
+The calculation side requires no PySCF installation and imports no Hessian
+reference oracle. The chain is:
+
+1. `NativeSource` owns the native geometry/basis and integral source.
+   `export_rhf` runs the existing native CPU RHF solver and exports a checked
+   immutable `ReferenceSnapshot`. Its existing small-system bridge canonicalizes
+   the final Fock with NumPy on the CPU and records the measured physical/density
+   residuals; it is not a GPU-resident or generated SCF implementation.
+2. `NativeRHFState` binds that same snapshot to its live source. Geometry, basis,
+   representation, Hamiltonian, electron count, dimension, and source lifetime
+   are checked. Hessian helpers do not rerun SCF or manufacture convergence data.
+3. `first_order.generated_first_order` obtains S/T/V and ERI first derivatives
+   from the existing compiler DAGs. The explicit CPU first-component adapter
+   emits bounded Cartesian component subsets and streams primitive contractions
+   through the native runtime template. It introduces no new integral recurrence.
+4. ERI first derivatives are immediately contracted with the fixed reference
+   density into the frozen-Fock perturbation. Nuclear-attraction operator-center
+   motion and all basis-center motions are accumulated onto physical atoms.
+   No molecular `3N * NAO^4` first-derivative tensor is retained.
+5. `build_rhf_nuclear_rhs` constructs the symmetric-gauge RHS, including the
+   known metric-density Fock term. #179 `RHFResponseOperator` / true-residual
+   GMRES uses `NativeJKBackend`, not the dense AO response oracle.
+6. The explicit second-derivative skeleton uses #178 generated providers.
+   Two-electron energy weights are folded per shell quartet rather than stored
+   as a molecular four-index tensor. Nuclear repulsion is closed-form.
+   Relaxation evaluates every ordered atom/axis pair independently; raw symmetry
+   is checked without copying one triangle onto the other.
+
+The known occupied response is `U_ij = -S_ij/2`; the virtual response is
+`U_ai = x_ia.T - S_ai/2`. Exact elimination of the known occupied block is
+algebraically equivalent to the full redundant reference solve. It is the
+occupied metric contribution, not redundant iteration, that must be retained.
+
+### Usage and resource boundaries
+
+```python
+from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_hessian import NativeRHFState, analytic_hessian
+
+with NativeSource([(1, (0, 0, 0)), (1, (0, 0, 1.4))], basis="sto-3g") as source:
+    state = NativeRHFState.from_source(source, tolerance=1e-12)
+    components = analytic_hessian(state)
+    hessian = components["total"]  # (atom, atom, xyz, xyz), Eh / Bohr**2
+```
+
+The caller owns `source` lifetime and must keep it open while evaluating a
+Hessian. State-bound first-order matrices are cached as immutable arrays;
+a changed geometry requires a new source/state. Compiler artifacts are cached
+under `.artifacts` by default; pass `cache=...` to `from_source` to choose a
+separate writable location. A C++ compiler is required for the generated kernels.
+
+First-component records and component outputs have an explicit numeric budget.
+The complete tools integration still retains all coordinate H1/S1 and response
+vectors, the full molecular Hessian, and the existing tiny native SCF workspace.
+It does not claim #180's global memory-budgeted production assembly or a
+matrix-free molecular HVP. Python orchestration and cold compilation can be
+expensive; no performance advantage is asserted.
+
+An optional supplied `relax` tensor must be finite, real and exactly
+`(natoms, natoms, 3, 3)`. It is a diagnostic component override, not evidence
+that a native electronic-response solve occurred. Unsupported state domains and
+closed/mismatched sources fail before derivative-provider execution.
+
+### Verification
+
+`tests/python/test_hessian_analytic.py` checks the following separately:
+
+- A fresh-process test blocks imports of PySCF and the semi-numerical Hessian
+  reference, and forbids the dense native derivative and dense AO response
+  oracles while running the complete native H2 chain.
+- Generated frozen-Fock/overlap perturbations are compared against an independent
+  native derivative oracle used only on the assertion side.
+- The final Hessian and individual components are compared with optional external
+  PySCF analytic and finite-difference references at the same exact basis records.
+- Three-step directional differences of VibeQC analytic forces independently
+  test the total Hessian; raw symmetry and per-axis translation identities are
+  checked before any presentation operation.
+- Wrong relaxation tensors, out-of-domain sizes, unrelated references, repeated
+  SCF attempts, and closed sources are explicitly tested. The earlier reduced
+  CPHF regression still verifies orbital, occupied-energy and Hessian equivalence.
+
+`tests/python/test_first_derivatives_native.py` separately checks generated
+primitive components, Cartesian normalization and coincident-center scatter,
+metadata/resource rejection, late-chunk failure isolation, and native output
+publication. PySCF-dependent comparisons may skip when the optional oracle is
+not installed; the no-oracle native test must not skip for that reason.
+
+See the [native first-order source decision](../.agents/notes/implemented/numerics/2026-09-19-hessian-native-first-order-sources.md)
+for the superseded PySCF-backed integration design and its replacement.
+
+## Directional nuclear RHS and density response
+
+`directional_rhf_response(state, direction, jk_backend="cpu" | "cuda")`
+implements one nuclear perturbation without retaining every coordinate's
+H1/S1 matrix. The input has shape `(atom, xyz)` and its magnitude is preserved.
+The first-integral adapter contracts each shell's mathematical-center gradient
+with the corresponding physical direction, including repeated atom slots and
+the independent nuclear-attraction center. It accumulates only two `(AO, AO)`
+matrices: the frozen-density Fock derivative and overlap derivative.
+
+The same `solve_rhf_nuclear_perturbation` helper now serves this direction and
+the existing complete-coordinate CPU Hessian assembly. It includes the known
+metric-density Fock response, solves the nonredundant CPHF problem once, and
+retains the occupied metric response and full occupied-energy response block.
+The returned response includes occupied coefficient derivatives, the complete
+AO density derivative and the energy-weighted-density derivative. In
+particular, the occupied-energy response cannot be replaced with only its
+diagonal or omitted from the latter.
+
+```python
+from tools.vibeqc_hessian import NativeRHFState, directional_rhf_response
+from tools.vibeqc_posthf.sources import NativeSource
+
+with NativeSource([(1, (0, 0, 0)), (1, (0.1, 0.2, 1.4))]) as source:
+    state = NativeRHFState.from_source(source)
+    result = directional_rhf_response(
+        state, [[0, 0, 0], [0.1, 0.2, 0.3]], jk_backend="cuda"
+    )
+    dP = result.response.density_derivative
+    dW = result.response.energy_weighted_density_derivative
+```
+
+This remains a **small-system tools integration** under `NativeRHFState`'s
+12-Cartesian-AO/four-atom, all-electron conventional RHF boundary. It does not
+remove that size limit, expose a Calculator derivative API or produce `Hv`.
+First-integral execution defaults to the existing generated CPU path.
+`first_backend="cuda"` plus an explicit `first_compiler` instead runs generated
+S/T/V/four-center derivatives, direction contraction, density weighting and
+AO-matrix accumulation on CUDA. Direction and density are uploaded once to a
+shared accumulator; only the final H1(v)/S1(v) matrices are downloaded.
+`jk_backend="cuda"` independently sends all metric/CPHF/final-response J/K
+actions to the exact unscreened CUDA provider, without a CPU or DF fallback.
+AO/MO transformations and Krylov work still remain host-side, so selecting both
+CUDA providers is not a complete GPU-resident response/HVP claim. No performance
+promotion or global peak-memory bound follows from those selections. The
+[directional CUDA provider](first_directional_derivatives.md) documents its
+compiler, ownership, memory and numerical boundaries.
+Diagnostics report actual residency, reference/operator identity, the single
+RHS/solve, input-matrix storage, solver controls and residuals. The CUDA plan's
+retained-allocation budget and the solver workspace budget remain separate.
+
+Direction arrays and published numeric results are detached and immutable.
+Invalid directions, wrong state/operator identity, closed sources, failed
+provider work and nonconverged or workspace-limited solves do not publish a
+partial result. No reference-engine derivative or fresh SCF solve occurs inside
+the directional consumer; displaced SCF solves are used only in its independent
+finite-difference tests.
+
+`tests/python/test_hessian_directional.py` checks generated inputs against the
+independent native integral derivative oracle, three-step finite differences
+of frozen Fock/overlap and reconverged density/energy-weighted density, occupied
+metric identities, translation/linearity, omitted-metric negatives and failed
+call recovery. Device qualification additionally runs
+`tests/python/test_hessian_directional_cuda.py` with
+`VIBEQC_RESPONSE_CUDA_TEST=1` inside a finite Slurm allocation. It forbids CPU
+J/K and all-coordinate/dense-input fallbacks and checks the CUDA-assisted
+response against independently reconverged density differences.
+
+The complete B3 conventional-RHF HVP now consumes exactly these directional
+density/energy-weighted-density responses. `rhf_hvp` uses #178
+`weighted_hvp` programs for the core, overlap/Pulay and two-electron skeleton,
+adds the direct nucleus-nucleus HVP, and contracts generated first derivatives
+against `D1(v)` / `W1(v)` for electronic relaxation. The result is raw
+`H @ v`; no post-hoc symmetry projection is applied. The independent
+bilinear identity, dense #449 `H @ v`, and three-step reconverged-gradient
+checks are in `tests/python/test_hessian_hvp.py`.
+
+This closes B3 only within the declared small-system conventional-RHF tools
+domain. B2 device-resident AO/MO/Krylov execution, B4 bounded block/full
+Hessians, production-size qualification and DFT Hessians remain separate.
+See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md)
+and the [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
+
+
+For explicit CUDA first-source qualification, add these arguments to the
+`directional_rhf_response` example above:
+
+```python
+from pathlib import Path
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+# Select the actual installed toolkit and target; compilation does not probe GPUs.
+compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), cuda_target_info("sm_120"))
+# Within the live source/state scope:
+result = directional_rhf_response(
+    state, [[0, 0, 0], [0.1, 0.2, 0.3]],
+    first_backend="cuda", first_compiler=compiler, jk_backend="cuda",
+)
+```
+
+`tests/python/test_hessian_first_cuda.py` checks the generated device sources
+against independent native first-integral derivatives and three-step displaced
+native Fock/overlap/density/energy-weighted-density differences. It forbids the
+CPU first-derivative interpreter, dense derivative inputs and CPU J/K on the
+CUDA execution side. `tests/python/test_first_directional_cuda.py` independently
+checks a selected f-shell contraction, repeated centers, signed weights, runtime
+compatibility, invalid/partial records, nonfinite arithmetic and failed-call
+recovery. Run these opt-in tests under a finite GPU allocation with
+`VIBEQC_RESPONSE_CUDA_TEST=1` and the selected `nvcc` on `PATH`.

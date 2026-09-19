@@ -60,6 +60,16 @@ cublasStatus_t cublasDdot_v2(cublasHandle_t handle, int n, const double* x, int 
 cublasStatus_t cublasDgemv_v2(cublasHandle_t handle, cublasOperation_t trans, int m, int n,
                               const double* alpha, const double* a, int lda, const double* x,
                               int incx, const double* beta, double* y, int incy);
+cublasStatus_t cublasSgemm_v2(cublasHandle_t handle, cublasOperation_t transa,
+                              cublasOperation_t transb, int m, int n, int k, const float* alpha,
+                              const float* a, int lda, const float* b, int ldb, const float* beta,
+                              float* c, int ldc);
+cublasStatus_t cublasSgemmStridedBatched(cublasHandle_t handle, cublasOperation_t transa,
+                                         cublasOperation_t transb, int m, int n, int k,
+                                         const float* alpha, const float* a, int lda,
+                                         long long int stride_a, const float* b, int ldb,
+                                         long long int stride_b, const float* beta, float* c,
+                                         int ldc, long long int stride_c, int batch_count);
 cublasStatus_t cublasDgemm_v2(cublasHandle_t handle, cublasOperation_t transa,
                               cublasOperation_t transb, int m, int n, int k, const double* alpha,
                               const double* a, int lda, const double* b, int ldb,
@@ -88,6 +98,7 @@ cublasStatus_t cublasDgeam(cublasHandle_t handle, cublasOperation_t transa,
 #define cublasDdot cublasDdot_v2
 #define cublasDgemv cublasDgemv_v2
 #define cublasDgemm cublasDgemm_v2
+#define cublasSgemm cublasSgemm_v2
 #define cublasDsyrk cublasDsyrk_v2
 
 typedef struct cusolverDnContext* cusolverDnHandle_t;

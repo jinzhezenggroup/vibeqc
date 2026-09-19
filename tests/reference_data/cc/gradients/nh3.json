@@ -1,0 +1,242 @@
+{
+  "ccsd": {
+    "conv_tol": 1e-13,
+    "conv_tol_normt": 1e-11,
+    "frozen": 0,
+    "max_cycle": 150
+  },
+  "content_hash": "c4e0f78c97411631b1ee16fcd16f89a83e636712ffc667ca66882432e437dedf",
+  "correlation_energy": -0.06292927342623128,
+  "cphf": {
+    "max_cycle": 100,
+    "tol": 1e-13
+  },
+  "default_cphf_gradient_difference": 0.0,
+  "gradient": [
+    [
+      0.05511516598348355,
+      -0.061484322673089675,
+      -0.09868588560137015
+    ],
+    [
+      -0.10932580861235675,
+      0.016800287968124494,
+      0.05219378979473244
+    ],
+    [
+      0.02687783778343744,
+      -0.006335626228860969,
+      0.0010598297770710863
+    ],
+    [
+      0.02733280484543643,
+      0.05101966093382648,
+      0.04543226602955974
+    ]
+  ],
+  "gradient_source_sha256": "e97c0b661919022b2343cf3981a2e1250fbb351c350e8cac6b5f6f3f9ab8fc08",
+  "hf_energy": -55.440280209544824,
+  "inputs": {
+    "atomic_numbers": [
+      7,
+      1,
+      1,
+      1
+    ],
+    "auxiliary_centers": [],
+    "basis_name": "sto-3g",
+    "basis_representation": "cartesian",
+    "cc_settings": {
+      "conv_tol": 1e-13,
+      "conv_tol_normt": 1e-11,
+      "frozen_core": 0,
+      "max_cycle": 150,
+      "method": "CCSD"
+    },
+    "charge": 0,
+    "conventions": {
+      "auxiliary_centers": "explicit independent identities and parent atom indices; [] means none",
+      "cartesian_normalization": "each contracted Cartesian component has unit self-overlap",
+      "cartesian_order": "descending lx, then descending ly; lz=l-lx-ly",
+      "derivative_order": "shell-center slot, xyz, i,j,k,l; nuclear-center derivative",
+      "energy_unit": "hartree",
+      "eri_order": "chemist (ij|kl); physicist <ij|kl> = chemist (ik|jl)",
+      "eri_storage": "C order, last AO index fastest",
+      "force_sign": "force=-dE/dR",
+      "frozen_core": 0,
+      "gradient_unit": "hartree/bohr",
+      "hamiltonian": "all-electron nonrelativistic Coulomb; no ECP",
+      "length_unit": "bohr",
+      "nuclear_charges": "explicit atomic_numbers, never inferred from basis labels",
+      "orbital_order": "ascending canonical orbital energy within each spin",
+      "orbital_phase": "largest-absolute AO coefficient positive; first index wins ties; no degenerate-subspace rotation",
+      "orbital_representation": "real spatial orbitals; alpha/beta separate for UHF",
+      "rhf_density": "P=2*C_occ*C_occ.T; F=h+J[P]-K[P]/2",
+      "spherical_normalization": "unit self-overlap; libcint phases",
+      "spherical_order": "libcint real harmonics; p=(x,y,z); l>=2 m=-l,...,+l",
+      "spin_orbital_order": "when expanded: all alpha spatial orbitals, then all beta",
+      "uhf_density": "P_alpha=C_alpha_occ*C_alpha_occ.T; P_beta likewise",
+      "version": 1
+    },
+    "coordinates": [
+      [
+        0.07,
+        -0.11,
+        0.16
+      ],
+      [
+        1.72,
+        0.14,
+        -0.54
+      ],
+      [
+        -0.68,
+        1.61,
+        -0.42
+      ],
+      [
+        -0.93,
+        -1.48,
+        -0.61
+      ]
+    ],
+    "kind": "molecule",
+    "method": "rhf",
+    "multiplicity": 1,
+    "name": "nh3",
+    "scf_settings": {
+      "direct_scf_tol": 1e-14,
+      "energy_tolerance": 1e-13,
+      "gradient_tolerance": 1e-11,
+      "initial_guess": "minao",
+      "max_iterations": 200
+    },
+    "shells": [
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            99.10616896,
+            0.1543289673
+          ],
+          [
+            18.05231239,
+            0.5353281423
+          ],
+          [
+            4.885660238,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            3.780455879,
+            -0.09996722919
+          ],
+          [
+            0.8784966449,
+            0.3995128261
+          ],
+          [
+            0.2857143744,
+            0.7001154689
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 1,
+        "atom_index": 0,
+        "primitives": [
+          [
+            3.780455879,
+            0.155916275
+          ],
+          [
+            0.8784966449,
+            0.6076837186
+          ],
+          [
+            0.2857143744,
+            0.3919573931
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 1,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 2,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 3,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ]
+  },
+  "nmo": 8,
+  "note": "CPHF numerical controls tightened; no independent equations modified",
+  "pyscf": "2.14.0",
+  "scf": {
+    "conv_tol": 1e-13,
+    "conv_tol_grad": 1e-11,
+    "direct_scf_tol": 1e-14,
+    "max_cycle": 150
+  },
+  "schema": "vibeqc.ccsd.gradient_reference",
+  "schema_version": 1,
+  "total_energy": -55.50320948297105,
+  "units": {
+    "coordinates": "bohr",
+    "energy": "Eh",
+    "gradient": "Eh/bohr"
+  }
+}

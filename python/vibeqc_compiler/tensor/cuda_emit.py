@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from math import prod
 
-from .cuda_gemm import fp64_coefficient, gemm_contract
+from .cuda_dtype import scalar_type
+from .cuda_gemm import gemm_contract
 from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
+from .ir import TRANSCENDENTALS
+from .scaled_arithmetic import emit_scaled_bilinear
 
 
 def _integer(value):
@@ -33,6 +36,28 @@ def _flat(coordinates, shape):
     )
 
 
+def _physical_index(layout, logical="z"):
+    if layout.is_c_contiguous:
+        return logical
+    return (
+        " + ".join(
+            f"({_coordinate(logical, layout.shape, axis)}) * {_integer(stride)}"
+            for axis, stride in enumerate(layout.element_strides)
+        )
+        or "0LL"
+    )
+
+
+def _logical_index(layout, physical="z"):
+    if layout.is_c_contiguous:
+        return physical
+    shape = tuple(layout.shape[axis] for axis in layout.order)
+    coordinates = [None] * len(shape)
+    for axis, logical_axis in enumerate(layout.order):
+        coordinates[logical_axis] = _coordinate(physical, shape, axis)
+    return _flat(coordinates, layout.shape)
+
+
 def _name(prefix, base):
     return f"{prefix}{base}"
 
@@ -45,19 +70,37 @@ def _value(plan, i, prefix=""):
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
+    scalar = scalar_type(node.spec.dtype)
+    ty, add, mul = scalar.ctype, scalar.intrinsic("add"), scalar.intrinsic("mul")
     shape = node.spec.shape
     c = [_coordinate("z", shape, axis) for axis in range(len(shape))]
     if node.op == "add":
-        lines = ["double value = 0.0;"]
+        lines = [f"{ty} value = {scalar.zero};"]
         for child, factor in zip(args, a["coefficients"], strict=True):
             lines.append(
-                f"value = __dadd_rn(value, __dmul_rn({fp64_coefficient(factor).hex()}, {_read(child, 'z', prefix)}));"
+                f"value = {add}(value, {mul}({scalar.literal(factor)}, {_read(child, 'z', prefix)}));"
             )
         return "\n".join(lines + [f"return finite(value, error, {i});"])
     if node.op == "multiply":
-        return f"return finite(__dmul_rn({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}), error, {i});"
+        return f"return finite({mul}({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}), error, {i});"
     if node.op == "divide":
         return f"return quotient({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}, error, {i});"
+    if node.op == "scaled_bilinear":
+        operands = ", ".join(_read(child, "z", prefix) for child in args)
+        return f"return {prefix}scaled_bilinear({operands}, error, {i});"
+    if node.op in TRANSCENDENTALS:
+        lines = [f"const {ty} x = {_read(args[0], 'z', prefix)};"]
+        if node.op in ("log", "power", "sqrt"):
+            predicate = "x >= 0.0" if node.op == "sqrt" else "x > 0.0"
+            lines.append(
+                f"if (!({predicate})) {{ atomicCAS(error, 0, -{len(plan.steps) + i + 1}); return 0.0; }}"
+            )
+        function = ("pow" if node.op == "power" else node.op) + scalar.suffix
+        arguments = "x"
+        if node.op == "power":
+            arguments += ", " + scalar.literal(a["exponent"])
+        lines.append(f"return finite(::{function}({arguments}), error, {i});")
+        return "\n".join(lines)
     if node.op == "einsum":
         domains = {}
         for child, labels in zip(node.inputs, a["labels"], strict=True):
@@ -82,11 +125,11 @@ def _value(plan, i, prefix=""):
         ]
         term = values[0]
         for value in values[1:]:
-            term = f"__dmul_rn({term}, {value})"
-        return f"""double value = 0.0;
+            term = f"{mul}({term}, {value})"
+        return f"""{ty} value = {scalar.zero};
 for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = __dadd_rn(value, {term});
-return finite(__dmul_rn(finite(value, error, {i}), {fp64_coefficient(a["coefficient"]).hex()}), error, {i});"""
+    value = {add}(value, {term});
+return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])}), error, {i});"""
     child = args[0]
     source_shape = plan.steps[child].node.spec.shape
     if node.op == "reshape":
@@ -117,13 +160,29 @@ return finite(__dmul_rn(finite(value, error, {i}), {fp64_coefficient(a["coeffici
             else:
                 source.append(c[cursor])
                 cursor += 1
-        return f"""double value = 0.0;
+        return f"""{ty} value = {scalar.zero};
 for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = __dadd_rn(value, {_read(child, _flat(source, source_shape), prefix)});
+    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
 return finite(value, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
     return f"return {_read(child, index, prefix)};"
+
+
+def _arithmetic_error_expression(plan, legacy):
+    """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
+
+    Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
+    and -[n+1,2n] is a scalar-domain error. The planner bounds the int range.
+    """
+    if not any(s.node.op in TRANSCENDENTALS for s in plan.steps):
+        return legacy
+    n = len(plan.steps)
+    return (
+        f"(arithmetic_error < -{n} ? "
+        'std::string("tensor transcendental domain error at step ") + '
+        f"std::to_string(-arithmetic_error - {n} - 1) : ({legacy}))"
+    )
 
 
 def _group_map(g, labels):
@@ -147,8 +206,10 @@ def _group_map(g, labels):
 def _packing_kernels(plan, i, prefix=""):
     step = plan.steps[i]
     g = gemm_contract(step.node)
+    scalar = scalar_type(step.node.spec.dtype)
+    ty, mul = scalar.ctype, scalar.intrinsic("mul")
     return f"""
-__global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, double* a, double* b, int* error,
+__global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, {ty}* a, {ty}* b, int* error,
                         I batch, I m0, I n0, I k0, I tm, I tn, I tk) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < tm*tk + tk*tn;
          z += I(blockDim.x) * gridDim.x) {{
@@ -162,13 +223,13 @@ __global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, double* a, 
         }}
     }}
 }}
-__global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const double* c, int* error,
+__global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c, int* error,
                            I batch, I m0, I n0, I tm, I tn) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < tm*tn;
          z += I(blockDim.x) * gridDim.x) {{
         I row = m0 + z/tn, column = n0 + z%tn;
-        reinterpret_cast<double*>(p + {step.offset})[{_group_map(g, g.output_labels)}] =
-            finite(__dmul_rn(finite(c[z], error, {i}), {g.coefficient.hex()}), error, {i});
+        reinterpret_cast<{ty}*>(p + {step.offset})[{_physical_index(step.layout, _group_map(g, g.output_labels))}] =
+            finite({mul}(finite(c[z], error, {i}), {scalar.literal(step.node.attrs["coefficient"])}), error, {i});
     }}
 }}
 """
@@ -177,27 +238,29 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const double* 
 def _launch(plan, i, prefix=""):
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
+    scalar = scalar_type(node.spec.dtype)
+    ty = scalar.ctype
     if step.virtual or node.op in ("input", "constant") or not node.spec.size:
         return ""
-    pointer = f"reinterpret_cast<double*>(p + {step.offset})"
+    pointer = f"reinterpret_cast<{ty}*>(p + {step.offset})"
     if step.gemm == "none":
         return f"ctx.section(profile, metrics.kernel_ms, [&] {{ {prefix}kernel_{i}<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
     g = gemm_contract(node)
     if not g.k:
-        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ cuda_check(cudaMemsetAsync({pointer}, 0, {node.spec.size * 8}ULL, ctx.stream)); }});"
+        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ cuda_check(cudaMemsetAsync({pointer}, 0, {node.spec.size * node.spec.itemsize}ULL, ctx.stream)); }});"
     if step.gemm.startswith("direct-"):
         a, b = [
-            f"reinterpret_cast<const double*>(p + {plan.steps[c].offset})"
+            f"reinterpret_cast<const {ty}*>(p + {plan.steps[c].offset})"
             for c in step.inputs
         ]
         ta, tb = step.gemm[-2:]
         return f"""
 ctx.section(profile, metrics.library_ms, [&] {{
     gemm(ctx, '{ta}', '{tb}', {g.m}, {g.n}, {g.k}, {a}, {b}, {pointer},
-         {g.m * g.k}LL, {g.k * g.n}LL, {g.m * g.n}LL, {g.batch}, 0.0);
+         {g.m * g.k}LL, {g.k * g.n}LL, {g.m * g.n}LL, {g.batch}, {scalar.zero});
 }});
 ctx.section(profile, metrics.kernel_ms, [&] {{
-    check_scale<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>({pointer}, {node.spec.size}LL, {g.coefficient.hex()}, ctx.error, {i});
+    check_scale<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>({pointer}, {node.spec.size}LL, {scalar.literal(node.attrs["coefficient"])}, ctx.error, {i});
     cuda_check(cudaGetLastError());
 }});"""
     mt, nt, kt = [
@@ -209,9 +272,9 @@ ctx.section(profile, metrics.kernel_ms, [&] {{
         )
     ]
     return f"""{{
-double* a = reinterpret_cast<double*>(p + {plan.arena_bytes});
-double* b = a + {mt * kt}LL;
-double* c = b + {kt * nt}LL;
+{ty}* a = reinterpret_cast<{ty}*>(p + {plan.arena_bytes});
+{ty}* b = a + {mt * kt}LL;
+{ty}* c = b + {kt * nt}LL;
 for (I batch = 0; batch < {g.batch}LL; ++batch)
 for (I m0 = 0; m0 < {g.m}LL; m0 += {mt}LL)
 for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
@@ -222,7 +285,7 @@ for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
             {_name(prefix, f"pack_{i}")}<<<blocks(tm*tk+tk*tn, {threads}), {threads}, 0, ctx.stream>>>(p, a, b, ctx.error, batch, m0, n0, k0, tm, tn, tk);
             cuda_check(cudaGetLastError());
         }});
-        ctx.section(profile, metrics.library_ms, [&] {{ gemm(ctx, 'N', 'N', int(tm), int(tn), int(tk), a, b, c, 0, 0, 0, 1, k0 == 0 ? 0.0 : 1.0); }});
+        ctx.section(profile, metrics.library_ms, [&] {{ gemm(ctx, 'N', 'N', int(tm), int(tn), int(tk), a, b, c, 0, 0, 0, 1, k0 == 0 ? {scalar.zero} : {scalar.one}); }});
     }}
     ctx.section(profile, metrics.packing_ms, [&] {{
         {_name(prefix, f"scatter_{i}")}<<<blocks(tm*tn, {threads}), {threads}, 0, ctx.stream>>>(p, c, ctx.error, batch, m0, n0, tm, tn);
@@ -241,6 +304,15 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
     """
     import re
 
+    for step in plan.steps:
+        if not step.virtual and (
+            step.layout is None or step.layout.shape != step.node.spec.shape
+        ):
+            raise ValueError("materialized tensor layout must match its logical shape")
+    for i in (*plan.inputs, *(index for _, index in plan.outputs)):
+        if plan.steps[i].virtual or not plan.steps[i].layout.is_c_contiguous:
+            raise ValueError("tensor ABI inputs and outputs must use logical C-order")
+
     if not isinstance(symbol_prefix, str) or (
         symbol_prefix
         and not re.fullmatch(r"[A-Za-z_]\w*", symbol_prefix, flags=re.ASCII)
@@ -248,20 +320,31 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         raise ValueError("symbol_prefix must be a valid C++ identifier")
     prefix = symbol_prefix
     namespace = f"namespace {_name(prefix, 'generated')} {{" if prefix else ""
-    parts = ['#include "cuda_runtime.cuh"', "using namespace vibeqc_tensor;"]
+    parts = ['#include "cuda_graph_context.cuh"', "using namespace vibeqc_tensor;"]
     if namespace:
         parts.append(namespace)
+    dtypes = sorted({step.node.spec.dtype for step in plan.steps})
+    if "float32" in dtypes:
+        parts.append(
+            "#if defined(__CUDA_FTZ) && __CUDA_FTZ\n#error FP32 TensorIR requires --ftz=false\n#endif"
+        )
+    for dtype in dtypes:
+        if any(
+            s.node.op == "scaled_bilinear" and s.node.spec.dtype == dtype
+            for s in plan.steps
+        ):
+            parts.append(emit_scaled_bilinear(prefix, dtype=dtype))
     initialize = []
     tables = dict(plan.index_tables)
     for i, step in enumerate(plan.steps):
         node = step.node
+        scalar = scalar_type(node.spec.dtype)
+        ty = scalar.ctype
         if node.op == "constant" and node.spec.size:
-            values = ", ".join(
-                fp64_coefficient(pair).hex() for pair in node.attrs["values"]
-            )
-            parts.append(f"static const double {prefix}constant_{i}[] = {{{values}}};")
+            values = ", ".join(scalar.literal(pair) for pair in node.attrs["values"])
+            parts.append(f"static const {ty} {prefix}constant_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         if node.op == "gather" and node.attrs["positions"]:
             values = ", ".join(_integer(v) for v in node.attrs["positions"])
@@ -272,18 +355,18 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         body = (
             _value(plan, i, prefix)
             if step.virtual
-            else f"return reinterpret_cast<const double*>(p + {step.offset})[z];"
+            else f"return reinterpret_cast<const {ty}*>(p + {step.offset})[{_physical_index(step.layout)}];"
         )
         parts.append(
-            f"__device__ inline double {prefix}read_{i}(const unsigned char* p, I z, int* error) {{ {body} }}"
+            f"__device__ inline {ty} {prefix}read_{i}(const unsigned char* p, I z, int* error) {{ {body} }}"
         )
         if not step.virtual and node.op not in ("input", "constant"):
             if step.gemm == "none":
-                parts.append(f"""__device__ inline double {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
+                parts.append(f"""__device__ inline {ty} {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
 __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < {node.spec.size}LL;
          z += I(blockDim.x) * gridDim.x)
-        reinterpret_cast<double*>(p + {step.offset})[z] = {prefix}evaluate_{i}(p, z, error);
+        reinterpret_cast<{ty}*>(p + {step.offset})[z] = {prefix}evaluate_{i}(p, {_logical_index(step.layout)}, error);
 }}""")
             elif step.gemm == "packed":
                 parts.append(_packing_kernels(plan, i, prefix))
@@ -292,38 +375,51 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         step = plan.steps[i]
         if step.node.spec.size:
             copies_in.append(
-                f'if (!inputs[{slot}]) throw std::runtime_error("null tensor input");\ncuda_check(cudaMemcpyAsync(p + {step.offset}, inputs[{slot}], {step.node.spec.size * 8}ULL, cudaMemcpyHostToDevice, ctx.stream));'
+                f'if (!inputs[{slot}]) throw std::runtime_error("null tensor input");\ncuda_check(cudaMemcpyAsync(p + {step.offset}, inputs[{slot}], {step.node.spec.size * step.node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx.stream));'
             )
     copies_out = []
     for slot, (_, i) in enumerate(plan.outputs):
         step = plan.steps[i]
         if step.node.spec.size:
             copies_out.append(
-                f'if (!outputs[{slot}]) throw std::runtime_error("null tensor output");\ncuda_check(cudaMemcpyAsync(outputs[{slot}], p + {step.offset}, {step.node.spec.size * 8}ULL, cudaMemcpyDeviceToHost, ctx.stream));'
+                f'if (!outputs[{slot}]) throw std::runtime_error("null tensor output");\ncuda_check(cudaMemcpyAsync(outputs[{slot}], p + {step.offset}, {step.node.spec.size * step.node.spec.itemsize}ULL, cudaMemcpyDeviceToHost, ctx.stream));'
             )
     needs_blas = any(
         s.gemm != "none" and gemm_contract(s.node).k and s.node.spec.size
         for s in plan.steps
+    )
+    fp32_blas = any(
+        s.gemm != "none" and s.node.spec.dtype == "float32" for s in plan.steps
+    )
+    math_mode = (
+        "if (ctx->handle) blas_check(cublasSetMathMode(ctx->handle, CUBLAS_PEDANTIC_MATH));"
+        if fp32_blas
+        else ""
     )
     library_offset = plan.arena_bytes + plan.panel_bytes
     error_offset = (
         library_offset + plan.library_bytes + aligned(plan.reservations.total)
     )
     assert error_offset + ALIGNMENT == plan.allocation_bytes
+    error_expression = _arithmetic_error_expression(
+        plan,
+        'std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1)',
+    )
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
     try {{
         if (!result) throw std::runtime_error("null plan output");
         *result = nullptr;
-        auto ctx = std::make_unique<Context>();
+        auto ctx = std::make_unique<GraphContext>();
         ctx->prepare(device, {plan.target.compute_capability_major}, {plan.target.compute_capability_minor},
                      {plan.allocation_bytes}ULL, {error_offset}ULL, {library_offset}ULL,
                      {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
         DeviceGuard guard(device);
+        {math_mode}
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
-        *result = ctx.release();
+        *result = static_cast<Context*>(ctx.release());
         return 0;
     }} catch (const DeviceAllocationError& e) {{
         error_text(error, size, e.what()); return 2;
@@ -331,11 +427,12 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
         error_text(error, size, e.what()); return 3;
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
-extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<Context*>(pointer); }}
-extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const double* const* inputs, double* const* outputs,
-                          int profile, Metrics* result, char* error, size_t size) {{
+extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<GraphContext*>(static_cast<Context*>(pointer)); }}
+static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
+                          char* graph_reason, size_t graph_reason_size, char* error, size_t size) {{
     if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
-    auto& ctx = *static_cast<Context*>(pointer);
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
     std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
     if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
     try {{
@@ -347,9 +444,11 @@ extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const double* const*
         metrics.prepare_device_delta = ctx.metrics.prepare_device_delta;
         auto* p = ctx.arena;
         cuda_check(cudaEventRecord(ctx.begin, ctx.stream));
-        cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
         ctx.section(profile, metrics.input_ms, [&] {{ {" ".join(copies_in)} }});
-        {" ".join(_launch(plan, i, prefix) for i in range(len(plan.steps)))}
+        ctx.submit_region(profile, [&] {{
+            cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
+            {" ".join(_launch(plan, i, prefix) for i in range(len(plan.steps)))}
+        }});
         int arithmetic_error = 0;
         ctx.section(profile, metrics.output_ms, [&] {{
             {" ".join(copies_out)}
@@ -362,14 +461,34 @@ extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const double* const*
         metrics.device_ms = elapsed;
         metrics.observed_device_delta = std::max(ctx.metrics.prepare_device_delta, ctx.device_delta());
         *result = metrics;
+        if (graph_result) *graph_result = ctx.graph.metrics;
+        error_text(graph_reason, graph_reason_size, ctx.graph.reason.c_str());
         if (arithmetic_error)
-            throw std::runtime_error(std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1));
+            throw std::runtime_error({error_expression});
         return 0;
     }} catch (const std::exception& e) {{
         // Drain queued host transfers before Python may release their arrays.
         cudaStreamSynchronize(ctx.stream);
         error_text(error, size, e.what()); return 1;
     }}
+}}
+extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, char* error, size_t size) {{
+    return {_name(prefix, "tensor_run_impl")}(pointer, inputs, outputs, profile, result, nullptr, nullptr, 0, error, size);
+}}
+extern "C" int {_name(prefix, "tensor_run_graph")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
+                          char* reason, size_t reason_size, char* error, size_t size) {{
+    return {_name(prefix, "tensor_run_impl")}(pointer, inputs, outputs, profile, result, graph_result, reason, reason_size, error, size);
+}}
+extern "C" int {_name(prefix, "tensor_graph_configure")}(void* pointer, int enabled, const char* identity,
+                          char* error, size_t size) {{
+    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
+    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
+    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    try {{ ctx.configure_graph(enabled != 0, identity); return 0; }}
+    catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" int {_name(prefix, "tensor_probe")}(int device, char* result, size_t size) {{
     try {{

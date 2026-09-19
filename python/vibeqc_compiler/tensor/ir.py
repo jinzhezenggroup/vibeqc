@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from fractions import Fraction
+from math import isfinite
+from struct import pack, unpack
 
 from .types import Index, TensorSpec
 
@@ -33,6 +35,20 @@ def _fraction(pair) -> Fraction:
     if (value.numerator, value.denominator) != pair:
         raise ValueError("coefficient must be reduced")
     return value
+
+
+def _execution_power_exponent(pair, dtype):
+    """The exact binary exponent executed by this dtype, before AD algebra."""
+    exponent = _fraction(pair)
+    try:
+        rounded = float(exponent)
+        if dtype == "float32":
+            rounded = unpack("f", pack("f", rounded))[0]
+    except (OverflowError, ValueError) as exc:
+        raise ValueError("power exponent is not representable") from exc
+    if not isfinite(rounded) or (exponent and rounded == 0):
+        raise ValueError("power exponent is not representable")
+    return Fraction(rounded)
 
 
 def _freeze(value):
@@ -88,6 +104,9 @@ class PrimitiveContract:
     storage: str = "fresh logical value; any physical aliases are read-only"
 
 
+TRANSCENDENTALS = frozenset(("exp", "log", "sqrt", "power"))
+
+
 PRIMITIVES = {
     op: PrimitiveContract(
         "all real operands; integer indices and rational factors are static",
@@ -97,6 +116,11 @@ PRIMITIVES = {
         "add",
         "multiply",
         "divide",
+        "scaled_bilinear",
+        "exp",
+        "log",
+        "sqrt",
+        "power",
         "einsum",
         "transpose",
         "reshape",
@@ -169,7 +193,16 @@ def _infer(
 ) -> TensorSpec:
     """Infer safe result metadata; explicit view types are checked here too."""
     base = _common(inputs)
-    if op in ("add", "multiply", "divide"):
+    if op in TRANSCENDENTALS:
+        if len(inputs) != 1:
+            raise ValueError(f"{op} requires exactly one operand")
+        if op == "power":
+            _execution_power_exponent(a["exponent"], base.dtype)
+        # Nonlinear scalar functions preserve permutation symmetry, not sign.
+        return _result(
+            inputs, symmetries=tuple(s for s in base.symmetries if s.sign == 1)
+        )
+    if op in ("add", "multiply", "divide", "scaled_bilinear"):
         if any(
             tuple(i.domain for i in n.spec.indices)
             != tuple(i.domain for i in base.indices)
@@ -185,6 +218,10 @@ def _infer(
             for n in inputs[1:]:
                 symmetry.intersection_update(n.spec.symmetries)
             return _result(inputs, symmetries=tuple(symmetry))
+        if op == "scaled_bilinear":
+            if len(inputs) != 6:
+                raise ValueError("scaled_bilinear requires six operands")
+            return _result(inputs)
         if len(inputs) != 2:
             raise ValueError("elementwise multiply/divide require two operands")
         # Products of antisymmetric tensors need not remain antisymmetric.
@@ -274,6 +311,11 @@ _ATTRS = {
     "add": {"coefficients"},
     "multiply": set(),
     "divide": set(),
+    "scaled_bilinear": set(),
+    "exp": set(),
+    "log": set(),
+    "sqrt": set(),
+    "power": {"exponent"},
     "einsum": {"labels", "output", "coefficient"},
     "transpose": {"axes"},
     "reshape": set(),
@@ -353,6 +395,42 @@ def multiply(left: Node, right: Node) -> Node:
 def divide(left: Node, right: Node) -> Node:
     """Elementwise quotient; a zero denominator is an execution error."""
     return _make("divide", (left, right))
+
+
+def scaled_bilinear(a: Node, b: Node, c: Node, d: Node, e: Node, f: Node) -> Node:
+    """Range-safe (a*b - c*d)/(e*f), without implicit broadcasting.
+
+    The products/difference share one arithmetic boundary. Binary exponent
+    scaling and compensated products preserve finite results and cancellation;
+    zero denominators and nonfinite final values remain execution errors.
+    """
+    return _make("scaled_bilinear", (a, b, c, d, e, f))
+
+
+def exp(value: Node) -> Node:
+    """Elementwise natural exponential, with finite input/result checks."""
+    return _make("exp", (value,))
+
+
+def log(value: Node) -> Node:
+    """Elementwise natural logarithm, defined only for strictly positive input."""
+    return _make("log", (value,))
+
+
+def sqrt(value: Node) -> Node:
+    """Nonnegative square root; zero is legal for values, singular for AD."""
+    return _make("sqrt", (value,))
+
+
+def power(value: Node, exponent) -> Node:
+    """Positive-real-base power with a static exact rational exponent.
+
+    Exponents use the same int/Fraction/rational-string spelling as coefficients,
+    then round to the operand dtype at execution. Negative and zero bases are
+    rejected even for integer/zero exponents. Dynamic/complex exponents are not
+    supported. Underflow follows the existing arithmetic contract.
+    """
+    return _make("power", (value,), {"exponent": rational(exponent)})
 
 
 def einsum(equation: str, *inputs: Node, coefficient=1) -> Node:

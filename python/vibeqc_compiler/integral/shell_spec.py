@@ -68,7 +68,10 @@ class ShellClassSpec:
     def components(self) -> tuple[tuple[str, str, str, str], ...]:
         """Return the complete shell-class Cartesian product schedule."""
 
-        return tuple(product(*self.center_components))
+        return tuple(
+            (item[0], item[1], item[2], item[3])
+            for item in product(*self.center_components)
+        )
 
     @property
     def component_count(self) -> int:
@@ -81,7 +84,12 @@ class ShellClassSpec:
         """Return row-major strides used to decode one component lane."""
 
         counts = tuple(map(len, self.center_components))
-        return tuple(reduce(mul, counts[index + 1 :], 1) for index in range(4))
+        return (
+            reduce(mul, counts[1:], 1),
+            reduce(mul, counts[2:], 1),
+            reduce(mul, counts[3:], 1),
+            1,
+        )
 
     @property
     def pair_orders(self) -> tuple[int, int]:
@@ -108,7 +116,7 @@ class ShellClassSpec:
                 raise ValueError(
                     f"unsupported center-{center} component {label!r} for {self.name}"
                 )
-        return normalized
+        return normalized[0], normalized[1], normalized[2], normalized[3]
 
     def component_quantums(
         self, component: Sequence[str]
@@ -141,11 +149,13 @@ class ShellClassSpec:
 
         if not 0 <= index < self.component_count:
             raise IndexError(f"component index {index} is outside {self.name} schedule")
-        return tuple(
-            allowed[(index // stride) % len(allowed)]
-            for allowed, stride in zip(
-                self.center_components, self.component_strides, strict=True
-            )
+        components = self.center_components
+        strides = self.component_strides
+        return (
+            components[0][(index // strides[0]) % len(components[0])],
+            components[1][(index // strides[1]) % len(components[1])],
+            components[2][(index // strides[2]) % len(components[2])],
+            components[3][(index // strides[3]) % len(components[3])],
         )
 
 

@@ -13,11 +13,13 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
 | `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
-| `method` | Canonical `MethodSpec -> MethodIR` composition and primitive requirements; no SCF/runtime policy | `common`, `xc` |
+| `method` | Canonical MethodIR, stationary-gradient source plans and implicit-solve derivative rules; no solver/runtime policy | `common`, `xc`, `tensor` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
 The compiler owns mathematical IR and lowering. `method` is the composition front
-end above XC; representability there does not imply runtime support.
+end above XC/TensorIR; representability there does not imply runtime support.
+The [implicit-response primitive](implicit_response.md) emits ordinary TensorIR
+JVP/VJP/RHS/source programs without importing the runtime solver.
 `src/integrals`, `src/tensor` and `src/dft` own the corresponding native interfaces, runtime allocation and
 execution templates; method and SCF code consume these interfaces. A compiler
 package move does not promote a new scientific capability or retire a native
@@ -67,6 +69,53 @@ XC use that same artifact cache and allocation lock. The public global resource
 planner and local-profile hashing/atomic-JSON helpers are re-exported from their
 original `vibeqc` APIs; their implementations are not duplicated. Shared evidence
 and timing helpers do not import benchmark command modules.
+
+## Workload specialization contract
+
+`common.specialization` is the pure, backend-neutral selection contract. It is
+not wired into production DF or benchmark dispatch yet; those adapters remain
+separate work. The module contains no measured thresholds or method policy.
+
+- `WorkloadSignature` contains a consumer kind and named scalar workload facts.
+  `TargetCapabilities` wraps the existing `TargetInfo` plus explicit capability
+  and resource facts. Unknown facts are omitted, not guessed; product names,
+  UUIDs and benchmark identities stay in the existing provenance records.
+- `CompilationIdentity` references the existing scientific and compiler hashes.
+  The compiler identity owner must include relevant source, IR/generator/ABI
+  versions, toolchain and compile options. `ImplementationProfile` references
+  the original artifact key, schedule hash and versioned tuning-profile hash.
+- A `SpecializationGuard` is a conjunction of declarative equality or inclusive
+  lower/upper bounds. Equality distinguishes booleans, integers and floats;
+  bounds accept finite numbers, not truthy strings or booleans. Missing facts
+  fail the predicate. Input pairs are copied, sorted and kept immutable.
+- Correctness and performance guards are independent. A missing performance
+  guard means **not promoted**. A present guard asserts a qualification supplied
+  by the existing evidence owner; the selection module does not create evidence
+  or relax numerical/resource gates. Even a matching performance guard cannot
+  bypass correctness or scientific/compiler identity checks.
+
+`select_specialization(workload=..., target=..., identity=..., profiles=...,
+fallback=...)` chooses the first eligible promoted implementation in caller
+priority order. If none match, the explicit fallback must pass its own identity
+and correctness checks. Otherwise the result is `unsupported`: no *supplied*
+implementation is eligible, not proof that the mathematical method is impossible.
+There is no implicit CPU execution or compilation on a miss.
+
+The result exposes the original selected artifact and a detached JSON diagnostic
+record with profile/schedule/scientific/compiler identities and separate rejection
+reasons. `selection_key` uses the existing canonical hash over the versioned
+request, ordered profiles, guards and fallback. It changes after relevant
+workload, capability, identity, schedule, profile or priority changes, while
+nearby workloads can still select the same artifact. Persist the input records
+with the decision when retaining evidence. **The selection key is not an
+executable cache key**: existing loaders retain compatibility, ownership and
+binary-integrity checks and may reject an artifact selected from stale metadata.
+No cache layout or existing hash algorithm is replaced.
+
+CPU-only contract tests are in `tests/python/test_specialization.py`. Synthetic
+guard domains are not CUDA qualification or performance evidence. Rationale and
+consumer migration boundaries are recorded in the
+[specialization contract note](../.agents/notes/implemented/architecture/2026-09-19-specialization-contract.md).
 
 ## Checkout and installed usage
 
@@ -139,3 +188,47 @@ are preserved in the
 Those measurements are migration evidence rather than a current runtime
 performance claim. Raw run logs and generated build products belong in ignored
 `.artifacts/`, according to the [evidence retention policy](evidence_retention.md).
+
+
+## Stationary semilocal gradient plans
+
+`vibeqc_compiler.method.StationaryGradientPlan` combines a resolved semilocal
+MethodIR with an explicit `StationaryMeanField` envelope. The envelope declares
+all-electron/direct full-range Coulomb, fixed integer occupations, real FP64,
+the XC point model and a stable differentiable grid branch. An XC graph alone
+cannot supply the Hamiltonian or overlap constraint.
+
+The implemented compiler/diagnostic slice provides:
+
+- bounded ordered-element one-electron, Coulomb and overlap/Pulay objectives;
+  TensorIR VJP generates their source weights with an exact unit seed;
+- generated contractions with provider-supplied derivative tiles, without a
+  global four-AO-index cotangent; restricted densities already include occupation
+  two, while unrestricted Coulomb uses the total alpha/beta density;
+- a strict component reduction requiring AO-center XC, physical grid motion,
+  partition-weight response, one-electron, J, Pulay and nuclear sources once each.
+  XC functional coefficients are applied upstream, not again in the reduction.
+
+`integral_block(source, terms=..., coordinates=...)` takes **full ordered**
+AO-pair/quartet tuple data. It does not infer packed symmetry multiplicities or
+atom mappings. Its `objective`, `weights` and `contraction` are ordinary TensorIR
+programs; the existing CPU interpreter and CUDA planner/emitter consume the same
+equations. CUDA source generation is not hardware execution qualification.
+`reduce_diagnostic` checks complete input coverage, shapes, FP64, finite values
+and the interpreter's logical byte budget; it is not a public force endpoint.
+
+Plan identity includes method/envelope semantics, not descriptive aliases or
+live solve epochs. Block identity additionally includes generated equation hashes
+and shapes. The existing CUDA planner owns schedule/target identities. Native
+state leases remain runtime-owned and must be checked before and after execution;
+this compile-time plan neither creates nor renews a lease.
+
+**Still unavailable in this slice:** live native gradient/provider binding,
+complete CPU/CUDA molecular gradients, native XC/grid derivative integration and
+public DFT forces. `require_native_endpoint` rejects both backends explicitly.
+The existing `StationaryDerivativeContract` gates remain unchanged; detached or
+stale arrays cannot gain force capability by constructing a plan. Hybrid, ECP,
+DF, meta-GGA and unsupported occupation requests do not inherit this capability.
+
+Tests: `tests/python/test_stationary_gradient_plan.py`. Rationale:
+[generated stationary source composition](../.agents/notes/implemented/architecture/2026-09-19-stationary-gradient-plan.md).

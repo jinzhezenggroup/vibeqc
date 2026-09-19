@@ -61,8 +61,9 @@ python tools/evidence.py publish \
 ```
 
 Prepare the specification from the measured run after reviewing its result.
-The command does not infer a winner, rewrite samples, stage Git changes or
-modify production selectors. Performance acceptance still requires #138's
+The command writes local files only: it does not upload or authorize a GitHub
+Release, tag, asset or publishing workflow. It does not infer a winner, rewrite
+samples, stage Git changes or modify production selectors. Performance acceptance still requires #138's
 comparison, numerical, endpoint, compilation and resource gates. Historical
 schemas retain their original meaning; migration does not retroactively
 certify incomplete provenance. The publisher adds storage metadata, not a
@@ -97,9 +98,84 @@ record after checking each part's SHA-256 and size. No numerical values or
 sample ordering are changed. Permanent array inputs can be stored as named NPY
 files, preserving the original array bytes and numeric identity checks.
 
+The same retention checker also enforces the optional
+`benchmark_results_max_bytes` policy field across **all** indexed files under
+`benchmarks/results/`, including manifests and summaries. Its current budget is
+128 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
+classification exceptions cannot waive it. Permanent fixtures under
+`tests/reference_data/`, `tests/data/` and audited external sources are not
+counted. Changing the budget is an explicit policy review, not an automatic
+response to another benchmark dump.
+
 Full logs, retries and profiler traces belong in `.artifacts/` or external
 storage. Do not compress them, rename them or split binary archives into chunks
 to bypass the limit. New benchmark archive paths are also ignored by default.
+
+## Incoming evidence review
+
+The `check-change` command compares the staged index with an **explicit local
+base revision**. The PR pre-commit workflow supplies the event's base SHA after
+checking out the integration tree, so this checks the whole PR rather than only
+its last commit:
+
+```bash
+# Stage the intended changes first. No fetch is performed by this command.
+python tools/evidence.py check-change --base HEAD \
+  --output .artifacts/evidence-change-review.json
+python tools/evidence.py audit-campaigns \
+  --output .artifacts/evidence-campaigns.json
+```
+
+`change_review_max_bytes` in the retention policy is **2 MiB per change set**.
+This is an engineering review budget, not a scientific tolerance. It counts the
+complete new contents of added or modified `benchmarks/results/` files, including
+publication metadata. Unchanged historical files and permanent reference roots
+are not charged. Deleted files are reported separately and provide **no credit**;
+renaming, copying, or splitting data cannot hide its incoming size. The command
+also runs the existing full-tree classification, checksum, per-file and aggregate
+checks. Local ordinary pre-commit still runs those full-tree checks; use the
+explicit command above for a local change-budget preflight. Missing base objects
+fail instead of silently checking only the last commit or fetching history.
+
+An exceptional measurement set can exceed this review budget only through
+explicit per-file entries in the existing policy `exceptions`: retain the exact
+`sha256`, a nonempty `owner` and scientific/storage `reason`, and add
+`"review_change": true`. An ordinary classification exception is not automatically
+a change-budget waiver. Changed bytes invalidate the old justification. Such
+entries never waive the hard 1 MiB file cap, the checkout aggregate limit, or any
+scientific acceptance criterion. A policy edit is itself part of PR review.
+
+New or modified JSON containing nonempty `launch_records` or Chrome-style
+`traceEvents` arrays also needs an exact-hash retention justification, even when
+renamed `summary.json`. These are narrowly identified profiler payloads, not a
+ban on numerical arrays, NPZ inputs, unsuccessful trials, or negative results.
+An unchanged historical payload does not retroactively fail this new-change
+check. Other legacy formats still require human audit; passing this storage
+check is not proof of complete scientific provenance.
+
+The campaign audit lists each result file's bytes/hash and every family's
+counts/bytes. Its review status distinguishes complete hash-bound publication
+inventories, exact-hash policy justifications, obvious transient/build files and
+**manual-review** records. Unlike the coarse location-based inventory, arbitrary
+JSON is not reported as reviewed just because it lives in `results/`.
+`publication-bound` describes byte linkage, not independent validation of its
+scientific claims. A manual-review status is **not permission to delete** data:
+check test/production consumers, numerical samples, negative results, source
+identity and recovery before any migration. Audit output is ignored local data,
+not another bulk inventory automatically committed under `results/`.
+
+The shared `write_result` helper and its six runner CLIs (`h2_latency`,
+`batch_throughput`, both GPU4PySCF comparison runners, `compare_df_exchange`, and
+`inactive_eigensolver_profile`) reject direct output into this checkout's
+`benchmarks/results/`, including symlink aliases. The batch comparison's progress
+journal has the same guard. This is checked during argument parsing before
+calculation and again by the shared writer. Explicit scratch destinations and
+existing `.artifacts/` defaults remain supported. Use the separate publisher to
+retain selected measurements. Other historical runners with their own writers
+remain subject to the staged/CI retention checks and need incremental migration;
+this is not a claim that every output path has been converted.
+
+Rationale and scope: [incoming-evidence admission decision](../.agents/notes/implemented/architecture/2026-09-19-incoming-evidence-admission.md).
 
 ## Restoring historical oversized archives
 
@@ -122,14 +198,46 @@ Small test-consumed archives remain in the current tree. Historical numerical
 claims retain their original identities and limitations; the migration itself
 is not a new scientific qualification.
 
+## Historical report snapshots
+
+The [checkout snapshot](../benchmarks/results/retention-checkout/README.md)
+uses **existing ancestor Git objects**, not a Release or external archive.
+Its `vibeqc.git-snapshot.v1` manifest pins the original full commit SHA and
+inventories every original path, size and SHA-256, plus total files and bytes.
+Concise summaries and test/production consumers remain in the current tree.
+Historical Markdown links point to pinned Git revisions rather than missing
+checkout files. Restore the complete snapshot before inspecting its original
+campaign manifests or explicitly running historical reproduction scripts:
+
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-checkout/snapshot.manifest.json \
+  --output .artifacts/retention-snapshot
+```
+
+All members are verified before creating a new destination. Invalid identities,
+unsafe/duplicate/conflicting paths, missing objects or checksum/size mismatches
+leave no partial destination; existing files/directories are never overwritten.
+Omit `--all` and provide an original repository-relative path to restore one
+member. The legacy default migration and evidence-archive manifests still work.
+
+The helper does not fetch, including promisor-object lazy fetches, upload or
+execute anything. Missing history requires an explicit user-controlled Git
+fetch; source archives without `.git` need a Git clone. Full-clone history must
+remain available for recovery; cleanup does not rewrite it or reduce its size.
+No new release, tag or external storage is necessary. Normal tests/builds remain
+offline and do not depend on fetching these historical snapshots.
+
 ## External artifacts and expiry
 
 CI uploads `.artifacts/` as debugging output with 14-day retention when present.
 Full stdout, test XML, profiler databases and retries may go there. Compute
 SHA-256 before upload; reference the immutable Actions run/artifact ID, checksum
-and expiry from the publication when it helps explain a decision. Release
-assets or another immutable HTTPS store can provide longer retention, with
-their checksum and retention policy recorded explicitly.
+and expiry from the publication when it helps explain a decision. Longer-lived
+external storage requires separate, explicit user authorization, with checksums
+and retention policy recorded. A cleanup or benchmark task does not authorize
+creating GitHub Releases, release tags/assets or dispatching publishing workflows;
+do not substitute a fork or another host to work around that boundary.
 
 Expired archives must not break tests or reproduction. Permanent reference
 inputs, mathematical definitions, accepted raw samples/statistics and stable

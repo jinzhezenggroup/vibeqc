@@ -1,5 +1,12 @@
 # Resident DF dataflow, derivative algebra and DIIS (#388–#391)
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 The promoted changes retain raw FP64 three-center values in existing J/K
 capacity, share generated derivative intermediates, batch exact occupied
 response products, and parallelize DIIS residual dots. The normal warm

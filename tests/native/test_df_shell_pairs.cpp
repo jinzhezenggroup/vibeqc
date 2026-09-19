@@ -25,6 +25,14 @@ void require(bool ok, const char* message) {
 }
 void check(cudaError_t error) { require(error == cudaSuccess, cudaGetErrorString(error)); }
 
+void select_schedule(unsigned variant) {
+  const char* schedules[] = {"warp", "packed", "compact"};
+  // The direct launch API receives the variant explicitly. Prevent automatic
+  // production policy from overriding it so all three schedules are exercised.
+  require(setenv("VIBEQC_DF_SHELL_SCHEDULE", schedules[variant], 1) == 0,
+          "cannot select the explicit test schedule");
+}
+
 using df_benchmark::Storage;
 
 void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) {
@@ -88,6 +96,7 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) 
     for (const auto cap : {std::size_t{1}, std::size_t{7}, a})
       for (const auto pairs : {scf::DfDerivativePairs::full, scf::DfDerivativePairs::symmetric,
                                scf::DfDerivativePairs::packed}) {
+        select_schedule(variant);
         check(cudaMemset(output, 0, 9 * sizeof(double)));
         check(cudaMemset(work, 0, 6 * sizeof(unsigned long long)));
         const bool compressed = pairs == scf::DfDerivativePairs::packed;
@@ -144,6 +153,7 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) 
       for (const auto cap : {std::size_t{1}, std::size_t{7}, a})
         for (const auto pairs : {scf::DfDerivativePairs::full, scf::DfDerivativePairs::symmetric,
                                  scf::DfDerivativePairs::packed}) {
+          select_schedule(variant);
           check(cudaMemset(output, 0, 9 * sizeof(double)));
           check(cudaMemset(work, 0, 6 * sizeof(unsigned long long)));
           const bool compressed = pairs == scf::DfDerivativePairs::packed;
@@ -206,15 +216,23 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) 
               require(primitive_count == get(Work::active_shell_tasks) * signature[3] *
                                              signature[4] * signature[5],
                       "diagnostic primitive count differs from independent host signatures");
-              // These small fixtures are outside the automatic production
-              // manifest's 384/768-AO domain and retain polynomial lowering.
-              require(get(Work::rys_evaluations) == 0 && get(Work::rys_roots) == 0 &&
-                          get(Work::recurrence_states) == 0,
-                      "Rys selected outside the qualified automatic domain");
-              require(
-                  primitive_count == get(Work::boys_evaluations) &&
-                      primitive_count == get(Work::boys_series) + get(Work::boys_large_argument),
-                  "Boys/Rys branch counts do not conserve primitive work");
+              // Production admission no longer depends on 384/768 AO counts.
+              // Every active primitive executes exactly one selected lowering;
+              // the explicit legacy pass independently exercises polynomial work.
+              const auto rys = get(Work::rys_evaluations);
+              const auto boys = get(Work::boys_evaluations);
+              require(primitive_count == boys + rys &&
+                          boys == get(Work::boys_series) + get(Work::boys_large_argument),
+                      "Boys/Rys branch counts do not conserve primitive work");
+              if (rys) {
+                const auto roots = (signature[0] + signature[1] + signature[2] + 1) / 2 + 1;
+                require(rys == primitive_count && get(Work::rys_roots) == roots * rys &&
+                            get(Work::recurrence_states) >= get(Work::rys_roots),
+                        "Rys root/recurrence counts do not conserve primitive work");
+              } else {
+                require(get(Work::rys_roots) == 0 && get(Work::recurrence_states) == 0,
+                        "polynomial execution reported Rys work");
+              }
               require(get(Work::boys_small_argument) <= get(Work::boys_series) &&
                           get(Work::boys_series_iterations) >= get(Work::boys_series) &&
                           get(Work::boys_series_iterations) <= 179 * get(Work::boys_series),
@@ -255,9 +273,12 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false) 
 int main() {
   if (!std::getenv("SLURM_JOB_ID")) return 77;
   try {
-    for (bool spherical_o : {false, true})
-      for (bool spherical_x : {false, true}) exercise(spherical_o, spherical_x);
-    exercise(false, false, true);
+    for (const char* policy : {"legacy", "auto"}) {
+      require(setenv("VIBEQC_DF_SHELL_POLICY", policy, 1) == 0, "cannot select the test policy");
+      for (bool spherical_o : {false, true})
+        for (bool spherical_x : {false, true}) exercise(spherical_o, spherical_x);
+      exercise(false, false, true);
+    }
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

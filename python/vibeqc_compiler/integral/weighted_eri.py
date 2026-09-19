@@ -143,9 +143,11 @@ def build_weighted_eri_kernel(
         raise ValueError(
             "pull public weights back to Cartesian s/p/d/f components first"
         )
-    spec = ShellClassSpec(
-        "".join("spdf"[l] for l in signature.angular), signature.angular
-    )
+    angular = signature.angular
+    if len(angular) != 4:
+        raise ValueError("weighted ERI lowering requires four shell angular orders")
+    angular4 = (angular[0], angular[1], angular[2], angular[3])
+    spec = ShellClassSpec("".join("spdf"[l] for l in angular4), angular4)
     consumer = integral.contractions[0]
     if consumer.weights.layout.shape != signature.component_shape:
         raise ValueError(
@@ -195,7 +197,11 @@ def build_weighted_eri_kernel(
         for (left, left_coefficient), (right, right_coefficient) in product(
             first_cache[a, b], second_cache[c, d]
         ):
-            orders = tuple(i + j for i, j in zip(left, right))
+            orders = (
+                left[0] + right[0],
+                left[1] + right[1],
+                left[2] + right[2],
+            )
             coefficients[orders].append(
                 weight
                 * left_coefficient
@@ -216,7 +222,7 @@ def build_weighted_eri_kernel(
     boys = tuple(
         graph.variable(f"boys_{n}") for n in range(integral.maximum_coulomb_order + 1)
     )
-    gradients = {}
+    gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
     for center in integral.independent_derivative_centers:
         pair_scale = graph.variable(f"{CENTERS[center]}_product_scale")
         difference_scale = pair_scale if center < 2 else -pair_scale
@@ -246,19 +252,23 @@ def build_weighted_eri_kernel(
                     value, graph.variable(f"coordinate_{center}_{axis}"), leaves
                 )
             )
-        gradients[center] = tuple(rows)
+        gradients[center] = (rows[0], rows[1], rows[2])
     for center in integral.recovered_derivative_centers:
-        gradients[center] = tuple(
+        gradients[center] = (
             -graph.sum(
-                gradients[i][axis] for i in integral.independent_derivative_centers
-            )
-            for axis in range(3)
+                gradients[i][0] for i in integral.independent_derivative_centers
+            ),
+            -graph.sum(
+                gradients[i][1] for i in integral.independent_derivative_centers
+            ),
+            -graph.sum(
+                gradients[i][2] for i in integral.independent_derivative_centers
+            ),
         )
     requested = set(integral.requested_derivative_centers)
-    result = tuple(
-        gradients[c] if c in requested else tuple(graph.constant(0) for _ in AXES)
-        for c in range(4)
-    )
+    zero = graph.constant(0)
+    zero_gradient = (zero, zero, zero)
+    result = tuple(gradients[c] if c in requested else zero_gradient for c in range(4))
     return WeightedEriKernel(
         integral, spec, indices, graph, value, result, tuple(sorted(coefficients))
     )

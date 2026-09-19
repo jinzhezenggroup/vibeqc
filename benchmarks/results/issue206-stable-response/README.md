@@ -1,5 +1,12 @@
 # Full-rank response and physical force-state evidence
 
+> **Historical supporting data:** bulky reports from this campaign remain in
+> existing Git history, with [checksum-verified snapshot recovery](../retention-checkout/README.md).
+> The summary below and compact records remain here. Restore the complete
+> snapshot before running historical scripts or verifying its original
+> manifests; those manifests describe the original snapshot, not this reduced
+> checkout. No measurements, rejected cases or acceptance thresholds changed.
+
 This numerical repair applies metric inversion to linear factors before quadratic
 products and validates the current physical-Fock projector before complete forces.
 The frozen v14 library was used in Slurm 9946, 9947 and 9949. One subsequent

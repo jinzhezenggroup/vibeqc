@@ -9,10 +9,10 @@ import numpy as np
 
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.expr import AlgebraForm
+from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
 from .expressions import energy_expression
-from .spec import UnsupportedXC
+from .spec import FunctionalSpec, UnsupportedXC
 
 
 def output_set(spec, order):
@@ -27,17 +27,24 @@ def output_set(spec, order):
     return tuple(result)
 
 
-def validate_features(spec, features, *, order=2):
+def validate_features(spec, features, *, order=2, copy=True):
     """Validate interior-v1 without changing any feature or derivative.
 
     Positive densities span 24 decades, spin fractions reach 1e-10 and reduced
     gradients reach 1e6. Outside this finite audited domain callers receive an
     explicit unsupported result. Only order-zero vacuum energy is defined.
     """
+    if type(copy) is not bool:
+        raise ValueError("copy must be bool")
     raw = np.asarray(features)
     if np.iscomplexobj(raw) or raw.ndim != 2 or raw.shape[0] != len(spec.features):
         raise ValueError("XC features require real [feature, point] arrays")
-    x = np.array(raw, dtype=np.float64, order="C", copy=True)
+    if copy:
+        x = np.array(raw, dtype=np.float64, order="C", copy=True)
+    else:
+        if raw.dtype != np.float64 or not raw.flags.c_contiguous:
+            raise ValueError("zero-copy XC features require contiguous float64")
+        x = raw
     if not np.all(np.isfinite(x)):
         raise UnsupportedXC("nonfinite XC input")
     if spec.spin == "polarized":
@@ -109,9 +116,9 @@ def pack_grid_features(spec, values):
 class XCProgram:
     """One immutable output contract with scalar DAG and reproducible identity."""
 
-    spec: object
-    graph: object
-    roots: tuple
+    spec: FunctionalSpec
+    graph: Graph
+    roots: tuple[Expr, ...]
     outputs: tuple[tuple[int, ...], ...]
     optimization: str
     expression_hash: str

@@ -3519,8 +3519,8 @@ def test_runtime_buckets_all_generated_classes_before_dispatch():
     assert source.count("classify_generated_shell_tasks_kernel<<<") == 1
 
 
-def test_one_electron_force_batches_point_charges_in_one_warp_per_ao_pair():
-    """Keep nuclear centers device-batched with the scalar path as fallback."""
+def test_one_electron_force_batches_point_charges_in_retained_reference_warp():
+    """Keep the explicit native exception batched without restoring scalar code."""
 
     source = _direct_cuda_source()
     force_source = (
@@ -3535,8 +3535,24 @@ def test_one_electron_force_batches_point_charges_in_one_warp_per_ao_pair():
     assert "if (lane == 0U)" in cooperative
     assert "__shfl_down_sync" in cooperative
     assert source.count("one_electron_force_cooperative_kernel<<<") == 1
-    assert 'std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")' in source
-    assert "scalar_one_electron_force_environment == nullptr" in source
+    assert "one_electron_force_scalar_kernel" not in source
+    assert 'std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")' not in source
+
+
+def test_generated_one_electron_derivatives_are_the_production_default():
+    """Promote compiler-owned derivatives while retaining an explicit escape hatch."""
+
+    policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    begin = policy.index("bool generated_one_electron_derivatives_requested()")
+    end = policy.index("bool resident_psss_bra_requested()", begin)
+    selection = policy[begin:end]
+    assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES")' in selection
+    assert "selection == nullptr" in selection
+    assert 'std::strcmp(selection, "generated") == 0' in selection
+    assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
+    assert "if (selection == nullptr) return 1U;" in selection
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock():

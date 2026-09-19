@@ -15,7 +15,10 @@ Slice B generates forward and reverse programs for every primitive.
 Gather/slice use exact incidence matrices and repeated einsum labels use exact
 identity projections.  Packed parameters are expanded through an explicit
 unpack DAG, and their reverse programs apply the weighted transpose; callers
-request this with the ``packed=`` mapping.
+request this with the ``packed=`` mapping. Dense symmetry-constrained inputs
+keep their dense storage: forward seeds obey the declared symmetry and reverse
+results use a signed-permutation group projector under the dense inner product,
+without constructing coordinate-incidence matrices.
 """
 
 from __future__ import annotations
@@ -32,18 +35,25 @@ import numpy as np
 
 from .autodiff import _input_groups, _input_nodes
 from .ir import (
+    TRANSCENDENTALS,
     Node,
+    _execution_power_exponent,
     add,
     broadcast,
     constant,
     divide,
     einsum,
+    exp,
     gather,
     input_tensor,
+    log,
     multiply,
+    power,
     reduce_sum,
     reshape,
+    scaled_bilinear,
     slice_tensor,
+    sqrt,
     transpose,
 )
 from .packing import PackedLayout
@@ -51,7 +61,7 @@ from .program import Program
 from .types import Index, IndexSpace, TensorSpec
 
 GENERATION_SCHEMA = "vibeqc.tensor.ad_program"
-GENERATION_VERSION = 1
+GENERATION_VERSION = 2
 TANGENT_PREFIX = "d_"
 COTANGENT_PREFIX = "bar_"
 DEFAULT_MAX_ELEMENTS = 1_000_000
@@ -99,8 +109,25 @@ def _zero_like(node: Node) -> Node:
     return add(node, node, coefficients=(0, 0))
 
 
-def _square(node: Node) -> Node:
-    return multiply(node, node)
+def _scaled_partial(node: Node, weight: Node, index: int) -> Node:
+    """A weighted partial of the fused primitive, reused by both AD modes."""
+    a, b, c, d, e, f = node.inputs
+    zero = _zero_like(weight)
+    other = (b, a, d, c, node, node)[index]
+    if index < 4:
+        den1, den2 = e, f
+    else:
+        scalar = constant(
+            1,
+            TensorSpec(
+                dtype=node.spec.dtype,
+                representation=node.spec.representation,
+                role="constant",
+            ),
+        )
+        den1, den2 = node.inputs[index], broadcast(scalar, node.spec.indices, ())
+    terms = (weight, other, zero, zero) if index < 2 else (zero, zero, weight, other)
+    return scaled_bilinear(*terms, den1, den2)
 
 
 def _equation(labels, output) -> str:
@@ -210,6 +237,28 @@ def _incidence_constant(
     return constant(values, spec)
 
 
+def _transcendental_partial(node: Node, weight: Node) -> Node:
+    """Generate weighted partials while retaining the original error boundary."""
+    x = node.inputs[0]
+    if node.op == "exp":
+        return multiply(node, weight)
+    if node.op == "sqrt":
+        # Keeps sqrt's primal check and rejects the singular derivative at zero.
+        return divide(weight, add(node, coefficients=(2,)))
+    guard = _zero_like(node)
+    if node.op == "log":
+        return add(guard, divide(weight, x))
+    p = _execution_power_exponent(node.attrs["exponent"], node.spec.dtype)
+    if p == 0:
+        return add(guard, _zero_like(weight))
+    if p == 1:
+        return add(guard, weight)
+    # Retain the primal check even when its result is not needed by the slope.
+    # x**(p-1), rather than x**p/x, preserves slopes after primal underflow.
+    partial = add(multiply(weight, power(x, p - 1)), coefficients=(p,))
+    return add(guard, partial)
+
+
 def _jvp_graph(node: Node, operand_tangents) -> Node | None:
     """Generate one forward tangent expression, or None for exact zero."""
     if node.op == "add":
@@ -234,13 +283,24 @@ def _jvp_graph(node: Node, operand_tangents) -> Node | None:
         )
     if node.op == "divide":
         numerator, denominator = node.inputs
-        terms = []
-        if operand_tangents[0] is not None:
-            terms.append(multiply(operand_tangents[0], denominator))
-        if operand_tangents[1] is not None:
-            terms.append(_scale(multiply(numerator, operand_tangents[1]), (-1, 1)))
-        combined = _combine(terms)
-        return None if combined is None else divide(combined, _square(denominator))
+        dx, dy = operand_tangents
+        if dy is None:
+            return None if dx is None else divide(dx, denominator)
+        zero = _zero_like(dy)
+        return scaled_bilinear(
+            zero if dx is None else dx,
+            denominator,
+            numerator,
+            dy,
+            denominator,
+            denominator,
+        )
+    if node.op == "scaled_bilinear":
+        return _combine(
+            _scaled_partial(node, tangent, index)
+            for index, tangent in enumerate(operand_tangents)
+            if tangent is not None
+        )
     if node.op == "einsum":
         equation = _equation(node.attrs["labels"], node.attrs["output"])
         terms = []
@@ -262,6 +322,8 @@ def _jvp_graph(node: Node, operand_tangents) -> Node | None:
     tangent = operand_tangents[0]
     if tangent is None:
         return None
+    if node.op in TRANSCENDENTALS:
+        return _transcendental_partial(node, tangent)
     if node.op == "transpose":
         return transpose(tangent, node.attrs["axes"])
     if node.op == "reshape":
@@ -417,6 +479,8 @@ def _vjp_graph(
     """
     if not any(active):
         return [None] * len(node.inputs)
+    if node.op in TRANSCENDENTALS:
+        return [_transcendental_partial(node, bar)]
     if node.op == "add":
         return [
             _scale(bar, coefficient) if needed else None
@@ -429,11 +493,17 @@ def _vjp_graph(
         ]
     if node.op == "divide":
         numerator, denominator = node.inputs
+        zero = _zero_like(bar) if active[1] else None
         return [
             divide(bar, denominator) if active[0] else None,
-            _scale(divide(multiply(bar, numerator), _square(denominator)), (-1, 1))
+            scaled_bilinear(zero, zero, bar, numerator, denominator, denominator)
             if active[1]
             else None,
+        ]
+    if node.op == "scaled_bilinear":
+        return [
+            _scaled_partial(node, bar, index) if needed else None
+            for index, needed in enumerate(active)
         ]
     if node.op == "einsum":
         return _vjp_einsum(node, bar, active, max_elements=max_elements)
@@ -589,6 +659,12 @@ def _rebuild_node(node: Node, inputs) -> Node:
         return multiply(*inputs)
     if node.op == "divide":
         return divide(*inputs)
+    if node.op in ("exp", "log", "sqrt"):
+        return {"exp": exp, "log": log, "sqrt": sqrt}[node.op](*inputs)
+    if node.op == "power":
+        return power(inputs[0], _coefficient(node.attrs["exponent"]))
+    if node.op == "scaled_bilinear":
+        return scaled_bilinear(*inputs)
     if node.op == "einsum":
         return einsum(
             _equation(node.attrs["labels"], node.attrs["output"]),
@@ -733,6 +809,39 @@ def _inverse_weights_constant(node: Node, layout: PackedLayout) -> Node:
     )
 
 
+def _dense_symmetry_adjoint(bar: Node, spec: TensorSpec) -> Node:
+    """Orthogonally project a dense cotangent onto a signed symmetry space.
+
+    Average the finite signed permutation group, not only its generators:
+    generators may not commute. This is the dense equivalent of
+    unpack(unpack_transpose(bar)) without a coordinate-sized incidence matrix.
+    Opposite signs for one permutation describe a structural zero space.
+    Bound symbolic group expansion independently of tensor dimensions.
+    """
+    identity = tuple(range(len(spec.indices)))
+    group = {(identity, 1)}
+    pending = [(identity, 1)]
+    while pending:
+        permutation, sign = pending.pop()
+        for symmetry in spec.symmetries:
+            item = (
+                tuple(permutation[axis] for axis in symmetry.permutation),
+                sign * symmetry.sign,
+            )
+            if item not in group:
+                if len(group) >= 4096:
+                    raise ValueError(
+                        "dense symmetry projector exceeds 4096 signed permutations"
+                    )
+                group.add(item)
+                pending.append(item)
+    ordered = sorted(group)
+    return add(
+        *(bar if axes == identity else transpose(bar, axes) for axes, _ in ordered),
+        coefficients=(Fraction(sign, len(group)) for _, sign in ordered),
+    )
+
+
 def linearize(
     program: Program,
     tangent_inputs,
@@ -764,11 +873,6 @@ def linearize(
     selected_outputs = _select_names(program.outputs, outputs, "output")
     tangent_nodes = {}
     for name, node in requested.items():
-        if node.spec.symmetries:
-            raise NotImplementedError(
-                "packed/symmetric tangent inputs need a boundary unpack map; "
-                "slice B currently generates dense general tangents only"
-            )
         generated = f"{TANGENT_PREFIX}{name}"
         if generated in inputs or generated in program.outputs:
             raise ValueError(
@@ -859,12 +963,6 @@ def transpose_program(
         if node.spec.differentiable
     }
     selected_inputs = _select_names(differentiable, inputs, "input")
-    for name, node in selected_inputs.items():
-        if node.spec.symmetries:
-            raise NotImplementedError(
-                "packed/symmetric cotangent inputs need a boundary transpose "
-                "map; slice B currently generates dense general cotangents only"
-            )
     groups = _input_groups(program)
     roots = (node for name in selected_inputs for node in groups[name])
     relevant = _ancestors(selected_outputs.values()) & _descendants_of(program, roots)
@@ -912,6 +1010,9 @@ def transpose_program(
             inverse = _inverse_weights_constant(node, layouts[name])
             bar = multiply(bar, inverse)
             generated_nodes.extend([inverse, bar])
+        elif node.spec.symmetries:
+            bar = _dense_symmetry_adjoint(bar, node.spec)
+            generated_nodes.append(bar)
         derivative_name = f"{COTANGENT_PREFIX}{name}"
         derivative_outputs[derivative_name] = bar
         output_map[derivative_name] = name
