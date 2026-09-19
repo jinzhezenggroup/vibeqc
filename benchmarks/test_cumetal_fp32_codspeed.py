@@ -33,7 +33,9 @@ class _CuMetalServer:
         ready = self._process.stdout.readline().strip()
         if not ready.startswith("READY device="):
             self.close()
-            raise RuntimeError(f"CuMetal FP32 benchmark did not become ready: {ready!r}")
+            raise RuntimeError(
+                f"CuMetal FP32 benchmark did not become ready: {ready!r}"
+            )
         print(ready, flush=True)
 
     def run_once(self) -> float:

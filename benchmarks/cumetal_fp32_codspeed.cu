@@ -101,8 +101,7 @@ class BenchmarkServer {
     }
 
     std::cout << "READY device=" << properties_.name << " elements=" << kElements
-              << " launches=" << kLaunchesPerSample << " inner=" << kInnerIterations
-              << std::endl;
+              << " launches=" << kLaunchesPerSample << " inner=" << kInnerIterations << std::endl;
     return true;
   }
 
