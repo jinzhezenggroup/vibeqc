@@ -101,10 +101,14 @@ unchanged. Further #206 work must preserve these failures and original gates.
 
 ## Audit and reproduction
 
-`manifest.json` records 52 losslessly retained input/output, identity and
-reproduction records with both original and stored hashes. Every result,
-progress record, failure, provider audit and exact controller command is
-retained; the native binary remains local. Gzip payloads restore exact bytes.
+`manifest.json` records the original 52-record input/output, identity and
+reproduction bundle with both original and stored hashes. The compact checkout
+keeps every result, failure, provider audit, exact controller command and
+qualification record, while ten progress journals now live only in the
+checksum-bound [`retention-488`](../retention-488/README.md) Git-history snapshot.
+They can be restored byte-for-byte when execution-flow debugging is needed; they
+are not inputs to the reported medians or numerical gates. The native binary
+remains local.
 Slurm accounting storage is disabled on this host; the controller transcript
 retains `srun`'s task exit 1 and the session's observed completion is recorded.
 

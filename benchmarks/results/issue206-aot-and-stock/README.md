@@ -98,8 +98,11 @@ regressions remain unchanged; these profiles do not establish superiority.
 
 ## Reproduction and remaining work
 
-`manifest.json` binds 40 records, including full direct sample arrays, capability
-journals, selected build options, stock CSV/JSON exports and exact runner source.
+`manifest.json` binds the original 40-record campaign. The reduced checkout keeps
+the direct decision/sample records, capability evidence, selected build options,
+stock CSV/JSON exports and exact runner source; four direct progress streams now
+restore from the checksum-bound [`retention-488`](../retention-488/README.md)
+snapshot because they carry execution progress rather than additional clean samples.
 Workstation paths preserve original provenance; adapt paths to a fresh checkout
 without changing inputs or controls. Use the measured revision and comparator
 bytes identified by `direct/campaign.json`. Large native libraries, profiler

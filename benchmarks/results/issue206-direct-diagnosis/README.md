@@ -21,9 +21,12 @@ an AOT-enabled release reproduction is still pending and no successful replaceme
 calculation is claimed here.
 
 The metadata regression reruns both 192-AO direct points with one requested
-repeat, retaining both failures. Each point now leaves a progress journal with
-the actual loaded library, hash and native capability probe before SCF starts.
-The runner's summary links those journals even though no result JSON is produced.
+repeat, retaining both failures. Each point produced a progress journal with the
+actual loaded library, hash and native capability probe before SCF starts. Those
+two execution streams now restore from the checksum-bound
+[`retention-488`](../retention-488/README.md) snapshot; the retained metadata
+summary preserves their identities and failure conclusion without treating the
+progress stream as another benchmark result.
 The metadata check passes; both molecular calculations still fail. These are
 failure-retention tests, not one-repeat performance measurements.
 
@@ -77,7 +80,8 @@ attempts, partial results and exact scripts remain visible.
 
 ## Reproduction and validation
 
-`manifest.json` binds 27 retained records to their hashes and original locations.
+`manifest.json` remains the 27-record historical inventory; the current checkout
+omits only the two progress streams listed in `retention-488`.
 `reproduction/` preserves exact scripts as text; workstation paths are provenance.
 Reuse the saved geometries, seeds, binary identity and controls for a fresh probe.
 Keep accuracy/profiler runs separate from clean endpoint timing. A later

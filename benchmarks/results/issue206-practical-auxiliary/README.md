@@ -123,9 +123,12 @@ hash-pinned `initial-validation-observations.json` preserves the original
 observation text, including its spacing, without changing any reported result.
 No pinned GPU Python environment was changed to install test dependencies.
 
-`manifest.json` maps 41 lossless retained records to their original hashes.
-This includes all 28 clean timed calls, all paired arrays, progress records,
-provider/rank audits, exact controls, CPU reference forces and launch scripts.
+`manifest.json` maps the original 41-record bundle to its hashes. The compact
+checkout keeps all 28 clean timed calls, paired arrays, provider/rank audits,
+exact controls, CPU reference forces and launch scripts. Two progress journals
+that only trace execution flow now live in the checksum-bound
+[`retention-488`](../retention-488/README.md) Git-history snapshot and can be
+restored byte-for-byte; they do not contribute samples or numerical gates.
 The CPU-only audit recomputes every paired error, rank/identity check, median,
 branch, predeclared statistic and CPU-reference error:
 

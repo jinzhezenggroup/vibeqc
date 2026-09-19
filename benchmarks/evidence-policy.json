@@ -554,5 +554,7 @@
     }
   },
   "review_size_bytes": 1048576,
-  "schema": "vibeqc.retention-policy.v1"
+  "schema": "vibeqc.retention-policy.v1",
+  "legacy_large_review_path": "benchmarks/legacy-evidence-review.json",
+  "legacy_large_review_threshold_bytes": 131072
 }
