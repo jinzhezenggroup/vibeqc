@@ -18,11 +18,12 @@ permissions:
 # Keep only the newest validation for a pull request. Master pushes use their
 # unique run ID, so one merge never cancels another merge's validation record.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   cpu:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -87,6 +88,7 @@ jobs:
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     env:
       CUDACXX: /usr/local/cuda-12.9/bin/nvcc
       LD_LIBRARY_PATH: /usr/local/cuda-12.9/lib64
@@ -188,6 +190,7 @@ jobs:
 
   python:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -308,6 +311,7 @@ jobs:
           retention-days: 1
 
   upload-coverage:
+    timeout-minutes: 8
     needs: [cpu, python]
     if: ${{ !cancelled() && needs.cpu.result == 'success' && needs.python.result == 'success' }}
     # Coverage reporting is observability rather than a correctness gate. A
@@ -357,6 +361,7 @@ jobs:
 
   pass:
     name: Pass CI checks
+    timeout-minutes: 5
     needs: [cpu, cuda-compile, python]
     runs-on: ubuntu-24.04
     if: always()
