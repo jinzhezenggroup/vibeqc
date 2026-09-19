@@ -16,7 +16,10 @@ import json
 import os
 import time
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 def main() -> None:

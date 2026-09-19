@@ -10,7 +10,11 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Primitive, Shell
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash

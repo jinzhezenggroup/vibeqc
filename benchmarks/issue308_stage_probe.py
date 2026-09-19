@@ -17,7 +17,11 @@ import time
 from pathlib import Path
 
 import numpy as np
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 from benchmarks._cases import benchmark_cases
 from benchmarks.df_progress_ledger import read_progress, summarize_progress

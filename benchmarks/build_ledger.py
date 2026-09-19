@@ -25,7 +25,10 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 @dataclass(frozen=True, slots=True)

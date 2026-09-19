@@ -46,7 +46,10 @@ except ModuleNotFoundError:  # imported as ``benchmarks.issue206_df_force_probe`
         read_trace,
         trace_identity,
     )
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator
 
 CASES = (

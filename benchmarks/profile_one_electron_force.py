@@ -16,7 +16,11 @@ import time
 
 import numpy as np
 from _cases import benchmark_cases
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from compare_gpu4pyscf_batch import scaled_geometries
 from vibeqc import Calculator
 

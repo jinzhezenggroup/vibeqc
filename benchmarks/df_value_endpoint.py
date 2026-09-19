@@ -16,7 +16,11 @@ import time
 from pathlib import Path
 
 import numpy as np
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator
 
 from benchmarks._cases import benchmark_cases

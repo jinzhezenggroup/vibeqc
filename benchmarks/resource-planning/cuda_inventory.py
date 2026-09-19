@@ -25,7 +25,7 @@ _BENCHMARKS_DIR = next(
 )
 _compiler_sys.path.insert(0, str(_BENCHMARKS_DIR))
 import numpy as np
-from _support import raw_output_path
+from _retention import raw_output_path
 from vibeqc import (
     Calculator,
     ResourceBudget,

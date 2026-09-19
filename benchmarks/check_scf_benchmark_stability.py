@@ -14,7 +14,10 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 def iteration_branch(sample: dict[str, Any]) -> tuple[int, ...]:

@@ -16,7 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 from benchmarks._support import environment_metadata
 from tools.vibeqc_validation.fixtures import (

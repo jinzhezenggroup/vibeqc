@@ -17,7 +17,10 @@ import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Atom
 from vibeqc.calculator import _named_basis_shells
 from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model

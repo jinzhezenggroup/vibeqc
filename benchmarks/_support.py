@@ -300,22 +300,13 @@ def benchmark_gate_failures(
 
 
 def raw_output_path(path: str | Path) -> Path:
-    """Keep execution output out of this checkout's reviewed evidence tree.
+    """Compatibility wrapper around the stdlib-only retention guard."""
+    try:
+        from benchmarks._retention import raw_output_path as guard
+    except ModuleNotFoundError:
+        from _retention import raw_output_path as guard
 
-    Accept explicit scratch paths, but reject symlink aliases into the retained
-    tree as well as direct paths. Publication is a separate, deliberate step.
-    This function is also an argparse type, so runners fail before calculation.
-    """
-    destination = Path(path)
-    retained = _REPOSITORY_ROOT / "benchmarks" / "results"
-    if destination.absolute().is_relative_to(retained.absolute()) or (
-        destination.resolve().is_relative_to(retained.resolve())
-    ):
-        raise ValueError(
-            "raw benchmark output cannot target benchmarks/results/; use "
-            ".artifacts/benchmarks/ and tools/evidence.py publish for reviewed evidence"
-        )
-    return destination
+    return guard(path, repository_root=_REPOSITORY_ROOT)
 
 
 def write_result(path: str | Path, payload: dict[str, Any]) -> Path:

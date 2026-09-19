@@ -12,7 +12,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from _support import cuda_accelerator_metadata, environment_metadata, raw_output_path
+from _support import cuda_accelerator_metadata, environment_metadata
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 ANGULAR_LABELS = "spdfgh"
 

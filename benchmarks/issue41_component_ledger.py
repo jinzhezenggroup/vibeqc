@@ -20,7 +20,10 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 VIBEQC_RANGE = ":vibeqc/warm/energy-plus-force"
 GPU4PYSCF_SCF_RANGE = ":gpu4pyscf/warm/scf"

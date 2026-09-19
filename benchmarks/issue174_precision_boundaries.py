@@ -25,7 +25,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, TypeVar
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 _T = TypeVar("_T")
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]

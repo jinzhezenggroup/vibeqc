@@ -12,7 +12,10 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 def read_progress(path: Path) -> dict:

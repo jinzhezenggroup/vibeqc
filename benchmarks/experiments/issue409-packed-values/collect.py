@@ -19,7 +19,7 @@ _BENCHMARKS_DIR = next(
     parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
 )
 sys.path.insert(0, str(_BENCHMARKS_DIR))
-from _support import raw_output_path
+from _retention import raw_output_path
 
 LIMIT = 1 << 20
 

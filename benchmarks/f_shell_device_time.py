@@ -14,7 +14,10 @@ import re
 import sqlite3
 from pathlib import Path
 
-from _support import raw_output_path
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 def classify_kernel(name: str) -> tuple[str | None, str, str | None]:

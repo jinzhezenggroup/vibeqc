@@ -32,7 +32,11 @@ from contextlib import contextmanager
 from typing import Any
 
 import numpy as np
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc_compiler.common.timing import (
     interleaved_selection_order as interleaved_selection_order,
 )

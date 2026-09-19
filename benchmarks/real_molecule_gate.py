@@ -22,7 +22,11 @@ from _cases import (
     density_fitting_gate_points,
     real_molecule_gate_points,
 )
-from _support import raw_output_path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 _ENERGY_TOLERANCE = 1.0e-12
 _DENSITY_TOLERANCE = 1.0e-10
