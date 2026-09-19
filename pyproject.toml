@@ -55,6 +55,7 @@ wheel.py-api = "py3"
 # JIT templates need their transitive local headers in installed wheels too.
 "src/tensor/cuda_runtime.cuh" = "vibeqc_compiler/assets/src/tensor/cuda_runtime.cuh"
 "src/tensor/cuda_resident.cuh" = "vibeqc_compiler/assets/src/tensor/cuda_resident.cuh"
+"src/cc/cuda_state.cuh" = "vibeqc_compiler/assets/src/cc/cuda_state.cuh"
 "src/tensor/cuda_error.hpp" = "vibeqc_compiler/assets/src/tensor/cuda_error.hpp"
 "src/tensor/metrics.hpp" = "vibeqc_compiler/assets/src/tensor/metrics.hpp"
 "src/tensor/cpu_runtime.hpp" = "vibeqc_compiler/assets/src/tensor/cpu_runtime.hpp"

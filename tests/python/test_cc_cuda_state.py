@@ -106,3 +106,31 @@ def test_gpu_diis_singular_history_is_explicit_rejection(state_library):
     ), error.value
     assert status.value == 1
     np.testing.assert_array_equal(output, 0)
+
+
+def test_gpu_diis_zero_error_history_retains_trial_semantics(state_library):
+    errors = np.zeros((2, 7))
+    vectors = np.arange(14, dtype=np.float64).reshape(2, 7)
+    output = np.empty(7)
+    norm, status, error = (
+        ctypes.c_double(),
+        ctypes.c_int(),
+        ctypes.create_string_buffer(2048),
+    )
+    assert (
+        state_library.test_cc_state(
+            7,
+            2,
+            errors.ctypes.data,
+            vectors.ctypes.data,
+            output.ctypes.data,
+            ctypes.byref(norm),
+            ctypes.byref(status),
+            error,
+            len(error),
+        )
+        == 0
+    ), error.value
+    assert status.value == 2
+    assert norm.value == 0
+    np.testing.assert_array_equal(output, 0)

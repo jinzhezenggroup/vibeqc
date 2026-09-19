@@ -3,7 +3,7 @@
 // no function here allocates, copies a tensor to the host, or owns a stream.
 #pragma once
 
-#include "cuda_runtime.cuh"
+#include "../tensor/cuda_runtime.cuh"
 
 namespace vibeqc::cc {
 
@@ -26,6 +26,8 @@ inline void diis_gram(vibeqc_tensor::Context& context, const double* errors, int
 __global__ void diis_coefficients(const double* gram, int history, double* system,
                                   double* coefficients, int* status) {
   if (blockIdx.x || threadIdx.x) return;
+  // status=0: extrapolation ready; 1: ill-conditioned, drop oldest/retry;
+  // 2: exact zero error Gram, keep the trial and retain history (CPU _DIIS semantics).
   *status = 1;
   if (history < 2 || history > 20) return;
   const int width = history + 1;
@@ -34,7 +36,10 @@ __global__ void diis_coefficients(const double* gram, int history, double* syste
     if (!isfinite(gram[i])) return;
     scale = fmax(scale, fabs(gram[i]));
   }
-  if (!(scale > 0.0)) return;
+  if (!(scale > 0.0)) {
+    *status = 2;
+    return;
+  }
   for (int row = 0; row < width; ++row) {
     coefficients[row] = row == history ? -1.0 : 0.0;
     for (int col = 0; col < width; ++col) {
@@ -93,6 +98,35 @@ __global__ void diis_combine(const double* vectors, const double* coefficients,
 
 // The physical max norm cannot be replaced by an update norm or DIIS error.
 // Two deterministic reductions avoid float atomics and keep nonfinite checks.
+// Compact a dense history by dropping its oldest row. Each lane owns one
+// element across every row, so the in-place left shift has no cross-lane
+// read/write dependency.
+__global__ void history_shift(double* values, vibeqc_tensor::I elements, int history) {
+  if (!values || elements < 1 || history < 2 || history > 20) return;
+  for (vibeqc_tensor::I i = vibeqc_tensor::I(blockIdx.x) * blockDim.x + threadIdx.x; i < elements;
+       i += vibeqc_tensor::I(blockDim.x) * gridDim.x)
+    for (int row = 0; row + 1 < history; ++row)
+      values[vibeqc_tensor::I(row) * elements + i] =
+          values[vibeqc_tensor::I(row + 1) * elements + i];
+}
+
+// Apply one DIIS coefficient vector to a logical slice of each dense history
+// row while T1/T2 remain in separately pinned plan spans.
+__global__ void diis_combine_slice(const double* vectors, const double* coefficients,
+                                   vibeqc_tensor::I stride, vibeqc_tensor::I offset,
+                                   vibeqc_tensor::I count, int history, const int* status,
+                                   double* result, int* arithmetic_error) {
+  if (*status) return;
+  for (vibeqc_tensor::I i = vibeqc_tensor::I(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
+       i += vibeqc_tensor::I(blockDim.x) * gridDim.x) {
+    double value = 0.0;
+    for (int row = 0; row < history; ++row)
+      value = __dadd_rn(value, __dmul_rn(coefficients[row],
+                                         vectors[vibeqc_tensor::I(row) * stride + offset + i]));
+    result[i] = vibeqc_tensor::finite(value, arithmetic_error, 0);
+  }
+}
+
 __global__ void residual_partials(const double* residual, vibeqc_tensor::I count, double* partials,
                                   int* error) {
   __shared__ double shared[256];

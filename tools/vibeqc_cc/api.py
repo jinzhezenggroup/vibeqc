@@ -142,7 +142,9 @@ def energy(
 
     ``backend`` selects the physical-equation evaluator: ``"cpu"`` is the #148
     interpreter; ``"cuda"`` compiles the same TensorIR through #146 and
-    requires an explicit ``CudaCompilerAdapter`` and cache. Forces,
+    requires an explicit ``CudaCompilerAdapter`` and cache. ``"cuda-resident"``
+    keeps T/R/integrals/DIIS resident across iterations and reads only scalar
+    convergence control until final acceptance. Forces,
     frozen cores, ECP, open shells and non-RHF references raise before AO work;
     a CUDA provider failure never silently falls back to CPU CCSD.
     """
@@ -152,14 +154,17 @@ def energy(
         )
     if backend == "cpu":
         state = solve(snapshot, provider, options=options, t1=t1, t2=t2)
-    elif backend == "cuda":
+    elif backend in ("cuda", "cuda-resident"):
         if not isinstance(compiler, CudaCompilerAdapter):
             raise ValueError("CUDA RCCSD requires a CudaCompilerAdapter")
         if not isinstance(cache, Path):
             raise ValueError("CUDA RCCSD requires a pathlib.Path cache")
-        from .gpu_solver import solve_gpu
+        if backend == "cuda":
+            from .gpu_solver import solve_gpu as selected_solver
+        else:
+            from .resident_solver import solve_gpu_resident as selected_solver
 
-        state = solve_gpu(
+        state = selected_solver(
             snapshot,
             provider,
             compiler=compiler,
@@ -171,7 +176,7 @@ def energy(
             provider_peak_bytes=provider_peak_bytes,
         )
     else:
-        raise ValueError("RCCSD backend must be 'cpu' or 'cuda'")
+        raise ValueError("RCCSD backend must be 'cpu', 'cuda' or 'cuda-resident'")
     reference = snapshot.reference_energy
     return RCCSDResult(
         backend=backend,
