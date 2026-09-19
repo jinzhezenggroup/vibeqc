@@ -32,8 +32,10 @@ and retries, matching the CPU policy. Zero-DIIS leaves the trial resident.
 Convergence is not certified by resident scalars alone: download final T once
 and run the separately retained expanded physical TensorIR GPU replay. Only that
 fresh replay may publish a converged `CCSDResult`. The solved owner itself stays
-alive until explicitly closed and has a hash binding reference, integral,
-equation, artifact and device identities.
+alive until explicitly closed. Its immutable owner hash binds reference,
+integral, equation, artifact and device identities; a separate solved-state
+hash binds that owner to replay-qualified final T1/T2. Starting another solve
+invalidates the solved-state hash until a fresh expanded replay passes.
 
 ## Failure and lifetime rules
 

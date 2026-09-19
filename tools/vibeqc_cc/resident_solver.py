@@ -321,7 +321,7 @@ class PreparedResidentCCSD:
         self._static_upload_bytes = sum(
             np.asarray(value).nbytes for value in feeds.values()
         )
-        self.state_identity = canonical_hash(
+        self.owner_identity = canonical_hash(
             {
                 "reference": snapshot.identity,
                 "integrals": self.cpu.integral_hash,
@@ -331,6 +331,10 @@ class PreparedResidentCCSD:
                 "device": device,
             }
         )
+        # Compatibility name means immutable owner identity, never a claim that
+        # the current amplitudes have passed convergence/replay qualification.
+        self.state_identity = self.owner_identity
+        self._solved_state_identity = None
 
     def _run(self):
         try:
@@ -356,6 +360,13 @@ class PreparedResidentCCSD:
     def independent(self, t1, t2):
         return self.replay.execute({**self.cpu.feeds, "t1": t1, "t2": t2}).outputs
 
+    @property
+    def solved_state_identity(self):
+        """Exact qualified amplitude state; absent during mutation/nonconvergence."""
+        if self._solved_state_identity is None:
+            raise RuntimeError("resident CC owner has no qualified solved state")
+        return self._solved_state_identity
+
     def close(self):
         self.primary.close()
         self.replay.close()
@@ -367,6 +378,9 @@ class PreparedResidentCCSD:
         self.close()
 
     def solve(self):
+        # Any new solve may mutate amplitudes; downstream solved-state bindings
+        # fail closed until a fresh expanded replay qualifies the final T again.
+        self._solved_state_identity = None
         options, history, previous_energy = self.options, [], None
         status, reason = "not_converged", "maximum CCSD iterations reached"
         energy, final = None, None
@@ -441,6 +455,20 @@ class PreparedResidentCCSD:
                 break
         if final is None:
             final = self.amplitudes(last=status == "nonfinite")
+        if status == "converged":
+            self._solved_state_identity = canonical_hash(
+                {
+                    "owner": self.owner_identity,
+                    "t1_sha256": sha256(
+                        np.ascontiguousarray(final[0]).tobytes()
+                    ).hexdigest(),
+                    "t2_sha256": sha256(
+                        np.ascontiguousarray(final[1]).tobytes()
+                    ).hexdigest(),
+                    "correlation_energy": energy,
+                    "qualification": "expanded-physical-replay",
+                }
+            )
         transfers = {
             **dict(self.primary.transfers),
             "scalar_control_d2h_bytes": self.primary.control_transfers[
@@ -476,7 +504,9 @@ class PreparedResidentCCSD:
             "reference_energy": self.snapshot.reference_energy,
             "backend": "cuda-fp64-resident",
             "device": self.device,
-            "resident_state_identity": self.state_identity,
+            "resident_owner_identity": self.owner_identity,
+            "resident_state_identity": self.owner_identity,
+            "resident_solved_state_identity": self._solved_state_identity,
             "primary_peak_bytes": self.primary.plan.peak_bytes,
             "independent_replay_peak_bytes": self.replay.plan.peak_bytes,
             "combined_peak_bytes": self.diagnostic["combined_peak_bytes"],

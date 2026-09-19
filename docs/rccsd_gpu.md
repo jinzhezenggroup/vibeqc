@@ -99,9 +99,13 @@ a backend switch.
 The internal energy facade accepts `backend="cuda-resident"`. It remains
 energy-only; `method_capabilities("rccsd")` still reports no native prepared
 batch and force requests remain unsupported. `PreparedResidentCCSD` itself
-stays open after convergence, with an exact `resident_state_identity`, so a
-later Lambda/gradient consumer can bind the solved owner rather than requiring
-a new primal solve. The integral provider may be released after preparation:
+stays open after convergence. Its immutable `owner_identity` binds the
+reference/integrals/equations/artifact/device; a separate
+`solved_state_identity` additionally hashes the replay-qualified final T1/T2.
+A new solve clears that solved identity before any mutation and republishes one
+only after a fresh expanded replay. A later Lambda/gradient consumer can
+therefore fail closed on stale or merely prepared owners rather than mistaking
+owner identity for a solved amplitude state. The integral provider may be released after preparation:
 all numerical inputs needed by the resident/replay owners have already been
 copied or retained under their own lifetime.
 

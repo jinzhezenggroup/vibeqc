@@ -169,6 +169,8 @@ def test_resident_owner_preserves_converged_device_state_for_follow_on_consumers
         cache,
         options=SolverOptions(residual_tolerance=1e-10, energy_tolerance=1e-12),
     ) as prepared:
+        with pytest.raises(RuntimeError, match="no qualified solved state"):
+            _ = prepared.solved_state_identity
         provider._closed = True
         provider.source._check_open = lambda: (_ for _ in ()).throw(
             RuntimeError("released fixture provider must not be consulted")
@@ -180,7 +182,12 @@ def test_resident_owner_preserves_converged_device_state_for_follow_on_consumers
         resident = prepared.amplitudes()
         np.testing.assert_allclose(resident[0], result.t1, atol=2e-12, rtol=2e-12)
         np.testing.assert_allclose(resident[1], result.t2, atol=2e-12, rtol=2e-12)
+        assert prepared.owner_identity == result.provenance["resident_owner_identity"]
         assert prepared.state_identity == result.provenance["resident_state_identity"]
+        assert (
+            prepared.solved_state_identity
+            == result.provenance["resident_solved_state_identity"]
+        )
 
 
 @pytest.mark.skipif(
@@ -197,6 +204,7 @@ def test_resident_nonconvergence_is_explicit_and_serializable(tmp_path):
         options=SolverOptions(max_iterations=1),
     )
     assert result.status == "not_converged" and not result.converged
+    assert result.provenance["resident_solved_state_identity"] is None
     assert np.isfinite(result.t1).all() and np.isfinite(result.t2).all()
     result.write(tmp_path / "resident-nonconverged.json")
 
@@ -251,9 +259,15 @@ def test_resident_repeated_solve_reuses_uploaded_owner(tmp_path):
     compiler, cache = _compiler_cache(tmp_path)
     with PreparedResidentCCSD(snapshot, provider, compiler, cache) as prepared:
         first = prepared.solve()
+        first_solved = prepared.solved_state_identity
         uploaded = prepared.primary.transfers["h2d_bytes"]
         warm = prepared.amplitude_snapshot()
         second = prepared.solve()
+        assert (
+            prepared.solved_state_identity
+            == second.provenance["resident_solved_state_identity"]
+        )
+        assert first_solved == first.provenance["resident_solved_state_identity"]
         assert first.converged and second.converged
         assert prepared.primary.transfers["h2d_bytes"] == uploaded
         assert abs(second.total_energy - meta["total_energy"]) <= 1e-8
@@ -278,5 +292,14 @@ def test_two_resident_owners_keep_state_isolated(tmp_path):
         assert a.converged and b.converged
         assert abs(a.total_energy - h2[2]["total_energy"]) <= 1e-8
         assert abs(b.total_energy - water[2]["total_energy"]) <= 1e-8
-        assert first.state_identity == a.provenance["resident_state_identity"]
-        assert second.state_identity == b.provenance["resident_state_identity"]
+        assert first.owner_identity == a.provenance["resident_owner_identity"]
+        assert second.owner_identity == b.provenance["resident_owner_identity"]
+        assert (
+            first.solved_state_identity
+            == a.provenance["resident_solved_state_identity"]
+        )
+        assert (
+            second.solved_state_identity
+            == b.provenance["resident_solved_state_identity"]
+        )
+        assert first.solved_state_identity != second.solved_state_identity
