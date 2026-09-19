@@ -5,12 +5,14 @@ import compatibility tests are the only repository users. No duplicate IR,
 class definitions or cache implementation belongs here.
 """
 
-from importlib import import_module
+from typing import TYPE_CHECKING
 
-_target = import_module("vibeqc_compiler.common.native_runtime")
-import sys
+if TYPE_CHECKING:
+    from vibeqc_compiler.common import native_runtime as _native_runtime
 
-if __name__ == "__main__":
-    _target.main()
+    compile_runtime = _native_runtime.compile_runtime
 else:
-    sys.modules[__name__] = _target
+    import sys
+    from importlib import import_module
+
+    sys.modules[__name__] = import_module("vibeqc_compiler.common.native_runtime")

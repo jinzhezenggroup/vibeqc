@@ -439,3 +439,11 @@ def test_fp32_layout_admission_does_not_change_ordinary_fp32():
     assert plan_cuda(program, TARGET).precision == "fp32"
     with pytest.raises(ValueError, match="layout.*float64"):
         plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
+
+
+@pytest.mark.parametrize("other", [None, object(), (2, 3), 1, "layout"])
+def test_dense_layout_equivalence_rejects_foreign_types(other):
+    """Type annotations must not remove the existing runtime comparison guard."""
+    from vibeqc_compiler.common.layout import DenseLayout
+
+    assert DenseLayout((2, 3)).equivalent(other) is False

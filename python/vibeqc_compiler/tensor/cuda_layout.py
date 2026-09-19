@@ -139,7 +139,8 @@ def select_layouts(nodes, virtual, pinned, schedule, *, alignment):
                     (g.a_order, g.batch_labels + g.k_labels + g.m_labels),
                     (g.b_order, g.batch_labels + g.n_labels + g.k_labels),
                 ):
-                    assignments, valid = {}, True
+                    assignments: dict[int, DenseLayout] = {}
+                    valid = True
                     for step, labels, order in zip(
                         (*operands, i),
                         (g.a_labels, g.b_labels, g.output_labels),
@@ -151,23 +152,20 @@ def select_layouts(nodes, virtual, pinned, schedule, *, alignment):
                             tuple(labels.index(label) for label in order),
                             alignment,
                         )
+                        layout = layouts[step]
+                        assigned = assignments.get(step)
                         if (
-                            layouts[step] is None
+                            layout is None
+                            or (step in pinned and not layout.equivalent(required))
                             or (
-                                step in pinned
-                                and not layouts[step].equivalent(required)
-                            )
-                            or (
-                                step in assignments
-                                and not assignments[step].equivalent(required)
+                                assigned is not None
+                                and not assigned.equivalent(required)
                             )
                         ):
                             valid = False
                             break
                         assignments[step] = (
-                            layouts[step]
-                            if layouts[step].equivalent(required)
-                            else required
+                            layout if layout.equivalent(required) else required
                         )
                     if not valid:
                         continue

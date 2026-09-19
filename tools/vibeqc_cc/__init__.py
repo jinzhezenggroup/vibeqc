@@ -2,7 +2,8 @@
 
 The facade accepts validated closed-shell RHF snapshots and conventional CPU
 integral providers. It does not register a Calculator method or imply GPU,
-native Lambda or nuclear-gradient support. An internal CPU solved-state Lambda
+native Lambda or public nuclear-gradient support. An explicitly dense
+small-system CPU complete-gradient validation endpoint is provided separately. An internal CPU solved-state Lambda
 consumer and block-streamed correlation-only input weights are available
 separately. Generated fixed-amplitude actions use ``build_lambda_programs``
 and ``build_parameter_vjp``.
@@ -18,6 +19,12 @@ from .api import (
     batch_energy,
     energy,
     method_capabilities,
+)
+from .complete_gradient import (
+    BoundCCSDGradient,
+    CCSDGradientOptions,
+    CCSDGradientResult,
+    complete_gradient_validation,
 )
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts, build_program
@@ -54,8 +61,11 @@ from .triples_tiles import (
 __all__ = [
     "BatchItemResult",
     "BatchRCCSDResult",
+    "BoundCCSDGradient",
     "BoundCCSDLambda",
     "BoundCCSDResponse",
+    "CCSDGradientOptions",
+    "CCSDGradientResult",
     "CCSDLambdaPrograms",
     "CCSDLambdaResult",
     "CCSDParameterWeight",
@@ -78,6 +88,7 @@ __all__ = [
     "build_program",
     "build_tile_triples_program",
     "build_triples_program",
+    "complete_gradient_validation",
     "cpu_triples_tiles",
     "energy",
     "evaluate",
