@@ -45,7 +45,7 @@ def _runtime_binary_abi() -> str:
 
 def cpu_binary_target_supported(
     compiler_target: str,
-    runtime: "CpuRuntimeFeatures",
+    runtime: CpuRuntimeFeatures,
 ) -> bool:
     """Check the compiled shared object's architecture/ABI before dlopen."""
 
