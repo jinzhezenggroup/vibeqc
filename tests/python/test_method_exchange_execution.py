@@ -101,9 +101,7 @@ def test_method_binding_compares_resolved_absent_exchange_semantics():
     "method_spin,density_key",
     (("unpolarized", "density_total"), ("polarized", "density_spin")),
 )
-def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(
-    method_spin, density_key
-):
+def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(method_spin, density_key):
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
     graph = resolve_method("PBE0", spin=method_spin)
@@ -177,7 +175,9 @@ def test_method_binding_rejects_wrong_exchange_factor_before_execution():
         executable.fock_spec,
         exchange=replace(executable.fock_spec.exchange, coefficient=-0.25),
     )
-    with NativeAO(**basis_arguments(meta)) as basis, FockPlan(
-        basis, wrong, device=DEVICE
-    ) as provider, pytest.raises(ValueError, match="executable MethodIR plan"):
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        FockPlan(basis, wrong, device=DEVICE) as provider,
+        pytest.raises(ValueError, match="executable MethodIR plan"),
+    ):
         FixedDensityMeanField.from_method(provider, graph)
