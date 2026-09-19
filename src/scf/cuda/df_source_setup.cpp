@@ -7,8 +7,8 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_usage.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/rhf_policy.hpp"
@@ -93,8 +93,8 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   const std::size_t cartesian_naux = molecule::cartesian_ao_count(auxiliary_systems.front());
   std::size_t metric_elements = 0;
   std::size_t metric_total_elements = 0;
-  if (!checked_multiply(public_naux, public_naux, metric_elements) ||
-      !checked_multiply(batch_size, metric_elements, metric_total_elements)) {
+  if (!vibeqc::runtime::checked_multiply(public_naux, public_naux, metric_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, metric_elements, metric_total_elements)) {
     detail = "bounded DF source metric dimensions overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
@@ -198,9 +198,10 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
     // owning object and vector capacity in the retained-host diagnostic so a
     // positive-budget plan cannot silently omit this metadata allocation.
     std::size_t atom_offset_bytes = 0U;
-    if (!checked_multiply(candidate->host_atom_offsets.capacity(), sizeof(std::int64_t),
-                          atom_offset_bytes) ||
-        !checked_add(sizeof(*candidate), atom_offset_bytes, candidate->host_bytes)) {
+    if (!vibeqc::runtime::checked_multiply(candidate->host_atom_offsets.capacity(),
+                                           sizeof(std::int64_t), atom_offset_bytes) ||
+        !vibeqc::runtime::checked_add(sizeof(*candidate), atom_offset_bytes,
+                                      candidate->host_bytes)) {
       detail = "bounded DF source host metadata bytes overflow size_t";
       return VIBEQC_STATUS_OUT_OF_MEMORY;
     }
@@ -268,10 +269,14 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   // transform would silently corrupt every later source replay.
   std::size_t orbital_transform_elements = 0;
   std::size_t auxiliary_transform_elements = 0;
-  if (!checked_multiply(public_nbf, sizeof(DfPublicAoExpansion), orbital_transform_elements) ||
-      !checked_multiply(public_naux, sizeof(DfPublicAoExpansion), auxiliary_transform_elements) ||
-      !checked_multiply(batch_size, orbital_transform_elements, orbital_transform_elements) ||
-      !checked_multiply(batch_size, auxiliary_transform_elements, auxiliary_transform_elements)) {
+  if (!vibeqc::runtime::checked_multiply(public_nbf, sizeof(DfPublicAoExpansion),
+                                         orbital_transform_elements) ||
+      !vibeqc::runtime::checked_multiply(public_naux, sizeof(DfPublicAoExpansion),
+                                         auxiliary_transform_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, orbital_transform_elements,
+                                         orbital_transform_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, auxiliary_transform_elements,
+                                         auxiliary_transform_elements)) {
     detail = "bounded DF source transform dimensions overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }

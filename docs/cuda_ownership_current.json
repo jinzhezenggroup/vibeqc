@@ -100,20 +100,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 4209,
+      "bytes": 4243,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 66,
+        "runtime": 67,
         "scientific": 0
       },
       "path": "src/dft/cuda_xc.hpp",
-      "physical_lines": 100,
+      "physical_lines": 101,
       "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "43619d809f06c927d2615a5be7e03cd36816bfc2dd74a47ca28b405c79e471c7",
+      "sha256": "f4260a126fef065ec33d4e44509811ff5d4460d0466124852779752d7787580b",
       "subsystem": "xc"
     },
     {
@@ -360,37 +360,37 @@
       "subsystem": "low_rank"
     },
     {
-      "bytes": 8075,
+      "bytes": 7953,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 181,
+        "runtime": 176,
         "scientific": 0
       },
       "path": "src/posthf/cuda_transform.cu",
-      "physical_lines": 189,
+      "physical_lines": 184,
       "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "c5b20281ef510bd0ff5a7ca5107696c3c9a7e199d46d5661c84a2e956f8e7111",
+      "sha256": "ea43592d09603da88f9a16bbf752f8d2d5c36a9c7025d2fc57d02c3a27a63ff4",
       "subsystem": "runtime"
     },
     {
-      "bytes": 6666,
+      "bytes": 6440,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 146,
+        "runtime": 147,
         "scientific": 0
       },
       "path": "src/posthf/df_bridge.cu",
-      "physical_lines": 156,
+      "physical_lines": 157,
       "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
       "regions": [],
       "role": "runtime",
-      "sha256": "22ee5e0c2f0a2562d3a3f87c2d30593de3e798a157baa19b3c5f6344b3ef2117",
+      "sha256": "506a20b445768fd8fb578609af9028f74968157d98f5542abed5d938472c4d68",
       "subsystem": "runtime"
     },
     {
@@ -479,6 +479,23 @@
       "subsystem": "runtime"
     },
     {
+      "bytes": 6721,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 192,
+        "scientific": 0
+      },
+      "path": "src/runtime/cuda_resources.cuh",
+      "physical_lines": 221,
+      "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "b3b23b0a959a59d5b63d939815078e3ffad53516e92a63b131d66d0ffb0241e1",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 2911,
       "code_lines": {
         "fallback": 0,
@@ -513,7 +530,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6439,
+      "bytes": 6431,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -526,7 +543,7 @@
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
-      "sha256": "313c8df626309d3a3a3843602ffead4d87faf879429c93ff817464e2517156bd",
+      "sha256": "be96d6444f5e6e1c96aa4842c407f70a6496d8a6dfb379d8b2906668951a9ec1",
       "subsystem": "runtime"
     },
     {
@@ -3534,20 +3551,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 9449,
+      "bytes": 9155,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 188,
+        "runtime": 181,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 222,
+      "physical_lines": 212,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "73c3936c4b458287697ce9bf44b01140041815c0c9f55a2c2014ea7a56124848",
+      "sha256": "94401e4d17019efac6c1ac7e2a1da839214bfe166ff5df208fac8f7b110d3131",
       "subsystem": "runtime"
     }
   ],
@@ -3751,7 +3768,7 @@
     "fallback": 0,
     "oracle": 312,
     "performance_exception": 884,
-    "runtime": 10840,
+    "runtime": 11022,
     "scientific": 12220
   },
   "migration_ledger": {
@@ -4034,7 +4051,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4853,
+      "runtime": 5034,
       "scientific": 5
     },
     "scf_tensor": {
@@ -4048,7 +4065,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 449,
+      "runtime": 450,
       "scientific": 631
     }
   },

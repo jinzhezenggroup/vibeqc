@@ -1,4 +1,4 @@
-# Analytic HF Hessians (issue #180, slice A)
+# Analytic HF Hessians and HVPs (issue #180)
 
 This document is the second-derivative dependency graph requested by step 1 of
 issue #180: it maps every term of the RHF energy to the Hessian contribution it
@@ -9,11 +9,23 @@ three different providers later.
 
 ## Current implementation status
 
-The native CPU tools path now consumes a VibeQC RHF snapshot and generated
-first/second integral derivatives, with native J/K response. PySCF is confined
-to external comparison oracles. The qualified small-system domain and remaining
-#180 production/GPU/HVP work are described below; a tiny analytic Hessian does
-not close the whole Hessian/HVP roadmap or expose a public Calculator API.
+The native tools path now consumes a VibeQC RHF snapshot and generated
+first/second integral derivatives, with native J/K response. In addition to the
+tiny dense analytic reference, `rhf_hvp` composes #178's direct
+`weighted_hvp` consumers with one directional #179 CPHF solve and shell-local
+first-integral relaxation contractions. It returns a complete conventional RHF
+`H @ v` without allocating the molecular Hessian or all-coordinate H1/S1
+tensors. PySCF remains confined to external comparison oracles.
+
+The HVP keeps the existing `NativeRHFState` admission boundary (all-electron
+closed-shell conventional RHF, at most 12 Cartesian AOs/four atoms). Second
+integrals and the final relaxation contraction are currently CPU-generated.
+Directional H1/S1 and direct J/K may independently use their qualified CUDA
+providers, in which case the result is explicitly labelled mixed host/device;
+AO/MO transforms and Krylov remain host-side. There is still no public
+Calculator Hessian/HVP API, production-size memory claim, or all-device HVP
+claim. See
+[the matrix-free RHF HVP decision note](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
 ## Scope of this slice
 
@@ -25,7 +37,8 @@ Explicitly outside this slice, and left fail-closed rather than approximated:
 
 - **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
   #161's derivative kernels;
-- **HVP and bounded full-Hessian execution** (slice B);
+- **bounded full-Hessian execution** (slice B4); the bounded conventional RHF
+  matrix-free HVP (B3) is implemented under the small-system tools boundary;
 - **DF, ECP, range-separated and meta-GGA Hessians** — each needs its own
   complete second-derivative/response chain and is *not* inherited from energy
   or first-force support;
@@ -467,11 +480,20 @@ call recovery. Device qualification additionally runs
 J/K and all-coordinate/dense-input fallbacks and checks the CUDA-assisted
 response against independently reconverged density differences.
 
-The next HVP assembly consumes these directional density/energy-weighted-density
-responses and the existing second-integral directional providers. It must still
-supply every explicit, relaxation, overlap/Pulay and nuclear term; neither this
-RHS slice nor its CUDA J/K calls alone complete the molecular Hessian/HVP.
-See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md).
+The complete B3 conventional-RHF HVP now consumes exactly these directional
+density/energy-weighted-density responses. `rhf_hvp` uses #178
+`weighted_hvp` programs for the core, overlap/Pulay and two-electron skeleton,
+adds the direct nucleus-nucleus HVP, and contracts generated first derivatives
+against `D1(v)` / `W1(v)` for electronic relaxation. The result is raw
+`H @ v`; no post-hoc symmetry projection is applied. The independent
+bilinear identity, dense #449 `H @ v`, and three-step reconverged-gradient
+checks are in `tests/python/test_hessian_hvp.py`.
+
+This closes B3 only within the declared small-system conventional-RHF tools
+domain. B2 device-resident AO/MO/Krylov execution, B4 bounded block/full
+Hessians, production-size qualification and DFT Hessians remain separate.
+See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md)
+and the [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
 
 For explicit CUDA first-source qualification, add these arguments to the

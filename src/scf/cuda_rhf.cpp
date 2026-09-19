@@ -25,12 +25,12 @@
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "runtime/allocation_measurement.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/resource_usage.hpp"
 #include "scf/aot_shell_registry.hpp"
 #include "scf/cuda/arena.hpp"
 #include "scf/cuda/basis_transform_kernels.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/direct_angular_fock.hpp"
 #include "scf/cuda/direct_angular_force.hpp"
 #include "scf/cuda/direct_bounded_dddd.hpp"
@@ -558,22 +558,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::size_t public_ao_elements = 0;
   std::size_t rectangular_matrix_elements = 0;
   std::size_t spin_rectangular_matrix_elements = 0;
-  if (!checked_multiply(nbf, nbf, matrix_size) ||
-      !checked_multiply(matrix_size, matrix_size, eri_size) ||
-      !checked_multiply(batch_size, matrix_size, matrix_elements) ||
-      !checked_multiply(batch_size, spin_count, spin_batch_size) ||
-      !checked_multiply(matrix_elements, spin_count, spin_matrix_elements) ||
-      !checked_multiply(batch_size, eri_size, eri_elements) || !checked_add(nbf, 1, nbf_plus_one) ||
-      !checked_multiply(nbf, nbf_plus_one, pair_product) ||
-      !checked_multiply(direct_nbf, direct_nbf, direct_matrix_size) ||
-      !checked_multiply(batch_size, direct_matrix_size, direct_matrix_elements) ||
-      !checked_multiply(direct_matrix_elements, spin_count, direct_spin_matrix_elements) ||
-      !checked_add(direct_nbf, 1, direct_nbf_plus_one) ||
-      !checked_multiply(direct_nbf, direct_nbf_plus_one, direct_pair_product) ||
-      !checked_multiply(batch_size, nbf, public_ao_elements) ||
-      !checked_multiply(public_ao_elements, direct_nbf, rectangular_matrix_elements) ||
-      !checked_multiply(rectangular_matrix_elements, spin_count,
-                        spin_rectangular_matrix_elements)) {
+  if (!vibeqc::runtime::checked_multiply(nbf, nbf, matrix_size) ||
+      !vibeqc::runtime::checked_multiply(matrix_size, matrix_size, eri_size) ||
+      !vibeqc::runtime::checked_multiply(batch_size, matrix_size, matrix_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, spin_count, spin_batch_size) ||
+      !vibeqc::runtime::checked_multiply(matrix_elements, spin_count, spin_matrix_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, eri_size, eri_elements) ||
+      !vibeqc::runtime::checked_add(nbf, 1, nbf_plus_one) ||
+      !vibeqc::runtime::checked_multiply(nbf, nbf_plus_one, pair_product) ||
+      !vibeqc::runtime::checked_multiply(direct_nbf, direct_nbf, direct_matrix_size) ||
+      !vibeqc::runtime::checked_multiply(batch_size, direct_matrix_size, direct_matrix_elements) ||
+      !vibeqc::runtime::checked_multiply(direct_matrix_elements, spin_count,
+                                         direct_spin_matrix_elements) ||
+      !vibeqc::runtime::checked_add(direct_nbf, 1, direct_nbf_plus_one) ||
+      !vibeqc::runtime::checked_multiply(direct_nbf, direct_nbf_plus_one, direct_pair_product) ||
+      !vibeqc::runtime::checked_multiply(batch_size, nbf, public_ao_elements) ||
+      !vibeqc::runtime::checked_multiply(public_ao_elements, direct_nbf,
+                                         rectangular_matrix_elements) ||
+      !vibeqc::runtime::checked_multiply(rectangular_matrix_elements, spin_count,
+                                         spin_rectangular_matrix_elements)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -581,8 +584,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const std::size_t direct_pair_count = direct_pair_product / 2;
   std::size_t pair_elements = 0;
   std::size_t direct_pair_elements = 0;
-  if (!checked_multiply(batch_size, pair_count, pair_elements) ||
-      !checked_multiply(batch_size, direct_pair_count, direct_pair_elements)) {
+  if (!vibeqc::runtime::checked_multiply(batch_size, pair_count, pair_elements) ||
+      !vibeqc::runtime::checked_multiply(batch_size, direct_pair_count, direct_pair_elements)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -748,11 +751,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::size_t force_matrix_elements = 0;
   std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
-  if (!checked_multiply(total_atoms, 3, force_coordinate_count) ||
-      !checked_multiply(batch_size, pair_count, one_electron_force_elements) ||
-      !checked_multiply(force_coordinate_count, matrix_size, force_matrix_elements) ||
-      !checked_multiply(force_coordinate_count, eri_size, persistent_force_elements) ||
-      !checked_multiply(force_matrix_elements, pair_count, direct_force_elements)) {
+  if (!vibeqc::runtime::checked_multiply(total_atoms, 3, force_coordinate_count) ||
+      !vibeqc::runtime::checked_multiply(batch_size, pair_count, one_electron_force_elements) ||
+      !vibeqc::runtime::checked_multiply(force_coordinate_count, matrix_size,
+                                         force_matrix_elements) ||
+      !vibeqc::runtime::checked_multiply(force_coordinate_count, eri_size,
+                                         persistent_force_elements) ||
+      !vibeqc::runtime::checked_multiply(force_matrix_elements, pair_count,
+                                         direct_force_elements)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -787,9 +793,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   if (first_setup && requested_mixed_precision_fock) {
     for (std::size_t order = kMixedFockMinimumAngularOrder;
          order < detail::kDirectQuartetAngularOrderCount; ++order) {
-      if (!checked_add(fp32_shell_quartet_tile_capacity,
-                       direct_task_layout.angular_order_tile_counts[order],
-                       fp32_shell_quartet_tile_capacity)) {
+      if (!vibeqc::runtime::checked_add(fp32_shell_quartet_tile_capacity,
+                                        direct_task_layout.angular_order_tile_counts[order],
+                                        fp32_shell_quartet_tile_capacity)) {
         fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
         return outputs;
       }
@@ -809,8 +815,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::size_t bounded_generated_task_capacity =
       first_setup ? 0 : plan.bounded_generated_task_capacity;
   if (first_setup && requested_bounded_direct_streaming) {
-    if (!checked_multiply(total_shell_pairs, kBoundedGeneratedTasksPerShellPair,
-                          bounded_generated_task_capacity)) {
+    if (!vibeqc::runtime::checked_multiply(total_shell_pairs, kBoundedGeneratedTasksPerShellPair,
+                                           bounded_generated_task_capacity)) {
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
     }
@@ -844,9 +850,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     include_generated_task_classes(fock_kernels, fock_kernel_count);
     for (std::size_t shell_class = 0; shell_class < generated_task_classes.size(); ++shell_class) {
       if (!generated_task_classes[shell_class]) continue;
-      if (!checked_add(generated_shell_task_capacity,
-                       direct_task_layout.shell_class_tile_counts[shell_class],
-                       generated_shell_task_capacity)) {
+      if (!vibeqc::runtime::checked_add(generated_shell_task_capacity,
+                                        direct_task_layout.shell_class_tile_counts[shell_class],
+                                        generated_shell_task_capacity)) {
         fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
         return outputs;
       }
@@ -4457,10 +4463,10 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::Sy
   for (const core::System& system : systems) {
     for (const core::Shell& shell : system.shells) {
       std::size_t shell_references = 0;
-      if (!checked_multiply(molecule::cartesian_count(shell.angular_momentum),
-                            shell.primitives.size(), shell_references) ||
-          !checked_add(expanded_primitive_references, shell_references,
-                       expanded_primitive_references)) {
+      if (!vibeqc::runtime::checked_multiply(molecule::cartesian_count(shell.angular_momentum),
+                                             shell.primitives.size(), shell_references) ||
+          !vibeqc::runtime::checked_add(expanded_primitive_references, shell_references,
+                                        expanded_primitive_references)) {
         throw std::overflow_error("expanded CUDA primitive reference count overflowed");
       }
     }
@@ -4743,9 +4749,11 @@ vibeqc_status contract_cuda_weighted_eri_primitives(
   std::size_t output_bytes = 0, result_peak = 0, input_bytes = 0;
   if ((record_count != 0U && records == nullptr) ||
       tile_count > std::numeric_limits<std::uint32_t>::max() ||
-      !checked_multiply(record_count, sizeof(CudaWeightedEriPrimitive), input_bytes) ||
-      !checked_multiply(tile_count, sizeof(CudaWeightedEriResult), output_bytes) ||
-      !checked_multiply(output_bytes, 2U, result_peak) || result_peak > memory_budget_bytes) {
+      !vibeqc::runtime::checked_multiply(record_count, sizeof(CudaWeightedEriPrimitive),
+                                         input_bytes) ||
+      !vibeqc::runtime::checked_multiply(tile_count, sizeof(CudaWeightedEriResult), output_bytes) ||
+      !vibeqc::runtime::checked_multiply(output_bytes, 2U, result_peak) ||
+      result_peak > memory_budget_bytes) {
     detail = "weighted ERI dimensions or numeric memory budget are invalid";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }

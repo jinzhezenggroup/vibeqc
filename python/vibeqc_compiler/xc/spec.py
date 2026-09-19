@@ -12,11 +12,23 @@ from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
-COMPONENTS = ("LDA_X", "LDA_C_PW", "LDA_C_PW_MOD", "GGA_X_PBE", "GGA_C_PBE")
+COMPONENTS = (
+    "LDA_X",
+    "LDA_C_PW",
+    "LDA_C_PW_MOD",
+    "GGA_X_PBE",
+    "GGA_C_PBE",
+    "MGGA_X_R2SCAN",
+    "MGGA_C_R2SCAN",
+)
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
     "PBE": (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+    "R2SCAN": (
+        ("MGGA_X_R2SCAN", Fraction(1)),
+        ("MGGA_C_R2SCAN", Fraction(1)),
+    ),
 }
 
 
@@ -81,11 +93,17 @@ class FunctionalSpec:
 
     @property
     def ingredients(self):
-        return (
-            ("rho", "sigma")
-            if any(n.startswith("GGA") and c for n, c in self.components)
-            else ("rho",)
-        )
+        if any(
+            name.startswith("MGGA") and coefficient
+            for name, coefficient in self.components
+        ):
+            return ("rho", "sigma", "tau")
+        if any(
+            name.startswith("GGA") and coefficient
+            for name, coefficient in self.components
+        ):
+            return ("rho", "sigma")
+        return ("rho",)
 
     def to_payload(self):
         """Complete identity including parameter/license provenance and units."""
