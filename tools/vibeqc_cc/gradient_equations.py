@@ -175,3 +175,61 @@ def build_ao_weight_program(n: int) -> Program:
             "operation": "ordered dense MO cotangents to AO; no symmetry folding"
         },
     )
+
+
+def build_ao_one_electron_weight_program(n: int) -> Program:
+    """Generate only O(N^2) MO -> AO h/overlap cotangent transforms."""
+    dense = build_ao_weight_program(n)
+    return Program(
+        {name: dense.outputs[name] for name in ("hcore", "overlap")},
+        provenance={
+            "operation": "ordered MO one-electron cotangents to AO",
+            "parent": dense.logical_hash,
+        },
+    )
+
+
+def build_ao_eri_weight_block_program(
+    n: int, shape: tuple[int, int, int, int]
+) -> Program:
+    """Transform one public-AO shell quartet from a dense MO ERI cotangent.
+
+    Each coefficient input contains only the requested AO rows but all MO
+    columns. The output is therefore O(product(shape)); no complete AO N^4
+    cotangent is materialized. This is the same ordered C^4 dual transform as
+    :func:`build_ao_weight_program`, not a symmetry-folded RDM convention.
+    """
+    if type(n) is not int or not 2 <= n <= 12:
+        raise ValueError("blocked AO weight transform supports 2 to 12 orbitals")
+    if (
+        not isinstance(shape, tuple)
+        or len(shape) != 4
+        or any(type(value) is not int or not 1 <= value <= n for value in shape)
+    ):
+        raise ValueError("AO ERI block shape must contain four positive extents")
+    mo = IndexSpace("complete_mo", "orbital", n)
+    p, q, r, s = (Index(c, mo) for c in "pqrs")
+    axes = tuple(
+        IndexSpace(f"basis_ao_block_{slot}_{extent}", "ao", extent)
+        for slot, extent in enumerate(shape)
+    )
+    u, v, w, x = (Index(c, space) for c, space in zip("uvwx", axes, strict=True))
+    spec = lambda indices: TensorSpec(
+        indices, role="input", representation="restricted_spatial"
+    )
+    c0 = input_tensor("coefficients_0", spec((u, p)))
+    c1 = input_tensor("coefficients_1", spec((v, q)))
+    c2 = input_tensor("coefficients_2", spec((w, r)))
+    c3 = input_tensor("coefficients_3", spec((x, s)))
+    eri = input_tensor("eri", spec((p, q, r, s)))
+    value = einsum("up,pqrs->uqrs", c0, eri)
+    value = einsum("vq,uqrs->uvrs", c1, value)
+    value = einsum("wr,uvrs->uvws", c2, value)
+    value = einsum("xs,uvws->uvwx", c3, value)
+    return Program(
+        {"eri": value},
+        provenance={
+            "operation": "ordered MO ERI cotangent to one AO shell quartet",
+            "block_shape": shape,
+        },
+    )

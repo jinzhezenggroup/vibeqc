@@ -9,6 +9,7 @@
 namespace vibeqc::scf::cuda_execution {
 
 /** Independent unscreened primitive fallback, with no HF density contraction. */
+template <unsigned MaximumAngular>
 __device__ __noinline__ CudaWeightedEriResult
 weighted_eri_reference_primitive(const CudaWeightedEriPrimitive& record, int psss_axis) {
   Angular angular[4];
@@ -31,10 +32,10 @@ weighted_eri_reference_primitive(const CudaWeightedEriPrimitive& record, int pss
     // The public f/f/f/f value order is twelve; Dual3 carries the extra Boys
     // response order. This conservative fallback is intentionally independent
     // of the generated weighted recurrence and its scheduling choices.
-    const auto value = primitive_eri_cartesian<12>(record.exponents[0], positions[0], angular[0],
-                                                   record.exponents[1], positions[1], angular[1],
-                                                   record.exponents[2], positions[2], angular[2],
-                                                   record.exponents[3], positions[3], angular[3]);
+    const auto value = primitive_eri_cartesian<MaximumAngular>(
+        record.exponents[0], positions[0], angular[0], record.exponents[1], positions[1],
+        angular[1], record.exponents[2], positions[2], angular[2], record.exponents[3],
+        positions[3], angular[3]);
     result.value = value.value;
     result.center[center][0] = value.derivative_x;
     result.center[center][1] = value.derivative_y;
@@ -59,18 +60,27 @@ __device__ void add_weighted_eri_result(CudaWeightedEriResult* output, const Res
   }
 }
 
+__device__ unsigned weighted_eri_angular_order(const CudaWeightedEriPrimitive& record) {
+  unsigned result = 0;
+  for (unsigned slot = 0; slot < 4; ++slot)
+    for (unsigned axis = 0; axis < 3; ++axis) result += record.angular[slot][axis];
+  return result;
+}
+
+template <unsigned MaximumAngular>
 __global__ void weighted_eri_reference_kernel(const CudaWeightedEriPrimitive* records,
                                               std::size_t count, bool generated,
                                               CudaWeightedEriResult* output) {
   const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (index >= count) return;
   const auto& record = records[index];
-  if (record.kind == 1U && generated) return;
+  if ((record.kind == 1U && generated) || weighted_eri_angular_order(record) != MaximumAngular)
+    return;
   const unsigned components = record.kind == 1U ? 3U : 1U;
   for (unsigned component = 0; component < components; ++component) {
     const double weight = record.weights[component];
     if (weight == 0.0) continue;  // Exact zero only; no density-bound screening.
-    const auto value = weighted_eri_reference_primitive(
+    const auto value = weighted_eri_reference_primitive<MaximumAngular>(
         record, record.kind == 1U ? static_cast<int>(component) : -1);
     add_weighted_eri_result(output + record.output_tile, value, weight);
   }
@@ -115,13 +125,41 @@ __global__ void weighted_eri_generated_psss_kernel(const CudaWeightedEriPrimitiv
   add_weighted_eri_result(output + record.output_tile, value, 1.0);
 }
 
-void launch_weighted_eri_reference_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                          cudaStream_t stream,
+template <unsigned MaximumAngular>
+void launch_weighted_eri_reference_order(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                         cudaStream_t stream,
+                                         const CudaWeightedEriPrimitive* records, std::size_t count,
+                                         bool generated, CudaWeightedEriResult* output) {
+  weighted_eri_reference_kernel<MaximumAngular>
+      <<<grid, block, shared_bytes, stream>>>(records, count, generated, output);
+}
+
+void launch_weighted_eri_reference_kernel(unsigned maximum_angular, dim3 grid, dim3 block,
+                                          std::size_t shared_bytes, cudaStream_t stream,
                                           const CudaWeightedEriPrimitive* records,
                                           std::size_t count, bool generated,
                                           CudaWeightedEriResult* output) {
-  weighted_eri_reference_kernel<<<grid, block, shared_bytes, stream>>>(records, count, generated,
-                                                                       output);
+#define VIBEQC_WEIGHTED_ERI_ORDER_CASE(order)                                                     \
+  case order:                                                                                     \
+    launch_weighted_eri_reference_order<order>(grid, block, shared_bytes, stream, records, count, \
+                                               generated, output);                                \
+    return
+  switch (maximum_angular) {
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(0);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(1);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(2);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(3);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(4);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(5);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(6);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(7);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(8);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(9);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(10);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(11);
+    VIBEQC_WEIGHTED_ERI_ORDER_CASE(12);
+  }
+#undef VIBEQC_WEIGHTED_ERI_ORDER_CASE
 }
 
 void launch_weighted_eri_generated_psss_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

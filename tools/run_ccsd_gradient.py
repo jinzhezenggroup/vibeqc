@@ -1,6 +1,8 @@
-"""Run the native small-system CPU CCSD analytic-gradient validation endpoint.
+"""Run the small-system CCSD analytic-gradient validation endpoint.
 
-Coordinates are Bohr; gradients are Eh/bohr. This driver does not enable public
+Coordinates are Bohr; gradients are Eh/bohr. The response/weight chain remains
+CPU-owned; ``--derivative-backend cuda`` contracts final AO weights with bounded
+generated CUDA derivative consumers. This driver does not enable public
 Calculator forces or call PySCF. --input accepts the explicit molecular-input
 schema used by the gradient fixtures; --case selects a retained small example.
 """
@@ -23,7 +25,12 @@ def record(result, options):
         "schema": "vibeqc.ccsd.complete_gradient_validation",
         "schema_version": 1,
         "method": "conventional closed-shell all-electron CCSD",
-        "backend": "cpu",
+        "backend": (
+            "cpu-validation"
+            if options.derivative_backend == "cpu"
+            else "hybrid-cpu-response-cuda-derivatives"
+        ),
+        "derivative_backend": options.derivative_backend,
         "total_energy": result.total_energy,
         "correlation_energy": result.correlation_energy,
         "gradient": result.gradient.tolist(),
@@ -73,6 +80,23 @@ def main():
     )
     parser.add_argument("--max-bytes", type=int, default=256 << 20)
     parser.add_argument("--provider-budget-bytes", type=int, default=64 << 20)
+    parser.add_argument(
+        "--derivative-backend",
+        choices=("cpu", "cuda"),
+        default="cpu",
+        help="dense CPU derivative oracle or bounded CUDA derivative contraction",
+    )
+    parser.add_argument("--device-id", type=int, default=0)
+    parser.add_argument("--derivative-stage-budget-bytes", type=int, default=128 << 20)
+    parser.add_argument(
+        "--one-electron-schedule", type=int, choices=(0, 1, 2), default=0
+    )
+    parser.add_argument(
+        "--eri-weight-mode",
+        choices=("dense", "shell"),
+        default="dense",
+        help="full AO ERI cotangent or shell-quartet streamed AO cotangents",
+    )
     args = parser.parse_args()
     if args.output is not None and args.output.exists():
         parser.error("output already exists; choose a new path")
@@ -82,7 +106,13 @@ def main():
         else json.loads(args.input.read_text())
     )
     options = CCSDGradientOptions(
-        max_bytes=args.max_bytes, provider_budget_bytes=args.provider_budget_bytes
+        max_bytes=args.max_bytes,
+        provider_budget_bytes=args.provider_budget_bytes,
+        derivative_backend=args.derivative_backend,
+        device_id=args.device_id,
+        derivative_stage_budget_bytes=args.derivative_stage_budget_bytes,
+        one_electron_schedule=args.one_electron_schedule,
+        eri_weight_mode=args.eri_weight_mode,
     )
     with NativeSource(**source_arguments(value)) as source:
         result = complete_gradient_validation(source, options=options)

@@ -18,8 +18,10 @@ from tools.vibeqc_cc.complete_gradient import (
     BoundCCSDGradient,
     CCSDGradientOptions,
     complete_gradient_validation,
+    gradient_capabilities,
 )
 from tools.vibeqc_cc.gradient_equations import (
+    build_ao_eri_weight_block_program,
     build_ao_weight_program,
     build_hamiltonian_programs,
 )
@@ -151,6 +153,38 @@ def test_generated_raw_hamiltonian_and_full_pullback_directions(o, v):
     assert all(len(node.spec.indices) <= 4 for node in programs.weights.live_nodes)
     # No packed-T2 incidence matrix or full CC Jacobian exists in this graph.
     assert not any(node.op == "gather" for node in programs.weights.live_nodes)
+
+
+def test_blocked_ao_eri_transform_matches_dense_slices():
+    rng = np.random.default_rng(153)
+    n = 5
+    c = rng.normal(size=(n, n))
+    eri = rng.normal(size=(n, n, n, n))
+    dense = execute(
+        build_ao_weight_program(n),
+        {
+            "coefficients": c,
+            "hcore": np.zeros((n, n)),
+            "overlap": np.zeros((n, n)),
+            "eri": eri,
+        },
+    ).outputs["eri"]
+    slices = (slice(0, 2), slice(2, 5), slice(1, 4), slice(4, 5))
+    shape = tuple(value.stop - value.start for value in slices)
+    program = build_ao_eri_weight_block_program(n, shape)
+    block = execute(
+        program,
+        {
+            **{
+                f"coefficients_{slot}": c[value, :] for slot, value in enumerate(slices)
+            },
+            "eri": eri,
+        },
+    ).outputs["eri"]
+    np.testing.assert_allclose(block, dense[slices], atol=2e-12, rtol=2e-12)
+    assert block.size < dense.size
+    with pytest.raises(ValueError):
+        build_ao_eri_weight_block_program(n, (2, 0, 1, 1))
 
 
 def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied():
@@ -359,6 +393,213 @@ def test_shared_z_operator_matches_generated_and_independent_mo_matrix(water_sta
         )
 
 
+def test_complete_gradient_capability_is_separate_from_energy_facade():
+    caps = gradient_capabilities()
+    assert caps.method == "rccsd" and caps.family == "coupled_cluster"
+    assert caps.available and not caps.public_calculator
+    assert caps.max_ao == 12
+    assert caps.supported_properties == frozenset({"energy", "forces"})
+    assert caps.derivative_backends == frozenset({"cpu", "cuda"})
+    assert any("perturbative-(T)" in item for item in caps.restrictions)
+
+
+def test_exact_nuclear_gradient_matches_dense_native_oracle(tiny_state):
+    raw = tiny_state.source.integral_derivatives(
+        output_budget_bytes=tiny_state.options.max_bytes
+    )["nuclear"]
+    np.testing.assert_allclose(
+        module._nuclear_gradient(tiny_state.source).reshape(-1), raw, atol=2e-14, rtol=0
+    )
+    assert abs(np.sum(module._nuclear_gradient(tiny_state.source))) < 1e-14
+
+
+def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
+    tiny_state, monkeypatch
+):
+    """Exercise the GPU consumer composition with independent dense TEST oracles."""
+    source = tiny_state.source
+    raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
+    ncoord = 3 * len(source.atoms)
+
+    def contract(field, weights):
+        return np.einsum(
+            "qi,i->q",
+            raw[field].reshape(ncoord, -1),
+            np.asarray(weights).reshape(-1),
+            optimize=False,
+        ).reshape(-1, 3)
+
+    calls = {"one": 0, "eri": 0}
+
+    def fake_one(
+        *, overlap_weights=None, kinetic_weights=None, attraction_weights=None, **kw
+    ):
+        assert kw["device_id"] == 0 and kw["schedule"] == 0
+        calls["one"] += 1
+        value = np.zeros((len(source.atoms), 3))
+        if overlap_weights is not None:
+            value += contract("overlap", overlap_weights)
+        # The production consumer supplies the same hcore cotangent to T and V.
+        # This test-only split assigns half of d(hcore) to each independent call.
+        if kinetic_weights is not None:
+            value += 0.5 * contract("hcore", kinetic_weights)
+        if attraction_weights is not None:
+            value += 0.5 * contract("hcore", attraction_weights)
+        return value, {
+            "device_bytes": 4096,
+            "host_numeric_bytes": 2048,
+            "host_to_device_bytes": 512,
+            "device_to_host_bytes": 24,
+            "synchronous_uploads": 1,
+            "stream_synchronizations": 1,
+        }
+
+    def fake_eri(weights, **kw):
+        assert kw["device_id"] == 0
+        calls["eri"] += 1
+        return contract("eri", weights)
+
+    monkeypatch.setattr(source, "one_electron_gradient_cuda", fake_one)
+    monkeypatch.setattr(source, "weighted_eri_gradient_cuda", fake_eri)
+    options = replace(tiny_state.options, derivative_backend="cuda")
+    state = BoundCCSDGradient(tiny_state.response, tiny_state.provider, options=options)
+    actual = state.gradient()
+    expected = tiny_state.gradient()
+    np.testing.assert_allclose(
+        actual.gradient, expected.gradient, atol=3e-11, rtol=2e-11
+    )
+    for name in expected.physical_components:
+        np.testing.assert_allclose(
+            actual.physical_components[name],
+            expected.physical_components[name],
+            atol=3e-11,
+            rtol=2e-11,
+        )
+    assert calls == {"one": 6, "eri": 4}
+    assert (
+        actual.diagnostics["derivative_backend"] == "cuda-generated-bounded-consumers"
+    )
+    assert actual.diagnostics["dense_ao_derivative_oracle"] is False
+    assert actual.diagnostics["gpu_one_electron_device_bytes"] == 4096
+    assert actual.diagnostics["gpu_one_electron_host_to_device_bytes"] == 6 * 512
+    assert state.logical_reserved_host_bytes < tiny_state.logical_reserved_host_bytes
+
+
+def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
+    tiny_state, monkeypatch
+):
+    source = tiny_state.source
+    raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
+    offsets = np.cumsum((0, *source.shell_sizes))
+    calls = {"shell": 0}
+
+    def fake_one(
+        *, overlap_weights=None, kinetic_weights=None, attraction_weights=None, **kw
+    ):
+        value = np.zeros((len(source.atoms), 3))
+        ncoord = 3 * len(source.atoms)
+        if overlap_weights is not None:
+            value += np.einsum(
+                "qi,i->q",
+                raw["overlap"].reshape(ncoord, -1),
+                np.asarray(overlap_weights).reshape(-1),
+                optimize=False,
+            ).reshape(-1, 3)
+        if kinetic_weights is not None:
+            value += 0.5 * np.einsum(
+                "qi,i->q",
+                raw["hcore"].reshape(ncoord, -1),
+                np.asarray(kinetic_weights).reshape(-1),
+                optimize=False,
+            ).reshape(-1, 3)
+        if attraction_weights is not None:
+            value += 0.5 * np.einsum(
+                "qi,i->q",
+                raw["hcore"].reshape(ncoord, -1),
+                np.asarray(attraction_weights).reshape(-1),
+                optimize=False,
+            ).reshape(-1, 3)
+        return value, {
+            "device_bytes": 1,
+            "host_numeric_bytes": 1,
+            "host_to_device_bytes": 1,
+            "device_to_host_bytes": 1,
+            "synchronous_uploads": 1,
+            "stream_synchronizations": 1,
+        }
+
+    def fake_shell(indices, weights, **kw):
+        calls["shell"] += 1
+        slices = tuple(slice(offsets[i], offsets[i + 1]) for i in indices)
+        derivative = raw["eri"][(slice(None), *slices)]
+        global_gradient = np.einsum(
+            "qijkl,ijkl->q", derivative, weights, optimize=False
+        ).reshape(-1, 3)
+        local = np.zeros((4, 3))
+        atoms = [source.shells[i].atom_index for i in indices]
+        for atom in set(atoms):
+            positions = [slot for slot, value in enumerate(atoms) if value == atom]
+            for slot in positions:
+                local[slot] = global_gradient[atom] / len(positions)
+        return local
+
+    monkeypatch.setattr(source, "one_electron_gradient_cuda", fake_one)
+    monkeypatch.setattr(source, "weighted_eri_shell_gradient_cuda", fake_shell)
+    monkeypatch.setattr(
+        source,
+        "weighted_eri_gradient_cuda",
+        lambda *a, **kw: pytest.fail(
+            "full AO N^4 ERI weight consumer used in shell mode"
+        ),
+    )
+    state = BoundCCSDGradient(
+        tiny_state.response,
+        tiny_state.provider,
+        options=replace(
+            tiny_state.options, derivative_backend="cuda", eri_weight_mode="shell"
+        ),
+    )
+    actual = state.gradient()
+    expected = tiny_state.gradient()
+    np.testing.assert_allclose(
+        actual.gradient, expected.gradient, atol=3e-11, rtol=2e-11
+    )
+    quartets = len(source.shells) ** 4
+    assert calls["shell"] == 4 * quartets
+    assert actual.diagnostics["gpu_eri_weight_mode"] == "shell"
+    assert actual.diagnostics["gpu_shell_quartet_calls"] == 4 * quartets
+    assert (
+        actual.diagnostics["gpu_maximum_ao_eri_weight_block_elements"]
+        <= max(source.shell_sizes) ** 4
+    )
+
+
+def test_source_cuda_weight_validation_precedes_native_call(tiny_state, monkeypatch):
+    source = tiny_state.source
+    monkeypatch.setattr(
+        source, "_call", lambda *a, **kw: pytest.fail("native call after invalid input")
+    )
+    bad = np.zeros((source.nbf, source.nbf), dtype=np.float32)
+    # Real FP32 is accepted by this transport after an explicit lossless dtype
+    # conversion policy; scientific precision remains FP64 inside the consumer.
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(overlap_weights=np.zeros((2, 3)))
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(
+            overlap_weights=np.full((source.nbf, source.nbf), np.nan)
+        )
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(overlap_weights=bad.astype(complex) + 1j)
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda()
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(overlap_weights=bad, device_id=-1)
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(overlap_weights=bad, schedule=4)
+    with pytest.raises(ValueError):
+        source.one_electron_gradient_cuda(overlap_weights=bad, stage_budget_bytes=0)
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -371,6 +612,15 @@ def test_shared_z_operator_matches_generated_and_independent_mo_matrix(water_sta
         {"stationarity_tolerance": 1e-5},
         {"minimum_orbital_curvature": 0},
         {"minimum_orbital_curvature": float("nan")},
+        {"derivative_backend": "rocm"},
+        {"device_id": -1},
+        {"device_id": True},
+        {"derivative_stage_budget_bytes": 0},
+        {"derivative_stage_budget_bytes": True},
+        {"one_electron_schedule": 3},
+        {"one_electron_schedule": False},
+        {"eri_weight_mode": "packed"},
+        {"eri_weight_mode": "shell"},
         {"cc_options": object()},
         {"lambda_options": object()},
         {"z_options": object()},
@@ -407,6 +657,39 @@ def test_budget_rejects_before_hf_and_before_raw_integrals(tiny_state, monkeypat
             tiny_state.response,
             tiny_state.provider,
             options=replace(options, max_bytes=needed - 1),
+        )
+
+
+def test_shell_streaming_combined_budget_rejects_before_integral_read(
+    tiny_state, monkeypatch
+):
+    base = replace(
+        tiny_state.options,
+        derivative_backend="cuda",
+        eri_weight_mode="shell",
+        max_bytes=256 << 20,
+    )
+    planned = BoundCCSDGradient(tiny_state.response, tiny_state.provider, options=base)
+    needed = planned.logical_reserved_host_bytes
+    exact = BoundCCSDGradient(
+        tiny_state.response,
+        tiny_state.provider,
+        options=replace(base, max_bytes=needed),
+    )
+    assert exact.logical_reserved_host_bytes == needed
+    assert exact.ao_eri_block_program is not None
+    monkeypatch.setattr(
+        tiny_state.provider,
+        "get",
+        lambda *a, **kw: pytest.fail(
+            "integral read before shell combined-budget admission"
+        ),
+    )
+    with pytest.raises(ImplicitSolveError, match="before integral reads"):
+        BoundCCSDGradient(
+            tiny_state.response,
+            tiny_state.provider,
+            options=replace(base, max_bytes=needed - 1),
         )
 
 
@@ -587,12 +870,44 @@ def test_cli_json_and_existing_output_are_safe(tmp_path, monkeypatch, tiny_state
     result = tiny_state.gradient()
     path = tmp_path / "gradient.json"
     monkeypatch.setattr(driver, "complete_gradient_validation", lambda *a, **k: result)
-    monkeypatch.setattr("sys.argv", ["driver", "--case", "h2", "--output", str(path)])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "driver",
+            "--case",
+            "h2",
+            "--output",
+            str(path),
+            "--derivative-backend",
+            "cuda",
+            "--device-id",
+            "0",
+            "--derivative-stage-budget-bytes",
+            str(32 << 20),
+            "--one-electron-schedule",
+            "1",
+            "--eri-weight-mode",
+            "shell",
+        ],
+    )
+    captured = {}
+
+    def fake_gradient(*args, **kwargs):
+        captured["options"] = kwargs["options"]
+        return result
+
+    monkeypatch.setattr(driver, "complete_gradient_validation", fake_gradient)
     driver.main()
     content = path.read_bytes()
     data = json.loads(content)
     np.testing.assert_array_equal(data["gradient"], result.gradient)
     assert data["diagnostics"]["triples_gradient"] is False
+    assert data["backend"] == "hybrid-cpu-response-cuda-derivatives"
+    assert data["derivative_backend"] == "cuda"
+    assert captured["options"].derivative_backend == "cuda"
+    assert captured["options"].derivative_stage_budget_bytes == 32 << 20
+    assert captured["options"].one_electron_schedule == 1
+    assert captured["options"].eri_weight_mode == "shell"
     with pytest.raises(SystemExit):
         driver.main()
     assert path.read_bytes() == content

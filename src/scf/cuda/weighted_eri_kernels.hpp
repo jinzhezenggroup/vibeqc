@@ -9,8 +9,8 @@
 namespace vibeqc::scf::cuda_execution {
 
 /** Launch the existing weighted primitive consumer on borrowed arrays. */
-void launch_weighted_eri_reference_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                          cudaStream_t stream,
+void launch_weighted_eri_reference_kernel(unsigned maximum_angular, dim3 grid, dim3 block,
+                                          std::size_t shared_bytes, cudaStream_t stream,
                                           const CudaWeightedEriPrimitive* records,
                                           std::size_t count, bool generated,
                                           CudaWeightedEriResult* output);

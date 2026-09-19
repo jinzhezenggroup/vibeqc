@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <limits>
 #include <memory>
@@ -17,6 +18,7 @@
 #include "posthf/mp2_energy.hpp"
 #include "posthf/raw_source.hpp"
 #include "scf/cuda_df_gradient.hpp"
+#include "scf/cuda_one_electron_gradient.hpp"
 #include "scf/cuda_weighted_eri.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/mean_field.hpp"
@@ -616,6 +618,62 @@ VIBEQC_API int vibeqc_posthf_df_gradient_tile_cuda_v1(
     (void)weight_elements;
     (void)stage_budget;
     throw std::runtime_error("CUDA DF gradient tiles are unavailable in this build");
+#endif
+  });
+}
+// Contract fixed public-AO S/T/V cotangents through the generic generated
+// CUDA one-electron derivative consumer.  This private post-HF bridge borrows
+// the source's deep-copied system; it does not create a public method result or
+// materialize coordinate-by-AO derivative tensors.
+VIBEQC_API int vibeqc_posthf_one_electron_gradient_cuda_v1(
+    void* source, int device, const double* overlap_weights, const double* kinetic_weights,
+    const double* attraction_weights, std::size_t matrix_elements, unsigned schedule,
+    std::size_t stage_budget, double* gradient, std::size_t gradient_elements,
+    std::uint64_t* resources, std::size_t resource_elements, char* error, std::size_t error_size) {
+  return guarded(error, error_size, [&] {
+    if (!source || !gradient || device < 0 || schedule > 2 || !stage_budget)
+      throw std::invalid_argument("invalid one-electron CUDA gradient request");
+    const auto& raw = *static_cast<RawSource*>(source);
+    const auto& system = raw.orbital();
+    const auto n = raw.nbf();
+    const auto n2 = vibeqc::posthf::checked_mul(n, n);
+    if (matrix_elements != n2 || gradient_elements != system.atoms.size() * 3 ||
+        (!overlap_weights && !kinetic_weights && !attraction_weights))
+      throw std::invalid_argument("one-electron CUDA gradient dimensions are inconsistent");
+    if ((resources && resource_elements != 6) || (!resources && resource_elements))
+      throw std::invalid_argument("one-electron CUDA resource output has invalid dimensions");
+#if VIBEQC_HAS_CUDA
+    auto weights = [&](const double* p) {
+      return p ? std::span<const double>(p, matrix_elements) : std::span<const double>();
+    };
+    std::vector<double> result;
+    std::string detail;
+    vibeqc::scf::OneElectronGradientResources measured;
+    const auto status = vibeqc::scf::execute_cuda_one_electron_gradient(
+        device, system, weights(overlap_weights), weights(kinetic_weights),
+        weights(attraction_weights), schedule, stage_budget, result, detail, &measured);
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw std::runtime_error(detail.empty() ? "one-electron CUDA gradient failed" : detail);
+    if (result.size() != gradient_elements)
+      throw std::runtime_error("one-electron CUDA gradient returned inconsistent dimensions");
+    std::copy(result.begin(), result.end(), gradient);
+    if (resources) {
+      const std::array<std::uint64_t, 6> values{
+          measured.device_bytes,         measured.host_numeric_bytes,
+          measured.host_to_device_bytes, measured.device_to_host_bytes,
+          measured.synchronous_uploads,  measured.stream_synchronizations};
+      std::copy(values.begin(), values.end(), resources);
+    }
+#else
+    (void)overlap_weights;
+    (void)kinetic_weights;
+    (void)attraction_weights;
+    (void)matrix_elements;
+    (void)schedule;
+    (void)stage_budget;
+    (void)resources;
+    (void)resource_elements;
+    throw std::runtime_error("CUDA one-electron gradients are unavailable in this build");
 #endif
   });
 }

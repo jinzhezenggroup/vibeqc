@@ -4834,19 +4834,41 @@ vibeqc_status contract_cuda_weighted_eri_primitives(
     for (std::size_t begin = 0; begin < record_count && error == cudaSuccess;) {
       const std::size_t count = std::min(capacity, record_count - begin);
       bool has_generated = false, has_reference = false;
+      std::array<bool, 13> reference_orders{};
       for (std::size_t i = begin; i < begin + count; ++i) {
-        if (generated && records[i].kind == 1U)
+        if (generated && records[i].kind == 1U) {
           has_generated = true;
-        else
+        } else {
           has_reference = true;
+          unsigned order = 0;
+          for (unsigned slot = 0; slot < 4; ++slot)
+            for (unsigned axis = 0; axis < 3; ++axis) order += records[i].angular[slot][axis];
+          reference_orders[order] = true;
+        }
       }
       error = cudaMemcpyAsync(buffers.records, records + begin, count * sizeof(*records),
                               cudaMemcpyHostToDevice, buffers.stream);
       const unsigned blocks = static_cast<unsigned>((count + threads - 1U) / threads);
       if (error == cudaSuccess && has_reference) {
-        launch_weighted_eri_reference_kernel(blocks, threads, 0, buffers.stream, buffers.records,
-                                             count, generated, buffers.results);
-        error = cudaGetLastError();
+        for (unsigned order = 0; order < reference_orders.size() && error == cudaSuccess; ++order) {
+          if (!reference_orders[order]) continue;
+          // Higher-order Dual3 Hermite recurrences carry substantially larger
+          // thread-local state. Do not make a sparse ffff request reserve that
+          // state for 64 mostly-inactive lanes. Low orders retain the original
+          // 64-thread launch; through-f correctness uses progressively smaller
+          // blocks, preserving arithmetic and record/output semantics.
+          const unsigned order_threads = order <= 4U    ? 64U
+                                         : order <= 6U  ? 32U
+                                         : order <= 8U  ? 16U
+                                         : order <= 10U ? 4U
+                                                        : 1U;
+          const unsigned order_blocks =
+              static_cast<unsigned>((count + order_threads - 1U) / order_threads);
+          launch_weighted_eri_reference_kernel(order, order_blocks, order_threads, 0,
+                                               buffers.stream, buffers.records, count, generated,
+                                               buffers.results);
+          error = cudaGetLastError();
+        }
       }
       if (error == cudaSuccess && has_generated) {
         launch_weighted_eri_generated_psss_kernel(blocks, threads, 0, buffers.stream,
@@ -4863,7 +4885,8 @@ vibeqc_status contract_cuda_weighted_eri_primitives(
     if (error == cudaSuccess) error = cudaStreamSynchronize(buffers.stream);
     if (error != cudaSuccess) {
       output.clear();
-      detail = "CUDA external-weight ERI contraction failed";
+      detail =
+          std::string("CUDA external-weight ERI contraction failed: ") + cudaGetErrorString(error);
       return cuda_status(error);
     }
     for (const auto& result : output) {

@@ -1,9 +1,12 @@
-"""Complete conventional CPU RCCSD analytic gradients for small validation cases.
+"""Complete conventional RCCSD analytic gradients for small validation cases.
 
-The source, HF export, dense MO weights and dense native derivative arrays are
-explicit <=12-AO validation boundaries. Generated derivative mathematics and
-shared solvers are reused; this does not enable the native/public force API,
-resident GPU execution, frozen-core/open-shell/ECP, DF or (T) gradients.
+The source, HF export and dense MO/AO weights are explicit <=12-AO validation
+boundaries. Generated derivative mathematics and shared solvers are reused.
+The CPU derivative backend retains the dense native derivative oracle; the CUDA
+backend contracts the same AO weights with bounded generated derivative consumers
+without materializing coordinate-by-AO derivative tensors. Neither enables the
+native/public force API, resident GPU response, frozen-core/open-shell/ECP, DF or
+(T) gradients.
 """
 
 from __future__ import annotations
@@ -33,11 +36,41 @@ from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 from tools.vibeqc_validation.schema import canonical_hash
 
-from .gradient_equations import build_ao_weight_program, build_hamiltonian_programs
+from .gradient_equations import (
+    build_ao_eri_weight_block_program,
+    build_ao_one_electron_weight_program,
+    build_ao_weight_program,
+    build_hamiltonian_programs,
+)
 from .lambda_equations import PARAMETERS
 from .lambda_response import BoundCCSDResponse
 from .lambda_solver import BoundCCSDLambda, LambdaOptions, _graph_bytes
 from .solver import SolverOptions, solve
+
+
+@dataclass(frozen=True)
+class CCSDGradientCapabilities:
+    """Explicit internal complete-gradient boundary; not native method registration."""
+
+    method: str = "rccsd"
+    family: str = "coupled_cluster"
+    available: bool = True
+    public_calculator: bool = False
+    max_ao: int = 12
+    supported_properties: frozenset = frozenset({"energy", "forces"})
+    derivative_backends: frozenset = frozenset({"cpu", "cuda"})
+    restrictions: tuple = (
+        "real closed-shell RHF",
+        "all-electron conventional-unscreened Hamiltonian",
+        "no frozen core",
+        "no ECP or auxiliary basis",
+        "CCSD only; perturbative-(T) gradient unavailable",
+    )
+
+
+def gradient_capabilities() -> CCSDGradientCapabilities:
+    """Describe the validated internal endpoint without widening Calculator claims."""
+    return CCSDGradientCapabilities()
 
 
 @dataclass(frozen=True)
@@ -51,6 +84,11 @@ class CCSDGradientOptions:
     orbital_residual_tolerance: float = 1e-10
     stationarity_tolerance: float = 1e-8
     minimum_orbital_curvature: float = 1e-8
+    derivative_backend: str = "cpu"
+    device_id: int = 0
+    derivative_stage_budget_bytes: int = 128 << 20
+    one_electron_schedule: int = 0
+    eri_weight_mode: str = "dense"
     cc_options: SolverOptions = field(
         default_factory=lambda: SolverOptions(
             residual_tolerance=1e-12,
@@ -91,6 +129,25 @@ class CCSDGradientOptions:
         ):
             raise ValueError(
                 "minimum orbital curvature must be finite and at least 1e-10"
+            )
+        if self.derivative_backend not in ("cpu", "cuda"):
+            raise ValueError("derivative_backend must be 'cpu' or 'cuda'")
+        if type(self.device_id) is not int or self.device_id < 0:
+            raise ValueError("device_id must be a nonnegative integer")
+        if (
+            type(self.derivative_stage_budget_bytes) is not int
+            or self.derivative_stage_budget_bytes < 1
+        ):
+            raise ValueError("derivative_stage_budget_bytes must be positive")
+        if type(
+            self.one_electron_schedule
+        ) is not int or self.one_electron_schedule not in (0, 1, 2):
+            raise ValueError("one_electron_schedule must be 0, 1 or 2")
+        if self.eri_weight_mode not in ("dense", "shell"):
+            raise ValueError("eri_weight_mode must be 'dense' or 'shell'")
+        if self.derivative_backend == "cpu" and self.eri_weight_mode != "dense":
+            raise ValueError(
+                "shell ERI weight streaming requires derivative_backend='cuda'"
             )
         for name, cls in (
             ("cc_options", SolverOptions),
@@ -191,6 +248,22 @@ def _nuclear_energy(source):
     return result
 
 
+def _nuclear_gradient(source):
+    """Exact Coulomb nuclear energy derivative, with no integral tensor storage."""
+    result = np.zeros((len(source.atoms), 3), dtype=np.float64)
+    for i, a in enumerate(source.atoms):
+        first = np.asarray(a.position, dtype=np.float64)
+        for j, b in enumerate(source.atoms[:i]):
+            delta = first - np.asarray(b.position, dtype=np.float64)
+            distance = float(np.linalg.norm(delta))
+            if not np.isfinite(distance) or distance <= 0:
+                raise ValueError("invalid coincident/nonfinite nuclear centers")
+            contribution = a.atomic_number * b.atomic_number * delta / distance**3
+            result[i] -= contribution
+            result[j] += contribution
+    return _immutable(result)
+
+
 @dataclass(frozen=True, init=False, eq=False, repr=False)
 class BoundCCSDGradient:
     """Bind raw integral/orbital response to the exact solved CC/Lambda snapshot.
@@ -249,6 +322,14 @@ class BoundCCSDGradient:
         n, o = reference.nmo, reference.nocc
         programs = build_hamiltonian_programs(o, n - o)
         ao_program = build_ao_weight_program(n)
+        ao_one_program = build_ao_one_electron_weight_program(n)
+        largest_shell = max(source.shell_sizes)
+        ao_eri_block_program = (
+            build_ao_eri_weight_block_program(n, (largest_shell,) * 4)
+            if options.derivative_backend == "cuda"
+            and options.eri_weight_mode == "shell"
+            else None
+        )
         z_solver = ResponseGMRES(o * (n - o), options.z_options)
         # Simultaneous logical numeric reservation, including buffers retained
         # through the later native dense-derivative call and independent checks.
@@ -256,6 +337,11 @@ class BoundCCSDGradient:
         block_reservation = max(
             response.required_bytes(name, reference_identity=reference.identity)
             for name in PARAMETERS
+        )
+        ao_numeric_programs = (
+            (ao_one_program, ao_eri_block_program)
+            if ao_eri_block_program is not None
+            else (ao_program,)
         )
         required = (
             block_reservation
@@ -266,11 +352,15 @@ class BoundCCSDGradient:
                     programs.primal,
                     programs.weights,
                     programs.orbital_jvp.program,
-                    ao_program,
+                    *ao_numeric_programs,
                 )
             )
             + 8 * (24 * n**4 + 64 * n**2 + 8 * z_solver.dimension**2)
-            + 3 * _derivative_bytes(source)
+            + (
+                3 * _derivative_bytes(source)
+                if options.derivative_backend == "cpu"
+                else 0
+            )
             + z_solver.workspace_bytes
         )
         _checked_bytes(required, "CC complete-gradient logical reservation")
@@ -281,6 +371,8 @@ class BoundCCSDGradient:
         put("logical_reserved_host_bytes", required)
         put("programs", programs)
         put("ao_program", ao_program)
+        put("ao_one_program", ao_one_program)
+        put("ao_eri_block_program", ao_eri_block_program)
         raw_g = provider.get(MOBlock((tuple(range(n)),) * 4)).to_host()
         raw_h = reference.coefficients.T @ reference.hcore @ reference.coefficients
         put(
@@ -501,8 +593,125 @@ class BoundCCSDGradient:
             },
         )
 
-    def gradient(self) -> CCSDGradientResult:
-        """Contract all analytic native derivatives; never finite-difference energy."""
+    def ao_one_electron_weights(self, weights=None):
+        """Back-transform only O(N^2) h/overlap cotangents."""
+        weights = self.weights if weights is None else weights
+        return self._run(
+            self.ao_one_program,
+            {
+                "coefficients": self.reference.coefficients,
+                "hcore": weights["hcore"],
+                "overlap": weights["overlap"],
+            },
+        )
+
+    def _cuda_eri_shell_gradient(self, eri_mo):
+        """Stream one generated AO shell-quartet cotangent at a time to #144."""
+        from itertools import product
+
+        n = self.reference.nmo
+        coefficients = self.reference.coefficients
+        offsets = [0]
+        for size in self.source.shell_sizes:
+            offsets.append(offsets[-1] + size)
+        result = np.zeros((len(self.source.atoms), 3), dtype=np.float64)
+        calls, maximum_block = 0, 0
+        largest = max(self.source.shell_sizes)
+        program_cache = (
+            {(largest,) * 4: self.ao_eri_block_program}
+            if self.ao_eri_block_program is not None
+            else {}
+        )
+        for indices in product(range(len(self.source.shells)), repeat=4):
+            shape = tuple(self.source.shell_sizes[index] for index in indices)
+            program = program_cache.get(shape)
+            if program is None:
+                program = build_ao_eri_weight_block_program(n, shape)
+                program_cache[shape] = program
+            rows = [
+                coefficients[offsets[index] : offsets[index + 1], :]
+                for index in indices
+            ]
+            block = self._run(
+                program,
+                {
+                    "coefficients_0": rows[0],
+                    "coefficients_1": rows[1],
+                    "coefficients_2": rows[2],
+                    "coefficients_3": rows[3],
+                    "eri": eri_mo,
+                },
+            )["eri"]
+            local = self.source.weighted_eri_shell_gradient_cuda(
+                indices,
+                block,
+                device_id=self.options.device_id,
+                stage_budget_bytes=self.options.derivative_stage_budget_bytes,
+            )
+            for slot, shell_index in enumerate(indices):
+                result[self.source.shells[shell_index].atom_index] += local[slot]
+            calls += 1
+            maximum_block = max(maximum_block, block.size)
+        if not np.isfinite(result).all():
+            raise ImplicitSolveError("nonfinite shell-streamed CUDA ERI gradient")
+        return _immutable(result), {
+            "shell_quartet_calls": calls,
+            "maximum_ao_eri_weight_block_elements": maximum_block,
+            "distinct_ao_eri_weight_block_shapes": len(program_cache),
+        }
+
+    def _result(self, gradient, physical, integral, diagnostics):
+        correlation = float(
+            self.response.bound._run(self.response.bound.independent.primal)[
+                "correlation_energy"
+            ]
+        )
+        self._assert_current()
+        return CCSDGradientResult(
+            self.reference.reference_energy + correlation,
+            correlation,
+            np.asarray(gradient).reshape(-1, 3),
+            {k: np.asarray(v).reshape(-1, 3) for k, v in physical.items()},
+            {k: np.asarray(v).reshape(-1, 3) for k, v in integral.items()},
+            self.reference.scf_residual,
+            max(self.response.bound.cc_r1_max, self.response.bound.cc_r2_max),
+            max(
+                self.response.shared_lambda_residual_norm,
+                self.response.independent_lambda_residual_norm,
+            ),
+            max(self.z_result.residual_norm, self.independent_z_residual),
+            self.orbital_stationarity,
+            self.minimum_orbital_curvature,
+            self.reference_identity,
+            self.response.bound.cc_state_identity,
+            self.response.response_identity,
+            self.operator_identity,
+            self.source_identity,
+            {
+                "weight_identity": self.weight_identity,
+                "hamiltonian_id": self.reference.hamiltonian_id,
+                "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
+                "provider_budget_bytes": self.provider.budget_bytes,
+                "native_hf_backend": self.reference.hf_backend,
+                "tensor_backend": "numpy-cpu-interpreter",
+                "orbital_backend": "native-cpu-shell-tile-jk",
+                "orbital_solver": "shared-response-gmres",
+                "dense_orbital_curvature_check": True,
+                "dense_cc_jacobian": False,
+                "dense_mo_eri_and_weights": True,
+                "native_public_force_capability": False,
+                "triples_gradient": False,
+                "same_space_stationarity": self.same_space_stationarity,
+                "z_iterations": self.z_result.iterations,
+                "z_operator_actions": self.z_result.operator_actions,
+                "memory_boundary": "logical owned numeric state; separate HF/provider/opaque BLAS/Python allocations",
+                **dict(self.timings),
+                **diagnostics,
+            },
+        )
+
+    def _gradient_cpu(self) -> CCSDGradientResult:
+        """Contract the independent dense native derivative oracle."""
         started = time.perf_counter()
         self._assert_current()
         raw = self.source.integral_derivatives(
@@ -551,58 +760,161 @@ class BoundCCSDGradient:
         physical["nuclear"] = derivatives["nuclear"]
         if not np.allclose(gradient, sum(physical.values()), atol=1e-10, rtol=1e-11):
             raise ImplicitSolveError("complete CC gradient component sum failed")
-        correlation = float(
-            self.response.bound._run(self.response.bound.independent.primal)[
-                "correlation_energy"
-            ]
-        )
-        self._assert_current()
-        result = CCSDGradientResult(
-            self.reference.reference_energy + correlation,
-            correlation,
-            gradient.reshape(-1, 3),
-            {k: v.reshape(-1, 3) for k, v in physical.items()},
-            {k: v.reshape(-1, 3) for k, v in integral.items()},
-            self.reference.scf_residual,
-            max(self.response.bound.cc_r1_max, self.response.bound.cc_r2_max),
-            max(
-                self.response.shared_lambda_residual_norm,
-                self.response.independent_lambda_residual_norm,
-            ),
-            max(self.z_result.residual_norm, self.independent_z_residual),
-            self.orbital_stationarity,
-            self.minimum_orbital_curvature,
-            self.reference_identity,
-            self.response.bound.cc_state_identity,
-            self.response.response_identity,
-            self.operator_identity,
-            self.source_identity,
+        result = self._result(
+            gradient,
+            physical,
+            integral,
             {
-                "weight_identity": self.weight_identity,
-                "hamiltonian_id": self.reference.hamiltonian_id,
-                "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
+                "derivative_backend": "native-cpu-dense-oracle",
                 "native_derivative_output_bytes": _derivative_bytes(self.source),
-                "provider_budget_bytes": self.provider.budget_bytes,
-                "native_hf_backend": self.reference.hf_backend,
-                "tensor_backend": "numpy-cpu-interpreter",
-                "orbital_backend": "native-cpu-shell-tile-jk",
-                "orbital_solver": "shared-response-gmres",
-                "dense_orbital_curvature_check": True,
-                "dense_cc_jacobian": False,
-                "dense_mo_eri_and_weights": True,
                 "dense_ao_derivative_oracle": True,
-                "native_public_force_capability": False,
-                "triples_gradient": False,
-                "same_space_stationarity": self.same_space_stationarity,
-                "z_iterations": self.z_result.iterations,
-                "z_operator_actions": self.z_result.operator_actions,
-                "memory_boundary": "logical owned numeric state; separate HF/provider/opaque BLAS/Python allocations",
-                **dict(self.timings),
                 "derivative_contraction_seconds": time.perf_counter() - started,
             },
         )
         self._assert_current()
         return result
+
+    @staticmethod
+    def _accumulate_resources(target, measured):
+        """Aggregate sequential CUDA calls: peak storage, additive transfers/events."""
+        for name, value in measured.items():
+            if name in ("device_bytes", "host_numeric_bytes"):
+                target[name] = max(target.get(name, 0), int(value))
+            else:
+                target[name] = target.get(name, 0) + int(value)
+
+    def _cuda_one_electron(self, ao, *, split=False):
+        kwargs = {
+            "device_id": self.options.device_id,
+            "schedule": self.options.one_electron_schedule,
+            "stage_budget_bytes": self.options.derivative_stage_budget_bytes,
+        }
+        if split:
+            result = {}
+            resources = {}
+            for name, supplied in (
+                ("overlap", {"overlap_weights": ao["overlap"]}),
+                ("kinetic", {"kinetic_weights": ao["hcore"]}),
+                ("attraction", {"attraction_weights": ao["hcore"]}),
+            ):
+                value, measured = self.source.one_electron_gradient_cuda(
+                    **supplied, **kwargs
+                )
+                result[name] = value
+                self._accumulate_resources(resources, measured)
+            return result, resources
+        value, resources = self.source.one_electron_gradient_cuda(
+            overlap_weights=ao["overlap"],
+            kinetic_weights=ao["hcore"],
+            attraction_weights=ao["hcore"],
+            **kwargs,
+        )
+        return value, resources
+
+    def _gradient_cuda(self) -> CCSDGradientResult:
+        """Bounded GPU derivative contraction; weights and response remain CPU-generated.
+
+        No coordinate-by-AO ERI derivative tensor is materialized.  Dense AO
+        cotangents remain caller-owned and are streamed through the existing
+        generated S/T/V and weighted-ERI CUDA consumers.  The stage budget is
+        native numeric working storage and is distinct from ``max_bytes``.
+        """
+        started = time.perf_counter()
+        self._assert_current()
+        stage = self.options.derivative_stage_budget_bytes
+        device = self.options.device_id
+        total_one = self.ao_one_electron_weights(self.weights)
+        one_parts, one_resources = self._cuda_one_electron(total_one, split=True)
+        shell_diagnostics = {
+            "shell_quartet_calls": 0,
+            "maximum_ao_eri_weight_block_elements": 0,
+            "distinct_ao_eri_weight_block_shapes": 0,
+        }
+        if self.options.eri_weight_mode == "dense":
+            eri = self.source.weighted_eri_gradient_cuda(
+                self.ao_weights(self.weights)["eri"],
+                device_id=device,
+                stage_budget_bytes=stage,
+            )
+        else:
+            eri, shell_diagnostics = self._cuda_eri_shell_gradient(self.weights["eri"])
+        nuclear = _nuclear_gradient(self.source)
+        integral = {
+            "overlap": one_parts["overlap"],
+            "hcore": one_parts["kinetic"] + one_parts["attraction"],
+            "eri": eri,
+            "nuclear": nuclear,
+        }
+        gradient = sum(integral.values())
+        physical = {}
+        one_calls = 3
+        eri_calls = (
+            shell_diagnostics["shell_quartet_calls"]
+            if self.options.eri_weight_mode == "shell"
+            else 1
+        )
+        for name, weights in self.component_weights.items():
+            ao_one = self.ao_one_electron_weights(weights)
+            one, measured = self._cuda_one_electron(ao_one)
+            self._accumulate_resources(one_resources, measured)
+            if self.options.eri_weight_mode == "dense":
+                pair = self.source.weighted_eri_gradient_cuda(
+                    self.ao_weights(weights)["eri"],
+                    device_id=device,
+                    stage_budget_bytes=stage,
+                )
+                eri_calls += 1
+            else:
+                pair, local = self._cuda_eri_shell_gradient(weights["eri"])
+                shell_diagnostics["shell_quartet_calls"] += local["shell_quartet_calls"]
+                shell_diagnostics["maximum_ao_eri_weight_block_elements"] = max(
+                    shell_diagnostics["maximum_ao_eri_weight_block_elements"],
+                    local["maximum_ao_eri_weight_block_elements"],
+                )
+                shell_diagnostics["distinct_ao_eri_weight_block_shapes"] = max(
+                    shell_diagnostics["distinct_ao_eri_weight_block_shapes"],
+                    local["distinct_ao_eri_weight_block_shapes"],
+                )
+                eri_calls += local["shell_quartet_calls"]
+            physical[name] = one + pair
+            one_calls += 1
+        physical["nuclear"] = nuclear
+        if any(
+            not np.isfinite(v).all() for v in (*integral.values(), *physical.values())
+        ):
+            raise ImplicitSolveError("nonfinite bounded CUDA CC gradient contraction")
+        if not np.allclose(gradient, sum(physical.values()), atol=2e-9, rtol=2e-10):
+            raise ImplicitSolveError("bounded CUDA CC gradient component sum failed")
+        self._assert_current()
+        result = self._result(
+            gradient,
+            physical,
+            integral,
+            {
+                "derivative_backend": "cuda-generated-bounded-consumers",
+                "dense_ao_derivative_oracle": False,
+                "gpu_device_id": device,
+                "gpu_derivative_stage_budget_bytes": stage,
+                "gpu_one_electron_schedule": self.options.one_electron_schedule,
+                "gpu_eri_weight_mode": self.options.eri_weight_mode,
+                "gpu_one_electron_calls": one_calls,
+                "gpu_weighted_eri_calls": eri_calls,
+                **{f"gpu_{k}": v for k, v in shell_diagnostics.items()},
+                **{f"gpu_one_electron_{k}": v for k, v in one_resources.items()},
+                "gpu_weighted_eri_resource_evidence": "bounded by per-call stage budget; bridge does not expose internal measured split",
+                "derivative_contraction_seconds": time.perf_counter() - started,
+            },
+        )
+        self._assert_current()
+        return result
+
+    def gradient(self) -> CCSDGradientResult:
+        """Publish a complete gradient only after the selected derivative consumer succeeds."""
+        if self.options.derivative_backend == "cpu":
+            return self._gradient_cpu()
+        if self.options.derivative_backend == "cuda":
+            return self._gradient_cuda()
+        raise AssertionError("validated derivative backend became unreachable")
 
 
 def complete_gradient_validation(source, *, options=None) -> CCSDGradientResult:
@@ -617,7 +929,10 @@ def complete_gradient_validation(source, *, options=None) -> CCSDGradientResult:
     if not isinstance(options, CCSDGradientOptions):
         raise TypeError("gradient options must be CCSDGradientOptions")
     _validate_source(source)
-    if 3 * _derivative_bytes(source) > options.max_bytes:
+    if (
+        options.derivative_backend == "cpu"
+        and 3 * _derivative_bytes(source) > options.max_bytes
+    ):
         raise ImplicitSolveError(
             "CC derivative state budget exceeded before HF execution"
         )
