@@ -1,6 +1,11 @@
 """Canonical method composition above scientific compiler primitives."""
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import (
+    D3Spec,
+    D4Spec,
+    DispersionCorrectionPrimitive,
+    r2scan3c_d4_eeq,
+)
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .spec import (
@@ -30,6 +35,7 @@ __all__ = [
     "METHOD_CATALOG",
     "BackendCapability",
     "D3Spec",
+    "D4Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
     "FeatureType",
@@ -46,6 +52,7 @@ __all__ = [
     "TypedMethodIR",
     "UnsupportedMethod",
     "infer_feature_types",
+    "r2scan3c_d4_eeq",
     "resolve_method",
     "verify_method_ir",
 ]
