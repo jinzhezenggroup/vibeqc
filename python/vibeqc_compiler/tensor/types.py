@@ -11,7 +11,18 @@ from math import prod
 
 MAX_ELEMENTS = (1 << 63) - 1
 SPACE_KINDS = frozenset(
-    {"occupied", "virtual", "orbital", "ao", "auxiliary", "batch", "spin"}
+    {
+        "occupied",
+        "virtual",
+        "orbital",
+        "ao",
+        "auxiliary",
+        "batch",
+        "spin",
+        "atom",
+        "pair",
+        "cartesian",
+    }
 )
 
 
