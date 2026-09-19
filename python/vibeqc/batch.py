@@ -508,7 +508,9 @@ class PreparedBatch:
                     phase="preparation",
                 )
                 check_resource_status(self._library, status, self.resource_diagnostics)
-        except (RuntimeError, OSError):
+        except Exception:
+            # Construction owns native handles before resource-status conversion,
+            # which can raise MemoryError as well as ordinary validation errors.
             self.close()
             raise
         finally:
