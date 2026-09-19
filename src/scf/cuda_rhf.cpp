@@ -67,6 +67,7 @@
 #include "scf/cuda/queue_plan.hpp"
 #include "scf/cuda/reference_export.cuh"
 #include "scf/cuda/resources.hpp"
+#include "scf/cuda/rhf_bucket_internal.hpp"
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda/runtime_support.hpp"
 #include "scf/cuda/scf_convergence_kernels.hpp"
@@ -428,101 +429,7 @@ void fill_global_failure(std::vector<RhfBucketItem>& outputs, vibeqc_status stat
 
 }  // namespace
 
-struct CudaRhfBucketPlan {
-  CudaResources resources;
-  ArenaLayout layout;
-  HostBatch topology;
-  // Geometry-derived arena state is reusable until coordinates change.
-  std::vector<double> cached_positions;
-  // The current device density and its associated convergence seed are one
-  // cache, while a fixed benchmark dm0 and seed are a separate cache. The
-  // distinction matters because finalization advances the returned density
-  // after evaluating the final energy, so repeated fixed-dm0 replays cease to
-  // be resident hits even though they must retain the original energy seed.
-  std::vector<double> resident_warm_positions;
-  std::vector<double> resident_warm_density;
-  std::vector<double> resident_previous_energy;
-  std::vector<double> frozen_warm_positions;
-  std::vector<double> frozen_warm_density;
-  std::vector<double> frozen_previous_energy;
-  std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
-  std::optional<CudaPppsQueueProfile> last_ppps_queue_profile;
-  std::optional<CudaInactiveEigensolverProfile> last_inactive_eigensolver_profile;
-  CudaEigensolverDiagnostic eigensolver_diagnostic;
-  ScfOptions options;
-  std::size_t batch_size{};
-  std::size_t nbf{};
-  std::size_t direct_nbf{};
-  std::size_t total_atoms{};
-  std::size_t total_shells{};
-  std::size_t total_shell_pairs{};
-  std::size_t total_shell_quartets{};
-  std::size_t total_shell_pair_blocks{};
-  std::size_t total_shell_pair_block_quartets{};
-  std::size_t total_shell_quartet_tiles{};
-  std::vector<std::uint32_t> bounded_direct_shell_pair_order;
-  std::vector<std::uint32_t> bounded_stream_shell_pair_order;
-  std::vector<std::uint32_t> bounded_stream_pair_class_offsets;
-  std::size_t bounded_generated_task_capacity{};
-  std::array<std::uint32_t, detail::kDirectQuartetShellClassCount + 1>
-      bounded_generated_task_offsets{};
-  std::array<std::uint64_t, detail::kDirectQuartetShellClassCount>
-      bounded_generated_task_upper_bounds{};
-  std::size_t generated_shell_task_capacity{};
-  std::size_t resident_ppps_ket_task_capacity{};
-  std::array<std::size_t, detail::kDirectQuartetAngularOrderCount> shell_quartet_tile_capacities{};
-  std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
-      shell_quartet_tile_offsets{};
-  std::size_t fp32_shell_quartet_tile_capacity{};
-  std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
-      fp32_shell_quartet_tile_offsets{};
-  unsigned persistent_quartet_worker_blocks{};
-  std::size_t resident_psss_bra_primitive_pairs{};
-  std::size_t resident_psss_task_count{};
-  bool generated_psss_weighted{};
-  unsigned one_electron_value_mapping{};
-  std::size_t primitive_count{};
-  std::size_t diis_history{};
-  int lwork{};
-  bool persistent_eri{};
-  bool quartet_direct{};
-  bool transformed_direct{};
-  bool bounded_direct_streaming{};
-  bool unrestricted{};
-  bool shell_class_profiling{};
-  bool inactive_eigensolver_profiling{};
-  bool bounded_fock_class_timing{};
-  // These switches change captured work even when topology and arithmetic match.
-  bool bounded_streaming_override{};
-  bool fock_only_diagnostic{};
-  bool graph_native_eigensolver_override{};
-  bool reuse_converged_fock{};
-  bool mixed_precision_fock{};
-  double mixed_precision_fock_threshold{};
-  /** Largest item census the batch admission ceiling was bound to. */
-  std::size_t mixed_precision_eligible_tile_count{};
-  /** Exact per-system mixed-capable tile census the per-item budget divides. */
-  std::vector<std::uint32_t> mixed_precision_system_census;
-  bool warm_start_updates_enabled{true};
-  bool cublas_enabled{true};
-  bool retry_without_cublas{};
-  bool initialized{};
-};
-
 namespace {
-
-bool same_options(const ScfOptions& first, const ScfOptions& second) {
-  return first.max_iterations == second.max_iterations &&
-         first.diis_history == second.diis_history &&
-         first.energy_tolerance == second.energy_tolerance &&
-         first.density_tolerance == second.density_tolerance &&
-         first.screening_tolerance == second.screening_tolerance &&
-         first.compute_forces == second.compute_forces &&
-         first.export_physical_reference == second.export_physical_reference &&
-         first.reference_memory_budget_bytes == second.reference_memory_budget_bytes &&
-         first.precision_mode == second.precision_mode &&
-         first.resolved_fock_build == second.resolved_fock_build;
-}
 
 std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const HostBatch& host,
                                                   const ScfOptions& options, int device_id,
@@ -769,7 +676,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   if (!first_setup &&
       (plan.resources.device_id_ != device_id || !same_topology(plan.topology, host) ||
-       !same_options(plan.options, options) || plan.unrestricted != unrestricted ||
+       !same_hf_bucket_options(plan.options, options) || plan.unrestricted != unrestricted ||
        plan.bounded_direct_streaming != requested_bounded_direct_streaming ||
        plan.shell_class_profiling != shell_class_profiling ||
        plan.inactive_eigensolver_profiling != inactive_eigensolver_profiling ||
@@ -2901,80 +2808,43 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   };
 
   if (first_setup) {
-    // Graph construction is allocation-permitted setup work. Synchronize once
-    // so capture cannot race the initial guess; fixed-topology replays reuse
-    // this executable and do not repeat the fence or provider setup.
-    cuda_error = cudaStreamSynchronize(resources.stream_);
-    if (cuda_error == cudaSuccess) {
-      cuda_error = cudaStreamBeginCapture(resources.stream_, cudaStreamCaptureModeThreadLocal);
-    }
-    if (cuda_error != cudaSuccess) {
-      fill_global_failure(outputs, cuda_status(cuda_error));
-      return outputs;
-    }
-    status = launch_iteration_pre_eigensolver(true);
-    if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration && !split_provider_iteration) {
-      status = launch_iteration_eigensolver(graph_eigensolver_family);
-    }
-    if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration && !split_provider_iteration) {
-      status = launch_iteration_post_eigensolver(true);
-    }
-    if (status != VIBEQC_STATUS_SUCCESS) {
-      cudaGraph_t abandoned_graph = nullptr;
-      (void)cudaStreamEndCapture(resources.stream_, &abandoned_graph);
-      if (abandoned_graph != nullptr) (void)cudaGraphDestroy(abandoned_graph);
+    // The graph owner handles capture/instantiate/upload mechanics; this driver
+    // supplies only the exact numerical launch order for each captured stage.
+    const auto iteration_capture = plan.graphs.capture_iteration(
+        resources.device_id_, resources.stream_, !split_provider_iteration, [&]() -> vibeqc_status {
+          status = launch_iteration_pre_eigensolver(true);
+          if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration &&
+              !split_provider_iteration) {
+            status = launch_iteration_eigensolver(graph_eigensolver_family);
+          }
+          if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration &&
+              !split_provider_iteration) {
+            status = launch_iteration_post_eigensolver(true);
+          }
+          return status;
+        });
+    cuda_error = iteration_capture.cuda_error;
+    if (!iteration_capture.ok()) {
       if (use_cublas) plan.retry_without_cublas = true;
-      fill_global_failure(outputs, status);
+      fill_global_failure(outputs, iteration_capture.body_status != VIBEQC_STATUS_SUCCESS
+                                       ? iteration_capture.body_status
+                                       : cuda_status(iteration_capture.cuda_error));
       return outputs;
     }
-    cuda_error = cudaStreamEndCapture(resources.stream_, &resources.iteration_graph_);
-    if (status != VIBEQC_STATUS_SUCCESS || cuda_error != cudaSuccess ||
-        resources.iteration_graph_ == nullptr) {
-      if (use_cublas) plan.retry_without_cublas = true;
-      fill_global_failure(outputs,
-                          status != VIBEQC_STATUS_SUCCESS ? status : cuda_status(cuda_error));
-      return outputs;
-    }
-    cuda_error =
-        cudaGraphInstantiate(&resources.iteration_graph_exec_, resources.iteration_graph_,
-                             split_provider_iteration ? 0U : cudaGraphInstantiateFlagDeviceLaunch);
-    if (cuda_error == cudaSuccess) {
-      cuda_error = cudaGraphUpload(resources.iteration_graph_exec_, resources.stream_);
-    }
-    if (cuda_error == cudaSuccess && split_provider_iteration) {
-      cuda_error = cudaStreamSynchronize(resources.stream_);
-      if (cuda_error == cudaSuccess) {
-        cuda_error = cudaStreamBeginCapture(resources.stream_, cudaStreamCaptureModeThreadLocal);
+    if (split_provider_iteration) {
+      const auto post_capture = plan.graphs.capture_post_eigensolver(
+          resources.device_id_, resources.stream_, [&]() -> vibeqc_status {
+            status = launch_iteration_post_eigensolver(false);
+            return status;
+          });
+      cuda_error = post_capture.cuda_error;
+      if (!post_capture.ok()) {
+        if (use_cublas) plan.retry_without_cublas = true;
+        fill_global_failure(outputs, post_capture.body_status != VIBEQC_STATUS_SUCCESS
+                                         ? post_capture.body_status
+                                         : cuda_status(post_capture.cuda_error));
+        return outputs;
       }
-      if (cuda_error == cudaSuccess) {
-        status = launch_iteration_post_eigensolver(false);
-      }
-      if (cuda_error == cudaSuccess && status == VIBEQC_STATUS_SUCCESS) {
-        cuda_error = cudaStreamEndCapture(resources.stream_, &resources.post_eigensolver_graph_);
-      } else {
-        cudaGraph_t abandoned_graph = nullptr;
-        (void)cudaStreamEndCapture(resources.stream_, &abandoned_graph);
-        if (abandoned_graph != nullptr) {
-          (void)cudaGraphDestroy(abandoned_graph);
-        }
-      }
-      if (cuda_error == cudaSuccess && status == VIBEQC_STATUS_SUCCESS &&
-          resources.post_eigensolver_graph_ != nullptr) {
-        cuda_error = cudaGraphInstantiate(&resources.post_eigensolver_graph_exec_,
-                                          resources.post_eigensolver_graph_, 0U);
-      }
-      if (cuda_error == cudaSuccess && status == VIBEQC_STATUS_SUCCESS) {
-        cuda_error = cudaGraphUpload(resources.post_eigensolver_graph_exec_, resources.stream_);
-      }
-    }
-    if (cuda_error == cudaSuccess) {
-      cuda_error = cudaStreamSynchronize(resources.stream_);
-    }
-    if (status != VIBEQC_STATUS_SUCCESS || cuda_error != cudaSuccess) {
-      if (use_cublas) plan.retry_without_cublas = true;
-      fill_global_failure(outputs,
-                          status != VIBEQC_STATUS_SUCCESS ? status : cuda_status(cuda_error));
-      return outputs;
     }
     plan.initialized = true;
   }
@@ -3005,11 +2875,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   if (cuda_error == cudaSuccess && split_provider_iteration) {
     std::vector<std::uint8_t> host_active(batch_size, 1U);
     for (std::uint32_t iteration = 0; iteration < options.max_iterations; ++iteration) {
-      cuda_error = cudaGraphLaunch(resources.iteration_graph_exec_, resources.stream_);
+      cuda_error = plan.graphs.launch_iteration(resources.stream_);
       if (cuda_error != cudaSuccess) break;
       status = launch_iteration_eigensolver(ordinary_eigensolver_family);
       if (status != VIBEQC_STATUS_SUCCESS) break;
-      cuda_error = cudaGraphLaunch(resources.post_eigensolver_graph_exec_, resources.stream_);
+      cuda_error = plan.graphs.launch_post_eigensolver(resources.stream_);
       if (cuda_error == cudaSuccess) {
         cuda_error = cudaMemcpyAsync(host_active.data(), active, batch_size * sizeof(std::uint8_t),
                                      cudaMemcpyDeviceToHost, resources.stream_);
@@ -3028,7 +2898,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
   } else if (cuda_error == cudaSuccess) {
-    cuda_error = cudaGraphLaunch(resources.iteration_graph_exec_, resources.stream_);
+    cuda_error = plan.graphs.launch_iteration(resources.stream_);
   }
   if (cuda_error == cudaSuccess && direct_tile_validation &&
       resources.direct_tile_validation_ != nullptr) {
@@ -4416,324 +4286,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
 
 }  // namespace
 
-bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
-                                   std::size_t shells, std::size_t primitives,
-                                   std::size_t diis_history, std::size_t spins,
-                                   std::size_t& arena_bytes, std::size_t& plan_object_bytes) {
-  // This contract intentionally covers the provider with no cuBLAS/cuSOLVER
-  // workspace or exact-quartet descriptor table. Other routes need their own
-  // compact provider-workspace query before they can advertise a global bound.
-  if (nbf == 0 || nbf > kPersistentEriAoLimit || nbf > kSmallEigensolverLimit ||
-      nbf >= kCublasMatrixProductAoThreshold || direct_nbf < nbf || direct_nbf > 2 * nbf ||
-      atoms == 0 || shells == 0 || shells > nbf || primitives == 0 || diis_history > 64 ||
-      (spins != 1 && spins != 2))
-    return false;
-  const std::size_t pairs = shells * (shells + 1) / 2;
-  const std::size_t blocks =
-      detail::bounded_direct_queue_refill_count(pairs, detail::kBoundedDirectShellPairBlockSize);
-  ArenaLayout layout{};
-  if (!make_layout(1, nbf, direct_nbf, atoms, shells, pairs, blocks, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                   primitives, std::max<std::size_t>(1, diis_history), 0, spins, true, false, false,
-                   false, false, false, false, layout))
-    return false;
-  arena_bytes = layout.bytes;
-  plan_object_bytes = sizeof(CudaRhfBucketPlan);
-  return true;
-}
-
-std::size_t hf_cuda_owned_device_bytes(const CudaRhfBucketPlan* plan) noexcept {
-  if (plan == nullptr) return 0;
-  const auto& resources = plan->resources;
-  auto bytes = resources.arena_ == nullptr ? 0 : plan->layout.bytes;
-  if (resources.solver_workspace_ != nullptr)
-    bytes = runtime::add_capacity(bytes, resources.solver_workspace_bytes_);
-  if (resources.direct_tile_validation_ != nullptr)
-    bytes = runtime::add_capacity(bytes, sizeof(DirectTileValidationRecord));
-  return bytes;
-}
-
-CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::System>& systems) {
-  std::vector<const std::vector<double>*> initial_densities(systems.size(), nullptr);
-  HostBatch host;
-  if (!pack_host_batch(systems, initial_densities, host)) {
-    throw std::invalid_argument("systems cannot be represented by one CUDA RHF bucket");
-  }
-
-  std::size_t expanded_primitive_references = 0;
-  for (const core::System& system : systems) {
-    for (const core::Shell& shell : system.shells) {
-      std::size_t shell_references = 0;
-      if (!vibeqc::runtime::checked_multiply(molecule::cartesian_count(shell.angular_momentum),
-                                             shell.primitives.size(), shell_references) ||
-          !vibeqc::runtime::checked_add(expanded_primitive_references, shell_references,
-                                        expanded_primitive_references)) {
-        throw std::overflow_error("expanded CUDA primitive reference count overflowed");
-      }
-    }
-  }
-
-  const std::size_t device_basis_bytes =
-      host.system_shell_offsets.size() * sizeof(std::int64_t) +
-      host.shell_atoms.size() * sizeof(std::int32_t) +
-      host.shell_angular.size() * sizeof(std::uint8_t) +
-      host.shell_ao_offsets.size() * sizeof(std::int64_t) +
-      host.shell_direct_ao_offsets.size() * sizeof(std::int64_t) +
-      host.shell_primitive_offsets.size() * sizeof(std::int64_t) +
-      host.system_shell_pair_offsets.size() * sizeof(std::int64_t) +
-      host.system_shell_quartet_offsets.size() * sizeof(std::int64_t) +
-      host.shell_pair_systems.size() * sizeof(std::int32_t) +
-      host.shell_pair_first.size() * sizeof(std::int32_t) +
-      host.shell_pair_second.size() * sizeof(std::int32_t) +
-      host.ao_shells.size() * sizeof(std::int32_t) +
-      host.ao_term_counts.size() * sizeof(std::uint8_t) +
-      host.ao_term_angular.size() * sizeof(std::uint8_t) +
-      host.ao_term_coefficients.size() * sizeof(double) +
-      host.direct_ao_shells.size() * sizeof(std::int32_t) +
-      host.direct_ao_angular.size() * sizeof(std::uint8_t) +
-      host.direct_ao_coefficients.size() * sizeof(double) +
-      host.ao_to_direct_transform.size() * sizeof(double) +
-      host.primitive_exponents.size() * sizeof(double) +
-      host.primitive_coefficients.size() * sizeof(double);
-  return {
-      systems.size(),
-      host.shell_atoms.size(),
-      host.shell_pair_first.size(),
-      static_cast<std::size_t>(host.system_shell_quartet_offsets.back()),
-      host.ao_shells.size(),
-      host.primitive_exponents.size(),
-      expanded_primitive_references,
-      device_basis_bytes,
-      detail::direct_topology_requires_bounded_streaming(
-          static_cast<std::size_t>(host.system_shell_quartet_offsets.back())),
-      detail::direct_topology_requires_bounded_streaming(
-          static_cast<std::size_t>(host.system_shell_quartet_offsets.back()))
-          ? detail::kBoundedDirectQueueCapacity
-          : 0,
-  };
-}
-
-namespace {
-
-std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems,
-    const ScfOptions& requested_options,
-    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
-    bool unrestricted, bool shell_class_profiling, bool inactive_eigensolver_profiling) {
-  if (requested_options.hooks || requested_options.strict_initial_density) {
-    // Host callbacks are an explicit CPU capability, never a device fallback.
-    std::vector<RhfBucketItem> outputs(systems.size());
-    fill_global_failure(outputs, VIBEQC_STATUS_NOT_IMPLEMENTED);
-    return outputs;
-  }
-
-  // Resolve legacy internal callers once per prepared execution, before any
-  // device setup. Fock kernels and final exact force assembly share this guard.
-  ScfOptions execution_options = requested_options;
-  try {
-    const FockSpin spin = unrestricted ? FockSpin::Unrestricted : FockSpin::Restricted;
-    if (!execution_options.resolved_fock_build.has_value()) {
-      execution_options.resolved_fock_build = resolve_fock_build(
-          make_hf_fock_spec(spin), FockBackend::Cuda, execution_options.screening_tolerance);
-    }
-    require_exact_direct_strategy(*execution_options.resolved_fock_build, spin, FockBackend::Cuda);
-    if (execution_options.resolved_fock_build->screening_tolerance !=
-        execution_options.screening_tolerance) {
-      throw std::invalid_argument("CUDA screening differs from its resolved Fock strategy");
-    }
-  } catch (const std::invalid_argument&) {
-    std::vector<RhfBucketItem> outputs(systems.size());
-    fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
-    return outputs;
-  }
-  const ScfOptions& options = execution_options;
-
-  if (plan == nullptr) {
-    std::vector<RhfBucketItem> outputs(systems.size());
-    fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
-    return outputs;
-  }
-  HostBatch candidate;
-  if (!pack_host_batch(systems, initial_densities, candidate, unrestricted,
-                       options.export_physical_reference)) {
-    std::vector<RhfBucketItem> outputs(systems.size());
-    fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
-    return outputs;
-  }
-  const std::optional<double> mixed_precision_fock_threshold =
-      *plan != nullptr && (*plan)->quartet_direct
-          ? resolve_mixed_precision_fock_policy(
-                options.precision_mode, options.energy_tolerance, options.screening_tolerance,
-                static_cast<double>((*plan)->mixed_precision_eligible_tile_count))
-                .threshold
-          : std::nullopt;
-  const bool mixed_precision_fock = mixed_precision_fock_threshold.has_value();
-  const bool reuse_converged_fock = reuse_converged_fock_requested();
-  const bool graph_native_eigensolver_override = graph_native_eigensolver_override_requested();
-  if (*plan != nullptr && (*plan)->initialized &&
-      ((*plan)->resources.device_id_ != device_id || !same_topology((*plan)->topology, candidate) ||
-       !same_options((*plan)->options, options) || (*plan)->unrestricted != unrestricted ||
-       (*plan)->shell_class_profiling != shell_class_profiling ||
-       (*plan)->inactive_eigensolver_profiling != inactive_eigensolver_profiling ||
-       (*plan)->bounded_fock_class_timing != bounded_fock_class_timing_requested() ||
-       (*plan)->bounded_streaming_override != bounded_direct_streaming_override_requested() ||
-       (*plan)->fock_only_diagnostic != bounded_direct_fock_only_diagnostic_requested() ||
-       (*plan)->graph_native_eigensolver_override != graph_native_eigensolver_override ||
-       (*plan)->reuse_converged_fock != reuse_converged_fock ||
-       (*plan)->one_electron_value_mapping != cuda_policy::one_electron_value_mapping_requested() ||
-       (*plan)->mixed_precision_fock != mixed_precision_fock ||
-       (*plan)->mixed_precision_fock_threshold != mixed_precision_fock_threshold.value_or(0.0))) {
-    delete *plan;
-    *plan = nullptr;
-  }
-  if (*plan == nullptr) {
-    *plan = new (std::nothrow) CudaRhfBucketPlan{};
-    if (*plan == nullptr) {
-      std::vector<RhfBucketItem> outputs(systems.size());
-      fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
-      return outputs;
-    }
-  }
-  std::vector<RhfBucketItem> outputs =
-      execute_hf_cuda_bucket(**plan, candidate, options, device_id, unrestricted,
-                             shell_class_profiling, inactive_eigensolver_profiling);
-  const bool retry_without_cublas = !(*plan)->initialized && (*plan)->retry_without_cublas;
-  if (!(*plan)->initialized) {
-    delete *plan;
-    *plan = nullptr;
-  }
-  if (retry_without_cublas) {
-    // Provider setup or graph capture can reject a cuBLAS implementation on a
-    // particular CUDA release. Rebuild once with the numerically identical
-    // native kernel so public CUDA execution remains available.
-    *plan = new (std::nothrow) CudaRhfBucketPlan{};
-    if (*plan == nullptr) {
-      fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
-      return outputs;
-    }
-    (*plan)->cublas_enabled = false;
-    outputs = execute_hf_cuda_bucket(**plan, candidate, options, device_id, unrestricted,
-                                     shell_class_profiling, inactive_eigensolver_profiling);
-    if (!(*plan)->initialized) {
-      delete *plan;
-      *plan = nullptr;
-    }
-  }
-  return outputs;
-}
-
-}  // namespace
-
-std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems, const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
-    bool shell_class_profiling, bool inactive_eigensolver_profiling) {
-  return run_hf_cuda_bucket_cached(plan, systems, options, initial_densities, device_id, false,
-                                   shell_class_profiling, inactive_eigensolver_profiling);
-}
-
-std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems, const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
-    bool shell_class_profiling, bool inactive_eigensolver_profiling) {
-  return run_hf_cuda_bucket_cached(plan, systems, options, initial_densities, device_id, true,
-                                   shell_class_profiling, inactive_eigensolver_profiling);
-}
-
-void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept { delete plan; }
-
-void set_rhf_cuda_bucket_warm_start_updates(CudaRhfBucketPlan* plan, bool enabled) noexcept {
-  if (plan == nullptr || plan->warm_start_updates_enabled == enabled) return;
-  if (!enabled) {
-    // Freeze only on the policy transition. Repeating the setter while fixed
-    // must not replace the original post-cold dm0/seed with a later replay's
-    // advanced resident state.
-    plan->frozen_warm_positions = plan->resident_warm_positions;
-    plan->frozen_warm_density = plan->resident_warm_density;
-    plan->frozen_previous_energy = plan->resident_previous_energy;
-  } else {
-    plan->frozen_warm_positions.clear();
-    plan->frozen_warm_density.clear();
-    plan->frozen_previous_energy.clear();
-  }
-  plan->warm_start_updates_enabled = enabled;
-}
-
-void clear_rhf_cuda_bucket_warm_starts(CudaRhfBucketPlan* plan) noexcept {
-  if (plan == nullptr) return;
-  plan->resident_warm_positions.clear();
-  plan->resident_warm_density.clear();
-  plan->resident_previous_energy.clear();
-  plan->frozen_warm_positions.clear();
-  plan->frozen_warm_density.clear();
-  plan->frozen_previous_energy.clear();
-}
-
-bool get_rhf_cuda_shell_class_profile(const CudaRhfBucketPlan* plan,
-                                      CudaRhfShellClassProfile& profile) noexcept {
-  if (plan == nullptr || !plan->last_shell_class_profile.has_value()) {
-    return false;
-  }
-  profile = *plan->last_shell_class_profile;
-  return true;
-}
-
-bool get_rhf_cuda_ppps_queue_profile(const CudaRhfBucketPlan* plan,
-                                     CudaPppsQueueProfile& profile) noexcept {
-  if (plan == nullptr || !plan->last_ppps_queue_profile.has_value()) {
-    return false;
-  }
-  profile = *plan->last_ppps_queue_profile;
-  return true;
-}
-
-bool get_rhf_cuda_eigensolver_diagnostic(const CudaRhfBucketPlan* plan,
-                                         CudaEigensolverDiagnostic& diagnostic) noexcept {
-  if (plan == nullptr || !plan->initialized) return false;
-  diagnostic = plan->eigensolver_diagnostic;
-  return true;
-}
-
-bool get_rhf_cuda_inactive_eigensolver_profile(const CudaRhfBucketPlan* plan,
-                                               CudaInactiveEigensolverProfile& profile) noexcept {
-  if (plan == nullptr || !plan->last_inactive_eigensolver_profile.has_value()) {
-    return false;
-  }
-  profile = *plan->last_inactive_eigensolver_profile;
-  return true;
-}
-
-std::vector<RhfBucketItem> run_rhf_cuda_bucket(
-    const std::vector<core::System>& systems, const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
-    bool shell_class_profiling, bool inactive_eigensolver_profiling) {
-  CudaRhfBucketPlan* plan = nullptr;
-  try {
-    auto outputs =
-        run_rhf_cuda_bucket_cached(&plan, systems, options, initial_densities, device_id,
-                                   shell_class_profiling, inactive_eigensolver_profiling);
-    destroy_rhf_cuda_bucket_plan(plan);
-    return outputs;
-  } catch (...) {
-    destroy_rhf_cuda_bucket_plan(plan);
-    throw;
-  }
-}
-
-std::vector<RhfBucketItem> run_uhf_cuda_bucket(
-    const std::vector<core::System>& systems, const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
-    bool shell_class_profiling, bool inactive_eigensolver_profiling) {
-  CudaRhfBucketPlan* plan = nullptr;
-  try {
-    auto outputs =
-        run_uhf_cuda_bucket_cached(&plan, systems, options, initial_densities, device_id,
-                                   shell_class_profiling, inactive_eigensolver_profiling);
-    destroy_rhf_cuda_bucket_plan(plan);
-    return outputs;
-  } catch (...) {
-    destroy_rhf_cuda_bucket_plan(plan);
-    throw;
-  }
+std::vector<RhfBucketItem> execute_hf_cuda_bucket_driver(CudaRhfBucketPlan& plan,
+                                                         const cuda_execution::HostBatch& host,
+                                                         const ScfOptions& options, int device_id,
+                                                         bool unrestricted,
+                                                         bool shell_class_profiling,
+                                                         bool inactive_eigensolver_profiling) {
+  return execute_hf_cuda_bucket(plan, host, options, device_id, unrestricted, shell_class_profiling,
+                                inactive_eigensolver_profiling);
 }
 
 vibeqc_status contract_cuda_weighted_eri_primitives(
