@@ -127,8 +127,16 @@ the spin-summed density, and UHF evaluates independent alpha/beta K matrices.
 The result is the shared DirectJkMatrices consumed by ordinary Fock and
 two-electron-energy assembly.
 
-This promotion is still **fixed-density and internal**. It does not authorize
-AUTO selection, the public C Fock ABI, SCF iteration/warm replay, batching,
-hybrid method exposure, screening/fitting, analytic derivatives or forces, and
-it establishes no RI-K crossover/performance claim. Those capabilities require
-separate evidence and registration.
+The internal energy-only `run_cosx_rhf` and `run_cosx_uhf` controllers now
+reuse this prepared provider with host DIIS/eigensolves. Convergence requires
+energy, density and physical commutator gates; a converged trajectory is
+finalized by rebuilding the unextrapolated RI-J/COSX-K Fock, re-diagonalizing,
+reconstructing D and evaluating the final physical energy/residual again.
+Cold and warm starts share the same model identity.
+
+This promotion remains **internal and energy-only**. It does not authorize AUTO
+selection, the public C Fock ABI, batching, hybrid method exposure,
+screening/fitting, analytic derivatives or forces, and it establishes no RI-K
+crossover/performance claim. Proposal hooks are also rejected by the first SCF
+slice so their target-operator semantics cannot be inherited accidentally.
+Those capabilities require separate evidence and registration.
