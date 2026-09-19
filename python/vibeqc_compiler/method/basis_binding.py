@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from vibeqc_compiler.common.provenance import canonical_hash
 
@@ -39,11 +39,20 @@ class BasisBinding:
             raise ValueError("basis binding requires source revision metadata")
         if self.representation not in ("cartesian", "spherical"):
             raise ValueError("basis binding representation is invalid")
-        if not isinstance(self.supported_atomic_numbers, tuple) or not self.supported_atomic_numbers:
+        if (
+            not isinstance(self.supported_atomic_numbers, tuple)
+            or not self.supported_atomic_numbers
+        ):
             raise ValueError("basis binding requires an immutable element domain")
-        if tuple(sorted(set(self.supported_atomic_numbers))) != self.supported_atomic_numbers:
+        if (
+            tuple(sorted(set(self.supported_atomic_numbers)))
+            != self.supported_atomic_numbers
+        ):
             raise ValueError("basis element domain must be sorted and unique")
-        if any(type(z) is not int or not 1 <= z <= 118 for z in self.supported_atomic_numbers):
+        if any(
+            type(z) is not int or not 1 <= z <= 118
+            for z in self.supported_atomic_numbers
+        ):
             raise ValueError("basis element domain contains an invalid atomic number")
         if type(self.ecp_core_electrons) is not int or self.ecp_core_electrons < 0:
             raise ValueError("basis binding ECP core count must be nonnegative")
@@ -104,13 +113,21 @@ def validate_basis_snapshot(binding, basis, *, atomic_numbers=()):
     if not isinstance(binding, BasisBinding):
         raise TypeError("basis validation requires BasisBinding")
     if getattr(basis, "name", None) != binding.name:
-        raise ValueError(f"expected basis {binding.name!r}, got {getattr(basis, 'name', None)!r}")
+        raise ValueError(
+            f"expected basis {binding.name!r}, got {getattr(basis, 'name', None)!r}"
+        )
     if getattr(basis, "identity", None) != binding.basis_identity:
-        raise ValueError("loaded basis data identity does not match the method manifest")
+        raise ValueError(
+            "loaded basis data identity does not match the method manifest"
+        )
     provenance = getattr(basis, "provenance", None)
     if getattr(provenance, "checksum", None) != binding.source_sha256:
-        raise ValueError("loaded basis source checksum does not match the method manifest")
+        raise ValueError(
+            "loaded basis source checksum does not match the method manifest"
+        )
     if getattr(basis, "representation", None) != binding.representation:
-        raise ValueError("loaded basis representation does not match the method manifest")
+        raise ValueError(
+            "loaded basis representation does not match the method manifest"
+        )
     binding.require_atomic_numbers(tuple(atomic_numbers))
     return basis

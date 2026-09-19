@@ -275,14 +275,17 @@ class MethodIR:
         if self.basis is not None and not isinstance(self.basis, BasisBinding):
             raise TypeError("MethodIR basis requires BasisBinding")
         gcp = [
-            p for p in self.primitives
-            if isinstance(p, GeometricCounterpoisePrimitive)
+            p for p in self.primitives if isinstance(p, GeometricCounterpoisePrimitive)
         ]
         if gcp:
             if self.basis is None:
-                raise UnsupportedMethod("gCP primitive requires a MethodIR basis binding")
+                raise UnsupportedMethod(
+                    "gCP primitive requires a MethodIR basis binding"
+                )
             if gcp[0].specification.basis != self.basis.name:
-                raise UnsupportedMethod("gCP primitive basis does not match MethodIR basis")
+                raise UnsupportedMethod(
+                    "gCP primitive basis does not match MethodIR basis"
+                )
 
     @property
     def reference(self):

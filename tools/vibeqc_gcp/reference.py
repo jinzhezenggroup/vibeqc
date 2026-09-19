@@ -39,9 +39,7 @@ def _bint(x, n=8):
     for i in range(1, 13):
         pw.append(pw[-1] * (-x) / i)
     for k in range(n + 1):
-        out[k] = 2.0 * sum(
-            pw[i] / (k + i + 1) for i in range(k % 2, 13, 2)
-        )
+        out[k] = 2.0 * sum(pw[i] / (k + i + 1) for i in range(k % 2, 13, 2))
     return out
 
 
@@ -133,9 +131,7 @@ def evaluate_r2scan3c_gcp(atomic_numbers, coordinates_bohr):
             r = math.sqrt(sum(v * v for v in vec))
             if r <= 0.0:
                 raise ValueError("coincident atoms are invalid for gCP")
-            s, ds = _overlap(
-                r, pi["shell"], pj["shell"], pi["slater"], pj["slater"]
-            )
+            s, ds = _overlap(r, pi["shell"], pj["shell"], pi["slater"], pj["slater"])
             if s <= 0.0 or not math.isfinite(s):
                 raise ValueError("invalid Slater overlap in gCP")
             bsse = math.exp(-p["alpha"] * r ** p["beta"]) / math.sqrt(s)

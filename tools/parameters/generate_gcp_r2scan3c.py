@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the checked-in H-Ar r2SCAN-3c gCP C++ parameter table."""
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
@@ -38,12 +38,12 @@ def main():
     ]
     for row in elements:
         lines.append(
-            f'  Element{{{_number(row["emiss"])}, {_number(row["slater"])}, '
-            f'{_number(row["xv"])}, {row["shell"]}}},'
+            f"  Element{{{_number(row['emiss'])}, {_number(row['slater'])}, "
+            f"{_number(row['xv'])}, {row['shell']}}},"
         )
     lines += ["}};", "inline constexpr std::array<double, 171> kVdwAngstrom{{"]
     for i in range(0, len(radii), 6):
-        lines.append("  " + ", ".join(_number(v) for v in radii[i:i+6]) + ",")
+        lines.append("  " + ", ".join(_number(v) for v in radii[i : i + 6]) + ",")
     lines += [
         "}};",
         'inline constexpr char kSimpleDftd3Revision[] = "41d5a07b98ce15e97bec7a1815869725f6c7b0c2";',

@@ -1,14 +1,13 @@
-from dataclasses import replace
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
 from vibeqc import load_r2scan3c_basis
 from vibeqc_compiler.method import (
-    BackendCapability,
     METHOD_CATALOG,
+    BackendCapability,
     DispersionCorrectionPrimitive,
     GeometricCounterpoisePrimitive,
     MethodIR,
@@ -71,9 +70,9 @@ def test_canonical_label_rejects_component_override():
 def test_canonical_basis_snapshot_is_exact_and_preflighted():
     basis = load_r2scan3c_basis()
     binding = METHOD_CATALOG["R2SCAN-3c"].basis
-    assert validate_basis_snapshot(
-        binding, basis, atomic_numbers=(1, 6, 8, 18)
-    ) is basis
+    assert (
+        validate_basis_snapshot(binding, basis, atomic_numbers=(1, 6, 8, 18)) is basis
+    )
     graph = resolve_method("R2SCAN-3c")
     assert graph.preflight_atomic_numbers((1, 6, 8, 18)) == (1, 6, 8, 18)
     with pytest.raises(UnsupportedMethod, match="does not support atomic numbers"):
@@ -87,11 +86,21 @@ def test_r2scan3c_correction_parameters_are_method_defining():
     spec = METHOD_CATALOG["R2SCAN-3c"]
     d4 = spec.dispersion
     assert (d4.s6, d4.s8, d4.s9, d4.a1, d4.a2, d4.ga, d4.gc) == (
-        1.0, 0.0, 2.0, 0.42, 5.65, 2.0, 1.0
+        1.0,
+        0.0,
+        2.0,
+        0.42,
+        5.65,
+        2.0,
+        1.0,
     )
     gcp = spec.gcp
     assert (gcp.sigma, gcp.eta, gcp.eta_spec, gcp.alpha, gcp.beta) == (
-        1.0, 1.315, 1.15, 0.9410, 1.4636
+        1.0,
+        1.315,
+        1.15,
+        0.9410,
+        1.4636,
     )
     assert (gcp.damping_scale, gcp.damping_exponent) == (4.0, 6.0)
 
@@ -117,9 +126,10 @@ def test_r2scan3c_backend_must_acknowledge_both_corrections():
         ingredients=("rho", "sigma", "tau"),
         operators=("semilocal-xc", "geometry-d4-bj-eeq", "geometry-gcp"),
     )
-    assert verify_method_ir(
-        graph, capability=capability, derivative_order=1
-    ).method is graph
+    assert (
+        verify_method_ir(graph, capability=capability, derivative_order=1).method
+        is graph
+    )
     with pytest.raises(MethodTypeError, match="geometry-gcp"):
         verify_method_ir(
             graph,

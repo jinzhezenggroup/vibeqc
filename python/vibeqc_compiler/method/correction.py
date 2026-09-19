@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
 import re
+from dataclasses import dataclass
 
 _CORRECTION_API_VERSION = "correction-result-v1"
 
@@ -69,22 +69,23 @@ class CorrectionResult:
         if not isinstance(self.gradient, tuple) or any(
             not isinstance(row, tuple)
             or len(row) != 3
-            or any(
-                not isinstance(v, (int, float)) or not math.isfinite(v)
-                for v in row
-            )
+            or any(not isinstance(v, (int, float)) or not math.isfinite(v) for v in row)
             for row in self.gradient
         ):
             raise ValueError("correction gradient requires finite immutable xyz rows")
         if not isinstance(self.parameters, tuple) or any(
-            not isinstance(item, tuple) or len(item) != 2 or not isinstance(item[0], str)
+            not isinstance(item, tuple)
+            or len(item) != 2
+            or not isinstance(item[0], str)
             for item in self.parameters
         ):
             raise ValueError("correction parameters require immutable key/value pairs")
         if not isinstance(self.provenance, CorrectionProvenance):
             raise TypeError("correction result requires CorrectionProvenance")
         if (self.energy_unit, self.gradient_unit, self.version) != (
-            "hartree", "hartree/bohr", _CORRECTION_API_VERSION,
+            "hartree",
+            "hartree/bohr",
+            _CORRECTION_API_VERSION,
         ):
             raise ValueError("unsupported correction result units/version")
 

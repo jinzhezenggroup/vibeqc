@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
 import re
+from dataclasses import dataclass
 from typing import ClassVar
 
 GCP_SPEC_VERSION = "gcp-spec-v1"
@@ -39,26 +39,51 @@ class GCPSpec:
             raise ValueError("unsupported gCP specification version")
         if not all(
             isinstance(v, str) and v
-            for v in (self.basis, self.source, self.source_revision, self.license, self.profile)
+            for v in (
+                self.basis,
+                self.source,
+                self.source_revision,
+                self.license,
+                self.profile,
+            )
         ):
-            raise ValueError("gCP specification requires provenance and profile metadata")
+            raise ValueError(
+                "gCP specification requires provenance and profile metadata"
+            )
         for name in (
-            "sigma", "eta", "eta_spec", "alpha", "beta",
-            "damping_scale", "damping_exponent",
+            "sigma",
+            "eta",
+            "eta_spec",
+            "alpha",
+            "beta",
+            "damping_scale",
+            "damping_exponent",
         ):
             value = getattr(self, name)
-            if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+            if (
+                not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
                 raise ValueError(f"gCP {name} must be finite and positive")
         for name in (
-            "parameter_sha256", "implementation_sha256",
-            "vdw_radii_sha256", "data_sha256",
+            "parameter_sha256",
+            "implementation_sha256",
+            "vdw_radii_sha256",
+            "data_sha256",
         ):
             value = getattr(self, name)
             if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
                 raise ValueError(f"gCP {name} requires a SHA-256 digest")
-        if not isinstance(self.supported_atomic_numbers, tuple) or not self.supported_atomic_numbers:
+        if (
+            not isinstance(self.supported_atomic_numbers, tuple)
+            or not self.supported_atomic_numbers
+        ):
             raise ValueError("gCP requires a finite supported-element domain")
-        if tuple(sorted(set(self.supported_atomic_numbers))) != self.supported_atomic_numbers:
+        if (
+            tuple(sorted(set(self.supported_atomic_numbers)))
+            != self.supported_atomic_numbers
+        ):
             raise ValueError("gCP supported elements must be sorted and unique")
 
     def to_payload(self):
