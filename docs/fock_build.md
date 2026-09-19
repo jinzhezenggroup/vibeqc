@@ -279,8 +279,11 @@ The ordinary `PreparedFockPlan` explicitly rejects COSX so its historical
 exact-vs-DF branch cannot silently misroute a new approximation. The CPU COSX
 implementation remains a correctness oracle rather than an executable provider.
 The public C Fock ABI still exposes only exact and density-fitted choices.
-Consequently this promotion is an internal **fixed-density** provider capability,
-not AUTO selection, public method support, SCF integration, batching or forces.
+The DFT layer additionally owns internal energy-only RHF/UHF controllers over
+this prepared provider. They use host DIIS/eigensolves, physical commutator
+convergence gates and unextrapolated final Fock rebuilding. Consequently this
+promotion supports internal fixed-density and energy-only SCF execution, but
+not AUTO selection, public method support, batching, proposal hooks or forces.
 
 See the
 [COSX provider-identity decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-provider-identity.md),
@@ -316,6 +319,12 @@ COSX oracles. It also checks that the dedicated grid exactly reproduces the
 resolved COSX identity, total device usage stays within the admitted budget,
 and the legacy exact/DF prepared owner rejects COSX rather than falling through
 to its DF branch.
+
+`vibeqc_cosx_scf_tests` covers cold RHF/UHF convergence, warm replay,
+strict warm determinant validation, nonconverged one-iteration state behavior
+and explicit force rejection. The returned density and energy are re-evaluated
+with independent CPU DF-J and discrete COSX-K oracles, including the final
+physical commutator residual.
 
 `tests/python/test_fock.py` exercises public independent choices, transactional
 failure, identity, source lifetime, SCF/replay/force consistency and semilocal XC

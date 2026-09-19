@@ -161,6 +161,9 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_cosx_fock_provider_tests
                        tests/native/test_cosx_fock_provider.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cosx_scf_tests
+                       tests/native/test_cosx_scf.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
   endif()
 
   vibeqc_native_test(vibeqc_dft_api_tests tests/native/test_dft_api.cpp NO_SRC_INCLUDE)
