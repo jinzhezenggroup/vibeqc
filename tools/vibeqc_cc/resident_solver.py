@@ -565,6 +565,7 @@ def solve_gpu_resident(
         options=options,
         t1=t1,
         t2=t2,
+        warm_start=warm_start,
         device=device,
         provider_peak_bytes=provider_peak_bytes,
     ) as prepared:

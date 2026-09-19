@@ -303,3 +303,31 @@ def test_two_resident_owners_keep_state_isolated(tmp_path):
             == b.provenance["resident_solved_state_identity"]
         )
         assert first.solved_state_identity != second.solved_state_identity
+
+
+def test_resident_convenience_entry_forwards_exact_warm_start(monkeypatch, tmp_path):
+    from tools.vibeqc_cc import resident_solver
+
+    received = {}
+    warm_start = object()
+    expected_result = object()
+
+    class Owner:
+        def __init__(self, *args, **kwargs):
+            received.update(kwargs)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def solve(self):
+            return expected_result
+
+    monkeypatch.setattr(resident_solver, "PreparedResidentCCSD", Owner)
+    result = resident_solver.solve_gpu_resident(
+        object(), object(), compiler=object(), cache=tmp_path, warm_start=warm_start
+    )
+    assert result is expected_result
+    assert received.get("warm_start") is warm_start
