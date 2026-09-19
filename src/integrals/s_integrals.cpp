@@ -299,12 +299,11 @@ Jet primitive_kinetic_cartesian(double alpha, const Vec3& a,
   return result;
 }
 
-Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
-                                           const molecule::CartesianComponent& angular_a,
-                                           double beta, const Vec3& b,
-                                           const molecule::CartesianComponent& angular_b,
-                                           const std::vector<Vec3>& atoms,
-                                           const core::System& system) {
+Jet primitive_coulomb_potential_cartesian(double alpha, const Vec3& a,
+                                          const molecule::CartesianComponent& angular_a,
+                                          double beta, const Vec3& b,
+                                          const molecule::CartesianComponent& angular_b,
+                                          const Vec3& center) {
   const double p = alpha + beta;
   const Vec3 product = product_center(alpha, a, beta, b);
   std::array<HermiteCoefficients, 3> coefficients{
@@ -313,22 +312,32 @@ Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
       fill_hermite(angular_a[2], angular_b[2], product[2], a[2], b[2], alpha, beta)};
   const unsigned maximum =
       angular_a[0] + angular_a[1] + angular_a[2] + angular_b[0] + angular_b[1] + angular_b[2];
-  Jet result(0.0, a[0].derivative.size());
-  for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
-    const CoulombAuxiliary auxiliary = fill_coulomb(maximum, p, product, atoms[atom]);
-    Jet value(0.0, a[0].derivative.size());
-    for (unsigned t = 0; t <= angular_a[0] + angular_b[0]; ++t) {
-      for (unsigned u = 0; u <= angular_a[1] + angular_b[1]; ++u) {
-        for (unsigned v = 0; v <= angular_a[2] + angular_b[2]; ++v) {
-          value = value + coefficients[0].at(angular_a[0], angular_b[0], t) *
-                              coefficients[1].at(angular_a[1], angular_b[1], u) *
-                              coefficients[2].at(angular_a[2], angular_b[2], v) *
-                              auxiliary.at(0, t, u, v);
-        }
+  const CoulombAuxiliary auxiliary = fill_coulomb(maximum, p, product, center);
+  Jet value(0.0, a[0].derivative.size());
+  for (unsigned t = 0; t <= angular_a[0] + angular_b[0]; ++t) {
+    for (unsigned u = 0; u <= angular_a[1] + angular_b[1]; ++u) {
+      for (unsigned v = 0; v <= angular_a[2] + angular_b[2]; ++v) {
+        value = value + coefficients[0].at(angular_a[0], angular_b[0], t) *
+                            coefficients[1].at(angular_a[1], angular_b[1], u) *
+                            coefficients[2].at(angular_a[2], angular_b[2], v) *
+                            auxiliary.at(0, t, u, v);
       }
     }
+  }
+  return (2.0 * std::numbers::pi / p) * value;
+}
+
+Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
+                                           const molecule::CartesianComponent& angular_a,
+                                           double beta, const Vec3& b,
+                                           const molecule::CartesianComponent& angular_b,
+                                           const std::vector<Vec3>& atoms,
+                                           const core::System& system) {
+  Jet result(0.0, a[0].derivative.size());
+  for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
     result = result - static_cast<double>(system.atoms[atom].ionic_charge()) *
-                          (2.0 * std::numbers::pi / p) * value;
+                          primitive_coulomb_potential_cartesian(alpha, a, angular_a, beta, b,
+                                                                angular_b, atoms[atom]);
   }
   return result;
 }
@@ -792,6 +801,76 @@ void cross_overlap(const core::System& target, const core::System& source,
       output[i * ns + j] = value;
     }
   }
+}
+
+EspIntegralData build_esp_integrals(const core::System& system,
+                                    std::span<const double> points_xyz) {
+  if (points_xyz.size() % 3 != 0) {
+    throw std::invalid_argument("ESP probe coordinates must be xyz triples");
+  }
+  for (double coordinate : points_xyz) {
+    if (!std::isfinite(coordinate)) throw std::invalid_argument("nonfinite ESP probe coordinate");
+  }
+
+  const auto cartesian_aos = expand_cartesian_aos(system);
+  const auto public_aos = public_ao_expansions(system);
+  if (cartesian_aos.empty() || public_aos.empty()) {
+    throw std::invalid_argument("ESP integrals require a nonempty AO basis");
+  }
+  const std::size_t cartesian_nbf = cartesian_aos.size();
+  const std::size_t nbf = public_aos.size();
+  const std::size_t npoint = points_xyz.size() / 3;
+  const std::size_t cartesian_matrix_size = checked_product(cartesian_nbf, cartesian_nbf);
+  const std::size_t matrix_size = checked_product(nbf, nbf);
+
+  std::vector<Vec3> centers;
+  centers.reserve(system.atoms.size());
+  for (const auto& atom : system.atoms) {
+    centers.push_back(
+        {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+  }
+
+  EspIntegralData result;
+  result.nbf = nbf;
+  result.npoint = npoint;
+  result.values.resize(checked_product(npoint, matrix_size));
+  std::vector<double> cartesian(cartesian_matrix_size);
+
+  for (std::size_t point = 0; point < npoint; ++point) {
+    const Vec3 probe{Jet(points_xyz[3 * point], 0), Jet(points_xyz[3 * point + 1], 0),
+                     Jet(points_xyz[3 * point + 2], 0)};
+    for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+      const auto& first = cartesian_aos[i];
+      const auto& first_center = centers[first.shell->atom_index];
+      for (std::size_t j = 0; j <= i; ++j) {
+        const auto& second = cartesian_aos[j];
+        const auto& second_center = centers[second.shell->atom_index];
+        double value = 0.0;
+        const double angular_normalization =
+            first.component_normalization * second.component_normalization;
+        for (const auto& p : first.shell->primitives) {
+          for (const auto& q : second.shell->primitives) {
+            value += angular_normalization * p.coefficient * q.coefficient *
+                     primitive_coulomb_potential_cartesian(p.exponent, first_center, first.angular,
+                                                           q.exponent, second_center,
+                                                           second.angular, probe)
+                         .value;
+          }
+        }
+        cartesian[matrix_index(i, j, cartesian_nbf)] = value;
+        cartesian[matrix_index(j, i, cartesian_nbf)] = value;
+      }
+    }
+
+    const double* source = cartesian.data();
+    std::vector<double> transformed;
+    if (nbf != cartesian_nbf) {
+      transformed = transform_matrix(cartesian.data(), cartesian_nbf, public_aos);
+      source = transformed.data();
+    }
+    std::copy(source, source + matrix_size, result.values.begin() + point * matrix_size);
+  }
+  return result;
 }
 
 IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system) {

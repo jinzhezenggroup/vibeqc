@@ -36,6 +36,22 @@ struct DensityFittingIntegralData {
   std::vector<double> three_center_derivative;
 };
 
+/** Analytic AO electrostatic-potential matrices at explicit probe points.
+ *
+ * Values are point-major row-major matrices:
+ *   values[(point * nbf + mu) * nbf + nu]
+ *     = <mu | 1 / |r - R_point| | nu>.
+ *
+ * Probe coordinates are supplied as flat xyz triples in Bohr. They are fixed
+ * external points: this value-only reference does not attach nuclear
+ * derivatives to the probe coordinates.
+ */
+struct EspIntegralData {
+  std::size_t nbf{};
+  std::size_t npoint{};
+  std::vector<double> values;
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -45,6 +61,9 @@ struct DensityFittingIntegralData {
  */
 IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
                              bool include_eri = true);
+
+/** Evaluate analytic AO ESP matrices on explicit probe points. */
+EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);
 
 /**
  * Write a row-major rectangular <target AO | source AO> overlap on the CPU.
