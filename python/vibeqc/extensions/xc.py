@@ -37,9 +37,7 @@ def _normalize_components(
         totals[name] = totals.get(name, Fraction(0)) + _coefficient(
             value, f"component {name}"
         )
-    result = tuple(
-        (name, value) for name, value in sorted(totals.items()) if value
-    )
+    result = tuple((name, value) for name, value in sorted(totals.items()) if value)
     if not result:
         raise UnsupportedXC("functional composition cannot be empty")
     return result
@@ -61,9 +59,7 @@ def compose(
         spin=spin,
         exact_exchange=_coefficient(exact_exchange, "exact exchange"),
         range_omega=_coefficient(range_omega, "range omega"),
-        long_range_exchange=_coefficient(
-            long_range_exchange, "long-range exchange"
-        ),
+        long_range_exchange=_coefficient(long_range_exchange, "long-range exchange"),
     )
 
 

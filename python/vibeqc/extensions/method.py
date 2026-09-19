@@ -13,8 +13,10 @@ from vibeqc_compiler.method import (
     MethodTypeError,
     TypedMethodIR,
     UnsupportedMethod,
-    resolve_method as _resolve_method,
     verify_method_ir,
+)
+from vibeqc_compiler.method import (
+    resolve_method as _resolve_method,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
@@ -76,9 +78,7 @@ def compose(
     return _resolve_method(spec, spin="unpolarized" if spin is None else spin)
 
 
-def resolve(
-    value: str | MethodSpec | MethodIR, *, spin: str | None = None
-) -> MethodIR:
+def resolve(value: str | MethodSpec | MethodIR, *, spin: str | None = None) -> MethodIR:
     """Resolve a built-in or custom declaration to the canonical scientific IR."""
     if isinstance(value, MethodIR):
         if spin is not None and value.spin != spin:

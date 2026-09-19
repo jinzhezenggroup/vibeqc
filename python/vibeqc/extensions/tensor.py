@@ -42,7 +42,8 @@ from vibeqc_compiler.tensor import (
     transpose_program,
     vjp,
 )
-from vibeqc_compiler.tensor.program import PRIMITIVE_VERSION, VERSION as SCHEMA_VERSION
+from vibeqc_compiler.tensor.program import PRIMITIVE_VERSION
+from vibeqc_compiler.tensor.program import VERSION as SCHEMA_VERSION
 
 API_VERSION = 1
 
