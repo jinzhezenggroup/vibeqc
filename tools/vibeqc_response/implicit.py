@@ -267,6 +267,10 @@ class ResponseTransposeBinding:
             raise TypeError(
                 "response binding requires an operator with ResponseProblem"
             )
+        if problem.method != "rhf":
+            raise ResponseCompatibilityError(
+                "implicit response binding currently supports RHF only"
+            )
         spec = plan.spec
         if getattr(operator, "dimension", None) != spec.dimension:
             raise ResponseCompatibilityError("implicit/response dimension mismatch")

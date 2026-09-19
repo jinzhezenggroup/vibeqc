@@ -334,3 +334,35 @@ def test_response_operator_device_resources_require_joint_budget():
         bound.vjp(
             np.zeros(spec.state_spec.shape), reference_identity=reference.identity
         )
+
+
+def test_response_binding_rejects_cpks_even_with_declared_resources():
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from tools.vibeqc_response.implicit import ResponseTransposeBinding
+    from tools.vibeqc_response.problem import ResponseProblem
+
+    metadata, arrays = load_fixture("h2")
+    reference = replace(
+        fixture_snapshot(metadata, arrays),
+        algorithm="KS",
+        functional_identity="test-xc",
+        grid_identity="test-grid",
+        hf_backend="test-ks",
+    )
+    problem = ResponseProblem.from_reference(
+        reference, method="cpks", operator_identity="cpks-test-operator"
+    )
+    spec, _ = _rhf_equation(reference, arrays, problem)
+    operator = SimpleNamespace(
+        problem=problem,
+        dimension=problem.dimension,
+        identity=problem.operator_identity,
+        backend=SimpleNamespace(identity="declared-backend"),
+        host_workspace_bytes=100,
+        device_workspace_bytes=100,
+        resource_identity="declared",
+    )
+    with pytest.raises(ResponseCompatibilityError, match="RHF only"):
+        ResponseTransposeBinding(spec.compile(), operator)
