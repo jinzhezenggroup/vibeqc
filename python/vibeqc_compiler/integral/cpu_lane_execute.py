@@ -9,12 +9,12 @@ import tempfile
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.cpu_target import CpuTargetInfo
-from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
@@ -26,7 +26,11 @@ from .cpu_lane import (
 from .cpu_schedule import CpuScheduleIR
 from .first_derivatives_execute import first_derivative_component_tiles
 from .first_derivatives_native import validate_first_components
-from .ir import IntegralIR
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_runtime import CudaArtifact
+
+    from .ir import IntegralIR
 
 
 @dataclass(frozen=True)
@@ -60,11 +64,11 @@ class CompiledFirstDerivativeCpuLane:
 
 
 def first_derivative_cpu_lane_shell_identity(
-    integral,
-    target,
-    schedule,
+    integral: object,
+    target: object,
+    schedule: object,
     *,
-    tile_size=64,
+    tile_size: int=64,
 ) -> str:
     tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
     return canonical_hash(

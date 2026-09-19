@@ -12,8 +12,7 @@ import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.resources import (
@@ -38,6 +37,9 @@ from .spatial import (
     build_spatial_tasks,
     spatial_resource_request,
 )
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 @dataclass(frozen=True)

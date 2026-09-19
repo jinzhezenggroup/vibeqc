@@ -31,7 +31,7 @@ def nvrtc_cache_key(specification: NvrtcCacheSpec) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def integral_cache_key(integral) -> str:
+def integral_cache_key(integral: object) -> str:
     """Hash versioned scientific intent through the existing content-addressing scheme.
 
     This identity includes physical bindings, external charges, tensor strides,

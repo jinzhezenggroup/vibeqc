@@ -8,7 +8,7 @@ from _support import environment_metadata, raw_output_path, write_result
 from vibeqc import Calculator
 
 
-def make_system(index: int):
+def make_system(index: int) -> object:
     if index % 3 == 0:
         distance = 1.2 + 0.01 * (index % 10)
         return [

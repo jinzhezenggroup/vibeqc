@@ -34,7 +34,7 @@ def byte_product(*values: int) -> int:
     return checked_bytes(math.prod(values), "byte product")
 
 
-def _sum(values) -> int:
+def _sum(values: object) -> int:
     return checked_bytes(sum(values), "concurrently live bytes")
 
 

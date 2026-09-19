@@ -138,7 +138,7 @@ class ScalarKernel:
 
 def emit_opencl(
     kernel: ScalarKernel, target: RuntimeCapabilities, shape: ExecutionShape
-):
+) -> object:
     """Emit one FP64 scalar primitive kernel for ordinary native host submission."""
     if target.backend != "opencl":
         raise ValueError("OpenCL lowering requires an OpenCL target")

@@ -42,7 +42,7 @@ def cpks_operator_identity(backend, xc_kernel):
 class _BaseResponseOperator:
     """Shared validation/statistics for density-response operators."""
 
-    def __init__(self, problem: ResponseProblem, backend):
+    def __init__(self, problem: ResponseProblem, backend: object) -> None:
         if not isinstance(problem, ResponseProblem):
             raise TypeError("expected ResponseProblem")
         self.problem = problem

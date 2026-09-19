@@ -14,9 +14,8 @@ import json
 import os
 import statistics
 import time
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from _cases import benchmark_cases
@@ -27,6 +26,9 @@ from _support import (
     write_result,
 )
 from vibeqc import BatchResult, Calculator, InactiveEigensolverProfileEntry
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _csv_choices(value: str, allowed: set[str]) -> tuple[str, ...]:
@@ -95,7 +97,7 @@ def divergent_coordinates(
 
 
 def _timed_execute(
-    batch: Any, coordinates: Sequence[np.ndarray]
+    batch: object, coordinates: Sequence[np.ndarray]
 ) -> tuple[BatchResult, float]:
     """Time one synchronous native execution and require scientific success."""
 
@@ -104,7 +106,7 @@ def _timed_execute(
     return result, time.perf_counter() - start
 
 
-def _convergence(result: BatchResult) -> list[dict[str, Any]]:
+def _convergence(result: BatchResult) -> list[dict[str, object]]:
     return [
         {
             "index": item.index,
@@ -120,7 +122,7 @@ def _convergence(result: BatchResult) -> list[dict[str, Any]]:
 def profile_summary(
     records: Sequence[InactiveEigensolverProfileEntry],
     endpoint_median_seconds: float,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Derive issue-51 gate quantities from exact per-iteration records."""
 
     provider_records = [record for record in records if record.provider_invoked]
@@ -220,7 +222,7 @@ def measure_workload(
     energy_tolerance: float,
     density_tolerance: float,
     screening_tolerance: float,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Measure one RHF or UHF 96-AO divergent fleet."""
 
     case = benchmark_cases()["water-tetramer-def2-svp-spherical"]
@@ -335,8 +337,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def candidate_comparisons(
-    baseline: dict[str, Any], candidate_workloads: Sequence[dict[str, Any]]
-) -> list[dict[str, Any]]:
+    baseline: dict[str, object], candidate_workloads: Sequence[dict[str, object]]
+) -> list[dict[str, object]]:
     """Compare overlapping candidate workloads against provider evidence."""
 
     baseline_by_key = {

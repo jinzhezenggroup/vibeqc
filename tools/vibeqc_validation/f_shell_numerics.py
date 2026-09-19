@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 from itertools import product
 from math import exp, prod, sqrt
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from vibeqc_compiler.integral.shell_spec import (
@@ -25,6 +25,9 @@ from vibeqc_compiler.integral.shell_spec import (
 )
 
 from .schema import block_error, canonical_hash
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 FIXTURE_VARIANTS = (
     "cartesian",
@@ -38,7 +41,7 @@ FIXTURE_VARIANTS = (
 )
 
 
-def numerical_error(actual, reference, *, atol, rtol) -> dict:
+def numerical_error(actual: object, reference: object, *, atol: float, rtol: float) -> dict:
     """Retain absolute/scaled gates and raw relative errors on nonzero entries.
 
     Exactly zero reference entries have no defined relative error; their
@@ -93,7 +96,7 @@ class ShellFixture:
         )
 
 
-def eri_orbit(indices) -> tuple[tuple[int, ...], ...]:
+def eri_orbit(indices: object) -> tuple[tuple[int, ...], ...]:
     """Enumerate unique chemists' ERI permutations using explicit set equality."""
     i, j, k, l = indices
     return tuple(
@@ -189,7 +192,7 @@ def _reference_integrals(inputs):
 
 
 def make_fixture(
-    name: str, variant: str = "cartesian", *, displacement=None
+    name: str, variant: str = "cartesian", *, displacement: object | None=None
 ) -> ShellFixture:
     """Build asymmetric, reversed-cache, coincident-atom, or spherical fixtures."""
     if variant not in FIXTURE_VARIANTS:
@@ -363,7 +366,7 @@ def decoded_outputs(fixture: ShellFixture, row: dict) -> dict[str, np.ndarray]:
     return result
 
 
-def class_fixtures(name: str, *, finite_difference: bool = False):
+def class_fixtures(name: str, *, finite_difference: bool = False) -> object:
     """Reconstruct the exact ordered fixture set and finite-difference indices."""
     fixtures = [make_fixture(name, variant) for variant in FIXTURE_VARIANTS]
     fd_indices = []
@@ -389,8 +392,8 @@ def numerical_matrix(
     cache: Path,
     slurm_time: str | None = None,
     timeout: int = 900,
-    finite_difference_classes=("fsss", "fsps", "fpps"),
-    progress=None,
+    finite_difference_classes: tuple[object, ...]=("fsss", "fsps", "fpps"),
+    progress: object | None=None,
 ) -> dict:
     """Gate 4: all ordinary/persistent RHF/UHF wrappers against libcint.
 

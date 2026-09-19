@@ -19,6 +19,7 @@ import time
 from contextlib import suppress
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -49,7 +50,6 @@ from .blocks import (
     TensorLayout,
     WeightTile,
 )
-from .ir import IntegralIR
 from .ir_serialization import integral_to_payload
 from .shell_signature import BasisConvention, CenterBinding
 from .shell_spec import ShellClassSpec
@@ -64,6 +64,9 @@ from .weighted_eri_native import (
     weighted_eri_metadata_identity,
     weighted_eri_program_identity,
 )
+
+if TYPE_CHECKING:
+    from .ir import IntegralIR
 
 
 @dataclass(frozen=True)
@@ -125,7 +128,7 @@ class CompiledWeightedEri:
 
 
 def compile_weighted_eri(
-    integral: IntegralIR, compiler, cache: Path, *, component_indices=None
+    integral: IntegralIR, compiler: object, cache: Path, *, component_indices: object | None=None
 ) -> CompiledWeightedEri:
     """Compile one explicit range/subset using the common local artifact cache.
 
@@ -232,11 +235,11 @@ class PreparedWeightedEri:
         self,
         artifact: CompiledWeightedEri,
         *,
-        record_capacity=256,
-        tile_capacity=1,
-        budget=None,
-        device_id=0,
-    ):
+        record_capacity: int=256,
+        tile_capacity: int=1,
+        budget: object | None=None,
+        device_id: int=0,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._library = None
@@ -442,7 +445,7 @@ class PreparedWeightedEri:
             )
 
     def contract(
-        self, streams, *, tile_count=None, profile=False
+        self, streams: object, *, tile_count: object | None=None, profile: bool=False
     ) -> WeightedEriExecution:
         """Contract normalized streams without retaining their primitive products."""
         with self._lock:
@@ -570,13 +573,13 @@ class PreparedWeightedEri:
 
     def raw(
         self,
-        primitives,
-        centers,
-        component_indices,
+        primitives: object,
+        centers: object,
+        component_indices: object,
         *,
-        projections=None,
-        adapter_budget_bytes=4 << 20,
-        profile=False,
+        projections: object | None=None,
+        adapter_budget_bytes: object=4 << 20,
+        profile: bool=False,
     ) -> WeightedEriExecution:
         """Evaluate a bounded selection of raw contracted public shell components.
 

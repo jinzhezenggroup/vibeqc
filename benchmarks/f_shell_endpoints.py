@@ -74,7 +74,7 @@ def release_library_identity() -> dict:
     }
 
 
-def inspected_basis(case, calculator, atoms) -> tuple[dict, object]:
+def inspected_basis(case: object, calculator: object, atoms: object) -> tuple[dict, object]:
     """Inspect the loaded native and oracle shells, including contraction sizes."""
     from pyscf import gto
     from vibeqc import Atom
@@ -111,7 +111,7 @@ def inspected_basis(case, calculator, atoms) -> tuple[dict, object]:
     }, mol
 
 
-def independent_result(mol, method: str) -> dict:
+def independent_result(mol: object, method: str) -> dict:
     """Use CPU libcint SCF and all analytic force terms without density fitting."""
     from pyscf import scf
 
@@ -136,7 +136,7 @@ def independent_result(mol, method: str) -> dict:
 
 
 def run_endpoint(
-    name, batch_size, *, repeats=6, profile=False, profile_side="candidate"
+    name: str, batch_size: int, *, repeats: int=6, profile: bool=False, profile_side: str="candidate"
 ) -> dict:
     """Measure current FPPS force selection against identical non-f dispatch."""
     import cupy as cp

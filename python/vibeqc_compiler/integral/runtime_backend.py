@@ -8,7 +8,7 @@ cannot satisfy an accelerator request by silently evaluating it on the CPU.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Protocol, runtime_checkable
+from typing import NoReturn, Protocol, runtime_checkable
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
@@ -75,7 +75,7 @@ class ExecutionShape:
     requires_device_enqueue: bool = False
     requires_graphs: bool = False
 
-    def validate_for(self, target: RuntimeCapabilities):
+    def validate_for(self, target: RuntimeCapabilities) -> None:
         """Check actual queried limits without inserting CUDA warp assumptions."""
         for name in (
             "requires_fp64",
@@ -230,7 +230,7 @@ class UnsupportedLibraryProvider:
     backend: str
     reason: str
 
-    def plan(self, request: LibraryRequest):
+    def plan(self, request: LibraryRequest) -> NoReturn:
         raise UnsupportedBackendFeature(
             f"{self.backend} {request.operation}: {self.reason}"
         )

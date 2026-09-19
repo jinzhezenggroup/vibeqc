@@ -246,12 +246,12 @@ def _one_electron_primal(integral, indices, primal_form):
 
 def build_second_derivative_kernel(
     integral: IntegralIR,
-    component_indices=None,
+    component_indices: object | None=None,
     *,
-    output_indices=None,
-    primal_form=AlgebraForm.FACTORED_NARY,
-    output_form=AlgebraForm.BINARY,
-):
+    output_indices: object | None=None,
+    primal_form: object=AlgebraForm.FACTORED_NARY,
+    output_form: object=AlgebraForm.BINARY,
+) -> object:
     """Lower one bounded second-order consumer without changing first-force ABI.
 
     Select one AO component for raw output, or one to 64 components for a fixed

@@ -40,7 +40,7 @@ def _mixed_override(threshold):
             os.environ[key] = old
 
 
-def run(baseline_path: Path, output: Path):
+def run(baseline_path: Path, output: Path) -> object:
     """Compare matched iteration settings with an independently strict baseline.
 
     Only the arithmetic request changes between each matched pair. Both are

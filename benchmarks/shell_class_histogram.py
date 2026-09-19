@@ -8,11 +8,14 @@ import os
 import re
 import sqlite3
 from collections import defaultdict
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from _support import cuda_accelerator_metadata, environment_metadata
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 ANGULAR_LABELS = "spdfgh"
 

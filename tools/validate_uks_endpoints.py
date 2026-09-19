@@ -102,7 +102,7 @@ def physical_residual_rms(
 
 
 def independent_uks(
-    inputs: dict, grid, xc_code: str, symmetry: str | None = None
+    inputs: dict, grid: object, xc_code: str, symmetry: str | None = None
 ) -> dict:
     import pyscf
     from pyscf import dft

@@ -11,14 +11,13 @@ from __future__ import annotations
 import functools
 import os
 import time
-from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from itertools import islice, product
 from math import ceil, isfinite, prod
 from pathlib import Path
 from statistics import median
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -51,6 +50,9 @@ from .first_derivatives_execute import first_derivative_component_tiles
 from .ir_serialization import integral_to_payload
 from .shell_class import build_shell_class_component_kernel
 from .shell_spec import cartesian_components
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,7 +205,7 @@ def _schedule_variants(target: CpuTargetInfo) -> tuple[CpuScheduleIR, ...]:
 
 
 def cpu_tune_candidates(
-    integral,
+    integral: object,
     *,
     targets: Sequence[CpuTargetInfo],
     limits: CpuTuneLimits = DEFAULT_CPU_TUNE_LIMITS,
@@ -245,7 +247,7 @@ def cpu_tune_candidates(
 
 @functools.cache
 def _component_static_plan(
-    integral, component, schedule: CpuScheduleIR
+    integral: object, component: object, schedule: CpuScheduleIR
 ) -> dict[str, int]:
     kernel = build_shell_class_component_kernel(
         integral.spec,
@@ -276,7 +278,7 @@ def _component_static_plan(
 
 
 def cpu_static_cost(
-    integral,
+    integral: object,
     tune_schedule: CpuTuneSchedule,
     *,
     record_count: int,
@@ -378,7 +380,7 @@ def cpu_static_cost(
     }
 
 
-def _workload_identity(integral, primitives, centers, reference_identity: str) -> str:
+def _workload_identity(integral: object, primitives: object, centers: object, reference_identity: str) -> str:
     payload = {
         "schema": "vibeqc.cpu-tune-workload.v1",
         "integral": integral_to_payload(integral),
@@ -393,10 +395,10 @@ def _workload_identity(integral, primitives, centers, reference_identity: str) -
 
 
 def _measure_pair(
-    baseline,
-    candidate,
-    primitives,
-    centers,
+    baseline: object,
+    candidate: object,
+    primitives: object,
+    centers: object,
     *,
     repeats: int,
     inputs_hash: str,
@@ -421,9 +423,9 @@ def _measure_pair(
 
 
 def _parallel_measurement(
-    evaluator,
-    primitives,
-    centers,
+    evaluator: object,
+    primitives: object,
+    centers: object,
     *,
     workers: int,
     tasks: int,
@@ -466,13 +468,13 @@ def _parallel_measurement(
 
 
 def tune_cpu_first_derivative_shell(
-    integral,
-    compiler,
-    cache,
+    integral: object,
+    compiler: object,
+    cache: object,
     *,
-    primitives,
-    centers,
-    independent_reference,
+    primitives: object,
+    centers: object,
+    independent_reference: object,
     reference_identity: str,
     runtime: CpuRuntimeFeatures | None = None,
     targets: Sequence[CpuTargetInfo] | None = None,

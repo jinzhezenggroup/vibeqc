@@ -48,7 +48,7 @@ def forces_to_gradient(forces):
     return -np.asarray(forces, dtype=np.float64)
 
 
-def _as_hessian(values, *, name: str):
+def _as_hessian(values: object, *, name: str) -> object:
     """Return ``values`` as a ``(natom, 3, natom, 3)`` array, or raise.
 
     The axis order is part of the contract every consumer relies on: a matrix
@@ -69,7 +69,7 @@ def _as_hessian(values, *, name: str):
     return array
 
 
-def hessian_symmetry_error(hessian) -> float:
+def hessian_symmetry_error(hessian: object) -> float:
     """Return the largest raw asymmetry, ``max |H - H^T|``.
 
     This is evaluated on the raw assembled matrix. Any later presentation
@@ -80,7 +80,7 @@ def hessian_symmetry_error(hessian) -> float:
     return float(np.max(np.abs(values - values.transpose(2, 3, 0, 1))))
 
 
-def hessian_translation_error(hessian) -> float:
+def hessian_translation_error(hessian: object) -> float:
     """Return ``max |sum_a H[a, c, b, d]|``, the translation zero-mode residual.
 
     Translational invariance of the energy gives ``sum_a dE/dR[a, c] = 0`` for
@@ -92,7 +92,7 @@ def hessian_translation_error(hessian) -> float:
     return float(np.max(np.abs(values.sum(axis=0))))
 
 
-def hessian_difference(actual, reference) -> dict:
+def hessian_difference(actual: object, reference: object) -> dict:
     """Report elementwise statistics of ``actual - reference``.
 
     Both arrays are ``(natom, 3, natom, 3)``. No tolerance is applied and no
@@ -120,7 +120,7 @@ def hessian_difference(actual, reference) -> dict:
     }
 
 
-def _gradient_at(gradient, coordinates, policy: str, expected_shape):
+def _gradient_at(gradient: object, coordinates: object, policy: str, expected_shape: object) -> object:
     """Evaluate the gradient under a freshly decoded copy of the frozen policy.
 
     Decoding a new copy per evaluation is what prevents a stateful evaluator
@@ -148,7 +148,7 @@ def _gradient_at(gradient, coordinates, policy: str, expected_shape):
 
 
 def numerical_hessian(
-    gradient, coordinates, *, settings: dict, steps=DEFAULT_STEPS
+    gradient: object, coordinates: object, *, settings: dict, steps: object=DEFAULT_STEPS
 ) -> dict:
     """Report the whole central-difference Hessian curve under one frozen policy.
 

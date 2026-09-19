@@ -17,7 +17,7 @@ from .numerical import hessian_symmetry_error, hessian_translation_error
 __all__ = ["assemble_frozen_skeleton", "validate_hessian_component"]
 
 
-def validate_hessian_component(values, *, name: str) -> np.ndarray:
+def validate_hessian_component(values: object, *, name: str) -> np.ndarray:
     """Return a finite Cartesian Hessian component with the canonical layout.
 
     Components use ``(atom, xyz, atom, xyz)`` ordering.  Requiring this shape
@@ -39,10 +39,10 @@ def validate_hessian_component(values, *, name: str) -> np.ndarray:
 
 def assemble_frozen_skeleton(
     *,
-    nuclear_repulsion,
-    one_electron_skeleton,
-    overlap_pulay_skeleton,
-    two_electron_skeleton,
+    nuclear_repulsion: object,
+    one_electron_skeleton: object,
+    overlap_pulay_skeleton: object,
+    two_electron_skeleton: object,
 ) -> dict:
     """Assemble and report the four frozen-density RHF Hessian components.
 

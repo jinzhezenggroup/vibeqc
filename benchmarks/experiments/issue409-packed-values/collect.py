@@ -17,7 +17,7 @@ from pathlib import Path
 LIMIT = 1 << 20
 
 
-def bind_changed_diagnostics(clean_path: Path, companion_directory: Path):
+def bind_changed_diagnostics(clean_path: Path, companion_directory: Path) -> object:
     """Join completed clean samples to a separately completed diagnostic run.
 
     A timeout after clean timing does not invalidate completed measurements.

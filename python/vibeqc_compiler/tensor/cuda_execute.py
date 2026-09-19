@@ -22,6 +22,7 @@ from collections.abc import Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -31,7 +32,6 @@ from vibeqc_compiler.common.capture import (
     CaptureContract,
     _GraphMetrics,
 )
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import (
     _PREPARATION_LOCK,
     CudaArtifact,
@@ -57,6 +57,9 @@ from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
 # Allocation snapshots for provider accounting must not race another owned
 # handle's creation/destruction. Executions themselves remain independent.
@@ -284,10 +287,10 @@ class PreparedCuda:
         artifact: CudaArtifact,
         *,
         device: int = 0,
-        resource_plan=None,
-        resource_owner=None,
+        resource_plan: object | None=None,
+        resource_owner: object | None=None,
         execution_mode: str = "ordinary",
-    ):
+    ) -> None:
         if execution_mode not in ("ordinary", "cuda-graph"):
             raise ValueError("execution_mode must be ordinary or cuda-graph")
         self.execution_mode = execution_mode

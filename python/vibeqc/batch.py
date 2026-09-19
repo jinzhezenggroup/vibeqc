@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import ctypes
 import os
-from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
 from . import _native
-from .accuracy import AccuracyAssessment
 from .calculator import Atom, Calculator
 from .ks_diagnostics import (
     KsDiagnostic,
@@ -22,6 +20,11 @@ from .ks_diagnostics import (
     read_ks_diagnostic,
     read_ks_transport_diagnostic,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from .accuracy import AccuracyAssessment
 
 
 @dataclass(frozen=True)
@@ -352,7 +355,7 @@ class PreparedBatch:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan=None,
+        resource_plan: object | None=None,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
@@ -1314,7 +1317,7 @@ class PreparedBatch:
         self._ensure_open()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
         self.close()
 
     def __del__(self) -> None:

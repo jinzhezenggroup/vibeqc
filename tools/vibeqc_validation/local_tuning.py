@@ -33,14 +33,14 @@ from .schema import canonical_hash, file_hash
 
 
 def validate_schedule(
-    name,
-    consumer,
-    schedule,
-    target,
+    name: str,
+    consumer: str,
+    schedule: object,
+    target: object,
     nvcc: Path,
     directory: Path,
     *,
-    timeout=600,
+    timeout: int=600,
     production_source: Path | None = None,
     production_object: Path | None = None,
 ) -> dict:

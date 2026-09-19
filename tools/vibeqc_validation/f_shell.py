@@ -41,7 +41,7 @@ CONSUMERS = (KernelConsumer.FOCK, KernelConsumer.FORCE)
 SCHEMA_VERSION = 1
 
 
-def f_shell_plan(name: str, architecture: str = "sm_120"):
+def f_shell_plan(name: str, architecture: str = "sm_120") -> object:
     """Use the common complete-component lowering for one f-containing class."""
     if name not in F_SHELL_CLASSES:
         raise ValueError(f"not a canonical s/p/d/f class containing f: {name}")
@@ -115,7 +115,7 @@ def source_audit(name: str, architecture: str = "sm_120") -> tuple[dict, str]:
     }, source
 
 
-def catalog(*, architecture: str = "sm_120", names=F_SHELL_CLASSES) -> dict:
+def catalog(*, architecture: str = "sm_120", names: object=F_SHELL_CLASSES) -> dict:
     """Gate 0/1 report with recurrence/schedule legality and provisional selection."""
     names = tuple(names)
     if (
@@ -266,7 +266,7 @@ def compile_matrix(
     cache: Path,
     jobs: int = 2,
     timeout: float = 600,
-    progress=None,
+    progress: object | None=None,
 ) -> dict:
     """Gate 2/3: bounded independent release compilations with verified cache hits.
 

@@ -35,7 +35,7 @@ class LocalArtifactCache:
                 "executable cache must be an owned directory without shared write access"
             )
 
-    def install(self, identity: CompiledArtifactIdentity, binary: bytes):
+    def install(self, identity: CompiledArtifactIdentity, binary: bytes) -> object:
         """Publish one complete checksummed executable record with fsync and replace."""
         from vibeqc_compiler.common.provenance import atomic_json
 
@@ -56,7 +56,7 @@ class LocalArtifactCache:
         atomic_json(path, payload)
         return path
 
-    def load(self, expected: CompiledArtifactIdentity):
+    def load(self, expected: CompiledArtifactIdentity) -> object:
         """Verify ownership, bounds, compatibility and checksum before returning bytes."""
         path = self.directory / (expected.key + ".json")
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)

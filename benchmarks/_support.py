@@ -8,11 +8,13 @@ import platform
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterable
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -72,10 +74,10 @@ def _cuda_tool_path(name: str) -> str | None:
     return shutil.which(name)
 
 
-def _toolchain_metadata() -> dict[str, Any]:
+def _toolchain_metadata() -> dict[str, object]:
     """Record the compilers that make a GPU benchmark reproducible."""
 
-    tools: dict[str, Any] = {}
+    tools: dict[str, object] = {}
     for name in ("nvcc", "ptxas", "cuobjdump"):
         path = _cuda_tool_path(name)
         tools[name] = {
@@ -101,7 +103,7 @@ def _visible_nvidia_device(device_id: int) -> str:
     return str(device_id)
 
 
-def _nvidia_smi_state(device_id: int) -> dict[str, Any] | None:
+def _nvidia_smi_state(device_id: int) -> dict[str, object] | None:
     """Capture post-benchmark clocks, power, temperature, and performance state."""
 
     nvidia_smi = shutil.which("nvidia-smi")
@@ -149,7 +151,7 @@ def _nvidia_smi_state(device_id: int) -> dict[str, Any] | None:
 def _source_status_payload(
     tracked_status: str | None,
     untracked_paths: str | None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Separate source dirtiness from newly generated result artifacts.
 
     A benchmark matrix commonly writes several new JSON files before they are
@@ -180,8 +182,8 @@ def _source_status_payload(
 def environment_metadata(
     *,
     distributions: dict[str, tuple[str, ...]] | None = None,
-    accelerator: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    accelerator: dict[str, object] | None = None,
+) -> dict[str, object]:
     """Describe the source and runtime that produced a benchmark result.
 
     Benchmark numbers are useful only when they can be tied to exact source,
@@ -223,7 +225,7 @@ def environment_metadata(
     }
 
 
-def cuda_accelerator_metadata(cupy_module: Any) -> dict[str, Any]:
+def cuda_accelerator_metadata(cupy_module: object) -> dict[str, object]:
     """Return stable JSON fields for the CUDA device used by a benchmark."""
 
     device_id = cupy_module.cuda.Device().id
@@ -318,7 +320,7 @@ def raw_output_path(path: str | Path) -> Path:
     return destination
 
 
-def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
+def write_result(path: str | Path, payload: dict[str, object]) -> Path:
     """Write a stable, human-readable JSON benchmark artifact."""
 
     destination = raw_output_path(path)

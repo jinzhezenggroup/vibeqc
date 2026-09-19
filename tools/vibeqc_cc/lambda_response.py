@@ -114,7 +114,7 @@ class BoundCCSDResponse:
         result: CCSDLambdaResult,
         *,
         max_bytes: int | None = None,
-    ):
+    ) -> None:
         if not isinstance(bound, BoundCCSDLambda) or not isinstance(
             result, CCSDLambdaResult
         ):

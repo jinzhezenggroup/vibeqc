@@ -64,7 +64,7 @@ class RotationLayout:
             )
 
     @classmethod
-    def from_reference(cls, reference: ReferenceSnapshot):
+    def from_reference(cls, reference: ReferenceSnapshot) -> object:
         """Build the canonical occupied-then-virtual RHF layout."""
         if reference.algorithm not in ("RHF", "KS"):
             raise ResponseUnsupported(
@@ -250,14 +250,14 @@ class ResponseProblem:
         cls,
         reference: ReferenceSnapshot,
         *,
-        method="rhf",
-        operator_identity,
-        model_hash=None,
-        rhs_layout="ov-response-vector",
-        gauge="canonical-nonredundant-ov",
-        overlap_metric="mo-orthonormal",
-        perturbation_labels=(),
-    ):
+        method: str="rhf",
+        operator_identity: str,
+        model_hash: object | None=None,
+        rhs_layout: str="ov-response-vector",
+        gauge: str="canonical-nonredundant-ov",
+        overlap_metric: str="mo-orthonormal",
+        perturbation_labels: tuple[object, ...]=(),
+    ) -> object:
         """Bind a converged reference to one concrete operator backend."""
         layout = RotationLayout.from_reference(reference)
         if model_hash is None:

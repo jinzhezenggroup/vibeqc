@@ -10,13 +10,16 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .ir import Node
 from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
+
+if TYPE_CHECKING:
+    from .ir import Node
 
 
 @dataclass(frozen=True)
