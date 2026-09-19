@@ -28,8 +28,8 @@ struct CosxFockPreparationDiagnostic {
 class PreparedCosxFockPlan {
  public:
   PreparedCosxFockPlan(const core::System& orbital, const core::System* auxiliary,
-                       scf::ResolvedFockBuild strategy, std::size_t tile_points,
-                       int device_id, std::size_t device_budget_bytes = 0);
+                       scf::ResolvedFockBuild strategy, std::size_t tile_points, int device_id,
+                       std::size_t device_budget_bytes = 0);
   ~PreparedCosxFockPlan();
   PreparedCosxFockPlan(const PreparedCosxFockPlan&) = delete;
   PreparedCosxFockPlan& operator=(const PreparedCosxFockPlan&) = delete;

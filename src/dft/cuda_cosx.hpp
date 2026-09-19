@@ -17,8 +17,8 @@ struct CudaCosxStagingDiagnostic {
 };
 
 /** Pure resource estimate for the bounded native candidate. */
-CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(
-    const core::System& system, std::size_t npoint, std::size_t tile_points);
+CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(const core::System& system,
+                                                       std::size_t npoint, std::size_t tile_points);
 
 class CudaCosxStagingPlan {
  public:

@@ -26,12 +26,10 @@ vibeqc::core::System h2() {
   system.shells = {
       {0,
        0,
-       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-        {0.168855404, 0.4446345422}}},
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
       {1,
        0,
-       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-        {0.168855404, 0.4446345422}}},
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
   };
   std::string detail;
   require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
@@ -57,13 +55,12 @@ vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin) {
   return resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10);
 }
 
-vibeqc::scf::ResolvedFockBuild cpu_j_strategy(
-    const vibeqc::scf::ResolvedFockBuild& mixed) {
+vibeqc::scf::ResolvedFockBuild cpu_j_strategy(const vibeqc::scf::ResolvedFockBuild& mixed) {
   auto spec = mixed.spec;
   spec.exchange.present = false;
-  return vibeqc::scf::resolve_fock_build(
-      spec, vibeqc::scf::FockBackend::Cpu, mixed.screening_tolerance,
-      mixed.metric_relative_threshold);
+  return vibeqc::scf::resolve_fock_build(spec, vibeqc::scf::FockBackend::Cpu,
+                                         mixed.screening_tolerance,
+                                         mixed.metric_relative_threshold);
 }
 
 void verify_restricted(const vibeqc::core::System& system, int device) {
@@ -85,9 +82,9 @@ void verify_restricted(const vibeqc::core::System& system, int device) {
 
   scf::PreparedFockPlan cpu_j(system, &system, cpu_j_strategy(strategy));
   auto expected = cpu_j.build(density);
-  const auto reference_k = dft::build_cosx_reference(
-      system, gpu.grid().points(), gpu.grid().weights(), density,
-      dft::CosxDensityConvention::rhf_spin_summed);
+  const auto reference_k =
+      dft::build_cosx_reference(system, gpu.grid().points(), gpu.grid().weights(), density,
+                                dft::CosxDensityConvention::rhf_spin_summed);
   expected.exchange_alpha = reference_k.exchange;
 
   require(max_error(actual.coulomb, expected.coulomb) < 3.0e-10,
@@ -103,8 +100,7 @@ void verify_restricted(const vibeqc::core::System& system, int device) {
 
   const auto actual_fock = scf::assemble_fock(strategy, gpu.one_electron().hcore, actual);
   const auto expected_fock = scf::assemble_fock(strategy, gpu.one_electron().hcore, expected);
-  require(max_error(actual_fock.alpha, expected_fock.alpha) < 3.0e-10 &&
-              actual_fock.beta.empty(),
+  require(max_error(actual_fock.alpha, expected_fock.alpha) < 3.0e-10 && actual_fock.beta.empty(),
           "prepared RI-J/COSX-K RHF assembly differs from the independent oracles");
 
   const auto& diagnostic = gpu.diagnostic();
@@ -124,12 +120,11 @@ void verify_restricted(const vibeqc::core::System& system, int device) {
               gpu.grid().spec().element_radii == model.element_radii,
           "prepared COSX grid does not reproduce the resolved mathematical identity");
 
-  const auto cosx_only =
-      dft::cuda_cosx_staging_diagnostic(system, gpu.grid().point_count(), 7);
+  const auto cosx_only = dft::cuda_cosx_staging_diagnostic(system, gpu.grid().point_count(), 7);
   bool budget_rejected = false;
   try {
     dft::PreparedCosxFockPlan too_small(system, &system, strategy, 7, device,
-                                       cosx_only.device_bytes);
+                                        cosx_only.device_bytes);
   } catch (const std::bad_alloc&) {
     budget_rejected = true;
   }
@@ -162,8 +157,7 @@ void verify_unrestricted(const vibeqc::core::System& system, int device) {
               max_error(actual.exchange_beta, expected.exchange_beta) < 3.0e-12,
           "prepared UHF RI-J/COSX-K matrices differ from the independent oracles");
   require(std::abs(scf::contract_fock_energy(strategy, actual, alpha, beta) -
-                   scf::contract_fock_energy(strategy, expected, alpha, beta)) <
-              3.0e-10,
+                   scf::contract_fock_energy(strategy, expected, alpha, beta)) < 3.0e-10,
           "prepared UHF RI-J/COSX-K energy differs from the independent oracles");
 
   const auto actual_fock = scf::assemble_fock(strategy, gpu.one_electron().hcore, actual);

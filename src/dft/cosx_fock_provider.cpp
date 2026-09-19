@@ -25,8 +25,7 @@ GridSpec cosx_grid_spec(const scf::ResolvedFockBuild& strategy) {
   require(strategy.backend == scf::FockBackend::Cuda &&
               strategy.schedule == scf::FockSchedule::CudaIndependent &&
               strategy.spec.derivative_order == 0 && strategy.spec.exchange.present &&
-              strategy.spec.exchange.approximation ==
-                  scf::FockApproximation::SeminumericalCosx,
+              strategy.spec.exchange.approximation == scf::FockApproximation::SeminumericalCosx,
           "prepared COSX Fock requires an energy-only CUDA COSX exchange strategy");
   scf::require_fock_provider_executable(scf::FockApproximation::SeminumericalCosx,
                                         scf::FockBackend::Cuda);
@@ -56,13 +55,12 @@ void validate_density(const scf::ResolvedFockBuild& strategy, std::size_t nbf,
   if (!nbf || nbf > std::numeric_limits<std::size_t>::max() / nbf)
     throw std::invalid_argument("invalid COSX Fock AO dimension");
   const std::size_t matrix = nbf * nbf;
-  require(density.size() == matrix &&
-              (strategy.spec.spin == scf::FockSpin::Restricted ? beta.empty()
-                                                               : beta.size() == matrix),
-          "COSX Fock density/spin layout mismatch");
+  require(
+      density.size() == matrix &&
+          (strategy.spec.spin == scf::FockSpin::Restricted ? beta.empty() : beta.size() == matrix),
+      "COSX Fock density/spin layout mismatch");
   for (const auto* values : {&density, &beta})
-    for (double value : *values)
-      require(std::isfinite(value), "nonfinite COSX Fock density");
+    for (double value : *values) require(std::isfinite(value), "nonfinite COSX Fock density");
 }
 
 }  // namespace
@@ -75,9 +73,8 @@ struct PreparedCosxFockPlan::Impl {
   std::unique_ptr<CudaCosxStagingPlan> exchange;
   CosxFockPreparationDiagnostic diagnostic;
 
-  Impl(const core::System& system, const core::System* auxiliary,
-       scf::ResolvedFockBuild resolved, std::size_t tile_points, int device,
-       std::size_t requested_budget)
+  Impl(const core::System& system, const core::System* auxiliary, scf::ResolvedFockBuild resolved,
+       std::size_t tile_points, int device, std::size_t requested_budget)
       : orbital(system),
         strategy(std::move(resolved)),
         cosx_grid(orbital, cosx_grid_spec(strategy)) {
@@ -91,9 +88,9 @@ struct PreparedCosxFockPlan::Impl {
     const auto j_strategy = coulomb_strategy(strategy);
     coulomb =
         std::make_unique<scf::PreparedFockPlan>(orbital, auxiliary, j_strategy, device, j_budget);
-    exchange = std::make_unique<CudaCosxStagingPlan>(
-        orbital, cosx_grid.points(), cosx_grid.weights(), tile_points, device,
-        cosx_resources.device_bytes);
+    exchange =
+        std::make_unique<CudaCosxStagingPlan>(orbital, cosx_grid.points(), cosx_grid.weights(),
+                                              tile_points, device, cosx_resources.device_bytes);
 
     diagnostic.strategy = strategy;
     diagnostic.coulomb = coulomb->diagnostic();
@@ -106,8 +103,7 @@ struct PreparedCosxFockPlan::Impl {
       throw std::runtime_error("prepared COSX providers exceed admitted device budget");
   }
 
-  scf::DirectJkMatrices build(const std::vector<double>& density,
-                              const std::vector<double>& beta) {
+  scf::DirectJkMatrices build(const std::vector<double>& density, const std::vector<double>& beta) {
     const auto n = coulomb->one_electron().nbf;
     validate_density(strategy, n, density, beta);
 
@@ -138,10 +134,10 @@ struct PreparedCosxFockPlan::Impl {
   }
 };
 
-PreparedCosxFockPlan::PreparedCosxFockPlan(
-    const core::System& orbital, const core::System* auxiliary,
-    scf::ResolvedFockBuild strategy, std::size_t tile_points, int device_id,
-    std::size_t device_budget_bytes)
+PreparedCosxFockPlan::PreparedCosxFockPlan(const core::System& orbital,
+                                           const core::System* auxiliary,
+                                           scf::ResolvedFockBuild strategy, std::size_t tile_points,
+                                           int device_id, std::size_t device_budget_bytes)
     : impl_(std::make_unique<Impl>(orbital, auxiliary, std::move(strategy), tile_points, device_id,
                                    device_budget_bytes)) {}
 PreparedCosxFockPlan::~PreparedCosxFockPlan() = default;

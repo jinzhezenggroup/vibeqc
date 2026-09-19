@@ -122,8 +122,7 @@ struct PreparedFockPlan::Impl {
     for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange}) {
       if (!term->present) continue;
       if (term->approximation == FockApproximation::SeminumericalCosx)
-        throw std::invalid_argument(
-            "COSX execution requires the DFT-owned PreparedCosxFockPlan");
+        throw std::invalid_argument("COSX execution requires the DFT-owned PreparedCosxFockPlan");
       require_fock_provider_executable(term->approximation, strategy.backend);
     }
     diagnostic.strategy = strategy;

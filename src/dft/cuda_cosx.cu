@@ -67,8 +67,7 @@ std::size_t grid_bytes(const AoBasis& basis, std::size_t capacity) {
 
 CudaCosxStagingDiagnostic staging_diagnostic(const AoBasis& basis, std::size_t npoint,
                                              std::size_t requested_tile) {
-  if (!npoint || !requested_tile)
-    throw std::invalid_argument("invalid CUDA COSX resource shape");
+  if (!npoint || !requested_tile) throw std::invalid_argument("invalid CUDA COSX resource shape");
   const std::size_t tile_points = std::min(npoint, requested_tile);
   const std::size_t matrix = mul(basis.nao, basis.nao);
   const std::size_t grid = grid_bytes(basis, tile_points);
@@ -435,8 +434,9 @@ struct CudaCosxStagingPlan::Impl {
   }
 };
 
-CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(
-    const core::System& system, std::size_t npoint, std::size_t tile_points) {
+CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(const core::System& system,
+                                                       std::size_t npoint,
+                                                       std::size_t tile_points) {
   return staging_diagnostic(AoBasis(system), npoint, tile_points);
 }
 
