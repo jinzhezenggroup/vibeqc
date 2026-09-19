@@ -211,7 +211,7 @@ jobs:
         if: github.event_name != 'schedule'
         run: uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
 
-      - name: Run CodSpeed FP32 CuMetal walltime
+      - name: Run CodSpeed FP32 CuMetal proxy suite
         if: github.event_name != 'schedule'
         uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
         env:
