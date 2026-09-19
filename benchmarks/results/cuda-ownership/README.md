@@ -11,10 +11,13 @@ The two completed phases retain independent, reproducible evidence:
   sanitizers pass. The earlier rejected full comparison and subsequent diagnostic
   evidence remain explicitly labeled and retained alongside the accepted bundle.
 
-The versioned [current ownership report](../../../docs/cuda_ownership_current.json)
-and [physical accounting](df/physical-lines.json) distinguish scientific/runtime
-edits from unchanged lines that changed category. Neither kernel resources nor
-removed plan estimates are claims of measured whole-HF peak-memory savings.
+The tracked [semantic ownership ledger](../../../docs/cuda_ownership.json), the
+CI-generated current ownership report, and [physical accounting](df/physical-lines.json)
+distinguish scientific/runtime edits from unchanged lines that changed category.
+Generate the current report with `python tools/report_cuda_ownership.py --check
+--output .artifacts/cuda-ownership-current.json`; CI retains the same report as
+an artifact. Neither kernel resources nor removed plan estimates are claims of
+measured whole-HF peak-memory savings.
 
 ## First-phase one-electron evidence
 
