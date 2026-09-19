@@ -145,7 +145,12 @@ class DensityCandidate:
             else:
                 value = owner.execute(self._source.density, **options)
             statistics = deepcopy(owner.statistics)
-            executed = statistics.get("source", {}).get("source_kind", "density_matrix")
+            source_statistics = statistics.get("source")
+            executed = (
+                source_statistics.get("source_kind", "density_matrix")
+                if isinstance(source_statistics, dict)
+                else "density_matrix"
+            )
             if executed != self.route:
                 raise RuntimeError(
                     "registered candidate did not execute its requested density route"
@@ -199,7 +204,7 @@ def density_candidates(prepared, source, *, stamp, delta_density=None):
         counts = (
             (0, 0)
             if source.occupations is None
-            else tuple(map(len, source.occupations))
+            else (len(source.occupations[0]), len(source.occupations[1]))
         )
         observable = prepared.program.contract.request.observable
         if observable == "response":

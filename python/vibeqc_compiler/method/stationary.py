@@ -25,9 +25,11 @@ from vibeqc_compiler.tensor import (
     transpose_program,
 )
 
+from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
+
 SCHEMA = "vibeqc.stationary_problem"
-VERSION = 1
-PLAN_VERSION = 1
+VERSION = 2
+PLAN_VERSION = 2
 INNER_PRODUCT = "real-euclidean-independent-v1"
 CONVENTION = "L=E+lambda^T R; R_x^T lambda=-E_x; weights=E_q+R_q^T lambda"
 _PREFIX = "stationary_"
@@ -104,6 +106,8 @@ class StationaryState:
     gauge_identity: str
     kind: str = "physical"
     inner_product: str = INNER_PRODUCT
+    implicit_operator_identity: str | None = None
+    residual_layout_identity: str | None = None
 
     def __post_init__(self):
         _identifier(self.name, "state name")
@@ -114,6 +118,20 @@ class StationaryState:
             raise ValueError("state equation kind must be physical or constraint")
         if self.inner_product != INNER_PRODUCT:
             raise ValueError("unsupported state inner product; no implicit flattening")
+        if self.implicit_operator_identity is None:
+            if self.residual_layout_identity is not None:
+                raise ValueError(
+                    "residual layout identity requires an implicit operator identity"
+                )
+        else:
+            _identity(self.implicit_operator_identity, "implicit operator")
+            layout = (
+                self.coordinate_identity
+                if self.residual_layout_identity is None
+                else self.residual_layout_identity
+            )
+            _identity(layout, "residual layout")
+            object.__setattr__(self, "residual_layout_identity", layout)
 
 
 @dataclass(frozen=True)
@@ -368,7 +386,7 @@ class StationaryProblem:
         return cls.from_payload(_load_json(source))
 
     def compile(self, *, max_elements=1_000_000):
-        """Generate first-order equation/source fragments, not an implicit solver."""
+        """Generate first-order fragments and declared implicit VJP plans; do not solve."""
         return compile_stationary(self, max_elements=max_elements)
 
 
@@ -405,9 +423,15 @@ class StationaryDerivativePlan:
     multiplier_inputs: Mapping[str, str]
     stationarity_outputs: Mapping[str, str]
     weight_outputs: Mapping[str, str]
+    implicit_plans: Mapping[str, ImplicitVJPPlan]
 
     def __post_init__(self):
-        for name in ("multiplier_inputs", "stationarity_outputs", "weight_outputs"):
+        for name in (
+            "multiplier_inputs",
+            "stationarity_outputs",
+            "weight_outputs",
+            "implicit_plans",
+        ):
             object.__setattr__(self, name, MappingProxyType(dict(getattr(self, name))))
 
     @property
@@ -423,6 +447,9 @@ class StationaryDerivativePlan:
                 "multipliers": dict(self.multiplier_inputs),
                 "stationarity": dict(self.stationarity_outputs),
                 "weights": dict(self.weight_outputs),
+                "implicit_plans": {
+                    name: plan.identity for name, plan in self.implicit_plans.items()
+                },
             }
         )
 
@@ -440,6 +467,9 @@ class StationaryDerivativePlan:
             "multiplier_inputs": dict(self.multiplier_inputs),
             "stationarity_outputs": dict(self.stationarity_outputs),
             "weight_outputs": dict(self.weight_outputs),
+            "implicit_plans": {
+                name: plan.to_payload() for name, plan in self.implicit_plans.items()
+            },
             "identity": self.identity,
         }
 
@@ -477,10 +507,54 @@ class StationaryDerivativePlan:
 
     @property
     def provider_pullbacks(self):
-        """Outstanding custom-rule inventory; these edges have NOT been executed."""
+        """Outstanding provider rules after method-level implicit dispatch."""
         order = self.problem.dependency_graph["provider_pullback_order"]
         sources = {s.name: s for s in self.problem.sources}
         return tuple(sources[name] for name in order)
+
+
+def _compile_implicit_state(problem, state):
+    """Compile one declared independent state through #465.
+
+    A state is dispatched only when its operator identity is explicit. Coupled
+    state blocks must first be represented as one independent composite state;
+    silently solving one row of a KKT/CC system would be mathematically wrong.
+    """
+    if state.implicit_operator_identity is None:
+        return None
+    residual = problem.equations.outputs[state.residual]
+    residual_program = Program(
+        {state.residual: residual},
+        provenance={
+            "stationary_problem": problem.identity,
+            "state": state.name,
+            "role": "implicit-residual",
+        },
+    )
+    inputs = _inputs(residual_program)
+    coupled = (set(inputs) & set(problem.state_names)) - {state.name}
+    if coupled:
+        raise NotImplementedError(
+            "automatic implicit dispatch requires one independent state block; "
+            f"{state.name!r} is coupled to {sorted(coupled)!r}"
+        )
+    parameters = tuple(
+        name for name in problem.differentiable_sources if name in inputs
+    )
+    if not parameters:
+        raise ValueError(
+            f"implicit state {state.name!r} has no differentiable residual source"
+        )
+    return ImplicitSolveSpec(
+        residual_program,
+        state.name,
+        parameters,
+        state.implicit_operator_identity,
+        residual_name=state.residual,
+        state_layout=state.coordinate_identity,
+        residual_layout=state.residual_layout_identity,
+        gauge=state.gauge_identity,
+    ).compile()
 
 
 def compile_stationary(problem, *, max_elements=1_000_000):
@@ -542,6 +616,11 @@ def compile_stationary(problem, *, max_elements=1_000_000):
         },
         provenance={**provenance, "role": "negative-objective-state-gradient"},
     )
+    implicit_plans = {
+        state.name: plan
+        for state in problem.states
+        if (plan := _compile_implicit_state(problem, state)) is not None
+    }
     return StationaryDerivativePlan(
         problem,
         lagrangian,
@@ -550,4 +629,5 @@ def compile_stationary(problem, *, max_elements=1_000_000):
         multipliers,
         state_outputs,
         weight_outputs,
+        implicit_plans,
     )

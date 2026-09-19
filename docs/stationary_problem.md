@@ -92,13 +92,20 @@ edges, not a second manually maintained equation list. The state/residual graph 
 an explicitly cut implicit region; provider cycles and provider edges back to a
 state are rejected rather than treated as an ordinary acyclic pullback.
 
-**Provider declarations are an inventory, not executable custom-rule dispatch.**
-The generated plan stops at live independent TensorIR source inputs. Its
-`provider_pullbacks` property lists outstanding upstream contracts in reverse
-topological order. A named matrix-function/overlap rule is not run implicitly.
-Where both an ancestor and descendant are direct inputs, a future provider adapter
-must add direct and propagated cotangents exactly once before pulling back the
-ancestor. The current plan does not report such a sum as a total derivative.
+**Provider declarations remain an inventory, while declared implicit state rules
+are executable compiler dispatch.** A state with `implicit_operator_identity`
+causes `compile()` to build an identity-bearing #465 `ImplicitVJPPlan` directly
+from that residual graph. The residual must be an independent state block; a
+coupled KKT/CC row is rejected until the caller exposes the coupled unknowns as
+one explicit independent state. This prevents silently solving only part of a
+stationary system.
+
+The generated source plan still stops at live independent TensorIR source inputs.
+Its `provider_pullbacks` property lists outstanding upstream provider contracts
+in reverse topological order. A named matrix-function/overlap provider rule is
+not run merely because it appears in the source DAG. Where both an ancestor and
+descendant are direct inputs, the provider adapter must add direct and propagated
+cotangents exactly once before pulling back the ancestor.
 
 This boundary preserves missing overlap/Fock/metric branches when they are in the
 manifest. No compiler can detect a scientific term omitted from both the declared
@@ -137,14 +144,17 @@ MethodIR (#396) remains the method/component front end. The existing semilocal
 source-contraction consumer and is not replaced by this schema.
 
 The implicit-solve primitive (#465) owns response execution, true residuals,
-solver failure propagation and current-state binding. The symmetric matrix rule
-(#466) owns its qualified spectral mathematics. Neither is reimplemented here.
-Subsequent #181 slices must bind these primitives to the generic problem, provide
-qualified native HF/RI-MP2 state/provider consumers, and validate complete nuclear
-derivatives. #460's optional execution/lifetime graph is not required here.
-Higher-order derivatives, Hessian composition, joint native resource admission,
-stale-state rejection and automatic provider-rule dispatch are not supplied by
-this first-order compiler-only slice.
+solver failure propagation and current-state binding. StationaryProblem v2 now
+dispatches explicitly declared independent state blocks to that primitive; the
+runtime may bind the resulting plan to an existing qualified ResponseProblem
+operator without replacing generated source VJPs. The symmetric matrix rule
+(#466) owns its qualified spectral mathematics and remains separate.
+
+Subsequent #181/#193 slices must compose upstream provider pullbacks, #466 metric
+response and complete nuclear derivatives into supported public force endpoints.
+#460's optional execution/lifetime graph is not required here. Higher-order
+derivatives and Hessian composition remain separately registered work; a
+first-order implicit VJP does not grant second-order support.
 
 Run the independent scalar, nonsymmetric and constrained tests with:
 

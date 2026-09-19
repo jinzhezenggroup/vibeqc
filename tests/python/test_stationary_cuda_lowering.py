@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 
 def test_cuda_source_generation_is_device_and_runtime_independent():
     script = """
@@ -43,3 +45,34 @@ for pbe in (False,True):
         check=True,
         timeout=30,
     )
+
+
+@pytest.mark.parametrize("name", ["NVCC_PREPEND_FLAGS", "NVCC_APPEND_FLAGS"])
+@pytest.mark.parametrize("flags", ["--use_fast_math", "--fmad=true", "--ftz=true"])
+def test_strict_stationary_cuda_rejects_environment_overrides(
+    monkeypatch, tmp_path, name, flags
+):
+    from pathlib import Path
+
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.method import stationary_cuda
+
+    compiler = CudaCompilerAdapter(
+        Path("must-not-execute-nvcc"), cuda_target_info("sm_120")
+    )
+    monkeypatch.setenv(name, flags)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail(
+            "strict arithmetic override reached source generation or compilation"
+        )
+
+    monkeypatch.setattr(stationary_cuda, "emit_stationary_cuda", forbidden)
+    monkeypatch.setattr(stationary_cuda, "compile_runtime", forbidden)
+    cache = tmp_path / "uncreated"
+    with pytest.raises(ValueError, match="strict.*NVCC.*override"):
+        stationary_cuda.compile_stationary_cuda(
+            "", pbe=False, iterations=3, compiler=compiler, cache=cache
+        )
+    assert not cache.exists()

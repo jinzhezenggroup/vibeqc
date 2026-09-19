@@ -490,6 +490,13 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/integrals/first_directional_runtime.cuh",
+      "reason": "Shared bounded device storage, primitive staging, generated-program dispatch, typed output lifetime and failure-atomic publication. Integral, directional and matrix-weight contraction equations are emitted by the common compiler.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/integrals/range_moments.hpp",
       "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
       "regions": [],
