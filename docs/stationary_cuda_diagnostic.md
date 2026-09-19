@@ -135,3 +135,11 @@ runs locally without reserving a GPU.
 
 The [decision record](../.agents/notes/implemented/architecture/2026-09-19-stationary-cuda-diagnostic.md)
 preserves shared-science choices, measured evidence and remaining qualification.
+
+## Strict compilation environment
+
+The stationary CUDA compiler rejects nonempty `NVCC_PREPEND_FLAGS` and
+`NVCC_APPEND_FLAGS` before generation or cache publication. External flags
+cannot silently override the qualified FP64 arithmetic policy. Recording an
+override in artifact metadata is not numerical qualification. Use the explicit
+compiler adapter for supported target/toolchain selection.

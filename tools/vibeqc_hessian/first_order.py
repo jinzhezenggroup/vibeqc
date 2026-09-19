@@ -17,6 +17,7 @@ from vibeqc_compiler.integral.first_derivatives_execute import (
     compile_first_derivative,
 )
 from vibeqc_compiler.integral.first_derivatives_native import first_component_identity
+from vibeqc_compiler.integral.first_directional import DirectionalMatrixTerm
 from vibeqc_compiler.integral.one_electron_derivatives import (
     build_one_electron_derivative_ir,
 )
@@ -24,6 +25,13 @@ from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_compon
 from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 from .native import NativeRHFState
+
+# One declared conventional RHF frozen-Fock contraction, shared by the CPU
+# reference traversal and generated CUDA matrix consumer.
+RHF_FIRST_ERI_TERMS = (
+    DirectionalMatrixTerm(0, (0, 1), (2, 3), 1.0),
+    DirectionalMatrixTerm(0, (0, 2), (1, 3), -0.5),
+)
 
 
 def checked_direction(direction, natoms):
@@ -142,8 +150,13 @@ def _generated_first_order(state, direction=None):
                 offsets[shell] + c for shell, c in zip(slots, component, strict=True)
             )
             # Ordered AO traversal: no orbit multiplicities or energy prefactors.
-            accumulate(frozen, atoms, gradient, u, v, density[w, x])
-            accumulate(frozen, atoms, gradient, u, w, -0.5 * density[v, x])
+            ao = (u, v, w, x)
+            for term in RHF_FIRST_ERI_TERMS:
+                i, j = (ao[k] for k in term.output_pair)
+                k, l = (ao[k] for k in term.weight_pair)
+                accumulate(
+                    frozen, atoms, gradient, i, j, term.coefficient * density[k, l]
+                )
     if not np.isfinite(overlap).all() or not np.isfinite(frozen).all():
         raise FloatingPointError("generated nuclear-perturbation source is nonfinite")
     return frozen, overlap
