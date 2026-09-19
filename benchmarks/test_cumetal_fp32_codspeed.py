@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _T = TypeVar("_T")
-_WORKLOADS = ("compute", "memory", "gather", "mixed")
+_NEW_WORKLOADS = ("memory", "gather", "mixed")
 
 
 class _BenchmarkFixture(Protocol):
@@ -85,12 +85,21 @@ def cumetal_fp32_server() -> _CuMetalServer:
         server.close()
 
 
-@pytest.mark.parametrize("workload", _WORKLOADS)
+def test_cumetal_fp32_contract_walltime(
+    benchmark: _BenchmarkFixture,
+    cumetal_fp32_server: _CuMetalServer,
+) -> None:
+    """Preserve the original compute-heavy proxy series for trend continuity."""
+    device_ms = benchmark(lambda: cumetal_fp32_server.run_once("compute"))
+    assert device_ms > 0.0
+
+
+@pytest.mark.parametrize("workload", _NEW_WORKLOADS)
 def test_cumetal_fp32_proxy_walltime(
     benchmark: _BenchmarkFixture,
     cumetal_fp32_server: _CuMetalServer,
     workload: str,
 ) -> None:
-    """Measure synchronized FP32 proxy patterns without claiming CUDA parity."""
+    """Measure additional FP32 proxy patterns without claiming CUDA parity."""
     device_ms = benchmark(lambda: cumetal_fp32_server.run_once(workload))
     assert device_ms > 0.0
