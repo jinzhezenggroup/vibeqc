@@ -4,6 +4,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "dft/grid.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/cuda/rhf_policy.hpp"
@@ -34,6 +35,18 @@ std::size_t multiply_size(std::size_t a, std::size_t b) {
 /** Size the same combined orbital/auxiliary/dummy source as the shared
  * packer before it allocates GPU metadata. Keep the byte formula centralized
  * in the existing DF source resource model. */
+dft::GridSpec cosx_grid_spec(const FockCosxSpec& spec) {
+  dft::GridSpec grid;
+  grid.version = spec.grid_version;
+  grid.radial_points = spec.radial_points;
+  grid.angular_polar = spec.angular_polar;
+  grid.angular_azimuth = spec.angular_azimuth;
+  grid.partition_iterations = spec.partition_iterations;
+  grid.coincident_tolerance = spec.coincident_tolerance;
+  grid.element_radii = spec.element_radii;
+  return grid;
+}
+
 std::size_t df_source_bytes(const core::System& orbital, const core::System& auxiliary) {
   const auto orbital_cartesian = molecule::cartesian_ao_count(orbital);
   const auto auxiliary_cartesian = molecule::cartesian_ao_count(auxiliary);
@@ -105,6 +118,8 @@ struct PreparedFockPlan::Impl {
       nullptr, &destroy_cuda_direct_jk_plan};
   std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)>
       cuda_df{nullptr, &destroy_cuda_density_fitting_jk_plan};
+  std::unique_ptr<dft::MolecularGrid> cosx_grid;
+  std::unique_ptr<dft::CudaCosxStagingPlan> cuda_cosx;
   std::optional<CpuFockPlanView> cpu_view;
   std::optional<CudaFockPlanView> cuda_view;
   initial_guess::OverlapOrthogonalizer overlap_cache;
@@ -125,6 +140,7 @@ struct PreparedFockPlan::Impl {
     diagnostic.variant = execution_variant(strategy);
     const bool has_df = needs(strategy.spec, FockApproximation::DensityFitted);
     const bool has_exact = needs(strategy.spec, FockApproximation::Exact);
+    const bool has_cosx = needs(strategy.spec, FockApproximation::SeminumericalCosx);
     const bool derivatives = strategy.spec.derivative_order != 0;
     if (has_df) {
       auxiliary = aux ? *aux : system;
@@ -173,8 +189,18 @@ struct PreparedFockPlan::Impl {
     diagnostic.ncoord = system.atoms.size() * 3;
     const auto available = budget ? budget : kDefaultDeviceBudget;
     diagnostic.device_budget_bytes = available;
+    std::size_t cosx_reserved = 0;
+    std::size_t provider_available = available;
+    if (has_cosx) {
+      cosx_grid = std::make_unique<dft::MolecularGrid>(
+          system, cosx_grid_spec(strategy.spec.exchange.cosx));
+      cosx_reserved = dft::cuda_cosx_staging_device_bytes(
+          system, cosx_grid->point_count(), strategy.cosx_tile_points);
+      if (cosx_reserved > provider_available) throw std::bad_alloc();
+      provider_available -= cosx_reserved;
+    }
     if (has_exact) {
-      const auto direct_budget = has_df ? available / 2 : available;
+      const auto direct_budget = has_df ? provider_available / 2 : provider_available;
       if (!direct_budget) throw std::bad_alloc();
       CudaDirectJkPlan* raw{};
       checked(create_cuda_direct_jk_plan(device, {system}, strategy.spec.derivative_order,
@@ -185,7 +211,7 @@ struct PreparedFockPlan::Impl {
       diagnostic.device_bytes = diagnostic.direct.device_bytes;
     }
     if (has_df) {
-      const auto remainder = available - diagnostic.device_bytes;
+      const auto remainder = provider_available - diagnostic.device_bytes;
       const auto plan_budget = remainder / 2;
       if (!plan_budget) throw std::bad_alloc();
       auto& data = *fitted;
@@ -232,11 +258,21 @@ struct PreparedFockPlan::Impl {
       if (!diagnostic.fitted.empty())
         diagnostic.device_bytes += diagnostic.fitted[0].device_resident_bytes;
     }
+    if (has_cosx) {
+      cuda_cosx = std::make_unique<dft::CudaCosxStagingPlan>(
+          system, cosx_grid->points(), cosx_grid->weights(), strategy.cosx_tile_points, device,
+          cosx_reserved);
+      diagnostic.cosx = cuda_cosx->diagnostic();
+      diagnostic.device_bytes = add_size(diagnostic.device_bytes, diagnostic.cosx.device_bytes);
+      if (diagnostic.device_bytes > available) throw std::bad_alloc();
+    }
     auto provider = [&](const FockTermSpec& term) -> std::optional<CudaFockProviderView> {
       if (!term.present) return {};
-      return term.approximation == FockApproximation::Exact
-                 ? CudaFockProviderView(cuda_exact.get())
-                 : CudaFockProviderView(cuda_df.get(), *fitted);
+      if (term.approximation == FockApproximation::Exact)
+        return CudaFockProviderView(cuda_exact.get());
+      if (term.approximation == FockApproximation::DensityFitted)
+        return CudaFockProviderView(cuda_df.get(), *fitted);
+      return CudaFockProviderView(cuda_cosx.get());
     };
     cuda_view.emplace(strategy, diagnostic.nbf, diagnostic.ncoord, provider(strategy.spec.coulomb),
                       provider(strategy.spec.exchange));

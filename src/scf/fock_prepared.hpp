@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "dft/cuda_cosx.hpp"
 #include "scf/cuda_fock_provider.hpp"
 #include "scf/initial_guess/eigen_operation.hpp"
 
@@ -28,6 +29,7 @@ struct FockPreparationDiagnostic {
   ResolvedFockBuild strategy;
   std::size_t nbf{}, ncoord{}, device_bytes{}, device_budget_bytes{};
   CudaDirectJkDiagnostic direct;
+  dft::CudaCosxStagingDiagnostic cosx;
   FockExecutionVariant variant;
   CudaDensityFittingSourceDiagnostic fitted_source;
   std::vector<CudaDensityFittingMetricDiagnostic> fitted;

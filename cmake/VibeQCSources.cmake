@@ -43,6 +43,7 @@ function(vibeqc_add_dft_sources target)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/dft/cuda_xc.cpp
+      src/dft/cuda_cosx.cu
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu)
   endif()

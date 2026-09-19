@@ -122,6 +122,9 @@ struct ResolvedFockBuild {
   FockSchedule schedule{FockSchedule::CpuReference};
   double screening_tolerance{1.0e-12};
   double metric_relative_threshold{};
+  /** Bounded execution tile; zero when COSX is absent. The mathematical grid
+   * prescription remains in FockTermSpec::cosx. */
+  std::size_t cosx_tile_points{};
   bool legacy_density_fitting{};
   FockPrecision precision{FockPrecision::Float64};
   bool operator==(const ResolvedFockBuild&) const = default;
@@ -145,7 +148,8 @@ FockBuildSpec make_hf_fock_spec(FockSpin spin,
                                 FockApproximation approximation = FockApproximation::Exact);
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
                                      double screening_tolerance = 1.0e-12,
-                                     double metric_relative_threshold = 1.0e-10);
+                                     double metric_relative_threshold = 1.0e-10,
+                                     std::size_t cosx_tile_points = 64);
 /** Reject forged/noncanonical execution state before calling any provider. */
 void validate_resolved_fock_build(const ResolvedFockBuild& strategy);
 

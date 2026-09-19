@@ -10,16 +10,21 @@
 namespace vibeqc::dft {
 
 struct CudaCosxStagingDiagnostic {
-  std::size_t nbf{}, npoint{}, tile_points{};
+  std::size_t nbf{}, ncoord{}, npoint{}, tile_points{};
   std::size_t grid_device_bytes{}, cosx_device_bytes{}, device_bytes{};
   std::size_t esp_tile_elements{}, ao_tile_elements{};
   bool ao_on_device{}, esp_on_device{}, assembly_on_device{};
 };
 
+/** Exact explicit CUDA bytes retained by one bounded COSX owner. */
+std::size_t cuda_cosx_staging_device_bytes(const core::System& system, std::size_t npoint,
+                                           std::size_t tile_points);
+
 class CudaCosxStagingPlan {
  public:
   CudaCosxStagingPlan(const core::System& system, std::span<const double> points_xyz,
-                      std::span<const double> weights, std::size_t tile_points, int device);
+                      std::span<const double> weights, std::size_t tile_points, int device,
+                      std::size_t max_device_bytes = 0);
   ~CudaCosxStagingPlan();
   CudaCosxStagingPlan(const CudaCosxStagingPlan&) = delete;
   CudaCosxStagingPlan& operator=(const CudaCosxStagingPlan&) = delete;

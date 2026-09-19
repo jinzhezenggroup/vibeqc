@@ -1,3 +1,7 @@
+namespace vibeqc::dft {
+class CudaCosxStagingPlan;
+}
+
 #ifndef VIBEQC_SCF_CUDA_FOCK_PROVIDER_HPP
 #define VIBEQC_SCF_CUDA_FOCK_PROVIDER_HPP
 
@@ -7,7 +11,7 @@
 
 namespace vibeqc::scf {
 
-/** Borrow one item in an existing direct or DF CUDA plan. The enclosing
+/** Borrow one item in an existing direct, DF, or COSX CUDA plan. The enclosing
  * geometry cache owns every handle and immutable DF data object and must
  * outlive this view. Item identity includes its plan, batch index, and data.
  * Rebinding is required after geometry/basis/cutoff changes; the view owns
@@ -26,6 +30,7 @@ class CudaFockProviderView {
                        std::size_t item = 0);
   CudaFockProviderView(CudaDensityFittingJkPlan*, DensityFittingScfData&&,
                        std::size_t = 0) = delete;
+  explicit CudaFockProviderView(dft::CudaCosxStagingPlan* cosx);
   FockApproximation approximation() const;
   std::size_t nbf() const;
   std::size_t ncoord() const;
@@ -43,6 +48,7 @@ class CudaFockProviderView {
                                  const std::vector<double>& beta) const;
   CudaDirectJkPlan* exact_{};
   CudaDensityFittingJkPlan* fitted_{};
+  dft::CudaCosxStagingPlan* cosx_{};
   const DensityFittingScfData* data_{};
   std::size_t item_{};
 };
