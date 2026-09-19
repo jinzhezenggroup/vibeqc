@@ -11,7 +11,7 @@ The compiler owns:
 - canonical method and parameter-set identity;
 - required parameter-table families and supported elements;
 - overlap, dipole, and quadrupole integral requirements;
-- H0, SCC multipole, spin-polarization, and fixed-state Hamiltonian algebra;
+- H0, ES2/ES3/AES2 SCC electrostatics, spin-polarization, and fixed-state Hamiltonian algebra;
 - coordination-number, repulsion, and self-consistent D4 correction semantics;
 - requested compiler products such as energy and nuclear-gradient ingredients.
 
@@ -35,7 +35,7 @@ The initial graph is ordered as:
 3. overlap integrals;
 4. cumulative dipole/quadrupole integrals;
 5. coordination-dependent H0;
-6. SCC charge/dipole/quadrupole interaction;
+6. ES2/ES3/AES2 SCC electrostatics over charge/dipole/quadrupole state, with the AES2 coordination-number dependency explicit;
 7. shell spin polarization;
 8. fixed-state Hamiltonian assembly;
 9. geometry-only repulsion;
