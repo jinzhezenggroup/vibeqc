@@ -12,9 +12,17 @@ from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
-COMPONENTS = ("LDA_X", "LDA_C_PW", "LDA_C_PW_MOD", "GGA_X_PBE", "GGA_C_PBE")
+PUBLIC_COMPONENTS = (
+    "LDA_X",
+    "LDA_C_PW",
+    "LDA_C_PW_MOD",
+    "GGA_X_PBE",
+    "GGA_C_PBE",
+)
+RSH_COMPONENTS = ("GGA_X_B88", "GGA_X_ITYH", "LDA_C_VWN", "GGA_C_LYP")
+COMPONENTS = PUBLIC_COMPONENTS + RSH_COMPONENTS
 CATALOG = {
-    **{name: ((name, Fraction(1)),) for name in COMPONENTS},
+    **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
     "PBE": (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
 }
@@ -26,11 +34,12 @@ class UnsupportedXC(ValueError):
 
 @dataclass(frozen=True)
 class FunctionalSpec:
-    """Exact semilocal composition; exchange metadata contributes no local energy.
+    """Exact semilocal composition with explicit scalar range parameters.
 
-    Coefficients must be rational (use Fraction with a decimal string). Hybrid
-    consumers must apply the separately declared exact-exchange term themselves;
-    it is never inferred from the name or added to these semilocal kernels.
+    Coefficients and range parameters must be rational. range_omega is a
+    semilocal ITYH parameter and therefore changes scalar energy; exact-exchange
+    operator weights remain separate method primitives and are never inferred
+    from a functional name.
     """
 
     identifier: str
@@ -73,6 +82,15 @@ class FunctionalSpec:
                 raise UnsupportedXC(
                     "exchange metadata requires nonnegative exact fractions"
                 )
+        has_range_semilocal = any(
+            name == "GGA_X_ITYH" and coefficient
+            for name, coefficient in self.components
+        )
+        if has_range_semilocal != bool(self.range_omega):
+            raise UnsupportedXC(
+                "ITYH short-range exchange requires one positive range_omega, "
+                "and range_omega is otherwise forbidden"
+            )
 
     @property
     def features(self):
@@ -93,6 +111,12 @@ class FunctionalSpec:
         payload["components"] = [[n, str(c)] for n, c in self.components]
         for name in ("exact_exchange", "range_omega", "long_range_exchange"):
             payload[name] = str(getattr(self, name))
+        rsh = any(
+            name in RSH_COMPONENTS and coefficient
+            for name, coefficient in self.components
+        )
+        manifest = "rsh-manifest.json" if rsh else "manifest.json"
+        expression_source = "rsh_expressions.py" if rsh else "expressions.py"
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -101,12 +125,17 @@ class FunctionalSpec:
             "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
             "license": "MPL-2.0",
             "source_manifest_sha256": file_hash(
-                asset_path("external/libxc-7.0.0/manifest.json")
+                asset_path(f"external/libxc-7.0.0/{manifest}")
             ),
             "expression_source_sha256": file_hash(
-                Path(__file__).with_name("expressions.py")
+                Path(__file__).with_name(expression_source)
             ),
-            "domain": "interior-v1: no clipping; see docs/xc_expressions.md",
+            "domain": (
+                "rsh-interior-v1: interior-v1 plus explicit ITYH attenuation "
+                "branch support; no clipping"
+                if self.range_omega
+                else "interior-v1: no clipping; see docs/xc_expressions.md"
+            ),
         }
 
     @property

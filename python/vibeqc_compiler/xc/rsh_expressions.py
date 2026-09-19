@@ -1,0 +1,141 @@
+# Copyright (C) 2017 M.A.L. Marques
+# Copyright (C) 2026 VibeQC contributors
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+"""Audited Libxc 7.0 CAM-B3LYP-family scalar expressions."""
+
+import math
+from fractions import Fraction as F
+
+from vibeqc_compiler.integral.expr import Graph
+
+
+def energy_expression(spec):
+    """Return the range-separated semilocal energy DAG and feature variables."""
+    graph = Graph()
+    variables = tuple(graph.variable(name) for name in spec.features)
+    if spec.spin == "polarized":
+        ra, rb, saa, sab, sbb, _, _ = variables
+    else:
+        rho, sigma, _ = variables
+        ra = rb = rho / 2
+        saa = sab = sbb = sigma / 4
+    n = ra + rb
+    if spec.spin == "polarized":
+        up, down = 2 * ra / n, 2 * rb / n
+        z = (ra - rb) / n
+    else:
+        up = down = graph.constant(1)
+        z = graph.constant(0)
+    rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
+    cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
+
+    def b88_enhancement(density, sigma):
+        beta_b88 = F("0.0042")
+        gamma_b88 = F(6)
+        x2 = sigma * density.pow(-8 / 3)
+        x = x2.pow(0.5)
+        return 1 + beta_b88 / cx * x2 / (
+            1 + gamma_b88 * beta_b88 * x * graph.transcendental_unary("asinh", x)
+        )
+
+    def b88_exchange(short_range=False):
+        terms = []
+        omega = spec.range_omega
+        for density, sigma in ((ra, saa), (rb, sbb)):
+            enhancement = b88_enhancement(density, sigma)
+            if short_range:
+                # Iikura-Tsuneda-Yanai-Hirao short-range B88 attenuation.
+                k_gga = (9 * math.pi / (2 * cx * enhancement)).pow(0.5) * density.pow(
+                    1 / 3
+                )
+                a = omega / (2 * k_gga)
+                inverse_2a = 1 / (2 * a)
+                aux1 = math.sqrt(math.pi) * graph.transcendental_unary(
+                    "erf", inverse_2a
+                )
+                aux2 = graph.stable_unary("expm1", -1 / (4 * a.pow(2)))
+                aux3 = 2 * a.pow(2) * aux2 + F(1, 2)
+                attenuation = 1 - F(8, 3) * a * (aux1 + 2 * a * (aux2 - aux3))
+                enhancement = enhancement * attenuation
+            terms.append(-cx * density.pow(4 / 3) * enhancement)
+        return graph.sum(terms)
+
+    def vwn_correlation():
+        # VWN5 parameters in Hartree, matching Libxc 7.0 lda_c_vwn.mpl.
+        av = (F("0.0310907"), F("0.01554535"), -1 / (6 * math.pi**2))
+        bv = (F("3.72744"), F("7.06042"), F("1.13107"))
+        cv = (F("12.9352"), F("18.0578"), F("13.0045"))
+        x0v = (F("-0.10498"), F("-0.32500"), F("-0.0047584"))
+
+        def aux(index):
+            aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
+            q = math.sqrt(float(4 * cc - bb * bb))
+            root = rs.pow(0.5)
+            fx = rs + bb * root + cc
+            f1 = 2 * bb / q
+            f2 = bb * x0 / (x0 * x0 + bb * x0 + cc)
+            f3 = 2 * (2 * x0 + bb) / q
+            return aa * (
+                graph.stable_unary("log", rs / fx)
+                + (f1 - f2 * f3)
+                * graph.transcendental_unary("atan", q / (2 * root + bb))
+                - f2 * graph.stable_unary("log", (root - x0).pow(2) / fx)
+            )
+
+        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
+        fpp = 4 / (9 * (2 ** (1 / 3) - 1))
+        g0, g1, gm = aux(0), aux(1), aux(2)
+        epsilon = g0 + gm * fz * (1 - z.pow(4)) / fpp + (g1 - g0) * fz * z.pow(4)
+        return n * epsilon
+
+    def lyp_correlation():
+        a_lyp = F("0.04918")
+        b_lyp = F("0.132")
+        c_lyp = F("0.2533")
+        d_lyp = F("0.349")
+        cf = F(3, 10) * (3 * math.pi**2) ** (2 / 3)
+        rr = n.pow(-1 / 3)
+        omega_lyp = b_lyp * graph.exponential(-c_lyp * rr) / (1 + d_lyp * rr)
+        delta = (c_lyp + d_lyp / (1 + d_lyp * rr)) * rr
+        one_minus_z2 = 1 - z.pow(2)
+        xt2 = (saa + 2 * sab + sbb) * n.pow(-8 / 3)
+        xs02 = saa * ra.pow(-8 / 3)
+        xs12 = sbb * rb.pow(-8 / 3)
+        up8 = up.pow(8 / 3)
+        down8 = down.pow(8 / 3)
+        t1 = -one_minus_z2 / (1 + d_lyp * rr)
+        t2 = -xt2 * (one_minus_z2 * (47 - 7 * delta) / 72 - F(2, 3))
+        t3 = -cf / 2 * one_minus_z2 * (up8 + down8)
+        aux6 = 1 / 2 ** (8 / 3)
+        aux4 = aux6 / 4
+        aux5 = aux4 / 18
+        t4 = aux4 * one_minus_z2 * (F(5, 2) - delta / 18) * (xs02 * up8 + xs12 * down8)
+        t5 = (
+            aux5
+            * one_minus_z2
+            * (delta - 11)
+            * (xs02 * up.pow(11 / 3) + xs12 * down.pow(11 / 3))
+        )
+        t6 = -aux6 * (
+            F(2, 3) * (xs02 * up8 + xs12 * down8)
+            - up.pow(2) * xs12 * down8 / 4
+            - down.pow(2) * xs02 * up8 / 4
+        )
+        return n * a_lyp * (t1 + omega_lyp * (t2 + t3 + t4 + t5 + t6))
+
+    builders = {
+        "GGA_X_B88": lambda: b88_exchange(False),
+        "GGA_X_ITYH": lambda: b88_exchange(True),
+        "LDA_C_VWN": vwn_correlation,
+        "GGA_C_LYP": lyp_correlation,
+    }
+    return (
+        graph,
+        graph.sum(
+            coefficient * builders[name]()
+            for name, coefficient in spec.components
+            if coefficient
+        ),
+        variables,
+    )
