@@ -9,28 +9,28 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.backend import (
-        BenchmarkExecutor as BenchmarkExecutor,
+        BenchmarkExecutor,
     )
     from vibeqc_compiler.common.backend import (
-        CompilerAdapter as CompilerAdapter,
+        CompilerAdapter,
     )
     from vibeqc_compiler.common.backend import (
-        DeviceProbe as DeviceProbe,
+        DeviceProbe,
     )
     from vibeqc_compiler.common.backend import (
-        RegistryEmitter as RegistryEmitter,
+        RegistryEmitter,
     )
     from vibeqc_compiler.common.backend import (
-        ResourceParser as ResourceParser,
+        ResourceParser,
     )
     from vibeqc_compiler.common.backend import (
-        SourceEmitter as SourceEmitter,
+        SourceEmitter,
     )
     from vibeqc_compiler.common.backend import (
-        TargetInfo as TargetInfo,
+        TargetInfo,
     )
     from vibeqc_compiler.common.backend import (
-        TargetScheduleShape as TargetScheduleShape,
+        TargetScheduleShape,
     )
 else:
     import sys
