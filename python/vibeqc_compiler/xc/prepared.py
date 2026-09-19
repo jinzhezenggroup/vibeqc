@@ -143,6 +143,8 @@ class PreparedXCContractions:
                 # consumes an explicit sigma feature in its collocation tiles.
                 if not _native_device_xc(program, spatial, density_grid):
                     required.add("sigma")
+            if program.contract.ingredients.family == "mgga":
+                required.add("tau")
             if (
                 density_grid.basis_identity != basis.identity
                 or density_grid.plan.nao != basis.nao

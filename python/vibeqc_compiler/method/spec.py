@@ -17,7 +17,9 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .basis_binding import BasisBinding, r2scan3c_def2_mtzvpp_h_ar
+from .dispersion import D3Spec, D4Spec, DispersionCorrectionPrimitive, r2scan3c_d4_eeq
+from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
 
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
@@ -61,7 +63,9 @@ class MethodSpec:
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
-    dispersion: D3Spec | None = None
+    dispersion: D3Spec | D4Spec | None = None
+    basis: BasisBinding | None = None
+    gcp: GCPSpec | None = None
 
     def __post_init__(self):
         if not isinstance(self.identifier, str) or not self.identifier.strip():
@@ -81,8 +85,18 @@ class MethodSpec:
             _require_fraction(coefficient, f"component {name}")
             if not coefficient:
                 raise UnsupportedMethod("zero-valued manifest components are ambiguous")
-        if self.dispersion is not None and not isinstance(self.dispersion, D3Spec):
-            raise TypeError("dispersion requires a D3Spec")
+        if self.dispersion is not None and not isinstance(
+            self.dispersion, (D3Spec, D4Spec)
+        ):
+            raise TypeError("dispersion requires a D3Spec or D4Spec")
+        if self.basis is not None and not isinstance(self.basis, BasisBinding):
+            raise TypeError("basis requires BasisBinding")
+        if self.gcp is not None and not isinstance(self.gcp, GCPSpec):
+            raise TypeError("gCP requires GCPSpec")
+        if self.gcp is not None and self.basis is None:
+            raise UnsupportedMethod("gCP requires an explicit basis binding")
+        if self.gcp is not None and self.gcp.basis != self.basis.name:
+            raise UnsupportedMethod("gCP basis does not match the method basis binding")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
             raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
@@ -99,6 +113,8 @@ class MethodSpec:
             ],
             "exact_exchange": str(self.exact_exchange),
             **({"dispersion": self.dispersion.to_payload()} if self.dispersion else {}),
+            **({"basis": self.basis.to_payload()} if self.basis else {}),
+            **({"gcp": self.gcp.to_payload()} if self.gcp else {}),
         }
 
 
@@ -194,7 +210,10 @@ class ExactExchangePrimitive:
 
 
 MethodPrimitive = (
-    SemilocalXCPrimitive | ExactExchangePrimitive | DispersionCorrectionPrimitive
+    SemilocalXCPrimitive
+    | ExactExchangePrimitive
+    | DispersionCorrectionPrimitive
+    | GeometricCounterpoisePrimitive
 )
 
 
@@ -211,6 +230,7 @@ class MethodIR:
     identifier: str
     spin: str
     primitives: tuple[MethodPrimitive, ...]
+    basis: BasisBinding | None = None
     version: str = METHOD_IR_VERSION
 
     def __post_init__(self):
@@ -226,6 +246,7 @@ class MethodIR:
             SemilocalXCPrimitive,
             ExactExchangePrimitive,
             DispersionCorrectionPrimitive,
+            GeometricCounterpoisePrimitive,
         )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
             raise UnsupportedMethod("MethodIR contains an unsupported primitive")
@@ -235,7 +256,9 @@ class MethodIR:
                 return 0
             if isinstance(primitive, ExactExchangePrimitive):
                 return 1
-            return 2
+            if isinstance(primitive, DispersionCorrectionPrimitive):
+                return 2
+            return 3
 
         keys = [primitive_order(primitive) for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):
@@ -249,10 +272,47 @@ class MethodIR:
         ]
         if semilocal and semilocal[0].functional.spin != self.spin:
             raise UnsupportedMethod("semilocal primitive spin does not match MethodIR")
+        if self.basis is not None and not isinstance(self.basis, BasisBinding):
+            raise TypeError("MethodIR basis requires BasisBinding")
+        gcp = [
+            p for p in self.primitives
+            if isinstance(p, GeometricCounterpoisePrimitive)
+        ]
+        if gcp:
+            if self.basis is None:
+                raise UnsupportedMethod("gCP primitive requires a MethodIR basis binding")
+            if gcp[0].specification.basis != self.basis.name:
+                raise UnsupportedMethod("gCP primitive basis does not match MethodIR basis")
 
     @property
     def reference(self):
         return "unrestricted" if self.spin == "polarized" else "restricted"
+
+    def preflight_atomic_numbers(self, atomic_numbers):
+        """Reject unsupported chemistry before lowering or correction execution."""
+
+        values = tuple(atomic_numbers)
+        if any(type(z) is not int or not 1 <= z <= 118 for z in values):
+            raise UnsupportedMethod("atomic numbers must be integers in [1, 118]")
+        if self.basis is not None:
+            try:
+                self.basis.require_atomic_numbers(values)
+            except (TypeError, ValueError) as error:
+                raise UnsupportedMethod(str(error)) from error
+        for primitive in self.primitives:
+            if isinstance(primitive, GeometricCounterpoisePrimitive):
+                unsupported = tuple(
+                    sorted(
+                        set(values)
+                        - set(primitive.specification.supported_atomic_numbers)
+                    )
+                )
+                if unsupported:
+                    raise UnsupportedMethod(
+                        f"gCP does not support atomic numbers {unsupported} "
+                        "in this canonical method domain"
+                    )
+        return values
 
     @property
     def requirements(self):
@@ -264,9 +324,14 @@ class MethodIR:
                 operators.append("semilocal-xc")
             elif isinstance(primitive, ExactExchangePrimitive):
                 operators.append(primitive.operator + "-exchange")
+            elif isinstance(primitive, DispersionCorrectionPrimitive):
+                if isinstance(primitive.specification, D3Spec):
+                    operators.append("geometry-d3-bj")
+                else:
+                    operators.append("geometry-d4-bj-eeq")
             else:
-                operators.append("geometry-d3-bj")
-        return {
+                operators.append("geometry-gcp")
+        result = {
             "spin": self.spin,
             "reference": self.reference,
             "ingredients": tuple(
@@ -274,12 +339,16 @@ class MethodIR:
             ),
             "operators": tuple(operators),
         }
+        if self.basis is not None:
+            result["basis"] = self.basis.to_payload()
+        return result
 
     def semantic_payload(self):
         return {
             "version": self.version,
             "spin": self.spin,
             "reference": self.reference,
+            "basis": self.basis.semantic_payload() if self.basis else None,
             "primitives": [
                 primitive.semantic_payload() for primitive in self.primitives
             ],
@@ -312,6 +381,17 @@ METHOD_CATALOG = MappingProxyType(
             "PBE",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
         ),
+        "R2SCAN": MethodSpec(
+            "R2SCAN",
+            (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
+        ),
+        "R2SCAN-3c": MethodSpec(
+            "R2SCAN-3c",
+            (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
+            dispersion=r2scan3c_d4_eeq(),
+            basis=r2scan3c_def2_mtzvpp_h_ar(),
+            gcp=r2scan3c_gcp(),
+        ),
         "PBE0": MethodSpec(
             "PBE0",
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
@@ -332,6 +412,11 @@ def resolve_method(method, *, spin="unpolarized"):
             raise UnsupportedMethod(f"unknown DFT method {method!r}") from error
     elif isinstance(method, MethodSpec):
         spec = method
+        if spec.identifier == "R2SCAN-3c" and spec != METHOD_CATALOG["R2SCAN-3c"]:
+            raise UnsupportedMethod(
+                "R2SCAN-3c is a canonical manifest; changed defining "
+                "components require a different explicit identifier"
+            )
     else:
         raise TypeError("method must be a catalog name or MethodSpec")
 
@@ -351,4 +436,6 @@ def resolve_method(method, *, spin="unpolarized"):
         raise UnsupportedMethod("method components cancel to an empty graph")
     if spec.dispersion is not None:
         primitives.append(DispersionCorrectionPrimitive(spec.dispersion))
-    return MethodIR(spec.identifier, spin, tuple(primitives))
+    if spec.gcp is not None:
+        primitives.append(GeometricCounterpoisePrimitive(spec.gcp))
+    return MethodIR(spec.identifier, spin, tuple(primitives), basis=spec.basis)

@@ -4,7 +4,7 @@
   "mctc_revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d",
   "mctc_tree": "ff26e808ccd00be0ca221656c8de9ce0da4c9265",
   "output": "d4_data.hpp",
-  "output_sha256": "a60150131cf724f44017ba6fd086a274e8ff65e11e7a6c498d27cea2f3f600e7",
+  "output_sha256": "108c1b5c8787fb7892107c9a074cce4cd1a390cb16a56481d9bd4e572a69bf59",
   "reference_count": 262,
   "reference_model": "gfn2",
   "repository": "https://github.com/dftd4/dftd4",

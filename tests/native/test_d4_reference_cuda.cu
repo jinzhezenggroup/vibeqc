@@ -61,7 +61,17 @@ struct GpuEval {
     references.upload(data::kReferences.data(), references.count);
     c6.upload(data::kReferenceC6.data(), c6.count);
   }
-  D4Tables tables() { return {elements.ptr, references.ptr, c6.ptr}; }
+  D4Tables tables() {
+    return {D4ReferenceModel::gfn2,
+            elements.ptr,
+            references.ptr,
+            c6.ptr,
+            data::kElementCount,
+            data::kReferenceCount,
+            data::kReferenceC6.size(),
+            3.0,
+            2.0};
+  }
   Result operator()(const Molecule& m, const D4Parameters& p) {
     const int n = static_cast<int>(m.z.size());
     Result out(n);
