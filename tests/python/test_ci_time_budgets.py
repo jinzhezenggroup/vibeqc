@@ -43,6 +43,7 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache():
         line for line in section.splitlines() if "key: ccache-python-" in line
     )
     assert "'tests/**'" not in cache_line
+    assert "-DVIBEQC_BUILD_TESTS=OFF" in section
     for path_name in (
         "test_cc_complete_gradient.py",
         "test_ecp_heavy.py",
