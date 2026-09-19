@@ -26,8 +26,41 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 from .native import NativeRHFState
 
 
+def checked_direction(direction, natoms):
+    """Own a finite real Cartesian direction; do not normalize its magnitude."""
+    value = np.asarray(direction)
+    if (
+        value.shape != (natoms, 3)
+        or value.dtype.kind not in "iuf"
+        or not np.isfinite(value).all()
+    ):
+        raise ValueError("direction must be finite real with shape (natoms, 3)")
+    value = np.array(value, dtype=np.float64, copy=True)
+    if not np.isfinite(value).all():
+        raise ValueError("direction must be representable in FP64")
+    return value
+
+
 def generated_first_order(state):
     """Return frozen-Fock and overlap derivatives in (atom,xyz,AO,AO) order."""
+    return _generated_first_order(state)
+
+
+def generated_directional_first_order(state, direction):
+    """Contract a direction shell-locally into H1(v)/S1(v), each (AO,AO).
+
+    The same generated primitive derivatives supply the full and directional
+    callers. Only bounded shell-component gradients are formed; no molecular
+    coordinate-indexed H1/S1 or ERI derivative tensor is allocated here.
+    Integral arithmetic is native CPU; caller-side direction/density reduction
+    is explicit host work, not a generated CUDA derivative contraction.
+    """
+    if not isinstance(state, NativeRHFState):
+        raise TypeError("generated Hessian sources require NativeRHFState")
+    return _generated_first_order(state, checked_direction(direction, state.nat))
+
+
+def _generated_first_order(state, direction=None):
     if not isinstance(state, NativeRHFState):
         raise TypeError("generated Hessian sources require NativeRHFState")
     state.validate()
@@ -36,8 +69,19 @@ def generated_first_order(state):
     evaluators = {}
     shells, offsets, prims = state.source.shells, state.offsets, state.primitives
     coords, density = state.coords, state.P0
-    shape = (state.nat, 3, state.nbf, state.nbf)
+    shape = (state.nbf, state.nbf)
+    if direction is None:
+        shape = (state.nat, 3, *shape)
     overlap, frozen = np.zeros(shape), np.zeros(shape)
+    if direction is not None and not np.any(direction):
+        return frozen, overlap
+
+    def accumulate(out, atoms, derivative, u, v, coefficient=1.0):
+        if direction is not None:
+            out[u, v] += coefficient * derivative
+        else:
+            for center, atom in enumerate(atoms):
+                out[atom, :, u, v] += coefficient * derivative[center]
 
     def raw_tiles(ir, slots, atom_indices):
         angular = ir.signature.angular
@@ -65,10 +109,14 @@ def generated_first_order(state):
             )
             values *= scales[list(indices), None]
             for row, index in enumerate(indices):
-                yield (
-                    np.unravel_index(index, component_shape),
-                    values[row, 1:].reshape(-1, 3),
-                )
+                derivative = values[row, 1:].reshape(-1, 3)
+                if direction is not None:
+                    # Expand physical directions to every mathematical center,
+                    # including coincident slots and the attraction nucleus.
+                    derivative = np.einsum(
+                        "ca,ca->", derivative, direction[list(atom_indices)]
+                    )
+                yield np.unravel_index(index, component_shape), derivative
 
     for a, b in product(range(len(shells)), repeat=2):
         angular = (shells[a].angular_momentum, shells[b].angular_momentum)
@@ -76,16 +124,14 @@ def generated_first_order(state):
         for family, out in (("overlap", overlap), ("kinetic", frozen)):
             ir = build_one_electron_derivative_ir(family, angular)
             for (u, v), gradient in raw_tiles(ir, (a, b), atoms):
-                for center, atom in enumerate(atoms):
-                    out[atom, :, offsets[a] + u, offsets[b] + v] += gradient[center]
+                accumulate(out, atoms, gradient, offsets[a] + u, offsets[b] + v)
         for nucleus, charge in enumerate(state.Z):
             ir = build_one_electron_derivative_ir(
                 "nuclear_attraction", angular, charge=float(charge)
             )
             centers = (*atoms, nucleus)
             for (u, v), gradient in raw_tiles(ir, (a, b), centers):
-                for center, atom in enumerate(centers):
-                    frozen[atom, :, offsets[a] + u, offsets[b] + v] += gradient[center]
+                accumulate(frozen, centers, gradient, offsets[a] + u, offsets[b] + v)
 
     for slots in product(range(len(shells)), repeat=4):
         angular = tuple(shells[i].angular_momentum for i in slots)
@@ -96,9 +142,8 @@ def generated_first_order(state):
                 offsets[shell] + c for shell, c in zip(slots, component, strict=True)
             )
             # Ordered AO traversal: no orbit multiplicities or energy prefactors.
-            for center, atom in enumerate(atoms):
-                frozen[atom, :, u, v] += density[w, x] * gradient[center]
-                frozen[atom, :, u, w] -= 0.5 * density[v, x] * gradient[center]
+            accumulate(frozen, atoms, gradient, u, v, density[w, x])
+            accumulate(frozen, atoms, gradient, u, w, -0.5 * density[v, x])
     if not np.isfinite(overlap).all() or not np.isfinite(frozen).all():
         raise FloatingPointError("generated nuclear-perturbation source is nonfinite")
     return frozen, overlap

@@ -398,3 +398,70 @@ not installed; the no-oracle native test must not skip for that reason.
 
 See the [native first-order source decision](../.agents/notes/implemented/numerics/2026-09-19-hessian-native-first-order-sources.md)
 for the superseded PySCF-backed integration design and its replacement.
+
+## Directional nuclear RHS and density response
+
+`directional_rhf_response(state, direction, jk_backend="cpu" | "cuda")`
+implements one nuclear perturbation without retaining every coordinate's
+H1/S1 matrix. The input has shape `(atom, xyz)` and its magnitude is preserved.
+The first-integral adapter contracts each shell's mathematical-center gradient
+with the corresponding physical direction, including repeated atom slots and
+the independent nuclear-attraction center. It accumulates only two `(AO, AO)`
+matrices: the frozen-density Fock derivative and overlap derivative.
+
+The same `solve_rhf_nuclear_perturbation` helper now serves this direction and
+the existing complete-coordinate CPU Hessian assembly. It includes the known
+metric-density Fock response, solves the nonredundant CPHF problem once, and
+retains the occupied metric response and full occupied-energy response block.
+The returned response includes occupied coefficient derivatives, the complete
+AO density derivative and the energy-weighted-density derivative. In
+particular, the occupied-energy response cannot be replaced with only its
+diagonal or omitted from the latter.
+
+```python
+from tools.vibeqc_hessian import NativeRHFState, directional_rhf_response
+from tools.vibeqc_posthf.sources import NativeSource
+
+with NativeSource([(1, (0, 0, 0)), (1, (0.1, 0.2, 1.4))]) as source:
+    state = NativeRHFState.from_source(source)
+    result = directional_rhf_response(
+        state, [[0, 0, 0], [0.1, 0.2, 0.3]], jk_backend="cuda"
+    )
+    dP = result.response.density_derivative
+    dW = result.response.energy_weighted_density_derivative
+```
+
+This remains a **small-system tools integration** under `NativeRHFState`'s
+12-Cartesian-AO/four-atom, all-electron conventional RHF boundary. It does not
+remove that size limit, expose a Calculator derivative API or produce `Hv`.
+First-integral kernels run as generated CPU code; shell direction/density
+reduction, AO/MO transformations and Krylov work remain host-side. Selecting
+`jk_backend="cuda"` sends *all* metric/CPHF/final-response J/K actions to the
+exact unscreened CUDA provider, without a CPU or DF fallback. No full-GPU,
+performance or globally bounded peak-memory claim follows from that choice.
+Diagnostics report actual residency, reference/operator identity, the single
+RHS/solve, input-matrix storage, solver controls and residuals. The CUDA plan's
+retained-allocation budget and the solver workspace budget remain separate.
+
+Direction arrays and published numeric results are detached and immutable.
+Invalid directions, wrong state/operator identity, closed sources, failed
+provider work and nonconverged or workspace-limited solves do not publish a
+partial result. No reference-engine derivative or fresh SCF solve occurs inside
+the directional consumer; displaced SCF solves are used only in its independent
+finite-difference tests.
+
+`tests/python/test_hessian_directional.py` checks generated inputs against the
+independent native integral derivative oracle, three-step finite differences
+of frozen Fock/overlap and reconverged density/energy-weighted density, occupied
+metric identities, translation/linearity, omitted-metric negatives and failed
+call recovery. Device qualification additionally runs
+`tests/python/test_hessian_directional_cuda.py` with
+`VIBEQC_RESPONSE_CUDA_TEST=1` inside a finite Slurm allocation. It forbids CPU
+J/K and all-coordinate/dense-input fallbacks and checks the CUDA-assisted
+response against independently reconverged density differences.
+
+The next HVP assembly consumes these directional density/energy-weighted-density
+responses and the existing second-integral directional providers. It must still
+supply every explicit, relaxation, overlap/Pulay and nuclear term; neither this
+RHS slice nor its CUDA J/K calls alone complete the molecular Hessian/HVP.
+See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md).
