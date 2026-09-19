@@ -210,6 +210,33 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid, bool
   good.canary();
   bad.canary();
 }
+
+void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
+  Fixture captured(basis, grid, true, false, 9);
+  const auto d = density(basis.nao, 1);
+  check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
+                        cudaMemcpyHostToDevice, captured.stream));
+  check(cudaStreamSynchronize(captured.stream));
+
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  try {
+    check(cudaStreamBeginCapture(captured.stream, cudaStreamCaptureModeGlobal));
+    captured.plan->enqueue(captured.density, d.size(), ++captured.generation);
+    check(cudaStreamEndCapture(captured.stream, &graph));
+    check(cudaGraphInstantiate(&executable, graph, 0));
+    check(cudaGraphLaunch(executable, captured.stream));
+    check(cudaStreamSynchronize(captured.stream));
+    require(captured.scalars().error == 0, "captured XC result was invalid");
+    captured.canary();
+  } catch (...) {
+    if (executable) cudaGraphExecDestroy(executable);
+    if (graph) cudaGraphDestroy(graph);
+    throw;
+  }
+  check(cudaGraphExecDestroy(executable));
+  check(cudaGraphDestroy(graph));
+}
 }  // namespace
 
 int main() {
@@ -219,6 +246,7 @@ int main() {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
+    graph_capture(basis, grid);
     for (bool pbe : {false, true}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {

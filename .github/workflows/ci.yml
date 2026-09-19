@@ -301,6 +301,46 @@ jobs:
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
               --deselect
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
+              # Keep one direct f-shell complete-HF endpoint on routine CI.
+              # The matching full projector replay is independently covered by
+              # lighter projector contracts here and by the complete nightly run.
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-cartesian-cpu]'
+              # Correlated-gradient acceptance contains reconverged molecular
+              # finite differences and larger-molecule independent references.
+              # H2/small-contract coverage stays routine; broad endpoint replay
+              # belongs to scheduled/manual qualification.
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[ch4]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2o]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2_d_spherical]'
+              # These are qualification-scale replays (roughly 1-2 minutes
+              # each on hosted runners); smaller MP2/DFT/ECP/HVP contracts still
+              # execute on every PR.
+              --deselect
+              'tests/python/test_mp2_gradient_fast.py::test_water_complete_gradient_matches_directional_finite_differences'
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_complete_hf_and_core_bookkeeping[cpu-1-Au]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_complete_asymmetric_water_analytic_and_reconverged_fd[lda-rks-reference]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_public_hvp_arbitrary_rotation_and_bra_shell_permutation[cpu-eri]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_contracted_public_hvp_matches_three_step_independent_gradient_fd[cpu-False-eri]'
+              # Retain one representative high-angular/range path routinely;
+              # move exhaustive symbolic/long-range qualification to nightly.
+              --deselect
+              'tests/python/test_high_angular.py::test_g_one_electron_all_components_libcint[nuclear_attraction-angular3]'
+              --deselect
+              'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
+              --deselect
+              'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
@@ -403,6 +443,67 @@ jobs:
           name: coverage-report-python-${{ matrix.shard }}
           path: coverage-python-${{ matrix.shard }}.xml
           retention-days: 1
+
+
+  cpu-benchmark:
+    name: CPU performance (CodSpeed)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CCACHE_MAXSIZE: 1G
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+      - name: Restore CPU benchmark ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ccache-cpu-benchmark-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**') }}
+          restore-keys: |
+            ccache-cpu-benchmark-
+      - name: Build CPU benchmark library
+        run: |
+          cmake -S . -B build-benchmark -G Ninja \
+            -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build-benchmark --target vibeqc --parallel
+      - name: Install benchmark dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python --editable .
+          uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+      - name: Run CPU CodSpeed endpoint suite
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-benchmark/libvibeqc.so
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
   upload-coverage:
     timeout-minutes: 8

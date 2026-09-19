@@ -27,17 +27,24 @@ def _pack(spec, features):
     contract proves that the requested energy/derivatives do not depend on
     those slots; unsupported physical derivatives are never filled with zeros.
     """
+    missing = set(spec.ingredients) - set(features)
+    if missing:
+        raise ValueError(f"missing active XC ingredients: {sorted(missing)}")
     rho = features["rho"]
     result = np.zeros((len(spec.features), rho.shape[1]))
     if spec.spin == "polarized":
         result[:2] = rho
         if "sigma" in features:
             result[2:5] = features["sigma"]
+        if "tau" in features:
+            result[5:7] = features["tau"]
     else:
         result[0] = rho.sum(axis=0)
         if "sigma" in features:
             aa, ab, bb = features["sigma"]
             result[1] = aa + 2 * ab + bb
+        if "tau" in features:
+            result[2] = features["tau"].sum(axis=0)
     return result
 
 
@@ -128,7 +135,11 @@ class ContractionProgram:
             outputs=self.contract.scalar_outputs,
         )
         ingredients = self.contract.ingredients
-        self.coefficients = coefficient_program(spec.spin, ingredients.family)
+        self.coefficients = coefficient_program(
+            spec.spin,
+            ingredients.family,
+            kinetic=ingredients.family == "mgga",
+        )
         self.response_coefficients = (
             coefficient_program(spec.spin, ingredients.family, response=True)
             if observable == "response"
@@ -146,9 +157,12 @@ class ContractionProgram:
 
     def features(self, jets, density):
         """Perform only the ingredient reductions declared by this functional."""
+        family = self.contract.ingredients.family
         requested = (
             ("rho",)
-            if self.contract.ingredients.family == "lda"
+            if family == "lda"
+            else ("rho", "gradient", "sigma", "tau")
+            if family == "mgga"
             else ("rho", "gradient", "sigma")
         )
         return density_features(jets, density, ingredients=requested)
