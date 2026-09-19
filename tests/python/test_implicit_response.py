@@ -26,13 +26,24 @@ from tools.vibeqc_mp2.gradient import (
     canonical_orbital_rhs,
     solve_canonical_orbital_response,
 )
-from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
+from tools.vibeqc_posthf.fixtures import (
+    fixture_snapshot,
+    load_fixture,
+    source_arguments,
+)
+from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response import (
     DenseAOResponseBackend,
     GMRESOptions,
+    NativeJKBackend,
+    ResponseCompatibilityError,
     RHFResponseOperator,
 )
-from tools.vibeqc_response.implicit import BoundImplicitState, ResponseGMRES
+from tools.vibeqc_response.implicit import (
+    BoundImplicitState,
+    ImplicitSolveError,
+    ResponseGMRES,
+)
 
 
 def _rhf_equation(reference, arrays, problem):
@@ -146,3 +157,212 @@ def test_generated_implicit_response_matches_existing_physical_mp2_zvector(name)
         # Water tests a nontrivial orbital response, not only symmetric H2's
         # near-zero MP2 orbital RHS.
         assert np.linalg.norm(result.adjoint) > 1e-5
+
+
+@pytest.mark.parametrize("name", ["h2", "water"])
+def test_native_response_operator_is_bound_to_generated_implicit_vjp(name):
+    metadata, arrays = load_fixture(name)
+    reference = fixture_snapshot(metadata, arrays)
+    try:
+        source = NativeSource(**source_arguments(metadata))
+    except (OSError, FileNotFoundError, AttributeError) as error:
+        pytest.skip(f"native post-HF library unavailable: {error}")
+    with source:
+        backend = NativeJKBackend(source, axis_tile=2)
+        problem = RHFResponseOperator.build_problem(reference, backend)
+        operator = RHFResponseOperator(problem, backend)
+        spec, feeds = _rhf_equation(reference, arrays, problem)
+        plan = spec.compile()
+
+        # Independent generated/native action agreement qualifies the identity
+        # declared by this test fixture before the runtime delegates the solve.
+        probe = np.random.default_rng(1465).normal(size=problem.dimension)
+        generated = (
+            execute(
+                plan.programs["transpose"],
+                {
+                    **feeds,
+                    "__implicit_vector": probe.reshape(spec.residual_spec.shape),
+                },
+            )
+            .outputs["value"]
+            .reshape(-1)
+        )
+        np.testing.assert_allclose(
+            generated, operator.apply_transpose(probe), atol=2e-10, rtol=2e-10
+        )
+
+        no = reference.nocc
+        eri = arrays["conventional_mo"]
+        g = eri[:no, no:, :no, no:].transpose(0, 2, 1, 3)
+        adjoint = canonical_energy_adjoint(
+            g,
+            reference.orbital_energies,
+            no,
+            reference_identity=reference.identity,
+            hamiltonian_id=reference.hamiltonian_id,
+        )
+        hcore = (
+            reference.coefficients.T @ arrays["conventional_h"] @ reference.coefficients
+        )
+        rhs = canonical_orbital_rhs(hcore, eri, adjoint, no)
+        options = GMRESOptions(rtol=1e-11, atol=1e-13, max_iterations=80)
+        expected = solve_canonical_orbital_response(
+            reference, backend, rhs, options=options
+        )
+        solver = ResponseGMRES(problem.dimension, options)
+        minimum_host = (
+            plan.reference_workspace_bytes
+            + solver.workspace_bytes
+            + operator.host_workspace_bytes
+        )
+        live = {"reference": reference.identity}
+        with pytest.raises(ImplicitSolveError, match="host workspace budget"):
+            BoundImplicitState(
+                plan,
+                feeds,
+                reference_identity=reference.identity,
+                solver=solver,
+                response_operator=operator,
+                current_reference=lambda: live["reference"],
+                max_bytes=minimum_host - 1,
+            )
+
+        bound = BoundImplicitState(
+            plan,
+            feeds,
+            reference_identity=reference.identity,
+            solver=solver,
+            response_operator=operator,
+            current_reference=lambda: live["reference"],
+            max_bytes=minimum_host,
+        )
+        actions_before_vjp = backend.statistics["actions"]
+        result = bound.vjp(-rhs.response_rhs, reference_identity=reference.identity)
+        np.testing.assert_allclose(
+            result.adjoint.reshape(-1),
+            expected.solution,
+            atol=3e-11,
+            rtol=3e-10,
+        )
+        assert result.logical_reserved_host_bytes == minimum_host
+        assert result.logical_reserved_device_bytes == 0
+        assert "NativeJKBackend" in result.transpose_backend
+        assert backend.statistics["actions"] > actions_before_vjp
+
+        live["reference"] = "stale-reference"
+        with pytest.raises(ResponseCompatibilityError, match="reference"):
+            bound.vjp(-rhs.response_rhs, reference_identity=reference.identity)
+
+
+def test_response_operator_binding_rejects_wrong_operator_identity():
+    metadata, arrays = load_fixture("h2")
+    reference = fixture_snapshot(metadata, arrays)
+    dense = DenseAOResponseBackend(arrays["ao"])
+    dense_problem = RHFResponseOperator.build_problem(reference, dense)
+    spec, feeds = _rhf_equation(reference, arrays, dense_problem)
+    try:
+        source = NativeSource(**source_arguments(metadata))
+    except (OSError, FileNotFoundError, AttributeError) as error:
+        pytest.skip(f"native post-HF library unavailable: {error}")
+    with source:
+        native = NativeJKBackend(source)
+        native_problem = RHFResponseOperator.build_problem(reference, native)
+        operator = RHFResponseOperator(native_problem, native)
+        with pytest.raises(ResponseCompatibilityError, match="operator identity"):
+            BoundImplicitState(
+                spec.compile(),
+                feeds,
+                reference_identity=reference.identity,
+                response_operator=operator,
+                current_reference=lambda: reference.identity,
+            )
+
+
+def test_response_operator_device_resources_require_joint_budget():
+    metadata, arrays = load_fixture("h2")
+    reference = fixture_snapshot(metadata, arrays)
+    backend = DenseAOResponseBackend(arrays["ao"])
+    backend.device_workspace_bytes = 4096
+    problem = RHFResponseOperator.build_problem(reference, backend)
+    operator = RHFResponseOperator(problem, backend)
+    spec, feeds = _rhf_equation(reference, arrays, problem)
+    plan = spec.compile()
+    live = lambda: reference.identity
+
+    with pytest.raises(ValueError, match="current_reference"):
+        BoundImplicitState(
+            plan,
+            feeds,
+            reference_identity=reference.identity,
+            response_operator=operator,
+        )
+    with pytest.raises(ImplicitSolveError, match="explicit combined device budget"):
+        BoundImplicitState(
+            plan,
+            feeds,
+            reference_identity=reference.identity,
+            response_operator=operator,
+            current_reference=live,
+        )
+    with pytest.raises(ImplicitSolveError, match="device workspace budget"):
+        BoundImplicitState(
+            plan,
+            feeds,
+            reference_identity=reference.identity,
+            response_operator=operator,
+            current_reference=live,
+            max_device_bytes=4095,
+        )
+
+    bound = BoundImplicitState(
+        plan,
+        feeds,
+        reference_identity=reference.identity,
+        response_operator=operator,
+        current_reference=live,
+        max_device_bytes=4096,
+    )
+    assert bound.logical_reserved_device_bytes == 4096
+    result = bound.vjp(
+        np.zeros(spec.state_spec.shape), reference_identity=reference.identity
+    )
+    assert result.logical_reserved_device_bytes == 4096
+
+    backend.device_workspace_bytes = 8192
+    with pytest.raises(ResponseCompatibilityError, match="resource contract"):
+        bound.vjp(
+            np.zeros(spec.state_spec.shape), reference_identity=reference.identity
+        )
+
+
+def test_response_binding_rejects_cpks_even_with_declared_resources():
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from tools.vibeqc_response.implicit import ResponseTransposeBinding
+    from tools.vibeqc_response.problem import ResponseProblem
+
+    metadata, arrays = load_fixture("h2")
+    reference = replace(
+        fixture_snapshot(metadata, arrays),
+        algorithm="KS",
+        functional_identity="test-xc",
+        grid_identity="test-grid",
+        hf_backend="test-ks",
+    )
+    problem = ResponseProblem.from_reference(
+        reference, method="cpks", operator_identity="cpks-test-operator"
+    )
+    spec, _ = _rhf_equation(reference, arrays, problem)
+    operator = SimpleNamespace(
+        problem=problem,
+        dimension=problem.dimension,
+        identity=problem.operator_identity,
+        backend=SimpleNamespace(identity="declared-backend"),
+        host_workspace_bytes=100,
+        device_workspace_bytes=100,
+        resource_identity="declared",
+    )
+    with pytest.raises(ResponseCompatibilityError, match="RHF only"):
+        ResponseTransposeBinding(spec.compile(), operator)

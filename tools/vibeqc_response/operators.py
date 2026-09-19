@@ -64,6 +64,49 @@ class _BaseResponseOperator:
     def identity(self):
         return self.problem.operator_identity
 
+    @property
+    def host_workspace_bytes(self):
+        """Conservative logical host buffers simultaneously owned by one action."""
+        backend = getattr(self.backend, "host_workspace_bytes", None)
+        if type(backend) is not int or backend < 0:
+            raise ValueError("response backend must declare host_workspace_bytes")
+        kernel = getattr(self, "xc_kernel", None)
+        kernel_bytes = 0
+        if kernel is not None:
+            kernel_bytes = getattr(kernel, "host_workspace_bytes", None)
+            if type(kernel_bytes) is not int or kernel_bytes < 0:
+                raise ValueError(
+                    "XC response kernel must declare host_workspace_bytes before "
+                    "implicit response binding"
+                )
+        # Covers response vectors plus AO/MO density/Fock transform buffers. Opaque
+        # BLAS/Python allocator storage and borrowed provider/source storage remain
+        # outside this logical contract and are documented separately.
+        return (
+            backend + kernel_bytes + (7 * self.nbf * self.nbf + 3 * self.dimension) * 8
+        )
+
+    @property
+    def device_workspace_bytes(self):
+        """Retained/peak device bytes declared by the selected response provider."""
+        value = getattr(self.backend, "device_workspace_bytes", None)
+        if type(value) is not int or value < 0:
+            raise ValueError("response backend must declare device_workspace_bytes")
+        return value
+
+    @property
+    def resource_identity(self):
+        return canonical_hash(
+            {
+                "problem": self.problem.identity,
+                "operator": self.identity,
+                "backend": self.backend.identity,
+                "host_workspace_bytes": self.host_workspace_bytes,
+                "device_workspace_bytes": self.device_workspace_bytes,
+                "scope": "logical-response-action-v1",
+            }
+        )
+
     def _record(self, started, backend_started):
         self.statistics["actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started

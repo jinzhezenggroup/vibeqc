@@ -5,12 +5,15 @@ import compatibility tests are the only repository users. No duplicate IR,
 class definitions or cache implementation belongs here.
 """
 
-from importlib import import_module
+from typing import TYPE_CHECKING
 
-_target = import_module("vibeqc_compiler.common.cuda_resources")
-import sys
+if TYPE_CHECKING:
+    from vibeqc_compiler.common import cuda_resources as _cuda_resources
 
-if __name__ == "__main__":
-    _target.main()
+    KernelResources = _cuda_resources.KernelResources
+    parse_resources = _cuda_resources.parse_resources
 else:
-    sys.modules[__name__] = _target
+    import sys
+    from importlib import import_module
+
+    sys.modules[__name__] = import_module("vibeqc_compiler.common.cuda_resources")
