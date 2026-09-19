@@ -123,12 +123,11 @@ class DiscreteEnergyContract:
         if any(
             (
                 self.functional.exact_exchange,
-                self.functional.range_omega,
                 self.functional.long_range_exchange,
             )
         ):
             raise UnsupportedXC(
-                "semilocal contractions do not include exact exchange/RSH"
+                "semilocal contractions do not include exact-exchange operators"
             )
         if "tau" in self.functional.ingredients and self.request.observable in (
             "response",
