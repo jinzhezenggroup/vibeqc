@@ -23,6 +23,7 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .contractions import ContractionProgram, _pack
 from .program import validate_features
+from .spec import UnsupportedXC
 
 
 def _cache_source(path, source):
