@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 __all__ = (
     "CudaBenchmarkExecutor",
-    "CudaCompilerAdapter",
     "CudaCompileResult",
+    "CudaCompilerAdapter",
     "CudaExecutionProfile",
     "resolve_cuda_execution_profile",
 )

@@ -7,9 +7,7 @@ class definitions or cache implementation belongs here.
 
 from typing import TYPE_CHECKING
 
-__all__ = (
-    "compile_runtime",
-)
+__all__ = ("compile_runtime",)
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.native_runtime import (
