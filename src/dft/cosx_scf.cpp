@@ -170,6 +170,10 @@ scf::ScfResult run_cosx_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& o
       result.converged = true;
       break;
     }
+    // The published nonconverged state must be the density whose energy and
+    // physical residual were actually evaluated above. Do not advance to an
+    // unmeasured proposal when the iteration budget is exhausted.
+    if (iteration == options.max_iterations) break;
     previous_energy = energy;
     density = std::move(next_density);
   }
@@ -239,6 +243,9 @@ scf::ScfResult run_cosx_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& o
       result.converged = true;
       break;
     }
+    // As in RHF, keep the last evaluated alpha/beta pair on exhaustion so
+    // returned density, energy and physical residual describe one state.
+    if (iteration == options.max_iterations) break;
     previous_energy = energy;
     alpha = std::move(next_alpha);
     beta = std::move(next_beta);
