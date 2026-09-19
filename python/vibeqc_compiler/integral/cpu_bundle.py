@@ -88,7 +88,7 @@ def _candidate_binary_target(artifact: CompiledFirstDerivativeCpuLane) -> str:
     identity = artifact.native.metadata.get("identity")
     target = identity.get("target") if isinstance(identity, dict) else None
     if not isinstance(target, dict):
-        raise ValueError("CPU bundle candidate lacks a concrete compiler target")
+        raise TypeError("CPU bundle candidate lacks a concrete compiler target")
     value = target.get("architecture")
     if (
         not isinstance(value, str)
