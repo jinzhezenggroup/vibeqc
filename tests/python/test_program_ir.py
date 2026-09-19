@@ -5,6 +5,7 @@ import json
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from vibeqc_compiler.common.layout import DenseLayout
 from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
 from vibeqc_compiler.common.resources import MAX_BYTES, ResourceBudget, plan_resources
 
@@ -56,6 +57,26 @@ def test_last_use_is_after_call_not_before_its_output_allocation():
         p.release_after("missing")
     with pytest.raises(ValueError, match="bool"):
         p.lifetimes(retain_temporaries=1)
+
+
+def test_dense_layout_is_part_of_boundary_identity_and_strict_replay():
+    layout = DenseLayout((2, 3), order=(1, 0), alignment=8)
+    base = example()
+    buffer = ProgramBuffer("x", 48, layout=layout, itemsize=8)
+    p = replace(base, buffers=(buffer, *base.buffers[1:]))
+    replayed = ProgramIR.from_payload(p.to_payload())
+    assert replayed == p
+    assert replayed.buffers[0].layout == layout
+    assert replayed.buffers[0].layout.element_strides == (1, 2)
+    assert p.identity != base.identity
+    with pytest.raises(ValueError, match="capacity"):
+        ProgramBuffer("matrix", 47, layout=layout, itemsize=8)
+    with pytest.raises(ValueError, match="itemsize"):
+        ProgramBuffer("matrix", 48, layout=layout)
+    with pytest.raises(ValueError, match="itemsize"):
+        ProgramBuffer("matrix", 48, itemsize=8)
+    with pytest.raises(TypeError, match="DenseLayout"):
+        ProgramBuffer("matrix", 48, layout="C", itemsize=8)
 
 
 def test_serialization_is_detached_strict_and_deterministic():
@@ -145,7 +166,7 @@ def test_byte_overflow_and_device_space_use_existing_planner():
     "field,value",
     [
         ("name", ""),
-        ("schema_version", 2),
+        ("schema_version", 3),
         ("schema_version", True),
         ("inputs", "x"),
         ("inputs", ("x", "x")),
