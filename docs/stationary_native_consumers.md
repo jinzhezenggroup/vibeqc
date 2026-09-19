@@ -6,6 +6,11 @@ its three scalar/TensorIR interpreter consumers without changing the complete
 LDA/PBE RKS energy definition, stationary-state lease or signed source inventory.
 Neither route enables public `Calculator` forces.
 
+The separate [CUDA diagnostic](stationary_cuda_diagnostic.md) consumes a live
+native CUDA snapshot and executes all seven sources on device with explicit
+host export/orchestration. The CPU selectors and their boundaries below remain
+unchanged.
+
 ```python
 result = complete_rks_gradient_diagnostic(
     state, basis, cache=".cache/stationary-cpu", execution="native",

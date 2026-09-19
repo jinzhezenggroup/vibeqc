@@ -198,6 +198,29 @@ jobs:
           grep -q 'launch_success=true' /tmp/vibeqc-cuda-runtime.log
           grep -q 'PASS: CUDA runtime contracts' /tmp/vibeqc-cuda-runtime.log
 
+      - name: Build CuMetal FP32 CodSpeed benchmark
+        if: github.event_name != 'schedule'
+        run: |
+          CUMETAL_ROOT="$CUMETAL_PREFIX" \
+            "$CUMETAL_PREFIX/bin/cumetalc" benchmarks/cumetal_fp32_codspeed.cu \
+            -I"$CUMETAL_PREFIX/include" \
+            -o "$VIBEQC_BUILD/vibeqc_cumetal_fp32_benchmark"
+
+      - name: Install CodSpeed benchmark dependencies
+        if: github.event_name != 'schedule'
+        run: uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+
+      - name: Run CodSpeed FP32 CuMetal walltime
+        if: github.event_name != 'schedule'
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          CUMETAL_ROOT: /tmp/cumetal-install
+          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
+          VIBEQC_CUMETAL_FP32_BENCH: ${{ github.workspace }}/build-cumetal/vibeqc_cumetal_fp32_benchmark
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cumetal_fp32_codspeed.py --codspeed -q
+
       - name: Preserve CUDA test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

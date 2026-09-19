@@ -72,11 +72,11 @@ def test_native_snapshot_rejects_relabeling_and_replay(method, device):
             batch.execute(strict=True)
             state = StationaryKsState.from_native(batch, basis)
             assert state._source.backend == device
-            assert state._source.metadata[0] == (2 if device == "cpu" else 1)
+            assert state._source.metadata[0] == (2 if device == "cpu" else 3)
             if device == "cpu":
                 assert state._source.metadata[12] == 2**64 - 1
-                assert state._source.grid_spec == GRID
-                assert np.all(state._source.atomic_weights > 0)
+            assert state._source.grid_spec == GRID
+            assert np.all(state._source.atomic_weights > 0)
             contract = StationaryDerivativeContract(state.identity)
             assert contract.validate(state) is state
             with pytest.raises(AttributeError, match="provenance is immutable"):

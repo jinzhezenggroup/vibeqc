@@ -43,7 +43,7 @@ class CudaScalar:
         return value
 
     def literal(self, pair) -> str:
-        return self.coefficient(pair).hex() + self.suffix
+        return float(self.coefficient(pair)).hex() + self.suffix
 
     @property
     def zero(self) -> str:

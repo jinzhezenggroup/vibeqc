@@ -9,12 +9,15 @@ Opaque provider interiors remain outside this boundary-only accounting scope.
 import json
 from dataclasses import asdict, dataclass
 
+from .layout import DenseLayout
 from .provenance import canonical_hash
 from .resources import (
     ResourceCandidate,
     ResourceEstimate,
     ResourceIdentity,
     ResourceRequest,
+    byte_product,
+    checked_bytes,
 )
 
 
@@ -45,11 +48,27 @@ class ProgramBuffer:
     name: str
     bytes: int
     space: str = "pageable"
+    layout: DenseLayout | None = None
+    itemsize: int | None = None
 
     def __post_init__(self):
         # Reuse #203's checked byte/space ABI instead of another resource model.
         _text(self.space, "buffer space")
         ResourceEstimate(self.name, self.bytes, self.space, 0, 0)
+        if self.layout is None:
+            if self.itemsize is not None:
+                raise ValueError("itemsize requires an explicit dense layout")
+            return
+        if not isinstance(self.layout, DenseLayout):
+            raise TypeError("buffer layout must be DenseLayout")
+        if self.itemsize is None:
+            raise ValueError("dense layout requires itemsize")
+        checked_bytes(self.itemsize, "buffer itemsize")
+        if not self.itemsize:
+            raise ValueError("buffer itemsize must be positive")
+        expected = byte_product(self.itemsize, *self.layout.shape)
+        if self.bytes != expected:
+            raise ValueError("buffer bytes do not match dense layout capacity")
 
 
 @dataclass(frozen=True)
@@ -92,11 +111,11 @@ class ProgramIR:
     inputs: tuple[str, ...]
     calls: tuple[PlanCall, ...]
     outputs: tuple[str, ...]
-    schema_version: int = 1
+    schema_version: int = 2
 
     def __post_init__(self):
         _text(self.name, "program name")
-        if type(self.schema_version) is not int or self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported ProgramIR schema")
         for field, item_type in (("buffers", ProgramBuffer), ("calls", PlanCall)):
             items = getattr(self, field)
@@ -143,6 +162,14 @@ class ProgramIR:
             converted = []
             for item in data[field]:
                 _keys(item, item_type.__dataclass_fields__, field)
+                item = dict(item)
+                if item_type is ProgramBuffer and item["layout"] is not None:
+                    _keys(
+                        item["layout"],
+                        DenseLayout.__dataclass_fields__,
+                        "buffer layout",
+                    )
+                    item["layout"] = DenseLayout(**item["layout"])
                 converted.append(item_type(**item))
             data[field] = tuple(converted)
         return cls(**data)

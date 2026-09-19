@@ -52,14 +52,24 @@ not establish a Hessian or second derivative of the solved state.
 
 ## Explicit execution adapters
 
-`tools.vibeqc_response.implicit.BoundImplicitState` is a checkout tooling adapter.
-It reuses the existing #179 GMRES implementation through `ResponseGMRES`, or an
-explicit callback with the same solution/status/residual/workspace contract.
-The callback receives an already-transposed, matrix-free Euclidean operator;
-it must not transpose it again. It publishes neither a partial adjoint nor
-source weights when convergence, true-residual, state or resource checks fail.
-A fresh application of the generated transpose verifies the returned solution
-before source weights are evaluated, independently of the solver's success flag.
+`tools.vibeqc_response.implicit.BoundImplicitState` reuses the existing #179
+GMRES implementation through `ResponseGMRES`, or an explicit callback with the
+same solution/status/residual/workspace contract. The callback receives an
+already-transposed, matrix-free Euclidean operator; it must not transpose it
+again. It publishes neither a partial adjoint nor source weights when convergence,
+true-residual, state or resource checks fail.
+
+By default the transpose action is the generated TensorIR program. A caller may
+instead pass an existing qualified `RHFResponseOperator` through `response_operator=`. Other
+`ResponseProblem` operators are admitted only after every additional kernel/provider
+publishes the same explicit logical resource contract. `ResponseTransposeBinding` then checks
+the exact operator identity, response layout, gauge, reference identity and the
+operator's declared logical host/device resources against the #465 plan before
+the first solve. A live `current_reference` callback is mandatory for this
+provider-bound path. The returned solution is independently rechecked by a fresh
+application of that same bound physical transpose action before generated source
+weights are evaluated. The generated residual/source graph remains authoritative;
+delegating the linear action does not introduce a handwritten parameter VJP.
 
 Inputs and published arrays are immutable snapshots. `reference_identity` is
 required both at binding and at VJP execution. An optional `current_reference`
@@ -130,9 +140,16 @@ problem, changed-state execution, numerical failure/recovery and retained-provid
 allocation accounting. No new large molecular finite-difference campaign is
 added to ordinary CI.
 
-Native molecular-state/response-provider binding, installed public runtime
-integration, method-level custom-rule dispatch, production-scale force evidence
-and #193 C2 assembly remain separate acceptance work. The #293 gradient oracle
-and public MP2 energy-only capability are unchanged. See the
+Method-level implicit-rule dispatch is available through StationaryProblem v2:
+a state that declares `implicit_operator_identity` is compiled automatically
+to an identity-bearing `ImplicitVJPPlan`; coupled state rows are rejected until
+they are represented as one explicit independent block. Native response-provider
+binding is now qualified by the response-operator path above, including strict
+stale-state and simultaneous logical resource checks.
+
+Installed public runtime integration, production-scale force evidence and the
+complete #193 C2 assembly (including #466 metric response and upstream provider
+pullbacks) remain downstream work. The #293 gradient oracle and public MP2
+energy-only capability are unchanged. See the
 [decision note](../.agents/notes/implemented/numerics/2026-09-19-implicit-response-primitive.md)
 for the ownership and sign/layout rationale.

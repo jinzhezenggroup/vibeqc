@@ -80,6 +80,7 @@ class NativeKsSnapshot:
         "_residual",
         "atomic_weights",
         "backend",
+        "export_work",
         "grid",
         "grid_spec",
         "metadata",
@@ -138,7 +139,7 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2) or metadata[7] != 1:
+            if metadata[0] not in (1, 2, 3) or metadata[7] != 1:
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
@@ -234,7 +235,7 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.backend == "cpu":
+        if self.metadata[0] in (2, 3):
             from vibeqc_compiler.dft.grid import GridSpec
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
@@ -254,6 +255,11 @@ class NativeKsSnapshot:
         else:
             self.grid_spec = None  # CUDA v1 has no prescription suffix.
             self.atomic_weights = None
+        self.export_work = MappingProxyType(
+            dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
+            if self.metadata[0] == 3
+            else {}
+        )
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         actual_atoms = np.asarray([[a.atomic_number, *a.position] for a in basis.atoms])

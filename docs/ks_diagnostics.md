@@ -162,8 +162,10 @@ adding a Fock evaluation. Explicit snapshot export canonicalizes that actual
 Fock and constructs W only after the existing final-state validator passes.
 CPU wire version two uses the `UINT64_MAX` device sentinel and additionally
 carries the native grid prescription and raw atomic quadrature measures. The
-CUDA version-one payload and device semantics are unchanged. Raw measures are
-materialized only for explicit CPU export, not retained by ordinary energy
+CUDA version-three snapshots additionally export the same native grid
+prescription and atomic measures, plus transfer counters. Version-one snapshots
+remain readable but are not eligible for complete CUDA grid derivatives. Raw
+measures are materialized only for explicit CPU export, not retained by ordinary energy
 grid execution; the existing physical-state observer includes retained D/F.
 
 Partition response multiplies the generated partition derivative by the native
@@ -207,3 +209,8 @@ its existing explicit opt-in; CPU qualification is not CUDA execution evidence.
 
 See the [implementation decision](../.agents/notes/implemented/architecture/2026-09-19-native-cpu-stationary-gradient.md)
 for the state, quadrature and compiler-ownership rationale.
+
+The [complete CUDA RKS diagnostic](stationary_cuda_diagnostic.md) uses the same
+stationary plan with real CUDA integral, AO/XC, partition and source-reduction
+execution. Its explicit host-export/orchestration boundary and separately
+qualified GPU tests must not be confused with public force support.
