@@ -191,11 +191,12 @@ Layout selection is rerun whenever admission shrinks packing tiles, so costs and
 panel capacities describe the final schedule. Dense permutations do not enlarge
 arena slots or alter lifetimes; eliminated panels reduce the charged peak.
 
-Plan schema 2 serializes physical descriptors and the decision. The separate
-`plan.layout_identity` can be supplied as an exact `layout_identity` workload
-fact to #459 specialization guards; it must not replace scientific, compiler or
-full-plan identity checks. Existing artifact keys and native identity checks
-already include the complete plan, preventing reuse across different layouts.
+Plan schema 3 serializes physical descriptors, the layout decision and the
+semantic-traffic record. The separate `plan.layout_identity` can be supplied as
+an exact `layout_identity` workload fact to #459 specialization guards; it must
+not replace scientific, compiler or full-plan identity checks. Existing artifact
+keys and native identity checks already include the complete plan, preventing reuse
+across different layouts.
 Generated JVP/VJP programs use the same pass without new derivative rules.
 
 This switch remains opt-in. `tune_cuda` includes layout-only and layout/view/fusion
@@ -288,29 +289,49 @@ requests until a particular plan passes tuning gates.
 
 `tune_cuda(baseline, compiler, fixtures, cache, ...)` uses a structured
 `TensorScheduleSpace`: view elimination, fusion, recomputation, direct/packed
-GEMM, block threads and M/N/K panel dimensions. Its deterministic bounded walk
-visits single-axis changes before higher-order interactions without enumerating
-the full Cartesian product. Only implemented ordinary-stream dimensions are
-searched; vectorized reductions, cooperative/persistent kernels and shared-memory
-GEMM staging are not implied by these controls.
+GEMM, block threads, generic-kernel elements per thread, serial-reduction unroll,
+packed-GEMM staging width and M/N/K panel dimensions. Its deterministic bounded
+walk visits single-axis changes before higher-order interactions without
+enumerating the full Cartesian product. The added execution knobs are real
+emitter choices: generic kernels can process 2/4 logical elements per thread,
+reduce/einsum scalar loops can carry explicit 2/4-way unroll directives, and
+global pack/scatter kernels can process 2/4 elements per thread. Cooperative or
+persistent reductions and shared-memory GEMM staging are still not implied.
 
-`TensorSearchLimits` defaults to 128 generated candidates and 12 candidate
-compilation attempts, plus the mandatory baseline. Explicit `schedules=` remains
-supported; it is mutually exclusive with `search_space=`. The static pipeline
-checks planner legality/combined host-device memory, removes equivalent execution
-plans (including ineffective direct-GEMM tile changes), then applies source-size,
-register-pressure and occupancy policies before invoking NVCC. The same plan's
-aliases, lifetimes, outputs, reservations and allocation capacities participate
-in equivalence checking. `maximum_source_bytes` bounds generated source size;
-it is a compile-cost proxy, not a prediction of compilation seconds.
+`TensorSearchLimits` defaults to 256 generated candidates and 12 candidate
+compilation attempts, plus the mandatory baseline. The default tile axes include
+32/64/128/256/512 choices. Explicit `schedules=` remains supported; it is
+mutually exclusive with `search_space=`. The static pipeline checks planner
+legality/combined host-device memory, removes equivalent execution plans
+(including ineffective direct-GEMM tile changes), then applies source-size,
+register-pressure and occupancy policies before invoking NVCC. Ready plans are
+ranked for the finite compilation budget by estimated endpoint semantic traffic,
+then register pressure, generated-source bytes and generation order. This
+transparent ranking only decides which candidates deserve compilation; it cannot
+promote a schedule. The same plan's aliases, lifetimes, outputs, reservations and
+allocation capacities participate in equivalence checking. `maximum_source_bytes`
+bounds generated source size; it is a compile-cost proxy that is calibrated
+against compiler-reported duration after compilation rather than treated as a
+predicted wall time.
 
-Static register counts are scalar-liveness heuristics for generated kernels and
-occupancy is an upper bound without register-allocation granularity. Neither
-models cuBLAS internals. Packing panels remain global numeric buffers, not shared
-memory. Logical traffic excludes packing/provider/cache traffic; local memory is
-unknown until PTXAS reports it. These qualifications are retained in the evidence.
+Static register counts combine scalar liveness with bounded work-per-thread,
+reduction-unroll and staging-width pressure; occupancy remains an upper bound
+without register-allocation granularity. Neither models cuBLAS internals. Packing
+panels remain global numeric buffers, not shared memory. The plan now carries a
+deterministic semantic-traffic record separating planner logical bytes, exact
+pack/scatter conversion bytes and declared H2D/D2H endpoint copies. It explicitly
+excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic.
+Successful endpoints repeat those plan-bound byte counts as observed execution
+metadata; they are not presented as hardware counters.
+
 Compiled candidates still require complete PTXAS register/stack/spill/shared data
-and feasible per-block resources before any candidate endpoint execution.
+and feasible per-block resources before any candidate endpoint execution. PTXAS
+`lmem` is retained when the toolchain reports it; stack and spill evidence remain
+separate. Each compiled candidate also stores a resource calibration record
+(static register estimate versus PTXAS registers plus compiled stack/spill/shared/
+local facts) and a compile calibration record relating generated-source bytes to
+compiler-reported duration. These calibrations are audit evidence, not promotion
+shortcuts.
 
 Tuning supports eight fixed-shape fixtures, with 5–30 paired repeats. It warms
 the library first, records startup separately, and reuses the shared CG01
@@ -329,7 +350,10 @@ contains the concrete compiled winner and evidence path, with no global dispatch
 change or claim about unmeasured shapes. Schema-v3 tuning evidence retains
 static pruning/deadline/budget reasons and actual compilation-attempt counts.
 Artifacts record generated-source and binary sizes alongside compilation seconds
-and PTXAS resources.
+and PTXAS resources. Candidate rows additionally retain compile/resource
+calibration and profiled endpoint traffic metadata, so winning evidence contains
+the static estimate, compiler facts and successfully executed plan facts in one
+ledger.
 
 `TensorScreeningPolicy` adds a ranking-only representative-timing stage after
 compiled-resource checks. Its default uses fixture 0, five interleaved A/B pairs,
@@ -366,12 +390,13 @@ hash. Correctness guards bind the equation, numeric-buffer budget, reservations
 and target; performance guards additionally restrict promotion to each measured
 input shape/dtype/stride domain and the existing baseline execution identity
 (GPU UUID, driver/runtime/libraries and Python/NumPy). Values stay in measurement
-provenance, not used as a benchmark-ID dispatch policy. Unmeasured layouts cannot satisfy the
-performance guard; missing target facts fail closed. These records live in the
+provenance, not used as a benchmark-ID dispatch policy. Unmeasured layouts cannot
+satisfy the performance guard; missing target facts fail closed. These records live in the
 existing selection evidence, not a second profile database or automatic loader.
 The current API returns a concrete plan for the caller's measured workload; it
 does not install new global dispatch policy. See the
-[search rationale](../.agents/notes/implemented/performance/2026-09-19-tensor-schedule-search.md).
+[search rationale](../.agents/notes/implemented/performance/2026-09-19-tensor-schedule-search.md)
+and the [resource-aware completion note](../.agents/notes/implemented/performance/2026-09-20-tensor-resource-aware-scheduler.md).
 
 The local artifact cache verifies each binary hash before loading. Identity
 includes equation/spec/layout/shape/precision, plan and schema, all tensor
