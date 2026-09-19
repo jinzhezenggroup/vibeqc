@@ -7,7 +7,9 @@
 namespace vibeqc::dft {
 
 /** Detached authorization for exactly one successful solve on one immutable
- * resident CUDA KS owner. A later begin invalidates it before CUDA work. */
+ * native KS owner. A later begin invalidates it before scientific work.
+ * The historical type name is retained for CUDA source compatibility; backend
+ * and device semantics are carried by the complete identity. */
 struct CudaKsFinalStateToken {
   std::uint32_t version{1};
   KsFinalStateIdentity identity;

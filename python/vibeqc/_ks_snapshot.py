@@ -78,7 +78,10 @@ class NativeKsSnapshot:
         "_identity",
         "_library",
         "_residual",
+        "atomic_weights",
+        "backend",
         "grid",
+        "grid_spec",
         "metadata",
         "values",
     )
@@ -135,10 +138,14 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] != 1 or metadata[7] != 1:
+            if metadata[0] not in (1, 2) or metadata[7] != 1:
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
+            cpu = metadata[0] == 2
+            if (metadata[12] == 2**64 - 1) != cpu:
+                raise ValueError("native KS snapshot backend/device mismatch")
+            self.backend = "cpu" if cpu else "cuda"
             values = np.empty(metadata[15], dtype=np.float64)
             _native.check(
                 lib,
@@ -227,6 +234,28 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
+        if self.backend == "cpu":
+            from vibeqc_compiler.dft.grid import GridSpec
+
+            version, radial, polar, azimuth, iterations, tolerance = take((6,))
+            radii = take((119,))
+            self.grid_spec = GridSpec(
+                version=int(version),
+                radial_points=int(radial),
+                angular_polar=int(polar),
+                angular_azimuth=int(azimuth),
+                partition_iterations=int(iterations),
+                coincident_tolerance=float(tolerance),
+                element_radii=tuple(
+                    (z, float(r)) for z, r in enumerate(radii) if z and r
+                ),
+            )
+            self.atomic_weights = take((npoint,))
+        else:
+            self.grid_spec = None  # CUDA v1 has no prescription suffix.
+            self.atomic_weights = None
+        if offset != len(self.values):
+            raise ValueError("native KS snapshot wire length mismatch")
         actual_atoms = np.asarray([[a.atomic_number, *a.position] for a in basis.atoms])
         if (
             basis.nao != n
@@ -284,9 +313,9 @@ class NativeKsSnapshot:
             regularization_identity=scf_regularization_identity(),
             provider_identity=canonical_hash(
                 {
-                    "provider": "native-cuda-exact-j-fp64",
+                    "provider": f"native-{self.backend}-exact-j-fp64",
                     "owner": owner,
-                    "device": device,
+                    "device": -1 if self.backend == "cpu" else device,
                 }
             ),
             owner=owner,

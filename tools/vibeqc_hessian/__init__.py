@@ -19,6 +19,9 @@ from .weights import two_electron_energy, two_electron_weight, weight_energy
 # Loading mathematical helpers does not load the optional native library.
 _LAZY = {
     "NativeRHFState": "native",
+    "DirectionalRHFResponse": "directional",
+    "directional_rhf_response": "directional",
+    "generated_directional_first_order": "first_order",
     "analytic_hessian": "analytic",
     "build_reference": "analytic",
     "cphf_relaxation": "analytic",
@@ -27,13 +30,16 @@ _LAZY = {
 }
 
 __all__ = [
+    "DirectionalRHFResponse",
     "NativeRHFState",
     "analytic_hessian",
     "assemble_frozen_skeleton",
     "build_reference",
     "build_rhf_nuclear_rhs",
     "cphf_relaxation",
+    "directional_rhf_response",
     "forces_to_gradient",
+    "generated_directional_first_order",
     "hessian_difference",
     "hessian_symmetry_error",
     "hessian_translation_error",

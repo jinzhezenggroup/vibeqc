@@ -1,4 +1,4 @@
-"""Generated fixed-amplitude RCCSD Lambda equation actions (issue #152 A).
+"""Generated RCCSD Lambda actions and correlation input-block VJPs (#152).
 
 These are mathematical programs, not a response solve or a nuclear-force API.
 They reuse the unpreconditioned #148 energy/residual DAG and #151 AD. No CC
@@ -18,9 +18,11 @@ from vibeqc_compiler.tensor import (
 )
 
 from .doubles import build_ccsd_program
+from .equations import BLOCKS
 
 AMPLITUDES = ("t1", "t2")
 RESIDUALS = ("singles_residual", "doubles_residual")
+PARAMETERS = ("foo", "fov", "fvv", *BLOCKS, "oooo", "vvvv")
 
 
 @dataclass(frozen=True)
@@ -76,8 +78,8 @@ def build_lambda_programs(
     building a program alone does not establish device execution support.
 
     No convergence status is implied: arbitrary fixed amplitudes are useful
-    for dot/finite-difference tests. A future solved-state consumer must bind
-    the converged SCF/CC state and validate identity, residuals and resources
+    for dot/finite-difference tests. The separate ``BoundCCSDLambda`` consumer binds
+    the converged SCF/CC state and validates identity, residuals and resources
     before accepting a Lambda result.
     """
     primal = build_ccsd_program(nocc, nvir, form=form, diagnostics=False)
@@ -86,4 +88,34 @@ def build_lambda_programs(
         transpose_program(primal, ("correlation_energy",), inputs=AMPLITUDES),
         transpose_program(primal, RESIDUALS, inputs=AMPLITUDES),
         linearize(primal, AMPLITUDES, outputs=RESIDUALS),
+    )
+
+
+def build_parameter_vjp(primal: Program, parameter: str) -> VJPProgram:
+    """Generate one correlation-Lagrangian input block, not a physical RDM.
+
+    Seed ``bar_correlation_energy=1``, ``bar_singles_residual=lambda1`` and
+    ``bar_doubles_residual=lambda2`` for E_q + R_q*lambda. Dense Frobenius
+    cotangents are projected onto each input's declared symmetry by #151.
+    Fock and chemists'-notation integral blocks are independent mathematical
+    inputs here. Neither the HF energy nor the g -> F normal-ordering chain,
+    orbital relaxation, numerical preconditioners or CC iterates are inputs
+    to this differentiation. Pullbacks upstream of these blocks are separate.
+
+    Select exactly one block so a consumer can contract/release it before
+    requesting another. This avoids assembling a full NMO^4 RDM, but the
+    selected block (including vvvv) is still dense: no intra-block tiling or
+    resident GPU response is implied by generating this ordinary TensorIR.
+    A mathematical VJP alone certifies neither the primal nor Lambda state.
+    """
+    if not isinstance(primal, Program):
+        raise TypeError("CC parameter differentiation requires a TensorIR Program")
+    if not isinstance(parameter, str) or parameter not in PARAMETERS:
+        raise ValueError("unknown CC Fock/integral parameter block")
+    if set(primal.outputs) != {"correlation_energy", *RESIDUALS}:
+        raise ValueError(
+            "CC parameter primal must contain exactly energy and residuals"
+        )
+    return transpose_program(
+        primal, ("correlation_energy", *RESIDUALS), inputs=(parameter,)
     )

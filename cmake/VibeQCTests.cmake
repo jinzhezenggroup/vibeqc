@@ -92,12 +92,17 @@ macro(vibeqc_add_native_tests)
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
+  vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_xc_point_tests tests/native/test_xc_point.cpp NO_VIBEQC)
   target_compile_definitions(vibeqc_xc_point_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
+                       NO_VIBEQC SKIP_77)
+    set_target_properties(vibeqc_d4_reference_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
     vibeqc_native_test(vibeqc_xc_point_cuda_tests tests/native/test_xc_point_cuda.cu
                        NO_VIBEQC SKIP_77)
     target_compile_definitions(vibeqc_xc_point_cuda_tests PRIVATE

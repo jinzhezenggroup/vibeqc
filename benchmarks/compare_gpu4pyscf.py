@@ -29,6 +29,7 @@ from _cases import benchmark_cases
 from _support import (
     cuda_accelerator_metadata,
     environment_metadata,
+    raw_output_path,
     write_result,
 )
 from vibeqc import Calculator
@@ -41,6 +42,7 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument(
         "--output",
+        type=raw_output_path,
         default=".artifacts/benchmarks/compare_gpu4pyscf.json",
         help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )

@@ -111,6 +111,72 @@ Full logs, retries and profiler traces belong in `.artifacts/` or external
 storage. Do not compress them, rename them or split binary archives into chunks
 to bypass the limit. New benchmark archive paths are also ignored by default.
 
+## Incoming evidence review
+
+The `check-change` command compares the staged index with an **explicit local
+base revision**. The PR pre-commit workflow supplies the event's base SHA after
+checking out the integration tree, so this checks the whole PR rather than only
+its last commit:
+
+```bash
+# Stage the intended changes first. No fetch is performed by this command.
+python tools/evidence.py check-change --base HEAD \
+  --output .artifacts/evidence-change-review.json
+python tools/evidence.py audit-campaigns \
+  --output .artifacts/evidence-campaigns.json
+```
+
+`change_review_max_bytes` in the retention policy is **2 MiB per change set**.
+This is an engineering review budget, not a scientific tolerance. It counts the
+complete new contents of added or modified `benchmarks/results/` files, including
+publication metadata. Unchanged historical files and permanent reference roots
+are not charged. Deleted files are reported separately and provide **no credit**;
+renaming, copying, or splitting data cannot hide its incoming size. The command
+also runs the existing full-tree classification, checksum, per-file and aggregate
+checks. Local ordinary pre-commit still runs those full-tree checks; use the
+explicit command above for a local change-budget preflight. Missing base objects
+fail instead of silently checking only the last commit or fetching history.
+
+An exceptional measurement set can exceed this review budget only through
+explicit per-file entries in the existing policy `exceptions`: retain the exact
+`sha256`, a nonempty `owner` and scientific/storage `reason`, and add
+`"review_change": true`. An ordinary classification exception is not automatically
+a change-budget waiver. Changed bytes invalidate the old justification. Such
+entries never waive the hard 1 MiB file cap, the checkout aggregate limit, or any
+scientific acceptance criterion. A policy edit is itself part of PR review.
+
+New or modified JSON containing nonempty `launch_records` or Chrome-style
+`traceEvents` arrays also needs an exact-hash retention justification, even when
+renamed `summary.json`. These are narrowly identified profiler payloads, not a
+ban on numerical arrays, NPZ inputs, unsuccessful trials, or negative results.
+An unchanged historical payload does not retroactively fail this new-change
+check. Other legacy formats still require human audit; passing this storage
+check is not proof of complete scientific provenance.
+
+The campaign audit lists each result file's bytes/hash and every family's
+counts/bytes. Its review status distinguishes complete hash-bound publication
+inventories, exact-hash policy justifications, obvious transient/build files and
+**manual-review** records. Unlike the coarse location-based inventory, arbitrary
+JSON is not reported as reviewed just because it lives in `results/`.
+`publication-bound` describes byte linkage, not independent validation of its
+scientific claims. A manual-review status is **not permission to delete** data:
+check test/production consumers, numerical samples, negative results, source
+identity and recovery before any migration. Audit output is ignored local data,
+not another bulk inventory automatically committed under `results/`.
+
+The shared `write_result` helper and its six runner CLIs (`h2_latency`,
+`batch_throughput`, both GPU4PySCF comparison runners, `compare_df_exchange`, and
+`inactive_eigensolver_profile`) reject direct output into this checkout's
+`benchmarks/results/`, including symlink aliases. The batch comparison's progress
+journal has the same guard. This is checked during argument parsing before
+calculation and again by the shared writer. Explicit scratch destinations and
+existing `.artifacts/` defaults remain supported. Use the separate publisher to
+retain selected measurements. Other historical runners with their own writers
+remain subject to the staged/CI retention checks and need incremental migration;
+this is not a claim that every output path has been converted.
+
+Rationale and scope: [incoming-evidence admission decision](../.agents/notes/implemented/architecture/2026-09-19-incoming-evidence-admission.md).
+
 ## Restoring historical oversized archives
 
 The [size-limit migration](../benchmarks/results/retention-size-limit/migration.json)

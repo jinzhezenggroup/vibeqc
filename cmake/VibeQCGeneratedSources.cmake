@@ -48,6 +48,29 @@ macro(vibeqc_register_cuda_generated_sources target)
       --output "${VIBEQC_DF_GENERATED_HEADER}"
       --policy-output "${VIBEQC_DF_POLICY_HEADER}")
 
+  # The native views and compiler both admit all 4^3 s/p/d/f classes. Keep
+  # stable per-class output paths; profile edits must not reshuffle units.
+  set(VIBEQC_DF_SHELL_UNIT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated/df_shells")
+  set(VIBEQC_DF_SHELL_SOURCES)
+  set(VIBEQC_DF_SHELL_UNIT_OUTPUTS
+      "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}/generated_df_shell_dispatch.hpp")
+  foreach(_a RANGE 0 3)
+    foreach(_b RANGE 0 3)
+      foreach(_c RANGE 0 3)
+        set(_class "${_a}${_b}${_c}")
+        list(APPEND VIBEQC_DF_SHELL_SOURCES
+             "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}/df_shell_${_class}.cu")
+        foreach(_header IN ITEMS polynomial math)
+          list(APPEND VIBEQC_DF_SHELL_UNIT_OUTPUTS
+               "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}/df_shell_${_header}_${_class}.cuh")
+        endforeach()
+        list(APPEND VIBEQC_DF_SHELL_UNIT_OUTPUTS
+             "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}/df_shell_policy_${_class}.hpp")
+      endforeach()
+    endforeach()
+  endforeach()
+  target_include_directories(${target} PRIVATE "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}")
+
   set(VIBEQC_DF_DERIVATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives.cuh")
   set(VIBEQC_DF_DERIVATIVE_POLICY_HEADER
@@ -72,6 +95,8 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}"
       "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}"
       ${VIBEQC_DF_RYS_HEADERS}
+      ${VIBEQC_DF_SHELL_SOURCES}
+      ${VIBEQC_DF_SHELL_UNIT_OUTPUTS}
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/production_df_derivatives.json"
       ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
@@ -80,7 +105,8 @@ macro(vibeqc_register_cuda_generated_sources target)
       --output "${VIBEQC_DF_DERIVATIVE_HEADER}"
       --policy-output "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
       --schedule-output "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}"
-      --shell-output "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}")
+      --shell-output "${VIBEQC_DF_SHELL_DERIVATIVE_HEADER}"
+      --shell-units-directory "${VIBEQC_DF_SHELL_UNIT_DIRECTORY}")
 
   set(VIBEQC_ONE_ELECTRON_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_values.cuh")

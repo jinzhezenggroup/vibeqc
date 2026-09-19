@@ -23,9 +23,10 @@ ATOMS = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 
 
-def test_cpu_plan_cannot_publish_a_native_stationary_proof():
+@pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
+def test_cpu_uks_plan_cannot_publish_a_native_stationary_proof(method):
     calculator = Calculator(
-        method="lda-rks", device="cpu", ks_options=KsOptions(grid=GRID)
+        method=method, device="cpu", ks_options=KsOptions(grid=GRID)
     )
     with calculator.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
         batch.execute(strict=True)
@@ -33,16 +34,30 @@ def test_cpu_plan_cannot_publish_a_native_stationary_proof():
             StationaryKsState.from_native(batch, basis)
 
 
-@pytest.mark.skipif(
-    os.environ.get("VIBEQC_DFT_CUDA_TEST") != "1", reason="Slurm CUDA gate"
+@pytest.mark.parametrize(
+    "method,device",
+    [
+        ("lda-rks", "cpu"),
+        ("pbe-rks", "cpu"),
+        *(
+            pytest.param(
+                method,
+                "cuda",
+                marks=pytest.mark.skipif(
+                    os.environ.get("VIBEQC_DFT_CUDA_TEST") != "1",
+                    reason="Slurm CUDA gate",
+                ),
+            )
+            for method in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
+        ),
+    ],
 )
-@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_native_snapshot_rejects_relabeling_and_replay(method):
+def test_native_snapshot_rejects_relabeling_and_replay(method, device):
     unrestricted = method.endswith("uks")
     charge, multiplicity = (-1, 2) if unrestricted else (0, 1)
     calculator = Calculator(
         method=method,
-        device="cuda",
+        device=device,
         ks_options=KsOptions(grid=GRID),
         max_iterations=200,
         energy_tolerance=1e-12,
@@ -56,6 +71,12 @@ def test_native_snapshot_rejects_relabeling_and_replay(method):
                 StationaryKsState.from_native(batch, basis)
             batch.execute(strict=True)
             state = StationaryKsState.from_native(batch, basis)
+            assert state._source.backend == device
+            assert state._source.metadata[0] == (2 if device == "cpu" else 1)
+            if device == "cpu":
+                assert state._source.metadata[12] == 2**64 - 1
+                assert state._source.grid_spec == GRID
+                assert np.all(state._source.atomic_weights > 0)
             contract = StationaryDerivativeContract(state.identity)
             assert contract.validate(state) is state
             with pytest.raises(AttributeError, match="provenance is immutable"):

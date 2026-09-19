@@ -115,6 +115,29 @@ class SolverOptions:
             raise ValueError("invalid CCSD denominator/damping/level shift")
 
 
+def _ccsd_programs(nocc, nvir):
+    """Shared primal/recheck identities for solving and bound response admission."""
+    full_program = build_ccsd_program(nocc, nvir, form="optimized")
+    program = Program(
+        {
+            k: full_program.outputs[k]
+            for k in (
+                "correlation_energy",
+                "singles_residual",
+                "doubles_residual",
+                "energy_t1",
+                "energy_t2",
+                "energy_t1t1",
+            )
+        },
+        provenance={"full_program_hash": full_program.logical_hash},
+    )
+    reference_program = build_ccsd_program(
+        nocc, nvir, form="expanded", diagnostics=False
+    )
+    return program, reference_program
+
+
 class PreparedCCSD:
     """Borrow a conventional provider and pin seven MO blocks under its budget.
 
@@ -137,24 +160,7 @@ class PreparedCCSD:
             raise ValueError("CCSD provider/reference identity mismatch")
         self.snapshot, self.provider = snapshot, provider
         o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
-        full_program = build_ccsd_program(o, v, form="optimized")
-        self.program = Program(
-            {
-                k: full_program.outputs[k]
-                for k in (
-                    "correlation_energy",
-                    "singles_residual",
-                    "doubles_residual",
-                    "energy_t1",
-                    "energy_t2",
-                    "energy_t1t1",
-                )
-            },
-            provenance={"full_program_hash": full_program.logical_hash},
-        )
-        self.reference_program = build_ccsd_program(
-            o, v, form="expanded", diagnostics=False
-        )
+        self.program, self.reference_program = _ccsd_programs(o, v)
 
         def retained(p):
             return sum(n.spec.size * n.spec.itemsize for n in p.live_nodes) + sum(

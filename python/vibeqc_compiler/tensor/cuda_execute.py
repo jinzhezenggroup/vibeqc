@@ -1,4 +1,4 @@
-"""Compile, prepare and execute complete FP64 TensorIR programs on CUDA.
+"""Compile, prepare and execute typed TensorIR programs on CUDA.
 
 Compilation is explicit and may run without a GPU. Preparation, probing and
 execution require the caller's allocated GPU (on this workstation, Slurm).
@@ -19,11 +19,18 @@ import tempfile
 import threading
 import time
 from collections.abc import Mapping
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from vibeqc_compiler.common.capture import (
+    GRAPH_MODES,
+    MAX_CAPTURE_LAUNCHES,
+    CaptureContract,
+    _GraphMetrics,
+)
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import (
     _PREPARATION_LOCK,
@@ -37,8 +44,17 @@ from vibeqc_compiler.common.provenance import (
     file_hash,
     toolchain_identity,
 )
+from vibeqc_compiler.common.specialization import (
+    CompilationIdentity,
+    GuardPredicate,
+    SpecializationGuard,
+    TargetCapabilities,
+    WorkloadSignature,
+)
 
+from .cuda_dtype import compile_options, symmetry_tolerance
 from .cuda_emit import emit_cuda
+from .cuda_gemm import gemm_contract
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
 
@@ -70,6 +86,9 @@ def tensor_source_identity() -> str:
                 "common",
                 assets=(
                     "src/tensor/cuda_runtime.cuh",
+                    "src/tensor/cuda_graph_context.cuh",
+                    "src/runtime/cuda_graph_region.cuh",
+                    "src/tensor/cuda_error.hpp",
                     "src/tensor/metrics.hpp",
                     "src/runtime/allocation_measurement.hpp",
                 ),
@@ -90,6 +109,7 @@ def compile_cuda(
     """
     if compiler.target != plan.target:
         raise ValueError("compiler target does not match tensor plan target")
+    options = compile_options(plan)
     source = emit_cuda(plan)
     host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
     if not host_compiler:
@@ -124,7 +144,7 @@ def compile_cuda(
             "machine": platform.machine(),
             "libc": platform.libc_ver(),
         },
-        "options": ["--fmad=false", "c++17", "O3", "shared", "fPIC", "cublas"],
+        "options": [*options, "c++17", "O3", "shared", "fPIC", "cublas"],
     }
     key = canonical_hash(identity)
     cache = Path(cache).resolve()
@@ -142,7 +162,7 @@ def compile_cuda(
                 library,
                 includes=(asset_path("src/tensor"),),
                 libraries=("cublas",),
-                options=("--fmad=false",),
+                options=options,
             )
             (directory / "compiler.log").write_text(result.stdout + result.stderr)
             if result.returncode:
@@ -154,6 +174,8 @@ def compile_cuda(
                 "key": key,
                 "binary_sha256": file_hash(library),
                 "compile_seconds": result.duration_seconds,
+                "generated_source_bytes": len(source.encode("utf-8")),
+                "binary_bytes": library.stat().st_size,
                 "resources": [
                     dataclasses.asdict(r) for r in parse_resources(result.stderr)
                 ],
@@ -178,17 +200,79 @@ def compile_cuda(
     return CudaArtifact(library, metadata)
 
 
+def tensor_capture_contract(plan, artifact, device, *, resource_plan=None):
+    """Qualify only the fixed-topology, device-only emitted launch sequence."""
+    launches = 1  # per-run arithmetic-error reset
+    for step in plan.steps:
+        if (
+            step.virtual
+            or step.node.op in ("input", "constant")
+            or not step.node.spec.size
+        ):
+            continue
+        if step.gemm == "none":
+            launches += 1
+            continue
+        g = gemm_contract(step.node)
+        if not g.k:
+            launches += 1
+        elif step.gemm.startswith("direct-"):
+            launches += 2
+        else:
+            from math import prod
+
+            tiles = [
+                (n + t - 1) // t
+                for n, t in zip(
+                    (g.m, g.n, g.k),
+                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+                )
+            ]
+            launches += g.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    effects = (
+        ()
+        if resource_plan is None
+        else ("graph retained storage is not yet covered by the global resource plan",)
+    )
+    workload = WorkloadSignature(
+        "tensorir",
+        (
+            ("plan", plan.identity),
+            ("precision", plan.precision),
+            ("layout", "fixed device arena; host staging outside capture"),
+            ("launches", launches),
+        ),
+    )
+    return CaptureContract(
+        compilation=CompilationIdentity(
+            plan.program.logical_hash, artifact.metadata["key"]
+        ),
+        workload=workload,
+        target=TargetCapabilities(plan.target.target_info),
+        guard=SpecializationGuard(
+            (
+                GuardPredicate("workload", "launches", "le", MAX_CAPTURE_LAUNCHES),
+                GuardPredicate("workload", "precision", "eq", "fp64"),
+                GuardPredicate("target", "backend", "eq", "cuda"),
+            )
+        ),
+        artifact_key=artifact.metadata["key"],
+        schedule_hash=canonical_hash(dataclasses.asdict(plan.schedule)),
+        runtime_hash=canonical_hash(device),
+        unsupported_effects=effects,
+    )
+
+
 class PreparedCuda:
     """Own independent native allocations, stream, cuBLAS handle and host staging.
 
     Repeated calls on one object serialize; different objects may run from
     different host threads. Shapes and budgets are fixed at preparation.
     Calls return independent output sets and never modify caller inputs.
-    Only ordinary streams are implemented: ``graph_status`` reports this
-    explicitly, so graph capture is never a hidden correctness prerequisite.
+    ``execution_mode="cuda-graph"`` opts into a warmup/capture/replay path.
+    Host transfers and arithmetic checks remain outside the captured region.
+    Ordinary execution remains the default and the safe ineligibility fallback.
     """
-
-    graph_status = "ordinary-stream: graph capture is not enabled for TensorIR"
 
     def __init__(
         self,
@@ -198,13 +282,19 @@ class PreparedCuda:
         device: int = 0,
         resource_plan=None,
         resource_owner=None,
+        execution_mode: str = "ordinary",
     ):
+        if execution_mode not in ("ordinary", "cuda-graph"):
+            raise ValueError("execution_mode must be ordinary or cuda-graph")
+        self.execution_mode = execution_mode
+        self.graph_status = "ordinary: graph mode not requested"
         if type(device) is not int or device < 0:
             raise ValueError("device must be a nonnegative visible CUDA ordinal")
         self._lock = threading.Lock()
         self._pointer = ctypes.c_void_p()
         self.plan = plan
         self.artifact = artifact
+        self._prepared_plan, self._prepared_artifact = plan, artifact
         self.resource_plan = resource_plan
         self.resource_owner = resource_owner
         if resource_plan is not None:
@@ -261,17 +351,50 @@ class PreparedCuda:
             {
                 "artifact": artifact.metadata["key"],
                 "device": self.device,
-                "precision": "fp64",
+                "precision": plan.precision,
                 "host_layout": "C staging; arbitrary caller strides",
                 "python": platform.python_version(),
                 "numpy": np.__version__,
             }
         )
+        self.capture_contract = tensor_capture_contract(
+            plan, artifact, self.device, resource_plan=resource_plan
+        )
+        self._capture_identity = self.capture_contract.identity
+        self._graph_enabled = (
+            execution_mode == "cuda-graph" and self.capture_contract.eligible
+        )
+        self._graph_needs_setup = self._graph_enabled
+        if execution_mode == "cuda-graph":
+            self.graph_status = (
+                "warmup required"
+                if self._graph_enabled
+                else "fallback: " + "; ".join(self.capture_contract.failures)
+            )
+        lib.tensor_graph_configure.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+        lib.tensor_graph_configure.restype = ctypes.c_int
+        lib.tensor_run_graph.argtypes = [
+            *lib.tensor_run.argtypes[:5],
+            ctypes.POINTER(_GraphMetrics),
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+        lib.tensor_run_graph.restype = ctypes.c_int
         from vibeqc_compiler.common.resources import ResourceAllocationError
 
         try:
             self._inputs = [
-                np.empty(plan.steps[i].node.spec.shape, dtype=np.float64)
+                np.empty(
+                    plan.steps[i].node.spec.shape, dtype=plan.steps[i].node.spec.dtype
+                )
                 for i in plan.inputs
             ]
             self._scratch = (
@@ -299,6 +422,44 @@ class PreparedCuda:
                 )
             raise RuntimeError(error.value.decode())
 
+        if self._graph_enabled:
+            with _PREPARATION_LOCK:
+                status = lib.tensor_graph_configure(
+                    self._pointer,
+                    1,
+                    self._capture_identity.encode(),
+                    error,
+                    len(error),
+                )
+            if status:
+                self.close()
+                raise RuntimeError(error.value.decode())
+
+    def invalidate_graph(self):
+        """Discard replay state without changing buffers or the immutable plan.
+
+        Shape/schedule/artifact/device changes require a new PreparedCuda owner.
+        This hook supports explicit method-state epoch transitions in future
+        consumers; it never edits scientific data or relaxes convergence checks.
+        """
+        with self._lock:
+            if not self._pointer:
+                raise RuntimeError("tensor plan is closed")
+            if self._graph_enabled:
+                error = ctypes.create_string_buffer(2048)
+                with _PREPARATION_LOCK:
+                    status = self._library.tensor_graph_configure(
+                        self._pointer,
+                        1,
+                        self._capture_identity.encode(),
+                        error,
+                        len(error),
+                    )
+                if status:
+                    raise RuntimeError(error.value.decode())
+                self._graph_needs_setup = True
+                self.graph_status = "invalidated; warmup required"
+
     def _validate(self, value, node):
         """Bound validation scratch even for transposed symmetry partners."""
         flat = value.reshape(-1)
@@ -310,6 +471,7 @@ class PreparedCuda:
                 raise ValueError(f"non-finite tensor input: {node.attrs['name']}")
         if not value.size:
             return
+        atol, rtol = symmetry_tolerance(node.spec.dtype)
         for symmetry in node.spec.symmetries:
             iterator = np.nditer(
                 (value, value.transpose(symmetry.permutation)),
@@ -320,12 +482,12 @@ class PreparedCuda:
             )
             for left, right in iterator:
                 delta, tolerance = (v[: left.size] for v in self._scratch)
-                np.multiply(right, symmetry.sign, out=delta)
+                np.multiply(right, symmetry.sign, out=delta, dtype=np.float64)
                 np.subtract(left, delta, out=delta)
                 np.abs(delta, out=delta)
                 np.abs(right, out=tolerance)
-                np.multiply(tolerance, 1e-10, out=tolerance)
-                np.add(tolerance, 1e-11, out=tolerance)
+                np.multiply(tolerance, rtol, out=tolerance)
+                np.add(tolerance, atol, out=tolerance)
                 mask = self._mask[: left.size]
                 np.less_equal(delta, tolerance, out=mask)
                 if not mask.all():
@@ -333,17 +495,26 @@ class PreparedCuda:
                         f"input {node.attrs['name']} violates its declared symmetry"
                     )
 
-    def execute(self, feeds: Mapping, *, profile: bool = False) -> CudaExecution:
+    def execute(
+        self, feeds: Mapping, *, profile: bool = False, diagnostics: bool = False
+    ) -> CudaExecution:
         """Stage/validate feeds, then make one native call for the whole program.
 
         The endpoint timer includes Python validation and layout staging,
         device transfers, every contraction/packing kernel, error checks and
         detached result allocation. Optional section profiling synchronizes
         individual sections and must not be used for optimization selection.
+        ``diagnostics=True`` adds native region-submission/graph counters to an
+        ordinary run without inserting section fences; graph mode always reports them.
         """
         with self._lock:
             if not self._pointer:
                 raise RuntimeError("tensor plan is closed")
+            if (
+                self.plan is not self._prepared_plan
+                or self.artifact is not self._prepared_artifact
+            ):
+                raise ValueError("prepared plan/artifact changed; create a new owner")
             if not isinstance(feeds, Mapping):
                 raise TypeError("tensor feeds must be a mapping")
             started = time.perf_counter()
@@ -357,16 +528,19 @@ class PreparedCuda:
                 value = feeds[name]
                 if (
                     not isinstance(value, np.ndarray)
-                    or value.dtype != np.float64
+                    or value.dtype != np.dtype(node.spec.dtype)
                     or value.shape != node.spec.shape
                 ):
                     raise ValueError(
-                        f"input {name} must be an FP64 ndarray with shape {node.spec.shape}"
+                        f"input {name} must be a {node.spec.dtype} ndarray with shape {node.spec.shape}"
                     )
                 np.copyto(staged, value)
                 self._validate(staged, node)
             outputs = {
-                name: np.empty(self.plan.steps[i].node.spec.shape, dtype=np.float64)
+                name: np.empty(
+                    self.plan.steps[i].node.spec.shape,
+                    dtype=self.plan.steps[i].node.spec.dtype,
+                )
                 for name, i in self.plan.outputs
             }
             input_ptrs = (ctypes.c_void_p * max(1, len(self._inputs)))(
@@ -376,15 +550,49 @@ class PreparedCuda:
                 *[a.ctypes.data for a in outputs.values()]
             )
             native, error = _Metrics(), ctypes.create_string_buffer(2048)
-            if self._library.tensor_run(
+            graph_metrics = {}
+            args = (
                 self._pointer,
                 input_ptrs,
                 output_ptrs,
                 profile,
                 ctypes.byref(native),
-                error,
-                len(error),
-            ):
+            )
+            if self.execution_mode == "cuda-graph" or diagnostics:
+                graph, reason = _GraphMetrics(), ctypes.create_string_buffer(512)
+                # Serialize capture/allocation snapshots, not steady-state replay.
+                with _PREPARATION_LOCK if self._graph_needs_setup else nullcontext():
+                    status = self._library.tensor_run_graph(
+                        *args,
+                        ctypes.byref(graph),
+                        reason,
+                        len(reason),
+                        error,
+                        len(error),
+                    )
+                if graph.mode in (2, 3, 4):
+                    self._graph_needs_setup = False
+                mode = GRAPH_MODES[graph.mode]
+                message = reason.value.decode()
+                if self.execution_mode == "cuda-graph" and not self._graph_enabled:
+                    mode, message = (
+                        "fallback",
+                        "; ".join(self.capture_contract.failures),
+                    )
+                self.graph_status = f"{mode}: {message}"
+                graph_metrics = {
+                    f"graph_{name}": getattr(graph, name)
+                    for name, _ in graph._fields_
+                    if name != "mode"
+                }
+                graph_metrics.update(
+                    graph_mode=mode,
+                    graph_reason=message,
+                    capture_contract=self._capture_identity,
+                )
+            else:
+                status = self._library.tensor_run(*args, error, len(error))
+            if status:
                 raise RuntimeError(error.value.decode())
             metrics = {name: getattr(native, name) for name, _ in native._fields_}
             metrics.update(
@@ -392,6 +600,7 @@ class PreparedCuda:
                 predicted_peak_bytes=self.plan.peak_bytes,
                 host_buffer_bytes=self.plan.host_bytes,
                 profiled=bool(profile),
+                **graph_metrics,
             )
             if (
                 native.owned_device_bytes != self.plan.allocation_bytes
@@ -417,7 +626,13 @@ class PreparedCuda:
                     tracked_host_bytes=host_owned,
                     resource_tracking_scope="owned ndarrays, native device buffers and measured retained provider allocations; iterator/runtime overhead reported separately",
                 )
-            return CudaExecution(outputs, metrics)
+            metrics["precision"] = self.plan.precision
+            backend = (
+                f"cuda-{self.plan.precision}-graph-replay"
+                if graph_metrics.get("graph_mode") in ("captured", "replay")
+                else f"cuda-{self.plan.precision}-ordinary-stream"
+            )
+            return CudaExecution(outputs, metrics, backend)
 
     def close(self):
         """Release resources once; cannot race an execution using their pointers."""

@@ -477,3 +477,138 @@ def test_provider_allowance_guard_releases_a_rejected_handle(compiler, cache):
             atol=1e-11,
             rtol=1e-10,
         )
+
+
+@pytest.mark.parametrize("direct_gemm", [True, False])
+def test_graph_replay_refresh_invalidation_and_profiling(compiler, cache, direct_gemm):
+    """Real capture for direct cuBLAS and packed partial-tile programs."""
+    axis = IndexSpace("graph_axis", "batch", 17)
+    i, j, k = (Index(name, axis) for name in "ijk")
+    a = input_tensor("a", TensorSpec((i, j), role="input"))
+    b = input_tensor("b", TensorSpec((j, k), role="input"))
+    product = einsum("ij,jk->ik", a, b)
+    program = Program({"product": product, "sum": reduce_sum(product, (0, 1))})
+    plan = plan_cuda(
+        program,
+        compiler.target,
+        schedule=TensorSchedule(
+            direct_gemm=direct_gemm,
+            tile_m=8,
+            tile_n=8,
+            tile_k=8,
+        ),
+    )
+    artifact = compile_cuda(plan, compiler, cache)
+    with PreparedCuda(plan, artifact, execution_mode="cuda-graph") as graph:
+        for iteration in range(6):
+            # Strided caller inputs and changing addresses must NOT invalidate
+            # a graph that refers only to the owner's fixed device storage.
+            values = np.arange(17 * 34, dtype=np.float64).reshape(17, 34)
+            values /= 100
+            values += iteration
+            feeds = {
+                "a": values[:, ::2],
+                "b": np.eye(17) * (iteration + 1),
+            }
+            result = graph.execute(feeds)
+            np.testing.assert_allclose(
+                result.outputs["product"],
+                feeds["a"] @ feeds["b"],
+                rtol=2e-12,
+                atol=1e-12,
+            )
+            np.testing.assert_allclose(
+                result.outputs["sum"], np.sum(feeds["a"] @ feeds["b"]), rtol=2e-12
+            )
+            assert result.metrics["graph_captures"] == (0 if iteration == 0 else 1)
+            assert result.metrics["graph_replays"] == iteration
+            assert result.metrics["graph_mode"] == (
+                "warmup"
+                if iteration == 0
+                else "captured"
+                if iteration == 1
+                else "replay"
+            )
+        profiled = graph.execute(feeds, profile=True)
+        assert profiled.metrics["graph_mode"] == "profiling"
+        assert profiled.metrics["graph_captures"] == 1
+        assert graph.execute(feeds).metrics["graph_captures"] == 1
+        graph.invalidate_graph()
+        assert graph.execute(feeds).metrics["graph_mode"] == "warmup"
+        recaptured = graph.execute(feeds)
+        assert recaptured.metrics["graph_captures"] == 2
+        assert recaptured.metrics["graph_capture_attempts"] == 2
+        assert (
+            recaptured.metrics["owned_device_bytes"]
+            == result.metrics["owned_device_bytes"]
+        )
+        assert recaptured.backend == "cuda-fp64-graph-replay"
+    with pytest.raises(RuntimeError, match="closed"):
+        graph.invalidate_graph()
+
+
+def test_graph_arithmetic_failure_is_preserved_and_next_replay_recovers(
+    compiler, cache
+):
+    i = Index("i", IndexSpace("axis", "batch", 8))
+    x = input_tensor("x", TensorSpec((i,), role="input"))
+    y = input_tensor("y", TensorSpec((i,), role="input"))
+    plan = plan_cuda(Program({"ratio": divide(x, y)}), compiler.target)
+    artifact = compile_cuda(plan, compiler, cache)
+    good = {"x": np.arange(8, dtype=np.float64), "y": np.ones(8)}
+    with PreparedCuda(plan, artifact, execution_mode="cuda-graph") as graph:
+        graph.execute(good)
+        graph.execute(good)
+        with pytest.raises(RuntimeError, match="division by zero"):
+            graph.execute({**good, "y": np.zeros(8)})
+        with pytest.raises(RuntimeError, match="non-finite tensor"):
+            graph.execute({"x": np.full(8, 1e308), "y": np.full(8, 1e-308)})
+        recovered = graph.execute(good)
+        np.testing.assert_array_equal(recovered.outputs["ratio"], good["x"])
+        assert recovered.metrics["graph_captures"] == 1
+        assert recovered.metrics["graph_mode"] == "replay"
+        with pytest.raises(ValueError, match="non-finite tensor input"):
+            graph.execute({**good, "x": np.full(8, np.nan)})
+        assert graph.execute(good).metrics["graph_captures"] == 1
+
+
+def test_graph_global_budget_falls_back_without_untracked_graph_storage(
+    compiler, cache
+):
+    from vibeqc.resources import ResourceBudget, plan_resources
+    from vibeqc_compiler.tensor.resources import tensor_resource_choices
+
+    program = Program({"scalar": constant(3)})
+    choices = tensor_resource_choices(program, compiler.target)
+    resources = plan_resources([choices.request], ResourceBudget())
+    plan = choices.selected(resources)
+    artifact = compile_cuda(plan, compiler, cache)
+    with PreparedCuda(
+        plan,
+        artifact,
+        resource_plan=resources,
+        resource_owner=choices.request.name,
+        execution_mode="cuda-graph",
+    ) as graph:
+        for _ in range(3):
+            result = graph.execute({})
+            assert result.outputs["scalar"] == 3
+            assert result.metrics["graph_mode"] == "fallback"
+            assert result.metrics["graph_capture_attempts"] == 0
+            assert "global resource plan" in result.metrics["graph_reason"]
+            assert result.metrics["graph_retained_device_bytes"] == 0
+
+
+def test_graph_fp32_falls_back_without_relabeling_precision(compiler, cache):
+    i = Index("i", IndexSpace("axis", "batch", 4))
+    x = input_tensor("x", TensorSpec((i,), dtype="float32", role="input"))
+    plan = plan_cuda(Program({"out": add(x, x)}), compiler.target)
+    values = np.arange(4, dtype=np.float32)
+    with PreparedCuda(
+        plan, compile_cuda(plan, compiler, cache), execution_mode="cuda-graph"
+    ) as prepared:
+        for _ in range(3):
+            result = prepared.execute({"x": values})
+            assert result.backend == "cuda-fp32-ordinary-stream"
+            assert result.metrics["precision"] == "fp32"
+            np.testing.assert_array_equal(result.outputs["out"], 2 * values)

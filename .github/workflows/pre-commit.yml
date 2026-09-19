@@ -29,6 +29,11 @@ jobs:
         with:
           version: "0.10.7"
           enable-cache: true
+      - name: Check new benchmark evidence against the PR base
+        if: github.event_name == 'pull_request'
+        env:
+          EVIDENCE_BASE: ${{ github.event.pull_request.base.sha }}
+        run: python3 tools/evidence.py check-change --base "$EVIDENCE_BASE"
       - name: Run pre-commit hooks on all files
         run: >-
           uvx --from prek==0.3.1 prek run

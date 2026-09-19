@@ -76,8 +76,22 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
     append(source.points);
     append(source.weights);
     append(source.grid_owners);
+    const bool cpu = identity.determinant.model.backend == vibeqc::scf::FockBackend::Cpu;
+    // Wire v1 remains byte-for-byte CUDA compatible. CPU uses v2 with the
+    // signed-device sentinel UINT64_MAX and a prescription suffix, required
+    // to differentiate its actual native quadrature rather than caller labels.
+    if (cpu) {
+      const auto& grid = identity.model.grid;
+      for (double value :
+           {static_cast<double>(grid.version), static_cast<double>(grid.radial_points),
+            static_cast<double>(grid.angular_polar), static_cast<double>(grid.angular_azimuth),
+            static_cast<double>(grid.partition_iterations), grid.coincident_tolerance})
+        values.push_back(value);
+      append(grid.element_radii);
+      append(source.atomic_weights);
+    }
     const std::array<std::uint64_t, 16> info{
-        1,
+        cpu ? 2U : 1U,
         n,
         identity.model.spins,
         source.system.atoms.size(),

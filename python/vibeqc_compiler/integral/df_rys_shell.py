@@ -60,6 +60,9 @@ RYS_SHELL_CLASSES = tuple(
 )
 
 
+from .df_shell_derivatives import select_shell_classes
+
+
 def shell_rys_roots(angular):
     """Bound eligibility to the declared full-range first-derivative family."""
     if tuple(angular) not in RYS_SHELL_CLASSES:
@@ -180,28 +183,40 @@ def shell_rys_work_model(angular):
     }
 
 
-def emit_df_rys_policy_cpp():
+def emit_df_rys_policy_cpp(*, classes=None):
     """Expose generated availability without importing CUDA into host policy."""
-    mask = sum(1 << (16 * a + 4 * b + c) for a, b, c in RYS_SHELL_CLASSES)
+    selected = select_shell_classes(classes)
+    storage = "inline" if classes is None else "static"
+    mask = sum(
+        1 << (16 * a + 4 * b + c)
+        for a, b, c in RYS_SHELL_CLASSES
+        if (a, b, c) in selected
+    )
     return f"""// Generated derivative-lowering capability; promotion uses the tuning manifest.
 #pragma once
 #include <cstdint>
 namespace vibeqc::scf::generated_df_shell {{
-inline constexpr std::uint64_t rys_available_mask={mask}ULL;
-inline constexpr std::uint64_t rys_qualified_mask=0;
+{storage} constexpr std::uint64_t rys_available_mask={mask}ULL;
+{storage} constexpr std::uint64_t rys_qualified_mask=0;
 template<unsigned A,unsigned B,unsigned C>
-inline constexpr bool rys_available=(rys_available_mask & (1ULL<<(16*A+4*B+C)))!=0;
+{storage} constexpr bool rys_available=(rys_available_mask & (1ULL<<(16*A+4*B+C)))!=0;
 }} // namespace vibeqc::scf::generated_df_shell
 """
 
 
-def emit_df_rys_shell_cuda():
+def emit_df_rys_shell_cuda(
+    *,
+    classes=None,
+    shell_header="generated_df_shell_derivatives.cuh",
+    policy_header="generated_df_rys_policy.hpp",
+):
     """Emit the complete bounded family against the unchanged packet/sink ABI.
 
     Delivered low-angular winners retain pruned component moments in registers.
     Higher classes share one bounded axis program per root/axis. Unsupported
     tuples have no specialization; qualification remains separate from support.
     """
+    selected = select_shell_classes(classes)
     geometry = emit_df_geometry_cuda(
         "prepare_geometry_rys",
         moments="if(work) *work={}; (void)total; generated_df_rys::roots<Roots>(rho*distance,g.f,g.f+Roots);",
@@ -211,8 +226,8 @@ def emit_df_rys_shell_cuda():
         "#ifndef VIBEQC_GENERATED_DF_RYS_SHELL_CUH",
         "#define VIBEQC_GENERATED_DF_RYS_SHELL_CUH",
         '#include "generated_df_rys.cuh"',
-        '#include "generated_df_rys_policy.hpp"',
-        '#include "generated_df_shell_derivatives.cuh"',
+        f'#include "{policy_header}"',
+        f'#include "{shell_header}"',
         "namespace vibeqc::scf::generated_df_derivatives {",
         "template<unsigned Roots>",
         geometry,
@@ -221,6 +236,8 @@ def emit_df_rys_shell_cuda():
         "template<unsigned A,unsigned B,unsigned C> struct RysShell;",
     ]
     for angular in RYS_SHELL_CLASSES:
+        if angular not in selected:
+            continue
         if angular in COOPERATIVE_RYS_SHELL_CLASSES:
             lines.extend(_emit_cooperative_shell(angular))
             continue

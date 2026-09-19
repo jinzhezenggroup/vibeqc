@@ -16,6 +16,7 @@ struct KsDerivativeSnapshot {
   core::System system;
   std::vector<double> overlap, packed_basis, points, weights;
   std::vector<std::uint32_t> grid_owners;
+  std::vector<double> atomic_weights;
 };
 
 vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
@@ -25,7 +26,7 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
 vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
                                   std::string& detail);
 
-/** Internal #163 handoff. These helpers accept only prepared CUDA KS owners;
+/** Internal #163 handoff. These helpers accept prepared CPU RKS/CUDA KS owners;
  * they do not extend public result layouts or authorize force execution. */
 vibeqc_status dft_final_state_token(const PreparedCalculation& calculation,
                                     dft::CudaKsFinalStateToken& token, std::string& detail);

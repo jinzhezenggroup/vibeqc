@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from .cuda_dtype import scalar_type
+
 
 def _product(left, right):
     """Dekker product/residual on normalized FP32/FP64 mantissas."""
@@ -61,39 +63,44 @@ def scaled_bilinear_value(a, b, c, d, e, f):
     return np.ldexp(numerator / (me * mf), exponent - ee - ef)
 
 
-def emit_scaled_bilinear(prefix: str) -> str:
-    """Emit the same FP64 arithmetic contract, with exact FMA residuals.
+def emit_scaled_bilinear(prefix: str, *, dtype: str = "float64") -> str:
+    """Emit the selected dtype arithmetic contract, with exact FMA residuals.
 
     These mathematical helpers belong to the compiler, not runtime resource
     templates. Explicit round-to-nearest intrinsics prohibit reassociation;
     the primitive is the error boundary, not its normalized intermediates.
     """
+    scalar = scalar_type(dtype)
+    ty, suffix = scalar.ctype, scalar.suffix
+    add, sub, mul, div = (scalar.intrinsic(op) for op in ("add", "sub", "mul", "div"))
+    fma = "__fmaf_rn" if dtype == "float32" else "__fma_rn"
+    limit = 2 * scalar.precision + 4
     return f"""
-__device__ inline double {prefix}scaled_bilinear(double a, double b, double c,
-    double d, double e, double f, int* error, int node) {{
-    if (e == 0.0 || f == 0.0) {{
+__device__ inline {ty} {prefix}scaled_bilinear({ty} a, {ty} b, {ty} c,
+    {ty} d, {ty} e, {ty} f, int* error, int node) {{
+    if (e == {scalar.zero} || f == {scalar.zero}) {{
         atomicCAS(error, 0, -(node + 1));
-        return 0.0;
+        return {scalar.zero};
     }}
     int ea, eb, ec, ed, ee, ef;
-    double ma = frexp(a, &ea), mb = frexp(b, &eb);
-    double mc = frexp(c, &ec), md = frexp(d, &ed);
-    double me = frexp(e, &ee), mf = frexp(f, &ef);
-    double p = __dmul_rn(ma, mb), q = __dmul_rn(mc, md);
-    double pe = __fma_rn(ma, mb, -p), qe = __fma_rn(mc, md, -q);
+    {ty} ma = frexp{suffix}(a, &ea), mb = frexp{suffix}(b, &eb);
+    {ty} mc = frexp{suffix}(c, &ec), md = frexp{suffix}(d, &ed);
+    {ty} me = frexp{suffix}(e, &ee), mf = frexp{suffix}(f, &ef);
+    {ty} p = {mul}(ma, mb), q = {mul}(mc, md);
+    {ty} pe = {fma}(ma, mb, -p), qe = {fma}(mc, md, -q);
     int ep = ea + eb, eq = ec + ed;
-    int exponent = p == 0.0 ? eq : (q == 0.0 ? ep : (ep > eq ? ep : eq));
+    int exponent = p == {scalar.zero} ? eq : (q == {scalar.zero} ? ep : (ep > eq ? ep : eq));
     int dp = ep - exponent, dq = eq - exponent;
-    if (dp < -110) {{ p = 0.0; pe = 0.0; }}
-    else {{ p = scalbn(p, dp); pe = scalbn(pe, dp); }}
-    if (dq < -110) {{ q = 0.0; qe = 0.0; }}
-    else {{ q = scalbn(q, dq); qe = scalbn(qe, dq); }}
-    double difference = __dsub_rn(p, q);
-    double tail = __dsub_rn(difference, p);
-    double residual = __dsub_rn(__dsub_rn(p, __dsub_rn(difference, tail)),
-                               __dadd_rn(q, tail));
-    double numerator = __dadd_rn(difference, __dadd_rn(__dsub_rn(pe, qe), residual));
-    double ratio = __ddiv_rn(numerator, __dmul_rn(me, mf));
-    return finite(scalbn(ratio, exponent - ee - ef), error, node);
+    if (dp < -{limit}) {{ p = {scalar.zero}; pe = {scalar.zero}; }}
+    else {{ p = scalbn{suffix}(p, dp); pe = scalbn{suffix}(pe, dp); }}
+    if (dq < -{limit}) {{ q = {scalar.zero}; qe = {scalar.zero}; }}
+    else {{ q = scalbn{suffix}(q, dq); qe = scalbn{suffix}(qe, dq); }}
+    {ty} difference = {sub}(p, q);
+    {ty} tail = {sub}(difference, p);
+    {ty} residual = {sub}({sub}(p, {sub}(difference, tail)),
+                               {add}(q, tail));
+    {ty} numerator = {add}(difference, {add}({sub}(pe, qe), residual));
+    {ty} ratio = {div}(numerator, {mul}(me, mf));
+    return finite(scalbn{suffix}(ratio, exponent - ee - ef), error, node);
 }}
 """

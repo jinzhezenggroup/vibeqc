@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
           restore-keys: |
             ccache-cpu-${{ matrix.compiler }}-
       - name: Configure
@@ -122,7 +122,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-12.9-sm120-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
           restore-keys: |
             ccache-cuda-12.9-sm120-
       - name: Reset ccache statistics
@@ -153,7 +153,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/f-shell-cache
-          key: f-shell-cuda-12.9-sm120-${{ hashFiles('tools/**') }}
+          key: f-shell-cuda-12.9-sm120-${{ hashFiles('include/**', 'python/vibeqc_compiler/**', 'tools/**') }}
           restore-keys: |
             f-shell-cuda-12.9-sm120-
       - name: Compile five representative f classes with release resources
@@ -213,7 +213,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
       - name: Build the CPU native library
@@ -260,6 +260,30 @@ jobs:
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
               --deselect
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
+              # The module-scoped analytic Hessian fixture computes a complete
+              # water Hessian before the first parametrized check. On hosted
+              # runners that setup alone is ~27 minutes, so keep the H2 path
+              # on routine CI and run the water qualification nightly/manual.
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_first_order_sources_match_independent_native_derivatives[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_reference_is_the_native_converged_state[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_total_matches_independent_pyscf_hessian[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_components_match_independent_finite_difference_oracle[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_raw_total_invariants[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_three_step_directional_differences_of_native_forces[water]'
+              # Au resource-boundary replay is a full qualification loop
+              # (multiple converged displaced calculations) and currently
+              # costs another ~7-10 minutes per spin case. The ordinary Au
+              # energy/force checks remain on every PR.
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-0-Au]'
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
             )
           fi
           .venv/bin/python -m pytest tests/python -q \

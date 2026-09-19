@@ -35,11 +35,10 @@ from vibeqc_compiler.integral.second_order_layout import (
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 from tools.vibeqc_response.backends import NativeJKBackend
-from tools.vibeqc_response.krylov import GMRESOptions, solve
 from tools.vibeqc_response.operators import RHFResponseOperator
 
 from .native import NativeRHFState
-from .response import build_rhf_nuclear_rhs, metric_density_response_mo
+from .perturbation import solve_rhf_nuclear_perturbation
 
 __all__ = [
     "analytic_hessian",
@@ -386,8 +385,8 @@ def cphf_relaxation(s):
     """
     _validate_analytic_domain(s)
     C, eps = s.C, s.eps
-    nocc, nmo = s.nocc, s.nmo
-    occ, virt = s.occ, s.virt
+    nocc = s.nocc
+    occ = s.occ
     mocc = C[:, occ]
     e_i = eps[occ]
     nat, nbf = s.nat, s.nbf
@@ -396,50 +395,13 @@ def cphf_relaxation(s):
     ref = build_reference(s)
     backend = NativeJKBackend(s.source)
     op = RHFResponseOperator(RHFResponseOperator.build_problem(ref, backend), backend)
-    layout = op.problem.layout
-    opts = GMRESOptions()
-
-    def induced_fock(density):
-        coulomb, exchange = backend.coulomb_exchange(density)
-        return coulomb - 0.5 * exchange
-
     mo1s = np.zeros((nat, 3, nbf, nocc))
     e1s = np.zeros((nat, 3, nocc, nocc))
     for ia in range(nat):
         for x in range(3):
-            frozen_mo = C.T @ h1ao[ia, x] @ C
-            overlap_mo = C.T @ s1ao_all[ia, x] @ C
-
-            metric_dm_mo = metric_density_response_mo(overlap_mo, nocc=nocc)
-            metric_dm_ao = C @ metric_dm_mo @ C.T
-            metric_fock_mo = C.T @ induced_fock(metric_dm_ao) @ C
-            rhs = build_rhf_nuclear_rhs(
-                frozen_mo,
-                overlap_mo,
-                metric_fock_mo,
-                eps,
-                nocc=nocc,
-            )
-            result = solve(
-                op,
-                layout.pack(-rhs),
-                options=opts,
-                raise_on_failure=True,
-            )
-            x_ia = layout.as_ia(result.solution)
-
-            mo1 = np.zeros((nmo, nocc))
-            mo1[virt, :] = x_ia.T - 0.5 * overlap_mo[np.ix_(virt, occ)]
-            mo1[occ, :] = -0.5 * overlap_mo[np.ix_(occ, occ)]
-
-            frozen_occ = frozen_mo[:, occ]
-            overlap_occ = overlap_mo[:, occ]
-            hs0 = frozen_occ - overlap_occ * e_i[None, :]
-            dm = C @ (2 * mo1) @ mocc.T
-            dm = dm + dm.T
-            hs = hs0 + C.T @ induced_fock(dm) @ mocc
-            e1s[ia, x] = hs[occ, :] + mo1[occ, :] * (e_i[:, None] - e_i[None, :])
-            mo1s[ia, x] = C @ mo1
+            response = solve_rhf_nuclear_perturbation(op, h1ao[ia, x], s1ao_all[ia, x])
+            mo1s[ia, x] = response.coefficient_derivative
+            e1s[ia, x] = response.occupied_energy_derivative
 
     # Raw assembly: compute every perturbation ordering independently.
     relax = np.zeros((nat, nat, 3, 3))

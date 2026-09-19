@@ -51,6 +51,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   amplitudes, CPU interpretation, conservative rewrites, and replay.
 - [TensorIR CUDA execution](tensor_cuda.md): prepared FP64 contractions, memory
   budgets, shape buckets, bounded tuning, and complete tensor endpoint evidence.
+- [StationaryProblem composition](stationary_problem.md): explicit residuals,
+  constraints, provider dependencies and generated first-order source plans.
 - [Validation gates](validation.md): pinned conventions and references,
   independent oracles, tiered execution, and shared evidence registration.
 - [F-shell validation](f_shell_validation.md): all-34 source/numerical gates,

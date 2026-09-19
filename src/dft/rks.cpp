@@ -302,6 +302,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       retained_capacity(), runtime::vector_capacities(final.fock, final_residual)));
   retain_factor();
   result.energy = final.energy;
+  if (result.converged && options.retain_ks_state) result.ks_physical_fock = std::move(final.fock);
   result.density = std::move(density);
   return result;
 }

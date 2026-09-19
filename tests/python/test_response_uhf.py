@@ -7,6 +7,7 @@ import pytest
 
 from tools.vibeqc_response import (
     CudaDFJKBackend,
+    CudaDirectJKBackend,
     DenseAOResponseBackend,
     GMRESOptions,
     KrylovRecycleSpace,
@@ -140,13 +141,14 @@ def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface():
     assert recycled.results[1].recycled_vectors > 0
 
 
-def test_uhf_response_rejects_an_unvalidated_cuda_df_backend():
+@pytest.mark.parametrize("backend_class", [CudaDFJKBackend, CudaDirectJKBackend])
+def test_uhf_response_rejects_an_unvalidated_cuda_backend(backend_class):
     """The RHF-only CUDA DF plan cannot be promoted as UHF evidence."""
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
 
-    cuda_backend = object.__new__(CudaDFJKBackend)
+    cuda_backend = object.__new__(backend_class)
     with pytest.raises(NotImplementedError, match="spin-resolved CUDA"):
         UHFResponseOperator(problem, cuda_backend)
 
