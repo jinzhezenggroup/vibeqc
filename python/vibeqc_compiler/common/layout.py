@@ -65,13 +65,13 @@ class DenseLayout:
             axis for axis in order if self.shape[axis] > 1
         ) == tuple(axis for axis, extent in enumerate(self.shape) if extent > 1)
 
-    def equivalent(self, other: DenseLayout) -> bool:
+    def equivalent(self, other: object) -> bool:
         """Whether logical coordinates name identical dense element offsets.
 
         Singleton strides do not affect addressing; empty tensors have no
         addresses. Alignment requirements remain separate from view equivalence.
         """
-        if self.shape != other.shape:
+        if not isinstance(other, DenseLayout) or self.shape != other.shape:
             return False
         return not prod(self.shape) or all(
             extent <= 1 or left == right
