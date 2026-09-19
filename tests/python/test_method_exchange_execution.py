@@ -181,3 +181,21 @@ def test_method_binding_rejects_wrong_exchange_factor_before_execution():
         pytest.raises(ValueError, match="executable MethodIR plan"),
     ):
         FixedDensityMeanField.from_method(provider, graph)
+
+
+@pytest.mark.parametrize("field", ["functional", "exchange", "method", "spin"])
+def test_executable_plan_rejects_inconsistent_declared_physics(field):
+    plan = compile_fixed_density_method(resolve_method("PBE0"))
+    changes = {
+        "functional": {"functional": functional("PBE")},
+        "exchange": {
+            "fock_spec": replace(
+                plan.fock_spec,
+                exchange=replace(plan.fock_spec.exchange, coefficient=-0.25),
+            )
+        },
+        "method": {"method": resolve_method("PBE")},
+        "spin": {"fock_spec": replace(plan.fock_spec, spin="unrestricted")},
+    }
+    with pytest.raises(ValueError, match="executable MethodIR plan"):
+        replace(plan, **changes[field])

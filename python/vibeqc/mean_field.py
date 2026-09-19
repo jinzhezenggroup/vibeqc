@@ -47,6 +47,20 @@ class FixedDensityMethodPlan:
     functional: FunctionalSpec
     fock_spec: FockBuildSpec
 
+    def __post_init__(self):
+        if not isinstance(self.fock_spec, FockBuildSpec):
+            raise TypeError("executable MethodIR plan requires FockBuildSpec")
+        functional, spec = _compile_fixed_density_components(
+            self.method,
+            coulomb_approximation=self.fock_spec.coulomb.approximation,
+            exchange_approximation=self.fock_spec.exchange.approximation,
+            provider_derivative_order=self.fock_spec.derivative_order,
+        )
+        if self.functional != functional or self.fock_spec != spec:
+            raise ValueError(
+                "executable MethodIR plan differs from its declared physics"
+            )
+
     @property
     def capabilities(self):
         return ("energy", "fock")
@@ -74,7 +88,7 @@ class FixedDensityMethodPlan:
         return canonical_hash(self.semantic_payload())
 
 
-def compile_fixed_density_method(
+def _compile_fixed_density_components(
     method,
     *,
     coulomb_approximation="exact",
@@ -129,7 +143,24 @@ def compile_fixed_density_method(
         coulomb=FockTerm(coefficient=1.0, approximation=coulomb_approximation),
         exchange=exchange_term,
     )
-    return FixedDensityMethodPlan(method, semilocal.functional, fock_spec)
+    return semilocal.functional, fock_spec
+
+
+def compile_fixed_density_method(
+    method,
+    *,
+    coulomb_approximation="exact",
+    exchange_approximation="exact",
+    provider_derivative_order=0,
+):
+    """Compile a MethodIR graph into a self-consistent executable energy/Fock plan."""
+    functional, spec = _compile_fixed_density_components(
+        method,
+        coulomb_approximation=coulomb_approximation,
+        exchange_approximation=exchange_approximation,
+        provider_derivative_order=provider_derivative_order,
+    )
+    return FixedDensityMethodPlan(method, functional, spec)
 
 
 class FixedDensityMeanField:
