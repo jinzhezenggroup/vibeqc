@@ -287,38 +287,44 @@ struct CudaCosxStagingPlan::Impl {
     if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
     if (status != 0 || !grid)
       throw std::runtime_error(message[0] ? message : "CUDA COSX grid preparation failed");
-    checked_status(grid_cuda_basis_v1(grid, &device_basis, message, sizeof(message)),
-                   message[0] ? message : "CUDA COSX packed-basis view failed");
-    if (device_basis.version != 1 || device_basis.natom != basis.natom ||
-        device_basis.nprimitive != basis.nprimitive || device_basis.nao != basis.nao ||
-        !device_basis.basis || !device_basis.stream)
-      throw std::runtime_error("CUDA COSX received an incompatible packed-basis view");
+    try {
+      checked_status(grid_cuda_basis_v1(grid, &device_basis, message, sizeof(message)),
+                     message[0] ? message : "CUDA COSX packed-basis view failed");
+      if (device_basis.version != 1 || device_basis.natom != basis.natom ||
+          device_basis.nprimitive != basis.nprimitive || device_basis.nao != basis.nao ||
+          !device_basis.basis || !device_basis.stream)
+        throw std::runtime_error("CUDA COSX received an incompatible packed-basis view");
 
-    const std::size_t matrix = mul(basis.nao, basis.nao);
-    density.reset(matrix, device);
-    esp.reset(mul(tile_points, matrix), device);
-    device_weights.reset(tile_points, device);
-    projected.reset(mul(tile_points, basis.nao), device);
-    potential.reset(mul(tile_points, basis.nao), device);
-    raw.reset(matrix, device);
-    exchange.reset(matrix, device);
-    error.reset(1, device);
+      const std::size_t matrix = mul(basis.nao, basis.nao);
+      density.reset(matrix, device);
+      esp.reset(mul(tile_points, matrix), device);
+      device_weights.reset(tile_points, device);
+      projected.reset(mul(tile_points, basis.nao), device);
+      potential.reset(mul(tile_points, basis.nao), device);
+      raw.reset(matrix, device);
+      exchange.reset(matrix, device);
+      error.reset(1, device);
 
-    const std::size_t cosx_doubles = add(
-        add(add(matrix, mul(tile_points, matrix)), tile_points),
-        add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)), add(matrix, matrix)));
-    diagnostic = {basis.nao,
-                  weights.size(),
-                  tile_points,
-                  expected_grid_bytes,
-                  add(mul(cosx_doubles, sizeof(double)), sizeof(int)),
-                  0,
-                  mul(tile_points, matrix),
-                  mul(tile_points, basis.nao),
-                  true,
-                  true,
-                  true};
-    diagnostic.device_bytes = add(diagnostic.grid_device_bytes, diagnostic.cosx_device_bytes);
+      const std::size_t cosx_doubles = add(
+          add(add(matrix, mul(tile_points, matrix)), tile_points),
+          add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)), add(matrix, matrix)));
+      diagnostic = {basis.nao,
+                    weights.size(),
+                    tile_points,
+                    expected_grid_bytes,
+                    add(mul(cosx_doubles, sizeof(double)), sizeof(int)),
+                    0,
+                    mul(tile_points, matrix),
+                    mul(tile_points, basis.nao),
+                    true,
+                    true,
+                    true};
+      diagnostic.device_bytes = add(diagnostic.grid_device_bytes, diagnostic.cosx_device_bytes);
+    } catch (...) {
+      grid_cuda_destroy_v1(grid);
+      grid = nullptr;
+      throw;
+    }
   }
 
   ~Impl() {
