@@ -102,6 +102,13 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(method, record_pro
         expected_energy, expected = reference(mol, state, method)
         assert abs(energy - expected_energy) < 2e-8
         np.testing.assert_allclose(result.gradient, expected, atol=1e-7, rtol=0)
+        if method == "pbe-uks":
+            interpreted = complete_rks_gradient_diagnostic(
+                state, basis, cache=".cache/ecp-stationary-tests", execution="reference"
+            )
+            np.testing.assert_allclose(
+                interpreted.gradient, expected, atol=1e-7, rtol=0
+            )
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=1e-9, rtol=0)
         ecp = result.components["ecp_local"] + result.components["ecp_nonlocal"]
         assert np.max(np.abs(ecp)) > 1e-3
@@ -156,3 +163,52 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(method, record_pro
                 multiplicity=spin + 1,
                 properties=("energy", "forces"),
             )
+
+
+def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner():
+    import json
+
+    atoms, record, _ = fixture(representation="cartesian")
+    changed = []
+    for element in record.elements:
+        if element.ecp_core_electrons:
+            potentials = json.loads(element.ecp_data)
+            potentials[0]["coefficients"][0][0] = str(
+                float(potentials[0]["coefficients"][0][0]) * 1.01
+            )
+            element = replace(element, ecp_data=json.dumps(potentials))
+        changed.append(element)
+    other_record = replace(record, elements=tuple(changed))
+    options = {
+        "method": "lda-rks",
+        "ks_options": KsOptions(grid=GRID),
+        "energy_tolerance": 1e-12,
+        "density_tolerance": 1e-10,
+    }
+    with (
+        Calculator(basis=record, **options).prepare_batch([atoms]) as batch,
+        Calculator(basis=other_record, **options).prepare_batch([atoms]) as other,
+        NativeAO(atoms, basis=record) as basis,
+    ):
+        batch.execute(strict=True)
+        other.execute(strict=True)
+        state = StationaryKsState.from_native(batch, basis)
+        changed_state = StationaryKsState.from_native(other, basis)
+        assert state.identity.basis_identity == changed_state.identity.basis_identity
+        assert state._source.ecp_cores == changed_state._source.ecp_cores
+        assert state._source.ecp_terms != changed_state._source.ecp_terms
+        assert (
+            np.max(
+                np.abs(
+                    state._source.ecp_derivatives()
+                    - changed_state._source.ecp_derivatives()
+                )
+            )
+            > 1e-6
+        )
+        with pytest.raises(ValueError, match="identity"):
+            StationaryDerivativeContract(state.identity).validate(
+                replace(state, _source=changed_state._source)
+            )
+    with pytest.raises(RuntimeError, match="closed"):
+        state._source.ecp_derivatives()
