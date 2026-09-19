@@ -253,7 +253,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         const auto current_identity = identity;
         ++result.fock_builds;
         const auto physical = evaluate_current(current_density);
-        const Matrix residual = commutator_residual(physical.fock, density, ints.overlap, n);
+        const Matrix residual = commutator_residual(physical.fock, current_density, ints.overlap, n);
         const Matrix effective_fock = diis.update(physical.fock, residual);
         orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
         const auto iteration_bytes =
@@ -263,9 +263,9 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         runtime::sample_cpu_capacity(runtime::add_capacity(
             retained_capacity(current_density),
             runtime::add_capacity(iteration_bytes, runtime::vector_bytes(next_density))));
-        const double state_rms = density_rms(next_density, density);
+        const double state_rms = density_rms(next_density, current_density);
         const double physical_residual = residual_rms(residual);
-        const double spin_electrons = dot(density, ints.overlap) / 2.0;
+        const double spin_electrons = dot(current_density, ints.overlap) / 2.0;
         return RksLoopEvaluation{current_factor,
                                  current_identity,
                                  physical.components,
@@ -275,14 +275,14 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                                  physical_residual,
                                  spin_electrons};
       },
-      [&](const Matrix& current_density, RksLoopEvaluation evaluation,
+      [&](Matrix& current_density, RksLoopEvaluation evaluation,
           const solver::SelfConsistentProgress& progress) {
         if (!progress.converged && progress.iteration == options.max_iterations) {
           // A failed return must keep E/residual/D/factor on the same physical
           // generation rather than publishing the last unchecked proposal.
           factor = std::move(evaluation.current_factor);
           identity = evaluation.current_identity;
-          return Matrix(current_density);
+          return std::move(current_density);
         }
         return std::move(evaluation.next_density);
       },
