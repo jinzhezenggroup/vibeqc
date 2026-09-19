@@ -36,7 +36,7 @@ _PRIMITIVE_ORDER = (
     "overlap_integrals",
     "multipole_integrals",
     "h0",
-    "scc_multipole",
+    "scc_electrostatics",
     "spin_polarization",
     "hamiltonian",
     "repulsion",
@@ -51,6 +51,7 @@ _GFN2_ORBITAL_TABLES = (
     "atomic-levels",
     "coordination-dependent-h0",
     "hubbard-and-multipole",
+    "third-order-shell",
 )
 _GFN2_CORRECTION_TABLES = (
     "coordination-number",
@@ -484,9 +485,13 @@ def _gfn2_primitives() -> tuple[XtbPrimitive, ...]:
             derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
         ),
         XtbPrimitive(
-            "scc_multipole",
-            "gfn2-second-order-multipole",
-            requires=("multipole_integrals", "overlap_integrals"),
+            "scc_electrostatics",
+            "gfn2-es2-es3-aes2",
+            requires=(
+                "coordination_number",
+                "multipole_integrals",
+                "overlap_integrals",
+            ),
             state_requirements=("charge", "dipole", "quadrupole"),
             parameter_domains=("orbital",),
             derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
@@ -504,7 +509,7 @@ def _gfn2_primitives() -> tuple[XtbPrimitive, ...]:
         XtbPrimitive(
             "hamiltonian",
             "gfn2-fixed-state-hamiltonian",
-            requires=("h0", "scc_multipole", "spin_polarization"),
+            requires=("h0", "scc_electrostatics", "spin_polarization"),
             state_requirements=("charge", "dipole", "quadrupole"),
             derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
         ),
@@ -518,7 +523,7 @@ def _gfn2_primitives() -> tuple[XtbPrimitive, ...]:
         XtbPrimitive(
             "dispersion",
             "gfn2-self-consistent-d4",
-            requires=("coordination_number", "scc_multipole"),
+            requires=("coordination_number", "scc_electrostatics"),
             state_requirements=("charge",),
             parameter_domains=("correction",),
             derivative_capabilities=("energy", "hamiltonian", "nuclear-gradient"),
