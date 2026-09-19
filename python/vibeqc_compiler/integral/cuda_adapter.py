@@ -7,22 +7,14 @@ class definitions or cache implementation belongs here.
 
 from typing import TYPE_CHECKING
 
-__all__ = (
-    "CudaBenchmarkExecutor",
-    "CudaCompileResult",
-    "CudaCompilerAdapter",
-    "CudaExecutionProfile",
-    "resolve_cuda_execution_profile",
-)
-
 if TYPE_CHECKING:
-    from vibeqc_compiler.common.cuda_adapter import (
-        CudaBenchmarkExecutor,
-        CudaCompilerAdapter,
-        CudaCompileResult,
-        CudaExecutionProfile,
-        resolve_cuda_execution_profile,
-    )
+    from vibeqc_compiler.common import cuda_adapter as _cuda_adapter
+
+    CudaBenchmarkExecutor = _cuda_adapter.CudaBenchmarkExecutor
+    CudaCompilerAdapter = _cuda_adapter.CudaCompilerAdapter
+    CudaCompileResult = _cuda_adapter.CudaCompileResult
+    CudaExecutionProfile = _cuda_adapter.CudaExecutionProfile
+    resolve_cuda_execution_profile = _cuda_adapter.resolve_cuda_execution_profile
 else:
     import sys
     from importlib import import_module
