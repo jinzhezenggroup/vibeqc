@@ -9,10 +9,10 @@ import numpy as np
 
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.expr import AlgebraForm
+from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
 from .expressions import energy_expression
-from .spec import UnsupportedXC
+from .spec import FunctionalSpec, UnsupportedXC
 
 
 def output_set(spec, order):
@@ -116,9 +116,9 @@ def pack_grid_features(spec, values):
 class XCProgram:
     """One immutable output contract with scalar DAG and reproducible identity."""
 
-    spec: object
-    graph: object
-    roots: tuple
+    spec: FunctionalSpec
+    graph: Graph
+    roots: tuple[Expr, ...]
     outputs: tuple[tuple[int, ...], ...]
     optimization: str
     expression_hash: str

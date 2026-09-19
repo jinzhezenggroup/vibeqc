@@ -50,18 +50,22 @@ class DenseLayout:
     @property
     def element_strides(self) -> tuple[int, ...]:
         result, stride = [0] * len(self.shape), 1
-        for axis in reversed(self.order):
+        order = self.order
+        assert order is not None
+        for axis in reversed(order):
             result[axis] = stride
             stride *= self.shape[axis]
         return tuple(result)
 
     @property
     def is_c_contiguous(self) -> bool:
+        order = self.order
+        assert order is not None
         return not prod(self.shape) or tuple(
-            axis for axis in self.order if self.shape[axis] > 1
+            axis for axis in order if self.shape[axis] > 1
         ) == tuple(axis for axis, extent in enumerate(self.shape) if extent > 1)
 
-    def equivalent(self, other: DenseLayout) -> bool:
+    def equivalent(self, other: object) -> bool:
         """Whether logical coordinates name identical dense element offsets.
 
         Singleton strides do not affect addressing; empty tensors have no
@@ -107,13 +111,15 @@ class DenseLayout:
             range(len(self.shape))
         ):
             raise ValueError("transpose axes must be a permutation")
+        order = self.order
+        assert order is not None
         return DenseLayout(
             tuple(self.shape[axis] for axis in axes),
-            tuple(axes.index(axis) for axis in self.order),
+            tuple(axes.index(axis) for axis in order),
             self.alignment,
         )
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "schema": "vibeqc.tensor.dense-layout.v1",
             "shape": self.shape,

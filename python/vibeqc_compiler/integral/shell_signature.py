@@ -181,7 +181,11 @@ class ShellSignature:
         # orders: production dispatch uses that name's stable catalog identity.
         from .shell_spec import FUSED_SHELL_SPEC_BY_NAME
 
-        spec = ShellClassSpec(self.legacy_class, self.angular)
+        angular = self.angular
+        spec = ShellClassSpec(
+            self.legacy_class,
+            (angular[0], angular[1], angular[2], angular[3]),
+        )
         known = FUSED_SHELL_SPEC_BY_NAME.get(spec.name)
         if known is not None and known != spec:
             raise ValueError("legacy class name disagrees with catalog angular orders")

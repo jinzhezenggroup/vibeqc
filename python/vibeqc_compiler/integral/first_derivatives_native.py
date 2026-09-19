@@ -67,15 +67,17 @@ def validate_first_components(integral, indices):
         raise ValueError("first components support S/T/V and full Coulomb ERIs only")
 
 
-def emit_first_components(integral, indices):
-    """Emit a selected raw tile, retaining normalization/atom mapping outside."""
+def emit_first_component_evaluator(integral, indices, *, backend="cpu"):
+    """Share existing scalar primitive evaluation between bounded consumers."""
+    if backend not in ("cpu", "cuda"):
+        raise ValueError("first component backend must be cpu or cuda")
     indices = tuple(indices)
     validate_first_components(integral, indices)
-    ncenter = len(integral.operator.centers)
-    nexponent = len(integral.signature.shells)
     if integral.operator.family == OperatorFamily.FOUR_CENTER_ERI:
         kernel = build_weighted_eri_kernel(integral, indices)
-        source = emit_weighted_eri_primitive_header(((kernel, "first"),), backend="cpu")
+        source = emit_weighted_eri_primitive_header(
+            ((kernel, "first"),), backend=backend
+        )
         evaluate = f"""
     double weights[{len(indices)}]{{}};
     weights[component] = 1.0;
@@ -92,8 +94,15 @@ def emit_first_components(integral, indices):
             product(*(cartesian_components(l) for l in integral.signature.angular))
         )
         source = "\n".join(
-            emit_bounded_component(integral, components[i], backend="cpu").replace(
-                'extern "C" void evaluate(', f"static void first_{packed}("
+            emit_bounded_component(integral, components[i], backend=backend)
+            .replace("component_output_", f"first_{packed}_output_")
+            .replace(
+                'extern "C" void evaluate('
+                if backend == "cpu"
+                else "__device__ __noinline__ void evaluate(",
+                f"static void first_{packed}("
+                if backend == "cpu"
+                else f"__device__ __noinline__ void first_{packed}(",
             )
             for packed, i in enumerate(indices)
         )
@@ -106,6 +115,15 @@ def emit_first_components(integral, indices):
             + cases
             + "\n      default: return false;\n    }"
         )
+    return source, evaluate
+
+
+def emit_first_components(integral, indices):
+    """Emit a selected raw tile, retaining normalization/atom mapping outside."""
+    indices = tuple(indices)
+    source, evaluate = emit_first_component_evaluator(integral, indices)
+    ncenter = len(integral.operator.centers)
+    nexponent = len(integral.signature.shells)
     identity = first_component_identity(integral, indices)
     return (
         source

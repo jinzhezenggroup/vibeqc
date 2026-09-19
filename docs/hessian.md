@@ -434,11 +434,18 @@ with NativeSource([(1, (0, 0, 0)), (1, (0.1, 0.2, 1.4))]) as source:
 This remains a **small-system tools integration** under `NativeRHFState`'s
 12-Cartesian-AO/four-atom, all-electron conventional RHF boundary. It does not
 remove that size limit, expose a Calculator derivative API or produce `Hv`.
-First-integral kernels run as generated CPU code; shell direction/density
-reduction, AO/MO transformations and Krylov work remain host-side. Selecting
-`jk_backend="cuda"` sends *all* metric/CPHF/final-response J/K actions to the
-exact unscreened CUDA provider, without a CPU or DF fallback. No full-GPU,
-performance or globally bounded peak-memory claim follows from that choice.
+First-integral execution defaults to the existing generated CPU path.
+`first_backend="cuda"` plus an explicit `first_compiler` instead runs generated
+S/T/V/four-center derivatives, direction contraction, density weighting and
+AO-matrix accumulation on CUDA. Direction and density are uploaded once to a
+shared accumulator; only the final H1(v)/S1(v) matrices are downloaded.
+`jk_backend="cuda"` independently sends all metric/CPHF/final-response J/K
+actions to the exact unscreened CUDA provider, without a CPU or DF fallback.
+AO/MO transformations and Krylov work still remain host-side, so selecting both
+CUDA providers is not a complete GPU-resident response/HVP claim. No performance
+promotion or global peak-memory bound follows from those selections. The
+[directional CUDA provider](first_directional_derivatives.md) documents its
+compiler, ownership, memory and numerical boundaries.
 Diagnostics report actual residency, reference/operator identity, the single
 RHS/solve, input-matrix storage, solver controls and residuals. The CUDA plan's
 retained-allocation budget and the solver workspace budget remain separate.
@@ -465,3 +472,31 @@ responses and the existing second-integral directional providers. It must still
 supply every explicit, relaxation, overlap/Pulay and nuclear term; neither this
 RHS slice nor its CUDA J/K calls alone complete the molecular Hessian/HVP.
 See the [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md).
+
+
+For explicit CUDA first-source qualification, add these arguments to the
+`directional_rhf_response` example above:
+
+```python
+from pathlib import Path
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+# Select the actual installed toolkit and target; compilation does not probe GPUs.
+compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), cuda_target_info("sm_120"))
+# Within the live source/state scope:
+result = directional_rhf_response(
+    state, [[0, 0, 0], [0.1, 0.2, 0.3]],
+    first_backend="cuda", first_compiler=compiler, jk_backend="cuda",
+)
+```
+
+`tests/python/test_hessian_first_cuda.py` checks the generated device sources
+against independent native first-integral derivatives and three-step displaced
+native Fock/overlap/density/energy-weighted-density differences. It forbids the
+CPU first-derivative interpreter, dense derivative inputs and CPU J/K on the
+CUDA execution side. `tests/python/test_first_directional_cuda.py` independently
+checks a selected f-shell contraction, repeated centers, signed weights, runtime
+compatibility, invalid/partial records, nonfinite arithmetic and failed-call
+recovery. Run these opt-in tests under a finite GPU allocation with
+`VIBEQC_RESPONSE_CUDA_TEST=1` and the selected `nvcc` on `PATH`.

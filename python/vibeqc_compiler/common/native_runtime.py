@@ -67,6 +67,10 @@ def compile_runtime(compiler, cache, source, *, headers=(), libraries=(), option
     else:
         # Preserve the existing CUDA schema, keys and defaults exactly. Adding
         # CPU compilation must not relabel any accepted CUDA artifact/profile.
+        host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
+        if host_compiler is None:
+            raise RuntimeError("CUDA host compiler not found")
+        host_compiler_path = Path(host_compiler).resolve()
         identity = {
             "schema": 1,
             "source": file_hash(source),
@@ -75,11 +79,9 @@ def compile_runtime(compiler, cache, source, *, headers=(), libraries=(), option
                 for p in headers
             },
             "toolchain": toolchain_identity(compiler.nvcc),
-            "host_compiler": file_hash(
-                Path(os.environ.get("NVCC_CCBIN") or shutil.which("gcc")).resolve()
-            ),
+            "host_compiler": file_hash(host_compiler_path),
             "host_version": subprocess.check_output(
-                [os.environ.get("NVCC_CCBIN") or shutil.which("gcc"), "--version"],
+                [str(host_compiler_path), "--version"],
                 text=True,
                 timeout=30,
             ),

@@ -1,12 +1,19 @@
-"""Fixed-density semilocal mean-field consumer of native common J/K sources."""
+"""Fixed-density MethodIR mean-field consumer of native common J/K sources."""
 
 from dataclasses import dataclass
 
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.method import (
+    ExactExchangePrimitive,
+    MethodIR,
+    SemilocalXCPrimitive,
+    UnsupportedMethod,
+)
+from vibeqc_compiler.xc.spec import FunctionalSpec
 
-from .fock import FockPlan
+from .fock import FockBuildSpec, FockPlan, FockTerm
 
 
 @dataclass(frozen=True, eq=False)
@@ -23,32 +30,194 @@ class MeanFieldEvaluation:
     identity: str
     fock_identity: str
     xc_identity: str
+    method_identity: str | None = None
+    method_plan_identity: str | None = None
+
+
+@dataclass(frozen=True)
+class FixedDensityMethodPlan:
+    """Executable energy/Fock projection of one supported MethodIR graph.
+
+    MethodIR remains the scientific source of truth. This projection records
+    the existing J/K provider request needed to execute it; it adds neither a
+    method-name branch nor SCF/geometric-gradient capability.
+    """
+
+    method: MethodIR
+    functional: FunctionalSpec
+    fock_spec: FockBuildSpec
+
+    def __post_init__(self):
+        if not isinstance(self.fock_spec, FockBuildSpec):
+            raise TypeError("executable MethodIR plan requires FockBuildSpec")
+        functional, spec = _compile_fixed_density_components(
+            self.method,
+            coulomb_approximation=self.fock_spec.coulomb.approximation,
+            exchange_approximation=self.fock_spec.exchange.approximation,
+            provider_derivative_order=self.fock_spec.derivative_order,
+        )
+        if self.functional != functional or self.fock_spec != spec:
+            raise ValueError(
+                "executable MethodIR plan differs from its declared physics"
+            )
+
+    @property
+    def capabilities(self):
+        return ("energy", "fock")
+
+    def semantic_payload(self):
+        return {
+            "schema": "vibeqc.fixed-density-method-plan/v1",
+            "method_identity": self.method.identity,
+            "spin": self.method.spin,
+            "reference": self.method.reference,
+            "fock_spec": self.fock_spec.to_dict(),
+            "capabilities": self.capabilities,
+        }
+
+    def to_payload(self):
+        return {
+            **self.semantic_payload(),
+            "method": self.method.to_payload(),
+            "method_manifest_identity": self.method.manifest_identity,
+            "functional_identity": self.functional.identity,
+        }
+
+    @property
+    def identity(self):
+        return canonical_hash(self.semantic_payload())
+
+
+def _compile_fixed_density_components(
+    method,
+    *,
+    coulomb_approximation="exact",
+    exchange_approximation="exact",
+    provider_derivative_order=0,
+):
+    """Compile semilocal plus full-range exchange to the common J/K request.
+
+    Exact exchange supplies a physical fraction a_x. The native provider uses
+    raw same-spin K with its density convention, so the Fock coefficient is
+    -a_x/2 for restricted total density and -a_x for unrestricted spin density.
+    Energy and Fock therefore consume one resolved coefficient.
+    """
+    if not isinstance(method, MethodIR):
+        raise TypeError("fixed-density method compilation requires MethodIR")
+    semilocal = None
+    exchange = None
+    for primitive in method.primitives:
+        if isinstance(primitive, SemilocalXCPrimitive):
+            semilocal = primitive
+        elif isinstance(primitive, ExactExchangePrimitive):
+            exchange = primitive
+        else:
+            raise UnsupportedMethod(
+                f"fixed-density execution does not support primitive {primitive.kind!r}"
+            )
+    if semilocal is None:
+        raise UnsupportedMethod(
+            "fixed-density execution requires one semilocal XC primitive"
+        )
+
+    exchange_term = FockTerm(present=False, coefficient=0.0)
+    if exchange is not None:
+        operators = {"full-range": "full_range"}
+        try:
+            operator = operators[exchange.operator]
+        except KeyError as error:
+            raise UnsupportedMethod(
+                "fixed-density execution cannot lower exchange operator "
+                f"{exchange.operator!r}"
+            ) from error
+        density_factor = -0.5 if method.reference == "restricted" else -1.0
+        exchange_term = FockTerm(
+            coefficient=density_factor * float(exchange.coefficient),
+            operator=operator,
+            approximation=exchange_approximation,
+        )
+
+    fock_spec = FockBuildSpec(
+        spin=method.reference,
+        derivative_order=provider_derivative_order,
+        coulomb=FockTerm(coefficient=1.0, approximation=coulomb_approximation),
+        exchange=exchange_term,
+    )
+    return semilocal.functional, fock_spec
+
+
+def compile_fixed_density_method(
+    method,
+    *,
+    coulomb_approximation="exact",
+    exchange_approximation="exact",
+    provider_derivative_order=0,
+):
+    """Compile a MethodIR graph into a self-consistent executable energy/Fock plan."""
+    functional, spec = _compile_fixed_density_components(
+        method,
+        coulomb_approximation=coulomb_approximation,
+        exchange_approximation=exchange_approximation,
+        provider_derivative_order=provider_derivative_order,
+    )
+    return FixedDensityMethodPlan(method, functional, spec)
 
 
 class FixedDensityMeanField:
-    """Combine the existing executable XC integrator with common native J.
+    """Combine executable semilocal XC with the existing common J/K provider.
 
-    The supplied FockPlan declares exact or fitted Coulomb explicitly. The
-    current semilocal consumer requires cJ=1 and absent K; future executable
-    hybrid methods must supply their own audited exchange metadata. No HF
-    J/K contraction is duplicated here and no complete DFT SCF is registered.
+    Legacy direct construction retains the unit-J/absent-K semilocal contract.
+    from_method instead binds an executable MethodIR plan, including full-range
+    exact exchange. No HF J/K contraction is duplicated here and no complete
+    DFT SCF or geometric-gradient capability is registered.
     """
 
-    def __init__(self, fock, xc):
+    def __init__(self, fock, xc, *, method_plan=None):
         from vibeqc_compiler.xc.integration import FixedDensityXC
 
         if not isinstance(fock, FockPlan) or not isinstance(xc, FixedDensityXC):
             raise TypeError("expected FockPlan and FixedDensityXC")
         spec = fock.spec
-        if (
-            not spec.coulomb.present
-            or spec.coulomb.coefficient != 1
-            or spec.exchange.present
-        ):
-            raise ValueError(
-                "semilocal mean field requires unit Coulomb and absent exchange"
-            )
-        self._fock, self._xc = fock, xc
+        if method_plan is None:
+            if (
+                not spec.coulomb.present
+                or spec.coulomb.coefficient != 1
+                or spec.exchange.present
+            ):
+                raise ValueError(
+                    "semilocal mean field requires unit Coulomb and absent exchange"
+                )
+        else:
+            if not isinstance(method_plan, FixedDensityMethodPlan):
+                raise TypeError("method_plan must be a FixedDensityMethodPlan")
+            if (
+                fock.diagnostics["resolved"] != method_plan.fock_spec.to_dict()
+                or xc.spec != method_plan.functional
+            ):
+                raise ValueError(
+                    "Fock/XC providers do not match the executable MethodIR plan"
+                )
+        self._fock, self._xc, self._method_plan = fock, xc, method_plan
+
+    @classmethod
+    def from_method(cls, fock, method):
+        """Bind a MethodIR graph to an already prepared common J/K provider."""
+        from vibeqc_compiler.xc.integration import FixedDensityXC
+
+        if not isinstance(fock, FockPlan):
+            raise TypeError("expected FockPlan")
+        spec = fock.spec
+        plan = compile_fixed_density_method(
+            method,
+            coulomb_approximation=spec.coulomb.approximation,
+            exchange_approximation=spec.exchange.approximation,
+            provider_derivative_order=spec.derivative_order,
+        )
+        return cls(fock, FixedDensityXC(plan.functional), method_plan=plan)
+
+    @property
+    def method_plan(self):
+        return self._method_plan
 
     def integrate(self, grid, density, *, tile_points=256):
         """Evaluate the same density and immutable basis in both consumers.
@@ -67,17 +236,30 @@ class FixedDensityMeanField:
         energy = native.energy + xc.energy
         if not np.isfinite(energy) or not np.isfinite(fock).all():
             raise ArithmeticError("nonfinite combined mean-field result")
+        method_plan_identity = (
+            None if self._method_plan is None else self._method_plan.identity
+        )
+        method_identity = (
+            None if self._method_plan is None else self._method_plan.method.identity
+        )
+        identity_payload = {
+            "schema": "vibeqc.fixed-density-mean-field/v1",
+            "fock": native.identity,
+            "xc": xc.identity,
+        }
+        if method_plan_identity is not None:
+            identity_payload = {
+                **identity_payload,
+                "schema": "vibeqc.fixed-density-mean-field/v2",
+                "method_plan": method_plan_identity,
+            }
         return MeanFieldEvaluation(
             energy,
             immutable(fock),
             xc.energy,
-            canonical_hash(
-                {
-                    "schema": "vibeqc.fixed-density-mean-field/v1",
-                    "fock": native.identity,
-                    "xc": xc.identity,
-                }
-            ),
+            canonical_hash(identity_payload),
             native.identity,
             xc.identity,
+            method_identity,
+            method_plan_identity,
         )

@@ -242,7 +242,10 @@ class ContractionProgram:
             for i in indices:
                 for j in indices:
                     dv[i] += rows[(min(i, j), max(i, j))] * direction[j]
-            response = self.response_coefficients.evaluate(
+            response_coefficients = self.response_coefficients
+            if response_coefficients is None:
+                raise RuntimeError("response coefficient program is unavailable")
+            response = response_coefficients.evaluate(
                 gradient,
                 v,
                 delta_gradient=_functional_gradient(self.spec, delta),
@@ -342,7 +345,10 @@ class ContractionProgram:
             weighted = {"rho": weights * coefficients["rho"][spin]}
             if order:
                 weighted["gradient"] = weights[:, None] * coefficients["gradient"][spin]
-            pullback += self.jet_pullback.evaluate(weighted, work)
+            jet_pullback = self.jet_pullback
+            if jet_pullback is None:
+                raise RuntimeError("geometry pullback program is unavailable")
+            pullback += jet_pullback.evaluate(weighted, work)
         centers = np.zeros((natom, 3))
         points = np.zeros((jets.shape[1], 3))
         for k in range(3):

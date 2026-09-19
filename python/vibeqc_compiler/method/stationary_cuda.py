@@ -5,6 +5,7 @@ compiler programs. Native code owns only allocation, traversal and reduction.
 Generation is host-only and does not import the public runtime or probe CUDA.
 """
 
+import os
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -32,6 +33,8 @@ def compile_stationary_cuda(primitive_source, *, pbe, iterations, compiler, cach
     """Compile a finite strict-FP64 artifact with transitive header identities."""
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("stationary CUDA requires an explicit CUDA compiler adapter")
+    if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
+        raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
     source = emit_stationary_cuda(primitive_source, pbe=pbe, iterations=iterations)
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)

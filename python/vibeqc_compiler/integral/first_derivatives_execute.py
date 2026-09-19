@@ -48,6 +48,54 @@ class CompiledFirstDerivative:
             raise ValueError("first derivative artifact identity mismatch")
 
 
+def first_derivative_component_tiles(integral, *, tile_size=64):
+    """Partition one complete Cartesian shell into deterministic bounded tiles."""
+    if type(tile_size) is not int or not 1 <= tile_size <= 64:
+        raise ValueError("first derivative tile size must be an integer from one to 64")
+    validate_first_components(integral, (0,))
+    count = integral.signature.component_count
+    return tuple(
+        tuple(range(start, min(start + tile_size, count)))
+        for start in range(0, count, tile_size)
+    )
+
+
+def first_derivative_shell_identity(integral, *, tile_size=64):
+    """Hash the complete ordered tile set without creating a second science IR."""
+    tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
+    return canonical_hash(
+        {
+            "schema": "vibeqc.first-derivative-shell.cpu.v1",
+            "tile_size": tile_size,
+            "tiles": tuple(first_component_identity(integral, tile) for tile in tiles),
+        }
+    )
+
+
+@dataclass(frozen=True)
+class CompiledFirstDerivativeShell:
+    """Complete Cartesian shell assembled from independently bounded programs."""
+
+    integral: IntegralIR
+    tiles: tuple[CompiledFirstDerivative, ...]
+    tile_size: int
+    program_identity: str
+
+    def validate(self):
+        expected = first_derivative_component_tiles(
+            self.integral, tile_size=self.tile_size
+        )
+        if (
+            tuple(tile.component_indices for tile in self.tiles) != expected
+            or any(tile.integral != self.integral for tile in self.tiles)
+            or self.program_identity
+            != first_derivative_shell_identity(self.integral, tile_size=self.tile_size)
+        ):
+            raise ValueError("full-shell first derivative tile identity mismatch")
+        for tile in self.tiles:
+            tile.validate()
+
+
 def compile_first_derivative(integral, compiler, cache, *, component_indices):
     if not isinstance(compiler, CppCompilerAdapter):
         raise TypeError("first component execution requires an explicit CPU compiler")
@@ -84,6 +132,25 @@ def compile_first_derivative(integral, compiler, cache, *, component_indices):
     return CompiledFirstDerivative(
         native, integral, indices, first_component_identity(integral, indices)
     )
+
+
+def compile_first_derivative_shell(integral, compiler, cache, *, tile_size=64):
+    """Compile every Cartesian component without creating an unbounded DAG."""
+    tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
+    compiled = tuple(
+        compile_first_derivative(
+            integral, compiler, cache, component_indices=component_indices
+        )
+        for component_indices in tiles
+    )
+    artifact = CompiledFirstDerivativeShell(
+        integral,
+        compiled,
+        tile_size,
+        first_derivative_shell_identity(integral, tile_size=tile_size),
+    )
+    artifact.validate()
+    return artifact
 
 
 class FirstDerivativeEvaluator:
@@ -175,4 +242,40 @@ class FirstDerivativeEvaluator:
                 count = 0
         if count:
             flush(count)
+        return result
+
+
+class FirstDerivativeShellEvaluator:
+    """Execute every Cartesian component with bounded peak generated work."""
+
+    def __init__(self, artifact, *, record_capacity=128, budget_bytes=4 << 20):
+        if not isinstance(artifact, CompiledFirstDerivativeShell):
+            raise TypeError("expected a compiled full-shell first-derivative artifact")
+        artifact.validate()
+        self.artifact = artifact
+        self.shape = (
+            artifact.integral.signature.component_count,
+            1 + 3 * len(artifact.integral.operator.centers),
+        )
+        self.evaluators = tuple(
+            FirstDerivativeEvaluator(
+                tile,
+                record_capacity=record_capacity,
+                budget_bytes=budget_bytes,
+            )
+            for tile in artifact.tiles
+        )
+        self.numeric_bytes = 8 * math.prod(self.shape) + max(
+            evaluator.numeric_bytes for evaluator in self.evaluators
+        )
+        if self.numeric_bytes > budget_bytes:
+            raise ValueError("full-shell first derivative numeric budget exceeded")
+
+    def contract(self, primitives, centers):
+        """Return the complete shell in canonical Cartesian component order."""
+        result = np.empty(self.shape)
+        for tile, evaluator in zip(self.artifact.tiles, self.evaluators, strict=True):
+            result[list(tile.component_indices)] = evaluator.contract(
+                primitives, centers
+            )
         return result
