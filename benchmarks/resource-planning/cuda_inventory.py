@@ -20,7 +20,12 @@ import platform
 import subprocess
 from pathlib import Path
 
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+_compiler_sys.path.insert(0, str(_BENCHMARKS_DIR))
 import numpy as np
+from _support import raw_output_path
 from vibeqc import (
     Calculator,
     ResourceBudget,
@@ -221,7 +226,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--architecture", default="sm_120")
     args = parser.parse_args()
     build = args.build.resolve()

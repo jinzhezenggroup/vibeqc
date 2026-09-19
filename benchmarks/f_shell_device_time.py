@@ -14,6 +14,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from _support import raw_output_path
+
 
 def classify_kernel(name: str) -> tuple[str | None, str, str | None]:
     """Return consumer, exact f/non-f/mixed attribution, and any exact class."""
@@ -104,7 +106,7 @@ def main() -> None:
     parser.add_argument("trace", type=Path)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/f_shell_device_time.json"),
     )
     args = parser.parse_args()

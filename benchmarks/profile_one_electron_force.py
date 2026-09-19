@@ -13,10 +13,10 @@ import json
 import os
 import statistics
 import time
-from pathlib import Path
 
 import numpy as np
 from _cases import benchmark_cases
+from _support import raw_output_path
 from compare_gpu4pyscf_batch import scaled_geometries
 from vibeqc import Calculator
 
@@ -49,7 +49,7 @@ def main() -> None:
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-14)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):
         parser.error("run real-GPU profiling inside a finite Slurm allocation")

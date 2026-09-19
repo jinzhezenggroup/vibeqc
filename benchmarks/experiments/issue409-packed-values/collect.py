@@ -12,7 +12,14 @@ import hashlib
 import json
 import math
 import re
+import sys
 from pathlib import Path
+
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
+from _support import raw_output_path
 
 LIMIT = 1 << 20
 
@@ -123,7 +130,7 @@ def main():
     """Reject incomplete clean cells unless explicitly preparing a partial draft."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--partial", action="store_true")
     args = parser.parse_args()
     source, output = args.artifacts.resolve(), args.output.resolve()

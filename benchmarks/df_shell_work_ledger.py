@@ -17,6 +17,7 @@ import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from _support import raw_output_path
 from vibeqc import Atom
 from vibeqc.calculator import _named_basis_shells
 from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model
@@ -444,7 +445,7 @@ def main():
         type=Path,
         help="SQLite export of the same measured force-call capture",
     )
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     measurement = json.loads(args.measurement.read_text())
     records = [

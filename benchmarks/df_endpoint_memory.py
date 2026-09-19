@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
 from vibeqc.resources import ResourceBudget
@@ -32,7 +33,7 @@ def main():
     parser.add_argument("--df-budget", type=int, default=0)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/df_endpoint_memory.json"),
     )
     args = parser.parse_args()

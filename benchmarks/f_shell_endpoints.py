@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from _support import raw_output_path
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (
@@ -310,7 +311,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/f_shell_endpoints.json"),
     )
     args = parser.parse_args()

@@ -22,6 +22,7 @@ from _cases import (
     density_fitting_gate_points,
     real_molecule_gate_points,
 )
+from _support import raw_output_path
 
 _ENERGY_TOLERANCE = 1.0e-12
 _DENSITY_TOLERANCE = 1.0e-10
@@ -145,7 +146,7 @@ def main() -> None:
         metavar="AO",
         help="disable stock incremental Fock updates only for the selected AO size; repeatable",
     )
-    parser.add_argument("--output-directory", type=Path, required=True)
+    parser.add_argument("--output-directory", type=raw_output_path, required=True)
     parser.add_argument(
         "--dry-run",
         action="store_true",

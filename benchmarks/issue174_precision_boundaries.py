@@ -25,6 +25,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, TypeVar
 
+from _support import raw_output_path
+
 _T = TypeVar("_T")
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPOSITORY_ROOT) not in sys.path:
@@ -330,7 +332,7 @@ def main() -> None:
     parser.add_argument("--density-tolerance", type=float, default=1.0e-8)
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--experimental-fp32-threshold", type=float, default=1.0e300)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if arguments.repeats < 1 or arguments.max_iterations < 1:
         parser.error("--repeats and --max-iterations must be positive")

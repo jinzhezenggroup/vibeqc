@@ -15,6 +15,8 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
+from _support import raw_output_path
+
 
 def interval_union(intervals):
     """Merge overlapping clock intervals, preserving gaps and exact ns units."""
@@ -337,7 +339,7 @@ def summarize(database):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("database", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     payload = summarize(args.database)
     with args.output.open("x") as stream:

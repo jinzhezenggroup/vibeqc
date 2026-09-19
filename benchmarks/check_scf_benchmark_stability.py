@@ -14,6 +14,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from _support import raw_output_path
+
 
 def iteration_branch(sample: dict[str, Any]) -> tuple[int, ...]:
     """Return the per-system SCF iteration tuple for one warm sample."""
@@ -114,7 +116,7 @@ def main() -> None:
     parser.add_argument("result", type=Path)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         help="optional path for the stability summary JSON",
     )
     parser.add_argument(

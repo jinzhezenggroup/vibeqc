@@ -34,6 +34,15 @@ TRANSIENT_SUFFIXES = {
     ".out",
     ".err",
 }
+TRANSIENT_ARCHIVE_SUFFIXES = (
+    ".zip",
+    ".tar",
+    ".tar.gz",
+    ".tgz",
+    ".tar.xz",
+    ".tar.zst",
+    ".7z",
+)
 BUILD_SUFFIXES = {".o", ".obj", ".so", ".a", ".dll", ".dylib", ".cubin", ".ptx", ".pyc"}
 CLASSES = (
     "reference",
@@ -70,8 +79,11 @@ def classify(path: str) -> str:
     ):
         return "generated-build"
     if path.startswith(RESULT_ROOT):
-        if "attempts" in p.parts or any(
-            s.lower() in TRANSIENT_SUFFIXES for s in p.suffixes
+        lower_path = path.lower()
+        if (
+            "attempts" in p.parts
+            or any(s.lower() in TRANSIENT_SUFFIXES for s in p.suffixes)
+            or lower_path.endswith(TRANSIENT_ARCHIVE_SUFFIXES)
         ):
             return "transient"
         return "accepted-evidence"

@@ -11,9 +11,15 @@ import json
 import os
 import platform
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
+from _support import raw_output_path
 from vibeqc import Atom, Calculator, electron_state, estimate_hf_resources
 from vibeqc.profiles import file_hash
 
@@ -50,7 +56,7 @@ def payload(calculator, systems, *, unrestricted, fitted, multiplicities=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument(
         "--include-ks",
         action="store_true",

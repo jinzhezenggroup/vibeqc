@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Calculator, Primitive, Shell
 from vibeqc.autotune import source_identity
 
@@ -35,7 +36,7 @@ def main():
     parser.add_argument("--maximum-bytes", type=int, default=128 << 10)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/one_electron_gradient_contract.json"),
     )
     args = parser.parse_args()

@@ -9,9 +9,15 @@ import copy
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
 import numpy as np
+from _support import raw_output_path
 from vibeqc.resources import (
     ResourceBudget,
     ResourceCandidate,
@@ -222,6 +228,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--library", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--only", nargs="+")
     main(parser.parse_args())

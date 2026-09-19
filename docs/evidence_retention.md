@@ -83,8 +83,12 @@ files are checked exactly as they will be committed. Use `--revision SHA` on
 `inventory` for a historical tree. Stage new files before checking them.
 
 Pre-commit and CI reject tracked `attempts/`, routine logs/XML, checkpoint
-suffixes, compressed profiler databases and generated binary/object products.
-There is no global XML/JSON ban. The original
+suffixes, compressed profiler databases, generated binary/object products and raw
+run archives (`.zip`, tar variants and `.7z`) by default. There is no global
+XML/JSON/NPY/NPZ ban: scientific arrays remain contextual reference/evidence
+inputs. Legacy archives that genuinely remain part of accepted evidence require
+an exact-hash owner/reason exception; that grandfathering does not authorize new
+archive bundles. The original
 `check-added-large-files --maxkb=1024 --enforce-all` hook enforces a **hard 1 MiB
 limit on every file it checks**, in both local pre-commit and all-file CI. The
 index retention checker independently enforces the same cap. Entries in
@@ -164,16 +168,16 @@ check test/production consumers, numerical samples, negative results, source
 identity and recovery before any migration. Audit output is ignored local data,
 not another bulk inventory automatically committed under `results/`.
 
-The shared `write_result` helper and its six runner CLIs (`h2_latency`,
-`batch_throughput`, both GPU4PySCF comparison runners, `compare_df_exchange`, and
-`inactive_eigensolver_profile`) reject direct output into this checkout's
-`benchmarks/results/`, including symlink aliases. The batch comparison's progress
-journal has the same guard. This is checked during argument parsing before
-calculation and again by the shared writer. Explicit scratch destinations and
-existing `.artifacts/` defaults remain supported. Use the separate publisher to
-retain selected measurements. Other historical runners with their own writers
-remain subject to the staged/CI retention checks and need incremental migration;
-this is not a claim that every output path has been converted.
+All active source-tree benchmark CLIs route `--output*` destinations through the
+shared `raw_output_path` guard, including directory-producing experiment and
+resource-planning runners. Direct or symlink-aliased output into this checkout's
+`benchmarks/results/` is rejected during argument parsing before calculation.
+The shared `write_result` helper checks again before writing. Explicit scratch
+destinations and existing `.artifacts/` defaults remain supported; use the
+separate publisher to retain selected measurements. A structural test scans live
+`benchmarks/**/*.py` runners so a newly added unguarded output parameter fails CI.
+Frozen reproduction scripts already retained under `benchmarks/results/**` are
+historical evidence and are deliberately excluded from this live-writer rule.
 
 Rationale and scope: [incoming-evidence admission decision](../.agents/notes/implemented/architecture/2026-09-19-incoming-evidence-admission.md).
 

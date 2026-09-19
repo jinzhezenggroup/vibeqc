@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Calculator, Primitive, Shell, _native
 from vibeqc.autotune import source_identity
 from vibeqc.resources import ResourceBudget
@@ -55,7 +56,7 @@ def main():
     )
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/one_electron_values_gate.json"),
     )
     args = parser.parse_args()

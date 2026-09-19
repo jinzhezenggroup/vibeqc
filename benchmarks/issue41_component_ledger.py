@@ -20,6 +20,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from _support import raw_output_path
+
 VIBEQC_RANGE = ":vibeqc/warm/energy-plus-force"
 GPU4PYSCF_SCF_RANGE = ":gpu4pyscf/warm/scf"
 GPU4PYSCF_FORCE_RANGE = ":gpu4pyscf/warm/force"
@@ -319,7 +321,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--shell-profile", type=Path, required=True)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/issue41_component_ledger.json"),
     )
     return parser

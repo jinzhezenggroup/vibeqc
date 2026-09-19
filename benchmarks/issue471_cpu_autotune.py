@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Primitive, Shell
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
@@ -100,7 +101,7 @@ def _independent_reference(angular, coordinates, shells):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--maximum-candidates", type=int, default=16)
     args = parser.parse_args()

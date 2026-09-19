@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from _support import raw_output_path
 
 from benchmarks._support import environment_metadata
 from tools.vibeqc_validation.fixtures import (
@@ -462,7 +463,7 @@ def main():
     for child in (hf, run):
         child.add_argument(
             "--output",
-            type=Path,
+            type=raw_output_path,
             required=True,
             help="validated JSON evidence destination",
         )

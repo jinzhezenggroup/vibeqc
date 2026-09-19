@@ -46,6 +46,7 @@ except ModuleNotFoundError:  # imported as ``benchmarks.issue206_df_force_probe`
         read_trace,
         trace_identity,
     )
+from _support import raw_output_path
 from vibeqc import Calculator
 
 CASES = (
@@ -247,7 +248,9 @@ def main() -> None:
         help="diagnostic traces with added event/synchronization overhead; use a fresh directory",
     )
     parser.add_argument(
-        "--output", type=Path, default=Path(".artifacts/issue206-force-ledger.json")
+        "--output",
+        type=raw_output_path,
+        default=Path(".artifacts/issue206-force-ledger.json"),
     )
     args = parser.parse_args()
     if args.repeats < 1:

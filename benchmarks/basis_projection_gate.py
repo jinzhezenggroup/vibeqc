@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Calculator, projected_singlepoint
 from vibeqc.autotune import source_identity
 from vibeqc.progressive import _retained_density
@@ -50,7 +51,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument(
         "--output",
-        type=Path,
+        type=raw_output_path,
         default=Path(".artifacts/benchmarks/basis_projection_gate.json"),
     )
     args = parser.parse_args()

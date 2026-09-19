@@ -61,6 +61,7 @@ def policy(**exceptions):
         "tests/reference_data/example.xml",
         "tests/data/checkpoint.npz",
         "external/libxc/a.log",
+        "tests/reference_data/oracle.zip",
     ],
 )
 def test_reference_context_precedes_suffix(path):
@@ -77,6 +78,13 @@ def test_reference_context_precedes_suffix(path):
         "benchmarks/results/run/profile.sqlite.gz",
         "benchmarks/results/run/state.chk",
         "benchmarks/results/run/kernel.cubin",
+        "benchmarks/results/run/raw.zip",
+        "benchmarks/results/run/raw.tar",
+        "benchmarks/results/run/raw.tar.gz",
+        "benchmarks/results/run/raw.tgz",
+        "benchmarks/results/run/raw.tar.xz",
+        "benchmarks/results/run/raw.tar.zst",
+        "benchmarks/results/run/raw.7z",
     ],
 )
 def test_transient_patterns_need_explicit_exception(path):

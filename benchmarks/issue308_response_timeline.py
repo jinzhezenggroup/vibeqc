@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from _support import raw_output_path
 from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
 
@@ -64,7 +65,7 @@ def main():
     parser.add_argument("--batch", type=int, choices=(1, 4), default=1)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--library", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument(
         "--reference",
         type=Path,
