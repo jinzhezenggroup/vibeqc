@@ -51,7 +51,7 @@ class CpuScheduleIR:
     power_lowering: PowerLowering = PowerLowering.SMALL_INTEGER
 
     def __post_init__(self) -> None:
-        if self.vector_lanes not in (1, 4, 8):
+        if type(self.vector_lanes) is not int or self.vector_lanes not in (1, 4, 8):
             raise ValueError("CPU schedule lanes must be one, four, or eight")
 
     def validate_for(self, target: CpuTargetInfo) -> None:

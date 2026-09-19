@@ -37,6 +37,24 @@ def test_deep_associative_regions_preserve_multiplicity_and_canonical_order():
     assert left.nodes == right.nodes
 
 
+def test_deep_scalar_evaluation_does_not_depend_on_python_call_stack():
+    """Deep non-associative scalar DAGs must keep the iterative evaluator path."""
+
+    graph = Graph()
+    root = graph.variable("x")
+    expected = 0.25
+    for _ in range(400):
+        root = graph.reciprocal(root + 1)
+        expected = 1.0 / (expected + 1.0)
+
+    assert math.isclose(
+        graph.evaluate(root, {"x": 0.25}),
+        expected,
+        rel_tol=0.0,
+        abs_tol=1e-15,
+    )
+
+
 def test_ssa_analysis_records_shared_last_uses_and_peak_liveness():
     """Count a shared operand through its final consumer and root output."""
 

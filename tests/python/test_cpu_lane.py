@@ -2,6 +2,7 @@
 
 import platform
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -195,3 +196,55 @@ def test_avx2_full_shell_tail_matches_independent_native_oracle(compiler, tmp_pa
         0.0,
         atol=3e-11,
     )
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "-ffast-math",
+        "-Ofast",
+        "-ffinite-math-only",
+        "-ffp-contract=fast",
+        "-march=native",
+        "@override.rsp",
+    ],
+)
+def test_cpu_target_rejects_unqualified_compiler_options(option):
+    with pytest.raises(ValueError, match="compiler options"):
+        replace(GENERIC_CPU_TARGET, compiler_options=(option,))
+
+
+@pytest.mark.parametrize("lanes", [True, 1.0, 4.0, 8.0])
+def test_cpu_target_and_schedule_require_integer_lanes(lanes):
+    with pytest.raises(ValueError, match="lanes"):
+        replace(GENERIC_CPU_TARGET, vector_lanes=lanes)
+    with pytest.raises(ValueError, match="lanes"):
+        CpuScheduleIR(vector_lanes=lanes)
+
+
+def test_simd_target_requires_matching_isa_flags():
+    with pytest.raises(ValueError, match="compiler options"):
+        replace(AVX2_FMA_TARGET, compiler_options=())
+    with pytest.raises(ValueError, match="compiler options"):
+        replace(AVX2_FMA_TARGET, compiler_options=AVX512F_FMA_TARGET.compiler_options)
+
+
+def test_strict_lane_execution_rejects_nonfinite_primitive(compiler, tmp_path):
+    from vibeqc_compiler.integral.cpu_lane_execute import (
+        FirstDerivativeCpuLaneEvaluator,
+    )
+
+    target = GENERIC_CPU_TARGET
+    artifact = compile_first_derivative_cpu_lane(
+        build_weighted_eri_ir((0, 0, 0, 0)),
+        compiler,
+        tmp_path,
+        component_indices=(0,),
+        target=target,
+        schedule=default_cpu_schedule(target),
+    )
+    with pytest.raises(ValueError, match="status 1"):
+        FirstDerivativeCpuLaneEvaluator(artifact).contract(
+            (((float("nan"), 1.0),), ((1.0, 1.0),), ((1.0, 1.0),), ((1.0, 1.0),)),
+            np.zeros((4, 3)),
+        )

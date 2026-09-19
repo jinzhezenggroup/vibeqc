@@ -574,6 +574,13 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/runtime/cuda_resources.cuh",
+      "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/runtime/cuda_runtime.cu",
       "reason": "Device availability, discovery and stable runtime ABI.",
       "regions": [],
