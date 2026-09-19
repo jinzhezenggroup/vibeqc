@@ -39,7 +39,7 @@ def resolve(record):
 
 @pytest.mark.parametrize("backend", ("cpu", "cuda"))
 @pytest.mark.parametrize("order", (0, 1, 2, 3))
-def test_ecp_ao_values_and_first_jets_have_separate_capabilities(backend, order):
+def test_ecp_ao_spatial_jets_have_backend_specific_capabilities(backend, order):
     basis = BasisSet(
         "synthetic scalar ECP",
         (element([potential()]),),
@@ -52,7 +52,7 @@ def test_ecp_ao_values_and_first_jets_have_separate_capabilities(backend, order)
         operator="ao",
         derivative_order=order,
     )
-    assert report["eligible"] == (order <= 1)
+    assert report["eligible"] == (backend == "cpu" or order <= 1)
 
 
 def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata():
