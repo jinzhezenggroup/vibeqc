@@ -19,7 +19,8 @@ class IngredientContract:
 
     rho_s = phi D_s phi; grad rho_s contains both differentiated AO legs;
     sigma_ab = grad rho_a dot grad rho_b has no extra factor two; and
-    tau_s = one-half sum_k d_k phi D_s d_k phi. LDA/GGA requests prune tau.
+    tau_s = one-half sum_k d_k phi D_s d_k phi. LDA/GGA requests prune tau;
+    meta-GGA keeps the same first-AO-derivative tau convention.
     """
 
     spin: str = "polarized"
@@ -29,19 +30,21 @@ class IngredientContract:
         if self.spin not in ("polarized", "unpolarized") or self.family not in (
             "lda",
             "gga",
+            "mgga",
         ):
-            raise UnsupportedXC("contractions support real LDA/GGA spin ingredients")
+            raise UnsupportedXC(
+                "contractions support real LDA/GGA/meta-GGA ingredients"
+            )
 
     @property
     def feature_indices(self):
         """Required slots of the audited scalar functional's feature ABI."""
-        return tuple(
-            range(
-                (2 if self.family == "lda" else 5)
-                if self.spin == "polarized"
-                else (1 if self.family == "lda" else 2)
-            )
+        sizes = (
+            {"lda": 2, "gga": 5, "mgga": 7}
+            if self.spin == "polarized"
+            else {"lda": 1, "gga": 2, "mgga": 3}
         )
+        return tuple(range(sizes[self.family]))
 
     @property
     def ao_order(self):
@@ -127,13 +130,24 @@ class DiscreteEnergyContract:
             raise UnsupportedXC(
                 "semilocal contractions do not include exact exchange/RSH"
             )
+        if "tau" in self.functional.ingredients and self.request.observable in (
+            "response",
+            "geometry",
+        ):
+            raise UnsupportedXC(
+                "tau-dependent density response and geometry derivatives are not validated"
+            )
 
     @property
     def ingredients(self):
-        return IngredientContract(
-            self.functional.spin,
-            "gga" if "sigma" in self.functional.ingredients else "lda",
+        family = (
+            "mgga"
+            if "tau" in self.functional.ingredients
+            else "gga"
+            if "sigma" in self.functional.ingredients
+            else "lda"
         )
+        return IngredientContract(self.functional.spin, family)
 
     @property
     def ao_order(self):

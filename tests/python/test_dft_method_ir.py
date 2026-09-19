@@ -49,6 +49,36 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
     )
 
 
+@pytest.mark.parametrize(
+    "spin,reference",
+    [("unpolarized", "restricted"), ("polarized", "unrestricted")],
+)
+def test_r2scan_is_one_tau_semilocal_primitive_without_exchange(spin, reference):
+    r2scan = resolve_method("R2SCAN", spin=spin)
+    assert len(r2scan.primitives) == 1
+    primitive = r2scan.primitives[0]
+    assert isinstance(primitive, SemilocalXCPrimitive)
+    assert not isinstance(primitive, ExactExchangePrimitive)
+    assert primitive.functional.components == (
+        ("MGGA_C_R2SCAN", Fraction(1)),
+        ("MGGA_X_R2SCAN", Fraction(1)),
+    )
+    assert primitive.functional.ingredients == ("rho", "sigma", "tau")
+    assert r2scan.requirements == {
+        "spin": spin,
+        "reference": reference,
+        "ingredients": ("rho", "sigma", "tau"),
+        "operators": ("semilocal-xc",),
+    }
+
+
+def test_r2scan_catalog_extension_needs_no_new_primitive_family():
+    r2scan = resolve_method("R2SCAN")
+    pbe = resolve_method("PBE")
+    assert type(r2scan.primitives[0]) is type(pbe.primitives[0])
+    assert functional("R2SCAN").exact_exchange == 0
+
+
 def test_method_identity_is_semantic_while_manifest_identity_retains_name():
     a = MethodSpec(
         "alias-a",
