@@ -133,6 +133,31 @@ macro(vibeqc_add_native_tests)
     set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
     vibeqc_native_test(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    add_executable(vibeqc_cosx_cuda_tests
+      tests/native/test_cosx_cuda.cu
+      src/dft/cuda_cosx.cu
+      "${VIBEQC_ONE_ELECTRON_HEADER}"
+      "${VIBEQC_GRID_SOURCE}"
+      src/dft/ao_grid.cpp
+      src/dft/grid.cpp
+      src/dft/cosx_reference.cpp
+      src/integrals/s_integrals.cpp
+      src/integrals/ecp.cpp
+      src/molecule/basis.cpp)
+    add_dependencies(vibeqc_cosx_cuda_tests vibeqc_ecp_codegen)
+    target_include_directories(vibeqc_cosx_cuda_tests PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/dft" "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_link_libraries(vibeqc_cosx_cuda_tests PRIVATE CUDA::cudart CUDA::cublas)
+    set_target_properties(vibeqc_cosx_cuda_tests PROPERTIES CUDA_STANDARD 20)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      target_compile_definitions(vibeqc_cosx_cuda_tests PRIVATE VIBEQC_COSX_TEST_INTERPOSE=1)
+      target_link_options(vibeqc_cosx_cuda_tests PRIVATE
+        "LINKER:--wrap=cudaMemcpyAsync" "LINKER:--wrap=cudaStreamSynchronize"
+        "LINKER:--wrap=cudaGetDevice")
+    endif()
+    add_test(NAME vibeqc_cosx_cuda_tests COMMAND vibeqc_cosx_cuda_tests)
+    set_tests_properties(vibeqc_cosx_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
   endif()
 
   vibeqc_native_test(vibeqc_dft_api_tests tests/native/test_dft_api.cpp NO_SRC_INCLUDE)

@@ -101,3 +101,24 @@ native device execution.
 The durable rationale for sharing the Coulomb recurrence and keeping fitting,
 screening, and grid prescription outside v1 is recorded in
 [the COSX discrete-reference Agent Note](../.agents/notes/implemented/numerics/2026-09-19-cosx-discrete-reference.md).
+
+
+## Bounded native CUDA candidate
+
+CudaCosxStagingPlan remains an explicit diagnostic class rather than a
+registered Fock provider, but its scientific kernels are now fully device-side.
+It reuses the existing CUDA spatial-grid owner for AO values and its immutable
+packed normalized basis. The unit point-charge ESP operator is evaluated on the
+device through generated_one_electron_values.cuh: the existing generated
+nuclear-attraction DAG has an independent external center C, and COSX takes the
+negative of its signed unit-charge value to obtain positive
+<mu|1/|r-C||nu>.
+
+For each bounded point tile the device computes ESP matrices, density
+projection, ESP application, one-sided K accumulation, and final
+symmetrization on one owner stream. No global Ngrid x NAO^2 tensor is allocated
+and no host ESP tensor or per-tile ESP H2D transfer remains.
+
+This is still explicit-only. It does not register COSX with FockBuildSpec,
+AUTO, SCF, hybrid DFT, or derivative capability. Provider/grid identity and
+native performance qualification remain the next #246 slice.
