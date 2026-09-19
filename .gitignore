@@ -10,6 +10,9 @@ __pycache__/
 /.venv/
 /_references/
 /.artifacts/
+# Current CUDA ownership is derived from source + the semantic ledger and belongs
+# in CI/local artifacts, not in Git (avoids a repository-wide conflict hotspot).
+/docs/cuda_ownership_current.json
 # Benchmark runs are staged outside the reviewed result tree. A deliberate
 # small scientific fixture can still be force-added with a hash-pinned reason.
 /benchmarks/results/**/attempts/

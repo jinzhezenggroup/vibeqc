@@ -83,6 +83,8 @@ def test_documented_forbidden_example_is_not_an_include(tmp_path):
         ("df_rhf_scf.cpp", "cuda_df_runtime"),
         ("resources.cpp", "cuda_resources"),
         ("matrix_library.cpp", "cuda_matrix_library"),
+        ("rhf_bucket.cpp", "cuda_hf_bucket"),
+        ("rhf_graph.cpp", "cuda_hf_graph"),
     ],
 )
 @pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
@@ -120,7 +122,7 @@ def test_matrix_library_cannot_acquire_bucket_resource_owner(tmp_path):
     """Matrix consumers borrow handles without depending on allocation lifetime."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
-    (source / "resources.hpp").write_text("// Stream/graph/arena owner\n")
+    (source / "resources.hpp").write_text("// Stream/library/arena owner\n")
     (source / "matrix_library.cpp").write_text('#include "resources.hpp"\n')
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
@@ -285,3 +287,43 @@ def test_reference_export_uses_only_host_cuda_interfaces(tmp_path, dependency):
     bridge.parent.mkdir(parents=True, exist_ok=True)
     bridge.write_text(f'#include "{dependency}"\n')
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+@pytest.mark.parametrize(
+    "dependency", ["rhf_bucket_internal.hpp", "direct_jk_kernels.hpp", "rhf_policy.hpp"]
+)
+def test_hf_graph_owner_cannot_acquire_bucket_policy_or_numerical_launches(
+    tmp_path, dependency
+):
+    """Graph capture lifetime stays independent of bucket and scientific work."""
+    source = tmp_path / "src/scf/cuda"
+    source.mkdir(parents=True)
+    (source / dependency).write_text(
+        "// Separately owned bucket, policy, or launch state\n"
+    )
+    (source / "rhf_graph.cpp").write_text(f'#include "{dependency}"\n')
+    errors = audit_scf_structure(tmp_path)["errors"]
+    assert len(errors) == 1
+    assert "forbidden cuda_hf_graph dependency" in errors[0]
+
+
+def test_hf_bucket_owner_cannot_import_device_implementation(tmp_path):
+    """Bucket admission and warm-state lifetime borrow interfaces only."""
+    source = tmp_path / "src/scf/cuda"
+    source.mkdir(parents=True)
+    (source / "direct_native_cartesian.cuh").write_text("// Device arithmetic\n")
+    (source / "rhf_bucket.cpp").write_text('#include "direct_native_cartesian.cuh"\n')
+    errors = audit_scf_structure(tmp_path)["errors"]
+    assert len(errors) == 1
+    assert "forbidden cuda_hf_bucket dependency" in errors[0]
+
+
+def test_bucket_routes_overflow_checked_basis_counts_through_topology():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    bucket = (root / "src/scf/cuda/rhf_bucket.cpp").read_text()
+    topology = (root / "src/scf/cuda/topology.cpp").read_text()
+    assert '"runtime/bounded_workspace.hpp"' not in bucket
+    assert "checked_expanded_primitive_references(systems)" in bucket
+    assert "checked_multiply" in topology and "checked_add" in topology

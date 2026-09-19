@@ -419,8 +419,36 @@ CUDA_ALLOWED["cuda_direct_kernel_interfaces"] = (
     "scf/cuda/packed_basis.hpp",
     "scf/cuda_weighted_eri.hpp",
 )
-# The legacy host driver coordinates policy and lifetime through explicit
-# interfaces. Keep recurrence and kernel implementation includes out of C++.
+# Direct-HF host control is split from numerical launch orchestration. The
+# bucket owner may consume planning/policy interfaces but never device
+# implementations; the Graph owner knows only CUDA capture lifecycle.
+CUDA_MODULES["cuda_hf_bucket"] = ("rhf_bucket", "rhf_bucket_internal")
+CUDA_ALLOWED["cuda_hf_bucket"] = (
+    "runtime/resource_usage.hpp",
+    "molecule/basis.hpp",
+    "scf/cuda/rhf_bucket.",
+    "scf/cuda/rhf_bucket_internal.",
+    "scf/cuda/rhf_graph.",
+    "scf/cuda/resources.",
+    "scf/cuda/arena.",
+    "scf/cuda/topology.",
+    "scf/cuda/rhf_policy.",
+    "scf/cuda/direct_constants.",
+    "scf/cuda/checked_layout.",
+    "scf/cuda/direct_tile_validation.",
+    "scf/cuda/eigensolver_types.",
+    "scf/cuda_batch.hpp",
+    "scf/fock_build.hpp",
+)
+CUDA_MODULES["cuda_hf_graph"] = ("rhf_graph",)
+CUDA_ALLOWED["cuda_hf_graph"] = (
+    "runtime/allocation_measurement.hpp",
+    "scf/cuda/rhf_graph.",
+    "scf/types.hpp",
+)
+# The remaining host driver owns direct-HF numerical launch order, not bucket
+# admission/lifetime or CUDA Graph handles. Keep recurrence and kernel
+# implementation includes out of C++.
 CUDA_MODULES["cuda_hf_driver"] = ("scf/cuda_rhf.cpp",)
 CUDA_ALLOWED["cuda_hf_driver"] = (
     # Public ECP device consumer only; quadrature kernels remain in integrals.
@@ -468,6 +496,7 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda/packed_basis.hpp",
     "scf/cuda/queue_plan.hpp",
     "scf/cuda/resources.hpp",
+    "scf/cuda/rhf_bucket_internal.hpp",
     "scf/cuda/rhf_policy.hpp",
     "scf/cuda/runtime_support.hpp",
     "scf/cuda/scf_convergence_kernels.hpp",
