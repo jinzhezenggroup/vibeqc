@@ -326,11 +326,39 @@ gate and a paired bootstrap lower bound apply. An unsuccessful search retains
 the baseline and preserves all candidate failures/raw measurements. Tuning is
 explicit; installation never launches a search. The returned `TensorSelection`
 contains the concrete compiled winner and evidence path, with no global dispatch
-change or claim about unmeasured shapes. Schema-v2 tuning evidence retains
+change or claim about unmeasured shapes. Schema-v3 tuning evidence retains
 static pruning/deadline/budget reasons and actual compilation-attempt counts.
 Artifacts record generated-source and binary sizes alongside compilation seconds
-and PTXAS resources. The existing full-endpoint timing phase remains the promotion
-gate; a separate cheap representative-timing shortlist is not implemented yet.
+and PTXAS resources.
+
+`TensorScreeningPolicy` adds a ranking-only representative-timing stage after
+compiled-resource checks. Its default uses fixture 0, five interleaved A/B pairs,
+and at most three full-qualification finalists. Select other existing fixtures
+with `fixture_indices=(...)`; the worst median baseline/candidate ratio across
+those representatives determines ordering. Exact ties preserve schedule generation
+order. No speed threshold or noisy screening observation grants a performance
+qualification. Rejected screens retain their negative evidence.
+
+The screen is bypassed when the available compilation budget already fits the
+finalist limit, or when its planned A/B-pair count plus finalist qualification
+would not reduce measurement work. `screening_plan` records that decision and
+counts, explicitly excluding compilation, startup and profiling costs. A reduced
+pair count is not a measured wall-time benefit. `screening=None` restores full
+qualification of every compiled candidate.
+
+Only baseline and one candidate context remain resident at once. Screening
+contexts are closed before a finalist reopens its existing artifact; finalists
+are not recompiled. Every finalist repeats warmup and obtains **fresh** full
+endpoint samples on **all** supplied fixtures, including the representatives.
+The original CPU/unfused-GPU parity, shared noise and bootstrap gates still apply.
+Pruned screens get no performance guard. A later numerical failure, slow fixture
+or exhausted deadline cannot be overridden by a fast screen, and all-failure
+searches retain the baseline. Policy and representative-fixture identities
+participate in the selection key, without changing mathematical or CUDA artifact
+identity recipes. Non-finite timing observations are rejected and recorded as
+JSON `null` with an `invalid_seconds` description rather than invalid JSON NaN/Inf.
+See the [screening decision note](../.agents/notes/implemented/performance/2026-09-19-tensor-screening-shortlist.md)
+for the sampling tradeoff and validation boundary.
 
 Accepted rows and the selected winner carry shared #459 `ImplementationProfile`
 records, with the original artifact key, schedule hash and candidate evidence

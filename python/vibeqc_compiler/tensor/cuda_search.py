@@ -100,6 +100,39 @@ class TensorSearchLimits:
 DEFAULT_SEARCH_LIMITS = TensorSearchLimits()
 
 
+@dataclass(frozen=True)
+class TensorScreeningPolicy:
+    """Bound full qualification using ranking-only representative measurements.
+
+    Fixture indices select existing inputs without changing their shapes or
+    values. A screen never grants a performance guard. Every finalist must pass
+    fresh complete-endpoint measurements on every original fixture. Searches
+    small enough to fit the finalist budget bypass screening entirely.
+    """
+
+    maximum_finalists: int = 3
+    repeats: int = 5
+    fixture_indices: tuple[int, ...] = (0,)
+
+    def __post_init__(self):
+        _positive_int(self.maximum_finalists, "finalist limit")
+        if self.maximum_finalists > 4096:
+            raise ValueError("finalist limit must not exceed 4096")
+        if type(self.repeats) is not int or not 5 <= self.repeats <= 30:
+            raise ValueError("screening repeats must be in 5..30")
+        indices = tuple(self.fixture_indices)
+        if not 1 <= len(indices) <= 8 or any(
+            type(index) is not int or not 0 <= index < 8 for index in indices
+        ):
+            raise ValueError("screening requires 1..8 fixture indices in 0..7")
+        if len(set(indices)) != len(indices):
+            raise ValueError("screening fixture indices must be unique")
+        object.__setattr__(self, "fixture_indices", indices)
+
+
+DEFAULT_SCREENING_POLICY = TensorScreeningPolicy()
+
+
 def execution_key(plan: TensorPlan) -> str:
     """Ignore requested knobs that do not alter this plan's executable work.
 

@@ -56,11 +56,13 @@ class DenseAOResponseBackend:
                 ).hexdigest(),
             }
         )
+        self.host_workspace_bytes = 3 * self.eri.size * 8
+        self.device_workspace_bytes = 0
         self.statistics = {
             "actions": 0,
             "tiles": 0,
             "seconds": 0.0,
-            "peak_bytes": 3 * self.eri.size * 8,
+            "peak_bytes": self.host_workspace_bytes,
         }
 
     def coulomb_exchange(self, density):
@@ -121,6 +123,10 @@ class NativeJKBackend:
                 "hamiltonian": self.hamiltonian_id,
             }
         )
+        self.host_workspace_bytes = (
+            3 * self.nbf * self.nbf * 8 + 4 * self.axis_tile**4 * 8
+        )
+        self.device_workspace_bytes = 0
         self.statistics = {
             "actions": 0,
             "tiles": 0,
@@ -262,6 +268,10 @@ class CudaDFJKBackend:
         self.device_resident_bytes = int(diagnostics[2])
         self.peak_device_bytes = int(diagnostics[3])
         self.host_resident_bytes = int(diagnostics[4])
+        self.host_workspace_bytes = (
+            self.host_resident_bytes + 3 * self.nbf * self.nbf * 8
+        )
+        self.device_workspace_bytes = self.peak_device_bytes
         self.identity = canonical_hash(
             {
                 "backend": "cuda-df-streamed-jk",

@@ -29,8 +29,10 @@ from vibeqc_compiler.common.specialization import (
 from .cuda_execute import CudaArtifact, PreparedCuda, compile_cuda
 from .cuda_plan import TensorPlan, TensorSchedule
 from .cuda_search import (
+    DEFAULT_SCREENING_POLICY,
     DEFAULT_SEARCH_LIMITS,
     TensorScheduleSpace,
+    TensorScreeningPolicy,
     TensorSearchLimits,
     plan_schedule_search,
     require_compiled_resources,
@@ -93,6 +95,7 @@ def tune_cuda(
     schedules=None,
     search_space: TensorScheduleSpace | None = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
+    screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,
     repeats: int = 8,
     maximum_seconds: float = 600,
     minimum_speedup: float = 1.02,
@@ -102,9 +105,11 @@ def tune_cuda(
 
     Each fixture uses this plan's shape bucket but may differ in values, scale
     and caller strides. Every complete endpoint includes transfers, packing,
-    validation and output copies. A finite Slurm allocation remains the hard
-    timeout for device work; this deadline stops launching further candidates.
-    The CPU interpreter is an oracle during tuning, never a runtime fallback.
+    validation and output copies. Representative timing only ranks candidates;
+    fresh qualification still checks all fixtures and the unchanged gates.
+    Set screening=None to fully qualify every compiled candidate as before.
+    A finite Slurm allocation remains the hard timeout for device work; this
+    deadline stops further work. The CPU interpreter is a tuning oracle only.
     """
     if baseline.precision != "fp64":
         raise ValueError(
@@ -112,6 +117,8 @@ def tune_cuda(
         )
     if not isinstance(search_limits, TensorSearchLimits):
         raise TypeError("search_limits must be TensorSearchLimits")
+    if screening is not None and not isinstance(screening, TensorScreeningPolicy):
+        raise TypeError("screening must be TensorScreeningPolicy or None")
     if schedules is not None and search_space is not None:
         raise ValueError("provide schedules or search_space, not both")
     schedules = (
@@ -122,6 +129,8 @@ def tune_cuda(
     fixtures = tuple(islice(fixtures, 9))
     if not 1 <= len(fixtures) <= 8:
         raise ValueError("tuning requires 1..8 fixtures")
+    if screening is not None and max(screening.fixture_indices) >= len(fixtures):
+        raise ValueError("screening fixture index is outside the provided fixtures")
     if type(repeats) is not int or not 5 <= repeats <= 30:
         raise ValueError("tuning repeats must be in 5..30")
     if not np.isfinite(maximum_seconds) or maximum_seconds <= 0:
@@ -136,7 +145,21 @@ def tune_cuda(
     ):
         raise ValueError("tuning requires an unfused CUDA baseline")
     started = time.monotonic()
+
+    def check_deadline():
+        if time.monotonic() - started >= maximum_seconds:
+            raise TimeoutError("tuning deadline exhausted")
+
     search = plan_schedule_search(baseline, schedules, search_limits)
+    screening_plan = _screening_plan(
+        screening,
+        min(
+            sum(p.status == "ready" for p in search), search_limits.maximum_compilations
+        ),
+        len(fixtures),
+        repeats,
+    )
+    screening_active = screening_plan["active"]
     artifact = compile_cuda(baseline, compiler, cache)
     references = [execute(baseline.program, values).outputs for values in fixtures]
     feed_identities = []
@@ -156,31 +179,94 @@ def tune_cuda(
                 for name, value in sorted(values.items())
             }
         )
+    inputs_hashes = [
+        canonical_hash({"equation": baseline.program.logical_hash, "feeds": feeds})
+        for feeds in feed_identities
+    ]
     best_plan, best_artifact, best_score = baseline, artifact, 1.0
-    candidates = []
+    candidates, screened = [], []
     compilation_attempts = 0
     selected_profiles = []
     with PreparedCuda(baseline, artifact, device=device) as reference_cuda:
         identity = {
-            "schema": 2,
+            "schema": 3,
             "baseline": reference_cuda.identity,
             "fixtures": feed_identities,
             "schedules": [asdict(s) for s in schedules],
             "search_limits": asdict(search_limits),
+            "screening": asdict(screening) if screening is not None else None,
+            "screening_active": screening_active,
             "maximum_seconds": maximum_seconds,
             "repeats": repeats,
             "minimum_speedup": minimum_speedup,
             "numerical_gate": {"atol": 1e-11, "rtol": 1e-10},
         }
         key = canonical_hash(identity)
-        # Library loading and first-kernel JIT are reported separately and are
-        # never silently mixed into warmed selection samples.
+        # First-kernel JIT remains separate from warmed selection samples.
         startup = []
         for feeds, expected in zip(fixtures, references, strict=True):
             result = reference_cuda.execute(feeds)
             _parity(result.outputs, expected)
             startup.append(result.metrics)
             reference_cuda.execute(feeds)
+
+        def qualify(plan, compiled, row):
+            nonlocal best_plan, best_artifact, best_score, selected_profiles
+            try:
+                check_deadline()
+                row.update(stage="endpoint", endpoint_attempted=True)
+                # Screening contexts have already been destroyed. Keep only
+                # baseline + one candidate resident, independent of shortlist size.
+                with PreparedCuda(plan, compiled, device=device) as candidate:
+                    timings, profiles, errors = [], [], []
+                    row.update(samples=timings, profiles=profiles)
+                    for index, (feeds, expected) in enumerate(
+                        zip(fixtures, references, strict=True)
+                    ):
+                        pairs, error, profile = _measure_fixture(
+                            reference_cuda,
+                            candidate,
+                            feeds,
+                            expected,
+                            inputs_hash=inputs_hashes[index],
+                            repeats=repeats,
+                            check_deadline=check_deadline,
+                            profile=True,
+                        )
+                        timings.append(_timing_evidence(pairs))
+                        errors.append(error)
+                        profiles.append(profile)
+                    gates = [
+                        endpoint_gate(
+                            *_paired_seconds(pairs), minimum_speedup=minimum_speedup
+                        )
+                        for pairs in timings
+                    ]
+                    shared_gates = [assess_comparison(pairs) for pairs in timings]
+                    passed = all(g["passed"] for g in gates) and all(
+                        g["status"] == "pass" for g in shared_gates
+                    )
+                    row.update(
+                        status="accepted" if passed else "rejected",
+                        gates=gates,
+                        shared_gates=shared_gates,
+                        max_absolute_error=max(errors),
+                    )
+                    score = min(g["median_speedup"] for g in gates)
+                    if passed:
+                        row["promotion_profiles"] = _promotion_profiles(
+                            plan,
+                            compiled,
+                            feed_identities,
+                            canonical_hash(row),
+                            baseline_execution=reference_cuda.identity,
+                        )
+                    if passed and score > best_score:
+                        best_plan, best_artifact, best_score = plan, compiled, score
+                        selected_profiles = row["promotion_profiles"]
+            except (ValueError, RuntimeError, TimeoutError) as error:
+                row.update(status="rejected", reason=str(error))
+
         for proposal in search:
             row = proposal.to_payload()
             candidates.append(row)
@@ -216,115 +302,61 @@ def tune_cuda(
                     compiled.metadata.get("resources", []),
                     minimum_resident_blocks=search_limits.minimum_resident_blocks,
                 )
-                if time.monotonic() - started >= maximum_seconds:
-                    raise TimeoutError("tuning deadline exhausted")
-                row["stage"] = "endpoint"
+                check_deadline()
+                if not screening_active:
+                    qualify(plan, compiled, row)
+                    continue
+                row["stage"] = "representative-timing"
+                screen = {
+                    "scope": "ranking only; not performance qualification",
+                    "fixture_indices": list(screening.fixture_indices),
+                    "repeats": screening.repeats,
+                    "samples": [],
+                }
+                row["screening"] = screen
+                errors = []
                 with PreparedCuda(plan, compiled, device=device) as candidate:
-                    profiles, timings, errors = [], [], []
-                    # Keep completed fixture evidence even if a later fixture
-                    # fails a numerical/resource/deadline gate.
-                    row.update(samples=timings, profiles=profiles)
-                    for fixture_index, (feeds, expected) in enumerate(
-                        zip(fixtures, references, strict=True)
-                    ):
-                        result = candidate.execute(feeds)
-                        errors.append(_parity(result.outputs, expected))
-                        # Compare against the unfused GPU too, including all
-                        # outputs, without assuming CPU/GPU associativity.
-                        errors.append(
-                            _parity(
-                                result.outputs, reference_cuda.execute(feeds).outputs
-                            )
+                    for index in screening.fixture_indices:
+                        pairs, error, _ = _measure_fixture(
+                            reference_cuda,
+                            candidate,
+                            fixtures[index],
+                            references[index],
+                            inputs_hash=inputs_hashes[index],
+                            repeats=screening.repeats,
+                            check_deadline=check_deadline,
+                            profile=False,
                         )
-                        candidate.execute(feeds)
-                        latest = [None]
-
-                        def before_sample(selection, latest=latest, expected=expected):
-                            if time.monotonic() - started >= maximum_seconds:
-                                raise TimeoutError("tuning deadline exhausted")
-                            if latest[0] is not None:
-                                _parity(latest[0].outputs, expected)
-
-                        def evaluate(selection, latest=latest, feeds=feeds):
-                            selected = (
-                                reference_cuda if selection == "baseline" else candidate
-                            )
-                            latest[0] = selected.execute(feeds)
-                            return latest[0].metrics
-
-                        # execute() synchronizes its final event, so the shared
-                        # runner needs no extra global-device barrier. Numerical
-                        # comparisons stay outside its endpoint timing window.
-                        pairs = measure_interleaved(
-                            evaluate,
-                            lambda: None,
-                            prepare=before_sample,
-                            repeats=repeats,
-                            workload="unchanged-geometry",
-                            inputs_hash=canonical_hash(
-                                {
-                                    "equation": baseline.program.logical_hash,
-                                    "feeds": feed_identities[fixture_index],
-                                }
-                            ),
-                        )
-                        _parity(latest[0].outputs, expected)
-                        timings.append(pairs)
-                        profiles.append(
-                            {
-                                "baseline": reference_cuda.execute(
-                                    feeds, profile=True
-                                ).metrics,
-                                "candidate": candidate.execute(
-                                    feeds, profile=True
-                                ).metrics,
-                            }
-                        )
-                    gates = [
-                        endpoint_gate(
-                            [
-                                p["seconds"]
-                                for p in pairs
-                                if p["selection"] == "baseline"
-                            ],
-                            [
-                                p["seconds"]
-                                for p in pairs
-                                if p["selection"] == "candidate"
-                            ],
-                            minimum_speedup=minimum_speedup,
-                        )
-                        for pairs in timings
-                    ]
-                    shared_gates = [assess_comparison(pairs) for pairs in timings]
-                    passed = all(g["passed"] for g in gates) and all(
-                        g["status"] == "pass" for g in shared_gates
-                    )
-                    row.update(
-                        status="accepted" if passed else "rejected",
-                        gates=gates,
-                        shared_gates=shared_gates,
-                        samples=timings,
-                        profiles=profiles,
-                        max_absolute_error=max(errors),
-                    )
-                    score = min(g["median_speedup"] for g in gates)
-                    if passed:
-                        row["promotion_profiles"] = _promotion_profiles(
-                            plan,
-                            compiled,
-                            feed_identities,
-                            canonical_hash(row),
-                            baseline_execution=reference_cuda.identity,
-                        )
-                    if passed and score > best_score:
-                        best_plan, best_artifact, best_score = plan, compiled, score
-                        selected_profiles = row["promotion_profiles"]
+                        screen["samples"].append(_timing_evidence(pairs))
+                        errors.append(error)
+                screen.update(
+                    score=min(_screening_speedup(pairs) for pairs in screen["samples"]),
+                    max_absolute_error=max(errors),
+                )
+                row["status"] = "screened"
+                screened.append((plan, compiled, row))
             except (ValueError, RuntimeError, TimeoutError) as error:
                 row.update(status="rejected", reason=str(error))
+
+        if screening_active:
+            # Stable sorting breaks exact ties by original generation order.
+            # No screen-speed threshold: noisy/negative screens can still reach
+            # qualification. Only the unchanged complete gates can promote.
+            ranked = sorted(screened, key=lambda item: -item[2]["screening"]["score"])
+            for rank, (_, _, row) in enumerate(ranked, 1):
+                row["shortlist_rank"] = rank
+                if rank > screening.maximum_finalists:
+                    row.update(
+                        status="pruned",
+                        stage="shortlist",
+                        reason="outside representative-timing shortlist; ranking only",
+                    )
+            for plan, compiled, row in ranked[: screening.maximum_finalists]:
+                qualify(plan, compiled, row)
+
         evidence = {
             "schema": "vibeqc.tensor.cuda.tuning",
-            "schema_version": 2,
+            "schema_version": 3,
             "identity": identity,
             "key": key,
             "device": reference_cuda.device,
@@ -336,12 +368,16 @@ def tune_cuda(
             "selected_artifact": best_artifact.metadata["key"],
             "selected_schedule": asdict(best_plan.schedule),
             "selected_profiles": selected_profiles,
+            "screening_plan": screening_plan,
             "search_summary": {
                 "generated": len(search),
                 "pruned_before_compile": sum(p.status == "pruned" for p in search),
                 "compilation_attempts": compilation_attempts,
+                "screening_candidates": sum("screening" in r for r in candidates),
+                "screened_candidates": len(screened),
+                "shortlist_pruned": sum(r["stage"] == "shortlist" for r in candidates),
                 "endpoint_candidates": sum(
-                    r.get("stage") == "endpoint" for r in candidates
+                    r.get("endpoint_attempted", False) for r in candidates
                 ),
                 "accepted": sum(r["status"] == "accepted" for r in candidates),
             },
@@ -351,6 +387,139 @@ def tune_cuda(
     path = Path(cache) / "selections" / key / "evidence.json"
     atomic_json(path, evidence)
     return TensorSelection(best_plan, best_artifact, evidence, path)
+
+
+def _screening_plan(policy, candidate_budget, fixture_count, repeats):
+    """Avoid a shortlist when its planned sample count cannot save any work.
+
+    Counts are A/B pairs only, not predicted time. Startup, compilation and
+    profiling costs are excluded; a lower count is not a speedup claim.
+    """
+    full = candidate_budget * fixture_count * repeats
+    probe = (
+        0
+        if policy is None
+        else candidate_budget * len(policy.fixture_indices) * policy.repeats
+    )
+    final = (
+        full
+        if policy is None
+        else min(candidate_budget, policy.maximum_finalists) * fixture_count * repeats
+    )
+    if policy is None:
+        reason = "screening explicitly disabled"
+    elif candidate_budget <= policy.maximum_finalists:
+        reason = "candidate budget already fits the finalist limit"
+    elif probe + final >= full:
+        reason = "screening would not reduce planned measurement pairs"
+    else:
+        reason = "representative shortlist reduces planned measurement pairs"
+    return {
+        "active": policy is not None and probe + final < full,
+        "reason": reason,
+        "candidate_budget": candidate_budget,
+        "unfiltered_pairs": full,
+        "screening_pairs": probe,
+        "finalist_pairs": final,
+        "scope": "paired timing samples only; excludes startup, profiling and compilation",
+    }
+
+
+def _timing_evidence(pairs):
+    """Retain invalid clock samples without emitting nonstandard JSON NaN/Inf."""
+    rows = []
+    for sample in pairs:
+        row = dict(sample)
+        seconds = row["seconds"]
+        if isinstance(seconds, (float, np.floating)) and not np.isfinite(seconds):
+            row.update(seconds=None, invalid_seconds=repr(float(seconds)))
+        rows.append(row)
+    return rows
+
+
+def _paired_seconds(pairs):
+    return tuple(
+        np.asarray(
+            [row["seconds"] for row in pairs if row["selection"] == side], dtype=float
+        )
+        for side in ("baseline", "candidate")
+    )
+
+
+def _screening_speedup(pairs):
+    """A finite descriptive ratio, not a promotion or statistical decision."""
+    left, right = (np.asarray(values) for values in _paired_seconds(pairs))
+    if (
+        left.ndim != 1
+        or left.shape != right.shape
+        or not 5 <= left.size <= 30
+        or not np.isfinite(left).all()
+        or not np.isfinite(right).all()
+        or np.min(left) <= 0
+        or np.min(right) <= 0
+    ):
+        raise ValueError("screening requires 5..30 positive finite paired samples")
+    ratio = float(np.median(left) / np.median(right))
+    if not np.isfinite(ratio) or ratio <= 0:
+        raise ValueError("screening speedup must be positive and finite")
+    return ratio
+
+
+def _measure_fixture(
+    reference_cuda,
+    candidate,
+    feeds,
+    expected,
+    *,
+    inputs_hash,
+    repeats,
+    check_deadline,
+    profile,
+):
+    """Warm and measure one full endpoint, checking every returned output.
+
+    Both screening and final qualification use the same synchronized runner and
+    numerical gates. Final qualification calls this again for fresh samples.
+    Neither comparisons nor optional profiling contaminate timing windows.
+    """
+    check_deadline()
+    result = candidate.execute(feeds)
+    error = _parity(result.outputs, expected)
+    check_deadline()
+    error = max(error, _parity(result.outputs, reference_cuda.execute(feeds).outputs))
+    check_deadline()
+    error = max(error, _parity(candidate.execute(feeds).outputs, expected))
+    latest = [None]
+
+    def before_sample(selection):
+        nonlocal error
+        check_deadline()
+        if latest[0] is not None:
+            error = max(error, _parity(latest[0].outputs, expected))
+
+    def evaluate(selection):
+        selected = reference_cuda if selection == "baseline" else candidate
+        latest[0] = selected.execute(feeds)
+        return latest[0].metrics
+
+    pairs = measure_interleaved(
+        evaluate,
+        lambda: None,
+        prepare=before_sample,
+        repeats=repeats,
+        workload="unchanged-geometry",
+        inputs_hash=inputs_hash,
+    )
+    error = max(error, _parity(latest[0].outputs, expected))
+    metrics = None
+    if profile:
+        metrics = {}
+        for name, prepared in (("baseline", reference_cuda), ("candidate", candidate)):
+            check_deadline()
+            result = prepared.execute(feeds, profile=True)
+            error = max(error, _parity(result.outputs, expected))
+            metrics[name] = result.metrics
+    return pairs, error, metrics
 
 
 def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execution):

@@ -311,3 +311,14 @@ reuses the existing symmetry-qualified equations and #151 derivative machinery,
 not a second scientific algebra. See the
 [input-weight boundary decision](../.agents/notes/implemented/numerics/2026-09-19-ccsd-fixed-orbital-weights.md)
 for the ownership choice and conditions for migration to generic composition.
+
+
+## Downstream complete nuclear validation
+
+The [complete CPU CCSD gradient endpoint](ccsd_gradient.md) composes these
+qualified input weights with generated raw h/g normal-ordering and HF-reference
+pullbacks, shared RHF Z response, overlap/Pulay weights and native analytic
+integral derivatives. That separate <=12-AO validation endpoint supplies a
+complete gradient within its stated scope. It does not change the fixed-q
+meaning of the weights documented here, export physical RDMs, or enable a
+production GPU/native force capability.

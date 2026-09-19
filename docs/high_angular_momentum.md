@@ -88,6 +88,24 @@ values, limiting gradient liveness. Neither its scalar schedule nor any g class
 is promoted into a production profile. Resource measurements are diagnostic
 compile/numeric evidence, not molecular GPU performance claims.
 
+### Full-shell CPU first-derivative consumer
+
+`compile_first_derivative_shell` partitions a complete Cartesian shell into
+deterministic component tiles of at most 64 entries and compiles each tile with
+the same compiler-owned S/T/V or four-center ERI DAG used by the bounded
+lowering. `FirstDerivativeShellEvaluator` executes those tiles sequentially and
+publishes the complete shell only after every tile succeeds. The numeric budget
+therefore covers the complete output plus one live bounded tile rather than an
+unbounded full-shell symbolic graph.
+
+The four-center route keeps component normalization, primitive contraction and
+physical atom scatter outside the generated recurrence. Its regression compares
+the complete d-p-s-s shell, including a partial final tile, contracted primitives,
+tight/diffuse exponents and nearly coincident centers against the independent
+dynamic-`Jet` CPU oracle in `src/integrals/s_integrals.cpp`. This consumer does
+not replace that oracle or promote generated CPU integrals into the default SCF
+path; endpoint retirement still requires matched performance evidence.
+
 ## Reproduce validation
 
 Build the CPU library normally and install the pinned `reference-test` extra
@@ -98,6 +116,12 @@ library. Use one BLAS/OpenMP thread for reproducible small-oracle timings.
 # Ordinary tier: capabilities, full selected g S/T/V blocks and derivatives,
 # signed-contracted raw ERI/DF blocks, and host-compiled scalar code.
 python -m pytest -q tests/python/test_high_angular.py
+
+# Shared-DAG CPU first derivatives, including bounded complete-shell ERI gates.
+python -m pytest -q tests/python/test_first_derivatives_native.py
+
+# Cold compile/source-size plus warm generated/oracle micro-timings.
+python benchmarks/issue351_full_shell_cpu.py --samples 50
 
 # Complete loaded-basis RHF molecular energy/force evidence.
 VIBEQC_HIGH_L_MOLECULAR_TEST=1 python -m pytest -q -s \

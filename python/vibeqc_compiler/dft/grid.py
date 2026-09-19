@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
@@ -35,7 +36,12 @@ def owned_atoms(atoms):
         a = Atom.from_value(atom)
         checked_int(a.atomic_number, "atomic number", high=118)
         xyz = immutable(a.position, shape=(3,))
-        result.append(Atom(a.atomic_number, tuple(float(x) for x in xyz)))
+        result.append(
+            Atom(
+                a.atomic_number,
+                (float(xyz[0]), float(xyz[1]), float(xyz[2])),
+            )
+        )
     if not result:
         raise ValueError("a grid requires atoms")
     return tuple(result)
@@ -165,6 +171,18 @@ class MolecularGrid:
     Geometry, atom order, charge/spin policy and every grid parameter enter the
     identity. Construction retains no molecular grid-by-AO tensor.
     """
+
+    if TYPE_CHECKING:
+        centers: ClassVar[np.ndarray]
+        directions: ClassVar[np.ndarray]
+        angular_weights: ClassVar[np.ndarray]
+        radii: ClassVar[np.ndarray]
+        radial_weights: ClassVar[np.ndarray]
+        resolved_radii: ClassVar[tuple[float, ...]]
+        npoint: ClassVar[int]
+        identity: ClassVar[str]
+        numeric_bytes: ClassVar[int]
+        setup_scratch_bytes: ClassVar[int]
 
     atoms: tuple
     spec: GridSpec = GridSpec()
@@ -310,7 +328,11 @@ class ExplicitGrid:
     points: np.ndarray
     weights: np.ndarray
     owners: tuple[int, ...]
-    provenance: dict
+    provenance: dict[str, object]
+
+    if TYPE_CHECKING:
+        _provenance_json: ClassVar[str]
+        identity: ClassVar[str]
 
     def __post_init__(self):
         points, weights = immutable(self.points), immutable(self.weights)

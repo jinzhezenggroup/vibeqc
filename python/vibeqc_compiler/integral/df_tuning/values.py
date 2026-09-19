@@ -68,7 +68,7 @@ class DfValueTrial:
 def enumerate_value_trials():
     """Only implemented class-specific math enters the finite batch search."""
     return tuple(
-        DfValueTrial(a, math, lanes)
+        DfValueTrial((a[0], a[1], a[2]), math, lanes)
         for a in VALUE_CLASSES
         for math in VALUE_LOWERINGS
         for lanes in VALUE_LANES

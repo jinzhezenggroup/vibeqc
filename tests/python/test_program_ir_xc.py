@@ -10,6 +10,7 @@ from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.program import ProgramIR
 from vibeqc_compiler.common.resources import MAX_BYTES
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.dft.features import density_feature_block, density_features
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.xc import functional
 from vibeqc_compiler.xc.contractions import ContractionProgram
@@ -27,6 +28,7 @@ def describe(name="PBE", spin="polarized", **changes):
         "grid_bytes": 1000,
         "basis_identity": "basis-v1",
         "native_identity": "native-v1",
+        "packed_features": False,
     }
     options.update(changes)
     return fixed_density_tile_program(
@@ -74,8 +76,43 @@ def test_provider_and_shape_changes_invalidate_graph_identity():
         {"tile_points": 8},
         {"basis_identity": "moved"},
         {"native_identity": "other"},
+        {"packed_features": True},
     ):
         assert describe(**changes).identity != describe().identity
+
+
+@pytest.mark.parametrize("name,gradient", [("LDA_XC_PW", False), ("PBE", True)])
+def test_packed_feature_program_records_real_cross_subsystem_layouts(name, gradient):
+    p = describe(name, "polarized", packed_features=True)
+    assert tuple(call.name for call in p.calls) == (
+        "collocation",
+        "features",
+        "scalar_xc",
+        "vxc",
+    )
+    assert p.calls[1].provider == "dft.density_feature_block"
+    assert p.calls[2].provider.startswith("xc.")
+    layouts = {buffer.name: buffer.layout for buffer in p.buffers}
+    assert layouts["jets"].shape == (
+        1 if name == "LDA_XC_PW" else 4,
+        7,
+        12,
+    )
+    assert layouts["feature_scalar"].shape == (7, 7)
+    assert layouts["xc_rows"].shape[1] == 7
+    assert ("feature_gradient" in layouts) is gradient
+    releases = p.release_after("vxc")
+    assert releases[0] == "jets"
+    assert "feature_scalar" in releases and "xc_rows" in releases
+    assert ("feature_gradient" in releases) is gradient
+    assert ProgramIR.from_payload(p.to_payload()) == p
+
+
+def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection():
+    with pytest.raises(ValueError, match="polarized"):
+        describe("PBE", "unpolarized", packed_features=True)
+    with pytest.raises(ValueError, match="bool"):
+        describe("PBE", "polarized", packed_features=1)
 
 
 def test_non_potential_contracts_remain_outside_phase_a():
@@ -132,7 +169,7 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
     program = native_factory(name)
     refs, observed = [], []
     with NativeAO(**basis_arguments(meta)) as basis:
-        old_ao, old_xc = basis.evaluate, program.evaluate
+        old_ao, old_xc = basis.evaluate, program.potential_from_rows
 
         def collocate(*args, **kwargs):
             # Weak references do not themselves extend an allocation lifetime.
@@ -148,7 +185,12 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
             return result
 
         monkeypatch.setattr(basis, "evaluate", collocate)
-        monkeypatch.setattr(program, "evaluate", contract)
+        monkeypatch.setattr(program, "potential_from_rows", contract)
+        monkeypatch.setattr(
+            program,
+            "scalar_values",
+            lambda *_a, **_kw: pytest.fail("packed path called legacy scalar repack"),
+        )
         with PreparedXCContractions(program, basis, grid, tile_points=7) as prepared:
             description = prepared.tile_program
             actual = prepared.execute(data["density_spin"])
@@ -156,7 +198,15 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
             assert observed == [()] * len(observed)
             assert all(ref() is None for _, ref in refs)
             assert prepared.statistics["tile_program_identity"] == description.identity
-            assert prepared.statistics["tile_boundary_releases"] == ("jets",)
+            releases = prepared.statistics["tile_boundary_releases"]
+            assert releases[0] == "jets"
+            assert "feature_scalar" in releases and "xc_rows" in releases
+            if name == "PBE":
+                assert "feature_gradient" in releases
+            assert prepared.statistics["tile_layouts"]["feature_scalar"]["shape"] == (
+                7,
+                7,
+            )
             assert prepared.statistics["scalar_calls"] == len(observed)
             np.testing.assert_allclose(
                 actual["energy"], data[f"{name}_spin_energy"][0], rtol=1e-10, atol=1e-11
@@ -175,6 +225,46 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
             with pytest.raises(AttributeError):
                 prepared.tile_program = None
             assert prepared.tile_program is description
+
+
+def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
+    native_factory, monkeypatch
+):
+    meta, data, grid = load_integration_fixture("h2")
+    program = native_factory("PBE")
+    with NativeAO(**basis_arguments(meta)) as basis:
+        jets = basis.evaluate(grid.points[:7], order=1)
+        block = density_feature_block(
+            jets,
+            data["density_spin"],
+            ingredients=("rho", "gradient", "sigma"),
+        )
+        public = density_features(
+            jets,
+            data["density_spin"],
+            ingredients=("rho", "gradient", "sigma"),
+        )
+        features = block.features()
+        for key in public:
+            np.testing.assert_array_equal(features[key], public[key])
+        assert np.shares_memory(features["rho"], block.scalar)
+        assert np.shares_memory(features["sigma"], block.scalar)
+        assert not block.scalar.flags.writeable
+
+        seen = []
+        original = program._scalar.evaluate_matrix
+
+        def evaluate_matrix(values):
+            seen.append(values)
+            return original(values)
+
+        monkeypatch.setattr(program._scalar, "evaluate_matrix", evaluate_matrix)
+        direct = program.scalar_values_packed(block.scalar)
+        baseline = program.scalar_values(features)
+        for key in baseline:
+            np.testing.assert_array_equal(direct[key], baseline[key])
+        assert seen
+        assert np.shares_memory(seen[0], block.scalar)
 
 
 def test_other_native_observables_do_not_advertise_programir(native_factory):

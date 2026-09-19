@@ -19,7 +19,7 @@ thread_local bool fail_next_grid_runtime = false;
 #endif
 struct GridPlan {
   Context context;
-  bool density_ready = false;
+  bool density_ready = false, density_jets_ready = false;
   size_t natom{}, nprimitive{}, nao{}, capacity{}, jets{}, packed_size{};
   size_t active_capacity{}, last_points{}, last_active{};
   std::uint64_t generation{};
@@ -604,6 +604,7 @@ int grid_cuda_run_selected_v1(void* pointer, const double* points, size_t npoint
                                    cudaMemcpyDeviceToHost, ctx.stream));
     });
     if (failure) throw std::runtime_error("nonfinite CUDA AO/density output");
+    p.density_jets_ready = features && !p.use_orbitals;
     p.view_ready = true;
   });
 }
@@ -637,6 +638,23 @@ int grid_cuda_view_v1(void* pointer, vibeqc::dft::GridTaskView* output, char* er
   });
 }
 
+// The task lease owns the lifetime/stream. This optional extension leaves the
+// v1 view ABI intact and refuses orbital tiles or overwritten XC work storage.
+int grid_cuda_density_jets_v1(void* pointer, std::uint64_t generation, unsigned jets,
+                              const double** output, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !output) throw std::invalid_argument("null contracted AO view");
+    auto& p = *static_cast<GridPlan*>(pointer);
+    std::lock_guard<std::mutex> lock(p.context.mutex);
+    p.context.check_device();
+    if (!p.local || !p.view_ready || !p.features_ready || !p.density_jets_ready || p.use_orbitals ||
+        generation != p.generation || (jets != 1 && jets != 4) || !(p.feature_mask & 7) ||
+        (jets == 4 && !(p.feature_mask & 8)))
+      throw std::invalid_argument("contracted AO jets are unavailable");
+    *output = p.work;
+  });
+}
+
 int grid_cuda_xc_v2(void* pointer, std::uint64_t generation, int pbe, int restricted, int interior,
                     const double* weights, size_t npoint, double* integrals, char* error,
                     size_t size) {
@@ -655,6 +673,7 @@ int grid_cuda_xc_v2(void* pointer, std::uint64_t generation, int pbe, int restri
       throw std::invalid_argument("stale or incompatible CUDA XC task");
     // A local plan has active_capacity>=1, so its eight work panels leave at
     // least three doubles after the capacity-sized weight upload.
+    p.density_jets_ready = false;
     double* device_weights = p.work;
     double* device_integrals = p.work + p.capacity;
     const size_t matrix_elements = 2 * p.last_active * p.last_active;

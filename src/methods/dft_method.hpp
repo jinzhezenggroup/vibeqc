@@ -17,6 +17,7 @@ struct KsDerivativeSnapshot {
   std::vector<double> overlap, packed_basis, points, weights;
   std::vector<std::uint32_t> grid_owners;
   std::vector<double> atomic_weights;
+  std::uint64_t export_d2h_bytes{}, export_reads{}, export_synchronizations{};
 };
 
 vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,

@@ -165,16 +165,17 @@ class ContractionProgram:
         return result
 
     def potential_tile(self, jets, features, weights):
-        """Consume complete-density features from a validated collocation owner.
-
-        FixedDensityXC and local-task adapters share this entry point so
-        native collocation does not have to repeat its feature reductions.
-        Partial AO density contributions must be combined before this call.
-        """
+        """Consume complete-density features from a validated collocation owner."""
         if self.contract.request.observable != "potential":
             raise ValueError("potential tile requires a potential request")
-        weights = immutable(weights, shape=(jets.shape[1],))
         rows = self.scalar_values(features)
+        return self.potential_from_rows(jets, features, weights, rows)
+
+    def potential_from_rows(self, jets, features, weights, rows):
+        """Assemble the unchanged potential after an explicitly planned scalar call."""
+        if self.contract.request.observable != "potential":
+            raise ValueError("potential rows require a potential request")
+        weights = immutable(weights, shape=(jets.shape[1],))
         v = self._gradient(rows, jets.shape[1])
         coefficients = self.coefficients.evaluate(
             _functional_gradient(self.spec, features), v
@@ -241,7 +242,10 @@ class ContractionProgram:
             for i in indices:
                 for j in indices:
                     dv[i] += rows[(min(i, j), max(i, j))] * direction[j]
-            response = self.response_coefficients.evaluate(
+            response_coefficients = self.response_coefficients
+            if response_coefficients is None:
+                raise RuntimeError("response coefficient program is unavailable")
+            response = response_coefficients.evaluate(
                 gradient,
                 v,
                 delta_gradient=_functional_gradient(self.spec, delta),
@@ -341,7 +345,10 @@ class ContractionProgram:
             weighted = {"rho": weights * coefficients["rho"][spin]}
             if order:
                 weighted["gradient"] = weights[:, None] * coefficients["gradient"][spin]
-            pullback += self.jet_pullback.evaluate(weighted, work)
+            jet_pullback = self.jet_pullback
+            if jet_pullback is None:
+                raise RuntimeError("geometry pullback program is unavailable")
+            pullback += jet_pullback.evaluate(weighted, work)
         centers = np.zeros((natom, 3))
         points = np.zeros((jets.shape[1], 3))
         for k in range(3):

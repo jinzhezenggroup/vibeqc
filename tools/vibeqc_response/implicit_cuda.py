@@ -54,6 +54,7 @@ class PreparedImplicitCuda:
         self.solver = solver
         self.plan_identity = plan.identity
         self.host_capacity = budget.limits()["host"]
+        self.device_capacity = budget.limits()["device"]
         reserved = plan.reference_workspace_bytes + solver.workspace_bytes
         effective_budget = replace(
             budget, host_reserve_bytes=budget.host_reserve_bytes + reserved
@@ -87,6 +88,7 @@ class PreparedImplicitCuda:
             self.workspace_bytes = sum(
                 self._session.provider(stage).plan.host_bytes for stage in choices
             )
+            self.device_workspace_bytes = self.resource_plan.peak_bytes["device"]
             self.identity = canonical_hash(
                 {
                     "implicit": plan.identity,
@@ -106,7 +108,13 @@ class PreparedImplicitCuda:
             raise
 
     def bind(
-        self, feeds, *, reference_identity, current_reference=None, primal_atol=1e-10
+        self,
+        feeds,
+        *,
+        reference_identity,
+        response_operator=None,
+        current_reference=None,
+        primal_atol=1e-10,
     ):
         """Bind a fresh host snapshot to these already-admitted CUDA programs."""
         if self._closed:
@@ -117,9 +125,13 @@ class PreparedImplicitCuda:
             reference_identity=reference_identity,
             solver=self.solver,
             executor=self,
+            response_operator=response_operator,
             current_reference=current_reference,
             primal_atol=primal_atol,
             max_bytes=self.host_capacity,
+            max_device_bytes=(
+                self.device_capacity if response_operator is not None else None
+            ),
         )
 
     def execute(self, stage, feeds):
