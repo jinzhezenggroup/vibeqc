@@ -3,20 +3,20 @@
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
-      "bytes": 5274,
+      "bytes": 7072,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 102,
+        "runtime": 127,
         "scientific": 0
       },
       "path": "src/cc/cuda_state.cuh",
-      "physical_lines": 120,
+      "physical_lines": 154,
       "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
       "regions": [],
       "role": "runtime",
-      "sha256": "76766d10f1c2d1501794e948f13dfd89cfd1ae86589d02f005f95a660c808449",
+      "sha256": "09ee3814921e78160c76f5cc49f53d33ea610e35ab11c83f41a66e095eb601a9",
       "subsystem": "runtime"
     },
     {
@@ -3768,7 +3768,7 @@
     "fallback": 0,
     "oracle": 312,
     "performance_exception": 884,
-    "runtime": 11022,
+    "runtime": 11047,
     "scientific": 12220
   },
   "migration_ledger": {
@@ -4051,7 +4051,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 5034,
+      "runtime": 5059,
       "scientific": 5
     },
     "scf_tensor": {
