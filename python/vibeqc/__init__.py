@@ -33,6 +33,12 @@ from .calculator import (
     Shell,
     method_capabilities,
 )
+from .dispersion import (
+    D3CorrectionBatch,
+    D3CorrectionResult,
+    D3RuntimeDiagnostic,
+    evaluate_d3_correction,
+)
 from .elements import ElectronState, electron_state
 from .fock import FockBuildSpec, FockEvaluation, FockPlan, FockScfResult, FockTerm
 from .ks import FunctionalSpec, GridSpec, KsOptions
@@ -80,6 +86,9 @@ __all__ = [
     "BatchResult",
     "Calculator",
     "CorrelationResult",
+    "D3CorrectionBatch",
+    "D3CorrectionResult",
+    "D3RuntimeDiagnostic",
     "DensityFittingMetricDiagnostic",
     "EigensolverDiagnostic",
     "ElectronState",
@@ -130,6 +139,7 @@ __all__ = [
     "electron_state",
     "estimate_hf_resources",
     "estimate_ks_resources",
+    "evaluate_d3_correction",
     "import_bse",
     "load_basis",
     "method_capabilities",

@@ -20,6 +20,7 @@ STATUS_NOT_IMPLEMENTED = 3
 STATUS_NOT_CONVERGED = 4
 STATUS_SCF_NOT_CONVERGED = 4
 STATUS_NUMERICAL_FAILURE = 5
+STATUS_CUDA_ERROR = 6
 STATUS_OUT_OF_MEMORY = 7
 STATUS_INTERNAL_ERROR = 8
 STATUS_PRECISION_UNAVAILABLE = 9
@@ -49,6 +50,7 @@ PRECISION_FP64 = 0
 PRECISION_AUTO = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
+D3_DAMPING_BJ = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
 BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING = 1 << 2
@@ -361,6 +363,71 @@ class BatchInputDescriptor(ctypes.Structure):
         ("abi_version", ctypes.c_uint32),
         ("coordinates", ctypes.POINTER(ctypes.c_double)),
         ("coordinate_count", ctypes.c_uint32),
+    ]
+
+
+class D3SystemDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("atomic_numbers", ctypes.POINTER(ctypes.c_int32)),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("atom_count", ctypes.c_uint32),
+    ]
+
+
+class D3BjDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("damping", ctypes.c_int32),
+        ("s6", ctypes.c_double),
+        ("s8", ctypes.c_double),
+        ("a1", ctypes.c_double),
+        ("a2", ctypes.c_double),
+        ("s9", ctypes.c_double),
+        ("cn_cutoff", ctypes.c_double),
+        ("pair_cutoff", ctypes.c_double),
+        ("pair_switch_width", ctypes.c_double),
+        ("maximum_bytes", ctypes.c_uint64),
+    ]
+
+
+class D3BatchInputDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint32),
+    ]
+
+
+class D3BatchItemResultDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("status", ctypes.c_int32),
+        ("energy", ctypes.c_double),
+        ("gradient", ctypes.POINTER(ctypes.c_double)),
+        ("gradient_count", ctypes.c_uint32),
+        ("executed_backend", ctypes.c_int32),
+    ]
+
+
+class D3RuntimeDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("backend", ctypes.c_int32),
+        ("plan_host_bytes", ctypes.c_uint64),
+        ("execution_host_bytes", ctypes.c_uint64),
+        ("device_bytes", ctypes.c_uint64),
+        ("table_bytes", ctypes.c_uint64),
+        ("workspace_bytes", ctypes.c_uint64),
+        ("maximum_bytes", ctypes.c_uint64),
+        ("total_atoms", ctypes.c_uint64),
+        ("system_count", ctypes.c_uint32),
+        ("maximum_atoms", ctypes.c_uint32),
     ]
 
 
@@ -784,6 +851,35 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.c_uint32,
     ]
     library.vibeqc_batch_execute.restype = ctypes.c_int
+    d3_prepare = getattr(library, "vibeqc_d3_batch_prepare", None)
+    if d3_prepare is not None:
+        library.vibeqc_d3_table_sha256.argtypes = []
+        library.vibeqc_d3_table_sha256.restype = ctypes.c_char_p
+        library.vibeqc_d3_radii_sha256.argtypes = []
+        library.vibeqc_d3_radii_sha256.restype = ctypes.c_char_p
+        d3_prepare.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D3SystemDescriptor),
+            ctypes.c_uint32,
+            ctypes.POINTER(D3BjDescriptor),
+            void_pp,
+        ]
+        d3_prepare.restype = ctypes.c_int
+        library.vibeqc_d3_batch_destroy.argtypes = [ctypes.c_void_p]
+        library.vibeqc_d3_batch_destroy.restype = None
+        library.vibeqc_d3_batch_get_diagnostic.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D3RuntimeDiagnostic),
+        ]
+        library.vibeqc_d3_batch_get_diagnostic.restype = ctypes.c_int
+        library.vibeqc_d3_batch_execute.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D3BatchInputDescriptor),
+            ctypes.c_uint32,
+            ctypes.POINTER(D3BatchItemResultDescriptor),
+            ctypes.c_uint32,
+        ]
+        library.vibeqc_d3_batch_execute.restype = ctypes.c_int
     if library.vibeqc_get_abi_version() != ABI_VERSION:
         raise RuntimeError("VIBEQC Python/native ABI version mismatch")
     return library
