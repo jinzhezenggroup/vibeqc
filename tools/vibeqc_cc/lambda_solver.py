@@ -132,14 +132,14 @@ class BoundCCSDLambda:
 
     def __init__(
         self,
-        snapshot,
-        cc_result,
+        snapshot: object,
+        cc_result: object,
         *,
-        options=None,
-        solver=None,
+        options: object | None = None,
+        solver: object | None = None,
         current_reference: Callable[[], str] | None = None,
-        backend="cpu",
-    ):
+        backend: str = "cpu",
+    ) -> None:
         if backend != "cpu":
             raise NotImplementedError(
                 "bound RCCSD Lambda currently supports CPU tooling only"

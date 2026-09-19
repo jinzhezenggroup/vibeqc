@@ -10,7 +10,7 @@ def emit_numerical_driver(
     name: str,
     architecture: str = "sm_120",
     *,
-    plan=None,
+    plan: object | None = None,
     source: str | None = None,
     consumer: str | None = None,
 ) -> str:

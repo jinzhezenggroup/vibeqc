@@ -16,9 +16,11 @@ import json
 import re
 import statistics
 from collections import defaultdict
-from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 VIBEQC_RANGE = ":vibeqc/warm/energy-plus-force"
 GPU4PYSCF_SCF_RANGE = ":gpu4pyscf/warm/scf"

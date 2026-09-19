@@ -597,7 +597,7 @@ def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference():
 
 def test_screened_direct_jk_force_matches_energy_finite_difference(
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """Keep the direct-J/K screening decision variational and force-consistent."""
 
     basis = (
@@ -658,7 +658,7 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
 
 def test_cuda_final_fock_reuse_matches_forced_rebuild(
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """Bound the force impact when an accepted raw Fock skips final rebuild."""
 
     basis = (

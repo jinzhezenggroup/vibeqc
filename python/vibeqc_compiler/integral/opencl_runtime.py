@@ -535,15 +535,15 @@ class OpenCLRuntime:
 
     def launch(
         self,
-        program,
-        kernel,
-        arguments,
+        program: object,
+        kernel: object,
+        arguments: object,
         *,
-        items,
+        items: object,
         shape: ExecutionShape,
-        stream=None,
-        wait_for=(),
-    ):
+        stream: object | None = None,
+        wait_for: tuple[object, ...] = (),
+    ) -> object:
         """Submit a padded NDRange and retain referenced objects until explicit wait."""
         shape.validate_for(self.capabilities())
         if type(items) is not int or items < 1:

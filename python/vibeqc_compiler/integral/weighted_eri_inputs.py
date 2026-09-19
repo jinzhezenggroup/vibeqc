@@ -99,13 +99,13 @@ class WeightedEriPrimitiveStream:
 
 def prepare_weighted_eri_stream(
     request: BlockRequest,
-    primitives,
-    centers,
-    provider,
+    primitives: object,
+    centers: object,
+    provider: object,
     *,
-    projections=None,
-    generated=True,
-    output_tile=0,
+    projections: object | None = None,
+    generated: bool = True,
+    output_tile: int = 0,
 ) -> WeightedEriPrimitiveStream:
     """Freeze one full/padded/partial weight tile, then stream normalized records.
 
@@ -240,7 +240,9 @@ def prepare_weighted_eri_stream(
     )
 
 
-def weighted_eri_response(request: BlockRequest, native_result) -> BlockResponse:
+def weighted_eri_response(
+    request: BlockRequest, native_result: object
+) -> BlockResponse:
     """Map the native four-center result to requested center or physical-atom rows."""
     if (
         request.integral.operator.centers != (0, 1, 2, 3)

@@ -17,7 +17,6 @@ import os
 import platform
 import subprocess
 import sys
-from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -28,7 +27,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 
+from typing import TYPE_CHECKING
+
 from vibeqc import Primitive, Shell
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 RUN_SCHEMA = "vibeqc.mp2-public-force-validation.v1"
 CASE_SCHEMA = "vibeqc.mp2-public-force-case.v1"
@@ -247,7 +251,7 @@ def validate_case_record(record: dict, *, expected_steps: Sequence[float]) -> No
 
 
 def central_finite_difference_forces(
-    calculator,
+    calculator: object,
     atoms: Sequence[tuple[str | int, Sequence[float]]],
     *,
     charge: int,
@@ -353,7 +357,7 @@ def parallel_central_finite_difference_forces(
     return records
 
 
-def force_invariants(positions, forces) -> dict[str, float]:
+def force_invariants(positions: object, forces: object) -> dict[str, float]:
     """Return translation and rotational sum-rule residual norms."""
 
     coordinates = np.asarray(positions, dtype=np.float64)
@@ -374,7 +378,7 @@ def force_invariants(positions, forces) -> dict[str, float]:
     }
 
 
-def _error_metrics(actual, expected) -> dict[str, float]:
+def _error_metrics(actual: object, expected: object) -> dict[str, float]:
     difference = np.asarray(actual, dtype=np.float64) - np.asarray(
         expected, dtype=np.float64
     )
@@ -427,7 +431,7 @@ def _rotation_matrix() -> np.ndarray:
     )
 
 
-def _atoms_with_positions(case: PublicForceCase, positions) -> tuple:
+def _atoms_with_positions(case: PublicForceCase, positions: object) -> tuple:
     values = np.asarray(positions, dtype=np.float64)
     return tuple(
         (element, tuple(float(component) for component in position))
@@ -482,7 +486,7 @@ def _pyscf_reference(case: PublicForceCase) -> dict:
     }
 
 
-def _calculator(case: PublicForceCase, backend: str, budget: int):
+def _calculator(case: PublicForceCase, backend: str, budget: int) -> object:
     from vibeqc import Calculator
 
     return Calculator(
@@ -739,7 +743,7 @@ def run_case(
     return record
 
 
-def _environment_record(calculator=None) -> dict:
+def _environment_record(calculator: object | None = None) -> dict:
     library = None
     if calculator is not None:
         library = Path(calculator._library._name).resolve()

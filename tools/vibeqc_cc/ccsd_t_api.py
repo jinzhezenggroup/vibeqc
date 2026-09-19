@@ -76,7 +76,7 @@ def rccsd_t_method_capabilities(method: str = "rccsd(t)") -> RCCSDTCapabilities:
     return RCCSDTCapabilities()
 
 
-def _array_sha256(array) -> str:
+def _array_sha256(array: object) -> str:
     return sha256(np.ascontiguousarray(array, dtype="<f8").tobytes()).hexdigest()
 
 
@@ -117,7 +117,7 @@ def _qualified_cc_state_identity(backend: str, state: CCSDResult) -> str:
     )
 
 
-def _triples_arrays(snapshot, state: CCSDResult) -> dict[str, np.ndarray]:
+def _triples_arrays(snapshot: object, state: CCSDResult) -> dict[str, np.ndarray]:
     """Recover the exact mathematical inputs retained by the accepted CC solve."""
 
     required = ("ovvv", "ovoo", "ovov", "fov", "orbital_energies")
@@ -542,7 +542,7 @@ class PreparedRCCSDTBatch:
             self.shape = shapes[0]
         self.settings = dict(settings)
 
-    def execute(self, *, compute_forces=False) -> BatchRCCSDTResult:
+    def execute(self, *, compute_forces: bool = False) -> BatchRCCSDTResult:
         """Return input-ordered results; any item exception leaves others runnable."""
         if compute_forces:
             raise NotImplementedError(
@@ -586,7 +586,7 @@ class PreparedRCCSDTBatch:
 
 
 def rccsd_t_batch_energy(
-    problems, *, compute_forces=False, **settings
+    problems: object, *, compute_forces: bool = False, **settings: object
 ) -> BatchRCCSDTResult:
     """Prepare and execute a homogeneous energy-only RCCSD(T) batch."""
 

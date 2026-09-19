@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import torch
 
-from .batch import PreparedBatch
 from .calculator import Calculator
 from .elements import checked_integer
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .batch import PreparedBatch
 
 
 def _validated_atomic_numbers(coordinates, atomic_numbers):

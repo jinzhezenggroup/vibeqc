@@ -408,13 +408,13 @@ class BoundImplicitState:
         *,
         reference_identity: str,
         solver: TransposeSolver | None = None,
-        executor=None,
-        response_operator=None,
+        executor: object | None = None,
+        response_operator: object | None = None,
         current_reference: Callable[[], str] | None = None,
         primal_atol: float = 1e-10,
         max_bytes: int = 256 << 20,
         max_device_bytes: int | None = None,
-    ):
+    ) -> None:
         if not isinstance(plan, ImplicitVJPPlan):
             raise TypeError("expected a generated ImplicitVJPPlan")
         if not isinstance(reference_identity, str) or not reference_identity.strip():
@@ -633,7 +633,11 @@ class BoundImplicitState:
         }
 
     def vjp(
-        self, state_cotangent, *, reference_identity: str, direct=None
+        self,
+        state_cotangent: object,
+        *,
+        reference_identity: str,
+        direct: object | None = None,
     ) -> ImplicitVJPResult:
         """Apply the first-order implicit rule without any solver-history tape."""
         with self._lock:

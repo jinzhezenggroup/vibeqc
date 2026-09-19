@@ -242,7 +242,9 @@ class EmpiricalHFEstimator:
             raise ValueError("training safety factor must be at least one")
 
     @classmethod
-    def fit(cls, domain: HFCalibrationDomain, samples, *, safety_factor=4.0):
+    def fit(
+        cls, domain: HFCalibrationDomain, samples: object, *, safety_factor: float = 4.0
+    ) -> object:
         """Fit only declared training families; never ingest held-out observations."""
         samples = tuple(samples)
         if not samples or any(not isinstance(s, HFCalibrationSample) for s in samples):
@@ -356,7 +358,11 @@ class EmpiricalHFEstimator:
         return result
 
     def evaluate_holdout(
-        self, samples, *, energy_tolerance=1e-6, force_tolerance=1e-6
+        self,
+        samples: object,
+        *,
+        energy_tolerance: float = 1e-6,
+        force_tolerance: float = 1e-6,
     ) -> dict:
         """Report whole-family coverage, missed tolerances and excess rejection."""
         energy_tolerance = _number(energy_tolerance, "energy tolerance", positive=True)

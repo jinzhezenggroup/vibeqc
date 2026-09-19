@@ -35,7 +35,7 @@ def main() -> None:
         require(name not in decoded, f"duplicate logical record: {name}")
         decoded[name] = data
 
-    def read(name: str):
+    def read(name: str) -> dict[str, object]:
         return json.loads(decoded[name])
 
     candidate = read("validation/manifest.json")

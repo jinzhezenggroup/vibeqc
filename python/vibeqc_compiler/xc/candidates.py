@@ -120,7 +120,7 @@ class DensityCandidate:
             },
         }
 
-    def execute(self, *, stamp: DensityStamp):
+    def execute(self, *, stamp: DensityStamp) -> object:
         """Return (XC outputs, detached execution record), with no timing filter.
 
         The owner's reentrant lock covers execution and statistics capture;

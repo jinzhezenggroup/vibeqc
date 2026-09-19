@@ -8,13 +8,17 @@ from __future__ import annotations
 
 import os
 import subprocess
-from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .compiler_process import CompileResult as CudaCompileResult
 from .compiler_process import run_compiler
-from .cuda_target import CudaTargetInfo
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from pathlib import Path
+
+    from .cuda_target import CudaTargetInfo
 
 
 @dataclass(frozen=True, slots=True)

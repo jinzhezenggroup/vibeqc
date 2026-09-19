@@ -9,11 +9,10 @@ not a differentiated iteration graph. No solver or native runtime is imported.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from types import MappingProxyType
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -28,6 +27,9 @@ from vibeqc_compiler.tensor import (
 )
 from vibeqc_compiler.tensor.ad_program import _rebuild
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 SCHEMA = "vibeqc.method.implicit_solve"
 VERSION = 1
 PREFIX = "__implicit_"
@@ -41,7 +43,7 @@ def _inputs(program: Program) -> dict:
     }
 
 
-def _metric(values, size: int, name: str) -> tuple[float, ...]:
+def _metric(values: object, size: int, name: str) -> tuple[float, ...]:
     if not isinstance(values, tuple):
         raise TypeError(f"{name} must be an immutable tuple")
     if values and len(values) != size:
@@ -68,13 +70,13 @@ def _scaled(node, weights, *, inverse=False):
     return multiply(node, factor)
 
 
-def _seed(name: str, spec: TensorSpec):
+def _seed(name: str, spec: TensorSpec) -> object:
     return input_tensor(
         PREFIX + name, replace(spec, role="input", differentiable=False)
     )
 
 
-def _substitute(program: Program, name: str, replacement) -> Program:
+def _substitute(program: Program, name: str, replacement: object) -> Program:
     # Reuse the AD frontend's primitive reconstruction, including its legality
     # checks. Multiple definitions of one named input must all be replaced.
     substitutions = {
@@ -265,7 +267,7 @@ class ImplicitVJPPlan:
     programs: Mapping[str, Program]
     identity: str
 
-    def __init__(self, spec: ImplicitSolveSpec):
+    def __init__(self, spec: ImplicitSolveSpec) -> None:
         if not isinstance(spec, ImplicitSolveSpec):
             raise TypeError("implicit plan requires ImplicitSolveSpec")
         state, residual = spec.state_spec, spec.residual_spec

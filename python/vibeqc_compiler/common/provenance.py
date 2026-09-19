@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 
-def canonical_hash(value) -> str:
+def canonical_hash(value: object) -> str:
     """Hash portable JSON with no non-finite numbers or path-dependent encoding."""
     return hashlib.sha256(
         json.dumps(

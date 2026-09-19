@@ -102,7 +102,7 @@ class PairTopology:
         object.__setattr__(self, "pairs", pairs)
 
     @classmethod
-    def complete(cls, atom_count: int, *, cutoff: PairCutoff | None = None):
+    def complete(cls, atom_count: int, *, cutoff: PairCutoff | None = None) -> object:
         pairs = tuple(
             (i, j) for i in range(atom_count) for j in range(i + 1, atom_count)
         )
@@ -359,9 +359,9 @@ def build_pair_program(
 def inverse_power_program(
     geometry: GeometryIR,
     topology: PairTopology,
-    coefficients,
+    coefficients: object,
     *,
-    exponent=-1,
+    exponent: object = -1,
     parameter_identity: str | None = None,
 ) -> PairProgram:
     """Qualification potential: E = sum_p c_p * r_p**exponent."""

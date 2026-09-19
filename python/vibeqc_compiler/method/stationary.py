@@ -9,10 +9,10 @@ This module neither solves a stationary problem nor publishes molecular forces.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields, replace
 from graphlib import CycleError, TopologicalSorter
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -26,6 +26,9 @@ from vibeqc_compiler.tensor import (
 )
 
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 SCHEMA = "vibeqc.stationary_problem"
 VERSION = 2

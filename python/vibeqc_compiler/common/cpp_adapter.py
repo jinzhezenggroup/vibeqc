@@ -42,7 +42,13 @@ class CppCompilerAdapter:
         return TargetInfo("cpu", triple, None, 1, None)
 
     def compile_shared(
-        self, source: Path, output: Path, *, includes=(), libraries=(), options=()
+        self,
+        source: Path,
+        output: Path,
+        *,
+        includes: tuple[object, ...] = (),
+        libraries: tuple[object, ...] = (),
+        options: tuple[object, ...] = (),
     ) -> CompileResult:
         """Compile explicit argv options and terminate the whole process tree on timeout."""
         return run_compiler(

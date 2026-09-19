@@ -39,7 +39,7 @@ ELEMENTWISE = (
 )
 
 
-def strides(shape) -> tuple[int, ...]:
+def strides(shape: object) -> tuple[int, ...]:
     """Element strides for the materialized logical C layout."""
     return tuple(prod(shape[i + 1 :]) for i in range(len(shape)))
 

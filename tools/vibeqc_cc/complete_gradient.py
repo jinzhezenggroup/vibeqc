@@ -12,9 +12,9 @@ native/public force API, resident GPU response, frozen-core/open-shell/ECP, DF o
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 import numpy as np
 from vibeqc_compiler.tensor import execute
@@ -50,6 +50,9 @@ from .lambda_equations import PARAMETERS
 from .lambda_response import BoundCCSDResponse
 from .lambda_solver import BoundCCSDLambda, LambdaOptions, _graph_bytes
 from .solver import SolverOptions, solve
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass(frozen=True)
@@ -920,7 +923,9 @@ class BoundCCSDGradient:
         raise AssertionError("validated derivative backend became unreachable")
 
 
-def complete_gradient_validation(source, *, options=None) -> CCSDGradientResult:
+def complete_gradient_validation(
+    source: str, *, options: object | None = None
+) -> CCSDGradientResult:
     """Run fresh native HF -> CC -> Lambda -> Z -> complete analytic gradient.
 
     Source is borrowed and remains open. All four solver states have independent

@@ -515,7 +515,7 @@ def _center_data(
     return data
 
 
-def _pack(layout: TensorLayout, values) -> tuple[float, ...]:
+def _pack(layout: TensorLayout, values: object) -> tuple[float, ...]:
     result = [0.0] * layout.storage_elements
     for offset, value in zip(layout.offsets(), values, strict=True):
         result[offset] = float(value)

@@ -39,7 +39,7 @@ def _positive(value: int, name: str) -> int:
     return value
 
 
-def _coefficient(value, name: str) -> Fraction:
+def _coefficient(value: object, name: str) -> Fraction:
     if not isinstance(value, Fraction):
         raise TypeError(f"{name} must be an exact Fraction")
     return value
@@ -184,7 +184,7 @@ class DensityFittingRHFResponsePlan:
             solver_contract="symmetric-df-metric-linear-solve-v1",
         )
 
-    def compile(self, *, max_elements: int = 1_000_000):
+    def compile(self, *, max_elements: int = 1_000_000) -> object:
         """Generate h/S/A/M weights through the common StationaryProblem AD."""
         return self.problem().compile(max_elements=max_elements)
 

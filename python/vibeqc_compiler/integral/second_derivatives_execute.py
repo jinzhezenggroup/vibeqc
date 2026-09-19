@@ -21,6 +21,7 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -45,7 +46,6 @@ from vibeqc_compiler.common.resources import (
     plan_resources,
 )
 
-from .ir import IntegralIR
 from .ir_serialization import integral_to_payload
 from .second_derivatives import build_second_derivative_kernel, require_second_consumer
 from .second_derivatives_native import (
@@ -53,6 +53,9 @@ from .second_derivatives_native import (
     emit_second_derivative_runtime,
     second_program_identity,
 )
+
+if TYPE_CHECKING:
+    from .ir import IntegralIR
 
 
 @dataclass(frozen=True)

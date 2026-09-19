@@ -104,7 +104,7 @@ class DenseLayout:
             )
         )
 
-    def transpose(self, axes) -> DenseLayout:
+    def transpose(self, axes: object) -> DenseLayout:
         """Describe a transposed view without changing its physical storage."""
         axes = tuple(axes)
         if any(type(axis) is not int for axis in axes) or sorted(axes) != list(

@@ -75,7 +75,10 @@ class DFValueFixture:
 
 
 def make_df_value_fixture(
-    angular: tuple[int, ...], *, variant="asymmetric", primitive_lengths=None
+    angular: tuple[int, ...],
+    *,
+    variant: str = "asymmetric",
+    primitive_lengths: object | None = None,
 ) -> DFValueFixture:
     """Generate a full Cartesian/spherical M or A shell block with signed contractions."""
     count = len(angular)

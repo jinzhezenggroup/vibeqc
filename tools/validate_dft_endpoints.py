@@ -39,7 +39,7 @@ def timed(call):
     return value, (perf_counter() - start) * 1000.0
 
 
-def systems_for(method: str, batch: int):
+def systems_for(method: str, batch: int) -> object:
     h2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     if method in UKS_METHODS:
         inventory = ((h2, -1, 2), ([("H", (0.0, 0.0, 0.0))], 0, 2))
@@ -85,7 +85,12 @@ def transport_delta(previous, current):
     }
 
 
-def result_record(result, milliseconds: float, transport_before, transport_after):
+def result_record(
+    result: object,
+    milliseconds: float,
+    transport_before: object,
+    transport_after: object,
+) -> object:
     """Keep physical convergence and actual prepared grids with every phase."""
     return {
         "milliseconds": milliseconds,
@@ -149,7 +154,7 @@ def validate_phase(record, expected):
         raise RuntimeError("DFT endpoint did not pass the physical convergence gate")
 
 
-def run_case(method: str, batch: int):
+def run_case(method: str, batch: int) -> object:
     systems, charges, multiplicities = systems_for(method, batch)
     changed = changed_coordinates(systems)
     expected_initial = independent_energies(method, systems, charges, multiplicities)

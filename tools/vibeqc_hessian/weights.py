@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-def _validated(matrix, *, name: str):
+def _validated(matrix: object, *, name: str) -> object:
     """Return ``matrix`` as a finite square float64 array, or raise."""
     values = np.asarray(matrix, dtype=np.float64)
     if values.ndim != 2 or values.shape[0] != values.shape[1]:

@@ -6,7 +6,6 @@ allocation and the existing accuracy/performance acceptance boundaries."""
 
 from __future__ import annotations
 
-import argparse
 import json
 import math
 import sys
@@ -15,6 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from ..cuda_schedule import (
@@ -49,6 +49,9 @@ from .policy import (
 )
 from .process import _artifact_size, _compile_trial, _runtime_environment, _tool_version
 from .resources import _resource_rejections, estimate_occupancy
+
+if TYPE_CHECKING:
+    import argparse
 
 
 def _run_autotune(
@@ -458,7 +461,7 @@ def _run_autotune(
                 item: tuple[ScheduleTrial, dict[str, object], dict[str, object]],
                 *,
                 fastest: float = fastest_ms,
-            ):
+            ) -> object:
                 trial, runtime, candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
 

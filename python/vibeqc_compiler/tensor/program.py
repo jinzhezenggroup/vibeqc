@@ -28,15 +28,15 @@ CONVENTIONS = {
 }
 
 
-def _json(value) -> str:
+def _json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def _hash(value) -> str:
+def _hash(value: object) -> str:
     return hashlib.sha256(_json(value).encode()).hexdigest()
 
 
-def _topological(roots) -> tuple[Node, ...]:
+def _topological(roots: object) -> tuple[Node, ...]:
     """Iterative DFS handles deep equations without recursive hashing."""
     order, states = [], {}
     for root in roots:
@@ -55,7 +55,7 @@ def _topological(roots) -> tuple[Node, ...]:
     return tuple(order)
 
 
-def node_hashes(nodes) -> dict[Node, str]:
+def node_hashes(nodes: object) -> dict[Node, str]:
     """Content addresses include full spin/symmetry semantics, not storage."""
     hashes = {}
     for node in nodes:
@@ -89,7 +89,12 @@ class Program:
     definitions: tuple[Node, ...]
     _provenance_json: str
 
-    def __init__(self, outputs: Mapping[str, Node], definitions=(), provenance=None):
+    def __init__(
+        self,
+        outputs: Mapping[str, Node],
+        definitions: tuple[object, ...] = (),
+        provenance: object | None = None,
+    ) -> None:
         if not isinstance(outputs, Mapping) or not outputs:
             raise ValueError("program requires named outputs")
         if any(not isinstance(k, str) or not k.isidentifier() for k in outputs):

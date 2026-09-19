@@ -219,13 +219,13 @@ def _device_backend():
         return _CudaFacade(), "ctypes-cuda-runtime"
 
 
-def _synchronize(backend) -> None:
+def _synchronize(backend: object) -> None:
     """Block on the default stream of the active device backend."""
 
     backend.cuda.Stream.null.synchronize()
 
 
-def _displaced_atoms(atoms, displacement_bohr: float):
+def _displaced_atoms(atoms: object, displacement_bohr: float) -> object:
     """Move the last nucleus along +x to build a changed-geometry warm start.
 
     A single deterministic displacement keeps the model identity difference
@@ -240,15 +240,15 @@ def _displaced_atoms(atoms, displacement_bohr: float):
 
 
 def _calculator(
-    case,
-    arguments,
+    case: object,
+    arguments: object,
     *,
     precision: str,
     energy_tolerance: float,
     density_tolerance: float | None = None,
     screening_tolerance: float | None = None,
     max_iterations: int | None = None,
-):
+) -> object:
     """Construct one calculator with the controls fixed for this matrix."""
 
     from vibeqc import Calculator
@@ -276,7 +276,7 @@ def _calculator(
     )
 
 
-def _force_max_abs(result) -> float | None:
+def _force_max_abs(result: object) -> float | None:
     """Return the maximum absolute Cartesian force component, if evaluated."""
 
     if result.forces is None:
@@ -284,7 +284,9 @@ def _force_max_abs(result) -> float | None:
     return float(abs(result.forces).max()) if result.forces.size else None
 
 
-def _strict_reference(case, arguments, atoms, properties, backend) -> dict[str, Any]:
+def _strict_reference(
+    case: object, arguments: object, atoms: object, properties: object, backend: object
+) -> dict[str, Any]:
     """Compute the tighter FP64 reference the relaxed runs are compared to."""
 
     calculator = _calculator(
@@ -332,7 +334,7 @@ def _strict_reference(case, arguments, atoms, properties, backend) -> dict[str, 
     return {"result": result, "model": model, "record": record}
 
 
-def _accuracy_target(arguments, tolerance: float):
+def _accuracy_target(arguments: object, tolerance: float) -> object:
     """Build the observable requirements for the requested properties."""
 
     from vibeqc import ObservableTarget, TargetAccuracy
@@ -375,7 +377,7 @@ def _evidence(model, values, reference_values, target, converged):
     return {"status": assessment.status, "outcomes": list(assessment.outcomes)}
 
 
-def _error_columns(result, reference) -> dict[str, Any]:
+def _error_columns(result: object, reference: object) -> dict[str, Any]:
     """Report raw observable differences next to the typed evidence record."""
 
     columns: dict[str, Any] = {
@@ -590,14 +592,16 @@ def _batch_matrix(
     return records
 
 
-def _synchronized_seconds(started: float, backend) -> float:
+def _synchronized_seconds(started: float, backend: object) -> float:
     """Finish all outstanding device work before reporting a wall time."""
 
     _synchronize(backend)
     return time.perf_counter() - started
 
 
-def _batch_items(result, expected, target) -> list[dict[str, Any]]:
+def _batch_items(
+    result: object, expected: object, target: object
+) -> list[dict[str, Any]]:
     """Describe each input-ordered item, keeping failures in their slot."""
 
     items = []

@@ -11,13 +11,13 @@
 Generates static import library for POSIX shared library
 """
 
-import sys
+import argparse
+import configparser
 import os.path
 import re
-import subprocess
-import argparse
 import string
-import configparser
+import subprocess
+import sys
 
 me = os.path.basename(__file__)
 root = os.path.dirname(__file__)
@@ -86,7 +86,7 @@ def collect_syms(f):
       if toc is not None:
         error("multiple headers in output of readelf")
       # Colons are different across readelf versions so get rid of them.
-      toc = make_toc(map(lambda n: n.replace(':', ''), words))
+      toc = make_toc(n.replace(':', '') for n in words)
     elif toc is not None:
       sym = parse_row(words, toc, ['Value'])
       name = sym['Name']
@@ -111,7 +111,7 @@ def collect_syms(f):
 
   # Also collected demangled names
   if syms:
-    out, _ = run(['c++filt'], '\n'.join((sym['Name'] for sym in syms)))
+    out, _ = run(['c++filt'], '\n'.join(sym['Name'] for sym in syms))
     out = out.rstrip("\n")  # Some c++filts append newlines at the end
     for i, name in enumerate(out.split("\n")):
       syms[i]['Demangled Name'] = name
@@ -270,7 +270,7 @@ extern const char {sym_name}[];
       declarator = 'const unsigned char %s[]'
     else:
       field_types = (f'{c_types[typ]} field_{i};' for i, (typ, _) in enumerate(data))
-      declarator = 'const struct { %s } %%s' % ' '.join(field_types)  # pylint: disable=C0209  # consider-using-f-string
+      declarator = 'const struct {{ {} }} %s'.format(' '.join(field_types))  # pylint: disable=C0209  # consider-using-f-string
     vals = []
     for typ, val in data:
       if typ != 'reloc':
@@ -279,7 +279,7 @@ extern const char {sym_name}[];
         sym_name, addend = val['Symbol\'s Name + Addend']
         sym_name = re.sub(r'@.*', '', sym_name)  # Can we pin version in C?
         vals.append(f'(const char *)&{sym_name} + {addend}')
-    code_info[name] = (declarator, '{ %s }' % ', '.join(vals))  # pylint: disable= C0209  # consider-using-f-string
+    code_info[name] = (declarator, '{{ {} }}'.format(', '.join(vals)))  # pylint: disable= C0209  # consider-using-f-string
 
   # Print declarations
 
@@ -484,7 +484,7 @@ Examples:
     all_funs.add(s['Name'])
 
   if funs is None:
-    funs = sorted(list(all_funs))
+    funs = sorted(all_funs)
     if not funs and not quiet:
       warn(f"no public functions were found in {input_name}")
   else:

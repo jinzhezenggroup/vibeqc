@@ -38,7 +38,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _arrays(inputs) -> dict:
+def _arrays(inputs: object) -> dict:
     return {
         name: {
             "shape": list(value.shape),

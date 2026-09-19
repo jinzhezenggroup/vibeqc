@@ -69,7 +69,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def fixture(nocc: int, nvir: int, *, seed: int = 151):
+def fixture(nocc: int, nvir: int, *, seed: int = 151) -> object:
     """Fixed scalar-energy fragment with realistic unconverged amplitudes."""
     occupied = IndexSpace("occupied", "occupied", nocc)
     virtual = IndexSpace("virtual", "virtual", nvir)

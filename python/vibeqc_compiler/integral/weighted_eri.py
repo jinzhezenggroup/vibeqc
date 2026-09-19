@@ -31,7 +31,7 @@ CENTERS = ("first", "second", "third", "fourth")
 def build_weighted_eri_ir(
     angular: tuple[int, int, int, int],
     *,
-    memory_budget_bytes=4 * 1024**2,
+    memory_budget_bytes: object = 4 * 1024**2,
     operator: OperatorSpec = FOUR_CENTER_ERI_OPERATOR,
 ) -> IntegralIR:
     """Describe a full Cartesian shell tile with arbitrary ordered weights.

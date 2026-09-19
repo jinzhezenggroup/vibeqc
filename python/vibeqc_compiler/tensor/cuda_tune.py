@@ -11,10 +11,10 @@ import time
 from dataclasses import asdict, dataclass
 from itertools import islice
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash
 from vibeqc_compiler.common.specialization import (
@@ -27,7 +27,6 @@ from vibeqc_compiler.common.specialization import (
 )
 
 from .cuda_execute import CudaArtifact, PreparedCuda, compile_cuda
-from .cuda_plan import TensorPlan, TensorSchedule
 from .cuda_search import (
     DEFAULT_SCREENING_POLICY,
     DEFAULT_SEARCH_LIMITS,
@@ -39,8 +38,15 @@ from .cuda_search import (
 )
 from .interpreter import execute
 
+if TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
-def endpoint_gate(baseline, candidate, *, minimum_speedup=1.02) -> dict:
+    from .cuda_plan import TensorPlan, TensorSchedule
+
+
+def endpoint_gate(
+    baseline: object, candidate: object, *, minimum_speedup: float = 1.02
+) -> dict:
     """Require a paired median gain whose bootstrap lower bound exceeds one."""
     left, right = np.asarray(baseline), np.asarray(candidate)
     if left.ndim != 1 or left.shape != right.shape or not 5 <= left.size <= 30:
@@ -89,10 +95,10 @@ class TensorSelection:
 def tune_cuda(
     baseline: TensorPlan,
     compiler: CudaCompilerAdapter,
-    fixtures,
+    fixtures: object,
     cache: Path,
     *,
-    schedules=None,
+    schedules: object | None = None,
     search_space: TensorScheduleSpace | None = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
     screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,

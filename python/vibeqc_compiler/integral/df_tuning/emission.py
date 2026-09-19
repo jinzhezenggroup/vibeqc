@@ -15,7 +15,7 @@ struct Candidate { const char* key; unsigned a,b,c,variant; Launch launch; };
 """
 
 
-def emit_candidate(trial: DfDerivativeTrial):
+def emit_candidate(trial: DfDerivativeTrial) -> str:
     """Emit only one packet instantiation, sharing all equations and scheduling."""
     a, b, c = trial.angular
     arguments = f"{a},{b},{c},{trial.variant},{str(trial.lowering == 'rys').lower()}"

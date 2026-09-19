@@ -30,7 +30,7 @@ def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
     assert "VIBEQC_FUSED_LAUNCH" not in source
 
 
-def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
+def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path) -> None:
     """Compile locally and schedule every real-GPU check through Slurm."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")

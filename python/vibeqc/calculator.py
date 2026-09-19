@@ -6,7 +6,6 @@ import ctypes
 import json
 import math
 import os
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from functools import cache, lru_cache
 from importlib import resources
@@ -24,6 +23,8 @@ from .elements import checked_integer
 from .profiles import canonical_hash
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
 _METHODS = {
@@ -341,8 +342,8 @@ class Calculator:
         screening_tolerance: float | None = None,
         precision: str = "fp64",
         target_accuracy: TargetAccuracy | None = None,
-        resource_budget=None,
-        ks_options=None,
+        resource_budget: object | None = None,
+        ks_options: object | None = None,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -593,7 +594,10 @@ class Calculator:
         )
 
     def _method_descriptor(
-        self, auxiliary_basis: ctypes.c_void_p | None = None, *, resource_plan=None
+        self,
+        auxiliary_basis: ctypes.c_void_p | None = None,
+        *,
+        resource_plan: object | None = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -798,7 +802,9 @@ class Calculator:
         )
         return result
 
-    def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
+    def resolved_model(
+        self, atoms: object, *, charge: int = 0, multiplicity: int = 1
+    ) -> ResolvedModel:
         """Resolve the scientific HF or MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
@@ -1122,8 +1128,8 @@ class Calculator:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan=None,
-    ):  # Return annotation is deferred to avoid an import cycle.
+        resource_plan: object | None = None,
+    ) -> object:  # Return annotation is deferred to avoid an import cycle.
         """Prepare a persistent native ragged batch for repeated execution.
 
         The profiling options are CUDA performance diagnostics and should
@@ -1155,7 +1161,7 @@ class Calculator:
         charges: Sequence[int] | None = None,
         multiplicities: Sequence[int] | None = None,
         strict: bool = False,
-    ):
+    ) -> object:
         """Execute a one-shot native ragged batch and return per-system status."""
 
         with self.prepare_batch(

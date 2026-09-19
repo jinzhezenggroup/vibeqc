@@ -18,13 +18,15 @@ import hashlib
 import json
 import statistics
 import time
-from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from vibeqc import Calculator, load_basis
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 try:  # Keep both direct CLI execution and shared benchmark-module imports.
     from _cases import benchmark_cases
@@ -92,7 +94,7 @@ def load_comparison_basis(path, case, *, role, compute_forces):
     return basis, reference
 
 
-def native_build_metadata(calculator: Any) -> dict[str, Any]:
+def native_build_metadata(calculator: object) -> dict[str, object]:
     """Identify the loaded binary and selected kernels outside endpoint timers.
 
     A source identity alone cannot distinguish AOT-enabled and generic builds.
@@ -129,7 +131,7 @@ def fixed_warm_start_policy() -> dict[str, str]:
     }
 
 
-def convergence_payload(result) -> list[dict[str, object]]:
+def convergence_payload(result: object) -> list[dict[str, object]]:
     """Serialize one VibeQC replay's per-system convergence diagnostics."""
 
     return [
@@ -173,7 +175,7 @@ class GpuCycleTracker:
         self._previous_energy: float | None = None
 
     @staticmethod
-    def _optional_float(value: Any) -> float | None:
+    def _optional_float(value: object) -> float | None:
         if value is None:
             return None
         try:
@@ -181,7 +183,7 @@ class GpuCycleTracker:
         except (TypeError, ValueError):
             return None
 
-    def __call__(self, environment: dict[str, Any]) -> None:
+    def __call__(self, environment: dict[str, object]) -> None:
         """Record the latest explicitly reported SCF cycle and residuals."""
 
         cycle = environment.get("cycle")
@@ -204,7 +206,7 @@ class GpuCycleTracker:
 
 
 def gpu_convergence_payload(
-    engines: Sequence[Any], trackers: Sequence[GpuCycleTracker]
+    engines: Sequence[object], trackers: Sequence[GpuCycleTracker]
 ) -> list[dict[str, object]]:
     """Serialize per-system GPU4PySCF diagnostics for one batch sample."""
 
@@ -251,16 +253,16 @@ def interleaved_engine_order(repeats: int) -> tuple[str, ...]:
     return tuple(order)
 
 
-def iteration_branch(sample: dict[str, Any]) -> tuple[int, ...]:
+def iteration_branch(sample: dict[str, object]) -> tuple[int, ...]:
     """Return the per-system iteration tuple identifying one SCF branch."""
 
     return tuple(int(item["iterations"]) for item in sample["convergence"])
 
 
 def iteration_matched_summary(
-    vibeqc_samples: Sequence[dict[str, Any]],
-    gpu_samples: Sequence[dict[str, Any]],
-) -> dict[str, Any] | None:
+    vibeqc_samples: Sequence[dict[str, object]],
+    gpu_samples: Sequence[dict[str, object]],
+) -> dict[str, object] | None:
     """Summarize the best-supported SCF branch shared by both engines."""
 
     vibeqc_by_branch: dict[tuple[int, ...], list[float]] = {}
@@ -298,9 +300,9 @@ def iteration_matched_summary(
 
 
 def pair_repeat_accuracy(
-    vibeqc_samples: Sequence[dict[str, Any]],
-    gpu_samples: Sequence[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    vibeqc_samples: Sequence[dict[str, object]],
+    gpu_samples: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
     """Pair each engine's nth warm result and calculate numerical parity."""
 
     if len(vibeqc_samples) != len(gpu_samples):
@@ -347,8 +349,8 @@ def pair_repeat_accuracy(
 
 
 def warm_start_priming_metadata(
-    vibeqc_sample: dict[str, Any], gpu_sample: dict[str, Any]
-) -> dict[str, Any]:
+    vibeqc_sample: dict[str, object], gpu_sample: dict[str, object]
+) -> dict[str, object]:
     """Serialize the unmeasured replay used to settle fixed-dm0 state.
 
     After VibeQC's cold execution, the first fixed-dm0 replay can take an
@@ -377,7 +379,7 @@ def warm_start_priming_metadata(
     }
 
 
-def _maximum_force_error(pairs: Sequence[dict[str, Any]]) -> float | None:
+def _maximum_force_error(pairs: Sequence[dict[str, object]]) -> float | None:
     """An energy-only measurement has no force error, rather than zero error."""
     values = [item["maximum_force_error_hartree_per_bohr"] for item in pairs]
     if all(value is None for value in values):
@@ -387,7 +389,7 @@ def _maximum_force_error(pairs: Sequence[dict[str, Any]]) -> float | None:
     return max(values)
 
 
-def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def accuracy_gate_summary(pairs: Sequence[dict[str, object]]) -> dict[str, object]:
     """Require every measured repeat to meet the requested numerical accuracy.
 
     Iteration branches classify timing, not correctness. Selecting only matched
@@ -408,7 +410,7 @@ def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
 
 
 @contextmanager
-def nvtx_range(cupy_module: Any, label: str) -> Iterator[None]:
+def nvtx_range(cupy_module: object, label: str) -> Iterator[None]:
     """Annotate profiler captures without making NVTX a hard dependency."""
 
     nvtx = getattr(cupy_module.cuda, "nvtx", None)
@@ -422,7 +424,7 @@ def nvtx_range(cupy_module: Any, label: str) -> Iterator[None]:
         nvtx.RangePop()
 
 
-def scaled_geometries(atoms, batch_size: int):
+def scaled_geometries(atoms: object, batch_size: int) -> object:
     """Create nearby fixed-topology geometries without changing the centroid."""
 
     coordinates = np.asarray([position for _, position in atoms], dtype=np.float64)
@@ -445,8 +447,8 @@ def scaled_geometries(atoms, batch_size: int):
 
 
 def _vibeqc_sample(
-    batch: Any, cupy_module: Any, sequence_index: int, compute_forces: bool = True
-) -> dict[str, Any]:
+    batch: object, cupy_module: object, sequence_index: int, compute_forces: bool = True
+) -> dict[str, object]:
     """Execute and serialize one synchronized VibeQC warm sample."""
 
     cupy_module.cuda.Stream.null.synchronize()
@@ -471,12 +473,12 @@ def _vibeqc_sample(
 
 
 def _gpu_sample(
-    engines: Sequence[Any],
-    warm_densities: Sequence[Any],
-    cupy_module: Any,
+    engines: Sequence[object],
+    warm_densities: Sequence[object],
+    cupy_module: object,
     sequence_index: int,
     compute_forces: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Execute one synchronized GPU4PySCF sample for the requested endpoint."""
 
     # Reuse the same post-cold converged density for every repeat. Advancing
@@ -525,7 +527,7 @@ def _gpu_sample(
 
 
 def _configure_reference_scf(
-    engine: Any,
+    engine: object,
     *,
     energy_tolerance: float,
     gradient_tolerance: float,
@@ -668,7 +670,7 @@ def main() -> None:
         )
         basis_overrides["auxiliary"] = native_auxiliary.to_payload()
 
-    def progress(stage: str, **record: Any) -> None:
+    def progress(stage: str, **record: object) -> None:
         """Preserve completed work if a later large endpoint fails or times out."""
         if args.progress_output:
             with args.progress_output.open("a") as journal:
@@ -758,8 +760,8 @@ def main() -> None:
     # Journal before preparation/SCF: an unsupported cold route may fail before
     # a result JSON exists, but its compiled capability must remain reviewable.
     progress("native_build", **native_build)
-    vibeqc_samples: list[dict[str, Any]] = []
-    gpu_samples: list[dict[str, Any]] = []
+    vibeqc_samples: list[dict[str, object]] = []
+    gpu_samples: list[dict[str, object]] = []
     eigensolver_diagnostics: list[dict[str, object]] = []
     measurement_order = interleaved_engine_order(args.repeats)
 

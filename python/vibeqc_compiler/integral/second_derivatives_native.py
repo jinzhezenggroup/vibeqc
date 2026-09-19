@@ -30,7 +30,9 @@ def second_program_identity(integral, component_indices, output_indices, backend
     )
 
 
-def emit_second_derivative_primitive(kernel: SecondDerivativeKernel, *, backend="cuda"):
+def emit_second_derivative_primitive(
+    kernel: SecondDerivativeKernel, *, backend: str = "cuda"
+) -> object:
     """Emit one to twelve output coordinates using the common scalar C emitter.
 
     The callable takes primitive exponents, mathematical-center xyz positions,

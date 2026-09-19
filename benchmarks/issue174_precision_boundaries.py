@@ -20,10 +20,12 @@ import re
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 _T = TypeVar("_T")
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -97,11 +99,11 @@ def _capture_native_stderr(function: Callable[[], _T]) -> tuple[_T, str]:
     return result, diagnostic
 
 
-def _parse_fock_profile(diagnostic: str) -> dict[str, Any]:
+def _parse_fock_profile(diagnostic: str) -> dict[str, object]:
     """Convert each native operator evaluation into typed JSON fields."""
 
-    evaluations: list[dict[str, Any]] = []
-    current: dict[str, Any] | None = None
+    evaluations: list[dict[str, object]] = []
+    current: dict[str, object] | None = None
     for line in diagnostic.splitlines():
         match = _CLASS_HEADER_PATTERN.match(line)
         if match:
@@ -160,7 +162,7 @@ def _parse_fock_profile(diagnostic: str) -> dict[str, Any]:
     }
 
 
-def _calculator(case: Any, arguments: argparse.Namespace) -> Any:
+def _calculator(case: object, arguments: argparse.Namespace) -> object:
     """Construct one calculator with controls shared by every measurement."""
 
     from vibeqc import Calculator
@@ -191,7 +193,7 @@ def _mode_environment(
     return environment
 
 
-def _validate_fixed_density_sample(item: Any, diagnostic: str) -> dict[str, Any]:
+def _validate_fixed_density_sample(item: object, diagnostic: str) -> dict[str, object]:
     """Reject a cold retry or stale plan instead of labeling it fixed-density work."""
 
     if (
@@ -211,15 +213,15 @@ def _validate_fixed_density_sample(item: Any, diagnostic: str) -> dict[str, Any]
 
 
 def _fixed_density_profiles(
-    case: Any,
+    case: object,
     arguments: argparse.Namespace,
     modes: tuple[tuple[str, str | None], ...],
-    cupy: Any,
-) -> dict[str, Any]:
+    cupy: object,
+) -> dict[str, object]:
     """Replay one frozen FP64 density through all isolated Fock variants."""
 
     calculator = _calculator(case, arguments)
-    records: dict[str, Any] = {}
+    records: dict[str, object] = {}
     with calculator.prepare_batch(
         [case.atoms],
         charges=[case.charge],
@@ -233,7 +235,7 @@ def _fixed_density_profiles(
         fixed = cold.items[0]
 
         for name, selection in modes:
-            samples: list[dict[str, Any]] = []
+            samples: list[dict[str, object]] = []
             with _environment(_mode_environment(selection, profiling=True)):
                 # Changing arithmetic invalidates the device plan. Exclude one
                 # setup replay so every reported sample is the same steady
@@ -273,23 +275,23 @@ def _fixed_density_profiles(
 
 
 def _complete_endpoints(
-    case: Any,
+    case: object,
     arguments: argparse.Namespace,
     modes: tuple[tuple[str, str | None], ...],
-    cupy: Any,
-) -> dict[str, Any]:
+    cupy: object,
+) -> dict[str, object]:
     """Measure clean complete calls rather than subtracting a force estimate."""
 
-    endpoints: dict[str, Any] = {}
+    endpoints: dict[str, object] = {}
     for name, selection in modes:
         calculator = _calculator(case, arguments)
-        mode_record: dict[str, Any] = {"requested_threshold": selection}
+        mode_record: dict[str, object] = {"requested_threshold": selection}
         with _environment(_mode_environment(selection, profiling=False)):
             for endpoint, properties in (
                 ("energy_only", ("energy",)),
                 ("energy_plus_forces", ("energy", "forces")),
             ):
-                samples: list[dict[str, Any]] = []
+                samples: list[dict[str, object]] = []
                 for _ in range(arguments.repeats):
                     cupy.cuda.Stream.null.synchronize()
                     started = time.perf_counter()
