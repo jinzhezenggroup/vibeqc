@@ -24,7 +24,7 @@ class FeatureTile:
     begin: int
     points: np.ndarray
     weights: np.ndarray
-    features: dict
+    features: dict[str, np.ndarray]
     generation: int
 
 
@@ -134,16 +134,22 @@ class PreparedGrid:
 
     @property
     def basis_identity(self):
-        return self._basis.identity
+        basis = self._basis
+        if basis is None:
+            raise RuntimeError("prepared grid is closed")
+        return basis.identity
 
     @property
     def nao(self):
         return self._plan.nao
 
     def _refresh_identity(self):
+        basis = self._basis
+        if basis is None:
+            raise RuntimeError("prepared grid is closed")
         self._identity = canonical_hash(
             {
-                "basis": self._basis.identity,
+                "basis": basis.identity,
                 "grid": self._grid.identity,
                 "backend": self._plan.backend,
                 "order": self._plan.order,

@@ -285,7 +285,16 @@ class CudaBenchmarkExecutor:
             slurm_time=slurm_time,
             default_slurm_time=default_slurm_time,
         )
-        return cls(timeout=timeout, **profile.to_dict())
+        return cls(
+            timeout=timeout,
+            local=profile.local,
+            srun=profile.srun,
+            partition=profile.partition,
+            gres=profile.gres,
+            nodes=profile.nodes,
+            ntasks=profile.ntasks,
+            slurm_time=profile.slurm_time,
+        )
 
     @property
     def profile(self) -> CudaExecutionProfile:

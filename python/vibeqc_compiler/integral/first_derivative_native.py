@@ -74,12 +74,18 @@ def _emit_first_derivative(requests, *, backend):
     for i, (operator, components) in enumerate(requests):
         name = f"primitive_{i}"
         if operator == "four_center_eri":
-            ir = build_weighted_eri_ir(tuple(map(len, components)))
+            if len(components) != 4:
+                raise ValueError("four-center ERI requires four component labels")
+            angular = (
+                len(components[0]),
+                len(components[1]),
+                len(components[2]),
+                len(components[3]),
+            )
+            ir = build_weighted_eri_ir(angular)
             from .shell_spec import ShellClassSpec
 
-            spec = ShellClassSpec(
-                "".join("spdf"[l] for l in ir.signature.angular), ir.signature.angular
-            )
+            spec = ShellClassSpec("".join("spdf"[l] for l in angular), angular)
             kernel = build_weighted_eri_kernel(ir, (spec.components.index(components),))
             eri.append((kernel, name))
             continue
