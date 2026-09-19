@@ -210,6 +210,11 @@ jobs:
           path: build/f-shell-smoke.json
 
   python:
+    name: python (${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [core, posthf, compiler-heavy]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
@@ -248,13 +253,14 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --parallel
@@ -321,15 +327,71 @@ jobs:
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
             )
           fi
-          .venv/bin/python -m pytest tests/python -q \
+          # Keep every routine Python test on every PR, but remove the single
+          # 26-minute critical path by separating the known numerical/codegen
+          # tails. New test files land in core automatically until they become
+          # expensive enough to earn an explicit shard.
+          slow_paths=(
+            tests/python/test_cc_complete_gradient.py
+            tests/python/test_dft_complete_cpu.py
+            tests/python/test_ecp_f.py
+            tests/python/test_ecp_f_projector.py
+            tests/python/test_ecp_heavy.py
+            tests/python/test_mp2_gradient.py
+            tests/python/test_mp2_gradient_fast.py
+            tests/python/test_hessian_analytic.py
+            tests/python/test_hessian_directional.py
+            tests/python/test_response_operator.py
+            tests/python/test_codegen.py
+            tests/python/test_high_angular.py
+            tests/python/test_one_electron_derivatives.py
+            tests/python/test_range_separation.py
+            tests/python/test_second_derivatives_inputs.py
+          )
+          case "${{ matrix.shard }}" in
+            core)
+              test_targets=(tests/python)
+              for path in "${slow_paths[@]}"; do
+                extra_args+=(--ignore="${path}")
+              done
+              ;;
+            posthf)
+              test_targets=(
+                tests/python/test_cc_complete_gradient.py
+                tests/python/test_dft_complete_cpu.py
+                tests/python/test_ecp_f.py
+                tests/python/test_ecp_f_projector.py
+                tests/python/test_ecp_heavy.py
+                tests/python/test_mp2_gradient.py
+                tests/python/test_mp2_gradient_fast.py
+                tests/python/test_hessian_analytic.py
+                tests/python/test_hessian_directional.py
+                tests/python/test_response_operator.py
+              )
+              ;;
+            compiler-heavy)
+              test_targets=(
+                tests/python/test_codegen.py
+                tests/python/test_high_angular.py
+                tests/python/test_one_electron_derivatives.py
+                tests/python/test_range_separation.py
+                tests/python/test_second_derivatives_inputs.py
+              )
+              ;;
+            *)
+              echo "::error::unknown Python shard: ${{ matrix.shard }}"
+              exit 2
+              ;;
+          esac
+          .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist=loadfile --durations=25 \
-            --cov --cov-report=xml:coverage-python.xml \
+            --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: benchmark-debug-${{ github.run_id }}
+          name: benchmark-debug-${{ github.run_id }}-${{ matrix.shard }}
           path: .artifacts/
           include-hidden-files: true
           if-no-files-found: ignore
@@ -338,8 +400,8 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: coverage-report-python
-          path: coverage-python.xml
+          name: coverage-report-python-${{ matrix.shard }}
+          path: coverage-python-${{ matrix.shard }}.xml
           retention-days: 1
 
   upload-coverage:
@@ -357,10 +419,18 @@ jobs:
             file: coverage/coverage-cpp.info
             flag: cpp
             name: code-coverage/cpp
-          - artifact: coverage-report-python
-            file: coverage/coverage-python.xml
+          - artifact: coverage-report-python-core
+            file: coverage/coverage-python-core.xml
             flag: python
-            name: code-coverage/python
+            name: code-coverage/python-core
+          - artifact: coverage-report-python-posthf
+            file: coverage/coverage-python-posthf.xml
+            flag: python
+            name: code-coverage/python-posthf
+          - artifact: coverage-report-python-compiler-heavy
+            file: coverage/coverage-python-compiler-heavy.xml
+            flag: python
+            name: code-coverage/python-compiler-heavy
     runs-on: ubuntu-24.04
     # Keep OIDC away from jobs that build or execute pull-request code. This
     # job checks out source metadata and consumes coverage artifacts only.

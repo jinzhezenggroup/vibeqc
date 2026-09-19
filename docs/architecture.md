@@ -66,15 +66,16 @@ energy-weighted density matrix, and nuclear repulsion. This is deliberately
 different from differentiating the eigensolver, DIIS, or SCF iteration trace.
 
 The CUDA s-p-d-f path contracts stationary RHF/UHF gradients on the GPU. Its
-one-electron force differentiates Cartesian Gaussians with exact raised/lowered
-angular-momentum identities. One warp owns one public AO pair: lane zero forms
-the compact overlap/kinetic derivatives, while the remaining lanes treat the
-nuclei as a batched point-charge auxiliary dimension. The warp builds one
-primitive/component Hermite table in shared memory, reuses it across all active
-nuclear-center Coulomb recurrences, reduces the two basis-center derivatives,
-and recovers each nuclear-center derivative by translation. Its
-Cartesian McMurchie-Davidson recurrence is shared mathematically with the CPU
-oracle but implemented independently in CUDA. The canonical first-order
+normal one-electron owner is the generated derivative DAG: overlap, kinetic and
+nuclear-attraction primitives are differentiated once by the compiler and
+lowered to the shell-warp consumer, which contracts fixed stationary weights
+directly into atomic gradients. The independent CPU/libcint validation path
+remains structurally separate. A native cooperative warp implementation is
+retained only as the explicit `reference` performance exception; it batches
+nuclear point-charge centers through shared Hermite/Coulomb work and is no
+longer the production scientific owner.
+
+The canonical first-order
 `(p s | s s)`
 class generates its two reachable Hermite terms in closed form, with the same
 scalar expression serving values and three-axis forward derivatives. The
@@ -257,12 +258,12 @@ thread. The dedicated force paths through total angular order five compute all
 center derivatives from one shared set of Gaussian product and Boys values,
 then recover omitted centers from translational invariance; orders six and
 above retain the general three-component Dual path.
-The one-electron force likewise assigns one public AO pair to each warp and
-accumulates overlap, kinetic, basis-center attraction, and per-nucleus
-attraction derivatives directly into the stationary force contraction. One
-kernel launch covers every AO pair and nucleus; there is no per-nucleus host
-loop. The previous scalar AO-pair worker remains an explicit diagnostic
-fallback through `VIBEQC_ONE_ELECTRON_FORCE_SCALAR`.
+The production one-electron force uses compiler-owned generated S/T/V
+derivatives and a shell-pair warp schedule. It contracts stationary density and
+energy-weighted-density inputs directly into atomic gradients without
+materializing coordinate derivative tensors. The previous cooperative native
+warp remains only behind `VIBEQC_ONE_ELECTRON_DERIVATIVES=reference` for
+independent/performance comparison; the scalar AO-pair worker is retired.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
