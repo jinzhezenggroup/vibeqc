@@ -9,7 +9,6 @@
 namespace {
 
 using vibeqc::scf::solver::run_self_consistent;
-using vibeqc::scf::solver::SelfConsistentOutcome;
 using vibeqc::scf::solver::SelfConsistentPolicy;
 using vibeqc::scf::solver::SelfConsistentProgress;
 
@@ -97,6 +96,23 @@ void verify_accept_owns_update_policy() {
   require(outcome.state == 1.5, "driver bypassed method-owned acceptance policy");
 }
 
+
+void verify_terminal_accept_can_keep_current_state() {
+  const SelfConsistentPolicy policy{4, 1.0e-12, 1.0e-12, 1.0e-12, false};
+  const auto outcome = run_self_consistent(
+      0.0, policy,
+      [](double, unsigned) { return ScalarEvaluation{42.0, 0.0, 0.0, 0.0}; },
+      [](double& current, ScalarEvaluation evaluation, const SelfConsistentProgress& progress) {
+        if (progress.converged) return std::move(current);
+        return current + 1.0 + 0.0 * evaluation.proposed_state;
+      },
+      [](const SelfConsistentProgress&, const ScalarEvaluation&) {});
+
+  require(outcome.converged, "terminal-retention problem did not converge");
+  require(outcome.progress.iteration == 2, "terminal-retention convergence iteration changed");
+  require(outcome.state == 1.0, "driver replaced a method-retained terminal state");
+}
+
 }  // namespace
 
 int main() {
@@ -105,6 +121,7 @@ int main() {
     verify_residual_gate();
     verify_nonconverged_state_retention();
     verify_accept_owns_update_policy();
+    verify_terminal_accept_can_keep_current_state();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return EXIT_FAILURE;
