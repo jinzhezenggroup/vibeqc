@@ -764,9 +764,12 @@ empty so unsupported targets retain generic correctness. The `sm_120` force
 profile contains:
 
 ```text
-dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
+ssss dppp dpdp dddp dddd dpss dsds ddss ddpp ddds dpds ddps fpps
 ppps dpps dsps dspp pppp psps ppss dsss
 ```
+
+The route-by-route Direct-HF ownership and retained native exceptions are
+recorded in the [#356 retirement decision](../.agents/notes/implemented/architecture/2026-09-19-direct-hf-generated-retirement.md).
 
 The generated registry records profile identity, target compute capability,
 class index, consumer mask, block size, and component tile. Every profile uses

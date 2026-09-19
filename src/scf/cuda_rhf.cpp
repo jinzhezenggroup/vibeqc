@@ -3511,19 +3511,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask;
-  // Fock-only AOT entries (currently ssss/psss) are deliberately not added
+  // Fock-only AOT entries (currently psss) are deliberately not added
   // to the force queue.  The force dispatcher is a separate registry and
   // returns ``cudaErrorNotSupported`` for classes without a validated force
-  // consumer.  Keep these classes on the exact handwritten low-order page
-  // kernel below until an independently validated generated force entry is
-  // promoted.
+  // consumer. Keep psss on the measured native low-order paths until its
+  // generated force entry passes the complete-endpoint performance gate.
   const bool bounded_resident_psss_force_enabled =
       bounded_direct_streaming && plan.resident_psss_task_count != 0U &&
       plan.resident_psss_bra_primitive_pairs != 0U &&
       plan.resident_psss_bra_primitive_pairs <= kResidentPsssMaximumBraPrimitivePairs;
   const std::uint64_t bounded_native_paged_force_shell_class_mask =
       (bounded_direct_streaming
-           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask
+           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask &
+                 ~explicit_generated_force_shell_class_mask
            : 0U) &
       ~(bounded_resident_psss_force_enabled ? (std::uint64_t{1} << kPsssShellClass) : 0U);
   const std::uint64_t selected_force_shell_class_mask =

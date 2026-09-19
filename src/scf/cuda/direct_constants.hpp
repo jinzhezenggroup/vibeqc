@@ -158,9 +158,9 @@ constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
     (std::uint64_t{1} << kDpdsShellClass) | (std::uint64_t{1} << kDpdpShellClass) |
     (std::uint64_t{1} << kDdpsShellClass) | (std::uint64_t{1} << kDdppShellClass) |
     (std::uint64_t{1} << kDddpShellClass) | (std::uint64_t{1} << kDdddShellClass);
-// ``ssss`` and ``psss`` remain on the validated handwritten force path.  In
-// bounded mode they use the same exact page stream as generated classes, so
-// neither class is accidentally hidden by the AOT force capability mask.
+// These low-order classes have exact bounded native fallbacks. Runtime removes
+// any class already owned by an explicit generated force consumer, so sm_120
+// uses generated ssss while portable/unprofiled targets keep ssss correctness.
 constexpr std::uint64_t kBoundedNativePagedForceShellClassMask =
     (std::uint64_t{1} << kSsssShellClass) | (std::uint64_t{1} << kPsssShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each

@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 13606,
+  "all_handwritten_scientific_lines": 13507,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -1247,7 +1247,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 23138,
+      "bytes": 23147,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -1260,7 +1260,7 @@
       "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
       "regions": [],
       "role": "runtime",
-      "sha256": "095dee8e6e93e45c4cd896467f38b42d32dfc6087cc117f6983b33661080cd73",
+      "sha256": "7d434519bef67ee14f2f6d165af81e1d3c536da1bbd19c76dea65fb7259942b3",
       "subsystem": "runtime"
     },
     {
@@ -1332,7 +1332,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 9395,
+      "bytes": 9334,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -1341,11 +1341,11 @@
         "scientific": 159
       },
       "path": "src/scf/cuda/direct_bounded_exact_force.cu",
-      "physical_lines": 176,
+      "physical_lines": 175,
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
       "regions": [],
       "role": "scientific",
-      "sha256": "2dac17d02f3cd9a791b667d9867cb1fde6b323924c678762d77c6021e5d69a34",
+      "sha256": "4ecc7340351ebb93bf29a9feebdc92ee9777780adafe03b31e91b1bb4ed7998c",
       "subsystem": "direct_integrals"
     },
     {
@@ -1366,7 +1366,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 14758,
+      "bytes": 14767,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -1379,7 +1379,7 @@
       "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
       "regions": [],
       "role": "scientific",
-      "sha256": "00324da7c3dc4b9e1dadb84135d2b81008bd1287adc114fa38738dff0edeed0c",
+      "sha256": "6361d21dc34e63c761f94f70b95c7fba9b5aa57069dddd8256fb9fdf1c216c65",
       "subsystem": "direct_integrals"
     },
     {
@@ -1678,20 +1678,20 @@
       "subsystem": "direct_integrals"
     },
     {
-      "bytes": 11522,
+      "bytes": 11066,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 249
+        "scientific": 228
       },
       "path": "src/scf/cuda/direct_force_low_order.cuh",
-      "physical_lines": 272,
+      "physical_lines": 255,
       "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
       "regions": [],
       "role": "scientific",
-      "sha256": "1588ec6d68004796f19cb7497b3ef38f1345d3f740a8edefbdd03124926636be",
+      "sha256": "a36cfb07f6c85c5693a834c17685b122fc2979bfb0df0011ea11be9af424cf51",
       "subsystem": "direct_integrals"
     },
     {
@@ -1926,20 +1926,20 @@
       "subsystem": "direct_integrals"
     },
     {
-      "bytes": 951,
+      "bytes": 818,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 21
+        "scientific": 18
       },
       "path": "src/scf/cuda/direct_native_gradient_types.cuh",
-      "physical_lines": 36,
+      "physical_lines": 31,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
       "regions": [],
       "role": "scientific",
-      "sha256": "877d5e99e952c2f5c5a5c7f363ada275cbd4240392adadee3d9ff4e03f98c1d3",
+      "sha256": "ef339a36fd913a823313ce3e724318b6bd5d6e6bbabd17aae6a2e47f7c217c11",
       "subsystem": "direct_integrals"
     },
     {
@@ -1960,20 +1960,20 @@
       "subsystem": "direct_integrals"
     },
     {
-      "bytes": 13274,
+      "bytes": 8752,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 243
+        "scientific": 168
       },
       "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
-      "physical_lines": 288,
+      "physical_lines": 200,
       "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
       "regions": [],
       "role": "scientific",
-      "sha256": "f25fc06f160e7e1214b0df009e32e3e95889405f17a636fa64814716a68722d0",
+      "sha256": "b07c25510344fc3db6688a3204a63655ba311f56cfa0cebce87ac070310fe114",
       "subsystem": "direct_integrals"
     },
     {
@@ -3813,7 +3813,7 @@
     "oracle": 686,
     "performance_exception": 884,
     "runtime": 11666,
-    "scientific": 12036
+    "scientific": 11937
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3925,18 +3925,19 @@
       "status": "retired"
     },
     "direct_integrals": {
-      "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
+      "current_default": "AOT generated class registry where promoted; ssss force generated on sm_120; explicit native exceptions for psss force, dddd Fock and fixed low-order Fock",
       "evidence": [
         "docs/shell_codegen.md",
         "docs/weighted_eri.md",
         "docs/second_integral_derivatives.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json",
-        "benchmarks/results/weighted-eri-144/README.md"
+        "benchmarks/results/weighted-eri-144/README.md",
+        ".agents/notes/implemented/architecture/2026-09-19-direct-hf-generated-retirement.md"
       ],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. ssss force is retired to generated lowering on sm_120; portable targets retain only the shared order-zero fallback. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss force remains a measured performance exception. dddd Fock remains native because the generated value consumer is not production-reliable, and fixed ssss/psss Fock still lacks an independently qualified generated route. Generated source existence alone does not authorize class retirement.",
       "owner": "direct_integrals",
-      "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
+      "retirement_condition": "remove each old scientific class only when numerical/resource/full endpoint gates pass and no independent fallback, oracle or measured performance-exception role remains",
       "status": "partial"
     },
     "ecp": {
@@ -4093,7 +4094,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 1644,
-      "scientific": 7090
+      "scientific": 6991
     },
     "ecp": {
       "fallback": 0,

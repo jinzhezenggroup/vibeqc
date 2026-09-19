@@ -198,18 +198,19 @@
       "status": "retired"
     },
     "direct_integrals": {
-      "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
+      "current_default": "AOT generated class registry where promoted; ssss force generated on sm_120; explicit native exceptions for psss force, dddd Fock and fixed low-order Fock",
       "evidence": [
         "docs/shell_codegen.md",
         "docs/weighted_eri.md",
         "docs/second_integral_derivatives.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json",
-        "benchmarks/results/weighted-eri-144/README.md"
+        "benchmarks/results/weighted-eri-144/README.md",
+        ".agents/notes/implemented/architecture/2026-09-19-direct-hf-generated-retirement.md"
       ],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. ssss force is retired to generated lowering on sm_120; portable targets retain only the shared order-zero fallback. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss force remains a measured performance exception. dddd Fock remains native because the generated value consumer is not production-reliable, and fixed ssss/psss Fock still lacks an independently qualified generated route. Generated source existence alone does not authorize class retirement.",
       "owner": "direct_integrals",
-      "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
+      "retirement_condition": "remove each old scientific class only when numerical/resource/full endpoint gates pass and no independent fallback, oracle or measured performance-exception role remains",
       "status": "partial"
     },
     "low_rank": {
