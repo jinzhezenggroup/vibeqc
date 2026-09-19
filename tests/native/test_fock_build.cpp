@@ -507,10 +507,7 @@ void verify_cosx_provider_semantics() {
           "irrelevant COSX metadata changed an exact-exchange identity");
 
   require_rejected(
-      [&] {
-        (void)make_hf_fock_spec(FockSpin::Restricted,
-                                FockApproximation::SeminumericalCosx);
-      },
+      [&] { (void)make_hf_fock_spec(FockSpin::Restricted, FockApproximation::SeminumericalCosx); },
       "HF helper incorrectly requested COSX for both J and K");
 }
 

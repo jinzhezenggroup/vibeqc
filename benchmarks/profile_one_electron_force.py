@@ -20,8 +20,6 @@ from _cases import benchmark_cases
 from compare_gpu4pyscf_batch import scaled_geometries
 from vibeqc import Calculator
 
-_SCALAR_ENVIRONMENT = "VIBEQC_ONE_ELECTRON_FORCE_SCALAR"
-
 
 def main() -> None:
     """Capture the owning CUDA stream with explicit derivative implementations."""
@@ -31,7 +29,13 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument(
         "--mode",
-        choices=("scalar", "cooperative", "generated_thread", "generated_shell_warp"),
+        choices=(
+            "scalar",
+            "reference",
+            "cooperative",
+            "generated_thread",
+            "generated_shell_warp",
+        ),
         required=True,
     )
     parser.add_argument("--fitted", action="store_true")
@@ -67,9 +71,10 @@ def main() -> None:
             )
 
     if args.mode == "scalar":
-        os.environ[_SCALAR_ENVIRONMENT] = "1"
-    else:
-        os.environ.pop(_SCALAR_ENVIRONMENT, None)
+        parser.error(
+            "the scalar one-electron force path was retired by #357; "
+            "use an archived pre-#357 checkout to reproduce it"
+        )
     generated = args.mode.startswith("generated_")
     os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = (
         "generated" if generated else "reference"
