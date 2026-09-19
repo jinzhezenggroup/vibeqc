@@ -21,7 +21,9 @@ jobs:
   build_wheels:
     name: Build CUDA manylinux wheel
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # A cold cache must be able to finish once so actions/cache can seed the
+    # normalized v2 compiler cache; warm runs should return well below this cap.
+    timeout-minutes: 45
     env:
       CCACHE_MAXSIZE: 3G
     steps:
