@@ -20,9 +20,6 @@ jobs:
     name: CUDA runtime tests (CuMetal / Apple GPU)
     runs-on: macos-15
     timeout-minutes: 60
-    permissions:
-      contents: read
-      id-token: write
     env:
       CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
