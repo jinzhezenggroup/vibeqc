@@ -376,7 +376,7 @@ def rhf_hvp_many(
 def rhf_hessian(
     state,
     *,
-    block_size=4,
+    block_size=None,
     strategy="recycled",
     total_budget_bytes=128 << 20,
     **hvp_kwargs,
@@ -392,6 +392,8 @@ def rhf_hessian(
     state.validate()
     total_budget_bytes = _checked_budget(total_budget_bytes, "total_budget_bytes")
     coordinates = 3 * state.nat
+    if block_size is None:
+        block_size = min(4, coordinates)
     if type(block_size) is not int or not 1 <= block_size <= coordinates:
         raise ValueError("block_size must be between 1 and 3*natoms")
     output_bytes = coordinates * coordinates * 8

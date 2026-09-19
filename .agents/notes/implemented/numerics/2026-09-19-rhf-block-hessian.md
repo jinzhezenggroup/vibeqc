@@ -121,3 +121,13 @@ already publishes an owned bytes-backed copy.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+
+A concurrent review also exposed an invalid default for single-atom states:
+`block_size=4` exceeded their three Cartesian coordinates. The default now
+resolves to `min(4, 3*natoms)` via `None`, while explicitly oversized block
+sizes remain errors. Parameterized assembly tests cover one and two atoms;
+the single-atom case fails before this repair and passes afterward.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

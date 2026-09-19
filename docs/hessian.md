@@ -507,8 +507,8 @@ buffer, releases each completed block before starting the next, and reserves the
 three-matrix peak of raw-symmetry evaluation (which also covers immutable output
 publication). `complete_numeric_peak_bound_bytes` reports the maximum of assembly
 and output-publication phases rather than hiding those lifetimes inside the solver
-workspace. The current tools default uses four directions per block; callers can
-choose any block size from one through 3*natoms.
+workspace. The default block size is `min(4, 3*natoms)`, including single-atom
+states; callers can choose any explicit block size from one through 3*natoms.
 
 These B3/B4 paths remain within the declared small-system conventional-RHF tools
 domain. B2 device-resident AO/MO/Krylov execution, production-size

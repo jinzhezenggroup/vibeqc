@@ -164,3 +164,33 @@ def test_full_hessian_reserves_output_publication_before_any_block(
         block.rhf_hessian(
             assembly_only_state, block_size=2, total_budget_bytes=output_bytes + 1
         )
+
+
+@pytest.mark.parametrize("natoms", [1, 2])
+def test_full_hessian_default_block_size_adapts_to_coordinate_count(
+    assembly_only_state, monkeypatch, natoms
+):
+    from types import SimpleNamespace
+
+    from tools.vibeqc_hessian import block
+
+    state = assembly_only_state
+    state.nat = natoms
+    coordinates = 3 * natoms
+    block_sizes = []
+
+    def evaluate(state, directions, **kwargs):
+        block_sizes.append(len(directions))
+        return SimpleNamespace(
+            values=directions.copy(),
+            identity="test-block",
+            diagnostics={"complete_numeric_peak_bound_bytes": 0},
+        )
+
+    monkeypatch.setattr(block, "rhf_hvp_many", evaluate)
+    result = block.rhf_hessian(state)
+    np.testing.assert_array_equal(result.matrix, np.eye(coordinates))
+    assert result.diagnostics["block_size"] == min(4, coordinates)
+    assert block_sizes[0] == min(4, coordinates)
+    with pytest.raises(ValueError, match="block_size"):
+        block.rhf_hessian(state, block_size=coordinates + 1)
