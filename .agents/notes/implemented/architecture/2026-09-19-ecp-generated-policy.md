@@ -77,6 +77,13 @@ host-only when the generated predicate was called on device. Use unqualified
 `fabs`, matching the existing emitted arithmetic, to resolve the CUDA device
 overload. This preserves the absolute-error predicate and its independent
 boundary cases; do not infer device-callability from the NVIDIA build alone.
+The fix at `37d3c1230d8a6db08952aceac73d455e82bd4a32` passes the CuMetal CI
+lane and NVIDIA sm_120 compilation. Separate NVIDIA requalification retains new
+source/header/library identities: CPU native 2/2, CUDA native 4/4, 101 CPU
+Python passes, 10 focused CUDA ECP passes, 33 resource passes and zero errors
+in all three sanitizer runs. Resource peaks remain identical and independent
+endpoint gates pass. The [follow-up evidence](../../../../benchmarks/results/ecp-policy-171/compatibility/summary.json)
+preserves the distinction from the original measurement.
 
 Physical ownership changes are 7 removed scientific-classed lines and 7 added
 runtime lines, plus 283 unchanged adapter lines reclassified as runtime. The

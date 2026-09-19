@@ -17,9 +17,31 @@ source mtimes to force generation and recompilation.
 
 The subsequent CuMetal compatibility fix uses unqualified `fabs`, as the other
 generated arithmetic does, to resolve the CUDA device overload. CuMetal's
-`std::fabs` wrapper is host-only. The records below retain the original measured
-revision; compatibility requalification is recorded separately and must not be
-confused with those original header/library hashes.
+`std::fabs` wrapper is host-only. The original records retain their measured
+revision; the [compatibility results](compatibility/summary.json) separately
+qualify `37d3c1230d8a6db08952aceac73d455e82bd4a32` with new header/library
+hashes. The only changed source input is `integral/ecp_policy.py`, and the only
+generated-header change is the `std::fabs` to `fabs` spelling.
+
+Compatibility requalification passes CPU native 2/2, CUDA native 4/4, CPU
+Python 101/17 explicit CUDA skips, the focused CUDA ECP suite 10/23 non-CUDA
+deselections, and all 33 resource tests. The same 80 boundary cases pass on
+host/device; all three sanitizer runs have zero errors, including both complete
+RHF/UHF replay cases. Independent matrix/energy/force gates and unchanged
+resource-peak gates pass again. All 30 raw members and 1,463 source inputs verify
+against the downloaded archive and exact Git blobs. The fixed source also
+passes [CuMetal Apple GPU CI](https://github.com/jinzhezenggroup/vibeqc/actions/runs/35428000824)
+and [NVIDIA sm_120 compilation plus CPU/Python CI](https://github.com/jinzhezenggroup/vibeqc/actions/runs/35428000713).
+The Apple CI exercises its normal runtime test; ECP numerical qualification is
+the real-FP64 NVIDIA run, not an implied Apple ECP capability claim.
+
+To repeat this follow-up, use the same toolchain and commands below with the
+compatibility commit, saving outputs separately. The measured follow-up reused
+the CPU/CUDA build directories after extracting that exact archive and touching
+the changed emitter. Replace the broad CUDA Python selection with
+`python -m pytest tests/python/test_ecp.py -q -k cuda`; keep the resource and
+three sanitizer commands. Compare against the original candidate endpoints and
+require identical generated headers after reversing only the `fabs` spelling.
 
 `summary.json` records the test results, generated-header identities, numerical
 errors and matched resource peaks. The four `*-endpoints.json` files retain
