@@ -31,6 +31,7 @@ from vibeqc_compiler.common.provenance import (
     canonical_hash,
     file_hash,
 )
+from vibeqc_compiler.tensor.cuda_dtype import compile_options
 from vibeqc_compiler.tensor.cuda_execute import CudaArtifact, PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_resident_emit import resident_source
 
@@ -129,7 +130,7 @@ def compile_resident(plan, compiler, cache, *, extension="", dependencies=()):
                 library,
                 includes=includes,
                 libraries=("cublas",),
-                options=("--fmad=false",),
+                options=compile_options(plan),
             )
             (directory / "compiler.log").write_text(result.stdout + result.stderr)
             if result.returncode:
@@ -192,6 +193,10 @@ class DeviceTensor:
     @property
     def shape(self):
         return self._step().node.spec.shape
+
+    @property
+    def dtype(self):
+        return np.dtype(self._step().node.spec.dtype)
 
     def to_host(self):
         return self.owner.download(self)
@@ -278,11 +283,11 @@ class PreparedResident(PreparedCuda):
                 node = self.plan.steps[self.plan.inputs[slot]].node
                 if (
                     not isinstance(value, np.ndarray)
-                    or value.dtype != np.float64
+                    or value.dtype != np.dtype(node.spec.dtype)
                     or value.shape != node.spec.shape
                 ):
                     raise ValueError(
-                        f"resident input {name} must be FP64 with shape "
+                        f"resident input {name} must be {node.spec.dtype} with shape "
                         f"{node.spec.shape}"
                     )
                 np.copyto(self._inputs[slot], value)
@@ -326,6 +331,7 @@ class PreparedResident(PreparedCuda):
             self.transfers["runs"] += 1
             metrics = {name: getattr(native, name) for name, _ in native._fields_}
             metrics.update(
+                precision=self.plan.precision,
                 host_seconds=time.perf_counter() - start,
                 h2d_bytes=0,
                 d2h_bytes=4,
@@ -361,7 +367,7 @@ class PreparedResident(PreparedCuda):
             if slot is None:
                 raise ValueError("unknown resident output")
             step = self.plan.steps[dict(self.plan.outputs)[target]]
-            output = np.empty(step.node.spec.shape, dtype=np.float64)
+            output = np.empty(step.node.spec.shape, dtype=step.node.spec.dtype)
             error = ctypes.create_string_buffer(2048)
             if self._library.resident_download(
                 self._pointer,

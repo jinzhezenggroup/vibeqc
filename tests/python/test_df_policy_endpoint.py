@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from benchmarks.df_policy_endpoint import CASES, independent_reference
+from benchmarks.df_policy_endpoint import CASES, endpoint_errors, independent_reference
 
 EVIDENCE = (
     Path(__file__).resolve().parents[2] / "benchmarks/results/issue377-379-df/gpu4pyscf"
@@ -137,3 +137,24 @@ def test_coupled_policies_reject_incomplete_or_non_schedule_arms(
         main()
     assert error.value.code == 2
     assert "policy-controls" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("side", ("actual", "reference"))
+@pytest.mark.parametrize("bad", ("shape", "nan", "inf"))
+def test_cpu_reference_endpoint_checks_reject_bad_arrays(side, bad):
+    arrays = [np.zeros(1), np.zeros((1, 2, 3)), np.zeros(1), np.zeros((1, 2, 3))]
+    index = 1 if side == "actual" else 3
+    if bad == "shape":
+        arrays[index] = np.zeros((1, 1, 3))
+    else:
+        arrays[index][0, 0, 0] = float(bad)
+    with pytest.raises(RuntimeError, match="arrays are invalid"):
+        endpoint_errors(*arrays)
+
+
+def test_cpu_reference_endpoint_energy_only_and_force_errors():
+    assert endpoint_errors([1.0], None, [1.25], None) == (0.25, None)
+    assert endpoint_errors([1.0], [[[1.0, 2.0, 3.0]]], [1.25], [[[1.0, 1.5, 3.0]]]) == (
+        0.25,
+        0.5,
+    )

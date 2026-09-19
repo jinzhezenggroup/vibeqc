@@ -1,0 +1,84 @@
+"""Fast, offline integrity checks for the native D4 migration assets."""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_generated_table_matches_manifest():
+    folder = ROOT / "src/dft/dispersion"
+    manifest = json.loads((folder / "d4_manifest.json").read_text())
+    assert manifest["reference_model"] == "gfn2"
+    assert manifest["storage"] == "lower-triangle-including-diagonal"
+    assert manifest["reference_count"] == 262
+    assert manifest["revision"] == "6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
+    assert digest(folder / manifest["output"]) == manifest["output_sha256"]
+
+
+def test_independent_oracle_assets_match_manifest():
+    manifest = json.loads((ROOT / "tests/data/d4/oracle_manifest.json").read_text())
+    assert manifest["oracle_version"] == "dftd4 version 4.2.0"
+    assert manifest["reference_model"] == "gfn2"
+    assert len(manifest["cases"]) == 5
+    assert manifest["fixture_sha256"] == digest(
+        ROOT / "tests/native/d4_oracle_fixtures.hpp"
+    )
+    assert manifest["adapter_sha256"] == digest(
+        ROOT / "tools/oracle/d4_fixed_charge.f90"
+    )
+    assert manifest["generator_sha256"] == digest(
+        ROOT / "tools/oracle/generate_d4_reference.py"
+    )
+
+
+def load_generator():
+    path = ROOT / "tools/parameters/generate_d4.py"
+    spec = importlib.util.spec_from_file_location("d4_parameter_generator", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_packing_refuses_nonsymmetric_matrix():
+    gen = load_generator()
+    refs = [
+        {"coordination_number": float(i), "charge": 0.0, "gaussian_count": 1}
+        for i in range(2)
+    ]
+    with pytest.raises(gen.D4DataError, match="exactly symmetric"):
+        gen.render_header("revision", "digest", [], refs, [1.0, 2.0, 3.0, 4.0])
+    packed = gen.render_header("revision", "digest", [], refs, [1.0, 2.0, 2.0, 3.0])
+    assert "1.0, 2.0, 3.0," in packed
+    assert "kReferenceCount * (kReferenceCount + 1) / 2" in packed
+
+
+def test_exporter_rejects_nonfinite_table_values():
+    gen = load_generator()
+    with pytest.raises(gen.D4DataError, match="NaN or infinity"):
+        gen.format_double(float("nan"))
+
+
+def test_migration_records_original_source_blobs():
+    manifest = json.loads(
+        (ROOT / "src/dft/dispersion/xtbloom_manifest.json").read_text()
+    )
+    assert manifest["revision"] == "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    assert any(
+        record["path"] == "src/backends/cuda/gfn2_d4.cu"
+        for record in manifest["sources"]
+    )
+    assert all(
+        len(record["git_blob"]) == 40 and len(record["sha256"]) == 64
+        for record in manifest["sources"]
+    )

@@ -123,7 +123,7 @@ def cuda_sources(directory, architectures):
                 feeds[plan.steps[k].node.attrs["name"]] for k in plan.inputs
             )
             source += f"""\nextern "C" int {prefix}run(void* p,const double* g,const double* x,double ei,double ej,const double* ea,const double* eb,double* out,vibeqc_tensor::Metrics* metrics,char* error,size_t size) {{
-const double* inputs[]={{{inputs}}}; double* outputs[]={{out,out+1}};
+const void* inputs[]={{{inputs}}}; void* outputs[]={{out,out+1}};
 return {prefix}generated::{prefix}tensor_run(p,inputs,outputs,1,metrics,error,size);
 }}\n"""
             (directory / f"{prefix}runtime.cu").write_text(source, encoding="utf-8")
