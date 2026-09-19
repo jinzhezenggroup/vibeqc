@@ -7,27 +7,18 @@ class definitions or cache implementation belongs here.
 
 from typing import TYPE_CHECKING
 
-__all__ = (
-    "CUDA_TARGETS",
-    "DEFAULT_CUDA_TARGET",
-    "CudaArchitecture",
-    "CudaTargetInfo",
-    "cuda_architecture",
-    "cuda_target_info",
-    "normalize_cuda_architecture",
-    "normalize_cuda_compile_architecture",
-)
-
 if TYPE_CHECKING:
-    from vibeqc_compiler.common.cuda_target import (
-        CUDA_TARGETS,
-        DEFAULT_CUDA_TARGET,
-        CudaArchitecture,
-        CudaTargetInfo,
-        cuda_architecture,
-        cuda_target_info,
-        normalize_cuda_architecture,
-        normalize_cuda_compile_architecture,
+    from vibeqc_compiler.common import cuda_target as _cuda_target
+
+    CUDA_TARGETS = _cuda_target.CUDA_TARGETS
+    DEFAULT_CUDA_TARGET = _cuda_target.DEFAULT_CUDA_TARGET
+    CudaArchitecture = _cuda_target.CudaArchitecture
+    CudaTargetInfo = _cuda_target.CudaTargetInfo
+    cuda_architecture = _cuda_target.cuda_architecture
+    cuda_target_info = _cuda_target.cuda_target_info
+    normalize_cuda_architecture = _cuda_target.normalize_cuda_architecture
+    normalize_cuda_compile_architecture = (
+        _cuda_target.normalize_cuda_compile_architecture
     )
 else:
     import sys
