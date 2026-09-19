@@ -33,6 +33,7 @@ function(vibeqc_add_dft_sources target)
   target_sources(${target} PRIVATE
     src/dft/ao_grid.cpp
     src/dft/cosx_reference.cpp
+    src/dft/cosx_fock_adapter.cpp
     src/dft/bridge.cpp
     src/dft/grid.cpp
     src/dft/ks_final_state.cpp
