@@ -73,7 +73,9 @@ directly into atomic gradients. The independent CPU/libcint validation path
 remains structurally separate. A native cooperative warp implementation is
 retained only as the explicit `reference` performance exception; it batches
 nuclear point-charge centers through shared Hermite/Coulomb work and is no
-longer the production scientific owner. The canonical first-order
+longer the production scientific owner.
+
+The canonical first-order
 `(p s | s s)`
 class generates its two reachable Hermite terms in closed form, with the same
 scalar expression serving values and three-axis forward derivatives. The

@@ -29,7 +29,13 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument(
         "--mode",
-        choices=("scalar", "reference", "cooperative", "generated_thread", "generated_shell_warp"),
+        choices=(
+            "scalar",
+            "reference",
+            "cooperative",
+            "generated_thread",
+            "generated_shell_warp",
+        ),
         required=True,
     )
     parser.add_argument("--fitted", action="store_true")

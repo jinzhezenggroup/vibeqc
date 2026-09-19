@@ -269,7 +269,9 @@ unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
   if (selection == nullptr) return 1U;
   if (std::strcmp(selection, "serial") == 0) return 2U;
-  return std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0 ? 1U : 0U;
+  if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0)
+    return 1U;
+  return 0U;
 }
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }

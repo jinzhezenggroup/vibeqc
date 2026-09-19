@@ -21,8 +21,8 @@ namespace vibeqc::scf::cuda_execution {
  * auxiliary center at a time. The large Hermite table depends only on the AO
  * pair and primitive pair, so lane zero materializes it in shared memory and
  * all nuclear-center lanes reuse it for their Coulomb recurrences. Basis-center
- * attraction derivatives are reduced in registers; this preserves the retained reference
- * route's one force update per AO pair and center.
+ * attraction derivatives are reduced in registers; this preserves the retained
+ * reference route's one force update per AO pair and center.
  */
 template <unsigned MaximumAngular>
 __device__ inline void contracted_one_electron_force_pair_cooperative(

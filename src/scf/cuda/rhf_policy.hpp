@@ -129,7 +129,7 @@ bool ppss_signature_bucketing_requested() noexcept;
 unsigned ppps_resident_block_threads_requested() noexcept;
 /** 0: one AO pair per thread; 1: one shell pair per warp. */
 unsigned one_electron_value_mapping_requested() noexcept;
-/** Generated derivatives are the default; explicit reference/none/0 selects the retained native exception. */
+/** Generated derivatives default; reference/none/0 selects the retained native exception. */
 bool generated_one_electron_derivatives_requested() noexcept;
 /** 0: AO threads; 1: shell-pair warp lanes (default); 2: deterministic serial diagnostics. */
 unsigned one_electron_derivative_mapping_requested() noexcept;

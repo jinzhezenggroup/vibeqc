@@ -14,7 +14,7 @@ namespace vibeqc::scf::cuda_execution {
  * One warp owns one AO pair and reuses a shared primitive-pair Hermite table
  * while its lanes evaluate independent nuclear centers. This avoids a host or
  * device launch per nucleus and preserves the public-basis density contraction
- * used by the scalar accuracy oracle.
+ * used by the retained reference accuracy route.
  */
 __global__ void one_electron_force_cooperative_kernel(DeviceBatch batch,
                                                       const std::int32_t* pair_first,
