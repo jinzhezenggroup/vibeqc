@@ -1,5 +1,9 @@
 # VV10/rVV10 fixed-density KS/Fock potential slice
 
+> The original rVV10 equations below used the unrevised kernel. See the
+> [kernel and potential correction](2026-09-19-rvv10-kernel-correction.md).
+> Original VV10 remains unchanged; old rVV10 checks are historical only.
+
 ## Scope
 
 Issue #491 now has an executable fixed-density nonlocal-correlation potential in

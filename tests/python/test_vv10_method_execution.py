@@ -25,16 +25,17 @@ def _pbe_nonlocal_spec(variant):
     )
 
 
+@pytest.mark.parametrize("variant", ["vv10", "rvv10"])
 @pytest.mark.parametrize(
     ("spin", "density_key"),
     (("unpolarized", "density_total"), ("polarized", "density_spin")),
 )
 def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
-    spin, density_key
+    spin, density_key, variant
 ):
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
-    graph = resolve_method(_pbe_nonlocal_spec("vv10"), spin=spin)
+    graph = resolve_method(_pbe_nonlocal_spec(variant), spin=spin)
     executable = compile_fixed_density_method(graph)
     with (
         NativeAO(**basis_arguments(meta)) as basis,
@@ -47,7 +48,7 @@ def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
         assert result.method_identity == graph.identity
 
         standalone = FixedDensityNonlocalCorrelation(
-            original_nonlocal_correlation("vv10")
+            original_nonlocal_correlation(variant)
         ).integrate(basis, grid, density, tile_points=7)
         assert result.nonlocal_energy == pytest.approx(standalone.energy, abs=1e-15)
         if spin == "polarized":

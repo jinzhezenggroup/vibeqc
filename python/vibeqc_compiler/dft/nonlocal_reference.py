@@ -8,17 +8,37 @@ the diagnostic memory bound explicit.
 from __future__ import annotations
 
 import math
+from functools import wraps
 
 import numpy as np
 
 from vibeqc_compiler.common.nonlocal_correlation import NonlocalCorrelationSpec
 
 
+def _real_array(value, name):
+    raw = np.asarray(value)
+    if np.iscomplexobj(raw):
+        raise ValueError(f"{name} must be real")
+    return np.asarray(raw, dtype=np.float64)
+
+
+def _finite_arithmetic(function):
+    @wraps(function)
+    def checked(*args, **kwargs):
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            result = function(*args, **kwargs)
+        if not np.isfinite(result).all():
+            raise FloatingPointError("nonfinite nonlocal-correlation result")
+        return result
+
+    return checked
+
+
 def _validated_arrays(coords, weights, density, gradient):
-    coords = np.asarray(coords, dtype=np.float64)
-    weights = np.asarray(weights, dtype=np.float64)
-    density = np.asarray(density, dtype=np.float64)
-    gradient = np.asarray(gradient, dtype=np.float64)
+    coords = _real_array(coords, "coordinates")
+    weights = _real_array(weights, "weights")
+    density = _real_array(density, "density")
+    gradient = _real_array(gradient, "density gradient")
     if coords.ndim != 2 or coords.shape[1] != 3:
         raise ValueError("coordinates require shape (n_grid, 3)")
     ngrid = coords.shape[0]
@@ -46,22 +66,44 @@ def _local_scales(density, gradient, spec):
         raise TypeError("spec requires NonlocalCorrelationSpec")
     b = float(spec.b)
     c = float(spec.c)
+    if not math.isfinite(b) or not math.isfinite(c) or b <= 0 or c <= 0:
+        raise ValueError("nonlocal parameters must be finite positive FP64")
     sigma = np.einsum("pi,pi->p", gradient, gradient)
     omega = np.sqrt(
         c * np.square(sigma / np.square(density)) + (4.0 * math.pi / 3.0) * density
     )
     kappa = b * 1.5 * math.pi * np.power(density / (9.0 * math.pi), 1.0 / 6.0)
     beta = np.power(3.0 / (b * b), 0.75) / 32.0
+    if (
+        not np.isfinite(omega).all()
+        or not np.isfinite(kappa).all()
+        or np.any(kappa <= 0)
+        or not np.isfinite(beta)
+    ):
+        raise FloatingPointError(
+            "nonfinite or invalid local nonlocal-correlation scales"
+        )
     return omega, kappa, float(beta)
 
 
+def _pair_kernel(r2, wi, wj, ki, kj, spec):
+    if spec.variant == "rvv10":
+        # Sabatini et al., PRB 87, 041108 (2013), Eqs. (4)-(6).
+        # Restore the kappa**(-3/2) factors to the ordinary density measure.
+        zi, zj = wi / ki * r2 + 1, wj / kj * r2 + 1
+        return -1.5 / ((ki * kj) ** 1.5 * zi * zj * (zi + zj))
+    gi, gj = wi * r2 + ki, wj * r2 + kj
+    return -1.5 / (gi * gj * (gi + gj))
+
+
+@_finite_arithmetic
 def nonlocal_kernel_matrix_reference(
     coords, density, gradient, spec, *, max_points=512
 ):
     """Materialize the small-grid pair kernel for symmetry diagnostics only."""
-    coords = np.asarray(coords, dtype=np.float64)
-    density = np.asarray(density, dtype=np.float64)
-    gradient = np.asarray(gradient, dtype=np.float64)
+    coords = _real_array(coords, "coordinates")
+    density = _real_array(density, "density")
+    gradient = _real_array(gradient, "density gradient")
     ngrid = coords.shape[0] if coords.ndim else 0
     if ngrid > max_points:
         raise ValueError("kernel-matrix reference is limited to small fixed grids")
@@ -71,11 +113,12 @@ def nonlocal_kernel_matrix_reference(
     omega, kappa, _ = _local_scales(density, gradient, spec)
     delta = coords[:, None, :] - coords[None, :, :]
     r2 = np.einsum("ijk,ijk->ij", delta, delta)
-    gi = omega[:, None] * r2 + kappa[:, None]
-    gj = omega[None, :] * r2 + kappa[None, :]
-    return -1.5 / (gi * gj * (gi + gj))
+    return _pair_kernel(
+        r2, omega[:, None], omega[None, :], kappa[:, None], kappa[None, :], spec
+    )
 
 
+@_finite_arithmetic
 def nonlocal_energy_density_reference(
     coords,
     weights,
@@ -102,9 +145,9 @@ def nonlocal_energy_density_reference(
             stop = min(start + tile_size, ngrid)
             delta = coords[start:stop] - coords[i]
             r2 = np.einsum("pi,pi->p", delta, delta)
-            gi = omega[i] * r2 + kappa[i]
-            gj = omega[start:stop] * r2 + kappa[start:stop]
-            kernel = -1.5 / (gi * gj * (gi + gj))
+            kernel = _pair_kernel(
+                r2, omega[i], omega[start:stop], kappa[i], kappa[start:stop], spec
+            )
             total += float(
                 np.sum(
                     weighted_density[start:stop] * kernel,
@@ -115,6 +158,7 @@ def nonlocal_energy_density_reference(
     return eps
 
 
+@_finite_arithmetic
 def nonlocal_energy_reference(
     coords,
     weights,
@@ -137,6 +181,7 @@ def nonlocal_energy_reference(
     return float(np.dot(weights * density, eps))
 
 
+@_finite_arithmetic
 def nonlocal_feature_derivatives_reference(
     coords,
     weights,
@@ -174,22 +219,32 @@ def nonlocal_feature_derivatives_reference(
             stop = min(start + tile_size, ngrid)
             delta = coords[start:stop] - coords[i]
             r2 = np.einsum("pi,pi->p", delta, delta)
-            gi = omega[i] * r2 + kappa[i]
-            gj = omega[start:stop] * r2 + kappa[start:stop]
-            pair_sum = gi + gj
-            phi = -1.5 / (gi * gj * pair_sum)
-            dphi_dgi = -phi * (1.0 / gi + 1.0 / pair_sum)
-            dgi_drho = r2 * domega_drho[i] + dkappa_drho[i]
-            dgi_dsigma = r2 * domega_dsigma[i]
+            phi = _pair_kernel(
+                r2, omega[i], omega[start:stop], kappa[i], kappa[start:stop], spec
+            )
+            if spec.variant == "rvv10":
+                zi = 1 + omega[i] / kappa[i] * r2
+                zj = 1 + omega[start:stop] / kappa[start:stop] * r2
+                factor_z = 1 / zi + 1 / (zi + zj)
+                dphi_domega = -phi * r2 / kappa[i] * factor_z
+                dphi_dkappa = phi / kappa[i] * (-1.5 + (zi - 1) * factor_z)
+            else:
+                gi = omega[i] * r2 + kappa[i]
+                gj = omega[start:stop] * r2 + kappa[start:stop]
+                dphi_dgi = -phi * (1 / gi + 1 / (gi + gj))
+                dphi_domega, dphi_dkappa = dphi_dgi * r2, dphi_dgi
+            dphi_drho = dphi_domega * domega_drho[i] + dphi_dkappa * dkappa_drho[i]
+            dphi_dsigma = dphi_domega * domega_dsigma[i]
             factor = weighted_density[start:stop]
             sum_phi += float(np.sum(factor * phi, dtype=np.float64))
-            sum_rho += float(np.sum(factor * dphi_dgi * dgi_drho, dtype=np.float64))
-            sum_sigma += float(np.sum(factor * dphi_dgi * dgi_dsigma, dtype=np.float64))
+            sum_rho += float(np.sum(factor * dphi_drho, dtype=np.float64))
+            sum_sigma += float(np.sum(factor * dphi_dsigma, dtype=np.float64))
         vrho[i] = beta + sum_phi + density[i] * sum_rho
         vsigma[i] = density[i] * sum_sigma
     return vrho, vsigma
 
 
+@_finite_arithmetic
 def assemble_nonlocal_potential_reference(
     jets,
     weights,
@@ -198,11 +253,11 @@ def assemble_nonlocal_potential_reference(
     vsigma,
 ):
     """Assemble the total-density AO matrix for a fixed-grid VV10 potential."""
-    jets = np.asarray(jets, dtype=np.float64)
-    weights = np.asarray(weights, dtype=np.float64)
-    density_gradient = np.asarray(density_gradient, dtype=np.float64)
-    vrho = np.asarray(vrho, dtype=np.float64)
-    vsigma = np.asarray(vsigma, dtype=np.float64)
+    jets = _real_array(jets, "jets")
+    weights = _real_array(weights, "weights")
+    density_gradient = _real_array(density_gradient, "density_gradient")
+    vrho = _real_array(vrho, "vrho")
+    vsigma = _real_array(vsigma, "vsigma")
     if jets.ndim != 3 or jets.shape[0] < 4:
         raise ValueError("nonlocal potential requires first-order AO jets")
     ngrid = jets.shape[1]

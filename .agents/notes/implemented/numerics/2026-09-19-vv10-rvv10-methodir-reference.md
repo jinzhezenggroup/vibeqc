@@ -1,5 +1,10 @@
 # VV10/rVV10 MethodIR energy primitive and reference oracle
 
+> The initial rVV10 kernel and its PySCF comparison below are superseded by
+> [the revised-kernel correction](2026-09-19-rvv10-kernel-correction.md).
+> They are retained as historical evidence of the wrong reparameterized-VV10
+> path, not as current rVV10 qualification. Original VV10 is unchanged.
+
 ## Scope
 
 Issue #491 slice A introduces a first-class nonlocal-correlation family without

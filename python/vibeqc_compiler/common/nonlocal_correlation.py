@@ -59,6 +59,8 @@ class NonlocalCorrelationSpec:
 
     @property
     def kernel_convention(self):
+        if self.variant == RVV10:
+            return "finite-system-rvv10-q-kappa-total-density-v2"
         return "finite-system-real-space-total-density-v1"
 
     def to_payload(self):
