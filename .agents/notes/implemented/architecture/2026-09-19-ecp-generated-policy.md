@@ -58,10 +58,26 @@ subtraction overflow, signed zero, subnormal and NaN/Inf inputs. The tests do no
 obtain their expected thresholds from the generated policy. Existing native
 numerical-failure/partial-allocation/recovery tests exercise the production path.
 
-Complete independent CPU/Libcint and CUDA matrix/derivative/HF force and resource
-qualification is required before publication. This migration does not enable
-DFT/ECP forces, enlarge angular/element/resource domains, remove the CPU oracle,
-or establish a performance improvement. Refs #171 and #349.
+Independent CPU/Libcint and CUDA matrix/derivative/HF force and resource
+qualification is retained in the [matched evidence](../../../../benchmarks/results/ecp-policy-171/README.md).
+The measured candidate is `f10e7346839f059521c4a4800ae1a0655e21f1fd` against
+`2bf9a2a4784fc79f6048ec9c4e74701e1caa92ec`. CPU native tests pass 2/2, CUDA
+native tests 4/4; Python passes 101 CPU checks (17 explicit CUDA skips), 76
+CUDA ECP checks and all 33 resource checks with CUDA enabled. The CUDA-only
+selection deselects 88 CPU cases; these are not reported as CUDA passes.
+All three Compute Sanitizer checks pass with zero errors, including both
+complete RHF/UHF replay cases. Removing only the emitted policy fragment leaves
+the baseline generated header byte-identical. Matched resource peaks are
+unchanged; complete-HF energy/force errors remain within the independent gates.
+Downloaded evidence verifies 51 raw members and 1,460 baseline/1,463 candidate
+source inputs against exact Git blobs, resolving the recorded symlink target.
+
+Physical ownership changes are 7 removed scientific-classed lines and 7 added
+runtime lines, plus 283 unchanged adapter lines reclassified as runtime. The
+ledger's scientific -290/runtime +290 is not a 290-line physical deletion.
+This migration does not enable DFT/ECP forces, enlarge angular/element/resource
+domains, remove the CPU oracle, or establish a performance improvement.
+Refs #171 and #349.
 
 The prior [AO/weight ownership decision](2026-09-16-ecp-ao-weight-consumers.md)
 and [host-grid decision](2026-09-17-ecp-host-grid.md) retain their historical
