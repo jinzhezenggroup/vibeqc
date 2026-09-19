@@ -463,7 +463,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // A stationary physical state can still alternate integer occupations.
     // Enable the same 0.1-Eh proposal shift as CPU UKS only after both physical
     // gates pass. A subsequent density-change gate must still pass to finish.
-    if (spins == 2 && output.iterations > 1 && output.energy_change < options.energy_tolerance &&
+    if (!final_closure && spins == 2 && output.iterations > 1 &&
+        output.energy_change < options.energy_tolerance &&
         physical.residual < std::min(1e-9, options.density_tolerance) &&
         physical.density_change >= options.density_tolerance)
       stabilize_occupations = true;
