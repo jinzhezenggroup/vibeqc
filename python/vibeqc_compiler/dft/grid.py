@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
@@ -173,16 +173,16 @@ class MolecularGrid:
     """
 
     if TYPE_CHECKING:
-        centers: np.ndarray
-        directions: np.ndarray
-        angular_weights: np.ndarray
-        radii: np.ndarray
-        radial_weights: np.ndarray
-        resolved_radii: tuple[float, ...]
-        npoint: int
-        identity: str
-        numeric_bytes: int
-        setup_scratch_bytes: int
+        centers: ClassVar[np.ndarray]
+        directions: ClassVar[np.ndarray]
+        angular_weights: ClassVar[np.ndarray]
+        radii: ClassVar[np.ndarray]
+        radial_weights: ClassVar[np.ndarray]
+        resolved_radii: ClassVar[tuple[float, ...]]
+        npoint: ClassVar[int]
+        identity: ClassVar[str]
+        numeric_bytes: ClassVar[int]
+        setup_scratch_bytes: ClassVar[int]
 
     atoms: tuple
     spec: GridSpec = GridSpec()
@@ -331,7 +331,7 @@ class ExplicitGrid:
     provenance: dict[str, object]
 
     if TYPE_CHECKING:
-        _provenance_json: str
+        _provenance_json: ClassVar[str]
         identity: str
 
     def __post_init__(self):
