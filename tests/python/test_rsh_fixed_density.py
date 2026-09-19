@@ -91,6 +91,45 @@ def test_cam_b3lyp_scalar_energy_and_potential_coefficients_match_pinned_oracle(
     np.testing.assert_allclose(actual_u, expected_u, rtol=2e-12, atol=2e-13)
 
 
+def test_b3lyp_vwn_rpa_scalar_energy_and_potential_match_pinned_oracle():
+    method = resolve_method("B3LYP", spin="polarized")
+    spec = method.primitives[0].functional
+    point = np.array([[0.3, 0.2, 0.015, 0.003, 0.01, 0.0, 0.0]]).T
+    actual = build_program(spec, order=1).evaluate(point).ravel()
+    # Pinned independently with PySCF 2.14.0 / Libxc 7.0.0 B3LYP.
+    expected = np.array(
+        [
+            -0.26232290280116083,
+            -0.7122471845474007,
+            -0.647404446702975,
+            -0.014654598299102754,
+            0.0016566689256405436,
+            -0.022748740576278376,
+            0.0,
+            0.0,
+        ]
+    )
+    np.testing.assert_allclose(actual, expected, rtol=2e-12, atol=2e-13)
+
+    restricted = resolve_method("B3LYP").primitives[0].functional
+    u = np.array([[0.5, 0.031, 0.0]]).T
+    actual_u = build_program(restricted, order=1).evaluate(u).ravel()
+    expected_u = np.array(
+        [
+            -0.26053117903257633,
+            -0.6822162975610385,
+            -0.00859813384794804,
+            0.0,
+        ]
+    )
+    np.testing.assert_allclose(actual_u, expected_u, rtol=2e-12, atol=2e-13)
+
+    # VWN5 is intentionally a different named scientific method.
+    vwn5 = resolve_method("B3LYP5", spin="polarized").primitives[0].functional
+    vwn5_value = build_program(vwn5, order=0).evaluate(point)[0, 0]
+    assert abs(vwn5_value - actual[0]) > 1e-8
+
+
 def test_rsh_libxc_source_manifest_is_pinned():
     root = Path(__file__).resolve().parents[2]
     source = root / "external/libxc-7.0.0"
