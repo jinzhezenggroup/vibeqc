@@ -132,6 +132,55 @@ def _nonsymmetric(*, matrix_diff=True):
     }
 
 
+def test_declared_stationary_state_dispatches_generic_implicit_plan():
+    problem, feeds = _nonsymmetric()
+    state = replace(
+        problem.states[0],
+        implicit_operator_identity="nonsymmetric-response-v1",
+        residual_layout_identity=problem.states[0].coordinate_identity,
+    )
+    problem = replace(problem, states=(state,))
+    plan = problem.compile()
+    assert set(plan.implicit_plans) == {"x"}
+    implicit = plan.implicit_plans["x"]
+    assert implicit.spec.operator_identity == "nonsymmetric-response-v1"
+    assert implicit.spec.state_layout == state.coordinate_identity
+    assert implicit.spec.residual_layout == state.coordinate_identity
+    assert implicit.spec.gauge == state.gauge_identity
+    assert set(implicit.spec.parameter_names) == {"A", "q"}
+
+    vector = np.array([0.3, -0.2, 0.7])
+    generated = execute(
+        implicit.programs["transpose"],
+        {**feeds, "__implicit_vector": vector},
+    ).outputs["value"]
+    np.testing.assert_allclose(generated, feeds["A"].T @ vector, atol=2e-15)
+
+    replay = StationaryDerivativePlan.loads(plan.dumps())
+    assert replay.implicit_plans["x"].identity == implicit.identity
+    changed = replace(
+        problem,
+        states=(replace(state, implicit_operator_identity="different-response-v2"),),
+    ).compile()
+    assert changed.implicit_plans["x"].identity != implicit.identity
+
+
+def test_automatic_implicit_dispatch_rejects_unpacked_coupled_states():
+    problem = _constrained()
+    states = tuple(
+        replace(
+            state,
+            implicit_operator_identity="kkt-row-v1",
+            residual_layout_identity=state.coordinate_identity,
+        )
+        if state.name == "x"
+        else state
+        for state in problem.states
+    )
+    with pytest.raises(NotImplementedError, match="coupled"):
+        replace(problem, states=states).compile()
+
+
 @pytest.mark.parametrize("matrix_diff", [False, True])
 def test_nonsymmetric_coupled_state_and_parameter_weights(matrix_diff):
     problem, feeds = _nonsymmetric(matrix_diff=matrix_diff)
@@ -343,7 +392,7 @@ def test_serialization_and_identity_are_canonical_and_data_only(factory):
     "field,value",
     [
         ("schema_version", True),
-        ("schema_version", 2),
+        ("schema_version", 3),
         ("convention", "opposite-sign"),
         ("identity", "tampered"),
         ("model_identity", "altered"),
@@ -361,7 +410,7 @@ def test_duplicate_json_fields_are_rejected():
     source = (
         _scalar()
         .dumps()
-        .replace('"schema_version": 1', '"schema_version": 1, "schema_version": 1')
+        .replace('"schema_version": 2', '"schema_version": 2, "schema_version": 2')
     )
     with pytest.raises(ValueError, match="duplicate JSON field"):
         StationaryProblem.loads(source)
@@ -390,6 +439,7 @@ def test_records_and_plan_maps_are_immutable_snapshots():
         {"coordinate_identity": ""},
         {"gauge_identity": ""},
         {"kind": "guessed"},
+        {"residual_layout_identity": "layout-without-operator"},
         {"name": "stationary_bad"},
     ],
 )
