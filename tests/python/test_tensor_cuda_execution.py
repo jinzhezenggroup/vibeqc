@@ -221,6 +221,14 @@ def check(program, feeds, compiler, cache, schedule=None, **options):
             assert result.metrics["owned_device_bytes"] == plan.allocation_bytes
             assert result.metrics["provider_retained_bytes"] <= plan.provider_bytes
             assert result.metrics["predicted_peak_bytes"] <= plan.max_bytes
+            assert (
+                result.metrics["observed_semantic_traffic_bytes"]
+                == plan.semantic_traffic["total_bytes"]
+            )
+            assert (
+                "not a hardware DRAM counter"
+                in result.metrics["observed_traffic_scope"]
+            )
         return result
 
 
@@ -259,6 +267,52 @@ def test_generated_vjp_review_regressions_on_cuda(case, compiler, cache):
             output, expected = "bar_x", np.asarray(6.0)
     result = check(generated.program, feeds, compiler, cache)
     np.testing.assert_array_equal(result.outputs[output], expected)
+
+
+def test_resource_aware_schedule_dimensions_execute_on_cuda(compiler, cache):
+    """Executable search axes keep exact numerical parity on the real backend."""
+    i = Index("i", IndexSpace("rows", "batch", 17))
+    j = Index("j", IndexSpace("columns", "batch", 19))
+    k = Index("k", IndexSpace("inner", "batch", 33))
+    rng = np.random.default_rng(508)
+
+    x = input_tensor("x", TensorSpec((i, j), role="input"))
+    check(
+        Program({"out": add(multiply(x, x), x)}),
+        {"x": rng.uniform(-0.5, 0.5, x.spec.shape)},
+        compiler,
+        cache,
+        TensorSchedule(elements_per_thread=4),
+    )
+
+    r = input_tensor("r", TensorSpec((i, k), role="input"))
+    check(
+        Program({"out": reduce_sum(r, (1,))}),
+        {"r": rng.uniform(-0.5, 0.5, r.spec.shape)},
+        compiler,
+        cache,
+        TensorSchedule(elements_per_thread=2, reduction_unroll=4),
+    )
+
+    a = input_tensor("a", TensorSpec((i, k), role="input"))
+    b = input_tensor("b", TensorSpec((k, j), role="input"))
+    check(
+        Program({"out": einsum("ik,kj->ji", a, b)}),
+        {
+            "a": rng.uniform(-0.5, 0.5, a.spec.shape),
+            "b": rng.uniform(-0.5, 0.5, b.spec.shape),
+        },
+        compiler,
+        cache,
+        TensorSchedule(
+            tile_m=11,
+            tile_n=13,
+            tile_k=17,
+            direct_gemm=False,
+            staging_width=4,
+        ),
+        library_bytes=0,
+    )
 
 
 @pytest.mark.parametrize("case", example_cases(), ids=lambda c: c.name)

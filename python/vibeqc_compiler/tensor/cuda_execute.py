@@ -599,10 +599,18 @@ class PreparedCuda:
             if status:
                 raise RuntimeError(error.value.decode())
             metrics = {name: getattr(native, name) for name, _ in native._fields_}
+            traffic = self.plan.semantic_traffic
             metrics.update(
                 endpoint_ms=(time.perf_counter() - started) * 1000,
                 predicted_peak_bytes=self.plan.peak_bytes,
                 host_buffer_bytes=self.plan.host_bytes,
+                observed_semantic_traffic_bytes=traffic["total_bytes"],
+                observed_logical_tensor_bytes=traffic["logical_tensor_bytes"],
+                observed_layout_conversion_bytes=traffic["layout_conversion_bytes"],
+                observed_host_to_device_bytes=traffic["host_to_device_bytes"],
+                observed_device_to_host_bytes=traffic["device_to_host_bytes"],
+                observed_traffic_scope=traffic["scope"]
+                + "; bound to a successfully executed endpoint, not a hardware DRAM counter",
                 profiled=bool(profile),
                 **graph_metrics,
             )

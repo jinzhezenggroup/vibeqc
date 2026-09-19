@@ -34,9 +34,12 @@ class TensorScheduleSpace:
     direct_gemm: tuple[bool, ...] = (True, False)
     layouts: tuple[bool, ...] = (False, True)
     threads: tuple[int, ...] = (128, 64, 256)
-    tile_m: tuple[int, ...] = (128, 64, 32)
-    tile_n: tuple[int, ...] = (128, 64, 32)
-    tile_k: tuple[int, ...] = (128, 64, 32)
+    tile_m: tuple[int, ...] = (128, 64, 256, 512, 32)
+    tile_n: tuple[int, ...] = (128, 64, 256, 512, 32)
+    tile_k: tuple[int, ...] = (128, 64, 256, 512, 32)
+    elements_per_thread: tuple[int, ...] = (1, 2, 4)
+    reduction_unroll: tuple[int, ...] = (1, 2, 4)
+    staging_width: tuple[int, ...] = (1, 2, 4)
 
     def __post_init__(self):
         for field in fields(self):
@@ -83,7 +86,7 @@ class TensorSearchLimits:
     separate hard stop mechanisms. The mandatory baseline is not a candidate.
     """
 
-    maximum_candidates: int = 128
+    maximum_candidates: int = 256
     maximum_compilations: int = 12
     maximum_source_bytes: int = 2 * 1024**2
     minimum_resident_blocks: int = 1
@@ -146,16 +149,25 @@ def execution_key(plan: TensorPlan) -> str:
     # Planning diagnostics are provenance, not executable work. Physical layout
     # changes remain represented by step layouts, GEMM kinds and layout_identity.
     payload.pop("layout_planning", None)
-    payload["threads"] = (
-        plan.schedule.threads
-        if any(
-            not step.virtual
-            and step.node.op not in ("input", "constant")
-            and step.node.spec.size
-            for step in plan.steps
-        )
+    active_steps = tuple(
+        step
+        for step in plan.steps
+        if not step.virtual
+        and step.node.op not in ("input", "constant")
+        and step.node.spec.size
+    )
+    generic_steps = tuple(step for step in active_steps if step.gemm == "none")
+    packed_steps = tuple(step for step in active_steps if step.gemm == "packed")
+    payload["threads"] = plan.schedule.threads if active_steps else None
+    payload["elements_per_thread"] = (
+        plan.schedule.elements_per_thread if generic_steps else None
+    )
+    payload["reduction_unroll"] = (
+        plan.schedule.reduction_unroll
+        if any(step.node.op in ("reduce", "einsum") for step in generic_steps)
         else None
     )
+    payload["staging_width"] = plan.schedule.staging_width if packed_steps else None
     payload["packing_tiles"] = [
         tuple(
             min(tile, size)
@@ -184,7 +196,7 @@ def _resident_blocks(plan, registers, shared_bytes):
 
 
 def estimate_schedule(plan: TensorPlan) -> dict:
-    """Reuse exact numeric-buffer accounting and expose labeled cost proxies."""
+    """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
     materialized = 0
     for step in plan.steps:
@@ -194,30 +206,42 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         )
         live_values.append(live)
         if not step.virtual and step.node.op not in ("input", "constant"):
-            materialized += step.node.spec.size * 8
-            registers = max(registers, 16 + 2 * live + 2 * len(step.node.spec.shape))
+            materialized += step.node.spec.size * step.node.spec.itemsize
+            estimate = 16 + 2 * live + 2 * len(step.node.spec.shape)
+            if step.gemm == "none":
+                estimate += 2 * (plan.schedule.elements_per_thread - 1)
+                if step.node.op in ("reduce", "einsum"):
+                    estimate += plan.schedule.reduction_unroll - 1
+            elif step.gemm == "packed":
+                estimate += 2 * (plan.schedule.staging_width - 1)
+            registers = max(registers, estimate)
     source_bytes = len(emit_cuda(plan).encode("utf-8"))
     resident = _resident_blocks(plan, registers, 0)
+    traffic = plan.semantic_traffic
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v1",
+        "schema": "vibeqc.tensor.cuda.static-cost.v2",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
         "panel_bytes": plan.panel_bytes,
         "materialization_bytes": materialized,
-        "estimated_logical_traffic_bytes": plan.estimated_traffic_bytes,
-        "traffic_scope": "planner logical traffic; excludes packing/provider/cache traffic",
+        "estimated_logical_traffic_bytes": traffic["logical_tensor_bytes"],
+        "estimated_layout_conversion_bytes": traffic["layout_conversion_bytes"],
+        "estimated_host_to_device_bytes": traffic["host_to_device_bytes"],
+        "estimated_device_to_host_bytes": traffic["device_to_host_bytes"],
+        "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
+        "traffic_scope": traffic["scope"],
         "estimated_flops": plan.estimated_flops,
         "estimated_registers_per_thread": registers,
         "estimated_shared_bytes": 0,
         "estimated_local_bytes": None,
-        "register_scope": "scalar-liveness heuristic for generated kernels; excludes cuBLAS",
+        "register_scope": "scalar-liveness/work-per-thread heuristic for generated kernels; excludes cuBLAS",
         "resident_blocks_upper_bound": resident,
         "occupancy_upper_bound": resident
         * plan.schedule.threads
         / plan.target.maximum_threads_per_sm,
         "generated_source_bytes": source_bytes,
-        "compile_cost_proxy": "generated_source_bytes; not predicted seconds",
+        "compile_cost_proxy": "generated_source_bytes; calibrated only against compiler-reported seconds after compilation",
     }
 
 
@@ -321,6 +345,60 @@ def plan_schedule_search(baseline, schedules, limits=DEFAULT_SEARCH_LIMITS):
     return tuple(candidates)
 
 
+def compiled_resource_calibration(plan, estimates, resources) -> dict:
+    """Compare static heuristics with compiler-reported resources.
+
+    This record calibrates the human-readable cost model; promotion still uses
+    the hard PTXAS gate below and endpoint evidence rather than this ratio.
+    """
+    if not isinstance(estimates, dict):
+        raise TypeError("resource calibration requires static estimates")
+    if not resources:
+        raise ValueError("resource calibration requires compiled resources")
+    required = (
+        "registers",
+        "stack_bytes",
+        "spill_store_bytes",
+        "spill_load_bytes",
+        "shared_bytes",
+    )
+    if any(
+        not isinstance(row, dict)
+        or any(type(row.get(key)) is not int or row[key] < 0 for key in required)
+        for row in resources
+    ):
+        raise ValueError("resource calibration requires complete compiled resources")
+    registers = max(row["registers"] for row in resources)
+    estimated = estimates["estimated_registers_per_thread"]
+    local = [
+        row.get("local_bytes")
+        for row in resources
+        if type(row.get("local_bytes")) is int and row["local_bytes"] >= 0
+    ]
+    resident = min(
+        _resident_blocks(plan, row["registers"], row["shared_bytes"])
+        for row in resources
+    )
+    return {
+        "schema": "vibeqc.tensor.cuda.resource-calibration.v1",
+        "kernel_count": len(resources),
+        "estimated_registers_per_thread": estimated,
+        "compiled_max_registers_per_thread": registers,
+        "register_calibration_ratio": None if estimated == 0 else registers / estimated,
+        "compiled_max_stack_bytes": max(row["stack_bytes"] for row in resources),
+        "compiled_max_spill_store_bytes": max(
+            row["spill_store_bytes"] for row in resources
+        ),
+        "compiled_max_spill_load_bytes": max(
+            row["spill_load_bytes"] for row in resources
+        ),
+        "compiled_max_shared_bytes": max(row["shared_bytes"] for row in resources),
+        "compiled_max_local_bytes": max(local) if local else None,
+        "compiled_resident_blocks_upper_bound": resident,
+        "local_memory_scope": "PTXAS lmem when reported; stack/spill bytes are retained separately and never inferred as lmem",
+    }
+
+
 def require_compiled_resources(plan, resources, *, minimum_resident_blocks=1):
     """Fail closed on missing PTXAS data, spills or infeasible block resources."""
     required = (
@@ -333,8 +411,13 @@ def require_compiled_resources(plan, resources, *, minimum_resident_blocks=1):
     if not resources:
         raise ValueError("candidate lacks compiled resource evidence")
     for row in resources:
-        if not isinstance(row, dict) or any(
-            type(row.get(key)) is not int or row[key] < 0 for key in required
+        if (
+            not isinstance(row, dict)
+            or any(type(row.get(key)) is not int or row[key] < 0 for key in required)
+            or (
+                row.get("local_bytes") is not None
+                and (type(row["local_bytes"]) is not int or row["local_bytes"] < 0)
+            )
         ):
             raise ValueError("candidate has incomplete compiled resource evidence")
         target = plan.target

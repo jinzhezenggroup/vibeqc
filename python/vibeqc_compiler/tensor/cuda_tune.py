@@ -34,6 +34,7 @@ from .cuda_search import (
     TensorScheduleSpace,
     TensorScreeningPolicy,
     TensorSearchLimits,
+    compiled_resource_calibration,
     plan_schedule_search,
     require_compiled_resources,
 )
@@ -70,10 +71,60 @@ def endpoint_gate(baseline, candidate, *, minimum_speedup=1.02) -> dict:
 
 
 def candidate_schedules(
-    space: TensorScheduleSpace | None = None, *, maximum: int = 128
+    space: TensorScheduleSpace | None = None, *, maximum: int = 256
 ) -> tuple[TensorSchedule, ...]:
     """Structured, reproducible prefix; still opt-in, never installation tuning."""
     return (TensorScheduleSpace() if space is None else space).generate(maximum)
+
+
+def _static_compile_shortlist(search, maximum: int) -> tuple[tuple[int, object], ...]:
+    """Rank ready plans before expensive compilation using static audit facts.
+
+    The score only allocates the finite compilation budget. It never promotes a
+    candidate and deliberately avoids a learned/opaque cost model.
+    """
+    ready = []
+    for index, proposal in enumerate(search):
+        if proposal.status != "ready":
+            continue
+        estimate = proposal.estimates
+        ready.append(
+            (
+                (
+                    estimate["estimated_endpoint_semantic_traffic_bytes"],
+                    estimate["estimated_registers_per_thread"],
+                    estimate["generated_source_bytes"],
+                    index,
+                ),
+                index,
+                proposal,
+            )
+        )
+    ready.sort(key=lambda item: item[0])
+    return tuple((index, proposal) for _, index, proposal in ready[:maximum])
+
+
+def _compile_cost_calibration(estimates, metadata, wall_seconds) -> dict:
+    source_bytes = estimates["generated_source_bytes"]
+    compiler_seconds = metadata.get("compile_seconds")
+    seconds_per_kib = None
+    if (
+        isinstance(compiler_seconds, (int, float))
+        and not isinstance(compiler_seconds, bool)
+        and np.isfinite(compiler_seconds)
+        and compiler_seconds >= 0
+        and source_bytes
+    ):
+        seconds_per_kib = float(compiler_seconds) / (source_bytes / 1024)
+    return {
+        "schema": "vibeqc.tensor.cuda.compile-calibration.v1",
+        "source_bytes_proxy": source_bytes,
+        "artifact_source_bytes": metadata.get("generated_source_bytes"),
+        "compiler_seconds": compiler_seconds,
+        "compile_wall_seconds": wall_seconds,
+        "compiler_seconds_per_source_kib": seconds_per_kib,
+        "scope": "compiler-reported build duration calibrates the source-size proxy; cache/load wall time is retained separately",
+    }
 
 
 @dataclass(frozen=True)
@@ -151,11 +202,16 @@ def tune_cuda(
             raise TimeoutError("tuning deadline exhausted")
 
     search = plan_schedule_search(baseline, schedules, search_limits)
+    compile_shortlist = _static_compile_shortlist(
+        search, search_limits.maximum_compilations
+    )
+    compile_indices = {index for index, _ in compile_shortlist}
+    compile_ranks = {
+        index: rank for rank, (index, _) in enumerate(compile_shortlist, 1)
+    }
     screening_plan = _screening_plan(
         screening,
-        min(
-            sum(p.status == "ready" for p in search), search_limits.maximum_compilations
-        ),
+        len(compile_shortlist),
         len(fixtures),
         repeats,
     )
@@ -267,23 +323,34 @@ def tune_cuda(
             except (ValueError, RuntimeError, TimeoutError) as error:
                 row.update(status="rejected", reason=str(error))
 
-        for proposal in search:
+        for index, proposal in enumerate(search):
             row = proposal.to_payload()
             candidates.append(row)
             if proposal.status != "ready":
                 continue
+            row["static_compile_priority"] = {
+                "endpoint_semantic_traffic_bytes": proposal.estimates[
+                    "estimated_endpoint_semantic_traffic_bytes"
+                ],
+                "estimated_registers_per_thread": proposal.estimates[
+                    "estimated_registers_per_thread"
+                ],
+                "generated_source_bytes": proposal.estimates["generated_source_bytes"],
+                "generation_index": index,
+            }
+            if index not in compile_indices:
+                row.update(
+                    status="skipped",
+                    stage="compile-budget",
+                    reason="outside static compile shortlist; ranked by semantic traffic, register pressure, source size and generation order",
+                )
+                continue
+            row["static_compile_rank"] = compile_ranks[index]
             if time.monotonic() - started >= maximum_seconds:
                 row.update(
                     status="skipped",
                     stage="deadline",
                     reason="tuning deadline exhausted",
-                )
-                continue
-            if compilation_attempts >= search_limits.maximum_compilations:
-                row.update(
-                    status="skipped",
-                    stage="compile-budget",
-                    reason="candidate compilation budget exhausted",
                 )
                 continue
             try:
@@ -296,11 +363,20 @@ def tune_cuda(
                 finally:
                     row["compile_wall_seconds"] = time.monotonic() - compile_started
                 row["artifact"] = compiled.metadata
+                row["compile_calibration"] = _compile_cost_calibration(
+                    proposal.estimates,
+                    compiled.metadata,
+                    row["compile_wall_seconds"],
+                )
                 row["stage"] = "compiled-resource"
+                resources = compiled.metadata.get("resources", [])
                 require_compiled_resources(
                     plan,
-                    compiled.metadata.get("resources", []),
+                    resources,
                     minimum_resident_blocks=search_limits.minimum_resident_blocks,
+                )
+                row["resource_calibration"] = compiled_resource_calibration(
+                    plan, proposal.estimates, resources
                 )
                 check_deadline()
                 if not screening_active:
@@ -372,6 +448,10 @@ def tune_cuda(
             "search_summary": {
                 "generated": len(search),
                 "pruned_before_compile": sum(p.status == "pruned" for p in search),
+                "static_compile_shortlist": len(compile_shortlist),
+                "static_compile_budget_skips": sum(
+                    r["stage"] == "compile-budget" for r in candidates
+                ),
                 "compilation_attempts": compilation_attempts,
                 "screening_candidates": sum("screening" in r for r in candidates),
                 "screened_candidates": len(screened),
