@@ -8,6 +8,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.method import (
     ExactExchangePrimitive,
     MethodIR,
+    NonlocalCorrelationPrimitive,
     SemilocalXCPrimitive,
     UnsupportedMethod,
 )
@@ -32,6 +33,8 @@ class MeanFieldEvaluation:
     xc_identity: str
     method_identity: str | None = None
     method_plan_identity: str | None = None
+    nonlocal_energy: float = 0.0
+    nonlocal_identity: str | None = None
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,8 @@ def _compile_fixed_density_components(
             semilocal = primitive
         elif isinstance(primitive, ExactExchangePrimitive):
             exchange = primitive
+        elif isinstance(primitive, NonlocalCorrelationPrimitive):
+            pass
         else:
             raise UnsupportedMethod(
                 f"fixed-density execution does not support primitive {primitive.kind!r}"
@@ -172,11 +177,18 @@ class FixedDensityMeanField:
     DFT SCF or geometric-gradient capability is registered.
     """
 
-    def __init__(self, fock, xc, *, method_plan=None):
+    def __init__(self, fock, xc, *, method_plan=None, nonlocal_correlation=None):
+        from vibeqc_compiler.dft import FixedDensityNonlocalCorrelation
         from vibeqc_compiler.xc.integration import FixedDensityXC
 
         if not isinstance(fock, FockPlan) or not isinstance(xc, FixedDensityXC):
             raise TypeError("expected FockPlan and FixedDensityXC")
+        if nonlocal_correlation is not None and not isinstance(
+            nonlocal_correlation, FixedDensityNonlocalCorrelation
+        ):
+            raise TypeError(
+                "nonlocal_correlation must be FixedDensityNonlocalCorrelation"
+            )
         spec = fock.spec
         if method_plan is None:
             if (
@@ -186,6 +198,10 @@ class FixedDensityMeanField:
             ):
                 raise ValueError(
                     "semilocal mean field requires unit Coulomb and absent exchange"
+                )
+            if nonlocal_correlation is not None:
+                raise ValueError(
+                    "nonlocal execution requires an explicit MethodIR plan"
                 )
         else:
             if not isinstance(method_plan, FixedDensityMethodPlan):
@@ -197,11 +213,34 @@ class FixedDensityMeanField:
                 raise ValueError(
                     "Fock/XC providers do not match the executable MethodIR plan"
                 )
-        self._fock, self._xc, self._method_plan = fock, xc, method_plan
+            expected_nonlocal = next(
+                (
+                    primitive
+                    for primitive in method_plan.method.primitives
+                    if isinstance(primitive, NonlocalCorrelationPrimitive)
+                ),
+                None,
+            )
+            if (expected_nonlocal is None) != (nonlocal_correlation is None):
+                raise ValueError(
+                    "nonlocal provider does not match the executable MethodIR plan"
+                )
+            if expected_nonlocal is not None and (
+                nonlocal_correlation.spec != expected_nonlocal.spec
+                or nonlocal_correlation.coefficient != expected_nonlocal.coefficient
+            ):
+                raise ValueError(
+                    "nonlocal provider does not match the executable MethodIR plan"
+                )
+        self._fock = fock
+        self._xc = xc
+        self._method_plan = method_plan
+        self._nonlocal = nonlocal_correlation
 
     @classmethod
     def from_method(cls, fock, method):
         """Bind a MethodIR graph to an already prepared common J/K provider."""
+        from vibeqc_compiler.dft import FixedDensityNonlocalCorrelation
         from vibeqc_compiler.xc.integration import FixedDensityXC
 
         if not isinstance(fock, FockPlan):
@@ -213,7 +252,26 @@ class FixedDensityMeanField:
             exchange_approximation=spec.exchange.approximation,
             provider_derivative_order=spec.derivative_order,
         )
-        return cls(fock, FixedDensityXC(plan.functional), method_plan=plan)
+        nonlocal_primitive = next(
+            (
+                primitive
+                for primitive in plan.method.primitives
+                if isinstance(primitive, NonlocalCorrelationPrimitive)
+            ),
+            None,
+        )
+        nonlocal_correlation = None
+        if nonlocal_primitive is not None:
+            nonlocal_correlation = FixedDensityNonlocalCorrelation(
+                nonlocal_primitive.spec,
+                coefficient=nonlocal_primitive.coefficient,
+            )
+        return cls(
+            fock,
+            FixedDensityXC(plan.functional),
+            method_plan=plan,
+            nonlocal_correlation=nonlocal_correlation,
+        )
 
     @property
     def method_plan(self):
@@ -231,9 +289,17 @@ class FixedDensityMeanField:
         xc = self._xc.integrate(
             self._fock.basis, grid, snapshot, tile_points=tile_points
         )
+        nonlocal_result = None
+        if self._nonlocal is not None:
+            nonlocal_result = self._nonlocal.integrate(
+                self._fock.basis, grid, snapshot, tile_points=tile_points
+            )
         native = self._fock.evaluate(snapshot)
         fock = native.fock + xc.potential
         energy = native.energy + xc.energy
+        if nonlocal_result is not None:
+            fock = fock + nonlocal_result.potential
+            energy += nonlocal_result.energy
         if not np.isfinite(energy) or not np.isfinite(fock).all():
             raise ArithmeticError("nonfinite combined mean-field result")
         method_plan_identity = (
@@ -253,6 +319,16 @@ class FixedDensityMeanField:
                 "schema": "vibeqc.fixed-density-mean-field/v2",
                 "method_plan": method_plan_identity,
             }
+        nonlocal_identity = None
+        nonlocal_energy = 0.0
+        if nonlocal_result is not None:
+            nonlocal_identity = nonlocal_result.identity
+            nonlocal_energy = nonlocal_result.energy
+            identity_payload = {
+                **identity_payload,
+                "schema": "vibeqc.fixed-density-mean-field/v3",
+                "nonlocal": nonlocal_identity,
+            }
         return MeanFieldEvaluation(
             energy,
             immutable(fock),
@@ -262,4 +338,6 @@ class FixedDensityMeanField:
             xc.identity,
             method_identity,
             method_plan_identity,
+            nonlocal_energy,
+            nonlocal_identity,
         )
