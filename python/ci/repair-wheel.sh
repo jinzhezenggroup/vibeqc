@@ -21,4 +21,4 @@ auditwheel repair -w "$destination" "$wheel" \
   --exclude libcuda.so.1
 
 # Surface whether repeated wheel builds actually reuse C++/CUDA compilation.
-ccache --show-stats
+ccache --show-stats --verbose

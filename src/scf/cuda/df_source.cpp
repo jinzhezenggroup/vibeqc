@@ -6,10 +6,10 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/cuda_component_trace.hpp"
 #include "runtime/df_progress_trace.hpp"
 #include "runtime/resource_usage.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/topology.hpp"
@@ -43,7 +43,8 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     double* output, std::string& detail, bool apply_metric_transform) {
   detail.clear();
   std::size_t pair_total = 0;
-  if (source != nullptr && !checked_multiply(source->public_nbf, source->public_nbf, pair_total)) {
+  if (source != nullptr &&
+      !vibeqc::runtime::checked_multiply(source->public_nbf, source->public_nbf, pair_total)) {
     detail = "bounded DF transformed tile dimensions overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
@@ -66,9 +67,10 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     std::size_t coordinate_count = 0;
     if (system + 1U >= source->host_atom_offsets.size() || source->host_atom_offsets[system] < 0 ||
         source->host_atom_offsets[system + 1U] < source->host_atom_offsets[system] ||
-        !checked_multiply(static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
-                                                   source->host_atom_offsets[system]),
-                          3U, coordinate_count) ||
+        !vibeqc::runtime::checked_multiply(
+            static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
+                                     source->host_atom_offsets[system]),
+            3U, coordinate_count) ||
         static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
       detail = "bounded DF transformed tile derivative coordinate is invalid";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -82,7 +84,7 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
                                          ? source_threads / 32U
                                          : source_threads;
   std::size_t tile_elements = 0;
-  if (!checked_multiply(pair_count, auxiliary_count, tile_elements)) {
+  if (!vibeqc::runtime::checked_multiply(pair_count, auxiliary_count, tile_elements)) {
     detail = "bounded DF transformed tile size overflows size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
@@ -149,13 +151,14 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile_impl(
   const std::size_t atom_count = static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
                                                           source->host_atom_offsets[system]);
   std::size_t coordinate_count = 0;
-  if (!checked_multiply(atom_count, 3U, coordinate_count) ||
+  if (!vibeqc::runtime::checked_multiply(atom_count, 3U, coordinate_count) ||
       static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
     detail = "bounded DF metric derivative coordinate is invalid";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   std::size_t elements = 0;
-  if (!checked_multiply(auxiliary_row_count, source->public_naux, elements) || elements == 0U ||
+  if (!vibeqc::runtime::checked_multiply(auxiliary_row_count, source->public_naux, elements) ||
+      elements == 0U ||
       elements > static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * 128U) {
     detail = "bounded DF metric derivative tile dimensions overflow";
     return VIBEQC_STATUS_INVALID_ARGUMENT;

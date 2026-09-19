@@ -170,7 +170,15 @@ def compile_weighted_eri(
         "include/vibeqc/vibeqc.h",
     ]
     if backend == "cuda":
-        names.append("src/tensor/cuda_runtime.cuh")
+        names.extend(
+            (
+                "src/tensor/cuda_runtime.cuh",
+                "src/runtime/bounded_workspace.hpp",
+                "src/runtime/cuda_resources.cuh",
+                "src/runtime/resource_cuda.cuh",
+                "src/runtime/resource_ledger.hpp",
+            )
+        )
     headers = tuple(asset_path(name) for name in names)
     root = asset_path("src/scf/weighted_eri_runtime.hpp").parents[2]
     options = ("--fmad=false",) if backend == "cuda" else ("-ffp-contract=off",)
