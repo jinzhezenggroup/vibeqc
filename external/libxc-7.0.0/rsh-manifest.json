@@ -22,6 +22,10 @@
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh.mpl",
       "sha256": "2a66aec22237d3d6a43d0bd92a8136dd366396ef309c34c099c2f417a21f12aa"
     },
+    "hyb_gga_xc_b3lyp.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_b3lyp.c",
+      "sha256": "0f481a2b55787ce7d6aac346c1c29987dd4f83c70c64ff1b7e90f6ee09ef1e3f"
+    },
     "hyb_gga_xc_cam_b3lyp.c": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_cam_b3lyp.c",
       "sha256": "8f542a15f19f084246b038905d04f67afc01bd3720de8e7110e8ae0a86d19384"
@@ -29,6 +33,10 @@
     "lda_c_vwn.mpl": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn.mpl",
       "sha256": "ee6d729b737a952adcfb6261a017398b3a99e1c781d75b814ec654f01280dcc6"
+    },
+    "lda_c_vwn_rpa.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_rpa.mpl",
+      "sha256": "0c35ccbce721122cf924b2ff85b2b7a47e248f709373b3dc184e585d1ce84ac9"
     },
     "lda_x.mpl": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x.mpl",
