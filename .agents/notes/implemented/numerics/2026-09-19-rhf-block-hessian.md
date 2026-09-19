@@ -100,3 +100,24 @@ supports a different default block size.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+
+## Review follow-up: enforce the actual array lifetimes
+
+Two regression tests exposed missing reservations in the original assembly:
+Python evaluates the next `rhf_hvp_many` call before replacing its previous
+`result`, and raw symmetry/immutable output publication need additional full
+matrix buffers. Release completed block results and caller direction arrays
+explicitly at the end of each iteration. Reserve caller directions separately
+from the block's validated copy, include block publication/transform scratch,
+and admit the three-output-matrix symmetry peak before any block starts.
+
+The weak-reference lifetime test and pre-provider output-budget test both fail
+on the original implementation and pass with the repair. The response equations,
+canonical column ordering, raw symmetry and numerical acceptance tolerances are
+unchanged. Retaining only diagnostics must not retain the response arrays. The
+extra `np.array(copy=True)` before `immutable` is removed because `immutable`
+already publishes an owned bytes-backed copy.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

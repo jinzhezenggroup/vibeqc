@@ -500,9 +500,15 @@ rhf_hessian applies canonical atom/xyz unit directions in bounded blocks and
 stores each returned Hv as one raw Hessian column. It never silently returns a
 diagonal or partial matrix. Full-output storage is reserved before the first
 block, raw symmetry is reported without post-hoc symmetrization, and block
-diagnostics retain each multi-RHS strategy/workspace/action record. The current
-tools default uses four directions per block; callers can choose any block size
-from one through 3*natoms.
+diagnostics retain each multi-RHS strategy/workspace/action record. The block
+inventory includes transform/validation scratch, stacked components and immutable
+publication copies. The full assembler separately charges its canonical-direction
+buffer, releases each completed block before starting the next, and reserves the
+three-matrix peak of raw-symmetry evaluation (which also covers immutable output
+publication). `complete_numeric_peak_bound_bytes` reports the maximum of assembly
+and output-publication phases rather than hiding those lifetimes inside the solver
+workspace. The current tools default uses four directions per block; callers can
+choose any block size from one through 3*natoms.
 
 These B3/B4 paths remain within the declared small-system conventional-RHF tools
 domain. B2 device-resident AO/MO/Krylov execution, production-size

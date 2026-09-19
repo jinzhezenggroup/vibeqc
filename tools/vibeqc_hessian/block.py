@@ -108,24 +108,34 @@ def _block_persistent_bound(state, nrhs):
     f8 = 8
     directions = nrhs * coords * f8
     # AO H1/S1 inputs coexist with validation copies and prepared MO H1/S1
-    # during batch preparation. Six matrices per RHS is a conservative bound.
-    first_and_prepared = 6 * nrhs * nmo * nmo * f8
+    # during batch preparation and reconstruction. Also reserve the live
+    # transforms, metric/Fock intermediates and immutable validation copies.
+    first_and_prepared = 16 * nrhs * nmo * nmo * f8
     # Prepared RHS vectors and the packed multi-RHS matrix can coexist. The
     # solver's validated RHS copy is charged inside solve_many workspace.
     prepared_rhs = 2 * nrhs * dim * f8
     # Published per-RHS response: rhs, C1, e1, D1 and W1.
-    responses = nrhs * (dim + nmo * nocc + nocc * nocc + 2 * nmo * nmo) * f8
+    responses = 2 * nrhs * (dim + nmo * nocc + nocc * nocc + 2 * nmo * nmo) * f8
     # total plus five separately retained scientific components. Directions
     # are charged above as their own immutable publication.
     hvp_outputs = nrhs * coords * 6 * f8
+    # Stacked component sources, sum temporaries and immutable bytes-backed
+    # publications can coexist with the working output arrays.
+    assembly_publication = 2 * (directions + hvp_outputs)
     return {
         "directions": directions,
         "first_and_prepared_matrices": first_and_prepared,
         "prepared_rhs": prepared_rhs,
         "published_responses": responses,
         "hvp_outputs": hvp_outputs,
+        "assembly_publication_scratch": assembly_publication,
         "total": (
-            directions + first_and_prepared + prepared_rhs + responses + hvp_outputs
+            directions
+            + first_and_prepared
+            + prepared_rhs
+            + responses
+            + hvp_outputs
+            + assembly_publication
         ),
     }
 
@@ -356,7 +366,7 @@ def rhf_hvp_many(
         relaxation,
     )
     return RHFHVPBlockResult(
-        *(immutable(np.array(value, copy=True)) for value in arrays),
+        *(immutable(value) for value in arrays),
         batch,
         identity,
         diagnostics,
@@ -385,9 +395,22 @@ def rhf_hessian(
     if type(block_size) is not int or not 1 <= block_size <= coordinates:
         raise ValueError("block_size must be between 1 and 3*natoms")
     output_bytes = coordinates * coordinates * 8
-    if output_bytes >= total_budget_bytes:
-        raise ValueError("full Hessian output exceeds total_budget_bytes")
-    block_budget = total_budget_bytes - output_bytes
+    # Raw-symmetry checking can hold matrix, matrix-matrix.T and abs(diff)
+    # simultaneously; immutable publication needs the original plus one copy.
+    output_peak_bound = 3 * output_bytes
+    if output_peak_bound > total_budget_bytes:
+        raise ValueError(
+            "full Hessian output and publication exceed total_budget_bytes"
+        )
+    # This buffer belongs to the full assembler, not rhf_hvp_many: its own
+    # validated direction copy is already included in the block inventory.
+    caller_direction_bytes = block_size * coordinates * 8
+    block_budget = total_budget_bytes - output_bytes - caller_direction_bytes
+    if _block_persistent_bound(state, block_size)["total"] >= block_budget:
+        raise ValueError(
+            "full Hessian output plus block persistent numeric storage exceeds "
+            "total_budget_bytes"
+        )
 
     started = time.perf_counter()
     matrix = np.empty((coordinates, coordinates), dtype=np.float64)
@@ -413,6 +436,9 @@ def rhf_hessian(
                 "diagnostics": result.diagnostics,
             }
         )
+        # Assignment of the next call would otherwise keep the old RHS alive
+        # throughout that call, allowing two complete blocks to overlap.
+        del result, directions
     if not np.isfinite(matrix).all():
         raise FloatingPointError("nonfinite RHF Hessian; no result published")
     state.validate()
@@ -434,6 +460,17 @@ def rhf_hessian(
         "block_count": len(block_diagnostics),
         "strategy": strategy,
         "output_bytes": output_bytes,
+        "output_peak_bound_bytes": output_peak_bound,
+        "caller_direction_bytes": caller_direction_bytes,
+        "complete_numeric_peak_bound_bytes": max(
+            output_peak_bound,
+            output_bytes
+            + caller_direction_bytes
+            + max(
+                item["diagnostics"]["complete_numeric_peak_bound_bytes"]
+                for item in block_diagnostics
+            ),
+        ),
         "block_budget_bytes": block_budget,
         "total_budget_bytes": total_budget_bytes,
         "raw_symmetry_error": symmetry_error,

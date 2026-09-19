@@ -70,6 +70,8 @@ def test_full_hessian_blocked_matches_independent_dense_reference(h2_case):
     assert diag["raw_symmetry_error"] < 2e-9
     assert not diag["posthoc_symmetrization"]
     assert not result.matrix.flags.writeable
+    assert diag["complete_numeric_peak_bound_bytes"] <= diag["total_budget_bytes"]
+    assert diag["output_peak_bound_bytes"] == 3 * diag["output_bytes"]
 
 
 def test_block_budget_rejects_before_first_integral_work(h2_case, monkeypatch):
@@ -97,3 +99,68 @@ def test_full_output_budget_rejects_without_partial_hessian(h2_case, monkeypatch
     output_bytes = (3 * state.nat) ** 2 * 8
     with pytest.raises(ValueError, match="full Hessian output"):
         rhf_hessian(state, total_budget_bytes=output_bytes)
+
+
+@pytest.fixture
+def assembly_only_state(monkeypatch):
+    """Exercise assembly ownership without allocating a native RHF source."""
+    from types import SimpleNamespace
+
+    from tools.vibeqc_hessian import block
+
+    class AssemblyState:
+        nat = 2
+        nbf = 2
+        nocc = 1
+        source = SimpleNamespace(identity="test-source")
+        reference = SimpleNamespace(identity="test-reference")
+
+        def validate(self):
+            pass
+
+    monkeypatch.setattr(block, "NativeRHFState", AssemblyState)
+    return AssemblyState()
+
+
+def test_full_hessian_releases_previous_block_before_next_call(
+    assembly_only_state, monkeypatch
+):
+    import weakref
+
+    from tools.vibeqc_hessian import block
+
+    previous = []
+
+    class BlockResult:
+        identity = "test-block"
+
+        def __init__(self, directions):
+            self.diagnostics = {"complete_numeric_peak_bound_bytes": 0}
+            self.values = directions.copy()
+
+    def evaluate(state, directions, **kwargs):
+        assert all(ref() is None for ref in previous), "previous block is still live"
+        result = BlockResult(directions)
+        previous.append(weakref.ref(result))
+        return result
+
+    monkeypatch.setattr(block, "rhf_hvp_many", evaluate)
+    result = block.rhf_hessian(assembly_only_state, block_size=2)
+    np.testing.assert_array_equal(result.matrix, np.eye(6))
+    assert all(ref() is None for ref in previous)
+
+
+def test_full_hessian_reserves_output_publication_before_any_block(
+    assembly_only_state, monkeypatch
+):
+    from tools.vibeqc_hessian import block
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("output publication budget was not preflighted")
+
+    monkeypatch.setattr(block, "rhf_hvp_many", forbidden)
+    output_bytes = (3 * assembly_only_state.nat) ** 2 * 8
+    with pytest.raises(ValueError, match="full Hessian output"):
+        block.rhf_hessian(
+            assembly_only_state, block_size=2, total_budget_bytes=output_bytes + 1
+        )
