@@ -136,11 +136,10 @@ FockProviderCapabilities fock_provider_capabilities(FockApproximation approximat
                                                     FockBackend backend);
 void require_fock_provider_executable(FockApproximation approximation, FockBackend backend);
 /** Build the explicit COSX v1 model identity independently of XC GridSpec. */
-FockCosxSpec make_cosx_v1_spec(
-    std::size_t radial_points = 48, std::size_t angular_polar = 16,
-    std::size_t angular_azimuth = 32, unsigned partition_iterations = 3,
-    double coincident_tolerance = 1.0e-12,
-    std::array<double, 119> element_radii = {});
+FockCosxSpec make_cosx_v1_spec(std::size_t radial_points = 48, std::size_t angular_polar = 16,
+                               std::size_t angular_azimuth = 32, unsigned partition_iterations = 3,
+                               double coincident_tolerance = 1.0e-12,
+                               std::array<double, 119> element_radii = {});
 FockBuildSpec make_hf_fock_spec(FockSpin spin,
                                 FockApproximation approximation = FockApproximation::Exact);
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,

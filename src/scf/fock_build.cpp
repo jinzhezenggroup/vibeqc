@@ -205,9 +205,8 @@ void require_fock_provider_executable(FockApproximation approximation, FockBacke
 }
 
 FockCosxSpec make_cosx_v1_spec(std::size_t radial_points, std::size_t angular_polar,
-                                    std::size_t angular_azimuth, unsigned partition_iterations,
-                                    double coincident_tolerance,
-                                    std::array<double, 119> element_radii) {
+                               std::size_t angular_azimuth, unsigned partition_iterations,
+                               double coincident_tolerance, std::array<double, 119> element_radii) {
   FockCosxSpec spec;
   spec.version = 1;
   spec.grid_version = 1;
@@ -222,9 +221,8 @@ FockCosxSpec make_cosx_v1_spec(std::size_t radial_points, std::size_t angular_po
 }
 
 FockBuildSpec make_hf_fock_spec(FockSpin spin, FockApproximation approximation) {
-  require(valid(spin) &&
-              (approximation == FockApproximation::Exact ||
-               approximation == FockApproximation::DensityFitted),
+  require(valid(spin) && (approximation == FockApproximation::Exact ||
+                          approximation == FockApproximation::DensityFitted),
           "HF helper requires an exact or density-fitted J/K approximation");
   FockBuildSpec spec;
   spec.spin = spin;
@@ -265,8 +263,7 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
       (spec.coulomb.present && spec.coulomb.approximation == FockApproximation::DensityFitted) ||
       (spec.exchange.present && spec.exchange.approximation == FockApproximation::DensityFitted);
   const bool cosx =
-      spec.exchange.present &&
-      spec.exchange.approximation == FockApproximation::SeminumericalCosx;
+      spec.exchange.present && spec.exchange.approximation == FockApproximation::SeminumericalCosx;
   if (fitted) {
     require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
                 metric_relative_threshold < 1.0,
@@ -282,10 +279,9 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
                           ? FockSchedule::CudaFused
                           : FockSchedule::CudaIndependent;
   else
-    result.schedule = fitted || cosx
-                          ? (fitted_hf ? FockSchedule::LegacyDensityFitting
-                                       : FockSchedule::CpuIndependent)
-                          : FockSchedule::CpuReference;
+    result.schedule = fitted || cosx ? (fitted_hf ? FockSchedule::LegacyDensityFitting
+                                                  : FockSchedule::CpuIndependent)
+                                     : FockSchedule::CpuReference;
   result.screening_tolerance = screening_tolerance;
   result.metric_relative_threshold = fitted ? metric_relative_threshold : 0.0;
   result.legacy_density_fitting = fitted_hf;

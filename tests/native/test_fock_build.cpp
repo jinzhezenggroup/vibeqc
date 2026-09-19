@@ -427,8 +427,7 @@ void verify_cosx_provider_semantics() {
 
   const auto resolved = resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10);
   require(resolved.spec == spec && resolved.schedule == FockSchedule::CudaIndependent &&
-              resolved.metric_relative_threshold == 1.0e-10 &&
-              !resolved.legacy_density_fitting,
+              resolved.metric_relative_threshold == 1.0e-10 && !resolved.legacy_density_fitting,
           "RI-J/COSX-K semantics were not preserved by resolution");
 
   const auto& registration =
@@ -499,10 +498,7 @@ void verify_cosx_provider_semantics() {
           "irrelevant COSX metadata changed an exact-exchange identity");
 
   require_rejected(
-      [&] {
-        (void)make_hf_fock_spec(FockSpin::Restricted,
-                                FockApproximation::SeminumericalCosx);
-      },
+      [&] { (void)make_hf_fock_spec(FockSpin::Restricted, FockApproximation::SeminumericalCosx); },
       "HF helper incorrectly requested COSX for both J and K");
 }
 
