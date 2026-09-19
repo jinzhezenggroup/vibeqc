@@ -21,7 +21,13 @@ PUBLIC_COMPONENTS = (
     "MGGA_X_R2SCAN",
     "MGGA_C_R2SCAN",
 )
-RSH_COMPONENTS = ("GGA_X_B88", "GGA_X_ITYH", "LDA_C_VWN", "GGA_C_LYP")
+RSH_COMPONENTS = (
+    "GGA_X_B88",
+    "GGA_X_ITYH",
+    "LDA_C_VWN",
+    "LDA_C_VWN_RPA",
+    "GGA_C_LYP",
+)
 COMPONENTS = PUBLIC_COMPONENTS + RSH_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},

@@ -503,6 +503,21 @@ METHOD_CATALOG = MappingProxyType(
             "R2SCAN",
             (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
         ),
+        "R2SCANH": MethodSpec(
+            "R2SCANH",
+            (("MGGA_X_R2SCAN", Fraction(9, 10)), ("MGGA_C_R2SCAN", Fraction(1))),
+            exact_exchange=Fraction(1, 10),
+        ),
+        "R2SCAN0": MethodSpec(
+            "R2SCAN0",
+            (("MGGA_X_R2SCAN", Fraction(3, 4)), ("MGGA_C_R2SCAN", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+        ),
+        "R2SCAN50": MethodSpec(
+            "R2SCAN50",
+            (("MGGA_X_R2SCAN", Fraction(1, 2)), ("MGGA_C_R2SCAN", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
         "R2SCAN-3c": MethodSpec(
             "R2SCAN-3c",
             (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
@@ -514,6 +529,82 @@ METHOD_CATALOG = MappingProxyType(
             "PBE0",
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
+        ),
+        "PBE1PBE": MethodSpec(
+            "PBE1PBE",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+        ),
+        "PBEH": MethodSpec(
+            "PBEH",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+        ),
+        "PBE50": MethodSpec(
+            "PBE50",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BLYP": MethodSpec(
+            "BLYP",
+            (("GGA_X_B88", Fraction(1)), ("GGA_C_LYP", Fraction(1))),
+        ),
+        "B3LYP": MethodSpec(
+            "B3LYP",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN_RPA", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        "B3LYPG": MethodSpec(
+            "B3LYPG",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN_RPA", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        # Keep the VWN5 variant explicit: it is a distinct Libxc/PySCF
+        # composition from the Gaussian-compatible VWN-RPA B3LYP above.
+        "B3LYP5": MethodSpec(
+            "B3LYP5",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        "B5050LYP": MethodSpec(
+            "B5050LYP",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(21, 50)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BHANDH": MethodSpec(
+            "BHANDH",
+            (("LDA_X", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BHANDHLYP": MethodSpec(
+            "BHANDHLYP",
+            (("GGA_X_B88", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        "BHHLYP": MethodSpec(
+            "BHHLYP",
+            (("GGA_X_B88", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
         ),
         "PBE-D3(BJ)": MethodSpec(
             "PBE-D3(BJ)",
@@ -528,6 +619,18 @@ METHOD_CATALOG = MappingProxyType(
         ),
         "CAM-B3LYP": MethodSpec(
             "CAM-B3LYP",
+            (
+                ("GGA_X_B88", Fraction(35, 100)),
+                ("GGA_X_ITYH", Fraction(46, 100)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_LYP", Fraction(81, 100)),
+            ),
+            short_range_exchange=Fraction(19, 100),
+            long_range_exchange=Fraction(65, 100),
+            range_omega=Fraction(33, 100),
+        ),
+        "CAMB3LYP": MethodSpec(
+            "CAMB3LYP",
             (
                 ("GGA_X_B88", Fraction(35, 100)),
                 ("GGA_X_ITYH", Fraction(46, 100)),

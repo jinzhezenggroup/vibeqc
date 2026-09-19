@@ -30,6 +30,9 @@ def energy_expression(spec):
     rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
 
+    def lda_exchange():
+        return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
+
     def b88_enhancement(density, sigma):
         beta_b88 = F("0.0042")
         gamma_b88 = F(6)
@@ -89,6 +92,33 @@ def energy_expression(spec):
         epsilon = g0 + gm * fz * (1 - z.pow(4)) / fpp + (g1 - g0) * fz * z.pow(4)
         return n * epsilon
 
+    def vwn_rpa_correlation():
+        # Libxc 7.0 LDA_C_VWN_RPA (ID 8): the RPA parameterization and
+        # two-endpoint spin interpolation used by its canonical B3LYP.
+        av = (F("0.0310907"), F("0.01554535"))
+        bv = (F("13.0720"), F("20.1231"))
+        cv = (F("42.7198"), F("101.578"))
+        x0v = (F("-0.409286"), F("-0.743294"))
+
+        def aux(index):
+            aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
+            q = math.sqrt(float(4 * cc - bb * bb))
+            root = rs.pow(0.5)
+            fx = rs + bb * root + cc
+            f1 = 2 * bb / q
+            f2 = bb * x0 / (x0 * x0 + bb * x0 + cc)
+            f3 = 2 * (2 * x0 + bb) / q
+            return aa * (
+                graph.stable_unary("log", rs / fx)
+                + (f1 - f2 * f3)
+                * graph.transcendental_unary("atan", q / (2 * root + bb))
+                - f2 * graph.stable_unary("log", (root - x0).pow(2) / fx)
+            )
+
+        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
+        epsilon = aux(0) * (1 - fz) + aux(1) * fz
+        return n * epsilon
+
     def lyp_correlation():
         a_lyp = F("0.04918")
         b_lyp = F("0.132")
@@ -125,9 +155,11 @@ def energy_expression(spec):
         return n * a_lyp * (t1 + omega_lyp * (t2 + t3 + t4 + t5 + t6))
 
     builders = {
+        "LDA_X": lda_exchange,
         "GGA_X_B88": lambda: b88_exchange(False),
         "GGA_X_ITYH": lambda: b88_exchange(True),
         "LDA_C_VWN": vwn_correlation,
+        "LDA_C_VWN_RPA": vwn_rpa_correlation,
         "GGA_C_LYP": lyp_correlation,
     }
     return (

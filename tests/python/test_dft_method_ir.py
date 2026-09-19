@@ -53,6 +53,125 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
 
 
 @pytest.mark.parametrize(
+    "name,components,exchange",
+    [
+        (
+            "BLYP",
+            {"GGA_X_B88": Fraction(1), "GGA_C_LYP": Fraction(1)},
+            Fraction(0),
+        ),
+        (
+            "B3LYP",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(18, 25),
+                "LDA_C_VWN_RPA": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 5),
+        ),
+        (
+            "B3LYP5",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(18, 25),
+                "LDA_C_VWN": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 5),
+        ),
+        (
+            "B5050LYP",
+            {
+                "LDA_X": Fraction(2, 25),
+                "GGA_X_B88": Fraction(21, 50),
+                "LDA_C_VWN": Fraction(19, 100),
+                "GGA_C_LYP": Fraction(81, 100),
+            },
+            Fraction(1, 2),
+        ),
+        (
+            "BHANDH",
+            {"LDA_X": Fraction(1, 2), "GGA_C_LYP": Fraction(1)},
+            Fraction(1, 2),
+        ),
+        (
+            "BHANDHLYP",
+            {"GGA_X_B88": Fraction(1, 2), "GGA_C_LYP": Fraction(1)},
+            Fraction(1, 2),
+        ),
+        (
+            "PBE50",
+            {"GGA_X_PBE": Fraction(1, 2), "GGA_C_PBE": Fraction(1)},
+            Fraction(1, 2),
+        ),
+    ],
+)
+def test_cross_code_catalog_compositions_are_explicit(name, components, exchange):
+    graph = resolve_method(name, spin="unpolarized")
+    semilocal = graph.primitives[0]
+    assert isinstance(semilocal, SemilocalXCPrimitive)
+    assert dict(semilocal.functional.components) == components
+    if exchange:
+        assert len(graph.primitives) == 2
+        assert isinstance(graph.primitives[1], ExactExchangePrimitive)
+        assert graph.primitives[1].coefficient == exchange
+    else:
+        assert len(graph.primitives) == 1
+
+
+@pytest.mark.parametrize("alias", ["PBE1PBE", "PBEH"])
+def test_pbe0_named_aliases_share_semantic_identity(alias):
+    pbe0 = resolve_method("PBE0")
+    named = resolve_method(alias)
+    assert named.identity == pbe0.identity
+    assert named.manifest_identity != pbe0.manifest_identity
+
+
+def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct():
+    b3lyp = resolve_method("B3LYP")
+    gaussian = resolve_method("B3LYPG")
+    vwn5 = resolve_method("B3LYP5")
+    assert gaussian.identity == b3lyp.identity
+    assert gaussian.manifest_identity != b3lyp.manifest_identity
+    assert vwn5.identity != b3lyp.identity
+
+
+@pytest.mark.parametrize(
+    "canonical,alias",
+    [("BHANDHLYP", "BHHLYP"), ("CAM-B3LYP", "CAMB3LYP")],
+)
+def test_cross_code_named_aliases_preserve_semantics(canonical, alias):
+    reference = resolve_method(canonical)
+    named = resolve_method(alias)
+    assert named.identity == reference.identity
+    assert named.manifest_identity != reference.manifest_identity
+
+
+@pytest.mark.parametrize(
+    "name,exact_exchange",
+    [
+        ("R2SCANH", Fraction(1, 10)),
+        ("R2SCAN0", Fraction(1, 4)),
+        ("R2SCAN50", Fraction(1, 2)),
+    ],
+)
+def test_r2scan_hybrids_scale_only_exchange_and_add_exact_exchange(
+    name, exact_exchange
+):
+    graph = resolve_method(name)
+    semilocal, exact = graph.primitives
+    assert isinstance(semilocal, SemilocalXCPrimitive)
+    assert dict(semilocal.functional.components) == {
+        "MGGA_X_R2SCAN": 1 - exact_exchange,
+        "MGGA_C_R2SCAN": Fraction(1),
+    }
+    assert isinstance(exact, ExactExchangePrimitive)
+    assert exact.coefficient == exact_exchange
+    assert graph.requirements["ingredients"] == ("rho", "sigma", "tau")
+
+
+@pytest.mark.parametrize(
     "spin,reference",
     [("unpolarized", "restricted"), ("polarized", "unrestricted")],
 )
