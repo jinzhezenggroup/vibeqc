@@ -1,8 +1,10 @@
 #ifndef VIBEQC_SCF_CUDA_FOCK_PROVIDER_HPP
 #define VIBEQC_SCF_CUDA_FOCK_PROVIDER_HPP
 
+#include <cstddef>
 #include <memory>
 #include <span>
+#include <vector>
 
 #include "core/types.hpp"
 #include "scf/cuda_density_fitting.hpp"
