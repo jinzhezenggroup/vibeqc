@@ -251,6 +251,39 @@ void measured_workspace_owns_returned_storage() {
           "failed response contaminated a later allocation domain");
 }
 
+void modified_plans_are_rejected_before_execution() {
+  const std::array<double, 2> rhs{1.0, 2.0};
+  const auto original = vibeqc::response::prepare_gmres(2, {});
+  unsigned rejected = 0;
+  std::size_t actions = 0;
+  for (unsigned test = 0; test < 6; ++test) {
+    auto plan = original;
+    if (test == 0) {
+      plan.workspace_bytes = 0;
+      plan.options.max_workspace_bytes = 1;
+    }
+    if (test == 1) plan.restart = 0;
+    if (test == 2) ++plan.dimension;
+    if (test == 3) plan.options.relative_tolerance = std::numeric_limits<double>::infinity();
+    if (test == 4) plan.options.restart = 0;
+    if (test == 5) plan.options.max_iterations = 0;
+    try {
+      (void)vibeqc::response::solve_gmres(
+          plan,
+          [&](auto input, auto output) {
+            ++actions;
+            std::copy(input.begin(), input.end(), output.begin());
+          },
+          rhs);
+      std::cerr << "Modified GMRES plan accepted: " << test << '\n';
+    } catch (const std::invalid_argument&) {
+      ++rejected;
+    }
+  }
+  require(rejected == 6, "mutated plan bypassed validation or the declared workspace budget");
+  require(actions == 0, "mutated plan reached its operator");
+}
+
 void stable_norm_extremes() {
   const std::array<double, 2> tiny{1e-200, 0.0};
   const std::array<double, 2> large{1e200, 0.0};
@@ -270,6 +303,7 @@ void stable_norm_extremes() {
 
 int main() {
   try {
+    modified_plans_are_rejected_before_execution();
     exact_solve_and_true_residual();
     zero_rhs_is_transactional();
     restarted_and_exhausted_paths();

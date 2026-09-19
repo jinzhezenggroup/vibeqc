@@ -113,6 +113,11 @@ GmresPlan prepare_gmres(std::size_t dimension, const GmresOptions& options) {
 GmresResult solve_gmres(const GmresPlan& plan, const LinearOperator& apply,
                         std::span<const double> rhs, std::span<const double> initial_guess,
                         std::span<const double> diagonal_preconditioner) {
+  // Plans are public value objects. Revalidate derived capacity and controls
+  // before trusting admission, allocating output, or invoking a callback.
+  const auto expected = prepare_gmres(plan.dimension, plan.options);
+  if (plan.restart != expected.restart || plan.workspace_bytes != expected.workspace_bytes)
+    throw std::invalid_argument("GMRES plan does not match its dimensions and options");
   const auto n = plan.dimension;
   // Admission precedes even the output allocation: refusal must not allocate
   // O(dimension) bytes or invoke the operator with an insufficient budget.
