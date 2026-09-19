@@ -612,3 +612,74 @@ def test_graph_fp32_falls_back_without_relabeling_precision(compiler, cache):
             assert result.backend == "cuda-fp32-ordinary-stream"
             assert result.metrics["precision"] == "fp32"
             np.testing.assert_array_equal(result.outputs["out"], 2 * values)
+
+
+@pytest.mark.parametrize("family", ["elementwise", "contraction"])
+def test_staged_tuning_qualifies_fresh_complete_cuda_endpoints(compiler, cache, family):
+    """Real CUDA screens may rank, but only fresh all-input gates may promote."""
+    from vibeqc_compiler.tensor.cuda_search import TensorScreeningPolicy
+    from vibeqc_compiler.tensor.cuda_tune import tune_cuda
+
+    i = Index("i", IndexSpace("rows", "batch", 65))
+    j = Index("j", IndexSpace("columns", "batch", 47))
+    k = Index("k", IndexSpace("inner", "batch", 33))
+    rng = np.random.default_rng(508)
+    if family == "elementwise":
+        x = input_tensor("x", TensorSpec((i, j), role="input"))
+        program = Program({"out": add(multiply(x, x), x)})
+        feeds = {"x": rng.uniform(-0.5, 0.5, x.spec.shape)}
+
+        def oracle(values):
+            return values["x"] * values["x"] + values["x"]
+    else:
+        x = input_tensor("x", TensorSpec((i, k), role="input"))
+        y = input_tensor("y", TensorSpec((k, j), role="input"))
+        program = Program({"out": einsum("ik,kj->ji", x, y)})
+        feeds = {
+            "x": rng.uniform(-0.5, 0.5, x.spec.shape),
+            "y": rng.uniform(-0.5, 0.5, y.spec.shape),
+        }
+
+        def oracle(values):
+            return np.einsum("ik,kj->ji", values["x"], values["y"])
+
+    fixtures = [
+        feeds,
+        {name: np.asfortranarray(value * 0.7) for name, value in feeds.items()},
+        {name: value[::-1] for name, value in feeds.items()},
+    ]
+    baseline = plan_cuda(program, compiler.target)
+    selection = tune_cuda(
+        baseline,
+        compiler,
+        fixtures,
+        cache,
+        schedules=[TensorSchedule(threads=t) for t in (64, 256, 512)],
+        screening=TensorScreeningPolicy(maximum_finalists=1),
+        repeats=5,
+        maximum_seconds=180,
+    )
+    summary = selection.evidence["search_summary"]
+    assert selection.evidence["screening_plan"]["active"]
+    assert summary["screened_candidates"] == 3
+    assert summary["endpoint_candidates"] == 1
+    assert summary["shortlist_pruned"] == 2
+    finalist = next(
+        row for row in selection.evidence["candidates"] if row.get("endpoint_attempted")
+    )
+    assert len(finalist["samples"]) == len(fixtures)
+    assert all(len(pairs) == 10 for pairs in finalist["samples"])
+    assert finalist["status"] in ("accepted", "rejected")
+    assert len(finalist["gates"]) == len(finalist["shared_gates"]) == len(fixtures)
+    if selection.plan != baseline:
+        assert finalist["status"] == "accepted"
+        assert all(gate["passed"] for gate in finalist["gates"])
+        assert all(gate["status"] == "pass" for gate in finalist["shared_gates"])
+    else:
+        assert not selection.evidence["selected_profiles"]
+    with PreparedCuda(selection.plan, selection.artifact) as prepared:
+        for values in fixtures:
+            result = prepared.execute(values)
+            np.testing.assert_allclose(
+                result.outputs["out"], oracle(values), atol=1e-11, rtol=1e-10
+            )
