@@ -9,8 +9,11 @@ from vibeqc_compiler.method import (
     ExactExchangePrimitive,
     MethodIR,
     MethodSpec,
+    NonlocalCorrelationPrimitive,
+    NonlocalCorrelationSpec,
     SemilocalXCPrimitive,
     UnsupportedMethod,
+    original_nonlocal_correlation,
     resolve_method,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
@@ -47,6 +50,36 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
         "semilocal-xc",
         "full-range-exchange",
     )
+
+
+@pytest.mark.parametrize(
+    "spin,reference",
+    [("unpolarized", "restricted"), ("polarized", "unrestricted")],
+)
+def test_r2scan_is_one_tau_semilocal_primitive_without_exchange(spin, reference):
+    r2scan = resolve_method("R2SCAN", spin=spin)
+    assert len(r2scan.primitives) == 1
+    primitive = r2scan.primitives[0]
+    assert isinstance(primitive, SemilocalXCPrimitive)
+    assert not isinstance(primitive, ExactExchangePrimitive)
+    assert primitive.functional.components == (
+        ("MGGA_C_R2SCAN", Fraction(1)),
+        ("MGGA_X_R2SCAN", Fraction(1)),
+    )
+    assert primitive.functional.ingredients == ("rho", "sigma", "tau")
+    assert r2scan.requirements == {
+        "spin": spin,
+        "reference": reference,
+        "ingredients": ("rho", "sigma", "tau"),
+        "operators": ("semilocal-xc",),
+    }
+
+
+def test_r2scan_catalog_extension_needs_no_new_primitive_family():
+    r2scan = resolve_method("R2SCAN")
+    pbe = resolve_method("PBE")
+    assert type(r2scan.primitives[0]) is type(pbe.primitives[0])
+    assert functional("R2SCAN").exact_exchange == 0
 
 
 def test_method_identity_is_semantic_while_manifest_identity_retains_name():
@@ -166,3 +199,55 @@ def test_exact_cancellation_is_canonical_and_cannot_make_an_empty_method():
     )
     with pytest.raises(UnsupportedMethod, match="empty graph"):
         resolve_method(empty)
+
+
+def test_original_nonlocal_variants_are_versioned_and_semantically_distinct():
+    vv10 = original_nonlocal_correlation("vv10")
+    rvv10 = original_nonlocal_correlation("rvv10")
+    assert vv10.b == Fraction("5.9")
+    assert rvv10.b == Fraction("6.3")
+    assert vv10.c == rvv10.c == Fraction("0.0093")
+    assert vv10.identity != rvv10.identity
+    payload = vv10.to_payload()
+    assert payload["kernel_convention"] == "finite-system-real-space-total-density-v1"
+    assert payload["quadrature"] == "real-space-weighted-point-pairs-v1"
+    assert payload["regularization"] == "none-positive-density-domain-v1"
+    assert payload["pair_integration"] == "full-double-integral-with-one-half-v1"
+
+
+def test_nonlocal_primitive_participates_in_method_identity_and_requirements():
+    vv10 = original_nonlocal_correlation("vv10")
+    spec = MethodSpec(
+        "PBE+VV10-test",
+        (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+        nonlocal_correlation=vv10,
+    )
+    resolved = resolve_method(spec, spin="polarized")
+    assert isinstance(resolved.primitives[-1], NonlocalCorrelationPrimitive)
+    assert resolved.primitives[-1].derivative_capabilities == (
+        "energy",
+        "ks-potential",
+    )
+    assert resolved.requirements["ingredients"] == ("rho", "sigma")
+    assert resolved.requirements["operators"] == (
+        "semilocal-xc",
+        "nonlocal-correlation",
+    )
+
+
+def test_nonlocal_variant_and_parameters_change_method_identity():
+    original = original_nonlocal_correlation("vv10")
+    custom = NonlocalCorrelationSpec("vv10", Fraction("6.0"), Fraction("0.0093"))
+    a = resolve_method(MethodSpec("a", (), nonlocal_correlation=original))
+    b = resolve_method(MethodSpec("b", (), nonlocal_correlation=custom))
+    assert a.identity != b.identity
+    assert a.manifest_identity != b.manifest_identity
+
+
+def test_nonlocal_method_spec_rejects_untyped_or_ambiguous_parameters():
+    with pytest.raises(TypeError, match="NonlocalCorrelationSpec"):
+        MethodSpec("bad-nlc", (), nonlocal_correlation="vv10")
+    with pytest.raises(ValueError, match="exact Fraction"):
+        NonlocalCorrelationSpec("vv10", 5.9, Fraction("0.0093"))
+    with pytest.raises(ValueError, match="unsupported nonlocal-correlation variant"):
+        NonlocalCorrelationSpec("not-vv10", Fraction("5.9"), Fraction("0.0093"))

@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <limits>
 
+#include "runtime/bounded_workspace.hpp"
 #include "scf/aot_shell_registry.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/direct_constants.hpp"
 
 namespace vibeqc::scf::cuda_execution {

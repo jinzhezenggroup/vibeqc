@@ -15,14 +15,18 @@ on:
 permissions:
   contents: read
 
-# Keep only the newest validation for a pull request. Master pushes use their
-# unique run ID, so one merge never cancels another merge's validation record.
+env:
+  CCACHE_VERSION: "4.14"
+
+# Coalesce superseded PR and master-push runs separately. Scheduled/manual
+# qualification keeps its own run ID and is not cancelled by ordinary pushes.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   cpu:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -38,8 +42,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+          ccache --version
       - name: Restore ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -87,6 +100,7 @@ jobs:
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     env:
       CUDACXX: /usr/local/cuda-12.9/bin/nvcc
       LD_LIBRARY_PATH: /usr/local/cuda-12.9/lib64
@@ -104,10 +118,9 @@ jobs:
             https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring.deb
           sudo apt-get update
-      - name: Install CUDA 12.9 build dependencies and ccache
+      - name: Install CUDA 12.9 build dependencies
         run: |
           sudo apt-get install --yes \
-            ccache \
             cuda-nvcc-12-9 \
             cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
@@ -117,6 +130,16 @@ jobs:
             libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
           ccache --version
       - name: Restore CUDA ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -187,7 +210,15 @@ jobs:
           path: build/f-shell-smoke.json
 
   python:
+    name: python (${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [core, posthf, compiler-heavy]
     runs-on: ubuntu-24.04
+    # Full nightly/manual qualification includes expensive Hessian and Au replay.
+    # Keep routine PR/push feedback capped separately; do not truncate that tier.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -207,19 +238,29 @@ jobs:
           version: "0.10.7"
           python-version: "3.11"
           enable-cache: true
-      - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+          ccache --version
       - name: Restore ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --parallel
@@ -260,6 +301,46 @@ jobs:
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
               --deselect
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
+              # Keep one direct f-shell complete-HF endpoint on routine CI.
+              # The matching full projector replay is independently covered by
+              # lighter projector contracts here and by the complete nightly run.
+              --deselect
+              'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-cartesian-cpu]'
+              # Correlated-gradient acceptance contains reconverged molecular
+              # finite differences and larger-molecule independent references.
+              # H2/small-contract coverage stays routine; broad endpoint replay
+              # belongs to scheduled/manual qualification.
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[ch4]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[nh3]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2o]'
+              --deselect
+              'tests/python/test_cc_complete_gradient.py::test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps[h2_d_spherical]'
+              # These are qualification-scale replays (roughly 1-2 minutes
+              # each on hosted runners); smaller MP2/DFT/ECP/HVP contracts still
+              # execute on every PR.
+              --deselect
+              'tests/python/test_mp2_gradient_fast.py::test_water_complete_gradient_matches_directional_finite_differences'
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_complete_hf_and_core_bookkeeping[cpu-1-Au]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_complete_asymmetric_water_analytic_and_reconverged_fd[lda-rks-reference]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_public_hvp_arbitrary_rotation_and_bra_shell_permutation[cpu-eri]'
+              --deselect
+              'tests/python/test_second_derivatives_inputs.py::test_contracted_public_hvp_matches_three_step_independent_gradient_fd[cpu-False-eri]'
+              # Retain one representative high-angular/range path routinely;
+              # move exhaustive symbolic/long-range qualification to nightly.
+              --deselect
+              'tests/python/test_high_angular.py::test_g_one_electron_all_components_libcint[nuclear_attraction-angular3]'
+              --deselect
+              'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
+              --deselect
+              'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
@@ -286,15 +367,71 @@ jobs:
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
             )
           fi
-          .venv/bin/python -m pytest tests/python -q \
+          # Keep every routine Python test on every PR, but remove the single
+          # 26-minute critical path by separating the known numerical/codegen
+          # tails. New test files land in core automatically until they become
+          # expensive enough to earn an explicit shard.
+          slow_paths=(
+            tests/python/test_cc_complete_gradient.py
+            tests/python/test_dft_complete_cpu.py
+            tests/python/test_ecp_f.py
+            tests/python/test_ecp_f_projector.py
+            tests/python/test_ecp_heavy.py
+            tests/python/test_mp2_gradient.py
+            tests/python/test_mp2_gradient_fast.py
+            tests/python/test_hessian_analytic.py
+            tests/python/test_hessian_directional.py
+            tests/python/test_response_operator.py
+            tests/python/test_codegen.py
+            tests/python/test_high_angular.py
+            tests/python/test_one_electron_derivatives.py
+            tests/python/test_range_separation.py
+            tests/python/test_second_derivatives_inputs.py
+          )
+          case "${{ matrix.shard }}" in
+            core)
+              test_targets=(tests/python)
+              for path in "${slow_paths[@]}"; do
+                extra_args+=(--ignore="${path}")
+              done
+              ;;
+            posthf)
+              test_targets=(
+                tests/python/test_cc_complete_gradient.py
+                tests/python/test_dft_complete_cpu.py
+                tests/python/test_ecp_f.py
+                tests/python/test_ecp_f_projector.py
+                tests/python/test_ecp_heavy.py
+                tests/python/test_mp2_gradient.py
+                tests/python/test_mp2_gradient_fast.py
+                tests/python/test_hessian_analytic.py
+                tests/python/test_hessian_directional.py
+                tests/python/test_response_operator.py
+              )
+              ;;
+            compiler-heavy)
+              test_targets=(
+                tests/python/test_codegen.py
+                tests/python/test_high_angular.py
+                tests/python/test_one_electron_derivatives.py
+                tests/python/test_range_separation.py
+                tests/python/test_second_derivatives_inputs.py
+              )
+              ;;
+            *)
+              echo "::error::unknown Python shard: ${{ matrix.shard }}"
+              exit 2
+              ;;
+          esac
+          .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist=loadfile --durations=25 \
-            --cov --cov-report=xml:coverage-python.xml \
+            --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: benchmark-debug-${{ github.run_id }}
+          name: benchmark-debug-${{ github.run_id }}-${{ matrix.shard }}
           path: .artifacts/
           include-hidden-files: true
           if-no-files-found: ignore
@@ -303,11 +440,73 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: coverage-report-python
-          path: coverage-python.xml
+          name: coverage-report-python-${{ matrix.shard }}
+          path: coverage-python-${{ matrix.shard }}.xml
           retention-days: 1
 
+
+  cpu-benchmark:
+    name: CPU performance (CodSpeed)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CCACHE_MAXSIZE: 1G
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install ccache 4.14
+        run: |
+          archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location \
+            --output "/tmp/${archive}" \
+            "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/${archive}"
+          tar -xJf "/tmp/${archive}" -C /tmp
+          sudo install -m 0755 \
+            "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
+            /usr/local/bin/ccache
+      - name: Restore CPU benchmark ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ccache-cpu-benchmark-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**') }}
+          restore-keys: |
+            ccache-cpu-benchmark-
+      - name: Build CPU benchmark library
+        run: |
+          cmake -S . -B build-benchmark -G Ninja \
+            -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build-benchmark --target vibeqc --parallel
+      - name: Install benchmark dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python --editable .
+          uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+      - name: Run CPU CodSpeed endpoint suite
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-benchmark/libvibeqc.so
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
+
   upload-coverage:
+    timeout-minutes: 8
     needs: [cpu, python]
     if: ${{ !cancelled() && needs.cpu.result == 'success' && needs.python.result == 'success' }}
     # Coverage reporting is observability rather than a correctness gate. A
@@ -321,10 +520,18 @@ jobs:
             file: coverage/coverage-cpp.info
             flag: cpp
             name: code-coverage/cpp
-          - artifact: coverage-report-python
-            file: coverage/coverage-python.xml
+          - artifact: coverage-report-python-core
+            file: coverage/coverage-python-core.xml
             flag: python
-            name: code-coverage/python
+            name: code-coverage/python-core
+          - artifact: coverage-report-python-posthf
+            file: coverage/coverage-python-posthf.xml
+            flag: python
+            name: code-coverage/python-posthf
+          - artifact: coverage-report-python-compiler-heavy
+            file: coverage/coverage-python-compiler-heavy.xml
+            flag: python
+            name: code-coverage/python-compiler-heavy
     runs-on: ubuntu-24.04
     # Keep OIDC away from jobs that build or execute pull-request code. This
     # job checks out source metadata and consumes coverage artifacts only.
@@ -357,6 +564,7 @@ jobs:
 
   pass:
     name: Pass CI checks
+    timeout-minutes: 5
     needs: [cpu, cuda-compile, python]
     runs-on: ubuntu-24.04
     if: always()

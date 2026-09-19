@@ -32,6 +32,7 @@ endfunction()
 function(vibeqc_add_dft_sources target)
   target_sources(${target} PRIVATE
     src/dft/ao_grid.cpp
+    src/dft/cosx_reference.cpp
     src/dft/bridge.cpp
     src/dft/grid.cpp
     src/dft/ks_final_state.cpp
@@ -51,8 +52,15 @@ function(vibeqc_add_posthf_cc_sources target)
   target_sources(${target} PRIVATE
     src/methods/mp2_method.cpp
     src/posthf/bridge.cpp
+    src/posthf/cuda_derivative.cpp
+    src/posthf/mp2_derivative_common.cpp
+    src/posthf/mp2_derivative_cpu.cpp
+    src/posthf/mp2_derivative_cuda.cpp
     src/posthf/mp2_energy.cpp
-    src/posthf/native_provider.cpp)
+    src/posthf/mp2_force.cpp
+    src/posthf/mp2_gradient.cpp
+    src/posthf/native_provider.cpp
+    src/response/native_gmres.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/posthf/df_bridge.cu

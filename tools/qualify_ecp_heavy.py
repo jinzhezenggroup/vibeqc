@@ -1,4 +1,4 @@
-"""Record bounded LANL2DZ Rb/Cs/Au ECP evidence using a test-only PySCF oracle."""
+"""Record bounded LANL2DZ Rb/Cs/Au/Br/I ECP evidence using a test-only PySCF oracle."""
 
 import argparse
 import importlib.util

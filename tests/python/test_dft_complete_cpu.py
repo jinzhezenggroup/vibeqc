@@ -105,6 +105,55 @@ def independent_gradient(basis, state, method):
     return mf.e_tot, total, components
 
 
+def independent_uks_gradient(basis, state, method):
+    """Independent PySCF full-grid-response UKS total gradient."""
+    from pyscf import dft, gto, lib
+    from pyscf.data.elements import ELEMENTS
+
+    lib.num_threads(1)
+    labels = [f"{ELEMENTS[a.atomic_number]}{i}" for i, a in enumerate(basis.atoms)]
+    shells = {label: [] for label in labels}
+    for shell in basis.shells:
+        shells[labels[shell.atom_index]].append(
+            [
+                shell.angular_momentum,
+                *[(p.exponent, p.coefficient) for p in shell.primitives],
+            ]
+        )
+    mol = gto.M(
+        atom=[(label, a.position) for label, a in zip(labels, basis.atoms)],
+        basis=shells,
+        unit="Bohr",
+        cart=True,
+        charge=basis.charge,
+        spin=basis.multiplicity - 1,
+        verbose=0,
+    )
+    mf = dft.UKS(mol)
+    mf.xc = "PBE" if method == "pbe-uks" else "LDA_X,LDA_C_PW"
+    mf.grids.coords = np.array(state.grid.points)
+    mf.grids.weights = np.array(state.grid.weights)
+    mf.grids.radii_adjust = None
+    owners = np.asarray(state.grid.owners)
+    tab = {
+        mol.atom_symbol(a): (
+            np.array(state.grid.points[owners == a] - mol.atom_coord(a)),
+            np.array(state._source.atomic_weights[owners == a]),
+        )
+        for a in range(mol.natm)
+    }
+    mf.grids.gen_atomic_grids = lambda *args, **kwargs: tab
+    mf.small_rho_cutoff = 0
+    mf.conv_tol = 1e-13
+    mf.conv_tol_grad = 1e-10
+    mf.max_cycle = 150
+    mf.kernel()
+    assert mf.converged
+    grad = mf.nuc_grad_method()
+    grad.grid_response = True
+    return mf.e_tot, grad.kernel()
+
+
 @pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_complete_asymmetric_water_analytic_and_reconverged_fd(
@@ -218,6 +267,84 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(
             current, basis, cache=".cache/b22-tests", execution=execution
         )
         np.testing.assert_allclose(warm.gradient, result.gradient, atol=1e-9, rtol=0)
+
+
+@pytest.mark.parametrize("execution", ["reference", "native"])
+@pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
+def test_complete_open_shell_uks_analytic_and_reconverged_fd(method, execution):
+    """B3: asymmetric doublet uses the same seven-source plan without RKS factors."""
+    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    charge, multiplicity = 1, 2
+    calc = calculator(method, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state.identity.method == method
+        assert state.density.shape[0] == 2
+        assert not np.allclose(state.density[0], state.density[1], atol=1e-12, rtol=0)
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/b3-tests",
+            execution=execution,
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference = independent_uks_gradient(basis, state, method)
+        assert energy == pytest.approx(reference_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
+        assert result.work["ordered_quartets"] == basis.nao**4
+        assert all(np.isfinite(value).all() for value in result.components.values())
+
+        # Re-solve both spin channels and the physical moving grid at each displacement.
+        # The directional test is kept on the compiled route to avoid duplicating the
+        # expensive SCF matrix for the interpreter-only diagnostic.
+        if execution == "native":
+            xyz = np.asarray([position for _, position in ATOMS])
+            direction = np.array(
+                [[0.13, -0.07, 0.11], [-0.05, 0.17, 0.03], [0.09, 0.02, -0.14]]
+            )
+            estimates = []
+            for step in (3e-4, 1e-4):
+                energies = []
+                for sign in (1, -1):
+                    moved = [
+                        (atom[0], position)
+                        for atom, position in zip(
+                            ATOMS, xyz + sign * step * direction, strict=True
+                        )
+                    ]
+                    energies.append(
+                        calc.singlepoint(
+                            moved,
+                            charge=charge,
+                            multiplicity=multiplicity,
+                            properties=("energy",),
+                        ).energy
+                    )
+                estimates.append((energies[0] - energies[1]) / (2 * step))
+            actual = float(np.sum(result.gradient * direction))
+            assert abs(estimates[-1] - estimates[-2]) < 1e-6
+            assert abs(estimates[-1] - actual) < 1e-6
+
+        # A replay creates a new native identity and must revoke the old UKS lease.
+        batch.execute(strict=True)
+        with pytest.raises(ValueError, match="stale"):
+            complete_rks_gradient_diagnostic(
+                state, basis, cache=".cache/b3-tests", execution=execution
+            )
+        current = StationaryKsState.from_native(batch, basis)
+        replay = complete_rks_gradient_diagnostic(
+            current, basis, cache=".cache/b3-tests", execution=execution
+        )
+        np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
 
 
 def product_coordinates():
