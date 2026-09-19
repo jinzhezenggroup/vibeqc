@@ -268,9 +268,7 @@ def build_weighted_eri_kernel(
     requested = set(integral.requested_derivative_centers)
     zero = graph.constant(0)
     zero_gradient = (zero, zero, zero)
-    result = tuple(
-        gradients[c] if c in requested else zero_gradient for c in range(4)
-    )
+    result = tuple(gradients[c] if c in requested else zero_gradient for c in range(4))
     return WeightedEriKernel(
         integral, spec, indices, graph, value, result, tuple(sorted(coefficients))
     )
