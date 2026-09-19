@@ -18,7 +18,7 @@ def test_endpoint_gate_accepts_clear_gain_and_rejects_noise_or_regression():
 def test_tensor_resources_include_zero_shared_memory_and_spills():
     diagnostics = """ptxas info    : Function properties for _Zkernel
     16 bytes stack frame, 8 bytes spill stores, 4 bytes spill loads
-ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Used 42 registers, 64 bytes lmem, used 0 barriers
 ptxas info    : Function properties for _Zshared
     0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
 ptxas info    : Used 32 registers, used 1 barriers, 2048 bytes smem
@@ -31,4 +31,6 @@ ptxas info    : Used 32 registers, used 1 barriers, 2048 bytes smem
         a.spill_load_bytes,
         a.shared_bytes,
     ) == (42, 16, 8, 4, 0)
+    assert a.local_bytes == 64
     assert b.shared_bytes == 2048
+    assert b.local_bytes is None
