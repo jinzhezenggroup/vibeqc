@@ -17,12 +17,24 @@ from .stationary_gradient import (
     StationaryGradientPlan,
     StationaryMeanField,
 )
+from .xtb import (
+    GFN2_PARAMETER_SET,
+    XTB_METHOD_CATALOG,
+    UnsupportedXtbMethod,
+    XtbMethodIR,
+    XtbMethodSpec,
+    XtbParameterSet,
+    XtbPrimitive,
+    resolve_xtb_method,
+)
 
 __all__ = [
     "METHOD_CATALOG",
+    "XTB_METHOD_CATALOG",
     "D3Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
+    "GFN2_PARAMETER_SET",
     "ImplicitSolveSpec",
     "ImplicitVJPPlan",
     "IntegralGradientBlock",
@@ -33,5 +45,11 @@ __all__ = [
     "StationaryMeanField",
     "SymmetricMatrixFunctionSpec",
     "UnsupportedMethod",
+    "UnsupportedXtbMethod",
+    "XtbMethodIR",
+    "XtbMethodSpec",
+    "XtbParameterSet",
+    "XtbPrimitive",
     "resolve_method",
+    "resolve_xtb_method",
 ]
