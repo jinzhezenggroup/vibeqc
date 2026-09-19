@@ -22,7 +22,7 @@ _SUPPORTED_MODEL = "gfn2"
 _SCHEMA_EXTENSION_MODELS = ("gfn2", "gfn1")
 _REFERENCES = ("restricted", "unrestricted")
 _PRODUCT_ORDER = ("energy", "nuclear-gradient")
-_STATE_ORDER = ("charge", "dipole", "quadrupole")
+_STATE_ORDER = ("charge", "dipole", "quadrupole", "magnetization")
 _PARAMETER_DOMAINS = ("basis", "orbital", "correction", "spin")
 _DERIVATIVE_CAPABILITIES = (
     "energy",
@@ -481,7 +481,7 @@ def _gfn2_primitives() -> tuple[XtbPrimitive, ...]:
             "spin_polarization",
             "gfn2-shell-spin-polarization",
             requires=("basis_parameters",),
-            state_requirements=("charge",),
+            state_requirements=("magnetization",),
             parameter_domains=("spin",),
             derivative_capabilities=("energy", "hamiltonian"),
             self_consistent=True,
