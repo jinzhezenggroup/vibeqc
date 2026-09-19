@@ -472,3 +472,86 @@ def test_cuda_late_owner_replay_and_geometry_replacement(compiler, monkeypatch):
             np.testing.assert_allclose(
                 value.gradient, result.gradient, atol=1e-9, rtol=0
             )
+
+
+@pytest.mark.parametrize(
+    ("method", "charge", "multiplicity"),
+    [("lda-rks", 0, 1), ("pbe-rks", 0, 1), ("lda-uks", 1, 2), ("pbe-uks", 1, 2)],
+)
+def test_public_cuda_calculator_forces_match_independent_gradient(
+    method, charge, multiplicity
+):
+    """C2: public Calculator publishes force=-gradient from the shared CUDA plan."""
+    from test_dft_complete_cpu import (
+        ATOMS,
+        independent_gradient,
+        independent_uks_gradient,
+    )
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    calc = _calculator(method)
+    assert calc._capabilities.supported_properties == frozenset(("energy", "forces"))
+    public = calc.singlepoint(ATOMS, charge=charge, multiplicity=multiplicity)
+    assert public.executed_backend == "cuda"
+    assert public.forces is not None
+    assert np.isfinite(public.forces).all()
+
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity], warm_start=False
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        if method.endswith("uks"):
+            ref_energy, gradient = independent_uks_gradient(basis, state, method)
+        else:
+            ref_energy, gradient, _ = independent_gradient(basis, state, method)
+        state._source.close()
+    assert public.energy == pytest.approx(ref_energy, abs=2e-9)
+    assert energy == pytest.approx(ref_energy, abs=2e-9)
+    np.testing.assert_allclose(public.forces, -gradient, atol=1e-7, rtol=0)
+
+
+def test_public_cuda_batch_changed_geometry_and_failure_isolation():
+    """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
+    from test_dft_complete_cpu import ATOMS
+
+    calc = _calculator("pbe-rks")
+    xyz = np.asarray([position for _, position in ATOMS], dtype=np.float64)
+    moved = xyz.copy()
+    moved[1, 0] += 2.0e-3
+    with calc.prepare_batch([ATOMS, ATOMS], warm_start=True) as batch:
+        first = batch.execute(
+            coordinates=(None, moved), strict=True, properties=("energy", "forces")
+        )
+        assert all(item.forces is not None for item in first.items)
+        assert not np.array_equal(first.items[0].forces, first.items[1].forces)
+
+        malformed = np.asarray([0.0, 1.0])
+        isolated = batch.execute(
+            coordinates=(malformed, moved), properties=("energy", "forces")
+        )
+        assert not isolated.items[0].succeeded
+        assert isolated.items[0].forces is None
+        assert isolated.items[1].succeeded
+        assert isolated.items[1].forces is not None
+        assert np.isfinite(isolated.items[1].forces).all()
+
+
+def test_cuda_ks_resource_plan_accounts_for_public_force_staging():
+    from test_dft_complete_cpu import ATOMS
+
+    calc = _calculator("pbe-rks")
+    plan = calc.estimate_resources([ATOMS])
+    request = next(r for r in plan.requests if r.name == "ks")
+    assert request.identity.observables == ("energy", "forces")
+    names = {
+        estimate.name
+        for candidate in request.candidates
+        for estimate in candidate.estimates
+    }
+    assert "serialized generated KS force device staging cap" in names
+    assert "serialized generated KS force host staging cap" in names
