@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ import pytest
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.cpu_dispatch import (
     CpuRuntimeFeatures,
+    cpu_binary_target_supported,
     detect_cpu_features,
     select_cpu_target,
 )
@@ -31,15 +33,12 @@ def test_cpu_target_selection_prefers_widest_supported_and_forces_safely(monkeyp
     none = CpuRuntimeFeatures("x86_64", ())
     avx2 = CpuRuntimeFeatures("amd64", ("fma", "avx2"))
     avx512 = CpuRuntimeFeatures("x86_64", ("avx512f", "fma", "avx2"))
-    arm = CpuRuntimeFeatures("aarch64", ())
-
     assert select_cpu_target(CPU_TARGETS, none).selected_target == "generic"
     assert select_cpu_target(CPU_TARGETS, avx2).selected_target == AVX2_FMA_TARGET.name
     assert (
         select_cpu_target(CPU_TARGETS, avx512).selected_target
         == AVX512F_FMA_TARGET.name
     )
-    assert select_cpu_target(CPU_TARGETS, arm).selected_target == "generic"
     assert (
         select_cpu_target(
             CPU_TARGETS,
@@ -95,6 +94,8 @@ def test_bundle_materializes_portable_manifest_and_target_specific_cache(
         assert path.parent == cpu_bundle.directory / "libraries"
         flags = row["native_metadata"]["identity"]["flags"]
         assert "-march=native" not in flags
+        assert row["binary_target"] == row["native_metadata"]["identity"]["target"]["architecture"]
+        assert row["binary_target"] != "portable"
         keys.add(row["artifact_key"])
     assert len(keys) == 3
 
@@ -160,6 +161,28 @@ def test_dispatch_loads_only_selected_compatible_candidate(cpu_bundle, monkeypat
         AVX2_FMA_TARGET.name,
         AVX512F_FMA_TARGET.name,
     }
+
+
+def test_bundle_rejects_cross_architecture_before_loading(cpu_bundle, monkeypatch):
+    import vibeqc_compiler.integral.cpu_bundle as module
+
+    def forbidden_loader(*args, **kwargs):
+        raise AssertionError("incompatible CPU binary must be rejected before dlopen")
+
+    monkeypatch.setattr(module, "FirstDerivativeCpuLaneEvaluator", forbidden_loader)
+    with pytest.raises(ValueError, match="runtime architecture/ABI"):
+        module.FirstDerivativeCpuDispatchEvaluator(
+            cpu_bundle,
+            runtime=CpuRuntimeFeatures("aarch64", ()),
+        )
+
+
+def test_binary_target_gate_checks_runtime_abi(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+    runtime = CpuRuntimeFeatures("x86_64", ())
+    assert cpu_binary_target_supported("x86_64-linux-gnu", runtime)
+    assert not cpu_binary_target_supported("x86_64-apple-darwin23", runtime)
+    assert not cpu_binary_target_supported("aarch64-linux-gnu", runtime)
 
 
 def test_bundle_rejects_forced_unsupported_isa_before_loading(cpu_bundle):
