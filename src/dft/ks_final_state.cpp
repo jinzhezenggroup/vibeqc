@@ -19,7 +19,7 @@ bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& fock = identity.determinant.model;
   if (model.version != 1 || model.scf_domain_version != 1 || !model.tile_points || !model.owner ||
       (model.spins != 1 && model.spins != 2) ||
-      !((fock.backend == scf::FockBackend::Cpu && model.device == -1 && model.spins == 1) ||
+      !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||
       (fock.spec.spin == scf::FockSpin::Restricted ? 1U : 2U) != model.spins ||

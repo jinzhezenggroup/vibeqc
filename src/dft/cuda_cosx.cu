@@ -343,7 +343,8 @@ struct CudaCosxStagingPlan::Impl {
   }
 
   ~Impl() {
-    DeviceGuard guard(device);
+    // Grid Context and each DeviceBuffer already select their owning device
+    // during nonthrowing teardown; never construct a throwing guard here.
     if (grid) grid_cuda_destroy_v1(grid);
   }
 
@@ -414,13 +415,20 @@ struct CudaCosxStagingPlan::Impl {
     result.raw_exchange.resize(matrix);
     result.exchange.resize(matrix);
     int failure = 0;
-    check(cudaMemcpyAsync(result.raw_exchange.data(), raw.get(), matrix * sizeof(double),
-                          cudaMemcpyDeviceToHost, final_view.stream));
-    check(cudaMemcpyAsync(result.exchange.data(), exchange.get(), matrix * sizeof(double),
-                          cudaMemcpyDeviceToHost, final_view.stream));
-    check(cudaMemcpyAsync(&failure, error.get(), sizeof(int), cudaMemcpyDeviceToHost,
-                          final_view.stream));
-    check(cudaStreamSynchronize(final_view.stream));
+    try {
+      check(cudaMemcpyAsync(result.raw_exchange.data(), raw.get(), matrix * sizeof(double),
+                            cudaMemcpyDeviceToHost, final_view.stream));
+      check(cudaMemcpyAsync(result.exchange.data(), exchange.get(), matrix * sizeof(double),
+                            cudaMemcpyDeviceToHost, final_view.stream));
+      check(cudaMemcpyAsync(&failure, error.get(), sizeof(int), cudaMemcpyDeviceToHost,
+                            final_view.stream));
+      check(cudaStreamSynchronize(final_view.stream));
+    } catch (...) {
+      // A later enqueue may fail while an earlier download still targets these
+      // local buffers. Drain before unwinding their lifetime; retain the cause.
+      (void)cudaStreamSynchronize(final_view.stream);
+      throw;
+    }
     if (failure) throw std::runtime_error("nonfinite CUDA COSX staging result");
 
     double contraction = 0.0;

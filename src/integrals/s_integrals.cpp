@@ -22,6 +22,12 @@ std::size_t checked_product(std::size_t a, std::size_t b) {
   return a * b;
 }
 
+std::size_t checked_sum(std::size_t a, std::size_t b) {
+  if (a > std::numeric_limits<std::size_t>::max() - b)
+    throw std::overflow_error("CPU integral tensor extent overflows size_t");
+  return a + b;
+}
+
 // Dynamic forward derivatives make the CPU implementation a compact and
 // independent oracle for both integral values and every nuclear coordinate.
 // The optimized CUDA backend uses a one-coordinate dual scalar instead.
@@ -1099,6 +1105,165 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     return spherical;
   }
   return out;
+}
+
+std::array<double, 12> contract_weighted_eri_shell_derivative(
+    const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+    std::span<const double> weights) {
+  std::array<const core::Shell*, 4> shells{};
+  std::array<std::vector<molecule::AoExpansion>, 4> expansions{};
+  std::size_t expected = 1;
+  for (std::size_t slot = 0; slot < shells.size(); ++slot) {
+    if (shell_indices[slot] >= system.shells.size())
+      throw std::invalid_argument("weighted ERI shell index is out of range");
+    shells[slot] = &system.shells[shell_indices[slot]];
+    expansions[slot] =
+        molecule::ao_expansions(shells[slot]->angular_momentum, system.basis_representation);
+    expected = checked_product(expected, expansions[slot].size());
+  }
+  if (weights.size() != expected || !std::all_of(weights.begin(), weights.end(),
+                                                 [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("weighted ERI shell weights are inconsistent or nonfinite");
+
+  constexpr std::size_t coordinates = 12;
+  std::array<Vec3, 4> centers{};
+  for (std::size_t slot = 0; slot < centers.size(); ++slot) {
+    const auto atom = shells[slot]->atom_index;
+    if (atom >= system.atoms.size())
+      throw std::invalid_argument("weighted ERI shell atom is out of range");
+    for (std::size_t axis = 0; axis < 3; ++axis)
+      centers[slot][axis] =
+          Jet::variable(system.atoms[atom].position[axis], coordinates, 3 * slot + axis);
+  }
+
+  Jet contracted(0.0, coordinates);
+  std::size_t cursor = 0;
+  for (const auto& ao_i : expansions[0])
+    for (const auto& ao_j : expansions[1])
+      for (const auto& ao_k : expansions[2])
+        for (const auto& ao_l : expansions[3]) {
+          const double public_weight = weights[cursor++];
+          if (public_weight == 0.0) continue;
+          for (const auto& ei : ao_i)
+            for (const auto& ej : ao_j)
+              for (const auto& ek : ao_k)
+                for (const auto& el : ao_l) {
+                  const std::array<const molecule::CartesianExpansionTerm*, 4> terms{&ei, &ej, &ek,
+                                                                                     &el};
+                  double component_weight = public_weight;
+                  for (const auto* term : terms)
+                    component_weight *=
+                        term->coefficient *
+                        molecule::cartesian_component_normalization(term->component);
+                  for (const auto& pi : shells[0]->primitives)
+                    for (const auto& pj : shells[1]->primitives)
+                      for (const auto& pk : shells[2]->primitives)
+                        for (const auto& pl : shells[3]->primitives) {
+                          const double primitive_weight = component_weight * pi.coefficient *
+                                                          pj.coefficient * pk.coefficient *
+                                                          pl.coefficient;
+                          contracted = contracted + primitive_weight *
+                                                        primitive_eri_cartesian(
+                                                            pi.exponent, centers[0], ei.component,
+                                                            pj.exponent, centers[1], ej.component,
+                                                            pk.exponent, centers[2], ek.component,
+                                                            pl.exponent, centers[3], el.component);
+                        }
+                }
+        }
+  if (!std::isfinite(contracted.value) ||
+      !std::all_of(contracted.derivative.begin(), contracted.derivative.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::runtime_error("weighted ERI shell derivative is nonfinite");
+  std::array<double, coordinates> result{};
+  std::copy(contracted.derivative.begin(), contracted.derivative.end(), result.begin());
+  return result;
+}
+
+std::vector<double> contract_weighted_one_electron_derivative(
+    const core::System& system, std::span<const double> overlap_weights,
+    std::span<const double> hcore_weights, bool include_nuclear_repulsion) {
+  if (!system.ecp_terms.empty())
+    throw std::invalid_argument("streamed one-electron ECP derivatives are not implemented");
+  const auto n = molecule::ao_count(system);
+  const auto matrix_size = checked_product(n, n);
+  if (overlap_weights.size() != matrix_size || hcore_weights.size() != matrix_size ||
+      !std::all_of(overlap_weights.begin(), overlap_weights.end(),
+                   [](double value) { return std::isfinite(value); }) ||
+      !std::all_of(hcore_weights.begin(), hcore_weights.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("streamed one-electron weights are inconsistent or nonfinite");
+
+  const auto ncoord = checked_product(system.atoms.size(), std::size_t{3});
+  std::vector<Vec3> atoms(system.atoms.size());
+  for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+    for (std::size_t axis = 0; axis < 3; ++axis)
+      atoms[atom][axis] = Jet::variable(system.atoms[atom].position[axis], ncoord, 3 * atom + axis);
+
+  std::vector<std::size_t> offsets(system.shells.size() + 1, 0);
+  std::vector<std::vector<molecule::AoExpansion>> expansions(system.shells.size());
+  for (std::size_t shell = 0; shell < system.shells.size(); ++shell) {
+    if (system.shells[shell].atom_index >= system.atoms.size())
+      throw std::invalid_argument("streamed one-electron shell atom is out of range");
+    expansions[shell] =
+        molecule::ao_expansions(system.shells[shell].angular_momentum, system.basis_representation);
+    offsets[shell + 1] = checked_sum(offsets[shell], expansions[shell].size());
+  }
+  if (offsets.back() != n)
+    throw std::runtime_error("streamed one-electron shell offsets disagree with the system");
+
+  Jet contracted(0.0, ncoord);
+  for (std::size_t si = 0; si < system.shells.size(); ++si) {
+    const auto& shell_i = system.shells[si];
+    const auto& center_i = atoms[shell_i.atom_index];
+    for (std::size_t sj = 0; sj < system.shells.size(); ++sj) {
+      const auto& shell_j = system.shells[sj];
+      const auto& center_j = atoms[shell_j.atom_index];
+      for (std::size_t i = 0; i < expansions[si].size(); ++i)
+        for (std::size_t j = 0; j < expansions[sj].size(); ++j) {
+          const auto index = (offsets[si] + i) * n + offsets[sj] + j;
+          const double overlap_weight = overlap_weights[index];
+          const double hcore_weight = hcore_weights[index];
+          if (overlap_weight == 0.0 && hcore_weight == 0.0) continue;
+          for (const auto& ei : expansions[si][i])
+            for (const auto& ej : expansions[sj][j]) {
+              const double component_weight =
+                  ei.coefficient * molecule::cartesian_component_normalization(ei.component) *
+                  ej.coefficient * molecule::cartesian_component_normalization(ej.component);
+              for (const auto& pi : shell_i.primitives)
+                for (const auto& pj : shell_j.primitives) {
+                  const double primitive_weight =
+                      component_weight * pi.coefficient * pj.coefficient;
+                  if (overlap_weight != 0.0)
+                    contracted = contracted + overlap_weight * primitive_weight *
+                                                  primitive_overlap_cartesian(
+                                                      pi.exponent, center_i, ei.component,
+                                                      pj.exponent, center_j, ej.component);
+                  if (hcore_weight != 0.0)
+                    contracted =
+                        contracted +
+                        hcore_weight * primitive_weight *
+                            (primitive_kinetic_cartesian(pi.exponent, center_i, ei.component,
+                                                         pj.exponent, center_j, ej.component) +
+                             primitive_nuclear_attraction_cartesian(
+                                 pi.exponent, center_i, ei.component, pj.exponent, center_j,
+                                 ej.component, atoms, system));
+                }
+            }
+        }
+    }
+  }
+  if (include_nuclear_repulsion)
+    for (std::size_t a = 0; a < system.atoms.size(); ++a)
+      for (std::size_t b = 0; b < a; ++b)
+        contracted = contracted + static_cast<double>(system.atoms[a].ionic_charge() *
+                                                      system.atoms[b].ionic_charge()) /
+                                      sqrt(distance_squared(atoms[a], atoms[b]));
+  if (!std::isfinite(contracted.value) ||
+      !std::all_of(contracted.derivative.begin(), contracted.derivative.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::runtime_error("streamed one-electron derivative is nonfinite");
+  return contracted.derivative;
 }
 
 }  // namespace vibeqc::integrals

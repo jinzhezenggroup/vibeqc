@@ -1,20 +1,24 @@
-# Canonical RHF-MP2 energy
+# Canonical RHF-MP2 energy and conventional analytic forces
 
-The #193 energy candidate adds public conventional and resolution-of-identity
-(RI) MP2 energy-only preparation. Its validation status and frozen source
-identity are recorded in the handoff; the whole #193 issue also requires
-complete gradients. No gradient, frozen-core, open-shell or ECP capability
-follows from this implementation. No performance replacement is promoted.
+VibeQC exposes real FP64, closed-shell, all-electron conventional canonical RHF-MP2
+on CPU and CUDA. Conventional four-centre execution provides total energies and
+analytic nuclear forces; RI-MP2 provides energy only. This capability does not
+include UMP2, ROHF-MP2, frozen core, ECP, complex orbitals, screened or
+approximate correlation, Hessians, or mixed precision. No performance
+replacement is implied by the numerical qualification.
 
 ```python
 from vibeqc import Calculator
 
 calc = Calculator(method="mp2", basis="sto-3g", device="cuda",
                   correlation_memory_budget_bytes=256 * 1024**2)
-result = calc.singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
+result = calc.singlepoint(
+    [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
+    properties=("energy", "forces"),
+)
 print(result.energy)       # total RHF + MP2 correlation, Hartree
+print(result.forces)       # Hartree/Bohr; force = -gradient
 print(result.correlation)  # OS/SS, reference, denominator, memory and transfers
-assert result.forces is None
 ```
 
 RI-MP2 is selected explicitly. The auxiliary basis is part of the Hamiltonian;
@@ -24,17 +28,26 @@ when omitted, the orbital basis is used as the auxiliary basis.
 ri = Calculator(method="mp2", basis="sto-3g", device="cuda",
                 density_fitting="auto",
                 density_fitting_relative_threshold=1e-10)
-result = ri.singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
+result = ri.singlepoint(
+    [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
+    properties=("energy",),
+)
 ```
 
-`singlepoint(..., properties=("energy", "forces"))` rejects MP2 before
-executing. The C ABI rejects a non-null force request without writing an
-output. The C++ `Calculation` wrapper defaults to energy-only and represents
-absent forces with `std::optional`; the PyTorch analytic-backward wrapper
-explicitly requests forces and therefore rejects MP2. Prepared batches are
-not enabled by this slice. Independent single-system plans own independent
-state; calling the same plan recomputes its physical reference. A failed
-execution invalidates its previous correlation diagnostics.
+RI-MP2 forces remain unsupported C2 work. An RI force request fails explicitly
+without selecting conventional correlation or returning RHF-only forces. The C
+ABI publishes the energy, complete force array, and correlation/response
+diagnostic as one transaction; any reference, denominator, response,
+derivative, CUDA, nonfinite, or output-buffer failure leaves caller storage
+unchanged and invalidates prior diagnostics.
+
+Homogeneous prepared MP2 batches support conventional energy and force
+requests. Each item owns its reference, response, provider, diagnostics, and
+candidate outputs; immutable method options alone are shared. A failed item
+sets only its per-item status and does not overwrite its output storage or
+poison successful neighbours or a later replay. MP2 batches explicitly reject
+warm-start and HF profiling flags, RI force requests, invalid coordinates, and
+unknown flags.
 
 ## Fixed mathematical contract
 
@@ -42,7 +55,8 @@ References are real FP64, canonical closed-shell RHF with every electron
 correlated, occupied spatial columns first, 2/0 occupation, and a nonempty
 virtual space. The existing all-electron Cartesian/real-spherical basis
 support through f is used. Input geometries are Bohr; energies and orbital
-energies are Hartree. Conventional reference and correlation use unscreened
+energies are Hartree, gradients and forces are Hartree/Bohr, and
+`force = -gradient`. Conventional reference and correlation use unscreened
 exact Coulomb integrals. RI reference and correlation use the same auxiliary
 basis, metric cutoff and fitted Coulomb Hamiltonian. MP2's default screening
 is explicitly zero; a nonzero request fails rather than changing its
@@ -89,8 +103,19 @@ C / C++ / Python public prepare
   -> conventional: CG10 RawSource + cyclic staged MO transforms
   -> RI: shared DF source + metric factor + occupied/virtual three-center transform
   -> CG08 energy equation -> generated native CPU or CG09 CUDA tile program
-  -> native compensated scalar fold -> energy + correlation diagnostics
+  -> native compensated scalar fold
+  -> bounded MP2 adjoint + true-residual RHF Z-vector
+  -> relaxed one-/overlap-/two-electron weights
+  -> shell-local CPU or CUDA derivative contraction
+  -> transactional energy + force + correlation/response diagnostics
 ```
+
+Energy-only requests retain the existing correlation path and do not allocate
+force state. Conventional force requests keep the physical RHF reference,
+provider, adjoint, response workspace, relaxed weights, one shell-local AO
+cotangent, derivative staging, and unpublished output candidates inside one
+checked endpoint plan. They never materialize a molecular AO rank-four
+cotangent, a coordinate derivative tensor, or a response-history tape.
 
 CPU RHF uses the shared prepared Fock plan and iteration/DIIS/eigensolver. Its
 values-only dense integral preparation counts both Cartesian representations
@@ -157,14 +182,36 @@ scope. Device-wide observations are not treated as portable bounds.
 
 Near-zero, nonnegative or nonfinite denominators fail explicitly, without
 clamping/regularization. The default minimum magnitude threshold is `1e-10 Eh`.
-SCF nonconvergence is reported as reference failure; there is no fictitious
-MP2 convergence loop. Bad reference, nonfinite integral/arithmetic, unsupported
-property/backend and insufficient memory do not publish partial results.
+Exactly degenerate occupied or virtual subspaces are accepted only when their
+same-space MP2 Lagrangian derivative is zero at the same threshold; a
+nonstationary degenerate subspace fails explicitly. SCF nonconvergence is
+reported as reference failure; there is no fictitious MP2 convergence loop.
+Bad reference, nonfinite integral/arithmetic, unsupported property/backend and
+insufficient memory do not publish partial results.
 Native context error details propagate to Python. Source/reference lifetime
 is tied to the prepared system; changed geometry uses a newly prepared system
 and cannot reuse an old reference or MO tile.
 
-## Validation and remaining issue scope
+Force diagnostics append response iterations/restarts, true absolute and
+relative residuals, response and derivative workspace bytes,
+`planned_endpoint_peak_bytes`, `measured_endpoint_peak_bytes`, force provenance
+flags, equation identity, and response-operator identity. `measured_response_workspace_peak_bytes` separately reports the actual
+allocator high-water payload of GMRES-owned arrays, including its returned
+solution; `response_workspace_allocation_count` counts successful allocations
+in that domain. Both are zero for energy-only execution. The response-only
+measurement excludes caller-owned inputs, operator-callback buffers, other MP2
+stages, and allocator overhead. It must not populate the complete endpoint field.
+A zero
+`measured_endpoint_peak_bytes` means that endpoint allocation telemetry is
+unavailable; it is not a zero-memory observation or a copy of the plan. This
+slice currently reports that unavailable sentinel, so the measured-resource
+qualification gate remains unsatisfied. Once measured, numeric ownership must
+not exceed the simultaneous plan, which in turn must fit the configured numeric
+capacity. CUDA transfer counters disclose staging; they are
+not a claim that the full endpoint is device-resident. Older C callers receive
+the supported struct prefix selected by `struct_size`.
+
+## Qualification evidence and remaining issue scope
 
 Separate tests cover fixed identical-C/ERI OS and SS, explicit spin sums,
 permutations and rectangular tiles; native eight-loop AO→MO and independent RI
@@ -175,11 +222,21 @@ metric rank, mixed backend, denominator and budget boundaries; C/Python force
 rejection and invalidation. Preserve the existing `1e-9 Eh` energy and
 `atol=1e-11, rtol=1e-10` controlled component gates. PySCF is a test-only oracle.
 
-Full CPU/real-GPU, sanitizer, source/library identity and device records must
-be read from the candidate's evidence, not inferred from test definitions.
-Compile success or an optional skip is not GPU acceptance. Fast-compile builds
-are explicitly marked and have no performance-promotion claim.
+The reproducible driver is `tools/validate_mp2_public_force.py`. It creates a
+fresh directory, never overwrites prior results, and records exact source,
+library, toolchain, hardware, model, response/resource diagnostics, independent
+PySCF conventional MP2 analytic gradients, three fully re-solved Cartesian
+finite-difference steps, translation/torque, rotational covariance, changed
+geometry energy-force identity, batch replay, CPU/CUDA parity, and explicit
+failure outcomes. The reviewed compact record is under
+`benchmarks/results/issue193-conventional-force-b2/`; complete raw runs remain
+in the persistent experiment location named by its manifest.
+CPU runs may set `--fd-workers 4` to evaluate the same ordered plus/minus
+displacements in isolated spawned processes; no displacement, step, SCF solve,
+or acceptance gate is removed. CUDA qualification requires `--fd-workers 1`.
 
-Complete conventional gradients depend on the actual #151/#179/#141/#144
-interfaces; RI gradients additionally need #143. Those missing derivatives
-remain unsupported and never return HF or placeholder forces.
+Compilation or a skipped CUDA test is not endpoint qualification. CUDA
+evidence additionally includes real-device public single/batch execution and
+compute-sanitizer results. Issue #193 B2 covers only conventional canonical
+RHF-MP2 public forces. RI-MP2 forces remain unsupported C2 work and never
+return HF or placeholder forces.

@@ -2,9 +2,9 @@
 
 VibeQC's long-term mission is to cover **all quantum-chemistry methods** in one
 accelerator-native system. This is a roadmap commitment, not a statement of
-current availability. RHF and UHF provide energies and analytic nuclear forces;
-closed-shell MP2 and CPU/CUDA LDA/PBE RKS/UKS slices provide energy-only
-execution.
+current availability. RHF and UHF provide energies and analytic nuclear forces.
+Closed-shell conventional MP2 provides CPU/CUDA energies and analytic forces,
+while RI-MP2 and CPU/CUDA LDA/PBE RKS/UKS slices provide energy-only execution.
 
 ## Current method status
 
@@ -18,7 +18,7 @@ execution.
 | Density functional theory | PBE RKS | CPU/CUDA single-system and native ragged energy only, closed shell, conventional J; scaled PBE tail algebra and independent matched-grid H2, He and water gates |
 | Density functional theory | LDA/PBE UKS | CPU/CUDA single-system and native ragged energy only, independent spins, conventional J; matched-grid H, Li and H2+ gates; explicit PBE spin boundary policy |
 | Density functional theory | Meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
-| Perturbation theory | Closed-shell MP2 | Conventional and RI energy implemented on CPU/CUDA; analytic forces planned |
+| Perturbation theory | Closed-shell MP2 | Conventional energy and analytic forces implemented on CPU/CUDA; RI energy implemented on CPU/CUDA; RI analytic forces remain C2 work |
 | Perturbation theory | Open-shell, frozen-core, ECP and higher-order variants | Planned |
 | Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
 | Configuration interaction | CIS, selected CI, truncated and full CI | Planned |
@@ -112,7 +112,11 @@ measure is unavailable (`None` in Python) for methods that do not report it
 and for older native libraries. KS internally gates each spin separately, so
 an empty spin cannot dilute an unconverged channel.
 AO-to-MO transforms and correlated tensor contractions open the post-HF families.
-The RI-MP2 endpoint uses an RHF reference built with the same thresholded
+The conventional MP2 force endpoint adds a bounded adjoint, true-residual RHF
+response, relaxed weights, shell-local CPU/CUDA derivative contraction, and
+transactional single/batch publication. Exact support and evidence are
+documented in [Canonical RHF-MP2](mp2.md). The RI-MP2 endpoint uses an RHF
+reference built with the same thresholded
 density-fitting Hamiltonian as its correlation integrals. The auxiliary Coulomb
 metric uses a square symmetric inverse square root with eigenvalues at or below
 `density_fitting_relative_threshold * lambda_max` removed. The implementation

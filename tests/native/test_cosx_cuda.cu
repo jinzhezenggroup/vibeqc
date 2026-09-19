@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -12,6 +13,49 @@
 #include "dft/cuda_cosx.hpp"
 #include "dft/grid.hpp"
 #include "molecule/basis.hpp"
+
+#if defined(VIBEQC_COSX_TEST_INTERPOSE)
+// Linker interposition is test-only: the production CUDA translation unit and
+// actual device transfers remain unchanged. Inject an error after a queued D2H.
+namespace fault_injection {
+bool fail_download = false, awaiting_download = false, injected = false;
+bool fail_get_device = false, get_device_injected = false;
+unsigned downloads = 0, failure_fences = 0;
+}  // namespace fault_injection
+extern "C" cudaError_t __real_cudaMemcpyAsync(void*, const void*, std::size_t, cudaMemcpyKind,
+                                              cudaStream_t);
+extern "C" cudaError_t __real_cudaStreamSynchronize(cudaStream_t);
+extern "C" cudaError_t __real_cudaGetDevice(int*);
+extern "C" cudaError_t __wrap_cudaMemcpyAsync(void* out, const void* in, std::size_t bytes,
+                                              cudaMemcpyKind kind, cudaStream_t stream) {
+  using namespace fault_injection;
+  if (fail_download && kind == cudaMemcpyDeviceToHost && bytes == 4 * sizeof(double)) {
+    if (++downloads == 2) {
+      injected = true;
+      fail_download = false;
+      return cudaErrorInvalidValue;
+    }
+    awaiting_download = true;
+  }
+  return __real_cudaMemcpyAsync(out, in, bytes, kind, stream);
+}
+extern "C" cudaError_t __wrap_cudaStreamSynchronize(cudaStream_t stream) {
+  const auto status = __real_cudaStreamSynchronize(stream);
+  if (fault_injection::awaiting_download) {
+    fault_injection::awaiting_download = false;
+    if (fault_injection::injected) ++fault_injection::failure_fences;
+  }
+  return status;
+}
+extern "C" cudaError_t __wrap_cudaGetDevice(int* device) {
+  if (fault_injection::fail_get_device) {
+    fault_injection::fail_get_device = false;
+    fault_injection::get_device_injected = true;
+    return cudaErrorInvalidValue;
+  }
+  return __real_cudaGetDevice(device);
+}
+#endif
 
 namespace {
 
@@ -152,6 +196,30 @@ int main() {
       bad_density = true;
     }
     require(bad_density, "CUDA COSX staging accepted a malformed density");
+
+#if defined(VIBEQC_COSX_TEST_INTERPOSE)
+    {
+      using namespace fault_injection;
+      auto owner = std::make_unique<vibeqc::dft::CudaCosxStagingPlan>(system, grid.points(),
+                                                                      grid.weights(), 7, device);
+      fail_download = true;
+      bool caught = false;
+      try {
+        (void)owner->build(density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+      } catch (const std::runtime_error&) {
+        caught = true;
+      }
+      require(caught && injected, "COSX did not reach the injected second-download error");
+      require(!awaiting_download && failure_fences == 1,
+              "COSX download failure released host targets before draining their stream");
+      const auto retry = owner->build(density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+      require(max_error(retry.exchange, cpu.exchange) < 3.0e-12,
+              "COSX transfer failure contaminated the next replay");
+      fail_get_device = true;
+      owner.reset();
+      require(get_device_injected, "COSX teardown device-query failure was not exercised");
+    }
+#endif
 
     std::cout << "bounded CUDA COSX AO/device assembly matches the discrete CPU oracle\n";
     return EXIT_SUCCESS;
