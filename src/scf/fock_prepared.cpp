@@ -105,7 +105,6 @@ struct PreparedFockPlan::Impl {
       nullptr, &destroy_cuda_direct_jk_plan};
   std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)>
       cuda_df{nullptr, &destroy_cuda_density_fitting_jk_plan};
-  std::unique_ptr<CudaSeminumericalExchangeProvider> seminumerical_exchange;
   std::optional<CpuFockPlanView> cpu_view;
   std::optional<CudaFockPlanView> cuda_view;
   initial_guess::OverlapOrthogonalizer overlap_cache;
@@ -120,13 +119,16 @@ struct PreparedFockPlan::Impl {
         device_id(strategy.backend == FockBackend::Cuda ? device : -1),
         requested_budget(strategy.backend == FockBackend::Cuda ? budget : 0) {
     validate_resolved_fock_build(strategy);
-    for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange})
-      if (term->present) require_fock_provider_executable(term->approximation, strategy.backend);
+    for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange}) {
+      if (!term->present) continue;
+      if (term->approximation == FockApproximation::SeminumericalCosx)
+        throw std::invalid_argument("COSX execution requires the DFT-owned PreparedCosxFockPlan");
+      require_fock_provider_executable(term->approximation, strategy.backend);
+    }
     diagnostic.strategy = strategy;
     diagnostic.variant = execution_variant(strategy);
     const bool has_df = needs(strategy.spec, FockApproximation::DensityFitted);
     const bool has_exact = needs(strategy.spec, FockApproximation::Exact);
-    const bool has_cosx = needs(strategy.spec, FockApproximation::SeminumericalCosx);
     const bool derivatives = strategy.spec.derivative_order != 0;
     if (has_df) {
       auxiliary = aux ? *aux : system;
@@ -175,18 +177,8 @@ struct PreparedFockPlan::Impl {
     diagnostic.ncoord = system.atoms.size() * 3;
     const auto available = budget ? budget : kDefaultDeviceBudget;
     diagnostic.device_budget_bytes = available;
-    std::size_t provider_available = available;
-    std::size_t jk_device_bytes = 0;
-    if (has_cosx) {
-      seminumerical_exchange = make_cuda_seminumerical_exchange_provider(
-          system, strategy.spec.exchange.cosx, strategy.cosx_tile_points, device, available);
-      diagnostic.cosx = seminumerical_exchange->diagnostic();
-      if (diagnostic.cosx.device_bytes > provider_available) throw std::bad_alloc();
-      provider_available -= diagnostic.cosx.device_bytes;
-      diagnostic.device_bytes = diagnostic.cosx.device_bytes;
-    }
     if (has_exact) {
-      const auto direct_budget = has_df ? provider_available / 2 : provider_available;
+      const auto direct_budget = has_df ? available / 2 : available;
       if (!direct_budget) throw std::bad_alloc();
       CudaDirectJkPlan* raw{};
       checked(create_cuda_direct_jk_plan(device, {system}, strategy.spec.derivative_order,
@@ -194,11 +186,10 @@ struct PreparedFockPlan::Impl {
                                          diagnostic.direct, detail),
               detail);
       cuda_exact.reset(raw);
-      jk_device_bytes = diagnostic.direct.device_bytes;
-      diagnostic.device_bytes = add_size(diagnostic.device_bytes, diagnostic.direct.device_bytes);
+      diagnostic.device_bytes = diagnostic.direct.device_bytes;
     }
     if (has_df) {
-      const auto remainder = provider_available - jk_device_bytes;
+      const auto remainder = available - diagnostic.device_bytes;
       const auto plan_budget = remainder / 2;
       if (!plan_budget) throw std::bad_alloc();
       auto& data = *fitted;
@@ -242,20 +233,14 @@ struct PreparedFockPlan::Impl {
                   tiles.stores_full_three_center, tiles.value_storage),
               detail);
       cuda_df.reset(raw_plan);
-      if (!diagnostic.fitted.empty()) {
-        jk_device_bytes = add_size(jk_device_bytes, diagnostic.fitted[0].device_resident_bytes);
-        diagnostic.device_bytes =
-            add_size(diagnostic.device_bytes, diagnostic.fitted[0].device_resident_bytes);
-      }
+      if (!diagnostic.fitted.empty())
+        diagnostic.device_bytes += diagnostic.fitted[0].device_resident_bytes;
     }
-    if (diagnostic.device_bytes > available) throw std::bad_alloc();
     auto provider = [&](const FockTermSpec& term) -> std::optional<CudaFockProviderView> {
       if (!term.present) return {};
-      if (term.approximation == FockApproximation::Exact)
-        return CudaFockProviderView(cuda_exact.get());
-      if (term.approximation == FockApproximation::DensityFitted)
-        return CudaFockProviderView(cuda_df.get(), *fitted);
-      return CudaFockProviderView(seminumerical_exchange.get());
+      return term.approximation == FockApproximation::Exact
+                 ? CudaFockProviderView(cuda_exact.get())
+                 : CudaFockProviderView(cuda_df.get(), *fitted);
     };
     cuda_view.emplace(strategy, diagnostic.nbf, diagnostic.ncoord, provider(strategy.spec.coulomb),
                       provider(strategy.spec.exchange));

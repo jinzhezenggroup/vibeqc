@@ -28,7 +28,6 @@ struct FockPreparationDiagnostic {
   ResolvedFockBuild strategy;
   std::size_t nbf{}, ncoord{}, device_bytes{}, device_budget_bytes{};
   CudaDirectJkDiagnostic direct;
-  CudaSeminumericalExchangeDiagnostic cosx;
   FockExecutionVariant variant;
   CudaDensityFittingSourceDiagnostic fitted_source;
   std::vector<CudaDensityFittingMetricDiagnostic> fitted;

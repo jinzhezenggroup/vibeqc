@@ -68,6 +68,7 @@ macro(vibeqc_add_native_tests)
   endif()
 
   vibeqc_native_test(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  vibeqc_native_test(vibeqc_self_consistent_tests tests/native/test_self_consistent.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_batch_tests tests/native/test_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cpp_api_tests tests/native/test_cpp_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cartesian_integral_tests tests/native/test_cartesian_integrals.cpp)
@@ -100,6 +101,7 @@ macro(vibeqc_add_native_tests)
 
   vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_d4_eeq_tests tests/native/test_d4_eeq.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_gcp_r2scan3c_tests tests/native/test_gcp_r2scan3c.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_xc_point_tests tests/native/test_xc_point.cpp NO_VIBEQC)
   target_compile_definitions(vibeqc_xc_point_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -158,6 +160,12 @@ macro(vibeqc_add_native_tests)
     endif()
     add_test(NAME vibeqc_cosx_cuda_tests COMMAND vibeqc_cosx_cuda_tests)
     set_tests_properties(vibeqc_cosx_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
+    vibeqc_native_test(vibeqc_cosx_fock_provider_tests
+                       tests/native/test_cosx_fock_provider.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cosx_scf_tests
+                       tests/native/test_cosx_scf.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
   endif()
 
   vibeqc_native_test(vibeqc_dft_api_tests tests/native/test_dft_api.cpp NO_SRC_INCLUDE)
@@ -186,6 +194,10 @@ macro(vibeqc_add_native_tests)
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_ecp_policy_cuda_tests tests/native/test_ecp_policy_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_ecp_policy_cuda_tests vibeqc_ecp_codegen)
+    target_include_directories(vibeqc_ecp_policy_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     vibeqc_native_test(vibeqc_cuda_fock_composition_tests tests/native/test_cuda_fock_composition.cpp)
   endif()
 

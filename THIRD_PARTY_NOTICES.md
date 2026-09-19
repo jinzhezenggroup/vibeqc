@@ -46,3 +46,23 @@ record has its Apache-2.0 notice in `LICENSES/mctc-lib-LICENSE.txt`.
 This migration imports no xTB Hamiltonian, SCC runtime, Fortran runtime, or
 external dispersion library into VibeQC. Independent upstream tools are only
 used to generate test fixtures.
+
+## r2SCAN-3c basis and gCP qualification data
+
+The canonical H-Ar def2-mTZVPP snapshot shipped under
+`python/vibeqc/data/r2scan3c/` is generated offline from MolSSI Basis Set
+Exchange commit `4adaf1372c7101620ca1a9f3130be9ae97fb8f30`. The exact source
+export, content identity, and supported-element domain are recorded in
+`external/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
+`LICENSES/bse-data-BSD-3-Clause.txt`.
+
+The repository-only gCP qualification data and CPU/native reference providers
+are derived from the documented equations and parameter tables in simple-dftd3
+commit `41d5a07b98ce15e97bec7a1815869725f6c7b0c2`, licensed
+LGPL-3.0-or-later. Exact source hashes are recorded in the same manifest and
+the upstream GPL/LGPL license texts are retained in
+`LICENSES/simple-dftd3-COPYING.txt` and
+`LICENSES/simple-dftd3-COPYING.LESSER.txt`. No simple-dftd3 binary or runtime
+dependency is added. The embedded MB16-43/06 qualification geometry is from
+mstore commit `a9070de01ad67e0539edc87c29ab048a60381a74` under Apache-2.0;
+see `LICENSES/mstore-Apache-2.0.txt`.

@@ -164,7 +164,7 @@ constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
                       "src/dft/cosx_reference.cpp", cosx_fock_domain()),
     make_registration("cuda.cosx", FockApproximation::SeminumericalCosx,
                       runtime::ProviderBackend::Cuda, kCosxCudaAvailability, kCosxCudaReason,
-                      "src/dft/cuda_cosx.cu", cosx_fock_domain()),
+                      "src/dft/cosx_fock_provider.cpp", cosx_fock_domain()),
 }};
 
 runtime::ProviderBackend registry_backend(FockBackend backend) {
@@ -232,8 +232,7 @@ FockBuildSpec make_hf_fock_spec(FockSpin spin, FockApproximation approximation) 
 }
 
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
-                                     double screening_tolerance, double metric_relative_threshold,
-                                     std::size_t cosx_tile_points) {
+                                     double screening_tolerance, double metric_relative_threshold) {
   require(spec.version == 1, "unsupported FockBuildSpec version");
   require(valid(spec.spin) && valid(backend), "unknown Fock spin/backend");
   require(spec.derivative_order <= 1, "second Fock derivatives are not implemented");
@@ -264,7 +263,6 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
       (spec.exchange.present && spec.exchange.approximation == FockApproximation::DensityFitted);
   const bool cosx =
       spec.exchange.present && spec.exchange.approximation == FockApproximation::SeminumericalCosx;
-  if (cosx) require(cosx_tile_points > 0, "COSX execution tile must be positive");
   if (fitted) {
     require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
                 metric_relative_threshold < 1.0,
@@ -285,7 +283,6 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
                                      : FockSchedule::CpuReference;
   result.screening_tolerance = screening_tolerance;
   result.metric_relative_threshold = fitted ? metric_relative_threshold : 0.0;
-  result.cosx_tile_points = cosx ? cosx_tile_points : 0;
   result.legacy_density_fitting = fitted_hf;
   return result;
 }
@@ -293,7 +290,7 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
 void validate_resolved_fock_build(const ResolvedFockBuild& strategy) {
   require(
       strategy == resolve_fock_build(strategy.spec, strategy.backend, strategy.screening_tolerance,
-                                     strategy.metric_relative_threshold, strategy.cosx_tile_points),
+                                     strategy.metric_relative_threshold),
       "Fock execution state differs from its resolved mathematical request");
 }
 

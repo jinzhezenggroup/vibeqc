@@ -42,7 +42,13 @@ from .ks_diagnostics import (
     KsIteration,
     KsTransportDiagnostic,
 )
-from .mean_field import FixedDensityMeanField, MeanFieldEvaluation
+from .mean_field import (
+    FixedDensityExchangeEvaluation,
+    FixedDensityMeanField,
+    MeanFieldEvaluation,
+    assemble_fixed_density_exchange,
+    exchange_operator_key,
+)
 from .overlap import cross_overlap
 from .progressive import ProgressiveResult, projected_singlepoint
 from .projection import (
@@ -53,6 +59,7 @@ from .projection import (
     project_density,
     project_occupied,
 )
+from .r2scan3c import load_r2scan3c_basis
 from .resources import (
     ResourceAllocationError,
     ResourceBudget,
@@ -86,6 +93,7 @@ __all__ = [
     "ElementBasis",
     "ErrorEvidence",
     "EvidenceKind",
+    "FixedDensityExchangeEvaluation",
     "FixedDensityMeanField",
     "FockBuildSpec",
     "FockEvaluation",
@@ -124,14 +132,17 @@ __all__ = [
     "Shell",
     "ShellClassProfileEntry",
     "TargetAccuracy",
+    "assemble_fixed_density_exchange",
     "basis_capability",
     "compare_observables",
     "cross_overlap",
     "electron_state",
     "estimate_hf_resources",
     "estimate_ks_resources",
+    "exchange_operator_key",
     "import_bse",
     "load_basis",
+    "load_r2scan3c_basis",
     "method_capabilities",
     "plan_resources",
     "project_density",

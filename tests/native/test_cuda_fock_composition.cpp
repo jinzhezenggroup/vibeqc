@@ -4,9 +4,6 @@
 #include <memory>
 #include <stdexcept>
 
-#include "dft/cosx_reference.hpp"
-#include "dft/grid.hpp"
-#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "scf/cuda_fock_provider.hpp"
 #include "scf/fleet.hpp"
@@ -186,123 +183,6 @@ void composed_items() {
   }
 }
 
-dft::GridSpec grid_spec(const FockCosxSpec& spec) {
-  dft::GridSpec out;
-  out.version = spec.grid_version;
-  out.radial_points = spec.radial_points;
-  out.angular_polar = spec.angular_polar;
-  out.angular_azimuth = spec.angular_azimuth;
-  out.partition_iterations = spec.partition_iterations;
-  out.coincident_tolerance = spec.coincident_tolerance;
-  out.element_radii = spec.element_radii;
-  return out;
-}
-
-std::vector<double> symmetric_density(std::size_t n, double scale = 1.0) {
-  std::vector<double> out(n * n);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j <= i; ++j) {
-      const double value = scale * (i == j ? 0.22 + 0.01 * static_cast<double>(i)
-                                           : 0.025 / static_cast<double>(1 + i + j));
-      out[i * n + j] = out[j * n + i] = value;
-    }
-  return out;
-}
-
-void cosx_provider_composition() {
-  const auto system = fixture();
-  const auto exact = vibeqc::integrals::build_integrals(system, false, true);
-  const auto n = exact.nbf;
-  const auto density = symmetric_density(n);
-  constexpr double cutoff = 1.0e-10;
-
-  auto spec = make_hf_fock_spec(FockSpin::Restricted);
-  spec.derivative_order = 0;
-  spec.exchange.approximation = FockApproximation::SeminumericalCosx;
-  spec.exchange.cosx = make_cosx_v1_spec(3, 3, 6, 3, 1.0e-12);
-  const auto strategy = resolve_fock_build(spec, FockBackend::Cuda, 0.0, cutoff, 5);
-  PreparedFockPlan direct(system, nullptr, strategy, 0, 64U << 20);
-  const auto actual = direct.build(density);
-
-  auto j_spec = spec;
-  j_spec.exchange.present = false;
-  const auto j_strategy = resolve_fock_build(j_spec, FockBackend::Cpu, 0.0, cutoff);
-  const auto expected_j = build_exact_direct_jk(j_strategy, n, exact.eri, density);
-  matrix(actual.coulomb, expected_j.coulomb, "direct-J/COSX-K Coulomb");
-
-  const dft::MolecularGrid grid(system, grid_spec(spec.exchange.cosx));
-  const auto expected_k = dft::build_cosx_reference(system, grid.points(), grid.weights(), density,
-                                                    dft::CosxDensityConvention::rhf_spin_summed);
-  matrix(actual.exchange_alpha, expected_k.exchange, "direct-J/COSX-K exchange");
-  require(actual.exchange_beta.empty(), "restricted COSX returned beta exchange");
-
-  const auto& info = direct.diagnostic();
-  require(info.cosx.nbf == n && info.cosx.ncoord == 3 * system.atoms.size() &&
-              info.cosx.npoint == grid.point_count() && info.cosx.tile_points == 5 &&
-              info.cosx.esp_on_device && info.cosx.assembly_on_device &&
-              info.device_bytes >= info.cosx.device_bytes &&
-              info.device_bytes <= info.device_budget_bytes,
-          "prepared COSX resource/provenance diagnostic is incomplete");
-
-  auto changed_grid = spec;
-  ++changed_grid.exchange.cosx.angular_azimuth;
-  const auto changed_grid_strategy =
-      resolve_fock_build(changed_grid, FockBackend::Cuda, 0.0, cutoff, 5);
-  require(!direct.matches(system, nullptr, changed_grid_strategy, 0, 64U << 20),
-          "changed COSX grid reused a prepared provider");
-  const auto changed_tile = resolve_fock_build(spec, FockBackend::Cuda, 0.0, cutoff, 6);
-  require(!direct.matches(system, nullptr, changed_tile, 0, 64U << 20),
-          "changed COSX tile reused a prepared provider");
-
-  auto df_spec = spec;
-  df_spec.coulomb.approximation = FockApproximation::DensityFitted;
-  const auto df_strategy = resolve_fock_build(df_spec, FockBackend::Cuda, 0.0, cutoff, 5);
-  PreparedFockPlan fitted(system, &system, df_strategy, 0, 64U << 20);
-  const auto df_actual = fitted.build(density);
-  const auto df_oracle = oracle(system, system, cutoff);
-  const auto df_expected =
-      build_density_fitting_rhf_jk(df_oracle.three_center, density, {true, false});
-  matrix(df_actual.coulomb, df_expected.coulomb, "RI-J/COSX-K Coulomb");
-  matrix(df_actual.exchange_alpha, expected_k.exchange, "RI-J/COSX-K exchange");
-
-  auto u_spec = make_hf_fock_spec(FockSpin::Unrestricted);
-  u_spec.derivative_order = 0;
-  u_spec.exchange.approximation = FockApproximation::SeminumericalCosx;
-  u_spec.exchange.cosx = spec.exchange.cosx;
-  const auto u_strategy = resolve_fock_build(u_spec, FockBackend::Cuda, 0.0, cutoff, 5);
-  PreparedFockPlan unrestricted(system, nullptr, u_strategy, 0, 64U << 20);
-  const auto alpha = symmetric_density(n, 0.6), beta = symmetric_density(n, 0.4);
-  const auto u_actual = unrestricted.build(alpha, beta);
-  auto uj_spec = u_spec;
-  uj_spec.exchange.present = false;
-  const auto uj_strategy = resolve_fock_build(uj_spec, FockBackend::Cpu, 0.0, cutoff);
-  const auto uj_expected = build_exact_direct_jk(uj_strategy, n, exact.eri, alpha, beta);
-  matrix(u_actual.coulomb, uj_expected.coulomb, "UHF direct-J/COSX-K Coulomb");
-  const auto ka = dft::build_cosx_reference(system, grid.points(), grid.weights(), alpha,
-                                            dft::CosxDensityConvention::spin_resolved);
-  const auto kb = dft::build_cosx_reference(system, grid.points(), grid.weights(), beta,
-                                            dft::CosxDensityConvention::spin_resolved);
-  matrix(u_actual.exchange_alpha, ka.exchange, "UHF COSX alpha K");
-  matrix(u_actual.exchange_beta, kb.exchange, "UHF COSX beta K");
-
-  auto pure = spec;
-  pure.coulomb.present = false;
-  const auto pure_strategy = resolve_fock_build(pure, FockBackend::Cuda, 0.0, cutoff, 5);
-  PreparedFockPlan pure_plan(system, nullptr, pure_strategy, 0, 64U << 20);
-  const auto required = pure_plan.diagnostic().cosx.device_bytes;
-  require(required > 0, "COSX provider reported zero retained device bytes");
-  bool oom = false;
-  try {
-    PreparedFockPlan insufficient(system, nullptr, pure_strategy, 0, required - 1);
-  } catch (const std::bad_alloc&) {
-    oom = true;
-  }
-  require(oom, "COSX preparation ignored its exact bounded device budget");
-
-  rejected([&] { (void)direct.energy_derivative(density); },
-           "energy-only COSX provider exposed analytic derivatives");
-}
-
 void molecular_endpoints() {
   const auto system = fixture();
   for (bool uhf : {false, true})
@@ -470,7 +350,6 @@ void independent_reference_export() {
 int main() {
   try {
     composed_items();
-    cosx_provider_composition();
     molecular_endpoints();
     ragged_replay();
     prepared_replay();

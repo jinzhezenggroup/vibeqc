@@ -76,9 +76,15 @@ ranking nor the original ranking changes defaults automatically.
 - `derivative-batch.json` plus its two `*-results.json` files retain 24/24
   eligible compilations and 612/612 passing numerical rows; maximum error
   3.47e-17. The rerun reproduces all seven selected class choices.
-- `value-batch.json` plus its two result files retain 90/90 eligible
-  compilations and 2592/2592 passing rows; maximum error 1.90e-12. The original
-  mapping's evidence uses the `initial-value-` prefix.
+- `value-batch.json` and `initial-value-batch.json` retain the original
+  diagnostic rankings, execution metadata and source/device identities. Their
+  full compiler/group inventories and four raw result lists are pinned in the
+  [historical snapshot](../retention-checkout/README.md). Restore that snapshot
+  before following `results_files`: it preserves the original 90/90 eligible
+  compilations and 2592/2592 passing rows (maximum error 1.90e-12), not a new
+  qualification. The complete negative endpoint evidence stays in
+  `rejected-value-v2.json` and `rejected-value-v4.json`; no failed result or
+  production gate has been removed.
 - Compilation metadata retains duration, return status/timeouts, parsed
   registers/stack/shared/spills, theoretical occupancy, source/object bytes,
   generator/toolchain/target identity, and raw-stream hashes. Raw streams,
@@ -138,6 +144,6 @@ the endpoint JSON. `reproduction/reduce_profiles.py` documents the reduction.
 
 Final-library regressions pass 144 GPU Python and five GPU native tests,
 including stale/failed solve lease revocation. See `validation.json` for
-test/sanitizer evidence and `ownership.json` for the
+test/sanitizer evidence and [`ownership.json` (historical snapshot)](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue404-407-df/ownership.json) for the
 reviewed native CUDA delta. Mathematical assumptions, exact fallbacks and
 decisions are in the [note](../../../.agents/notes/implemented/performance/2026-09-16-df-tuning-and-projection.md).

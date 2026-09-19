@@ -26,34 +26,16 @@ CudaFockProviderView::CudaFockProviderView(CudaDensityFittingJkPlan* fitted,
     : fitted_(fitted), data_(&data), item_(item) {
   require(fitted != nullptr, "null fitted CUDA Fock provider");
 }
-CudaFockProviderView::CudaFockProviderView(CudaSeminumericalExchangeProvider* exchange)
-    : seminumerical_exchange_(exchange) {
-  require(exchange != nullptr, "null seminumerical CUDA exchange provider");
-}
 FockApproximation CudaFockProviderView::approximation() const {
-  if (exact_) return FockApproximation::Exact;
-  if (fitted_) return FockApproximation::DensityFitted;
-  return FockApproximation::SeminumericalCosx;
+  return exact_ ? FockApproximation::Exact : FockApproximation::DensityFitted;
 }
 std::size_t CudaFockProviderView::nbf() const {
-  if (exact_) return cuda_direct_jk_plan_diagnostic(exact_).nbf;
-  if (fitted_) return data_->raw.nbf;
-  return seminumerical_exchange_->diagnostic().nbf;
+  return exact_ ? cuda_direct_jk_plan_diagnostic(exact_).nbf : data_->raw.nbf;
 }
 std::size_t CudaFockProviderView::ncoord() const {
-  if (exact_) return cuda_direct_jk_plan_diagnostic(exact_).coordinates_per_item;
-  if (fitted_) return data_->raw.ncoord;
-  return seminumerical_exchange_->diagnostic().ncoord;
+  return exact_ ? cuda_direct_jk_plan_diagnostic(exact_).coordinates_per_item : data_->raw.ncoord;
 }
 void CudaFockProviderView::validate(const ResolvedFockBuild& strategy) const {
-  if (seminumerical_exchange_) {
-    const auto& info = seminumerical_exchange_->diagnostic();
-    require(strategy.spec.derivative_order == 0 && strategy.cosx_tile_points == info.tile_points &&
-                info.nbf == nbf() && info.ncoord == ncoord() && info.esp_on_device &&
-                info.assembly_on_device,
-            "CUDA COSX Fock capability/tile mismatch");
-    return;
-  }
   if (exact_) {
     const auto info = cuda_direct_jk_plan_diagnostic(exact_);
     require(item_ < info.batch_size && info.derivative_order >= strategy.spec.derivative_order &&
@@ -86,13 +68,6 @@ DirectJkMatrices CudaFockProviderView::build(FockBuildSpec spec, const std::vect
                                              const std::vector<double>& beta) const {
   DirectJkMatrices out;
   out.nbf = nbf();
-  if (seminumerical_exchange_) {
-    require(!spec.coulomb.present && spec.exchange.present, "COSX Fock provider is exchange-only");
-    const bool spin_resolved = spec.spin == FockSpin::Unrestricted;
-    out.exchange_alpha = seminumerical_exchange_->build_exchange(density, spin_resolved);
-    if (spin_resolved) out.exchange_beta = seminumerical_exchange_->build_exchange(beta, true);
-    return out;
-  }
   std::string detail;
   vibeqc_status status;
   if (exact_)
@@ -112,8 +87,6 @@ DirectJkMatrices CudaFockProviderView::build(FockBuildSpec spec, const std::vect
 std::vector<double> CudaFockProviderView::derivative(FockBuildSpec spec,
                                                      const std::vector<double>& density,
                                                      const std::vector<double>& beta) const {
-  if (seminumerical_exchange_)
-    throw std::invalid_argument("CUDA seminumerical analytic derivatives are not implemented");
   std::vector<double> out(ncoord());
   std::string detail;
   if (exact_) {

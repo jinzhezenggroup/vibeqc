@@ -15,6 +15,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
+#include "scf/solver/self_consistent.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -104,66 +105,116 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
   diagnostic.ao_order = pbe ? 1 : 0;
-  double previous_energy = std::numeric_limits<double>::infinity();
   const double residual_gate = std::min(1.0e-9, options.density_tolerance);
   bool stabilize_occupations = false;
-  for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
-    const auto physical = evaluate(plan, basis, grid, alpha, beta, pbe, options.xc_tile_points);
-    ++result.fock_builds;
-    const Matrix ra = commutator_residual(physical.fock.alpha, alpha, ints.overlap, n);
-    const Matrix rb = commutator_residual(physical.fock.beta, beta, ints.overlap, n);
-    const double residual_a = residual_rms(ra), residual_b = residual_rms(rb);
-    diagnostic.physical_residual = std::max(residual_a, residual_b);
-    // Preserve the public joined-spin RMS while gating each spin separately.
-    result.physical_residual_rms = std::hypot(residual_a, residual_b) / std::sqrt(2.0);
-    diagnostic.components = physical.components;
-    const auto effective = split_spin_matrices(
-        diis.update(concatenate(physical.fock.alpha, physical.fock.beta), concatenate(ra, rb)),
-        n * n);
-    ca = stabilize_occupations ? stabilized_uks_orbitals(effective.first, alpha, ints.overlap, x, n)
-                               : generalized_eigen(effective.first, x, n);
-    cb = stabilize_occupations ? stabilized_uks_orbitals(effective.second, beta, ints.overlap, x, n)
-                               : generalized_eigen(effective.second, x, n);
-    Matrix next_a = density_from_orbitals(ca.vectors, n, na, 1.0);
-    Matrix next_b = density_from_orbitals(cb.vectors, n, nb, 1.0);
-    result.energy = physical.components.total();
-    result.iterations = iteration;
-    result.energy_change = std::abs(result.energy - previous_energy);
-    const double change_a = density_rms(next_a, alpha), change_b = density_rms(next_b, beta);
-    const double density_change = std::max(change_a, change_b);
-    result.density_rms = std::hypot(change_a, change_b) / std::sqrt(2.0);
-    diagnostic.electrons = {dot(alpha, ints.overlap), dot(beta, ints.overlap)};
-    diagnostic.density_change = density_change;
-    diagnostic.history.push_back({iteration, physical.components, result.energy_change,
-                                  density_change, diagnostic.physical_residual,
-                                  diagnostic.electrons, stabilize_occupations});
-    // Sample actual coexisting capacities. Recurrence, XC tile and solver
-    // temporaries have already retired here and remain outside this sample.
-    runtime::sample_cpu_capacity(runtime::add_capacity(
-        runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
-        runtime::vector_capacities(basis.packed, grid.points(), grid.weights(), grid.owners(), x,
-                                   alpha, beta, ca.values, ca.vectors, cb.values, cb.vectors,
-                                   physical.fock.alpha, physical.fock.beta, ra, rb, effective.first,
-                                   effective.second, next_a, next_b, diagnostic.history)));
-    // Preserve #305's stationary occupation-cycle fix when routing its public
-    // wrappers through this driver. Only subsequent proposals are shifted;
-    // every physical gate and the integer-occupation density stay unchanged.
-    if (iteration > 1 && result.energy_change < options.energy_tolerance &&
-        diagnostic.physical_residual < residual_gate && density_change >= options.density_tolerance)
-      stabilize_occupations = true;
-    if (iteration > 1 && result.energy_change < options.energy_tolerance &&
-        density_change < options.density_tolerance &&
-        diagnostic.physical_residual < residual_gate) {
-      // Return the CURRENT physical state: E, V, residual and D refer to one
-      // generation. The DIIS proposal is a convergence check, not final state.
-      result.converged = true;
-      break;
-    }
-    if (iteration == options.max_iterations) break;
-    previous_energy = result.energy;
-    alpha = std::move(next_a);
-    beta = std::move(next_b);
-  }
+
+  struct UksState {
+    Matrix alpha;
+    Matrix beta;
+  };
+  struct UksLoopEvaluation {
+    FockMatrices physical_fock;
+    Matrix alpha_residual;
+    Matrix beta_residual;
+    Matrix effective_alpha;
+    Matrix effective_beta;
+    Matrix next_alpha;
+    Matrix next_beta;
+    dft::EnergyComponents components;
+    double energy{};
+    double state_rms{};
+    double residual_rms{};
+    double joined_density_rms{};
+    double joined_residual_rms{};
+    double alpha_electrons{};
+    double beta_electrons{};
+    bool stabilized{};
+  };
+
+  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+                                            options.density_tolerance, residual_gate, true};
+  auto outcome = solver::run_self_consistent(
+      UksState{std::move(alpha), std::move(beta)}, policy,
+      [&](const UksState& state, unsigned) {
+        const bool stabilized = stabilize_occupations;
+        auto physical =
+            evaluate(plan, basis, grid, state.alpha, state.beta, pbe, options.xc_tile_points);
+        ++result.fock_builds;
+        Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
+        Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
+        const double residual_a = residual_rms(ra), residual_b = residual_rms(rb);
+        auto effective = split_spin_matrices(
+            diis.update(concatenate(physical.fock.alpha, physical.fock.beta), concatenate(ra, rb)),
+            n * n);
+        ca = stabilized ? stabilized_uks_orbitals(effective.first, state.alpha, ints.overlap, x, n)
+                        : generalized_eigen(effective.first, x, n);
+        cb = stabilized ? stabilized_uks_orbitals(effective.second, state.beta, ints.overlap, x, n)
+                        : generalized_eigen(effective.second, x, n);
+        Matrix next_a = density_from_orbitals(ca.vectors, n, na, 1.0);
+        Matrix next_b = density_from_orbitals(cb.vectors, n, nb, 1.0);
+        const double change_a = density_rms(next_a, state.alpha);
+        const double change_b = density_rms(next_b, state.beta);
+        return UksLoopEvaluation{std::move(physical.fock),
+                                 std::move(ra),
+                                 std::move(rb),
+                                 std::move(effective.first),
+                                 std::move(effective.second),
+                                 std::move(next_a),
+                                 std::move(next_b),
+                                 physical.components,
+                                 physical.components.total(),
+                                 std::max(change_a, change_b),
+                                 std::max(residual_a, residual_b),
+                                 std::hypot(change_a, change_b) / std::sqrt(2.0),
+                                 std::hypot(residual_a, residual_b) / std::sqrt(2.0),
+                                 dot(state.alpha, ints.overlap),
+                                 dot(state.beta, ints.overlap),
+                                 stabilized};
+      },
+      [&](UksState& state, UksLoopEvaluation evaluation,
+          const solver::SelfConsistentProgress& progress) {
+        runtime::sample_cpu_capacity(runtime::add_capacity(
+            runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
+            runtime::vector_capacities(basis.packed, grid.points(), grid.weights(), grid.owners(),
+                                       x, state.alpha, state.beta, ca.values, ca.vectors, cb.values,
+                                       cb.vectors, evaluation.physical_fock.alpha,
+                                       evaluation.physical_fock.beta, evaluation.alpha_residual,
+                                       evaluation.beta_residual, evaluation.effective_alpha,
+                                       evaluation.effective_beta, evaluation.next_alpha,
+                                       evaluation.next_beta, diagnostic.history)));
+
+        // Preserve #305's occupation-cycle policy: only subsequent proposals
+        // are shifted, while every physical convergence gate remains unshifted.
+        if (!progress.converged && progress.iteration > 1 &&
+            progress.energy_change < options.energy_tolerance &&
+            progress.residual_rms < residual_gate &&
+            progress.state_rms >= options.density_tolerance)
+          stabilize_occupations = true;
+
+        // UKS convergence certifies the CURRENT physical state. The DIIS/level-
+        // shifted proposal is only a check and must never replace that state.
+        if (progress.converged || progress.iteration == options.max_iterations)
+          return UksState{std::move(state.alpha), std::move(state.beta)};
+        return UksState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
+      },
+      [&](const solver::SelfConsistentProgress& progress, const UksLoopEvaluation& evaluation) {
+        result.energy = progress.energy;
+        result.iterations = progress.iteration;
+        result.energy_change = progress.energy_change;
+        result.density_rms = evaluation.joined_density_rms;
+        diagnostic.physical_residual = progress.residual_rms;
+        result.physical_residual_rms = evaluation.joined_residual_rms;
+        diagnostic.components = evaluation.components;
+        diagnostic.electrons = {evaluation.alpha_electrons, evaluation.beta_electrons};
+        diagnostic.density_change = progress.state_rms;
+        diagnostic.history.push_back(
+            {progress.iteration, evaluation.components, progress.energy_change, progress.state_rms,
+             progress.residual_rms, diagnostic.electrons, evaluation.stabilized});
+      });
+  alpha = std::move(outcome.state.alpha);
+  beta = std::move(outcome.state.beta);
+  result.converged = outcome.converged;
+
   if (!result.converged) {
     result.density = concatenate(alpha, beta);
     return result;
