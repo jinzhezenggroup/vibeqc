@@ -159,7 +159,10 @@ class FixedDensityMeanField:
         else:
             if not isinstance(method_plan, FixedDensityMethodPlan):
                 raise TypeError("method_plan must be a FixedDensityMethodPlan")
-            if spec != method_plan.fock_spec or xc.spec != method_plan.functional:
+            if (
+                fock.diagnostics["resolved"] != method_plan.fock_spec.to_dict()
+                or xc.spec != method_plan.functional
+            ):
                 raise ValueError(
                     "Fock/XC providers do not match the executable MethodIR plan"
                 )
@@ -179,8 +182,6 @@ class FixedDensityMeanField:
             exchange_approximation=spec.exchange.approximation,
             provider_derivative_order=spec.derivative_order,
         )
-        if spec != plan.fock_spec:
-            raise ValueError("FockPlan does not match the executable MethodIR plan")
         return cls(fock, FixedDensityXC(plan.functional), method_plan=plan)
 
     @property

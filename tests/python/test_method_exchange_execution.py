@@ -65,11 +65,45 @@ def test_pure_pbe_compiles_to_same_boundary_with_absent_exchange():
     assert plan.fock_spec.exchange.coefficient == 0.0
 
 
+def test_method_binding_compares_resolved_absent_exchange_semantics():
+    meta, data, grid = load_integration_fixture("h2")
+    graph = resolve_method("PBE")
+    requested = FockBuildSpec(
+        spin="restricted",
+        derivative_order=0,
+        coulomb=FockTerm(),
+        exchange=FockTerm(
+            False,
+            7.0,
+            operator="long_range",
+            omega=0.8,
+            approximation="density_fitted",
+        ),
+    )
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        FockPlan(basis, requested, device=DEVICE) as provider,
+    ):
+        assert provider.diagnostics["resolved"]["exchange"] == {
+            "present": False,
+            "coefficient": 0.0,
+            "operator": "full_range",
+            "omega": 0.0,
+            "approximation": "exact",
+        }
+        consumer = FixedDensityMeanField.from_method(provider, graph)
+        result = consumer.integrate(grid, data["density_total"], tile_points=7)
+        assert result.method_identity == graph.identity
+        assert not consumer.method_plan.fock_spec.exchange.present
+
+
 @pytest.mark.parametrize(
     "method_spin,density_key",
     (("unpolarized", "density_total"), ("polarized", "density_spin")),
 )
-def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(method_spin, density_key):
+def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(
+    method_spin, density_key
+):
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
     graph = resolve_method("PBE0", spin=method_spin)
@@ -143,9 +177,7 @@ def test_method_binding_rejects_wrong_exchange_factor_before_execution():
         executable.fock_spec,
         exchange=replace(executable.fock_spec.exchange, coefficient=-0.25),
     )
-    with (
-        NativeAO(**basis_arguments(meta)) as basis,
-        FockPlan(basis, wrong, device=DEVICE) as provider,
-        pytest.raises(ValueError, match="executable MethodIR plan"),
-    ):
+    with NativeAO(**basis_arguments(meta)) as basis, FockPlan(
+        basis, wrong, device=DEVICE
+    ) as provider, pytest.raises(ValueError, match="executable MethodIR plan"):
         FixedDensityMeanField.from_method(provider, graph)
