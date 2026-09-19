@@ -1,16 +1,19 @@
 # Stationary CUDA RKS gradient diagnostic
 
-`vibeqc._stationary_cuda.complete_rks_cuda_gradient_diagnostic` executes all seven
+`vibeqc._stationary_cuda.complete_rks_cuda_gradient_diagnostic` executes all
 `StationaryGradientPlan` sources on CUDA: one-electron, Coulomb, XC AO motion,
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
-The result is an energy gradient in Eh/bohr; force is its negative. Public
-`Calculator` DFT forces remain disabled. This diagnostic does not close #163 or
-#396 or qualify a public production force driver.
+The result is an energy gradient in Eh/bohr; force is its negative. The public
+Python C2 endpoint reuses the all-electron subset for qualified CUDA LDA/PBE
+RKS/UKS forces. The ECP extension here remains diagnostic-only: ECP basis sets
+are energy-only at the public `Calculator` boundary, and its force wrapper
+independently rejects an ECP snapshot before compilation or contraction.
+This diagnostic does not close #163 or #396 or qualify public ECP forces.
 
-The admitted domain is direct, all-electron, real FP64 integer RKS with canonical
+The admitted domain is direct, all-electron, real FP64 integer RKS/UKS with canonical
 LDA/PBE, s/p single-component AOs and the native unpruned version-one grid.
 Distinct nuclei and no point/center collisions are required, including at zero
-weights. UKS, ECP, density fitting, hybrids, meta-GGAs, higher angular momentum,
+weights. Density fitting, hybrids, meta-GGAs, higher angular momentum,
 Hessians and public production resource qualification are outside this contract.
 Ordinary stationary first derivatives require no CPKS/Hessian solve.
 
@@ -32,7 +35,7 @@ The complete route retains these explicit host boundaries:
   density entries, and packs exponents, centers and normalization coefficients.
   It does not evaluate a derivative or reduce scientific contributions.
 - `plan_cuda`/`compile_cuda`/`PreparedCuda` execute source weights and the final
-  seven-source reduction. Their inputs and small outputs stage through the host.
+  complete-source reduction. Their inputs and small outputs stage through the host.
 - Existing `CudaGrid` evaluates AO jets and density features. The geometry
   consumer borrows AO jets, D-contracted jets, features and the producer stream
   during the locked task lease; those arrays never download for differentiation.
@@ -143,3 +146,51 @@ The stationary CUDA compiler rejects nonempty `NVCC_PREPEND_FLAGS` and
 cannot silently override the qualified FP64 arithmetic policy. Recording an
 override in artifact metadata is not numerical qualification. Use the explicit
 compiler adapter for supported target/toolchain selection.
+
+## Scalar ECP diagnostic
+
+CUDA snapshot v5 extends v3 with the live energy owner's exact core counts and
+Gaussian ECP records. CPU v4 and all-electron CPU v2 / CUDA v3 layouts remain
+unchanged. ECP parameters enter the model identity; replay and closure revoke
+the derivative lease. Legacy CUDA snapshots without bound ECP parameters still
+reject core-adjusted occupations.
+
+The scalar ECP route uses effective ionic charges for attraction and nuclear
+repulsion and adds `ecp_local` / `ecp_nonlocal` to the complete nine-source plan.
+The existing generated CUDA ECP provider applies its two-grid convergence gate
+and exports both all-center derivative arrays. TensorIR contracts the full
+ordered AO pairs with spin-summed density and reduces all nine sources on CUDA.
+No CPU ECP derivative or contraction fallback exists. The independent CPU ECP
+provider remains available for validation.
+
+This is an explicit dense host export, capped at 16 AOs, 8 atoms, 128 primitives
+and 128 ECP terms. Qualification covers Cartesian s/p LANL2DZ Na / STO-3G H for
+LDA/PBE RKS/UKS; these caps do not qualify arbitrary elements or parameter sets.
+The provider runs before the other CUDA gradient owners are allocated; its
+conservative two-grid workspace is admitted separately. Host bounds include the
+re-read final-state snapshot, provider workspace and dense derivative copies.
+The ECP workspace and export size are reported separately in `result.work`;
+ordinary source launch/primitive counters do not include ECP-provider kernels.
+The provider re-reads and validates the native final state, causing an additional
+explicit final-state export; this is not an entirely resident force path or a
+performance promotion. Public DFT/ECP forces remain gated.
+
+Run the opt-in numerical gate on an allocated device with `VIBEQC_ECP_CUDA_TEST=1`,
+`VIBEQC_ECP_CUDA_TARGET` matching that device (for example `sm_89`), an explicit
+`CUDACXX` and current `VIBEQC_LIBRARY`:
+
+```sh
+python -m pytest tests/python/test_ecp_stationary_cuda.py -q
+```
+
+Diagnostic tests explicitly request `properties=("energy",)` when preparing
+snapshots, so the C2 default property set cannot trigger an unrelated public
+force calculation. Host-side admission and live-owner wrapper regressions in
+`tests/python/test_ecp_cuda_public_boundary.py` run without a CUDA device; they
+do not replace this real-device numerical gate.
+
+The gate compares complete gradients with independent PySCF full-grid-response
+analytic gradients and three-step reconverged energy differences. It also checks
+raw derivatives against the CPU oracle, translation, ionic nuclear charges,
+replay/closure/model identity, admission, late failure recovery and all-electron
+v3 regression. See the [decision note](../.agents/notes/implemented/numerics/2026-09-19-cuda-ecp-stationary.md).
