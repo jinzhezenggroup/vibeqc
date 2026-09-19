@@ -4,12 +4,30 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 #include "molecule/basis.hpp"
 #include "runtime/bounded_workspace.hpp"
 #include "scf/cuda/direct_constants.hpp"
 
 namespace vibeqc::scf::cuda_execution {
+
+std::size_t checked_expanded_primitive_references(const std::vector<core::System>& systems) {
+  std::size_t expanded_primitive_references = 0;
+  for (const core::System& system : systems) {
+    for (const core::Shell& shell : system.shells) {
+      std::size_t shell_references = 0;
+      if (!vibeqc::runtime::checked_multiply(molecule::cartesian_count(shell.angular_momentum),
+                                             shell.primitives.size(), shell_references) ||
+          !vibeqc::runtime::checked_add(expanded_primitive_references, shell_references,
+                                        expanded_primitive_references)) {
+        throw std::overflow_error("expanded CUDA primitive reference count overflowed");
+      }
+    }
+  }
+
+  return expanded_primitive_references;
+}
 
 /** Prepare immutable batch metadata without CUDA compilation; numerical kernels consume the
  * resulting views. */

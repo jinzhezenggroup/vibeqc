@@ -81,6 +81,19 @@ jobs:
         run: ccache --show-stats
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Generate current CUDA ownership report
+        if: matrix.compiler == 'gcc'
+        run: |
+          mkdir -p .artifacts
+          python3 tools/report_cuda_ownership.py --check \
+            --output .artifacts/cuda-ownership-current.json
+      - name: Preserve current CUDA ownership report
+        if: matrix.compiler == 'gcc'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: cuda-ownership-current-${{ github.run_id }}
+          path: .artifacts/cuda-ownership-current.json
+          retention-days: 14
       - name: Collect C++ coverage
         if: matrix.compiler == 'gcc'
         run: |
