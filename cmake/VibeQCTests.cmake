@@ -68,6 +68,7 @@ macro(vibeqc_add_native_tests)
   endif()
 
   vibeqc_native_test(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  vibeqc_native_test(vibeqc_self_consistent_tests tests/native/test_self_consistent.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_batch_tests tests/native/test_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cpp_api_tests tests/native/test_cpp_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cartesian_integral_tests tests/native/test_cartesian_integrals.cpp)
@@ -158,6 +159,12 @@ macro(vibeqc_add_native_tests)
     endif()
     add_test(NAME vibeqc_cosx_cuda_tests COMMAND vibeqc_cosx_cuda_tests)
     set_tests_properties(vibeqc_cosx_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
+    vibeqc_native_test(vibeqc_cosx_fock_provider_tests
+                       tests/native/test_cosx_fock_provider.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cosx_scf_tests
+                       tests/native/test_cosx_scf.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
   endif()
 
   vibeqc_native_test(vibeqc_dft_api_tests tests/native/test_dft_api.cpp NO_SRC_INCLUDE)

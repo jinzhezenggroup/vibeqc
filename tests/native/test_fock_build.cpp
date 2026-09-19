@@ -433,14 +433,25 @@ void verify_cosx_provider_semantics() {
   const auto& registration =
       fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   const auto& capability = registration.domain.capabilities;
-  require(!vibeqc::runtime::provider_executable(registration) && capability.restricted &&
-              capability.unrestricted && capability.full_range &&
+  require(capability.restricted && capability.unrestricted && capability.full_range &&
               capability.maximum_derivative_order == 0 &&
               capability.maximum_angular_momentum == 3 && capability.cartesian &&
               capability.spherical && !capability.batching && !capability.coulomb &&
               capability.exchange && capability.independent_terms &&
               capability.arbitrary_coefficients,
-          "reserved COSX registration overclaims or loses its exchange-only domain");
+          "COSX registration overclaims or loses its exchange-only domain");
+#if VIBEQC_HAS_CUDA
+  require(vibeqc::runtime::provider_executable(registration),
+          "prepared CUDA COSX registration was not promoted");
+  require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  const auto executable =
+      fock_provider_capabilities(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  require(executable.available && executable.exchange && !executable.coulomb &&
+              executable.maximum_derivative_order == 0,
+          "executable COSX capability query differs from its registration");
+#else
+  require(!vibeqc::runtime::provider_executable(registration),
+          "CPU-only build advertised CUDA COSX execution");
   std::string unavailable;
   try {
     require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
@@ -448,9 +459,9 @@ void verify_cosx_provider_semantics() {
     unavailable = error.what();
   }
   require(unavailable.find("cuda.cosx") != std::string::npos &&
-              (unavailable.find("reserved") != std::string::npos ||
-               unavailable.find("not built") != std::string::npos),
-          "unpromoted COSX execution did not fail with provider-specific diagnostics");
+              unavailable.find("not built") != std::string::npos,
+          "CPU-only COSX execution did not report a not-built provider");
+#endif
 
   auto derivative = spec;
   derivative.derivative_order = 1;

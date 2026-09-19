@@ -65,6 +65,31 @@ std::size_t grid_bytes(const AoBasis& basis, std::size_t capacity) {
   return add(workspace, 4U << 20);
 }
 
+CudaCosxStagingDiagnostic staging_diagnostic(const AoBasis& basis, std::size_t npoint,
+                                             std::size_t requested_tile) {
+  if (!npoint || !requested_tile) throw std::invalid_argument("invalid CUDA COSX resource shape");
+  const std::size_t tile_points = std::min(npoint, requested_tile);
+  const std::size_t matrix = mul(basis.nao, basis.nao);
+  const std::size_t grid = grid_bytes(basis, tile_points);
+  const std::size_t cosx_doubles =
+      add(add(add(matrix, mul(tile_points, matrix)), tile_points),
+          add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)), add(matrix, matrix)));
+  CudaCosxStagingDiagnostic out{basis.nao,
+                                npoint,
+                                tile_points,
+                                grid,
+                                add(mul(cosx_doubles, sizeof(double)), sizeof(int)),
+                                0,
+                                0,
+                                mul(tile_points, matrix),
+                                mul(tile_points, basis.nao),
+                                true,
+                                true,
+                                true};
+  out.device_bytes = add(out.grid_device_bytes, out.cosx_device_bytes);
+  return out;
+}
+
 class DeviceGuard {
  public:
   explicit DeviceGuard(int device) {
@@ -257,7 +282,8 @@ struct CudaCosxStagingPlan::Impl {
   DeviceBuffer<int> error;
 
   Impl(const core::System& input, std::span<const double> points_xyz,
-       std::span<const double> input_weights, std::size_t requested_tile, int selected_device)
+       std::span<const double> input_weights, std::size_t requested_tile, int selected_device,
+       std::size_t device_budget_bytes)
       : system(input),
         basis(system),
         points(points_xyz.begin(), points_xyz.end()),
@@ -271,7 +297,11 @@ struct CudaCosxStagingPlan::Impl {
       if (!std::isfinite(value)) throw std::invalid_argument("nonfinite CUDA COSX point");
     for (double value : weights)
       if (!std::isfinite(value)) throw std::invalid_argument("nonfinite CUDA COSX weight");
-    tile_points = std::min(tile_points, weights.size());
+    diagnostic = staging_diagnostic(basis, weights.size(), tile_points);
+    tile_points = diagnostic.tile_points;
+    diagnostic.device_budget_bytes =
+        device_budget_bytes ? device_budget_bytes : diagnostic.device_bytes;
+    if (diagnostic.device_bytes > diagnostic.device_budget_bytes) throw std::bad_alloc();
     ao_ids.resize(basis.nao);
     std::iota(ao_ids.begin(), ao_ids.end(), 0);
 
@@ -280,7 +310,7 @@ struct CudaCosxStagingPlan::Impl {
     check(cudaGetDeviceProperties(&properties, device));
     const std::size_t dimensions[]{basis.natom, basis.nprimitive, basis.nao};
     char message[512]{};
-    const auto expected_grid_bytes = grid_bytes(basis, tile_points);
+    const auto expected_grid_bytes = diagnostic.grid_device_bytes;
     const int status = grid_cuda_create_v2(device, properties.major, properties.minor, dimensions,
                                            basis.packed.data(), tile_points, 0, expected_grid_bytes,
                                            basis.nao, &grid, message, sizeof(message));
@@ -305,21 +335,6 @@ struct CudaCosxStagingPlan::Impl {
       exchange.reset(matrix, device);
       error.reset(1, device);
 
-      const std::size_t cosx_doubles = add(
-          add(add(matrix, mul(tile_points, matrix)), tile_points),
-          add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)), add(matrix, matrix)));
-      diagnostic = {basis.nao,
-                    weights.size(),
-                    tile_points,
-                    expected_grid_bytes,
-                    add(mul(cosx_doubles, sizeof(double)), sizeof(int)),
-                    0,
-                    mul(tile_points, matrix),
-                    mul(tile_points, basis.nao),
-                    true,
-                    true,
-                    true};
-      diagnostic.device_bytes = add(diagnostic.grid_device_bytes, diagnostic.cosx_device_bytes);
     } catch (...) {
       grid_cuda_destroy_v1(grid);
       grid = nullptr;
@@ -427,11 +442,18 @@ struct CudaCosxStagingPlan::Impl {
   }
 };
 
+CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(const core::System& system,
+                                                       std::size_t npoint,
+                                                       std::size_t tile_points) {
+  return staging_diagnostic(AoBasis(system), npoint, tile_points);
+}
+
 CudaCosxStagingPlan::CudaCosxStagingPlan(const core::System& system,
                                          std::span<const double> points_xyz,
                                          std::span<const double> weights, std::size_t tile_points,
-                                         int device)
-    : impl_(std::make_unique<Impl>(system, points_xyz, weights, tile_points, device)) {}
+                                         int device, std::size_t device_budget_bytes)
+    : impl_(std::make_unique<Impl>(system, points_xyz, weights, tile_points, device,
+                                   device_budget_bytes)) {}
 CudaCosxStagingPlan::~CudaCosxStagingPlan() = default;
 
 CosxReferenceResult CudaCosxStagingPlan::build(std::span<const double> density,
