@@ -149,6 +149,29 @@ def test_cross_code_named_aliases_preserve_semantics(canonical, alias):
 
 
 @pytest.mark.parametrize(
+    "name,exact_exchange",
+    [
+        ("R2SCANH", Fraction(1, 10)),
+        ("R2SCAN0", Fraction(1, 4)),
+        ("R2SCAN50", Fraction(1, 2)),
+    ],
+)
+def test_r2scan_hybrids_scale_only_exchange_and_add_exact_exchange(
+    name, exact_exchange
+):
+    graph = resolve_method(name)
+    semilocal, exact = graph.primitives
+    assert isinstance(semilocal, SemilocalXCPrimitive)
+    assert dict(semilocal.functional.components) == {
+        "MGGA_X_R2SCAN": 1 - exact_exchange,
+        "MGGA_C_R2SCAN": Fraction(1),
+    }
+    assert isinstance(exact, ExactExchangePrimitive)
+    assert exact.coefficient == exact_exchange
+    assert graph.requirements["ingredients"] == ("rho", "sigma", "tau")
+
+
+@pytest.mark.parametrize(
     "spin,reference",
     [("unpolarized", "restricted"), ("polarized", "unrestricted")],
 )
