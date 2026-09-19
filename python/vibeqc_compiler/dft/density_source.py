@@ -207,7 +207,8 @@ class DensitySource:
         if route not in ("auto", "density_matrix", "orbitals"):
             raise ValueError("unsupported density feature route")
         selected = self.source_kind if route == "auto" else route
-        if selected == "orbitals" and self.coefficients is None:
+        coefficients = self.coefficients
+        if selected == "orbitals" and coefficients is None:
             raise ValueError(f"orbital route unavailable: {self.fallback_reason}")
         nao = self.density.shape[1]
         if ao_ids is None:
@@ -234,7 +235,7 @@ class DensitySource:
             return density_features(jets, d, ingredients=ingredients)
         return orbital_features(
             jets,
-            tuple(c[ids] for c in self.coefficients),
+            tuple(c[ids] for c in coefficients),
             self.occupations,
             ingredients=ingredients,
         )

@@ -24,7 +24,7 @@ def _quartet(indices: Sequence[int]) -> Quartet:
         raise ValueError("ERI weights require four AO indices")
     for index in values:
         checked_index(index, "AO index")
-    return values
+    return values[0], values[1], values[2], values[3]
 
 
 def canonical_eri_indices(indices: Sequence[int]) -> Quartet:

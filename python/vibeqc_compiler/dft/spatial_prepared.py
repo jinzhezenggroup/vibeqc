@@ -49,7 +49,7 @@ class SpatialFeatureTile:
     points: np.ndarray
     weights: np.ndarray
     owners: tuple[int, ...]
-    features: dict
+    features: dict[str, np.ndarray]
     generation_id: str
     ao_jets: np.ndarray | None = None
 
@@ -452,16 +452,17 @@ class PreparedSpatialGrid:
         """
         with self._lock:
             self._check()
-            if self._cuda is None:
+            cuda = self._cuda
+            if cuda is None:
                 raise ValueError("device task consumption requires CUDA")
-            if set(self._cuda.ingredients) != {"rho", "gradient", "sigma", "tau"}:
+            if set(cuda.ingredients) != {"rho", "gradient", "sigma", "tau"}:
                 raise ValueError("device task ABI v1 requires the full feature layout")
             self._start_execution(density, stamp=stamp, route=route)
             self._leased = True
 
             def iterator():
                 for task, ids in self._tiles():
-                    with self._cuda.task(
+                    with cuda.task(
                         self.grid.points[ids], task.ao_ids, stamp=stamp
                     ) as lease:
                         yield task, ids, lease
@@ -481,11 +482,12 @@ class PreparedSpatialGrid:
         """Lend serial local CUDA tasks with the minimal native XC feature mask."""
         with self._lock:
             self._check()
-            if self._cuda is None:
+            cuda = self._cuda
+            if cuda is None:
                 raise ValueError("device XC consumption requires CUDA")
             required = {"rho"} if functional == "LDA_XC_PW" else {"rho", "gradient"}
             if functional not in ("LDA_XC_PW", "PBE") or not required.issubset(
-                self._cuda.ingredients
+                cuda.ingredients
             ):
                 raise ValueError("prepared CUDA features do not cover native XC")
             self._start_execution(density, stamp=stamp, route=route)
@@ -493,7 +495,7 @@ class PreparedSpatialGrid:
 
             def iterator():
                 for task, ids in self._tiles():
-                    with self._cuda.xc_task(
+                    with cuda.xc_task(
                         self.grid.points[ids], task.ao_ids, functional, stamp=stamp
                     ) as lease:
                         yield task, ids, lease
