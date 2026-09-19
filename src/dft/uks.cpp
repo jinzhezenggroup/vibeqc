@@ -178,7 +178,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
             dot(state.beta, ints.overlap),
             stabilized};
       },
-      [&](const UksState& state, UksLoopEvaluation evaluation,
+      [&](UksState& state, UksLoopEvaluation evaluation,
           const solver::SelfConsistentProgress& progress) {
         runtime::sample_cpu_capacity(runtime::add_capacity(
             runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
@@ -201,7 +201,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         // UKS convergence certifies the CURRENT physical state. The DIIS/level-
         // shifted proposal is only a check and must never replace that state.
         if (progress.converged || progress.iteration == options.max_iterations)
-          return UksState{state.alpha, state.beta};
+          return UksState{std::move(state.alpha), std::move(state.beta)};
         return UksState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
       },
       [&](const solver::SelfConsistentProgress& progress, const UksLoopEvaluation& evaluation) {
