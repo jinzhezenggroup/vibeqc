@@ -316,7 +316,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/f_shell_endpoints.json"),
+        default=str(Path(".artifacts/benchmarks/f_shell_endpoints.json")),
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 2:

@@ -110,7 +110,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/f_shell_device_time.json"),
+        default=str(Path(".artifacts/benchmarks/f_shell_device_time.json")),
     )
     args = parser.parse_args()
     result = read_trace(args.trace)

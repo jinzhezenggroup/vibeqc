@@ -41,7 +41,7 @@ def main():
     parser.add_argument(
         "--output",
         type=raw_output_path,
-        default=Path(".artifacts/benchmarks/one_electron_gradient_contract.json"),
+        default=str(Path(".artifacts/benchmarks/one_electron_gradient_contract.json")),
     )
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):

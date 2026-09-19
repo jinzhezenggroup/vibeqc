@@ -331,7 +331,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=raw_output_path,
-        default=ROOT / ".artifacts" / "issue206-df",
+        default=str(ROOT / ".artifacts" / "issue206-df"),
     )
     parser.add_argument("--manifest", type=Path)
     args = parser.parse_args()
