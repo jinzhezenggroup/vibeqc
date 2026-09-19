@@ -29,6 +29,8 @@ jobs:
         with:
           version: "0.10.7"
           enable-cache: true
+      - name: Type-check Python compiler
+        run: uvx --with 'numpy>=1.24' ty==0.0.82 check
       - name: Check new benchmark evidence against the PR base
         if: github.event_name == 'pull_request'
         env:

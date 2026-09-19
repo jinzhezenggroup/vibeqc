@@ -59,7 +59,9 @@ def _requested_shell_class_names(arguments: argparse.Namespace) -> tuple[str, ..
     """Combine repeated CLI names and list files into one ordered batch."""
 
     raw_names = getattr(arguments, "shell_class", None)
-    names = [raw_names] if isinstance(raw_names, str) else list(raw_names or ())
+    names: list[str] = (
+        [raw_names] if isinstance(raw_names, str) else list(raw_names or ())
+    )
     raw_files = getattr(arguments, "shell_class_file", None)
     files = [raw_files] if isinstance(raw_files, (str, Path)) else list(raw_files or ())
     for path in files:

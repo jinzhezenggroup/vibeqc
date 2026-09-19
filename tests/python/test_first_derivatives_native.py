@@ -10,7 +10,11 @@ from vibeqc import Primitive, Shell
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.integral.first_derivatives_execute import (
     FirstDerivativeEvaluator,
+    FirstDerivativeShellEvaluator,
     compile_first_derivative,
+    compile_first_derivative_shell,
+    first_derivative_component_tiles,
+    first_derivative_shell_identity,
 )
 from vibeqc_compiler.integral.one_electron_derivatives import (
     build_one_electron_derivative_ir,
@@ -34,6 +38,19 @@ def artifact(tmp_path_factory):
     )
 
 
+@pytest.fixture(scope="module")
+def full_shell_artifact(tmp_path_factory):
+    executable = shutil.which("c++")
+    if executable is None:
+        pytest.skip("CPU C++ compiler required")
+    return compile_first_derivative_shell(
+        build_weighted_eri_ir((2, 1, 0, 0)),
+        CppCompilerAdapter(Path(executable)),
+        tmp_path_factory.mktemp("first-full-shell"),
+        tile_size=5,
+    )
+
+
 def test_raw_eri_component_matches_independent_native_source(artifact):
     coordinates = (
         (0.13, -0.31, 0.24),
@@ -51,6 +68,130 @@ def test_raw_eri_component_matches_independent_native_source(artifact):
     np.testing.assert_allclose(actual[0], value, atol=3e-13)
     np.testing.assert_allclose(actual[1:], derivatives, atol=2e-12)
     np.testing.assert_allclose(actual[1:].reshape(4, 3).sum(axis=0), 0, atol=2e-13)
+
+
+def test_full_shell_eri_tiles_match_independent_native_oracle(full_shell_artifact):
+    from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_components
+
+    assert [len(tile.component_indices) for tile in full_shell_artifact.tiles] == [
+        5,
+        5,
+        5,
+        3,
+    ]
+    executor = FirstDerivativeShellEvaluator(
+        full_shell_artifact, record_capacity=2, budget_bytes=8 << 20
+    )
+    cases = (
+        (
+            np.array(
+                [
+                    [0.13, -0.31, 0.24],
+                    [-0.43, 0.27, 0.51],
+                    [0.68, -0.14, -0.22],
+                    [-0.21, 0.48, -0.63],
+                ]
+            ),
+            (
+                ((0.60, 1.0), (0.22, 0.35)),
+                ((0.80, 1.0),),
+                ((1.10, 1.0),),
+                ((0.90, 1.0),),
+            ),
+        ),
+        (
+            np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.31, -0.27, 0.19],
+                    [0.72, -0.11, 0.43],
+                    [0.7200001, -0.1100002, 0.4300003],
+                ]
+            ),
+            (
+                ((8.0, 1.0),),
+                ((0.08, 1.0),),
+                ((1.7, 1.0),),
+                ((0.25, 1.0),),
+            ),
+        ),
+    )
+    angular = full_shell_artifact.integral.signature.angular
+    factors = np.array(
+        [
+            scale
+            for _, scale in normalized_cartesian_components(
+                angular, np.ones(full_shell_artifact.integral.signature.component_shape)
+            )
+        ]
+    )
+    for coordinates, primitive_specs in cases:
+        primitives = tuple(
+            normalized_radial_primitives(l, specs)
+            for l, specs in zip(angular, primitive_specs, strict=True)
+        )
+        actual = executor.contract(primitives, coordinates)
+        actual *= factors[:, None]
+        shells = tuple(
+            Shell(
+                atom,
+                l,
+                tuple(
+                    Primitive(exponent, coefficient) for exponent, coefficient in specs
+                ),
+            )
+            for atom, (l, specs) in enumerate(
+                zip(angular, primitive_specs, strict=True)
+            )
+        )
+        with NativeSource([(1, xyz) for xyz in coordinates], basis=shells) as source:
+            sizes = tuple(source.shell_sizes)
+            offsets = tuple(int(x) for x in np.cumsum((0, *sizes[:-1]), dtype=np.int64))
+            value = source._read("four_center_eri", offsets, sizes).reshape(-1)
+            slices = tuple(
+                slice(offset, offset + size)
+                for offset, size in zip(offsets, sizes, strict=True)
+            )
+            derivative = (
+                source.integral_derivatives()["eri"][(slice(None), *slices)]
+                .reshape(12, -1)
+                .T
+            )
+        np.testing.assert_allclose(actual[:, 0], value, atol=3e-11, rtol=2e-10)
+        np.testing.assert_allclose(actual[:, 1:], derivative, atol=5e-11, rtol=2e-10)
+        np.testing.assert_allclose(
+            actual[:, 1:].reshape(-1, 4, 3).sum(axis=1),
+            0.0,
+            atol=3e-11,
+        )
+
+
+def test_full_shell_metadata_and_budget_are_bounded(full_shell_artifact):
+    ir = full_shell_artifact.integral
+    assert first_derivative_component_tiles(ir, tile_size=5) == tuple(
+        tile.component_indices for tile in full_shell_artifact.tiles
+    )
+    assert full_shell_artifact.program_identity == first_derivative_shell_identity(
+        ir, tile_size=5
+    )
+    ffff_tiles = first_derivative_component_tiles(build_weighted_eri_ir((3, 3, 3, 3)))
+    assert len(ffff_tiles) == 157 and len(ffff_tiles[-1]) == 16
+    assert tuple(index for tile in ffff_tiles for index in tile) == tuple(range(10_000))
+    for invalid in (0, 65, True):
+        with pytest.raises(ValueError, match="tile size"):
+            first_derivative_component_tiles(ir, tile_size=invalid)
+    with pytest.raises(ValueError, match="budget"):
+        FirstDerivativeShellEvaluator(full_shell_artifact, budget_bytes=1)
+    with pytest.raises(ValueError, match="tile identity"):
+        FirstDerivativeShellEvaluator(
+            replace(full_shell_artifact, tiles=full_shell_artifact.tiles[::-1]),
+            budget_bytes=8 << 20,
+        )
+    with pytest.raises(ValueError, match="tile identity"):
+        FirstDerivativeShellEvaluator(
+            replace(full_shell_artifact, program_identity="unrelated"),
+            budget_bytes=8 << 20,
+        )
 
 
 def test_first_component_rejects_bad_metadata_and_budget(artifact):

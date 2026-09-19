@@ -29,9 +29,19 @@ from vibeqc_compiler.tensor import (
 )
 
 from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
+from .typecheck import BackendCapability, verify_method_ir
 
 VERSION = "stationary-gradient-plan-v1"
 SCF_POINT_MODEL = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
+
+_STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
+    "stationary-gradient-plan",
+    ("float64",),
+    ("unpolarized", "polarized"),
+    (1,),
+    ("rho", "sigma"),
+    ("semilocal-xc",),
+)
 
 
 @dataclass(frozen=True)
@@ -173,9 +183,12 @@ class StationaryGradientPlan:
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
             )
-        functional = self.method.primitives[0].functional
-        if not set(functional.ingredients) <= {"rho", "sigma"}:
-            raise UnsupportedMethod("required XC ingredient has no geometric rule")
+        verify_method_ir(
+            self.method,
+            capability=_STATIONARY_GRADIENT_CAPABILITY,
+            dtype=self.mean_field.dtype,
+            derivative_order=1,
+        )
         required = {"energy-density", "feature-gradient"}
         if not required <= set(self.method.primitives[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")

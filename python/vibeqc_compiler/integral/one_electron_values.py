@@ -208,8 +208,9 @@ def build_one_electron_component_kernel(integral, components, *, graph=None):
             coefficient = graph.multiply_many(
                 hermite(k, first[k], second[k], t) for k, t in enumerate(orders)
             )
+            order3 = (orders[0], orders[1], orders[2])
             terms.append(
-                coefficient * _coulomb_derivative(graph, orders, p, difference, boys)
+                coefficient * _coulomb_derivative(graph, order3, p, difference, boys)
             )
         charge = integral.operator.external_centers[0].charge
         value = -charge * 2 * math.pi * inverse_p * decay * graph.sum(terms)
