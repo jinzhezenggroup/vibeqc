@@ -28,12 +28,10 @@ vibeqc::core::System hydrogen_dimer(int charge, int multiplicity) {
   system.shells = {
       {0,
        0,
-       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-        {0.168855404, 0.4446345422}}},
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
       {1,
        0,
-       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-        {0.168855404, 0.4446345422}}},
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
   };
   system.charge = charge;
   system.multiplicity = multiplicity;
@@ -53,13 +51,12 @@ vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin) {
   return resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10);
 }
 
-vibeqc::scf::ResolvedFockBuild cpu_j_strategy(
-    const vibeqc::scf::ResolvedFockBuild& mixed) {
+vibeqc::scf::ResolvedFockBuild cpu_j_strategy(const vibeqc::scf::ResolvedFockBuild& mixed) {
   auto spec = mixed.spec;
   spec.exchange.present = false;
-  return vibeqc::scf::resolve_fock_build(
-      spec, vibeqc::scf::FockBackend::Cpu, mixed.screening_tolerance,
-      mixed.metric_relative_threshold);
+  return vibeqc::scf::resolve_fock_build(spec, vibeqc::scf::FockBackend::Cpu,
+                                         mixed.screening_tolerance,
+                                         mixed.metric_relative_threshold);
 }
 
 struct PhysicalCheck {
@@ -78,9 +75,8 @@ PhysicalCheck independent_rhf(const vibeqc::core::System& system,
                                 dft::CosxDensityConvention::rhf_spin_summed)
           .exchange;
   const auto fock = scf::assemble_fock(gpu.strategy(), gpu.one_electron().hcore, jk).alpha;
-  const auto residual =
-      scf::reference::commutator_residual(fock, density, gpu.one_electron().overlap,
-                                          gpu.one_electron().nbf);
+  const auto residual = scf::reference::commutator_residual(
+      fock, density, gpu.one_electron().overlap, gpu.one_electron().nbf);
   return {scf::reference::electronic_energy(density, gpu.one_electron().hcore, fock) +
               gpu.one_electron().nuclear_repulsion,
           scf::reference::residual_rms(residual)};
@@ -94,21 +90,19 @@ PhysicalCheck independent_uhf(const vibeqc::core::System& system,
   auto [alpha, beta] = scf::reference::split_spin_matrices(joined, n * n);
   scf::PreparedFockPlan cpu_j(system, &system, cpu_j_strategy(gpu.strategy()));
   auto jk = cpu_j.build(alpha, beta);
-  jk.exchange_alpha =
-      dft::build_cosx_reference(system, gpu.grid().points(), gpu.grid().weights(), alpha,
-                                dft::CosxDensityConvention::spin_resolved)
-          .exchange;
-  jk.exchange_beta =
-      dft::build_cosx_reference(system, gpu.grid().points(), gpu.grid().weights(), beta,
-                                dft::CosxDensityConvention::spin_resolved)
-          .exchange;
+  jk.exchange_alpha = dft::build_cosx_reference(system, gpu.grid().points(), gpu.grid().weights(),
+                                                alpha, dft::CosxDensityConvention::spin_resolved)
+                          .exchange;
+  jk.exchange_beta = dft::build_cosx_reference(system, gpu.grid().points(), gpu.grid().weights(),
+                                               beta, dft::CosxDensityConvention::spin_resolved)
+                         .exchange;
   const auto fock = scf::assemble_fock(gpu.strategy(), gpu.one_electron().hcore, jk);
   const auto ra =
       scf::reference::commutator_residual(fock.alpha, alpha, gpu.one_electron().overlap, n);
   const auto rb =
       scf::reference::commutator_residual(fock.beta, beta, gpu.one_electron().overlap, n);
-  return {scf::reference::uhf_electronic_energy(alpha, beta, gpu.one_electron().hcore,
-                                                fock.alpha, fock.beta) +
+  return {scf::reference::uhf_electronic_energy(alpha, beta, gpu.one_electron().hcore, fock.alpha,
+                                                fock.beta) +
               gpu.one_electron().nuclear_repulsion,
           std::max(scf::reference::residual_rms(ra), scf::reference::residual_rms(rb))};
 }
@@ -132,17 +126,16 @@ void verify_rhf(int device) {
   auto control = options();
   const auto cold = dft::run_cosx_rhf(plan, control);
   require(cold.converged && cold.forces.empty() && cold.iterations > 1 &&
-              cold.fock_builds == cold.iterations + 2 &&
-              cold.physical_residual_rms < 1.0e-8,
+              cold.fock_builds == cold.iterations + 2 && cold.physical_residual_rms < 1.0e-8,
           "COSX RHF cold SCF did not return a converged physical state");
   const auto check = independent_rhf(system, plan, cold.density);
   require(std::abs(check.energy - cold.energy) < 5.0e-9 && check.residual < 1.0e-8,
           "COSX RHF returned E/D do not match independent DF-J/COSX-K physics");
 
   const auto warm = dft::run_cosx_rhf(plan, control, &cold.density);
-  require(warm.converged && warm.initial_density_used &&
-              std::abs(warm.energy - cold.energy) < 5.0e-9,
-          "COSX RHF warm replay changed the physical endpoint");
+  require(
+      warm.converged && warm.initial_density_used && std::abs(warm.energy - cold.energy) < 5.0e-9,
+      "COSX RHF warm replay changed the physical endpoint");
 
   auto strict = control;
   strict.strict_initial_density = true;
@@ -177,17 +170,16 @@ void verify_uhf(int device) {
   auto control = options();
   const auto cold = dft::run_cosx_uhf(plan, control);
   require(cold.converged && cold.forces.empty() && cold.iterations > 1 &&
-              cold.fock_builds == cold.iterations + 2 &&
-              cold.physical_residual_rms < 1.0e-8,
+              cold.fock_builds == cold.iterations + 2 && cold.physical_residual_rms < 1.0e-8,
           "COSX UHF cold SCF did not return a converged physical state");
   const auto check = independent_uhf(system, plan, cold.density);
   require(std::abs(check.energy - cold.energy) < 5.0e-9 && check.residual < 1.0e-8,
           "COSX UHF returned E/D do not match independent DF-J/COSX-K physics");
 
   const auto warm = dft::run_cosx_uhf(plan, control, &cold.density);
-  require(warm.converged && warm.initial_density_used &&
-              std::abs(warm.energy - cold.energy) < 5.0e-9,
-          "COSX UHF warm replay changed the physical endpoint");
+  require(
+      warm.converged && warm.initial_density_used && std::abs(warm.energy - cold.energy) < 5.0e-9,
+      "COSX UHF warm replay changed the physical endpoint");
 
   auto forces = control;
   forces.compute_forces = true;

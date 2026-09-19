@@ -42,8 +42,7 @@ void validate_options(const PreparedCosxFockPlan& plan, const scf::ScfOptions& o
               strategy.schedule == scf::FockSchedule::CudaIndependent &&
               strategy.spec.spin == spin && strategy.spec.derivative_order == 0 &&
               strategy.spec.exchange.present &&
-              strategy.spec.exchange.approximation ==
-                  scf::FockApproximation::SeminumericalCosx,
+              strategy.spec.exchange.approximation == scf::FockApproximation::SeminumericalCosx,
           "COSX SCF requires a matching energy-only prepared CUDA exchange strategy");
   require(!options.compute_forces, "COSX analytic forces are not implemented");
   require(options.hooks == nullptr, "COSX SCF proposal hooks are not implemented");
@@ -62,8 +61,8 @@ Matrix rhf_fock(PreparedCosxFockPlan& plan, const Matrix& density) {
 
 std::pair<Matrix, Matrix> uhf_focks(PreparedCosxFockPlan& plan, const Matrix& alpha,
                                     const Matrix& beta) {
-  auto fock = scf::assemble_fock(plan.strategy(), plan.one_electron().hcore,
-                                 plan.build(alpha, beta));
+  auto fock =
+      scf::assemble_fock(plan.strategy(), plan.one_electron().hcore, plan.build(alpha, beta));
   return {std::move(fock.alpha), std::move(fock.beta)};
 }
 
@@ -71,9 +70,8 @@ double residual_gate(const scf::ScfOptions& options) {
   return std::min(1.0e-9, options.density_tolerance);
 }
 
-void finalize_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
-                  std::size_t occupied, const Matrix& x, Matrix& density,
-                  scf::ScfResult& result) {
+void finalize_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options, std::size_t occupied,
+                  const Matrix& x, Matrix& density, scf::ScfResult& result) {
   const auto& ints = plan.one_electron();
   const auto n = ints.nbf;
   Matrix fock = rhf_fock(plan, density);
@@ -103,8 +101,7 @@ void finalize_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
   const auto cb = generalized_eigen(fb, x, n);
   Matrix projected_a = density_from_orbitals(ca.vectors, n, alpha_occupied, 1.0);
   Matrix projected_b = density_from_orbitals(cb.vectors, n, beta_occupied, 1.0);
-  result.density_rms =
-      density_rms(concatenate(projected_a, projected_b), concatenate(alpha, beta));
+  result.density_rms = density_rms(concatenate(projected_a, projected_b), concatenate(alpha, beta));
   alpha = std::move(projected_a);
   beta = std::move(projected_b);
   std::tie(fa, fb) = uhf_focks(plan, alpha, beta);
@@ -112,8 +109,7 @@ void finalize_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
       uhf_electronic_energy(alpha, beta, ints.hcore, fa, fb) + ints.nuclear_repulsion;
   const auto ra = commutator_residual(fa, alpha, ints.overlap, n);
   const auto rb = commutator_residual(fb, beta, ints.overlap, n);
-  result.physical_residual_rms =
-      std::hypot(residual_rms(ra), residual_rms(rb)) / std::sqrt(2.0);
+  result.physical_residual_rms = std::hypot(residual_rms(ra), residual_rms(rb)) / std::sqrt(2.0);
   result.energy_change = std::abs(final_energy - result.energy);
   result.energy = final_energy;
   result.converged = result.energy_change < options.energy_tolerance &&
@@ -137,8 +133,8 @@ scf::ScfResult run_cosx_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& o
 
   const Matrix x = symmetric_orthogonalizer(ints.overlap, n);
   std::optional<EigenResult> initial_orbitals;
-  Matrix density = scf::initial_guess::prepare_initial_density(
-      system, ints, x, occupied, initial_density, initial_orbitals);
+  Matrix density = scf::initial_guess::prepare_initial_density(system, ints, x, occupied,
+                                                               initial_density, initial_orbitals);
   if (options.strict_initial_density && initial_density) {
     scf::solver::validate_seed(ints.overlap, *initial_density, n,
                                {static_cast<unsigned>(system.electron_count)}, 2.0);
@@ -221,8 +217,7 @@ scf::ScfResult run_cosx_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& o
     const Matrix ra = commutator_residual(fa, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(fb, beta, ints.overlap, n);
     const double residual_a = residual_rms(ra), residual_b = residual_rms(rb);
-    const Matrix effective =
-        diis.update(concatenate(fa, fb), concatenate(ra, rb));
+    const Matrix effective = diis.update(concatenate(fa, fb), concatenate(ra, rb));
     std::tie(fa, fb) = split_spin_matrices(effective, n * n);
     const auto ca = generalized_eigen(fa, x, n);
     const auto cb = generalized_eigen(fb, x, n);
@@ -233,8 +228,7 @@ scf::ScfResult run_cosx_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& o
     result.energy = energy;
     result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
                                                           : std::numeric_limits<double>::infinity();
-    result.density_rms =
-        density_rms(concatenate(next_alpha, next_beta), concatenate(alpha, beta));
+    result.density_rms = density_rms(concatenate(next_alpha, next_beta), concatenate(alpha, beta));
     result.physical_residual_rms = std::hypot(residual_a, residual_b) / std::sqrt(2.0);
     const bool terminal = iteration > 1 && result.energy_change < options.energy_tolerance &&
                           result.density_rms < options.density_tolerance &&
