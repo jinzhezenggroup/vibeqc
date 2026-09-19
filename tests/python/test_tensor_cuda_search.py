@@ -17,12 +17,15 @@ from vibeqc_compiler.tensor import (
     einsum,
     input_tensor,
     multiply,
+    reduce_sum,
 )
+from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 from vibeqc_compiler.tensor.cuda_plan import Reservations, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.cuda_search import (
     TensorScheduleSpace,
     TensorScreeningPolicy,
     TensorSearchLimits,
+    compiled_resource_calibration,
     estimate_schedule,
     execution_key,
     plan_schedule_search,
@@ -48,6 +51,13 @@ def gemm_program(*, packed=False):
     return Program({"result": einsum("ik,kj->ji" if packed else "ik,kj->ij", a, b)})
 
 
+def reduction_program():
+    i = Index("i", IndexSpace("rows", "batch", 65))
+    k = Index("k", IndexSpace("inner", "batch", 129))
+    x = input_tensor("x", TensorSpec((i, k), role="input"))
+    return Program({"result": reduce_sum(x, (1,))})
+
+
 def test_structured_search_is_bounded_reproducible_and_covers_each_axis():
     space = TensorScheduleSpace()
     schedules = space.generate()
@@ -69,6 +79,9 @@ def test_structured_search_is_bounded_reproducible_and_covers_each_axis():
         {"views": (1,)},
         {"threads": (128, 128)},
         {"tile_n": (False,)},
+        {"elements_per_thread": (3,)},
+        {"reduction_unroll": (0,)},
+        {"staging_width": (16,)},
     ],
 )
 def test_bad_search_axes_fail_before_generation(options):
@@ -109,13 +122,90 @@ def test_effective_key_ignores_noop_tiles_but_preserves_real_execution_changes()
     assert execution_key(large) == execution_key(packed)
 
 
+def test_execution_identity_tracks_only_executable_new_schedule_dimensions():
+    vector = plan_cuda(vector_program(), TARGET)
+    assert execution_key(
+        plan_cuda(
+            vector.program,
+            TARGET,
+            schedule=TensorSchedule(elements_per_thread=2),
+        )
+    ) != execution_key(vector)
+    assert execution_key(
+        plan_cuda(
+            vector.program,
+            TARGET,
+            schedule=TensorSchedule(reduction_unroll=4),
+        )
+    ) == execution_key(vector)
+
+    reduction = plan_cuda(reduction_program(), TARGET)
+    assert execution_key(
+        plan_cuda(
+            reduction.program,
+            TARGET,
+            schedule=TensorSchedule(reduction_unroll=4),
+        )
+    ) != execution_key(reduction)
+
+    direct = plan_cuda(gemm_program(), TARGET)
+    assert execution_key(
+        plan_cuda(
+            direct.program,
+            TARGET,
+            schedule=TensorSchedule(staging_width=4),
+        )
+    ) == execution_key(direct)
+    packed = plan_cuda(gemm_program(packed=True), TARGET)
+    assert execution_key(
+        plan_cuda(
+            packed.program,
+            TARGET,
+            schedule=TensorSchedule(staging_width=4),
+        )
+    ) != execution_key(packed)
+
+
+def test_new_schedule_dimensions_change_generated_execution_without_changing_default():
+    vector = plan_cuda(vector_program(), TARGET)
+    baseline_source = emit_cuda(vector)
+    wide = emit_cuda(
+        plan_cuda(
+            vector.program,
+            TARGET,
+            schedule=TensorSchedule(elements_per_thread=2),
+        )
+    )
+    assert "I base =" not in baseline_source
+    assert "#pragma unroll 2" in wide
+    assert "* 2LL" in wide
+
+    reduction_source = emit_cuda(
+        plan_cuda(
+            reduction_program(),
+            TARGET,
+            schedule=TensorSchedule(reduction_unroll=4),
+        )
+    )
+    assert "#pragma unroll 4\nfor (I r = 0;" in reduction_source
+
+    packed = plan_cuda(
+        gemm_program(packed=True),
+        TARGET,
+        schedule=TensorSchedule(staging_width=2),
+    )
+    packed_source = emit_cuda(packed)
+    assert "#pragma unroll 2" in packed_source
+    assert "blocks((tm*tk+tk*tn+1LL)/2LL" in packed_source
+
+
 def test_default_search_prunes_equivalent_plans_and_preserves_baseline():
     baseline = plan_cuda(vector_program(), TARGET)
     original = baseline.to_payload()
     candidates = plan_schedule_search(baseline, TensorScheduleSpace().generate())
     ready = [c for c in candidates if c.status == "ready"]
     assert len(candidates) == 128
-    assert 0 < len(ready) <= 5
+    assert 5 < len(ready) <= 16
     assert len({execution_key(c.plan) for c in ready}) == len(ready)
     assert all(c.equivalent_to for c in candidates if c.stage == "duplicate")
     assert baseline.to_payload() == original
@@ -169,7 +259,74 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns():
     assert estimate["estimated_local_bytes"] is None  # spills need PTXAS, not guesses
     assert estimate["generated_source_bytes"] > 0
     assert "excludes" in estimate["traffic_scope"]
-    assert "not predicted seconds" in estimate["compile_cost_proxy"]
+    assert "calibrated" in estimate["compile_cost_proxy"]
+
+
+def test_semantic_traffic_accounts_endpoint_copies_and_packing_exactly():
+    direct = plan_cuda(gemm_program(), TARGET)
+    direct_traffic = direct.semantic_traffic
+    assert direct_traffic["layout_conversion_bytes"] == 0
+    assert direct_traffic["host_to_device_bytes"] > 0
+    assert direct_traffic["device_to_host_bytes"] > 0
+    assert direct_traffic["total_bytes"] == sum(
+        direct_traffic[name]
+        for name in (
+            "logical_tensor_bytes",
+            "layout_conversion_bytes",
+            "host_to_device_bytes",
+            "device_to_host_bytes",
+        )
+    )
+
+    packed = plan_cuda(gemm_program(packed=True), TARGET)
+    packed_traffic = packed.semantic_traffic
+    assert packed_traffic["layout_conversion_bytes"] > 0
+    estimate = estimate_schedule(packed)
+    assert (
+        estimate["estimated_endpoint_semantic_traffic_bytes"]
+        == packed_traffic["total_bytes"]
+    )
+    assert "hardware" in packed_traffic["scope"]
+
+
+def test_static_compile_shortlist_can_reach_later_lower_traffic_tile_interactions():
+    i = Index("i", IndexSpace("rows", "batch", 1024))
+    j = Index("j", IndexSpace("cols", "batch", 1024))
+    k = Index("k", IndexSpace("inner", "batch", 64))
+    a = input_tensor("a", TensorSpec((i, k), role="input"))
+    b = input_tensor("b", TensorSpec((k, j), role="input"))
+    baseline = plan_cuda(Program({"out": einsum("ik,kj->ji", a, b)}), TARGET)
+    space = TensorScheduleSpace(
+        views=(False,),
+        fuse=(False,),
+        recompute=(False,),
+        direct_gemm=(True,),
+        layouts=(False,),
+        threads=(128,),
+        tile_m=(128, 512, 256),
+        tile_n=(128, 512, 256),
+        tile_k=(128,),
+        elements_per_thread=(1,),
+        reduction_unroll=(1,),
+        staging_width=(1,),
+    )
+    schedules = space.generate(space.cardinality)
+    search = plan_schedule_search(
+        baseline,
+        schedules,
+        TensorSearchLimits(
+            maximum_candidates=space.cardinality,
+            maximum_compilations=1,
+        ),
+    )
+    ((_, selected),) = cuda_tune._static_compile_shortlist(search, 1)
+    assert selected.plan.schedule.tile_m == 512
+    assert selected.plan.schedule.tile_n == 512
+    assert selected.estimates["estimated_layout_conversion_bytes"] == min(
+        row.estimates["estimated_layout_conversion_bytes"]
+        for row in search
+        if row.status == "ready"
+    )
 
 
 def resources(**changes):
@@ -196,6 +353,8 @@ def resources(**changes):
         [resources(spill_store_bytes=1)],
         [resources(spill_load_bytes=1)],
         [resources(shared_bytes=65536)],
+        [resources(local_bytes="64")],
+        [resources(local_bytes=-1)],
     ],
 )
 def test_compiled_resource_gate_fails_closed(records):
@@ -208,6 +367,27 @@ def test_compiled_register_block_cliff_is_rejected():
     with pytest.raises(ValueError, match="compiled resource gate"):
         require_compiled_resources(plan, [resources(registers=96)])
     require_compiled_resources(plan, [resources(registers=32)])
+
+
+def test_compiled_resources_calibrate_static_estimates_without_becoming_a_gate():
+    plan = plan_cuda(
+        vector_program(),
+        TARGET,
+        schedule=TensorSchedule(elements_per_thread=4),
+    )
+    estimate = estimate_schedule(plan)
+    calibration = compiled_resource_calibration(
+        plan,
+        estimate,
+        [resources(registers=40, stack_bytes=8, shared_bytes=1024, local_bytes=64)],
+    )
+    assert calibration["compiled_max_registers_per_thread"] == 40
+    assert calibration["compiled_max_stack_bytes"] == 8
+    assert calibration["compiled_max_local_bytes"] == 64
+    assert calibration["register_calibration_ratio"] == pytest.approx(
+        40 / estimate["estimated_registers_per_thread"]
+    )
+    assert calibration["compiled_resident_blocks_upper_bound"] >= 1
 
 
 @pytest.fixture
@@ -337,6 +517,10 @@ def test_tuner_bounds_actual_compiles_and_emits_guarded_endpoint_profiles(
         for p in profile["profile"]["performance"]["predicates"]
     )
     assert len(result.evidence["candidates"][0]["samples"][0]) == 10
+    row = result.evidence["candidates"][0]
+    assert row["resource_calibration"]["compiled_max_registers_per_thread"] == 32
+    assert row["compile_calibration"]["source_bytes_proxy"] > 0
+    assert "cache/load" in row["compile_calibration"]["scope"]
 
 
 def test_default_search_reuses_existing_cache_and_never_compiles_duplicates(
@@ -344,9 +528,9 @@ def test_default_search_reuses_existing_cache_and_never_compiles_duplicates(
 ):
     result = run_fake_tuning(tmp_path)
     summary = result.evidence["search_summary"]
-    assert summary["generated"] == 128
-    assert summary["pruned_before_compile"] >= 123
-    assert len(fake_cuda.compiled) <= 6
+    assert summary["generated"] == 256
+    assert summary["pruned_before_compile"] >= 115
+    assert len(fake_cuda.compiled) <= 13
     assert result.evidence_path.parent.parent.name == "selections"
 
 
@@ -377,7 +561,7 @@ def test_negative_evidence_keeps_baseline_without_promoting(
 
 def test_candidate_overflow_fails_before_any_compilation(tmp_path, fake_cuda):
     with pytest.raises(ValueError, match="candidate limit"):
-        run_fake_tuning(tmp_path, schedules=[TensorSchedule()] * 129)
+        run_fake_tuning(tmp_path, schedules=[TensorSchedule()] * 257)
     assert fake_cuda.compiled == []
 
 
