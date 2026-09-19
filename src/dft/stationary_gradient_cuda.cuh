@@ -1,0 +1,347 @@
+#pragma once
+// Small-domain diagnostic runtime. Graph-emitted primitive, AO pullback and
+// Becke entries precede this include. No derivative mathematics lives here.
+#include <vector>
+
+#include "../tensor/cuda_runtime.cuh"
+#include "grid_task_view.cuh"
+#include "xc_point.hpp"
+
+namespace vibeqc_stationary_cuda {
+using namespace vibeqc_tensor;
+constexpr size_t workers = 32, record_stride = 26;
+struct Owner {
+  Context context;
+  size_t atoms{}, aos{}, points{}, records{}, bytes{};
+  bool failed = true;  // An owner must be reset before its first source or read.
+  double *record{}, *primitive{}, *centers{}, *weights{}, *raw{}, *partial{}, *scratch{},
+      *sources{};
+  int64_t *maps{}, *ao_atoms{}, *point_atoms{};
+  uint64_t uploads{}, downloads{}, launches{}, primitive_count{}, point_count{}, pair_visits{};
+};
+// Caps make all products below representable before any allocation or pointer
+// dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
+size_t allocation(size_t na, size_t n, size_t np, size_t nr) {
+  if (!na || na > 32 || !n || n > 128 || !np || np > 4096 || !nr || nr > 4096)
+    throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
+  return 8 * (record_stride * nr + 12 * nr + 3 * na + 2 * np + workers * 9 * na + workers * 9 * na +
+              21 * na + 4 * nr + n + np) +
+         256;
+}
+template <class F>
+int guarded(Owner* owner, char* error, size_t size, F f) noexcept {
+  try {
+    f();
+    return 0;
+  } catch (const std::exception& e) {
+    if (owner) owner->failed = true;
+    error_text(error, size, e.what());
+    return 1;
+  } catch (...) {
+    if (owner) owner->failed = true;
+    error_text(error, size, "unknown stationary CUDA failure");
+    return 1;
+  }
+}
+void check(Owner& p) {
+  if (p.failed) throw std::runtime_error("failed stationary owner; reset before reuse");
+  p.context.check_device();
+}
+void finished(Owner& p, cudaStream_t stream) {
+  int failure = 0;
+  cuda_check(cudaGetLastError());
+  cuda_check(
+      cudaMemcpyAsync(&failure, p.context.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+  cuda_check(cudaStreamSynchronize(stream));
+  p.downloads += sizeof(int);
+  if (failure) throw std::runtime_error("nonfinite or invalid stationary CUDA source");
+}
+template <class T>
+void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
+  if (n && !in) throw std::invalid_argument("null stationary source");
+  cuda_check(cudaMemcpyAsync(out, in, n * sizeof(T), cudaMemcpyHostToDevice, stream));
+  p.uploads += n * sizeof(T);
+}
+__global__ void primitive_kernel(unsigned kind, const double* records, size_t count, double* output,
+                                 int* error) {
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count; i += blockDim.x * gridDim.x) {
+    const double* r = records + record_stride * i;
+    double v[12]{};
+    for (size_t j = 0; j < record_stride; ++j)
+      if (!isfinite(r[j])) {
+        atomicExch(error, 1);
+        return;
+      }
+    for (size_t j = 0; j < 4; ++j)
+      if (!(r[j] > 0)) {
+        atomicExch(error, 1);
+        return;
+      }
+    if (!first_derivative(kind, r, r + 4, v)) {
+      atomicExch(error, 1);
+      return;
+    }
+    // Normalization and the plan's already generated source weight are
+    // contracted on device, once per primitive; no host derivative tensor.
+    double weight = r[24] * r[25];
+    for (size_t j = 0; j < 4; ++j) weight *= r[16 + j] * r[20 + j];
+    for (size_t j = 0; j < 12; ++j) output[12 * i + j] = finite(weight * v[j], error, 0);
+  }
+}
+__global__ void primitive_reduce(const double* input, const int64_t* maps, size_t count, size_t na,
+                                 double* output, int* error) {
+  // A failed primitive leaves later output records unwritten. Never read
+  // that storage after the producer has reported an error on this stream.
+  if (*error) return;
+  const size_t coord = blockIdx.x * blockDim.x + threadIdx.x;
+  if (coord >= 3 * na) return;
+  double sum = 0;
+  for (size_t i = 0; i < count; ++i)
+    for (size_t center = 0; center < 4; ++center) {
+      const auto atom = maps[4 * i + center];
+      if (atom < -1 || atom >= int64_t(na)) {
+        atomicExch(error, 1);
+        return;
+      }
+      if (atom == int64_t(coord / 3)) sum += input[12 * i + 3 * center + coord % 3];
+    }
+  output[coord] = finite(output[coord] + sum, error, 0);
+}
+__global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error) {
+  bool valid = true;
+  for (size_t a = 0; a < na; ++a) {
+    for (size_t k = 0; k < 3; ++k)
+      if (!isfinite(centers[3 * a + k])) valid = false;
+    for (size_t b = 0; b < a; ++b)
+      if (vibeqc_grid_adjoint::distance(centers + 3 * a, centers + 3 * b, local_norm, valid)[0] <=
+          tolerance)
+        valid = false;
+  }
+  if (!valid) atomicExch(error, 1);
+}
+__global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* work,
+                                const int64_t* ao_atoms, const int64_t* owners,
+                                const double* centers, size_t na, const double* weights,
+                                const double* raw, double* partial, double* scratch, int* error) {
+  const size_t lane = threadIdx.x;
+  const size_t np = view.npoint, n = view.nactive, stride = np * n;
+  double* grad = partial + lane * 9 * na;
+  for (size_t k = 0; k < 9 * na; ++k) grad[k] = 0;
+  double* ws = scratch + lane * 9 * na;
+  auto* distances = reinterpret_cast<std::array<double, 4>*>(ws + 5 * na);
+  auto* zeros = reinterpret_cast<size_t*>(ws + 4 * na);
+  for (size_t p = lane; p < np; p += workers) {
+    if (owners[p] < 0 || owners[p] >= int64_t(na) || !isfinite(weights[p]) || !isfinite(raw[p])) {
+      atomicExch(error, 1);
+      return;
+    }
+    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{};
+    if (stationary_pbe)
+      for (size_t s = 0; s < 2; ++s)
+        for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
+    // The exact shared SCF point model, including vacuum/spin boundaries.
+    const auto xc = vibeqc::dft::point::evaluate(stationary_pbe, rho, g);
+    if (!xc.valid) {
+      atomicExch(error, 1);
+      return;
+    }
+    for (size_t mu = 0; mu < n; ++mu) {
+      if (view.ao_ids[mu] >= view.nao) {
+        atomicExch(error, 1);
+        return;
+      }
+      const auto atom = ao_atoms[view.ao_ids[mu]];
+      if (atom < 0 || atom >= int64_t(na)) {
+        atomicExch(error, 1);
+        return;
+      }
+      double pullback[4]{};
+      for (size_t s = 0; s < 2; ++s) {
+        double c[4]{weights[p] * xc.rho[s]}, w[4]{};
+        for (size_t j = 0; j < stationary_jets; ++j) {
+          w[j] = work[(4 * s + j) * stride + p * n + mu];
+          if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
+        }
+        double local[4]{};
+        ao_pullback(c, w, local);
+        for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
+      }
+      for (size_t k = 0; k < 3; ++k) {
+        double value = 0;
+        for (size_t j = 0; j < stationary_jets; ++j)
+          value += pullback[j] * view.ao[stationary_shift[j][k] * stride + p * n + mu];
+        grad[3 * atom + k] -= value;
+        grad[3 * na + 3 * owners[p] + k] += value;
+      }
+    }
+    if (!vibeqc_grid_adjoint::contract_point(view.points + 3 * p, centers, na, owners[p],
+                                             xc.energy * raw[p], grad + 6 * na, ws, ws + na,
+                                             ws + 2 * na, ws + 3 * na, zeros, distances, local_norm,
+                                             local_ratio, local_log, local_becke)) {
+      atomicExch(error, 1);
+      return;
+    }
+  }
+  for (size_t k = 0; k < 9 * na; ++k) finite(grad[k], error, 0);
+}
+__global__ void geometry_reduce(const double* partial, size_t na, double* output, int* error) {
+  if (*error) return;
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= 9 * na) return;
+  double sum = 0;
+  for (size_t lane = 0; lane < workers; ++lane) sum += partial[lane * 9 * na + i];
+  output[i] = finite(output[i] + sum, error, 0);
+}
+}  // namespace vibeqc_stationary_cuda
+
+extern "C" {
+int stationary_create(int device, int major, int minor, size_t na, size_t n, size_t np, size_t nr,
+                      size_t budget, void** output, char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  if (output) *output = nullptr;
+  return guarded(nullptr, error, size, [&] {
+    if (!output) throw std::invalid_argument("null stationary owner output");
+    const size_t bytes = allocation(na, n, np, nr);
+    if (bytes > budget) throw std::invalid_argument("stationary CUDA byte budget exceeded");
+    // Reject invalid visible ordinals before Context stores/switches the device.
+    // A failed cudaSetDevice otherwise leaves a latched runtime error that can
+    // poison an unrelated later owner, including during partial destruction.
+    int device_count = 0;
+    cuda_check(cudaGetDeviceCount(&device_count));
+    if (device < 0 || device >= device_count)
+      throw std::invalid_argument("invalid stationary CUDA device ordinal");
+    auto p = std::make_unique<Owner>();
+    p->atoms = na;
+    p->aos = n;
+    p->points = np;
+    p->records = nr;
+    p->bytes = bytes;
+    p->context.prepare(device, major, minor, bytes, bytes - 256, 0, 0, 0, false);
+    auto* next = reinterpret_cast<double*>(p->context.arena);
+    auto take = [&](size_t count) {
+      auto* ptr = next;
+      next += count;
+      return ptr;
+    };
+    p->record = take(record_stride * nr);
+    p->primitive = take(12 * nr);
+    p->centers = take(3 * na);
+    p->weights = take(np);
+    p->raw = take(np);
+    p->partial = take(workers * 9 * na);
+    p->scratch = take(workers * 9 * na);
+    p->sources = take(21 * na);
+    p->maps = reinterpret_cast<int64_t*>(take(4 * nr));
+    p->ao_atoms = reinterpret_cast<int64_t*>(take(n));
+    p->point_atoms = reinterpret_cast<int64_t*>(take(np));
+    *output = p.release();
+  });
+}
+int stationary_reset(void* pointer, const double* centers, const int64_t* ao_atoms,
+                     double tolerance, char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p || !std::isfinite(tolerance) || tolerance < 0)
+      throw std::invalid_argument("invalid reset");
+    p->context.check_device();
+    p->failed = false;
+    auto stream = p->context.stream;
+    cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), stream));
+    cuda_check(cudaMemsetAsync(p->sources, 0, 21 * p->atoms * 8, stream));
+    upload(*p, p->centers, centers, 3 * p->atoms, stream);
+    upload(*p, p->ao_atoms, ao_atoms, p->aos, stream);
+    validate_centers<<<1, 1, 0, stream>>>(p->centers, p->atoms, tolerance, p->context.error);
+    ++p->launches;
+    p->pair_visits += p->atoms * (p->atoms - 1) / 2;
+    finished(*p, stream);
+  });
+}
+int stationary_records(void* pointer, unsigned kind, unsigned source, const double* records,
+                       const int64_t* maps, size_t count, char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p || !count || count > p->records ||
+        (source != 0 && source != 1 && source != 5 && source != 6))
+      throw std::invalid_argument("invalid primitive tile");
+    check(*p);
+    auto stream = p->context.stream;
+    upload(*p, p->record, records, count * record_stride, stream);
+    upload(*p, p->maps, maps, count * 4, stream);
+    primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, p->record, count, p->primitive,
+                                                           p->context.error);
+    primitive_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(
+        p->primitive, p->maps, count, p->atoms, p->sources + source * 3 * p->atoms,
+        p->context.error);
+    p->launches += 2;
+    p->primitive_count += count;
+    finished(*p, stream);
+  });
+}
+int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, const double* work,
+                        const int64_t* owners, const double* weights, const double* raw,
+                        char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p || !view || view->version != 1 || view->nao != p->aos || view->nactive != p->aos ||
+        view->npoint > p->points || view->jets < (stationary_pbe ? 10U : 4U) || !view->features ||
+        !work || !view->ao_ids || !view->ao || !view->points)
+      throw std::invalid_argument("invalid geometry task lease");
+    check(*p);
+    auto stream = view->stream;
+    // CudaGrid synchronized its producer before lending this view. Finish on
+    // the SAME borrowed stream before the lease ends; retain no task pointers.
+    try {
+      upload(*p, p->point_atoms, owners, view->npoint, stream);
+      upload(*p, p->weights, weights, view->npoint, stream);
+      upload(*p, p->raw, raw, view->npoint, stream);
+      geometry_kernel<<<1, workers, 0, stream>>>(*view, work, p->ao_atoms, p->point_atoms,
+                                                 p->centers, p->atoms, p->weights, p->raw,
+                                                 p->partial, p->scratch, p->context.error);
+      geometry_reduce<<<blocks(9 * p->atoms, 64), 64, 0, stream>>>(
+          p->partial, p->atoms, p->sources + 6 * p->atoms, p->context.error);
+      p->launches += 2;
+      p->point_count += view->npoint;
+      p->pair_visits += view->npoint * p->atoms * (p->atoms - 1);
+      finished(*p, stream);
+    } catch (...) {
+      // Even an upload/launch failure must drain the borrowed stream before
+      // our arena can be freed or the grid owner can reuse its leased buffers.
+      cudaStreamSynchronize(stream);
+      throw;
+    }
+  });
+}
+int stationary_finish(void* pointer, double* output, size_t count, char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p || !output || count != 21 * p->atoms)
+      throw std::invalid_argument("invalid source output");
+    check(*p);
+    finished(*p, p->context.stream);
+    // Host output is touched only after every device source passed its gate.
+    std::vector<double> candidate(count);
+    cuda_check(cudaMemcpy(candidate.data(), p->sources, count * 8, cudaMemcpyDeviceToHost));
+    p->downloads += count * 8;
+    for (double v : candidate)
+      if (!std::isfinite(v)) throw std::runtime_error("nonfinite gradient");
+    std::copy(candidate.begin(), candidate.end(), output);
+  });
+}
+int stationary_metrics(void* pointer, uint64_t* output, size_t count) {
+  auto* p = static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
+  if (!p || !output || count != 8) return 1;
+  const uint64_t values[]{p->bytes,           p->uploads,
+                          p->downloads,       p->launches,
+                          p->primitive_count, p->point_count,
+                          p->pair_visits,     reinterpret_cast<uintptr_t>(p->context.stream)};
+  std::copy(values, values + 8, output);
+  return 0;
+}
+void stationary_destroy(void* pointer) {
+  delete static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
+}
+}

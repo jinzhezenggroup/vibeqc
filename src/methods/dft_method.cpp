@@ -339,6 +339,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
                                       KsDerivativeSnapshot& output, std::string& detail) {
     output = {};
     dft::VerifiedKsFinalState state;
+#if VIBEQC_HAS_CUDA
+    const auto before = cuda_ ? cuda_->transfers() : dft::CudaKsTransfers{};
+#endif
     const auto status = read_final_state(expected, true, state, detail);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
     // These are the provider's actual metric and the collocation/grid sources
@@ -346,7 +349,17 @@ class KsPreparedCalculation final : public PreparedCalculation {
     output = {std::move(state), system_,        fock_.one_electron().overlap,
               basis_.packed,    grid_.points(), grid_.weights(),
               grid_.owners()};
-    if (backend_ != VIBEQC_BACKEND_CUDA) output.atomic_weights = grid_.atomic_weights();
+    // Both backends collocate this owner's exact host-built quadrature. Export
+    // its raw measures directly; dividing partitioned weights loses tail data.
+    output.atomic_weights = grid_.atomic_weights();
+#if VIBEQC_HAS_CUDA
+    if (cuda_) {
+      const auto after = cuda_->transfers();
+      output.export_d2h_bytes = after.final_state_d2h_bytes - before.final_state_d2h_bytes;
+      output.export_reads = after.final_state_reads - before.final_state_reads;
+      output.export_synchronizations = after.synchronizations - before.synchronizations;
+    }
+#endif
     return VIBEQC_STATUS_SUCCESS;
   }
 
