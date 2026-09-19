@@ -514,15 +514,29 @@ workspace. The default block size is `min(4, 3*natoms)`, including single-atom
 states; callers can choose any explicit block size from one through 3*natoms.
 
 These B3/B4 paths remain within the declared small-system conventional-RHF tools
-domain. B2 now closes the iterative response-residency slice: response vectors,
+domain. B2 closes the iterative response-residency slice: response vectors,
 orthogonalization, operator AO/MO transforms and direct J/K actions can stay on
-device under the existing #179 GMRES controller. RHS/reconstruction and B3/B4
-second-integral/relaxation/full-assembly consumers retain their documented host
-boundaries. Production-size qualification, a public Calculator Hessian endpoint
-and DFT Hessians remain separate. See the
+device under the existing #179 GMRES controller. The B1-CUDA relaxation slice
+adds an independently selectable generated CUDA first-integral contraction:
+`relaxation_backend="cuda"` with an explicit `relaxation_compiler` uploads the
+solved D1/W1 and reference P0 AO weights once per directional contraction,
+evaluates S/T/V/four-center primitive derivatives and one/two-matrix AO-weight
+products on device, accumulates directly into the Cartesian atomic vector, and
+downloads only that final `(natoms,3)` result. No RHF coefficient formula is
+handwritten in the CUDA runtime; the generic compiler emits the declared weight
+products. CPU remains the default and no silent fallback is permitted.
+
+This does **not** make the complete HVP all-device: response reconstruction
+currently publishes D1/W1 on the host before the optional CUDA relaxation
+upload, #178 second-integral weighted HVP consumers and final molecular assembly
+remain host-side, and full-Hessian output remains host-owned. Block/full-Hessian
+budget diagnostics include the CUDA relaxation arena as a separate phase peak.
+Production-size qualification, a public Calculator Hessian endpoint and DFT
+Hessians remain separate. See the
 [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
-[matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md)
-and [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md).
+[matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md),
+[bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md)
+and [CUDA relaxation decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-relaxation.md).
 
 
 For explicit CUDA first-source qualification, add these arguments to the
@@ -551,3 +565,11 @@ checks a selected f-shell contraction, repeated centers, signed weights, runtime
 compatibility, invalid/partial records, nonfinite arithmetic and failed-call
 recovery. Run these opt-in tests under a finite GPU allocation with
 `VIBEQC_RESPONSE_CUDA_TEST=1` and the selected `nvcc` on `PATH`.
+
+`tests/python/test_hessian_relaxation_cuda.py` separately qualifies the generated
+weighted-gradient relaxation consumer on a real NVIDIA device. It compares the
+CUDA contraction with the independent CPU shell-local contraction, forbids CPU
+relaxation substitution inside a CUDA-selected complete HVP, checks multi-RHS
+and full-Hessian composition, and requires zero raw derivative/intermediate
+matrix downloads. A matching CUDA Compute Sanitizer memcheck is an additional
+runtime gate; it is not a substitute for the numerical comparisons.

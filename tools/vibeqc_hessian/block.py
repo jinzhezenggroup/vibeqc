@@ -153,6 +153,9 @@ def rhf_hvp_many(
     first_backend="cpu",
     first_compiler=None,
     first_budget_bytes=64 << 20,
+    relaxation_backend="cpu",
+    relaxation_compiler=None,
+    relaxation_budget_bytes=64 << 20,
 ):
     """Apply the complete conventional RHF Hessian to a bounded direction block.
 
@@ -181,6 +184,27 @@ def rhf_hvp_many(
         raise ValueError("first_backend must be cpu or cuda")
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
+    if relaxation_backend not in ("cpu", "cuda"):
+        raise ValueError("relaxation_backend must be cpu or cuda")
+    relaxation_storage = None
+    if relaxation_backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+        from vibeqc_compiler.integral.first_gradient_execute import (
+            first_gradient_storage,
+        )
+
+        if not isinstance(relaxation_compiler, CudaCompilerAdapter):
+            raise TypeError("CUDA relaxation requires an explicit CudaCompilerAdapter")
+        relaxation_budget_bytes = _checked_budget(
+            relaxation_budget_bytes, "relaxation_budget_bytes"
+        )
+        relaxation_storage = first_gradient_storage(state.nbf, state.nat, 3, 128)
+        if relaxation_storage["numeric_peak_bytes"] > relaxation_budget_bytes:
+            raise MemoryError(
+                "CUDA relaxation numeric storage exceeds relaxation_budget_bytes"
+            )
+    elif relaxation_compiler is not None:
+        raise ValueError("relaxation_compiler is only meaningful for CUDA relaxation")
     if first_backend == "cuda":
         from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
@@ -193,6 +217,14 @@ def rhf_hvp_many(
     if storage["total"] >= total_budget_bytes:
         raise ValueError(
             "HVP block persistent numeric storage exceeds total_budget_bytes"
+        )
+    if (
+        relaxation_storage is not None
+        and storage["total"] + relaxation_storage["numeric_peak_bytes"]
+        > total_budget_bytes
+    ):
+        raise ValueError(
+            "HVP block plus CUDA relaxation numeric storage exceeds total_budget_bytes"
         )
     options = solver_options or GMRESOptions(rtol=1e-11, atol=1e-12)
     solver_budget = total_budget_bytes - storage["total"]
@@ -255,16 +287,34 @@ def rhf_hvp_many(
         raise RuntimeError("multi-RHS response exceeded the declared total budget")
 
     relaxation_started = time.perf_counter()
-    relaxation = np.stack(
-        [
-            generated_rhf_relaxation_contraction(
+    relaxation_diagnostics = []
+    if relaxation_backend == "cuda":
+        from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
+
+        relaxation_items = []
+        for response in batch.responses:
+            item, diagnostic = generated_rhf_relaxation_contraction_cuda(
                 state,
                 response.density_derivative,
                 response.energy_weighted_density_derivative,
+                relaxation_compiler,
+                device_id=device_id,
+                budget_bytes=relaxation_budget_bytes,
             )
-            for response in batch.responses
-        ]
-    )
+            relaxation_items.append(item)
+            relaxation_diagnostics.append(diagnostic)
+        relaxation = np.stack(relaxation_items)
+    else:
+        relaxation = np.stack(
+            [
+                generated_rhf_relaxation_contraction(
+                    state,
+                    response.density_derivative,
+                    response.energy_weighted_density_derivative,
+                )
+                for response in batch.responses
+            ]
+        )
     relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
@@ -286,7 +336,11 @@ def rhf_hvp_many(
     state.validate()
 
     total_seconds = time.perf_counter() - total_started
-    actual_bound = storage["total"] + batch.solve_result.peak_workspace_bytes
+    response_phase_bound = storage["total"] + batch.solve_result.peak_workspace_bytes
+    relaxation_phase_bound = storage["total"] + (
+        0 if relaxation_storage is None else relaxation_storage["numeric_peak_bytes"]
+    )
+    actual_bound = max(response_phase_bound, relaxation_phase_bound)
     first_programs = (
         tuple(
             sorted(
@@ -315,6 +369,20 @@ def rhf_hvp_many(
             "jk_backend": jk_backend,
             "first_backend": first_backend,
             "first_programs": first_programs,
+            "relaxation_backend": relaxation_backend,
+            "relaxation_programs": (
+                tuple(
+                    sorted(
+                        {
+                            program
+                            for diagnostic in relaxation_diagnostics
+                            for program in diagnostic["program_identities"]
+                        }
+                    )
+                )
+                if relaxation_diagnostics
+                else None
+            ),
         }
     )
     diagnostics = {
@@ -328,14 +396,21 @@ def rhf_hvp_many(
         "response_operator_actions": batch.solve_result.operator_actions,
         "response_peak_workspace_bytes": batch.solve_result.peak_workspace_bytes,
         "persistent_numeric_bound": storage,
+        "relaxation_numeric_bound": deepcopy(relaxation_storage),
+        "response_phase_numeric_bound_bytes": response_phase_bound,
+        "relaxation_phase_numeric_bound_bytes": relaxation_phase_bound,
         "complete_numeric_peak_bound_bytes": actual_bound,
         "total_budget_bytes": total_budget_bytes,
         "solver_options": asdict(bounded_options),
         "jk_backend": jk_backend,
         "first_backend": first_backend,
+        "relaxation_backend": relaxation_backend,
+        "relaxation_provider": deepcopy(relaxation_diagnostics),
         "execution_residency": (
             "mixed-host-device"
-            if jk_backend == "cuda" or first_backend == "cuda"
+            if jk_backend == "cuda"
+            or first_backend == "cuda"
+            or relaxation_backend == "cuda"
             else "host"
         ),
         "jk_statistics": jk_statistics,

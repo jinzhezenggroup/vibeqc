@@ -1,5 +1,7 @@
 """Bounded multi-RHS and full conventional RHF Hessian assembly gates."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -194,3 +196,26 @@ def test_full_hessian_default_block_size_adapts_to_coordinate_count(
     assert block_sizes[0] == min(4, coordinates)
     with pytest.raises(ValueError, match="block_size"):
         block.rhf_hessian(state, block_size=coordinates + 1)
+
+
+def test_cuda_relaxation_budget_rejects_before_response_work(h2_case, monkeypatch):
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+    from tools.vibeqc_hessian import block
+
+    state, _, directions = h2_case
+    compiler = CudaCompilerAdapter(Path("/bin/false"), cuda_target_info("sm_80"))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("CUDA relaxation budget failure reached response work")
+
+    monkeypatch.setattr(block, "NativeJKBackend", forbidden)
+    with pytest.raises(MemoryError, match="relaxation numeric storage"):
+        rhf_hvp_many(
+            state,
+            directions[:1],
+            relaxation_backend="cuda",
+            relaxation_compiler=compiler,
+            relaxation_budget_bytes=1,
+        )
