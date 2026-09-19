@@ -5,6 +5,7 @@
 #include <numbers>
 #include <stdexcept>
 
+#include "ecp_policy_cases.hpp"
 #include "generated_ecp_ao.cuh"
 
 namespace {
@@ -342,6 +343,13 @@ void check() {
 
 int main() {
   try {
+    static_assert(vibeqc::generated::ecp_coarse_radial_points == 160);
+    static_assert(vibeqc::generated::ecp_coarse_polar_points == 32);
+    static_assert(vibeqc::generated::ecp_refined_radial_points == 224);
+    static_assert(vibeqc::generated::ecp_refined_polar_points == 44);
+    for (const auto& c : ecp_policy_cases())
+      if (vibeqc::generated::ecp_grid_pair_accepted(c.coarse, c.fine, c.derivative) != c.accepted)
+        throw std::runtime_error("generated ECP convergence policy changed acceptance");
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 44) == 4);
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(17, 44) == 1);
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 45) == 1);

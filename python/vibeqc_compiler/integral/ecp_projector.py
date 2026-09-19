@@ -8,6 +8,7 @@ The native adapter owns scheduling, storage and physical-atom scatter.
 
 from .ecp import emit_ecp_ao_cuda
 from .ecp_grid import emit_ecp_grid_cpp
+from .ecp_policy import emit_ecp_policy_cpp
 from .ecp_schedule import emit_ecp_schedule_cpp
 from .expr import Graph
 from .ir import ECP_MAX_PROJECTOR_ANGULAR, EcpRadialTerm
@@ -154,6 +155,7 @@ def emit_ecp_quadrature_cpp():
         .replace("__device__ inline", "VIBEQC_ECP_INLINE"),
         "namespace vibeqc::generated {",
         *emit_ecp_schedule_cpp(),
+        *emit_ecp_policy_cpp(),
         f"inline constexpr int ecp_max_projector_angular = {ECP_MAX_PROJECTOR_ANGULAR};",
         f"inline constexpr int ecp_projector_count = {(ECP_MAX_PROJECTOR_ANGULAR + 1) ** 2};",
         *emit_ecp_grid_cpp(),

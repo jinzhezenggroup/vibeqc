@@ -1,0 +1,69 @@
+# Decision: complete the ECP CUDA scientific-ownership audit
+
+Status: implemented
+Date: 2026-09-19
+
+## Problem
+
+The ECP CUDA adapter called generated AO, projector/radial, weighted derivative,
+grid/harmonic and normalization helpers, but still specified the two integration
+grids and the finite absolute-error convergence predicate itself. Its entire
+mixed translation unit remained conservatively counted as scientific. The HF
+workspace estimate also repeated the refined-grid dimensions.
+
+## Decision and invariants
+
+The compiler's `integral/ecp_policy.py` owns the fixed 160/32 and 224/44 grid
+orders and emits the value/derivative acceptance predicate into the existing
+shared host/device ECP header. Resource planning imports the refined dimensions.
+The thresholds stay 2e-9 for matrix values and 2e-8 for derivatives. Nonfinite
+coarse or fine inputs reject; equality at the threshold accepts. FP64
+subtraction, node ordering, quadrature, reduction order and buffer sizes stay
+unchanged. These control predicates use standard C++ math/comparison lowering;
+they do not require a second algebra or differentiation implementation.
+
+Raw exports retain their caller-specified grids and no hidden convergence gate.
+Complete CUDA calls consume both configured grids, reject failure before
+publishing contributions, and use the refined result on success.
+
+## Audit of the remaining adapter
+
+| Native responsibility | Scientific source or contract |
+| --- | --- |
+| AO record expansion and primitive upload | Shared molecular basis representation; generated component normalization |
+| Grid construction dispatch | Generated Gauss-Legendre, mapped radial, sphere and harmonic helpers |
+| AO evaluation/projector/pair launches | Generated ECP AO, projection and local/nonlocal contraction helpers |
+| Ordered radial loops, symmetry and atom scatter | Output layout and physical-center mapping; no residual/projector formula |
+| Hcore/force dispatch | Generated operator addition and fixed-weight derivative consumer |
+| Two-grid admission dispatch | Generated finite absolute-error predicate and grid constants |
+| Arena, stream, copies, retries and status mapping | Native runtime; optional radial staging retains bounded OOM fallback |
+
+Consequently `ecp_cuda.cu` is now runtime in the semantic ownership ledger.
+The report must separate this reclassification from physical source retirement.
+Retaining adapter lines does not count as deleting scientific implementations.
+
+The independent `src/integrals/ecp.cpp` remains the public CPU oracle/fallback,
+including its own quadrature, harmonics, normalization and convergence checks.
+It deliberately does not import the new generated acceptance predicate. It is
+not an accidental duplicate awaiting automatic removal: independence is required
+by #171. Revisit replacement only if an equally independent oracle and explicit
+CPU production replacement have their own complete acceptance evidence.
+
+## Validation and limits
+
+The host projector test and a native CUDA test consume independent literal
+boundary cases: adjacent representable values below/at/above both tolerances,
+signed residuals, value-versus-derivative classification, equal finite extremes,
+subtraction overflow, signed zero, subnormal and NaN/Inf inputs. The tests do not
+obtain their expected thresholds from the generated policy. Existing native
+numerical-failure/partial-allocation/recovery tests exercise the production path.
+
+Complete independent CPU/Libcint and CUDA matrix/derivative/HF force and resource
+qualification is required before publication. This migration does not enable
+DFT/ECP forces, enlarge angular/element/resource domains, remove the CPU oracle,
+or establish a performance improvement. Refs #171 and #349.
+
+The prior [AO/weight ownership decision](2026-09-16-ecp-ao-weight-consumers.md)
+and [host-grid decision](2026-09-17-ecp-host-grid.md) retain their historical
+scope and measurements; this audit supersedes their conservative mixed-adapter
+classification after moving the remaining convergence predicate.
