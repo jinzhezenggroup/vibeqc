@@ -96,12 +96,10 @@ void verify_accept_owns_update_policy() {
   require(outcome.state == 1.5, "driver bypassed method-owned acceptance policy");
 }
 
-
 void verify_terminal_accept_can_keep_current_state() {
   const SelfConsistentPolicy policy{4, 1.0e-12, 1.0e-12, 1.0e-12, false};
   const auto outcome = run_self_consistent(
-      0.0, policy,
-      [](double, unsigned) { return ScalarEvaluation{42.0, 0.0, 0.0, 0.0}; },
+      0.0, policy, [](double, unsigned) { return ScalarEvaluation{42.0, 0.0, 0.0, 0.0}; },
       [](double& current, ScalarEvaluation evaluation, const SelfConsistentProgress& progress) {
         if (progress.converged) return std::move(current);
         return current + 1.0 + 0.0 * evaluation.proposed_state;
