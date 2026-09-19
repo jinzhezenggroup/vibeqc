@@ -1,0 +1,334 @@
+{
+  "device": "cpu",
+  "python": "3.11.16",
+  "pyscf": "2.14.0",
+  "numpy": "2.2.6",
+  "library_sha256": "d4b1a501c0f8f6776d0f3c0a0daf88d9f3259a4f1c9a323b2858e6ee26da1bf7",
+  "fixture_sha256": "aa7f83d631574d2b5a54cd69e9c832e6af8f543546b3cba85f489b64cdd099d9",
+  "driver_sha256": "4e8ea8533436a0c136ae71f707fe0846ddec8d6f5696dd676c35da9656489b05",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Enhanced / Automatic IBRS; IBPB conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+  "timing_scope": "one synchronous fresh Calculator singlepoint, no warmup; no performance claim",
+  "grids": [
+    [
+      160,
+      32,
+      64
+    ],
+    [
+      224,
+      44,
+      88
+    ]
+  ],
+  "cases": [
+    {
+      "symbol": "Br",
+      "method": "rhf",
+      "atoms_bohr": [
+        [
+          "Br",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            2.85
+          ]
+        ]
+      ],
+      "charge": 0,
+      "multiplicity": 1,
+      "core_electrons": 28,
+      "nelectron": 8,
+      "nao": 9,
+      "basis_identity": "9f972f0269026d473e0d330077c99e8d0f3a8838c27b2a57a4b49c103366bb50",
+      "parameter_sha256": "befb5b5ae3a88d48ab3565c8c1afbb87bc27c4bd6a5fb271a0c24e600d0ec6a7",
+      "errors": {
+        "local_matrix": 3.375077994860476e-14,
+        "nonlocal_matrix": 1.4921397450962104e-13,
+        "energy": 2.842170943040401e-14,
+        "force": 4.5303383267025765e-10,
+        "net_force": 4.440892098500626e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 7.549516567451064e-15,
+        "nonlocal_matrix_max_abs": 4.618527782440651e-14,
+        "local_derivative_max_abs": 1.942890293094024e-16,
+        "nonlocal_derivative_max_abs": 1.3877787807814457e-15
+      },
+      "energy": -13.49316365366223,
+      "reference_energy": -13.493163653662258,
+      "forces": [
+        [
+          2.0451981192132207e-05,
+          2.7269308256028246e-05,
+          0.0001827043653166438
+        ],
+        [
+          -2.0451981192159963e-05,
+          -2.7269308256056002e-05,
+          -0.0001827043653170879
+        ]
+      ],
+      "reference_forces": [
+        [
+          2.0451930479947755e-05,
+          2.7269240639449244e-05,
+          0.00018270391228281113
+        ],
+        [
+          -2.0451930479808977e-05,
+          -2.7269240639449244e-05,
+          -0.00018270391228425442
+        ]
+      ],
+      "singlepoint_ms": 1083.5062470287085,
+      "resource_peak_bytes": {
+        "host": 3818416,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 3818416
+      },
+      "device_ledger": null
+    },
+    {
+      "symbol": "Br",
+      "method": "uhf",
+      "atoms_bohr": [
+        [
+          "Br",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            2.85
+          ]
+        ]
+      ],
+      "charge": 1,
+      "multiplicity": 2,
+      "core_electrons": 28,
+      "nelectron": 7,
+      "nao": 9,
+      "basis_identity": "9f972f0269026d473e0d330077c99e8d0f3a8838c27b2a57a4b49c103366bb50",
+      "parameter_sha256": "befb5b5ae3a88d48ab3565c8c1afbb87bc27c4bd6a5fb271a0c24e600d0ec6a7",
+      "errors": {
+        "local_matrix": 3.375077994860476e-14,
+        "nonlocal_matrix": 1.4921397450962104e-13,
+        "energy": 3.730349362740526e-14,
+        "force": 4.0238823384441957e-10,
+        "net_force": 4.440892098500626e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 7.549516567451064e-15,
+        "nonlocal_matrix_max_abs": 4.618527782440651e-14,
+        "local_derivative_max_abs": 1.942890293094024e-16,
+        "nonlocal_derivative_max_abs": 1.3877787807814457e-15
+      },
+      "energy": -13.09153026419418,
+      "reference_energy": -13.091530264194217,
+      "forces": [
+        [
+          -0.00220077710413423,
+          -0.002934369472177484,
+          -0.019660275463593058
+        ],
+        [
+          0.00220077710413423,
+          0.0029343694721775115,
+          0.019660275463592614
+        ]
+      ],
+      "reference_forces": [
+        [
+          -0.00220077714917688,
+          -0.0029343695322358587,
+          -0.01966027586598129
+        ],
+        [
+          0.0022007771491769634,
+          0.0029343695322359697,
+          0.019660275865980292
+        ]
+      ],
+      "singlepoint_ms": 1096.3403526693583,
+      "resource_peak_bytes": {
+        "host": 3821008,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 3821008
+      },
+      "device_ledger": null
+    },
+    {
+      "symbol": "I",
+      "method": "rhf",
+      "atoms_bohr": [
+        [
+          "I",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.25
+          ]
+        ]
+      ],
+      "charge": 0,
+      "multiplicity": 1,
+      "core_electrons": 46,
+      "nelectron": 8,
+      "nao": 9,
+      "basis_identity": "528b6d16b4dda68cdc8253216428b37288b42d7c326f8888464db624291f6559",
+      "parameter_sha256": "e270915093e0efcd4419608403ab23cc9bce5bfd9f0bb6aa3d972388c1025e5e",
+      "errors": {
+        "local_matrix": 4.863633801255318e-12,
+        "nonlocal_matrix": 5.950795411990839e-14,
+        "energy": 6.927791673660977e-14,
+        "force": 1.0225242874639662e-10,
+        "net_force": 3.3306690738754696e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 4.864181973873727e-12,
+        "nonlocal_matrix_max_abs": 1.9539925233402755e-14,
+        "local_derivative_max_abs": 2.1882419487528892e-11,
+        "nonlocal_derivative_max_abs": 1.0547118733938987e-15
+      },
+      "energy": -11.71669152253531,
+      "reference_energy": -11.71669152253524,
+      "forces": [
+        [
+          0.0020178277263315364,
+          0.002690436968441706,
+          0.020716364657005437
+        ],
+        [
+          -0.002017827726331564,
+          -0.0026904369684417617,
+          -0.02071636465700577
+        ]
+      ],
+      "reference_forces": [
+        [
+          0.0020178277362911945,
+          0.0026904369817219026,
+          0.020716364759257866
+        ],
+        [
+          -0.002017827736291236,
+          -0.0026904369817218193,
+          -0.020716364759257644
+        ]
+      ],
+      "singlepoint_ms": 1087.5412598252296,
+      "resource_peak_bytes": {
+        "host": 3818928,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 3818928
+      },
+      "device_ledger": null
+    },
+    {
+      "symbol": "I",
+      "method": "uhf",
+      "atoms_bohr": [
+        [
+          "I",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.25
+          ]
+        ]
+      ],
+      "charge": 1,
+      "multiplicity": 2,
+      "core_electrons": 46,
+      "nelectron": 7,
+      "nao": 9,
+      "basis_identity": "528b6d16b4dda68cdc8253216428b37288b42d7c326f8888464db624291f6559",
+      "parameter_sha256": "e270915093e0efcd4419608403ab23cc9bce5bfd9f0bb6aa3d972388c1025e5e",
+      "errors": {
+        "local_matrix": 4.863633801255318e-12,
+        "nonlocal_matrix": 5.950795411990839e-14,
+        "energy": 5.5067062021407764e-14,
+        "force": 1.2081167177768748e-09,
+        "net_force": 2.220446049250313e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 4.864181973873727e-12,
+        "nonlocal_matrix_max_abs": 1.9539925233402755e-14,
+        "local_derivative_max_abs": 2.1882419487528892e-11,
+        "nonlocal_derivative_max_abs": 1.0547118733938987e-15
+      },
+      "energy": -11.353977848944712,
+      "reference_energy": -11.353977848944657,
+      "forces": [
+        [
+          0.0008481333908860189,
+          0.0011308445211802715,
+          0.00870750281308974
+        ],
+        [
+          -0.0008481333908859773,
+          -0.0011308445211802992,
+          -0.008707502813089962
+        ]
+      ],
+      "reference_forces": [
+        [
+          0.0008481332732115238,
+          0.0011308443642823324,
+          0.008707501604973689
+        ],
+        [
+          -0.0008481332732115238,
+          -0.0011308443642822213,
+          -0.008707501604973245
+        ]
+      ],
+      "singlepoint_ms": 1090.5118323862553,
+      "resource_peak_bytes": {
+        "host": 3821520,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 3821520
+      },
+      "device_ledger": null
+    }
+  ]
+}
