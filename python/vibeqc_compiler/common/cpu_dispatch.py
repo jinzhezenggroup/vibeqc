@@ -22,6 +22,45 @@ def normalize_cpu_architecture(value: str) -> str:
     return name or "unknown"
 
 
+def _binary_abi(value: str) -> str:
+    triple = value.strip().lower()
+    if "darwin" in triple or "apple" in triple:
+        return "darwin"
+    if "linux" in triple:
+        return "linux"
+    if any(token in triple for token in ("mingw", "windows", "msvc")):
+        return "windows"
+    return "unknown"
+
+
+def _runtime_binary_abi() -> str:
+    if sys.platform.startswith("linux"):
+        return "linux"
+    if sys.platform == "darwin":
+        return "darwin"
+    if sys.platform in ("win32", "cygwin"):
+        return "windows"
+    return "unknown"
+
+
+def cpu_binary_target_supported(
+    compiler_target: str,
+    runtime: "CpuRuntimeFeatures",
+) -> bool:
+    """Check the compiled shared object's architecture/ABI before dlopen."""
+
+    parts = compiler_target.strip().split("-", 1)
+    architecture = normalize_cpu_architecture(parts[0] if parts else "")
+    abi = _binary_abi(compiler_target)
+    runtime_abi = _runtime_binary_abi()
+    return (
+        architecture == runtime.architecture
+        and abi != "unknown"
+        and runtime_abi != "unknown"
+        and abi == runtime_abi
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class CpuRuntimeFeatures:
     """Runtime ISA facts; CPU model/brand strings are deliberately excluded."""
