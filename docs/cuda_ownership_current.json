@@ -1,14 +1,23 @@
 {
-  "all_handwritten_scientific_lines": 13333,
+  "all_handwritten_scientific_lines": 13571,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "delta": {
+    "maintained_code_lines": {
+      "runtime": -4908,
+      "scientific": 2904,
+      "oracle": 312,
+      "fallback": 0,
+      "performance_exception": 163
+    },
     "added_files": [
       "src/dft/cuda_ks_kernels.cu",
       "src/dft/cuda_ks_kernels.hpp",
       "src/dft/cuda_xc.hpp",
       "src/dft/cuda_xc_kernels.cuh",
       "src/dft/dispersion/d4_reference.hpp",
+      "src/dft/grid_response_adjoint.hpp",
       "src/dft/grid_task_view.cuh",
+      "src/dft/stationary_gradient_cuda.cuh",
       "src/dft/xc_point.hpp",
       "src/integrals/ecp_cuda.cu",
       "src/runtime/cuda_ao_pairs.cuh",
@@ -169,18 +178,6 @@
       "src/tensor/cuda_graph_context.cuh",
       "src/tensor/cuda_resident.cuh"
     ],
-    "maintained_code_lines": {
-      "fallback": 0,
-      "oracle": 312,
-      "performance_exception": 163,
-      "runtime": -5126,
-      "scientific": 2666
-    },
-    "reclassified_files": [
-      "src/dft/cuda_grid.cu",
-      "src/scf/cuda/df_derivatives.cu",
-      "src/scf/cuda/one_electron_values.cu"
-    ],
     "removed_files": [
       "src/scf/cuda/direct_jk.cuh",
       "src/scf/cuda/one_electron_force_reference.cuh",
@@ -189,6 +186,11 @@
       "src/scf/cuda/weighted_eri.cuh",
       "src/scf/cuda_density_fitting.cu",
       "src/scf/cuda_rhf.cu"
+    ],
+    "reclassified_files": [
+      "src/dft/cuda_grid.cu",
+      "src/scf/cuda/df_derivatives.cu",
+      "src/scf/cuda/one_electron_values.cu"
     ]
   },
   "files": [
@@ -234,16 +236,16 @@
       ],
       "role": "runtime",
       "subsystem": "ao_grid",
-      "physical_lines": 751,
+      "physical_lines": 770,
       "code_lines": {
-        "runtime": 535,
+        "runtime": 551,
         "scientific": 162,
         "oracle": 0,
         "fallback": 0,
         "performance_exception": 0
       },
-      "bytes": 36560,
-      "sha256": "c67d0ce4c23053e4fc8cf99e9f71c532f9612ea2aea645414444c59b3dcd47b2"
+      "bytes": 37600,
+      "sha256": "2b58728e9e460f441db2f4cf7e1302826f347e904e3fa700654353904d6631eb"
     },
     {
       "path": "src/dft/cuda_ks_kernels.cu",
@@ -351,6 +353,23 @@
       "sha256": "131fc4ae93f74a6a95b80961359cd26bee333d28188107ceb40c0190babd629e"
     },
     {
+      "path": "src/dft/grid_response_adjoint.hpp",
+      "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "xc",
+      "physical_lines": 125,
+      "code_lines": {
+        "runtime": 0,
+        "scientific": 113,
+        "oracle": 0,
+        "fallback": 0,
+        "performance_exception": 0
+      },
+      "bytes": 4976,
+      "sha256": "7fb630116d68d8fd966772570b23ccfcc73ebf6d7d284ec897b77975f2277ef9"
+    },
+    {
       "path": "src/dft/grid_task_view.cuh",
       "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
       "regions": [],
@@ -366,6 +385,33 @@
       },
       "bytes": 1192,
       "sha256": "f8ff83ddfabd2cd1ee7fdd595d55e60a15c08d882da3f89506a6e1fb7a8a1fc5"
+    },
+    {
+      "path": "src/dft/stationary_gradient_cuda.cuh",
+      "reason": "Finite diagnostic owner, explicit stream leases, transfers and failure-before-publication boundaries.",
+      "regions": [
+        {
+          "start": "__global__ void primitive_kernel",
+          "stop": "}  // namespace vibeqc_stationary_cuda",
+          "role": "scientific",
+          "reason": "Primitive normalization, generated derivative contraction, XC coefficient/jet layout and deterministic atom/source reductions are maintained scientific glue. Shared compiler graphs and SCF point model own the differentiated mathematics.",
+          "first_line": 65,
+          "last_line": 194,
+          "code_lines": 125
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "xc",
+      "physical_lines": 347,
+      "code_lines": {
+        "runtime": 202,
+        "scientific": 125,
+        "oracle": 0,
+        "fallback": 0,
+        "performance_exception": 0
+      },
+      "bytes": 15317,
+      "sha256": "c4081ed45ee7885e5f7c6f04e4d302a96db45fe6fd64ca8e43164809686e9141"
     },
     {
       "path": "src/dft/xc_point.hpp",
@@ -3877,8 +3923,8 @@
   ],
   "generated_bytes": 0,
   "maintained_code_lines": {
-    "runtime": 10447,
-    "scientific": 12768,
+    "runtime": 10665,
+    "scientific": 13006,
     "oracle": 312,
     "fallback": 0,
     "performance_exception": 253
@@ -4096,15 +4142,15 @@
       "performance_exception": 0
     },
     "ao_grid": {
-      "runtime": 550,
+      "runtime": 566,
       "scientific": 162,
       "oracle": 0,
       "fallback": 0,
       "performance_exception": 0
     },
     "xc": {
-      "runtime": 247,
-      "scientific": 393,
+      "runtime": 449,
+      "scientific": 631,
       "oracle": 0,
       "fallback": 0,
       "performance_exception": 0
