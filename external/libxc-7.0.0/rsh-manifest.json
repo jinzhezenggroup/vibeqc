@@ -1,0 +1,50 @@
+{
+  "version": "7.0.0",
+  "license": "MPL-2.0",
+  "files": {
+    "COPYING": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/COPYING",
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    "attenuation.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/attenuation.mpl",
+      "sha256": "6db9179e77650028464dacf6b2bddd3578394b35880bfeed42332e61b299ded8"
+    },
+    "gga_c_lyp.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lyp.mpl",
+      "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac"
+    },
+    "gga_x_b88.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_b88.mpl",
+      "sha256": "5ae2ac54b4cd3fec2cb59f777c3b445999d59b3f7e40e11ed078ec3328a00a4e"
+    },
+    "gga_x_ityh.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh.mpl",
+      "sha256": "2a66aec22237d3d6a43d0bd92a8136dd366396ef309c34c099c2f417a21f12aa"
+    },
+    "hyb_gga_xc_cam_b3lyp.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_cam_b3lyp.c",
+      "sha256": "8f542a15f19f084246b038905d04f67afc01bd3720de8e7110e8ae0a86d19384"
+    },
+    "lda_c_vwn.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn.mpl",
+      "sha256": "ee6d729b737a952adcfb6261a017398b3a99e1c781d75b814ec654f01280dcc6"
+    },
+    "lda_x.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x.mpl",
+      "sha256": "34d3ff595018a13b258019f5c4e56da1fc6b65933ba739c746ac06a3a41a7170"
+    },
+    "lda_x_erf.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_erf.mpl",
+      "sha256": "b1593bceea88e8bcc82cc33b266f7de17e8eb9b4c9220ee87eb10bed60f33c80"
+    },
+    "util.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/util.mpl",
+      "sha256": "c9790afb37c7eece47d39d0998196335a1adb857bdba814fac4b8937801a04fe"
+    },
+    "vwn.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/vwn.mpl",
+      "sha256": "9b323c53526caac537ee57f73640b8cf9fd2768fca2d4634ee8d37978d480197"
+    }
+  }
+}

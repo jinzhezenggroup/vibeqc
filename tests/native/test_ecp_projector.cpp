@@ -5,6 +5,7 @@
 #include <numbers>
 #include <stdexcept>
 
+#include "ecp_policy_cases.hpp"
 #include "generated_ecp_ao.cuh"
 
 namespace {
@@ -85,8 +86,8 @@ void check_grid() {
       }
     }
     for (unsigned i = 0; i < radii.size(); ++i)
-      if (!(radii[i].r > 0 && radii[i].weight > 0) || !std::isfinite(radii[i].weight) ||
-          (i && radii[i].r <= radii[i - 1].r))
+      if (!(radii[i].r > 0 && radii[i].weight > 0) || !std::isfinite(radii[i].r) ||
+          !std::isfinite(radii[i].weight) || (i && radii[i].r <= radii[i - 1].r))
         throw std::runtime_error("generated mapped radial grid failed");
     if (orders[0] >= 160)
       for (unsigned power = 0; power <= 4; ++power) {
@@ -94,7 +95,7 @@ void check_grid() {
         for (const auto& p : radii)
           sum += (long double)p.weight * std::pow((long double)p.r, power) *
                  std::exp(-(long double)p.r * p.r);
-        if (std::abs(sum - std::tgamma((power + 1) / 2.0L) / 2) > 2e-13L)
+        if (!std::isfinite(sum) || std::abs(sum - std::tgamma((power + 1) / 2.0L) / 2) > 2e-13L)
           throw std::runtime_error("generated radial Jacobian/moment failed");
       }
   }
@@ -342,6 +343,13 @@ void check() {
 
 int main() {
   try {
+    static_assert(vibeqc::generated::ecp_coarse_radial_points == 160);
+    static_assert(vibeqc::generated::ecp_coarse_polar_points == 32);
+    static_assert(vibeqc::generated::ecp_refined_radial_points == 224);
+    static_assert(vibeqc::generated::ecp_refined_polar_points == 44);
+    for (const auto& c : ecp_policy_cases())
+      if (vibeqc::generated::ecp_grid_pair_accepted(c.coarse, c.fine, c.derivative) != c.accepted)
+        throw std::runtime_error("generated ECP convergence policy changed acceptance");
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 44) == 4);
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(17, 44) == 1);
     static_assert(vibeqc::generated::ecp_cuda_radial_tile(16, 45) == 1);

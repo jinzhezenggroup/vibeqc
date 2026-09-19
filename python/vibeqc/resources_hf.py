@@ -167,18 +167,29 @@ def _basis_record(
 
 def _ecp_workspace(item, *, cuda=False):
     """Conservative two-grid peak, including the selected CUDA radial batch."""
+    from vibeqc_compiler.integral.ecp_policy import (
+        REFINED_POLAR_POINTS,
+        REFINED_RADIAL_POINTS,
+    )
     from vibeqc_compiler.integral.ecp_schedule import cuda_radial_tile
 
     orbital = item["orbital"]
     if not orbital.get("ecp_terms"):
         return 0
     n, d = orbital["cartesian_nbf"], 3 * item["atoms"]
-    points = 2 * 44 * 44
-    tile = cuda_radial_tile(orbital["nbf"], 44) if cuda else 1
+    points = 2 * REFINED_POLAR_POINTS * REFINED_POLAR_POINTS
+    tile = cuda_radial_tile(orbital["nbf"], REFINED_POLAR_POINTS) if cuda else 1
     return checked_bytes(
         32 * n * n * (1 + d)
         + 32 * tile * n * (points + 16)
-        + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
+        + 256
+        * (
+            points
+            + REFINED_RADIAL_POINTS
+            + n
+            + orbital["primitives"]
+            + orbital["ecp_terms"]
+        )
         + 4096,
         "ECP two-grid workspace",
     )

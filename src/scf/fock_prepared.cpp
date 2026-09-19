@@ -119,8 +119,12 @@ struct PreparedFockPlan::Impl {
         device_id(strategy.backend == FockBackend::Cuda ? device : -1),
         requested_budget(strategy.backend == FockBackend::Cuda ? budget : 0) {
     validate_resolved_fock_build(strategy);
-    for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange})
-      if (term->present) require_fock_provider_executable(term->approximation, strategy.backend);
+    for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange}) {
+      if (!term->present) continue;
+      if (term->approximation == FockApproximation::SeminumericalCosx)
+        throw std::invalid_argument("COSX execution requires the DFT-owned PreparedCosxFockPlan");
+      require_fock_provider_executable(term->approximation, strategy.backend);
+    }
     diagnostic.strategy = strategy;
     diagnostic.variant = execution_variant(strategy);
     const bool has_df = needs(strategy.spec, FockApproximation::DensityFitted);
