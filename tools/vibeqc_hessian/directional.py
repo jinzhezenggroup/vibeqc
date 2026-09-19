@@ -6,6 +6,7 @@ response J/K independently select the qualified direct CUDA adapter. The
 original NativeRHFState small-system admission remains unchanged.
 """
 
+import time
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
@@ -104,6 +105,7 @@ def directional_rhf_response(
         problem = RHFResponseOperator.build_problem(state.reference, backend)
         operator = RHFResponseOperator(problem, backend)
         first_diagnostics = None
+        first_started = time.perf_counter()
         if first_backend == "cuda":
             from .first_order_cuda import generated_directional_first_order_cuda
 
@@ -116,9 +118,12 @@ def directional_rhf_response(
             )
         else:
             frozen, overlap = generated_directional_first_order(state, vector)
+        first_seconds = time.perf_counter() - first_started
+        response_started = time.perf_counter()
         response = solve_rhf_nuclear_perturbation(
             operator, frozen, overlap, options=options
         )
+        response_seconds = time.perf_counter() - response_started
         # Check the live state again before publishing detached outputs.
         state.validate()
         identity = canonical_hash(
@@ -162,6 +167,13 @@ def directional_rhf_response(
             "residual_norm": response.solve_result.residual_norm,
             "relative_residual": response.solve_result.relative_residual,
             "iterations": response.solve_result.iterations,
+            "operator_actions": response.solve_result.operator_actions,
+            "first_source_seconds": first_seconds,
+            "response_solve_reconstruct_seconds": response_seconds,
+            "response_operator_seconds": response.solve_result.operator_seconds,
+            "response_orthogonalization_seconds": (
+                response.solve_result.orthogonalization_seconds
+            ),
             "solver_options": asdict(options),
             "solver_workspace_bytes": response.solve_result.workspace_bytes,
             "jk_statistics": deepcopy(backend.statistics),

@@ -252,11 +252,6 @@ unsigned ppps_resident_block_threads_requested() noexcept {
   return 0U;
 }
 
-bool one_electron_force_scalar_requested() noexcept {
-  const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR");
-  return selection == nullptr || std::strcmp(selection, "0") == 0;
-}
-
 unsigned one_electron_value_mapping_requested() noexcept {
   // The shared shell-warp policy passed the complete ownership-migration
   // endpoint gate. Keep the thread layout as an explicit diagnostic schedule.
@@ -265,12 +260,17 @@ unsigned one_electron_value_mapping_requested() noexcept {
 }
 
 bool generated_one_electron_derivatives_requested() noexcept {
-  return selected("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated");
+  const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES");
+  return selection == nullptr || std::strcmp(selection, "1") == 0 ||
+         std::strcmp(selection, "generated") == 0 || std::strcmp(selection, "auto") == 0;
 }
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
-  if (selected("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")) return 2U;
-  return selected("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "shell_warp") ? 1U : 0U;
+  const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
+  if (selection == nullptr) return 1U;
+  if (std::strcmp(selection, "serial") == 0) return 2U;
+  if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0) return 1U;
+  return 0U;
 }
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }

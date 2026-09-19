@@ -27,6 +27,9 @@ def _pack(spec, features):
     contract proves that the requested energy/derivatives do not depend on
     those slots; unsupported physical derivatives are never filled with zeros.
     """
+    missing = set(spec.ingredients) - set(features)
+    if missing:
+        raise ValueError(f"missing active XC ingredients: {sorted(missing)}")
     rho = features["rho"]
     result = np.zeros((len(spec.features), rho.shape[1]))
     if spec.spin == "polarized":

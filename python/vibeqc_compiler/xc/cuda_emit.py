@@ -50,6 +50,10 @@ def emit_cuda(program, schedule=None):
             "dft",
             assets=(
                 "src/tensor/cuda_runtime.cuh",
+                "src/runtime/bounded_workspace.hpp",
+                "src/runtime/cuda_resources.cuh",
+                "src/runtime/resource_cuda.cuh",
+                "src/runtime/resource_ledger.hpp",
                 "src/tensor/metrics.hpp",
                 "src/runtime/allocation_measurement.hpp",
                 "src/dft/xc_runtime.cuh",
@@ -143,6 +147,10 @@ def emit_cuda(program, schedule=None):
         {**contract, "identity": identity, "static_models": models},
         (
             asset_path("src/tensor/cuda_runtime.cuh"),
+            asset_path("src/runtime/bounded_workspace.hpp"),
+            asset_path("src/runtime/cuda_resources.cuh"),
+            asset_path("src/runtime/resource_cuda.cuh"),
+            asset_path("src/runtime/resource_ledger.hpp"),
             asset_path("src/tensor/metrics.hpp"),
             asset_path("src/runtime/allocation_measurement.hpp"),
             asset_path("src/dft/xc_runtime.cuh"),
