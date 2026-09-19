@@ -193,18 +193,18 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     diagnostic.factor_peak_bytes =
         std::max(diagnostic.factor_peak_bytes,
                  runtime::add_capacity(factor->numeric_capacity_bytes(), packing_bytes));
-    runtime::sample_cpu_capacity(runtime::add_capacity(
-        retained_capacity(current_density),
-        runtime::add_capacity(packing_bytes, extra_live_bytes)));
+    runtime::sample_cpu_capacity(
+        runtime::add_capacity(retained_capacity(current_density),
+                              runtime::add_capacity(packing_bytes, extra_live_bytes)));
   };
   if (use_orbitals && !initial_density) make_current_factor(density);
   const auto evaluate_current = [&](const Matrix& current_density,
                                     std::size_t extra_live_bytes = 0) {
-    auto physical = evaluate_rks(plan, basis, grid, current_density, evaluate_xc, method_name,
-                                 {options.xc_density_route, factor.get(), identity},
-                                 runtime::add_capacity(retained_capacity(current_density),
-                                                       extra_live_bytes),
-                                 options.xc_tile_points);
+    auto physical =
+        evaluate_rks(plan, basis, grid, current_density, evaluate_xc, method_name,
+                     {options.xc_density_route, factor.get(), identity},
+                     runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
+                     options.xc_tile_points);
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
@@ -215,7 +215,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     return physical;
   };
   const auto next_density_from_orbitals = [&](const Matrix& current_density,
-                                               std::size_t extra_live_bytes = 0) {
+                                              std::size_t extra_live_bytes = 0) {
     if (use_orbitals) make_current_factor(current_density, extra_live_bytes);
     // Reuse the producer's exact witness rather than reconstructing D twice.
     Matrix next = use_orbitals ? Matrix(factor->density().begin(), factor->density().end())
@@ -240,12 +240,9 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     double spin_electrons{};
   };
 
-  const solver::SelfConsistentPolicy policy{
-      options.max_iterations,
-      options.energy_tolerance,
-      options.density_tolerance,
-      std::min(1.0e-9, options.density_tolerance),
-      true};
+  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+                                            options.density_tolerance,
+                                            std::min(1.0e-9, options.density_tolerance), true};
   auto outcome = solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
@@ -253,7 +250,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         const auto current_identity = identity;
         ++result.fock_builds;
         const auto physical = evaluate_current(current_density);
-        const Matrix residual = commutator_residual(physical.fock, current_density, ints.overlap, n);
+        const Matrix residual =
+            commutator_residual(physical.fock, current_density, ints.overlap, n);
         const Matrix effective_fock = diis.update(physical.fock, residual);
         orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
         const auto iteration_bytes =
@@ -266,14 +264,9 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         const double state_rms = density_rms(next_density, current_density);
         const double physical_residual = residual_rms(residual);
         const double spin_electrons = dot(current_density, ints.overlap) / 2.0;
-        return RksLoopEvaluation{current_factor,
-                                 current_identity,
-                                 physical.components,
-                                 std::move(next_density),
-                                 physical.energy,
-                                 state_rms,
-                                 physical_residual,
-                                 spin_electrons};
+        return RksLoopEvaluation{current_factor,          current_identity, physical.components,
+                                 std::move(next_density), physical.energy,  state_rms,
+                                 physical_residual,       spin_electrons};
       },
       [&](Matrix& current_density, RksLoopEvaluation evaluation,
           const solver::SelfConsistentProgress& progress) {

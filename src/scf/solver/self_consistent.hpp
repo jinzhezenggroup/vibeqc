@@ -67,9 +67,9 @@ SelfConsistentOutcome<State> run_self_consistent(State initial_state,
 
     latest.iteration = iteration;
     latest.energy = evaluation.energy;
-    latest.energy_change =
-        std::isfinite(previous_energy) ? std::abs(evaluation.energy - previous_energy)
-                                       : std::numeric_limits<double>::infinity();
+    latest.energy_change = std::isfinite(previous_energy)
+                               ? std::abs(evaluation.energy - previous_energy)
+                               : std::numeric_limits<double>::infinity();
     latest.state_rms = evaluation.state_rms;
     latest.residual_rms = evaluation.residual_rms;
     latest.converged =

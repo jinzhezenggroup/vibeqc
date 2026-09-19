@@ -8,10 +8,10 @@
 
 namespace {
 
+using vibeqc::scf::solver::run_self_consistent;
 using vibeqc::scf::solver::SelfConsistentOutcome;
 using vibeqc::scf::solver::SelfConsistentPolicy;
 using vibeqc::scf::solver::SelfConsistentProgress;
-using vibeqc::scf::solver::run_self_consistent;
 
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
@@ -31,8 +31,7 @@ void verify_basic_convergence() {
       0.0, policy,
       [](double state, unsigned) {
         const double next = 1.0;
-        return ScalarEvaluation{next, (state - 1.0) * (state - 1.0),
-                                std::abs(next - state), 99.0};
+        return ScalarEvaluation{next, (state - 1.0) * (state - 1.0), std::abs(next - state), 99.0};
       },
       [](double, ScalarEvaluation evaluation, const SelfConsistentProgress&) {
         return evaluation.proposed_state;
@@ -55,8 +54,8 @@ void verify_residual_gate() {
       [](double state, unsigned iteration) {
         const double next = 1.0;
         const double residual = iteration < 4 ? 1.0 : 0.0;
-        return ScalarEvaluation{next, (state - 1.0) * (state - 1.0),
-                                std::abs(next - state), residual};
+        return ScalarEvaluation{next, (state - 1.0) * (state - 1.0), std::abs(next - state),
+                                residual};
       },
       [](double, ScalarEvaluation evaluation, const SelfConsistentProgress&) {
         return evaluation.proposed_state;
@@ -88,8 +87,7 @@ void verify_nonconverged_state_retention() {
 void verify_accept_owns_update_policy() {
   const SelfConsistentPolicy policy{1, 0.0, 0.0, 0.0, false};
   const auto outcome = run_self_consistent(
-      0.0, policy,
-      [](double, unsigned) { return ScalarEvaluation{1.0, 0.0, 1.0, 0.0}; },
+      0.0, policy, [](double, unsigned) { return ScalarEvaluation{1.0, 0.0, 1.0, 0.0}; },
       [](double, ScalarEvaluation evaluation, const SelfConsistentProgress&) {
         return evaluation.proposed_state + 0.5;
       },

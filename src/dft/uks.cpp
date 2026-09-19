@@ -131,11 +131,8 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     bool stabilized{};
   };
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations,
-                                             options.energy_tolerance,
-                                             options.density_tolerance,
-                                             residual_gate,
-                                             true};
+  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+                                            options.density_tolerance, residual_gate, true};
   auto outcome = solver::run_self_consistent(
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
@@ -147,48 +144,44 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
         const double residual_a = residual_rms(ra), residual_b = residual_rms(rb);
         auto effective = split_spin_matrices(
-            diis.update(concatenate(physical.fock.alpha, physical.fock.beta),
-                        concatenate(ra, rb)),
+            diis.update(concatenate(physical.fock.alpha, physical.fock.beta), concatenate(ra, rb)),
             n * n);
-        ca = stabilized
-                 ? stabilized_uks_orbitals(effective.first, state.alpha, ints.overlap, x, n)
-                 : generalized_eigen(effective.first, x, n);
-        cb = stabilized
-                 ? stabilized_uks_orbitals(effective.second, state.beta, ints.overlap, x, n)
-                 : generalized_eigen(effective.second, x, n);
+        ca = stabilized ? stabilized_uks_orbitals(effective.first, state.alpha, ints.overlap, x, n)
+                        : generalized_eigen(effective.first, x, n);
+        cb = stabilized ? stabilized_uks_orbitals(effective.second, state.beta, ints.overlap, x, n)
+                        : generalized_eigen(effective.second, x, n);
         Matrix next_a = density_from_orbitals(ca.vectors, n, na, 1.0);
         Matrix next_b = density_from_orbitals(cb.vectors, n, nb, 1.0);
         const double change_a = density_rms(next_a, state.alpha);
         const double change_b = density_rms(next_b, state.beta);
-        return UksLoopEvaluation{
-            std::move(physical.fock),
-            std::move(ra),
-            std::move(rb),
-            std::move(effective.first),
-            std::move(effective.second),
-            std::move(next_a),
-            std::move(next_b),
-            physical.components,
-            physical.components.total(),
-            std::max(change_a, change_b),
-            std::max(residual_a, residual_b),
-            std::hypot(change_a, change_b) / std::sqrt(2.0),
-            std::hypot(residual_a, residual_b) / std::sqrt(2.0),
-            dot(state.alpha, ints.overlap),
-            dot(state.beta, ints.overlap),
-            stabilized};
+        return UksLoopEvaluation{std::move(physical.fock),
+                                 std::move(ra),
+                                 std::move(rb),
+                                 std::move(effective.first),
+                                 std::move(effective.second),
+                                 std::move(next_a),
+                                 std::move(next_b),
+                                 physical.components,
+                                 physical.components.total(),
+                                 std::max(change_a, change_b),
+                                 std::max(residual_a, residual_b),
+                                 std::hypot(change_a, change_b) / std::sqrt(2.0),
+                                 std::hypot(residual_a, residual_b) / std::sqrt(2.0),
+                                 dot(state.alpha, ints.overlap),
+                                 dot(state.beta, ints.overlap),
+                                 stabilized};
       },
       [&](UksState& state, UksLoopEvaluation evaluation,
           const solver::SelfConsistentProgress& progress) {
         runtime::sample_cpu_capacity(runtime::add_capacity(
             runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
-            runtime::vector_capacities(
-                basis.packed, grid.points(), grid.weights(), grid.owners(), x, state.alpha,
-                state.beta, ca.values, ca.vectors, cb.values, cb.vectors,
-                evaluation.physical_fock.alpha, evaluation.physical_fock.beta,
-                evaluation.alpha_residual, evaluation.beta_residual,
-                evaluation.effective_alpha, evaluation.effective_beta, evaluation.next_alpha,
-                evaluation.next_beta, diagnostic.history)));
+            runtime::vector_capacities(basis.packed, grid.points(), grid.weights(), grid.owners(),
+                                       x, state.alpha, state.beta, ca.values, ca.vectors, cb.values,
+                                       cb.vectors, evaluation.physical_fock.alpha,
+                                       evaluation.physical_fock.beta, evaluation.alpha_residual,
+                                       evaluation.beta_residual, evaluation.effective_alpha,
+                                       evaluation.effective_beta, evaluation.next_alpha,
+                                       evaluation.next_beta, diagnostic.history)));
 
         // Preserve #305's occupation-cycle policy: only subsequent proposals
         // are shifted, while every physical convergence gate remains unshifted.
@@ -214,13 +207,9 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         diagnostic.components = evaluation.components;
         diagnostic.electrons = {evaluation.alpha_electrons, evaluation.beta_electrons};
         diagnostic.density_change = progress.state_rms;
-        diagnostic.history.push_back({progress.iteration,
-                                      evaluation.components,
-                                      progress.energy_change,
-                                      progress.state_rms,
-                                      progress.residual_rms,
-                                      diagnostic.electrons,
-                                      evaluation.stabilized});
+        diagnostic.history.push_back(
+            {progress.iteration, evaluation.components, progress.energy_change, progress.state_rms,
+             progress.residual_rms, diagnostic.electrons, evaluation.stabilized});
       });
   alpha = std::move(outcome.state.alpha);
   beta = std::move(outcome.state.beta);
