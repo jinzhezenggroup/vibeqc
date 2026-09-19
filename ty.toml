@@ -48,7 +48,6 @@ include = [
   "python/vibeqc_compiler/integral/tuning/policy.py",
   "python/vibeqc_compiler/integral/tuning/process.py",
   "python/vibeqc_compiler/integral/tuning/resources.py",
-  "python/vibeqc_compiler/integral/weighted_eri.py",
   "python/vibeqc_compiler/integral/weighted_eri_cuda.py",
   "python/vibeqc_compiler/integral/weighted_eri_execute.py",
   "python/vibeqc_compiler/integral/weighted_eri_inputs.py",
