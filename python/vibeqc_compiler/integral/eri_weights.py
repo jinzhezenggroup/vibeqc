@@ -36,7 +36,7 @@ def canonical_eri_indices(indices: Sequence[int]) -> Quartet:
     )
     if second > first:
         first, second = second, first
-    return (*first, *second)
+    return first[0], first[1], second[0], second[1]
 
 
 def eri_weight_orbit(indices: Sequence[int]) -> tuple[Quartet, ...]:
