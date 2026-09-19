@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate the compact production D3(BJ) table from pinned xTBloom data."""
 
 from __future__ import annotations
