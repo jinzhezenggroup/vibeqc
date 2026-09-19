@@ -75,7 +75,10 @@ def _emit_pullback_namespace(*, pbe, namespace):
             f"__device__ __constant__ unsigned shift[{len(domain)}][3] = {{{','.join(shifts)}}};",
             "__device__ void apply(const double* c, const double* w, double* out) {",
             *emitter.lines,
-            *(f"out[{j}] = {emitter.reference(root)};" for j, root in enumerate(program.roots)),
+            *(
+                f"out[{j}] = {emitter.reference(root)};"
+                for j, root in enumerate(program.roots)
+            ),
             "}",
             "}",
         ]
