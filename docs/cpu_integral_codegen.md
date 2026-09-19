@@ -42,7 +42,9 @@ Compilation uses explicit target flags such as `-mavx2 -mfma` or
 `-mavx512f -mfma`, never `-march=native`. The baseline has no SIMD ISA
 requirement. `-ffp-contract=off` remains explicit, and no fast-math mode is
 enabled. FMA is a schedule decision rather than a global numerical-policy
-change.
+change. The initial target record accepts only its exact declared ISA flags;
+arbitrary extra compiler options and non-integer lane widths are rejected.
+See the [arithmetic admission decision](../.agents/notes/implemented/numerics/2026-09-19-cpu-target-arithmetic-admission.md).
 
 ## Validation and benchmark
 
