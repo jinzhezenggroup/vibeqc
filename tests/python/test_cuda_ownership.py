@@ -10,23 +10,17 @@ from tools.compare_cuda_ownership import compare
 from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
 
 
-def test_versioned_current_report_matches_maintained_source_and_ledger():
-    """Keep the current source snapshot reproducible without materializing CUDA."""
+def test_current_report_is_generated_deterministically_from_source_and_ledger():
+    """Keep the current report reproducible without a merge-conflict-prone snapshot."""
     root = Path(__file__).resolve().parents[2]
     ledger = json.loads((root / "docs/cuda_ownership.json").read_text())
-    current = json.loads((root / "docs/cuda_ownership_current.json").read_text())
-    fresh = ownership_report(root, ledger)
-    validate_baseline(current)
-    for key in (
-        "files",
-        "maintained_code_lines",
-        "all_handwritten_scientific_lines",
-        "per_subsystem",
-        "migration_ledger",
-    ):
-        assert current[key] == fresh[key], (
-            "regenerate docs/cuda_ownership_current.json for the current source/ledger"
-        )
+    first = ownership_report(root, ledger)
+    second = ownership_report(root, ledger)
+    validate_baseline(first)
+    assert first == second
+    assert first["schema"] == "vibeqc.cuda-ownership-report.v1"
+    assert first["files"]
+    assert not (root / "docs/cuda_ownership_current.json").exists()
 
 
 def ledger_for(tmp_path):
