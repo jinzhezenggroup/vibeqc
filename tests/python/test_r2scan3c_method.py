@@ -154,3 +154,21 @@ def test_r2scan3c_audit_manifest_hashes_match_catalog():
         hashlib.sha256(generated.read_bytes()).hexdigest()
         == manifest["gcp"]["generated_header_sha256"]
     )
+
+
+def test_custom_r2scan3c_keeps_nonlocal_dispersion_and_gcp_distinct():
+    from vibeqc_compiler.method import VV10, original_nonlocal_correlation
+
+    spec = replace(
+        METHOD_CATALOG["R2SCAN-3c"],
+        identifier="custom-r2scan3c-vv10",
+        nonlocal_correlation=original_nonlocal_correlation(VV10),
+    )
+    graph = resolve_method(spec)
+    assert graph.requirements["operators"] == (
+        "semilocal-xc",
+        "nonlocal-correlation",
+        "geometry-d4-bj-eeq",
+        "geometry-gcp",
+    )
+    assert graph.identity != resolve_method("R2SCAN-3c").identity

@@ -164,6 +164,60 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     alpha = std::move(next_a);
     beta = std::move(next_b);
   }
+  if (!result.converged) {
+    result.density = concatenate(alpha, beta);
+    return result;
+  }
+
+  // Close the successful UKS state on the actual unshifted physical operator.
+  // DIIS/stabilized proposal orbitals are only a convergence device and must
+  // never become the derivative-state proof. A small bounded fixed-point
+  // correction mirrors the shared final-state policy without another SCF loop.
+  auto final = evaluate(plan, basis, grid, alpha, beta, pbe, options.xc_tile_points);
+  ++result.fock_builds;
+  double previous_physical_energy = result.energy;
+  result.converged = false;
+  constexpr unsigned maximum_final_corrections = 4;
+  for (unsigned correction = 0; correction < maximum_final_corrections; ++correction) {
+    // A degenerate occupied/virtual boundary must retain the already qualified
+    // occupation choice. Only the proposal is shifted; next remains F[D].
+    ca = stabilize_occupations
+             ? stabilized_uks_orbitals(final.fock.alpha, alpha, ints.overlap, x, n)
+             : generalized_eigen(final.fock.alpha, x, n);
+    cb = stabilize_occupations ? stabilized_uks_orbitals(final.fock.beta, beta, ints.overlap, x, n)
+                               : generalized_eigen(final.fock.beta, x, n);
+    Matrix projected_a = density_from_orbitals(ca.vectors, n, na, 1.0);
+    Matrix projected_b = density_from_orbitals(cb.vectors, n, nb, 1.0);
+    const double change_a = density_rms(projected_a, alpha);
+    const double change_b = density_rms(projected_b, beta);
+    const double density_change = std::max(change_a, change_b);
+    result.density_rms = std::hypot(change_a, change_b) / std::sqrt(2.0);
+    alpha = std::move(projected_a);
+    beta = std::move(projected_b);
+
+    auto next = evaluate(plan, basis, grid, alpha, beta, pbe, options.xc_tile_points);
+    ++result.fock_builds;
+    const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
+    const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
+    const double residual_a = residual_rms(ra), residual_b = residual_rms(rb);
+    diagnostic.physical_residual = std::max(residual_a, residual_b);
+    result.physical_residual_rms = std::hypot(residual_a, residual_b) / std::sqrt(2.0);
+    diagnostic.components = next.components;
+    diagnostic.electrons = {dot(alpha, ints.overlap), dot(beta, ints.overlap)};
+    diagnostic.density_change = density_change;
+    result.energy = next.components.total();
+    result.energy_change = std::abs(result.energy - previous_physical_energy);
+    final = std::move(next);
+    if (result.energy_change < options.energy_tolerance &&
+        density_change < options.density_tolerance &&
+        diagnostic.physical_residual < residual_gate) {
+      result.converged = true;
+      break;
+    }
+    previous_physical_energy = result.energy;
+  }
+  if (result.converged && options.retain_ks_state)
+    result.ks_physical_fock = concatenate(final.fock.alpha, final.fock.beta);
   result.density = concatenate(alpha, beta);
   return result;
 }

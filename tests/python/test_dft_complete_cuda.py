@@ -178,6 +178,64 @@ def test_complete_cuda_independent_analytic(method, molecule, compiler):
         assert result.execution.startswith("cuda-seven-source/")
 
 
+@pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
+def test_complete_cuda_open_shell_uks_independent_analytic(method, compiler):
+    """B3 real-device closure: both spin channels share the C1 seven-source plan."""
+    from test_dft_complete_cpu import ATOMS, independent_uks_gradient
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    charge, multiplicity = 1, 2
+    calc = _calculator(method)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state.density.shape[0] == 2
+        assert not np.allclose(state.density[0], state.density[1], atol=1e-12, rtol=0)
+        result = _diagnostic(
+            state,
+            basis,
+            compiler,
+            tile_points=137,
+            primitive_tile=29,
+            integral_terms=17,
+        )
+        reference_energy, reference = independent_uks_gradient(basis, state, method)
+        assert abs(energy - reference_energy) < 2e-9
+        np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
+        assert result.work["xc_points"] == len(state.grid.points)
+        assert (
+            result.work["additional_device_peak_bound"]
+            <= result.work["additional_device_budget"]
+        )
+
+        # Replay revokes both spin blocks atomically; a fresh UKS state reproduces
+        # the same force without borrowing the old owner/generation.
+        batch.execute(strict=True)
+        with pytest.raises(ValueError, match="stale"):
+            _diagnostic(state, basis, compiler)
+        current = StationaryKsState.from_native(batch, basis)
+        replay = _diagnostic(current, basis, compiler)
+        np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
+        _evidence(
+            f"water-{method}-b3",
+            {
+                "energy_error": abs(energy - reference_energy),
+                "analytic_max_error": float(
+                    np.max(np.abs(result.gradient - reference))
+                ),
+                "work": dict(result.work),
+                "slurm_job": os.environ["SLURM_JOB_ID"],
+            },
+        )
+
+
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_cuda_reconverged_finite_differences_and_replay(method, compiler):
     from test_dft_complete_cpu import ATOMS

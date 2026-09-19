@@ -253,6 +253,18 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("transform_library_ms", ctypes.c_double),
         ("tensor_kernel_ms", ctypes.c_double),
         ("equation_hash", ctypes.c_char * 65),
+        ("response_iterations", ctypes.c_uint64),
+        ("response_restarts", ctypes.c_uint64),
+        ("response_absolute_residual", ctypes.c_double),
+        ("response_relative_residual", ctypes.c_double),
+        ("response_workspace_bytes", ctypes.c_uint64),
+        ("derivative_workspace_bytes", ctypes.c_uint64),
+        ("planned_endpoint_peak_bytes", ctypes.c_uint64),
+        ("measured_endpoint_peak_bytes", ctypes.c_uint64),
+        ("force_provenance_flags", ctypes.c_uint64),
+        ("response_operator_hash", ctypes.c_char * 65),
+        ("measured_response_workspace_peak_bytes", ctypes.c_uint64),
+        ("response_workspace_allocation_count", ctypes.c_uint64),
     ]
 
 

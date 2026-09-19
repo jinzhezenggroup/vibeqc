@@ -284,8 +284,7 @@ class MethodIR:
                 return 2
             if isinstance(primitive, DispersionCorrectionPrimitive):
                 return 3
-                return 2
-            return 3
+            return 4
 
         keys = [primitive_order(primitive) for primitive in self.primitives]
         if keys != sorted(keys) or len(keys) != len(set(keys)):

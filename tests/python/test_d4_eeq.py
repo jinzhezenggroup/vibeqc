@@ -64,3 +64,26 @@ def test_d4_composes_without_method_specific_scientific_node():
 def test_d4_manifest_rejects_semantic_mismatch(changes, match):
     with pytest.raises(ValueError, match=match):
         replace(r2scan3c_d4_eeq(), **changes)
+
+
+def test_d4_and_nonlocal_correlation_survive_shared_method_composition():
+    from vibeqc_compiler.method import VV10, original_nonlocal_correlation
+
+    correction = r2scan3c_d4_eeq()
+    nonlocal_correlation = original_nonlocal_correlation(VV10)
+    combined = replace(
+        METHOD_CATALOG["PBE"],
+        dispersion=correction,
+        nonlocal_correlation=nonlocal_correlation,
+    )
+    graph = resolve_method(combined)
+    assert graph.requirements["operators"] == (
+        "semilocal-xc",
+        "nonlocal-correlation",
+        "geometry-d4-bj-eeq",
+    )
+    assert graph.identity != resolve_method(replace(combined, dispersion=None)).identity
+    assert (
+        graph.identity
+        != resolve_method(replace(combined, nonlocal_correlation=None)).identity
+    )

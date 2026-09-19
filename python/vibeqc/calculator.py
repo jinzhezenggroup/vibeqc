@@ -105,6 +105,18 @@ class CorrelationResult:
     transform_library_ms: float
     tensor_kernel_ms: float
     equation_hash: str
+    response_iterations: int
+    response_restarts: int
+    response_absolute_residual: float
+    response_relative_residual: float
+    response_workspace_bytes: int
+    derivative_workspace_bytes: int
+    planned_endpoint_peak_bytes: int
+    measured_endpoint_peak_bytes: int
+    force_provenance_flags: int
+    response_operator_hash: str
+    measured_response_workspace_peak_bytes: int
+    response_workspace_allocation_count: int
 
 
 @dataclass(frozen=True)
@@ -1150,7 +1162,12 @@ class Calculator:
         requests all properties reported by its native capability record.
         """
         if properties is None:
-            properties = self._capabilities.supported_properties
+            properties = (
+                frozenset({"energy"})
+                if self._method == _native.METHOD_MP2
+                and self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+                else self._capabilities.supported_properties
+            )
         if isinstance(properties, (str, bytes)):
             raise TypeError("properties must be an iterable of property names")
         try:
@@ -1170,10 +1187,6 @@ class Calculator:
             )
         unsupported_properties = requested_properties - supported_properties
         if unsupported_properties:
-            if self._method == _native.METHOD_MP2 and unsupported_properties == {
-                "forces"
-            }:
-                raise NotImplementedError("MP2 analytic forces are unavailable")
             names = ", ".join(sorted(unsupported_properties))
             raise ValueError(
                 f"method {self._method_name!r} does not support properties: {names}"
@@ -1318,6 +1331,9 @@ class Calculator:
                 }
                 values["mo_host_staging"] = bool(values["mo_host_staging"])
                 values["equation_hash"] = values["equation_hash"].decode("ascii")
+                values["response_operator_hash"] = values[
+                    "response_operator_hash"
+                ].decode("ascii")
                 correlation = CorrelationResult(**values)
             physical_residual_rms = None
             scf_getter = getattr(

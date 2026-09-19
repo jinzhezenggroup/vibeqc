@@ -39,6 +39,8 @@ macro(vibeqc_add_native_tests)
     target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   endif()
 
+  vibeqc_native_test(vibeqc_tracked_allocator_tests tests/native/test_tracked_allocator.cpp
+                     NO_VIBEQC LIBRARIES Threads::Threads)
   vibeqc_native_test(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
   vibeqc_native_test(vibeqc_ecp_projector_tests tests/native/test_ecp_projector.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_ecp_capability_tests tests/native/test_ecp_capabilities.cpp)
@@ -54,6 +56,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_eigen_frame_tests tests/native/test_eigen_frame.cpp)
     vibeqc_native_test(vibeqc_initial_density_tests tests/native/test_initial_density.cpp)
     vibeqc_native_test(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+    vibeqc_native_test(vibeqc_native_gmres_tests tests/native/test_native_gmres.cpp)
+    vibeqc_native_test(vibeqc_mp2_gradient_tests tests/native/test_mp2_gradient.cpp)
   endif()
 
   if(VIBEQC_ENABLE_CUDA AND NOT WIN32)

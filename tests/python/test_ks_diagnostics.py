@@ -106,7 +106,8 @@ def test_physical_components_and_history_match_independent_state(method, device)
     )
     assert diagnostic.history[0].energy_change is None
     assert not diagnostic.initial_density_used
-    expected_rebuilds = 0 if unrestricted or device == "cuda" else 2
+    # CPU RKS and UKS both close a converged iterate with the physical Fock.
+    expected_rebuilds = 0 if device == "cuda" else 2
     assert diagnostic.fock_builds == native.iterations + expected_rebuilds
     for previous, current in zip(diagnostic.history, diagnostic.history[1:]):
         assert current.energy_change == pytest.approx(
