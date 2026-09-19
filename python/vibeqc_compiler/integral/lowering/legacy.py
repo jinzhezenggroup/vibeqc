@@ -12,6 +12,7 @@ from ..cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
+from ..cuda_target import cuda_target_info
 from ..fused_schedule import (
     CoulombState,
     FusedShellPlan,
@@ -27,6 +28,11 @@ from .common import _specialize_dppp_identifiers
 from .dispatch import emit_shell_class_fused_cuda
 from .force_resident import _emit_ppps_resident_bra_rys3_force_consumer_cuda
 from .shared import _COMPONENT_COUNT, DpppComponent
+
+# These compatibility wrappers predate explicit target plumbing. Keep their
+# historical source identity isolated here instead of letting generic APIs
+# silently select sm_120.
+_LEGACY_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +66,7 @@ def build_dppp_fused_plan() -> DpppFusedPlan:
     retain ``-1`` so generator tests can audit the complete domain.
     """
 
-    generic = build_fused_shell_plan(DPPP_SPEC)
+    generic = build_fused_shell_plan(DPPP_SPEC, target=_LEGACY_CUDA_TARGET)
     if len(generic.components) != _COMPONENT_COUNT:
         raise RuntimeError("dppp component schedule has an unexpected size")
     if len(generic.coulomb_states) != 84:
@@ -127,7 +133,12 @@ def emit_ppps_resident_bra_rys3_cuda(
         tasks_per_warp=32,
         shared_coulomb=False,
     )
-    plan = build_fused_shell_plan(spec, integral=selected_integral, schedule=schedule)
+    plan = build_fused_shell_plan(
+        spec,
+        integral=selected_integral,
+        schedule=schedule,
+        target=_LEGACY_CUDA_TARGET,
+    )
     resident_tail = _emit_ppps_resident_bra_rys3_force_consumer_cuda(
         include_rys3_roots=include_rys3_roots,
         integral=selected_integral,
@@ -156,10 +167,10 @@ def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
     """Emit the production-golden dppp specialization of the generic emitter."""
 
     if plan is None:
-        generic = build_fused_shell_plan(DPPP_SPEC)
+        generic = build_fused_shell_plan(DPPP_SPEC, target=_LEGACY_CUDA_TARGET)
     else:
         generic = FusedShellPlan(
-            kernel=build_fused_shell_plan(DPPP_SPEC).kernel,
+            kernel=build_fused_shell_plan(DPPP_SPEC, target=_LEGACY_CUDA_TARGET).kernel,
             spec=DPPP_SPEC,
             components=plan.components,
             coulomb_states=plan.coulomb_states,

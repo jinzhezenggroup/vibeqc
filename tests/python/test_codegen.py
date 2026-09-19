@@ -167,6 +167,8 @@ from vibeqc_compiler.integral.shell_class import (
     emit_psss_cuda,
 )
 
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -434,7 +436,7 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping():
     assert integral.requested_derivative_centers == (0, 1, 2, 3)
     assert integral.independent_force_centers == (0, 1, 2)
     assert integral.recovered_derivative_centers == (3,)
-    candidates = schedule_candidates(integral)
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
     assert [item.kind for item in candidates] == [
         ScheduleKind.COMPONENT_LANES,
         ScheduleKind.TILED_COMPONENTS,
@@ -458,7 +460,7 @@ def test_integral_ir_retains_higher_derivative_intent_until_cuda_boundary():
         ValueError,
         match="CUDA force result ABI currently exposes only order-one derivatives",
     ):
-        build_fused_shell_plan(DPPP_SPEC, integral=integral)
+        build_fused_shell_plan(DPPP_SPEC, integral=integral, target=TEST_CUDA_TARGET)
 
 
 def test_fock_autotune_reuses_manifest_declared_baseline_schedules():
@@ -521,7 +523,7 @@ def test_fused_shell_plan_preserves_an_explicit_integral_ir():
         derivative=operator.nuclear_derivative(),
         contractions=(force,),
     )
-    plan = build_fused_shell_plan(DPPP_SPEC, integral=integral)
+    plan = build_fused_shell_plan(DPPP_SPEC, integral=integral, target=TEST_CUDA_TARGET)
     assert plan.kernel.integral is integral
     assert plan.kernel.integral.independent_derivative_centers == (0, 2, 3)
     assert plan.kernel.integral.recovered_derivative_centers == (1,)
@@ -531,6 +533,7 @@ def test_fused_shell_plan_preserves_an_explicit_integral_ir():
             DPPP_SPEC,
             integral=integral,
             consumers=(KernelConsumer.FOCK,),
+            target=TEST_CUDA_TARGET,
         )
 
 
@@ -858,7 +861,9 @@ def test_derivative_cannot_invent_an_operator_invariant():
 def test_small_shell_schedule_space_includes_packed_and_cooperative_variants():
     """Allow tuning to choose task packing instead of one fixed mapping."""
 
-    candidates = schedule_candidates(build_integral_ir(PSPS_SPEC))
+    candidates = schedule_candidates(
+        build_integral_ir(PSPS_SPEC), target=TEST_CUDA_TARGET
+    )
     assert [item.kind for item in candidates[:5]] == [
         ScheduleKind.PACKED_TASKS,
         ScheduleKind.SHELL_TASK,
@@ -883,7 +888,8 @@ def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
             build_integral_ir(
                 spec,
                 consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-            )
+            ),
+            target=TEST_CUDA_TARGET,
         )
         if item.kind == ScheduleKind.SUBGROUP_TASKS and item.tasks_per_warp == 4
     )
@@ -891,6 +897,7 @@ def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
         spec,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert schedule.block_threads == 256
@@ -937,7 +944,9 @@ def test_subgroup_force_lowering_uses_explicit_nonfinal_recovery_slots():
     )
     source = emit_shell_class_fused_cuda(
         spec,
-        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+        build_fused_shell_plan(
+            spec, integral=integral, schedule=schedule, target=TEST_CUDA_TARGET
+        ),
     )
 
     assert "GeneratedPspsSubgroupForceStorage" in source
@@ -957,7 +966,7 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
     )
     component_schedules = [
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.COMPONENT_LANES
     ]
     assert [item.block_threads for item in component_schedules] == [64, 32]
@@ -968,6 +977,7 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
             spec,
             consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
             schedule=compact,
+            target=TEST_CUDA_TARGET,
         ),
     )
     class_name = name[0].upper() + name[1:]
@@ -999,7 +1009,7 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
     )
     source = emit_shell_class_fused_cuda(
         spec,
-        build_fused_shell_plan(spec, schedule=schedule),
+        build_fused_shell_plan(spec, schedule=schedule, target=TEST_CUDA_TARGET),
     )
     assert "storage.component_weights[0] = 0.0;" in source
     assert "storage.component_weights[26] = 0.0;" in source
@@ -1040,7 +1050,9 @@ def test_scalar_thread_force_lowering_is_structural_for_f_shells(name: str):
     )
     source = emit_shell_class_fused_cuda(
         spec,
-        build_fused_shell_plan(spec, schedule=schedule, recurrence="subset_wick"),
+        build_fused_shell_plan(
+            spec, schedule=schedule, recurrence="subset_wick", target=TEST_CUDA_TARGET
+        ),
     )
 
     class_name = name[0].upper() + name[1:]
@@ -1080,7 +1092,9 @@ def test_ppps_scalar_thread_lowering_uses_explicit_derivative_center_slots():
     )
     source = emit_shell_class_fused_cuda(
         spec,
-        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+        build_fused_shell_plan(
+            spec, integral=integral, schedule=schedule, target=TEST_CUDA_TARGET
+        ),
     )
 
     assert "double decay_gradients[4][3];" in source
@@ -1130,13 +1144,11 @@ def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
         minimum_blocks_per_sm=12,
     )
     plan = build_fused_shell_plan(
-        program.spec,
-        schedule=schedule,
-        recurrence="rys3",
+        program.spec, schedule=schedule, recurrence="rys3", target=TEST_CUDA_TARGET
     )
     assert plan.kernel.integral.recurrence == "rys3"
     with pytest.raises(ValueError, match="requires rys4"):
-        build_fused_shell_plan(DPPP_SPEC, recurrence="rys3")
+        build_fused_shell_plan(DPPP_SPEC, recurrence="rys3", target=TEST_CUDA_TARGET)
 
 
 def test_dddd_rys_program_exposes_five_root_backend_requirements():
@@ -1375,9 +1387,7 @@ def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
         minimum_blocks_per_sm=12,
     )
     plan = build_fused_shell_plan(
-        spec,
-        schedule=schedule,
-        recurrence="rys3",
+        spec, schedule=schedule, recurrence="rys3", target=TEST_CUDA_TARGET
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert "generated_ppps_rys3_force_task" in source
@@ -1400,6 +1410,7 @@ def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
             dpss_spec,
             schedule=dpss_schedule,
             recurrence="rys3",
+            target=TEST_CUDA_TARGET,
         ),
     )
     assert "generated_dpss_rys3_force_task" in dpss_source
@@ -1420,7 +1431,9 @@ def test_low_order_shells_share_scalar_rys2_force_backend(name: str):
         shared_coulomb=False,
         minimum_blocks_per_sm=8,
     )
-    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys2")
+    plan = build_fused_shell_plan(
+        spec, schedule=schedule, recurrence="rys2", target=TEST_CUDA_TARGET
+    )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert f"generated_{name}_rys2_force_task" in source
     assert f"generated_{name}_rys2_roots" in source
@@ -1506,9 +1519,7 @@ def test_dppp_cooperative_rys4_uses_uniform_runtime_indexed_axis_recurrence():
         minimum_blocks_per_sm=2,
     )
     plan = build_fused_shell_plan(
-        spec,
-        schedule=schedule,
-        recurrence="rys4",
+        spec, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert "generated_dppp_rys4_component_lane_task" in source
@@ -1536,9 +1547,7 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
         minimum_blocks_per_sm=1,
     )
     plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        schedule=schedule,
-        recurrence="rys4",
+        DPPP_SPEC, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
     assert schedule.tasks_per_block == 32
@@ -1558,6 +1567,7 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
         recurrence="rys4",
+        target=TEST_CUDA_TARGET,
     )
     mixed_source = emit_shell_class_fused_cuda(DPPP_SPEC, mixed_plan)
     assert "kGeneratedDpppBlockThreads = 256U" in mixed_source
@@ -1586,6 +1596,7 @@ def test_high_order_rys5_uniform_warps_advance_32_quartets_per_block(name: str):
         consumers=(KernelConsumer.FORCE,),
         schedule=schedule,
         recurrence="rys5",
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     class_name = name[0].upper() + name[1:]
@@ -1619,6 +1630,7 @@ def test_rys3_uniform_warps_split_components_without_scalar_spills(
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
         recurrence="rys3",
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     class_name = name[0].upper() + name[1:]
@@ -1661,6 +1673,7 @@ def test_cooperative_rys3_hot_classes_use_uniform_component_lanes(
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
         recurrence="rys3",
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert f"generated_{name}_rys3_component_lane_task" in source
@@ -1693,6 +1706,7 @@ def test_component_lane_rys_fock_lowering_uses_structural_capabilities(
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
         recurrence=recurrence,
+        target=TEST_CUDA_TARGET,
     )
     assert supports_component_lane_rys(spec, schedule)
     source = emit_shell_class_fused_cuda(spec, plan)
@@ -1748,13 +1762,14 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
     )
     shell_schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.SHELL_TASK
     )
     plan = build_fused_shell_plan(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=shell_schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(PSSS_SPEC, plan)
     assert "kGeneratedPsssComponentCount = 3U" in source
@@ -1763,7 +1778,7 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
     assert "generated_psss_component_gradient<false>" in source
     assert "generated_psss_component_value<false>" in source
 
-    trials = supported_schedule_trials(PSSS_SPEC)
+    trials = supported_schedule_trials(PSSS_SPEC, target=TEST_CUDA_TARGET)
     assert any(trial.schedule.kind == ScheduleKind.PACKED_TASKS for trial in trials)
     assert any(trial.schedule.kind == ScheduleKind.SHELL_TASK for trial in trials)
     assert (
@@ -1773,13 +1788,14 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
 
     packed_schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.PACKED_TASKS
     )
     packed_plan = build_fused_shell_plan(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=packed_schedule,
+        target=TEST_CUDA_TARGET,
     )
     packed = emit_shell_class_fused_cuda(PSSS_SPEC, packed_plan)
     assert "generated_psss_packed_force_lane" in packed
@@ -1801,6 +1817,7 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
         iterations=1,
         samples=1,
         schedule=packed_schedule,
+        target=TEST_CUDA_TARGET,
     )
     assert "<<<(kTaskCount + 31U) / 32U," in benchmark
 
@@ -1936,14 +1953,14 @@ def test_large_dddd_class_defaults_to_tiled_lowering():
     assert DDDD_SPEC.component_count == 1296
     assert DDDD_SPEC.pair_orders == (4, 4)
     integral = build_integral_ir(DDDD_SPEC)
-    candidates = schedule_candidates(integral)
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
     assert [item.kind for item in candidates] == [
         ScheduleKind.TILED_COMPONENTS,
         ScheduleKind.TILED_COMPONENTS,
         ScheduleKind.TILED_COMPONENTS,
     ]
     assert [item.component_tile for item in candidates] == [64, 128, 256]
-    plan = build_fused_shell_plan(DDDD_SPEC)
+    plan = build_fused_shell_plan(DDDD_SPEC, target=TEST_CUDA_TARGET)
     assert plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
     assert plan.block_threads == 64
     assert len(plan.coulomb_states) == 220
@@ -1954,7 +1971,7 @@ def test_large_dddd_class_defaults_to_tiled_lowering():
     assert "state >> 8U" in source
     assert "component_tile_begin += 64U" in source
 
-    trials = supported_schedule_trials(DDDD_SPEC)
+    trials = supported_schedule_trials(DDDD_SPEC, target=TEST_CUDA_TARGET)
     assert len(trials) == 24
     assert len({trial.schedule_id for trial in trials}) == len(trials)
     assert {
@@ -1980,6 +1997,7 @@ def test_large_pair_recompute_schedule_avoids_materialized_term_arrays():
     base = build_fused_shell_plan(
         DDDD_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        target=TEST_CUDA_TARGET,
     ).schedule
     schedule = replace(
         base,
@@ -1992,6 +2010,7 @@ def test_large_pair_recompute_schedule_avoids_materialized_term_arrays():
         DDDD_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(DDDD_SPEC, plan)
     assert "GeneratedDdddPairTerm first_terms" not in source
@@ -2070,13 +2089,13 @@ def test_f_shell_recurrence_matches_symbolic_oracle(spec, component):
 def test_f_shell_cuda_lowering_emits_axes_triple_matchings_and_tiles():
     """Cover pair order six and a component product above the block limit."""
 
-    ffps_source = emit_shell_class_fused_cuda(FFPS_SPEC)
+    ffps_source = emit_shell_class_fused_cuda(FFPS_SPEC, target=TEST_CUDA_TARGET)
     assert "generated_ffps_f_axes[10][3]" in ffps_source
     assert "if constexpr (PairOrder >= 6U)" in ffps_source
     assert "first_removed | second_removed | third_removed, 3U" in ffps_source
     assert "__constant__ short generated_ffps_coulomb_indices[729]" in ffps_source
 
-    fddd_plan = build_fused_shell_plan(FDDD_SPEC)
+    fddd_plan = build_fused_shell_plan(FDDD_SPEC, target=TEST_CUDA_TARGET)
     assert fddd_plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
     assert fddd_plan.block_threads == 64
     assert FDDD_SPEC.component_count == 2160
@@ -2147,7 +2166,7 @@ def test_generic_shell_ad_matches_factored_lowering(spec, component):
 def test_generic_fused_schedule_preserves_every_component_gradient(spec):
     """Audit generated lane schedules, including ddps double Wick matching."""
 
-    plan = build_fused_shell_plan(spec)
+    plan = build_fused_shell_plan(spec, target=TEST_CUDA_TARGET)
     assert plan.components == spec.components
     assert plan.block_threads == 128
     assert plan.warp_count == 4
@@ -2618,7 +2637,9 @@ def test_closed_density_orbit_matches_unique_permutations(unrestricted: bool):
 def test_equal_shell_pair_component_domain_matches_active_tile_triangle():
     """Avoid double-counting (ij|kl) and (kl|ij) in shell-wide workers."""
 
-    source = emit_shell_class_fused_cuda(FUSED_SHELL_SPEC_BY_NAME["pppp"])
+    source = emit_shell_class_fused_cuda(
+        FUSED_SHELL_SPEC_BY_NAME["pppp"], target=TEST_CUDA_TARGET
+    )
     assert (
         "shared.task.shell_pair[0] != shared.task.shell_pair[1] || "
         "(first_p * 3U + second_p) >= (third_p * 3U + fourth_p)" in source
@@ -2631,6 +2652,7 @@ def test_fused_cuda_can_emit_fock_values_and_force_gradients_together():
     plan = build_fused_shell_plan(
         DPDS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(DPDS_SPEC, plan)
     assert "generated_dpds_component_value" in source
@@ -2638,7 +2660,7 @@ def test_fused_cuda_can_emit_fock_values_and_force_gradients_together():
     assert "generated_dpds_shell_class_fock_rhf_kernel" in source
     assert "generated_dpds_shell_class_fock_uhf_persistent_kernel" in source
     assert "generated_dpds_shell_class_force_rhf_kernel" in source
-    force_only = emit_shell_class_fused_cuda(DPDS_SPEC)
+    force_only = emit_shell_class_fused_cuda(DPDS_SPEC, target=TEST_CUDA_TARGET)
     assert "shell_class_fock" not in force_only
     assert "coordinate_gradient" not in source
     assert "Dual3" not in source
@@ -2653,13 +2675,14 @@ def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle():
     )
     schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.TILED_COMPONENTS and item.component_tile == 64
     )
     plan = build_fused_shell_plan(
         DPPP_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
     assert "kGeneratedDpppBlockThreads = 64U" in source
@@ -2677,6 +2700,7 @@ def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle():
         iterations=1,
         samples=1,
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     # The generated candidate and independent recompute oracle must both walk
     # every tile; otherwise a partial-component benchmark can falsely pass.
@@ -2684,7 +2708,7 @@ def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle():
 
 
 def test_dpds_fused_cuda_is_generated_from_shell_spec():
-    source = emit_shell_class_fused_cuda(DPDS_SPEC)
+    source = emit_shell_class_fused_cuda(DPDS_SPEC, target=TEST_CUDA_TARGET)
     assert "kGeneratedDpdsComponentCount = 108U" in source
     assert "kGeneratedDpdsBlockThreads = 128U" in source
     assert "const unsigned third_d = component % 6U" in source
@@ -2704,6 +2728,7 @@ def test_pair_orientation_changes_the_materialized_contraction_pair():
     base = build_fused_shell_plan(
         DPDS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        target=TEST_CUDA_TARGET,
     ).schedule
     canonical = emit_shell_class_fused_cuda(
         DPDS_SPEC,
@@ -2711,6 +2736,7 @@ def test_pair_orientation_changes_the_materialized_contraction_pair():
             DPDS_SPEC,
             consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
             schedule=replace(base, pair_orientation=PairOrientation.CANONICAL),
+            target=TEST_CUDA_TARGET,
         ),
     )
     swapped = emit_shell_class_fused_cuda(
@@ -2719,6 +2745,7 @@ def test_pair_orientation_changes_the_materialized_contraction_pair():
             DPDS_SPEC,
             consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
             schedule=replace(base, pair_orientation=PairOrientation.SWAPPED),
+            target=TEST_CUDA_TARGET,
         ),
     )
     assert "GeneratedDpdsPairTerm second_terms[4]" in canonical
@@ -2730,7 +2757,7 @@ def test_pair_orientation_changes_the_materialized_contraction_pair():
 
 
 def test_ddps_fused_cuda_generates_order_four_double_matchings():
-    source = emit_shell_class_fused_cuda(DDPS_SPEC)
+    source = emit_shell_class_fused_cuda(DDPS_SPEC, target=TEST_CUDA_TARGET)
     assert "kGeneratedDdpsComponentCount = 108U" in source
     assert "kGeneratedDdpsBlockThreads = 128U" in source
     assert "PairOrder == 1U || PairOrder == 4U" in source
@@ -2755,9 +2782,7 @@ def test_rys4_component_lanes_raise_a_second_center_d_shell():
         minimum_blocks_per_sm=1,
     )
     plan = build_fused_shell_plan(
-        DDPS_SPEC,
-        schedule=schedule,
-        recurrence="rys4",
+        DDPS_SPEC, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = emit_shell_class_fused_cuda(DDPS_SPEC, plan)
     assert "if (b == 2U)" in source
@@ -2788,6 +2813,7 @@ def test_low_order_production_force_is_generated_by_common_rys2_pipeline(name: s
         consumers=selection.consumers,
         schedule=selection.schedule,
         recurrence=selection.recurrence,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(
         selection.spec,
@@ -2822,6 +2848,7 @@ def test_packed_force_geometry_omits_component_coulomb_tables():
                 tasks_per_warp=32,
                 shared_coulomb=False,
             ),
+            target=TEST_CUDA_TARGET,
         ),
     )
     force_geometry = source.split(
@@ -2861,6 +2888,7 @@ def test_packed_force_geometry_cuda_is_lowered_from_backend_neutral_algebra(
                 tasks_per_warp=32,
                 shared_coulomb=False,
             ),
+            target=TEST_CUDA_TARGET,
         ),
     )
     setup = source.split(
@@ -2905,6 +2933,7 @@ def test_packed_force_lowering_uses_explicit_derivative_center_slots():
             tasks_per_warp=32,
             shared_coulomb=False,
         ),
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(PSPS_SPEC, plan)
 
@@ -2939,6 +2968,7 @@ def test_generated_fock_workers_use_value_only_shell_schedules(
     plan = build_fused_shell_plan(
         spec,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     class_name = name[0].upper() + name[1:]
@@ -2980,6 +3010,7 @@ def test_explicit_component_lane_fock_width_reaches_streaming_wrapper():
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=force_schedule,
         recurrence="rys3",
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(
         spec,
@@ -2999,6 +3030,7 @@ def test_high_impact_fock_classes_emit_generated_mixed_capability():
         plan = build_fused_shell_plan(
             spec,
             consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            target=TEST_CUDA_TARGET,
         )
         sources[name] = emit_shell_class_fused_cuda(
             spec,
@@ -3046,6 +3078,7 @@ def test_mixed_fock_recomputed_coulomb_scratch_uses_fp32():
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=force_schedule,
         recurrence="rys4",
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_fused_cuda(
         spec,
@@ -3989,6 +4022,7 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
         warmups=0,
         iterations=1,
         samples=1,
+        target=TEST_CUDA_TARGET,
     )
     assert f"vibeqc_run_shell_class_{candidate.name}" in source
     driver = emit_batch_driver((candidate,))
@@ -4118,6 +4152,7 @@ def test_batch_screening_can_emit_coefficient_only_fock_candidates():
         iterations=1,
         samples=1,
         consumer=KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
     )
 
     assert r"\"consumer\":\"fock\"" in source
@@ -4218,9 +4253,7 @@ def test_scalar_rys_cuda_compiles_with_bounded_call_save_when_nvcc_is_configured
         minimum_blocks_per_sm=8,
     )
     plan = build_fused_shell_plan(
-        spec,
-        schedule=schedule,
-        recurrence=recurrence,
+        spec, schedule=schedule, recurrence=recurrence, target=TEST_CUDA_TARGET
     )
     source = tmp_path / f"generated_{name}_{recurrence}.cu"
     source.write_text(
@@ -4307,9 +4340,7 @@ def test_dppp_cooperative_rys4_compiles_without_spills_when_nvcc_is_configured(
         minimum_blocks_per_sm=2,
     )
     plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        schedule=schedule,
-        recurrence="rys4",
+        DPPP_SPEC, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = tmp_path / "generated_dppp_cooperative_rys4.cu"
     source.write_text(
@@ -4465,9 +4496,7 @@ def test_batched_rys4_hot_classes_compile_without_spills_when_nvcc_is_configured
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     spec = FUSED_SHELL_SPEC_BY_NAME[name]
     plan = build_fused_shell_plan(
-        spec,
-        schedule=schedule,
-        recurrence="rys4",
+        spec, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = tmp_path / f"generated_{name}_promoted_rys4.cu"
     source.write_text(
@@ -4549,9 +4578,7 @@ def test_dppp_rys4_uniform_warps_compile_when_nvcc_is_configured(
         minimum_blocks_per_sm=1,
     )
     plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        schedule=schedule,
-        recurrence="rys4",
+        DPPP_SPEC, schedule=schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     source = tmp_path / "generated_dppp_uniform_warp_rys4.cu"
     source.write_text(
@@ -4624,7 +4651,9 @@ def test_rys3_uniform_warps_compile_without_spills_when_nvcc_is_configured(
         shared_coulomb=True,
         minimum_blocks_per_sm=1,
     )
-    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
+    plan = build_fused_shell_plan(
+        spec, schedule=schedule, recurrence="rys3", target=TEST_CUDA_TARGET
+    )
     source = tmp_path / f"generated_{name}_uniform_warp_rys3.cu"
     source.write_text(
         """
@@ -4706,6 +4735,7 @@ def test_cooperative_rys3_hot_classes_compile_without_spills_when_nvcc_is_config
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
         recurrence="rys3",
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / f"generated_{name}_cooperative_rys3.cu"
     source.write_text(
@@ -4781,15 +4811,14 @@ def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configure
         minimum_blocks_per_sm=8,
     )
     direct_plan = build_fused_shell_plan(
-        spec,
-        schedule=direct_schedule,
-        recurrence="rys3",
+        spec, schedule=direct_schedule, recurrence="rys3", target=TEST_CUDA_TARGET
     )
     production_plan = next(
         build_fused_shell_plan(
             spec,
             consumers=selection.consumers,
             schedule=selection.schedule,
+            target=TEST_CUDA_TARGET,
         )
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
@@ -4898,14 +4927,13 @@ def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_
         minimum_blocks_per_sm=2,
     )
     rys4_plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        schedule=rys4_schedule,
-        recurrence="rys4",
+        DPPP_SPEC, schedule=rys4_schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     baseline_plan = build_fused_shell_plan(
         DPPP_SPEC,
         schedule=rys4_schedule,
         recurrence="subset_wick",
+        target=TEST_CUDA_TARGET,
     )
     environment = dict(os.environ)
 
@@ -4997,9 +5025,7 @@ def test_dppp_uniform_warp_rys4_benchmark_runs_against_component_lanes_when_nvcc
         minimum_blocks_per_sm=1,
     )
     uniform_plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        schedule=uniform_schedule,
-        recurrence="rys4",
+        DPPP_SPEC, schedule=uniform_schedule, recurrence="rys4", target=TEST_CUDA_TARGET
     )
     # Keep the comparison independent of the mutable production manifest.  If
     # the candidate is promoted, loading the manifest here would silently
@@ -5019,6 +5045,7 @@ def test_dppp_uniform_warp_rys4_benchmark_runs_against_component_lanes_when_nvcc
         DPPP_SPEC,
         schedule=component_lane_schedule,
         recurrence="rys4",
+        target=TEST_CUDA_TARGET,
     )
     environment = dict(os.environ)
 
@@ -5116,14 +5143,13 @@ def test_cooperative_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_co
         if selection.spec == spec
     )
     rys3_plan = build_fused_shell_plan(
-        spec,
-        schedule=selection.schedule,
-        recurrence="rys3",
+        spec, schedule=selection.schedule, recurrence="rys3", target=TEST_CUDA_TARGET
     )
     baseline_plan = build_fused_shell_plan(
         spec,
         schedule=selection.schedule,
         recurrence="subset_wick",
+        target=TEST_CUDA_TARGET,
     )
     environment = dict(os.environ)
 
@@ -5222,7 +5248,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
   }
 }
 """
-        + emit_shell_class_fused_cuda(spec),
+        + emit_shell_class_fused_cuda(spec, target=TEST_CUDA_TARGET),
         encoding="utf-8",
     )
     result = subprocess.run(
@@ -5278,7 +5304,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 """
         + emit_shell_class_fused_cuda(
             spec,
-            build_fused_shell_plan(spec, schedule=schedule),
+            build_fused_shell_plan(spec, schedule=schedule, target=TEST_CUDA_TARGET),
         ),
         encoding="utf-8",
     )
@@ -5353,6 +5379,7 @@ def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
                 schedule=selected_schedule,
                 benchmark_kernel_only=True,
                 persistent_kernel=True,
+                target=TEST_CUDA_TARGET,
             ),
             encoding="utf-8",
         )
@@ -5433,6 +5460,7 @@ def test_joint_fock_force_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     plan = build_fused_shell_plan(
         DPDS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / "generated_dpds_fock_force.cu"
     source.write_text(
@@ -5480,13 +5508,14 @@ def test_tiled_joint_fock_force_cuda_compiles_when_nvcc_is_configured(
     )
     schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.TILED_COMPONENTS and item.component_tile == 64
     )
     plan = build_fused_shell_plan(
         DPPP_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / "generated_dppp_tiled_fock_force.cu"
     source.write_text(
@@ -5527,14 +5556,14 @@ def test_dddd_tiled_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     schedule = replace(
-        build_fused_shell_plan(DDDD_SPEC).schedule,
+        build_fused_shell_plan(DDDD_SPEC, target=TEST_CUDA_TARGET).schedule,
         block_threads=128,
         component_tile=128,
         pair_orientation=PairOrientation.SWAPPED,
         pair_storage=PairStorage.RECOMPUTED,
         unroll_pair_terms=True,
     )
-    plan = build_fused_shell_plan(DDDD_SPEC, schedule=schedule)
+    plan = build_fused_shell_plan(DDDD_SPEC, schedule=schedule, target=TEST_CUDA_TARGET)
     source = tmp_path / "generated_dddd_tiled.cu"
     source.write_text(
         """
@@ -5581,7 +5610,10 @@ def test_f_shell_cuda_compiles_when_nvcc_is_configured(tmp_path: Path, spec, con
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    schedule = replace(build_fused_shell_plan(spec).schedule, unroll_pair_terms=False)
+    schedule = replace(
+        build_fused_shell_plan(spec, target=TEST_CUDA_TARGET).schedule,
+        unroll_pair_terms=False,
+    )
     if spec == FDDD_SPEC:
         schedule = replace(
             schedule,
@@ -5590,9 +5622,7 @@ def test_f_shell_cuda_compiles_when_nvcc_is_configured(tmp_path: Path, spec, con
             pair_storage=PairStorage.RECOMPUTED,
         )
     plan = build_fused_shell_plan(
-        spec,
-        consumers=consumers,
-        schedule=schedule,
+        spec, consumers=consumers, schedule=schedule, target=TEST_CUDA_TARGET
     )
     source = tmp_path / f"generated_{spec.name}.cu"
     source.write_text(
@@ -5669,9 +5699,7 @@ def test_structural_rys_capability_examples_compile_when_nvcc_is_configured(
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     spec = FUSED_SHELL_SPEC_BY_NAME[name]
     plan = build_fused_shell_plan(
-        spec,
-        schedule=schedule,
-        recurrence=recurrence,
+        spec, schedule=schedule, recurrence=recurrence, target=TEST_CUDA_TARGET
     )
     source = tmp_path / f"generated_{name}_{recurrence}_capability.cu"
     source.write_text(
@@ -5731,13 +5759,14 @@ def test_psss_shell_task_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     )
     schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.SHELL_TASK
     )
     plan = build_fused_shell_plan(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / "generated_psss_shell_task.cu"
     source.write_text(
@@ -5783,13 +5812,14 @@ def test_psss_packed_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     )
     schedule = next(
         item
-        for item in schedule_candidates(integral)
+        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
         if item.kind == ScheduleKind.PACKED_TASKS
     )
     plan = build_fused_shell_plan(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / "generated_psss_packed.cu"
     source.write_text(
@@ -5858,6 +5888,7 @@ def test_low_order_production_rys2_cuda_compiles_when_nvcc_is_configured(
         consumers=selection.consumers,
         schedule=selection.schedule,
         recurrence=selection.recurrence,
+        target=TEST_CUDA_TARGET,
     )
     source = tmp_path / f"generated_{name}_production_rys2.cu"
     source.write_text(
@@ -5903,13 +5934,13 @@ def test_schedule_knob_cuda_variants_compile_when_nvcc_is_configured(
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    base = build_fused_shell_plan(DPDS_SPEC).schedule
+    base = build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule
     schedule = replace(
         base,
         shared_coulomb=shared_coulomb,
         unroll_pair_terms=False,
     )
-    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule)
+    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule, target=TEST_CUDA_TARGET)
     label = "shared" if shared_coulomb else "recomputed"
     source = tmp_path / f"generated_dpds_{label}.cu"
     source.write_text(
@@ -5949,6 +5980,7 @@ def test_dppp_benchmark_compares_shared_and_recomputed_schedules():
         warmups=1,
         iterations=3,
         samples=5,
+        target=TEST_CUDA_TARGET,
     )
     assert "constexpr unsigned kTaskCount = 32;" in source
     assert "constexpr unsigned kPrimitiveCount = 2;" in source
@@ -5971,6 +6003,7 @@ def test_fock_benchmark_compares_value_only_shared_and_recomputed_schedules():
         iterations=3,
         samples=5,
         consumer=KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
     )
     assert "generated_dpds_shell_class_fock_rhf_kernel" in source
     assert "generated_dpds_component_recompute_fock_rhf_kernel" in source
@@ -5989,7 +6022,9 @@ def test_high_component_fock_oracle_block_covers_every_component():
     trial = next(
         trial
         for trial in supported_schedule_trials(
-            FUSED_SHELL_SPEC_BY_NAME["dppp"], KernelConsumer.FOCK
+            FUSED_SHELL_SPEC_BY_NAME["dppp"],
+            KernelConsumer.FOCK,
+            target=TEST_CUDA_TARGET,
         )
         if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
         and trial.schedule.block_threads == 128
@@ -6008,6 +6043,7 @@ def test_high_component_fock_oracle_block_covers_every_component():
         samples=1,
         consumer=KernelConsumer.FOCK,
         schedule=trial.schedule,
+        target=TEST_CUDA_TARGET,
     )
     baseline = source.split("/** Per-component Fock baseline", maxsplit=1)[1]
     assert "__launch_bounds__(192)" in baseline
@@ -6019,13 +6055,16 @@ def test_packed_order2_fock_oracle_drops_force_wrappers():
 
     trial = next(
         trial
-        for trial in supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+        for trial in supported_schedule_trials(
+            PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+        )
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
     plan = build_fused_shell_plan(
         PSPS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         schedule=trial.schedule,
+        target=TEST_CUDA_TARGET,
     )
     source = emit_shell_class_oracle_cuda(PSPS_SPEC, plan, KernelConsumer.FOCK)
     assert "generated_psps_shell_class_fock_rhf_kernel" in source
@@ -6040,7 +6079,7 @@ def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     schedule = replace(
-        build_fused_shell_plan(DPDS_SPEC).schedule,
+        build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
         pair_orientation=PairOrientation.SWAPPED,
     )
     source = tmp_path / "generated_dpds_fock_benchmark.cu"
@@ -6054,6 +6093,7 @@ def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
             samples=1,
             consumer=KernelConsumer.FOCK,
             schedule=schedule,
+            target=TEST_CUDA_TARGET,
         ),
         encoding="utf-8",
     )
@@ -6096,7 +6136,7 @@ def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
 def test_benchmark_accepts_an_explicit_schedule_or_lowered_plan():
     """Make the measured code shape an explicit autotuning input."""
 
-    default_plan = build_fused_shell_plan(DPDS_SPEC)
+    default_plan = build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET)
     schedule = replace(
         default_plan.schedule,
         shared_coulomb=False,
@@ -6110,13 +6150,14 @@ def test_benchmark_accepts_an_explicit_schedule_or_lowered_plan():
         iterations=1,
         samples=1,
         schedule=schedule,
+        target=TEST_CUDA_TARGET,
     )
     assert "double coulomb[1];" in source
     assert source.count("generated_dpds_component_gradient<false>") == 2
     assert "#pragma unroll 1" in source
     assert "#pragma unroll\n" in source
     assert "VIBEQC_PAIR_UNROLL" not in source
-    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule)
+    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule, target=TEST_CUDA_TARGET)
     assert source == emit_shell_class_benchmark_cuda(
         DPDS_SPEC,
         task_count=4,
@@ -6144,7 +6185,7 @@ def test_autotune_compile_timeout_terminates_the_compiler_process_group(
 ):
     """Reject pathological large-shell compiles without orphaning NVCC children."""
 
-    trial = supported_schedule_trials(DPDS_SPEC)[0]
+    trial = supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)[0]
     source = tmp_path / f"{trial.spec.name}_{trial.schedule_id}.cu"
     source.write_text("// fake CUDA input\n", encoding="utf-8")
     child_pid_file = tmp_path / "child.pid"
@@ -6204,7 +6245,7 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
     class ReachedBenchmark(Exception):
         pass
 
-    trial = supported_schedule_trials(PSPS_SPEC)[0]
+    trial = supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)[0]
     compiled = []
     monkeypatch.setenv("VIBEQC_BENCHMARK_PARTITION", "test-partition")
     monkeypatch.setenv("VIBEQC_BENCHMARK_GRES", "gpu:environment:1")
@@ -6251,7 +6292,7 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
 def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     """Keep same-class variants linkable and every winner reproducible."""
 
-    trials = supported_schedule_trials(DPDS_SPEC)
+    trials = supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)
     component_trials = tuple(
         trial for trial in trials if trial.schedule.kind == ScheduleKind.COMPONENT_LANES
     )
@@ -6349,7 +6390,9 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     assert kernels[1]["shell_class"] == "ddps"
     assert kernels[1]["consumers"] == ["force"]
 
-    fock_trials = supported_schedule_trials(DPDS_SPEC, KernelConsumer.FOCK)
+    fock_trials = supported_schedule_trials(
+        DPDS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
     assert all(trial.consumer == KernelConsumer.FOCK for trial in fock_trials)
     fock_source = emit_schedule_translation_unit(
         fock_trials[0],
@@ -6466,7 +6509,9 @@ def test_fock_autotune_includes_high_component_production_baseline(name):
 
     spec = FUSED_SHELL_SPEC_BY_NAME[name]
     expected = dict(_production_fock_schedule_index("sm_120"))[name]
-    trials = supported_schedule_trials(spec, KernelConsumer.FOCK)
+    trials = supported_schedule_trials(
+        spec, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
     baselines = [trial for trial in trials if trial.schedule == expected]
     assert len(baselines) == 1, f"missing manifest baseline for {name}"
 
@@ -6499,7 +6544,7 @@ def test_autotune_manifest_replacement_is_atomic(
         encoding="utf-8",
     )
     output.write_text("existing production manifest\n", encoding="utf-8")
-    trial = supported_schedule_trials(DPDS_SPEC)[0]
+    trial = supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)[0]
 
     def fail_replace(source_path: Path, output_path: Path) -> None:
         assert Path(source_path).parent == tmp_path
@@ -6572,7 +6617,9 @@ def test_autotune_trials_preserve_an_explicit_integral_ir():
         derivative=operator.nuclear_derivative(),
         contractions=(force,),
     )
-    trials = supported_schedule_trials(DPDS_SPEC, integral=integral)
+    trials = supported_schedule_trials(
+        DPDS_SPEC, integral=integral, target=TEST_CUDA_TARGET
+    )
     assert trials
     assert all(trial.integral is integral for trial in trials)
     assert trials[0].static_model.recurrence_state_count == 84
@@ -6597,16 +6644,13 @@ def test_autotune_trial_identity_includes_explicit_integral_intent():
     )
 
     default_trial = supported_schedule_trials(
-        DPDS_SPEC,
-        integral=default_integral,
+        DPDS_SPEC, integral=default_integral, target=TEST_CUDA_TARGET
     )[0]
     center_one_trial = supported_schedule_trials(
-        DPDS_SPEC,
-        integral=center_one_integral,
+        DPDS_SPEC, integral=center_one_integral, target=TEST_CUDA_TARGET
     )[0]
     same_default_trial = supported_schedule_trials(
-        DPDS_SPEC,
-        integral=build_integral_ir(DPDS_SPEC),
+        DPDS_SPEC, integral=build_integral_ir(DPDS_SPEC), target=TEST_CUDA_TARGET
     )[0]
 
     # Both trials use the same execution knobs; only mathematical recovery
@@ -6636,7 +6680,7 @@ def test_autotune_static_model_records_operations_and_live_values():
 
     packed_force = next(
         trial
-        for trial in supported_schedule_trials(PSPS_SPEC)
+        for trial in supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
     packed_model = packed_force.static_model
@@ -6672,7 +6716,7 @@ def test_autotune_static_model_records_operations_and_live_values():
 
     component_trials = tuple(
         trial
-        for trial in supported_schedule_trials(DPDS_SPEC)
+        for trial in supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)
         if trial.schedule.kind == ScheduleKind.COMPONENT_LANES
     )
     component_model = component_trials[0].static_model
@@ -6690,7 +6734,9 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert payload["estimated_peak_live_values"] == component_model.peak_live_values
     assert payload["pre_optimization"] == payload["post_optimization"]
 
-    fock_trial = supported_schedule_trials(DPDS_SPEC, KernelConsumer.FOCK)[0]
+    fock_trial = supported_schedule_trials(
+        DPDS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )[0]
     fock_model = fock_trial.static_model
     assert fock_model.root_count == 1
     assert fock_model.recurrence_state_count == 56
@@ -6703,7 +6749,7 @@ def test_value_only_native_helpers_use_the_pruned_coulomb_table_stride(name):
 
     spec = FUSED_SHELL_SPEC_BY_NAME[name]
     integral = build_integral_ir(spec, consumers=(KernelConsumer.FOCK,))
-    plan = build_fused_shell_plan(spec, integral=integral)
+    plan = build_fused_shell_plan(spec, integral=integral, target=TEST_CUDA_TARGET)
     source = emit_shell_class_fused_cuda(spec, plan)
     side = integral.maximum_coulomb_order + 1
     table = re.search(
@@ -6726,7 +6772,9 @@ def test_value_only_native_helpers_use_the_pruned_coulomb_table_stride(name):
 
 def test_fock_static_model_handles_transformed_component_graphs():
     """Nonbinary Fock candidates must retain a usable model after normalization."""
-    trials = supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
     transformed = [
         trial for trial in trials if trial.schedule.algebra_form != AlgebraForm.BINARY
     ]
@@ -6742,7 +6790,7 @@ def test_fock_static_model_handles_transformed_component_graphs():
 def test_packed_autotune_searches_real_algebra_placement_variants():
     """Tie schedule IDs, payloads, source lowering, and static models together."""
 
-    trials = supported_schedule_trials(PSPS_SPEC)
+    trials = supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
     packed = tuple(
         trial for trial in trials if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
@@ -6933,7 +6981,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
 
     inline_schedule = next(
         trial.schedule
-        for trial in supported_schedule_trials(PSPS_SPEC)
+        for trial in supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
         and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
         and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
@@ -6958,22 +7006,22 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
     assert _schedule_from_payload(payload).algebra_form == AlgebraForm.BINARY
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
-            build_fused_shell_plan(DPDS_SPEC).schedule,
+            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_placement=AlgebraPlacement.INLINE_SINGLE_USE,
         )
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
-            build_fused_shell_plan(DPDS_SPEC).schedule,
+            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_ordering=AlgebraOrdering.PRESSURE_AWARE,
         )
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
-            build_fused_shell_plan(DPDS_SPEC).schedule,
+            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_fusion=AlgebraFusion.FMA,
         )
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
-            build_fused_shell_plan(DPDS_SPEC).schedule,
+            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_form=AlgebraForm.CANONICAL_NARY,
         )
 
@@ -6986,7 +7034,7 @@ def test_autotune_candidate_artifact_includes_static_model(
 
     trial = next(
         trial
-        for trial in supported_schedule_trials(PSPS_SPEC)
+        for trial in supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
 
@@ -7070,7 +7118,9 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
 ):
     """Never promote a Fock proposal when its shipped baseline was absent."""
 
-    trials = supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
     baseline, candidate = trials[:2]
 
     monkeypatch.setattr(
@@ -7204,7 +7254,7 @@ def test_autotune_occupancy_artifact_is_resource_bounded():
 
     trial = next(
         trial
-        for trial in supported_schedule_trials(PSPS_SPEC)
+        for trial in supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
     target = cuda_target_info("sm_120")
@@ -7239,7 +7289,7 @@ def test_autotune_occupancy_artifact_is_resource_bounded():
 def test_autotune_occupancy_artifact_preserves_missing_resource_records():
     """Rejected compiles still expose why occupancy could not be estimated."""
 
-    trial = supported_schedule_trials(PSPS_SPEC)[0]
+    trial = supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)[0]
     payload = estimate_occupancy((), trial, cuda_target_info("sm_120"))
 
     assert payload == {
@@ -7289,7 +7339,7 @@ def test_autotune_same_class_variants_link_when_nvcc_is_configured(
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA link gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    trials = supported_schedule_trials(DPDS_SPEC)[:2]
+    trials = supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)[:2]
     sources = []
     for trial in trials:
         path = tmp_path / f"{trial.schedule_id}.cu"
@@ -7338,6 +7388,7 @@ def test_benchmark_is_generated_without_shell_specific_harness_code(spec, third_
         warmups=1,
         iterations=3,
         samples=5,
+        target=TEST_CUDA_TARGET,
     )
     assert "constexpr std::size_t n = 16U" in source
     assert f"task.ao_begin[2] = {third_offset}U" in source
@@ -7493,6 +7544,8 @@ def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path):
         "dppp",
         "--lowering",
         "fused",
+        "--architecture",
+        TEST_CUDA_TARGET.architecture,
         "--output",
         str(fused_output),
     ]
@@ -7515,6 +7568,8 @@ def test_codegen_cli_writes_generated_fused_candidate(tmp_path: Path, spec):
         spec.name,
         "--lowering",
         "fused",
+        "--architecture",
+        TEST_CUDA_TARGET.architecture,
         "--output",
         str(output),
     ]
@@ -7522,5 +7577,5 @@ def test_codegen_cli_writes_generated_fused_candidate(tmp_path: Path, spec):
     first = output.read_text(encoding="utf-8")
     subprocess.run(command, check=True)
     assert output.read_text(encoding="utf-8") == first
-    assert first == emit_shell_class_fused_cuda(spec)
+    assert first == emit_shell_class_fused_cuda(spec, target=TEST_CUDA_TARGET)
     assert f"generated_{spec.name}_shell_class_force_rhf_kernel" in first
