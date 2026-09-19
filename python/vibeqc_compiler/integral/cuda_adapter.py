@@ -9,19 +9,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_adapter import (
-        CudaBenchmarkExecutor as CudaBenchmarkExecutor,
+        CudaBenchmarkExecutor,
     )
     from vibeqc_compiler.common.cuda_adapter import (
-        CudaCompilerAdapter as CudaCompilerAdapter,
+        CudaCompilerAdapter,
     )
     from vibeqc_compiler.common.cuda_adapter import (
-        CudaCompileResult as CudaCompileResult,
+        CudaCompileResult,
     )
     from vibeqc_compiler.common.cuda_adapter import (
-        CudaExecutionProfile as CudaExecutionProfile,
+        CudaExecutionProfile,
     )
     from vibeqc_compiler.common.cuda_adapter import (
-        resolve_cuda_execution_profile as resolve_cuda_execution_profile,
+        resolve_cuda_execution_profile,
     )
 else:
     import sys
