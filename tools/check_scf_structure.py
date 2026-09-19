@@ -34,7 +34,6 @@ ALLOWED = {
 CUDA_MODULES = {
     "cuda_planning": (
         "arena",
-        "checked_layout",
         "direct_constants",
         "direct_metadata",
         "packed_basis",
@@ -62,8 +61,8 @@ CUDA_MODULES["cuda_df_source"] = (
 )
 CUDA_ALLOWED = {
     "cuda_planning": (
+        "runtime/bounded_workspace.hpp",
         "scf/cuda/arena.",
-        "scf/cuda/checked_layout.",
         "scf/cuda/direct_constants.",
         "scf/cuda/integral_limits.",
         "scf/cuda/scf_constants.",
@@ -430,9 +429,9 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "runtime/resource_cuda.cuh",
     "runtime/resource_usage.hpp",
     "scf/aot_shell_registry.hpp",
+    "runtime/bounded_workspace.hpp",
     "scf/cuda/arena.hpp",
     "scf/cuda/basis_transform_kernels.hpp",
-    "scf/cuda/checked_layout.hpp",
     "scf/cuda/direct_bounded_pages.hpp",
     "scf/cuda/direct_bounded_tasks.hpp",
     "scf/cuda/direct_constants.hpp",
