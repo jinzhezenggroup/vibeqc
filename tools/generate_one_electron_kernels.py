@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -33,7 +34,7 @@ from vibeqc_compiler.integral.one_electron_policy_cuda import (
 from tools.generate_df_kernels import write_if_changed
 
 
-def main():
+def main() -> typing.Any:
     """Keep generated code out of source control and preserve unchanged mtimes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)

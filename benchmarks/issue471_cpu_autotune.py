@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import tempfile
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -27,7 +28,7 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def _fixture():
+def _fixture() -> typing.Any:
     coordinates = np.array(
         [
             [0.13, -0.31, 0.24],
@@ -67,7 +68,9 @@ def _fixture():
     return angular, coordinates, specs, primitives, shells
 
 
-def _independent_reference(angular, coordinates, shells):
+def _independent_reference(
+    angular: typing.Any, coordinates: typing.Any, shells: typing.Any
+) -> typing.Any:
     ir = build_weighted_eri_ir(angular)
     factors = np.array(
         [
@@ -97,7 +100,7 @@ def _independent_reference(angular, coordinates, shells):
     return normalized / factors[:, None]
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--output", type=Path)

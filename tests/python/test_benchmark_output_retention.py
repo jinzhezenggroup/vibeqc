@@ -2,6 +2,7 @@
 
 import argparse
 import ast
+import typing
 from pathlib import Path
 
 import pytest
@@ -21,8 +22,8 @@ RUNNERS = (
 
 @pytest.mark.parametrize("alias", [False, True])
 def test_raw_writer_rejects_retained_tree_and_symlink_alias(
-    tmp_path, monkeypatch, alias
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any, alias: typing.Any
+) -> typing.Any:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     retained = tmp_path / "benchmarks/results"
     retained.mkdir(parents=True)
@@ -41,8 +42,8 @@ def test_raw_writer_rejects_retained_tree_and_symlink_alias(
 
 
 def test_guard_rejects_relative_traversal_before_creating_anything(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> typing.Any:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="raw benchmark output"):
@@ -50,7 +51,9 @@ def test_guard_rejects_relative_traversal_before_creating_anything(
     assert not (tmp_path / "benchmarks").exists()
 
 
-def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatch):
+def test_scratch_paths_and_neighbour_names_remain_supported(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> typing.Any:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     for name in (
         ".artifacts/benchmarks/run.json",
@@ -62,7 +65,9 @@ def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatc
         assert path.is_file()
 
 
-def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch):
+def test_argparse_reports_bad_output_without_starting_work(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> typing.Any:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=_support.raw_output_path)
@@ -73,7 +78,9 @@ def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch
 
 
 @pytest.mark.parametrize("name", RUNNERS)
-def test_shared_runner_outputs_are_guarded_during_argument_parsing(name):
+def test_shared_runner_outputs_are_guarded_during_argument_parsing(
+    name: typing.Any,
+) -> typing.Any:
     tree = ast.parse((ROOT / "benchmarks" / name).read_text())
     found = set()
     for node in ast.walk(tree):

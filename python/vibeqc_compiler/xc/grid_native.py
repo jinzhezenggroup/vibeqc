@@ -6,6 +6,7 @@ compose their adjoints in the bounded native scheduling template.
 """
 
 import ctypes as ct
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +23,9 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from .grid_response import grid_response_program
 
 
-def emit_grid_partials(iterations=3, *, device=False):
+def emit_grid_partials(
+    iterations: typing.Any = 3, *, device: typing.Any = False
+) -> typing.Any:
     """Shared local AD construction for CPU and CUDA traversal owners."""
     lines = []
     identities = {}
@@ -52,7 +55,7 @@ def emit_grid_partials(iterations=3, *, device=False):
     return "\n".join(lines) + "\n"
 
 
-def emit_grid_contraction(iterations=3):
+def emit_grid_contraction(iterations: typing.Any = 3) -> typing.Any:
     """Generate primal and local VJP entries from existing Graph roots only."""
     lines = ['#include "grid_response_cpu.hpp"', emit_grid_partials(iterations)]
     lines += [
@@ -75,12 +78,12 @@ class NativeGridContraction:
     def __init__(
         self,
         *,
-        compiler,
-        cache,
-        iterations=3,
-        max_bytes=8 * 1024 * 1024,
-        max_pair_visits=100_000_000,
-    ):
+        compiler: typing.Any,
+        cache: typing.Any,
+        iterations: typing.Any = 3,
+        max_bytes: typing.Any = 8 * 1024 * 1024,
+        max_pair_visits: typing.Any = 100_000_000,
+    ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
             raise TypeError("native grid requires a CPU compiler adapter")
         checked_int(max_bytes, "grid byte budget", high=(1 << 63) - 1)
@@ -118,7 +121,15 @@ class NativeGridContraction:
         ]
         self.call.restype = ct.c_int
 
-    def contract(self, points, centers, owners, seeds, *, coincident_tolerance=1e-12):
+    def contract(
+        self,
+        points: typing.Any,
+        centers: typing.Any,
+        owners: typing.Any,
+        seeds: typing.Any,
+        *,
+        coincident_tolerance: typing.Any = 1e-12,
+    ) -> typing.Any:
         """Return a detached gradient, publishing nothing on a late native error."""
         points, centers, owners, seeds = map(
             np.asarray, (points, centers, owners, seeds)

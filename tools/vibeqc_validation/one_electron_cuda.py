@@ -1,9 +1,11 @@
 """Raw one-electron primitive fixture using the common CUDA execution protocol."""
 
+import typing
+
 from .raw_values_cuda import emit_raw_value_driver
 
 
-def emit_one_electron_value_driver(architecture):
+def emit_one_electron_value_driver(architecture: typing.Any) -> typing.Any:
     """Evaluate S/T/V separately; component indices follow the public inventory."""
     kernel = r"""
 namespace one = vibeqc::scf::generated_one_electron;

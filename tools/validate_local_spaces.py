@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -32,7 +33,9 @@ from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def run(output, names=("h2", "water", "lih", "f_heh")):
+def run(
+    output: typing.Any, names: typing.Any = ("h2", "water", "lih", "f_heh")
+) -> typing.Any:
     """Archive complete setup costs and rejected states without changing defaults."""
     output.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()

@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +13,7 @@ from vibeqc_compiler.xc.geometry_cuda import emit_native_geometry_cuda
 from tools.generate_df_kernels import write_if_changed
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

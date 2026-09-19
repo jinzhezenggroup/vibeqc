@@ -1,6 +1,7 @@
 """Small explicit CC endpoint inputs; independent reference data, not a solver."""
 
 import json
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,7 @@ from tools.vibeqc_validation.schema import canonical_hash
 ROOT = Path(__file__).resolve().parents[1] / "tests/reference_data/cc/endpoints"
 
 
-def cases():
+def cases() -> typing.Any:
     rows = [
         x for x in molecular_inputs() if x["name"] in ("h2", "he", "h2o", "nh3", "ch4")
     ]
@@ -35,7 +36,7 @@ def cases():
     return rows
 
 
-def source_arguments(inputs):
+def source_arguments(inputs: typing.Any) -> typing.Any:
     return {
         "atoms": tuple(
             Atom(z, tuple(x))
@@ -47,7 +48,7 @@ def source_arguments(inputs):
     }
 
 
-def array_hash(arrays):
+def array_hash(arrays: typing.Any) -> typing.Any:
     from hashlib import sha256
 
     return canonical_hash(
@@ -58,7 +59,7 @@ def array_hash(arrays):
     )
 
 
-def load(name, root=ROOT):
+def load(name: typing.Any, root: typing.Any = ROOT) -> typing.Any:
     meta = json.loads((Path(root) / (name + ".json")).read_text())
     if meta["pyscf"] != "2.14.0" or meta["version"] != 1:
         raise ValueError("CC endpoint reference version mismatch")
@@ -72,7 +73,9 @@ def load(name, root=ROOT):
     return meta, arrays
 
 
-def snapshot_from_fixture(source, meta, arrays):
+def snapshot_from_fixture(
+    source: typing.Any, meta: typing.Any, arrays: typing.Any
+) -> typing.Any:
     return ReferenceSnapshot(
         *(arrays[k] for k in ("S", "h", "F", "C", "eps", "occ")),
         source.electron_count,

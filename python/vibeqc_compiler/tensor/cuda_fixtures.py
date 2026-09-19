@@ -1,5 +1,6 @@
 """Controlled CC-like fragments for CUDA lowering, not a complete CC method."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -39,7 +40,7 @@ def cc_fixtures(nocc: int, nvir: int, *, seed: int = 146) -> tuple[TensorFixture
         Index("b", virtual),
     )
 
-    def tensor(name, indices):
+    def tensor(name: typing.Any, indices: typing.Any) -> typing.Any:
         return input_tensor(
             name, TensorSpec(indices, role="parameter", representation="spin_orbital")
         )

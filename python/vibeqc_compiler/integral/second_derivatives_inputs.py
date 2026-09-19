@@ -7,6 +7,7 @@ External cotangents and public transforms stay fixed during differentiation.
 
 import json
 import math
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -42,11 +43,11 @@ class SecondShellStream:
     public_conventions: tuple
 
     @property
-    def record_count(self):
+    def record_count(self) -> typing.Any:
         return math.prod(map(len, self.primitives))
 
     @property
-    def resource_request(self):
+    def resource_request(self) -> typing.Any:
         """Reserve the adapter's conservative peak alongside the native owner."""
         return ResourceRequest(
             "second_public_stream",
@@ -78,7 +79,7 @@ class SecondShellStream:
             ("Python object metadata",),
         )
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Any:
         """Yield one packed-component primitive at a time, without product storage."""
         for primitives in product(*self.primitives):
             scale = self.component_scale * math.prod(c for _, c in primitives)
@@ -97,17 +98,17 @@ class SecondShellStream:
 
 
 def prepare_second_shell_stream(
-    artifact,
-    primitives,
-    centers,
-    weights=None,
+    artifact: typing.Any,
+    primitives: typing.Any,
+    centers: typing.Any,
+    weights: typing.Any = None,
     *,
-    public_signature=None,
-    projections=None,
-    direction=None,
-    output_tile=0,
-    budget_bytes=4 << 20,
-):
+    public_signature: typing.Any = None,
+    projections: typing.Any = None,
+    direction: typing.Any = None,
+    output_tile: typing.Any = 0,
+    budget_bytes: typing.Any = 4 << 20,
+) -> typing.Any:
     """Freeze a full public weight tile and its normalized primitive contraction.
 
     Weighted consumers accept a common WeightTile, including padded layouts.

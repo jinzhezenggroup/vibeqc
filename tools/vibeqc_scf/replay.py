@@ -9,6 +9,7 @@ reported as complete-solve acceleration.
 import json
 import math
 import time
+import typing
 import zipfile
 from dataclasses import asdict
 from pathlib import Path
@@ -26,7 +27,7 @@ from .state import DensityProposal, ScfSnapshot, safeguard_policy
 MATRICES = ("density", "fock", "residual", "overlap", "baseline")
 
 
-def source_record(source):
+def source_record(source: typing.Any) -> typing.Any:
     """Explicit export of molecular inputs; only called by the opt-in writer."""
     return {
         "atoms": [asdict(a) for a in source.atoms],
@@ -37,10 +38,10 @@ def source_record(source):
     }
 
 
-def restore_source(record):
+def restore_source(record: typing.Any) -> typing.Any:
     """Rebuild owned runtime resources from plain, normalized input records."""
 
-    def shells(rows):
+    def shells(rows: typing.Any) -> typing.Any:
         return tuple(
             Shell(
                 s["atom_index"],
@@ -61,7 +62,13 @@ def restore_source(record):
     )
 
 
-def export_trace(result, source, path, *, provenance=None):
+def export_trace(
+    result: typing.Any,
+    source: typing.Any,
+    path: typing.Any,
+    *,
+    provenance: typing.Any = None,
+) -> typing.Any:
     """Write a local JSON manifest plus bounded NPZ matrices, with no overwrite.
 
     Failed/incomplete traces are preserved with their status. Invalid model
@@ -114,7 +121,7 @@ def export_trace(result, source, path, *, provenance=None):
     return path
 
 
-def load_trace(path):
+def load_trace(path: typing.Any) -> typing.Any:
     """Validate sizes, names, hashes and physical invariants before replay."""
     path = Path(path)
     if path.stat().st_size > 16 << 20:
@@ -217,12 +224,12 @@ class TargetOperator:
     Dense values are explicitly limited to that audit's small-system boundary.
     """
 
-    def __init__(self, source, model):
+    def __init__(self, source: typing.Any, model: typing.Any) -> None:
         self.audit = StrictHFAudit(source, model)
         self.model = model
         self.fock_builds = 0
 
-    def evaluate(self, density):
+    def evaluate(self, density: typing.Any) -> typing.Any:
         a = self.audit
         total = density.sum(axis=0)
         if a.eri is not None:
@@ -238,7 +245,9 @@ class TargetOperator:
         return energy, f, residual
 
 
-def counterfactual(state, proposer, operator):
+def counterfactual(
+    state: typing.Any, proposer: typing.Any, operator: typing.Any
+) -> typing.Any:
     """Re-evaluate an identical snapshot, including all failed trial Focks.
 
     The original physical Fock is independently verified before any candidate

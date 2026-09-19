@@ -6,6 +6,7 @@ half-open range are semantic and cannot be inferred from equal dimensions.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, replace
 from math import prod
 
@@ -201,7 +202,13 @@ class TensorSpec:
             self.representation,
         )
 
-    def result(self, *, indices=None, symmetries=(), differentiable=None):
+    def result(
+        self,
+        *,
+        indices: typing.Any = None,
+        symmetries: typing.Any = (),
+        differentiable: typing.Any = None,
+    ) -> typing.Any:
         """Construct a result type without inventing unproved symmetries."""
         return replace(
             self,

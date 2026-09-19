@@ -1,5 +1,6 @@
 """Response problem snapshots, rotation layouts and fail-closed boundaries."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -16,7 +17,7 @@ from tools.vibeqc_response import (
 )
 
 
-def test_rotation_layout_pack_density_generator_and_invalid_spaces():
+def test_rotation_layout_pack_density_generator_and_invalid_spaces() -> typing.Any:
     layout = RotationLayout((0, 1), (2, 3, 4))
     values = np.arange(layout.dimension, dtype=float).reshape(layout.nocc, layout.nvirt)
     packed = layout.pack(values)
@@ -32,7 +33,9 @@ def test_rotation_layout_pack_density_generator_and_invalid_spaces():
         RotationLayout((0,), (1,), ("alpha", "beta"))
 
 
-def test_problem_invalidates_same_dimension_reference_change_and_operator_change():
+def test_problem_invalidates_same_dimension_reference_change_and_operator_change() -> (
+    typing.Any
+):
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -51,7 +54,7 @@ def test_problem_invalidates_same_dimension_reference_change_and_operator_change
     )
 
 
-def test_problem_rhs_layout_validation_and_label_count():
+def test_problem_rhs_layout_validation_and_label_count() -> typing.Any:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -74,7 +77,7 @@ def test_problem_rhs_layout_validation_and_label_count():
         replace(problem, overlap_metric="ao-overlap")
 
 
-def test_problem_rejects_rotation_space_membership_mismatch():
+def test_problem_rejects_rotation_space_membership_mismatch() -> typing.Any:
     meta, arrays = load_fixture("water")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -84,7 +87,9 @@ def test_problem_rejects_rotation_space_membership_mismatch():
         replace(problem, layout=bad)
 
 
-def test_cpks_requires_converged_ks_reference_and_explicit_model_identity():
+def test_cpks_requires_converged_ks_reference_and_explicit_model_identity() -> (
+    typing.Any
+):
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -111,7 +116,7 @@ def test_cpks_requires_converged_ks_reference_and_explicit_model_identity():
         replace(ks, grid_identity=None)
 
 
-def test_same_occupancy_degeneracy_is_not_a_response_singularity():
+def test_same_occupancy_degeneracy_is_not_a_response_singularity() -> typing.Any:
     """Occupied-occupied degeneracy must not trip the response stability gate.
 
     The nonredundant layout solves only occupied-virtual rotations, so a

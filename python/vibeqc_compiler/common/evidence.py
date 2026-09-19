@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -56,7 +57,7 @@ def file_hash(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def outcome(status: str, reason: str | None = None, **measurements) -> dict:
+def outcome(status: str, reason: str | None = None, **measurements: typing.Any) -> dict:
     """Construct an explicit measured, failed, or unavailable stage."""
     result = {"status": status, "reason": reason, **measurements}
     validate_outcome(result)
@@ -78,7 +79,9 @@ def validate_outcome(value: dict) -> None:
         raise ValueError("failure/not-run requires a reason")
 
 
-def block_error(actual, reference, *, atol: float, rtol: float) -> dict:
+def block_error(
+    actual: typing.Any, reference: typing.Any, *, atol: float, rtol: float
+) -> dict:
     """Compare every entry using an absolute floor, including near-zero values."""
     if not all(math.isfinite(x) and x >= 0 for x in (atol, rtol)) or atol + rtol == 0:
         raise ValueError("tolerances must be finite, nonnegative, and not both zero")
@@ -106,7 +109,12 @@ def block_error(actual, reference, *, atol: float, rtol: float) -> dict:
 
 
 def finite_difference(
-    energy, coordinates, analytic_gradient, *, settings: dict, steps=(1e-2, 3e-3, 1e-3)
+    energy: typing.Any,
+    coordinates: typing.Any,
+    analytic_gradient: typing.Any,
+    *,
+    settings: dict,
+    steps: typing.Any = (1e-2, 3e-3, 1e-3),
 ) -> dict:
     """Report the whole central-difference curve under one frozen method policy.
 
@@ -175,7 +183,7 @@ def new_evidence(*, tier: str, subject: str, inputs_hash: str) -> dict:
     }
 
 
-def _digest(value) -> bool:
+def _digest(value: typing.Any) -> bool:
     return isinstance(value, str) and bool(re.fullmatch(r"[0-9a-f]{64}", value))
 
 

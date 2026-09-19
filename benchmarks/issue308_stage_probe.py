@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -239,7 +240,7 @@ def run(args: argparse.Namespace) -> None:
     patch = subprocess.check_output(["git", "diff", "--binary", "HEAD"])
     (output / "measured-source.patch").write_bytes(patch)
 
-    def save():
+    def save() -> typing.Any:
         (output / "result.json").write_text(json.dumps(record, indent=2) + "\n")
 
     save()

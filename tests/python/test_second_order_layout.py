@@ -1,5 +1,6 @@
 """Second-order mixed-pair factors and recovery on both coordinate indices."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -13,7 +14,9 @@ from vibeqc_compiler.integral.second_order_layout import (
 
 
 @pytest.mark.parametrize("centers", [(0,), (0, 1), (0, 1, 2, 3)])
-def test_svec_preserves_frobenius_inner_products_and_dense_order(centers):
+def test_svec_preserves_frobenius_inner_products_and_dense_order(
+    centers: typing.Any,
+) -> typing.Any:
     packed = HessianLayout(centers, "svec")
     dense = HessianLayout(centers)
     random = np.random.default_rng(178)
@@ -29,7 +32,9 @@ def test_svec_preserves_frobenius_inner_products_and_dense_order(centers):
     )
 
 
-def test_two_index_translation_recovery_matches_projected_hvp_and_same_atom_chain_rule():
+def test_two_index_translation_recovery_matches_projected_hvp_and_same_atom_chain_rule() -> (
+    typing.Any
+):
     operator = FOUR_CENTER_ERI_OPERATOR
     recovery = second_center_recovery(operator, operator.nuclear_derivative(order=2))
     assert recovery.independent == (0, 1, 2)
@@ -57,7 +62,9 @@ def test_two_index_translation_recovery_matches_projected_hvp_and_same_atom_chai
     )
 
 
-def test_partial_center_request_does_not_assume_missing_translation_terms():
+def test_partial_center_request_does_not_assume_missing_translation_terms() -> (
+    typing.Any
+):
     operator = FOUR_CENTER_ERI_OPERATOR
     derivative = replace(
         operator.nuclear_derivative(order=2), parameters=NuclearCoordinates((0, 3))
@@ -69,7 +76,7 @@ def test_partial_center_request_does_not_assume_missing_translation_terms():
         second_center_recovery(operator, operator.nuclear_derivative())
 
 
-def test_malformed_hessian_layouts_and_buffers_fail_explicitly():
+def test_malformed_hessian_layouts_and_buffers_fail_explicitly() -> typing.Any:
     for centers, packing in [((0, 0), "dense"), ((), "dense"), ((0, 1), "triangular")]:
         with pytest.raises(ValueError):
             HessianLayout(centers, packing)
@@ -90,7 +97,7 @@ def test_malformed_hessian_layouts_and_buffers_fail_explicitly():
         packed.encode(matrix)
 
 
-def test_invalid_recovery_cannot_silently_drop_or_relabel_a_coordinate():
+def test_invalid_recovery_cannot_silently_drop_or_relabel_a_coordinate() -> typing.Any:
     with pytest.raises(ValueError, match="basis"):
         CenterRecovery((0, 1), (0,), ((1,), (0,)))
     with pytest.raises(ValueError, match="at most one"):

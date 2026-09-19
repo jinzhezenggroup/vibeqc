@@ -20,10 +20,12 @@ import re
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 _T = TypeVar("_T")
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]

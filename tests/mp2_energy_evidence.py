@@ -6,6 +6,7 @@ import platform
 import runpy
 import subprocess
 import sys
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

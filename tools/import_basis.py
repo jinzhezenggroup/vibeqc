@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import typing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
@@ -9,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 from vibeqc.basis_import import import_bse
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)

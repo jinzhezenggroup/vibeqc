@@ -7,6 +7,7 @@ contract when the pair set or cutoff contract changes.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from math import isfinite
@@ -102,7 +103,9 @@ class PairTopology:
         object.__setattr__(self, "pairs", pairs)
 
     @classmethod
-    def complete(cls, atom_count: int, *, cutoff: PairCutoff | None = None):
+    def complete(
+        cls, atom_count: int, *, cutoff: PairCutoff | None = None
+    ) -> typing.Any:
         pairs = tuple(
             (i, j) for i in range(atom_count) for j in range(i + 1, atom_count)
         )
@@ -240,7 +243,7 @@ class PairProgram:
         if identity != self.identity:
             raise ValueError("stale pair compiler execution state")
 
-    def coordinate_jvp(self):
+    def coordinate_jvp(self) -> typing.Any:
         energy = self.program.outputs.get("energy")
         if energy is None or energy.spec.shape != ():
             raise ValueError("coordinate JVP requires scalar output named energy")
@@ -248,7 +251,7 @@ class PairProgram:
             self.program, [self.geometry.coordinate_name], outputs=["energy"]
         )
 
-    def coordinate_vjp(self):
+    def coordinate_vjp(self) -> typing.Any:
         energy = self.program.outputs.get("energy")
         if energy is None or energy.spec.shape != ():
             raise ValueError("coordinate VJP requires scalar output named energy")
@@ -359,9 +362,9 @@ def build_pair_program(
 def inverse_power_program(
     geometry: GeometryIR,
     topology: PairTopology,
-    coefficients,
+    coefficients: typing.Any,
     *,
-    exponent=-1,
+    exponent: typing.Any = -1,
     parameter_identity: str | None = None,
 ) -> PairProgram:
     """Qualification potential: E = sum_p c_p * r_p**exponent."""

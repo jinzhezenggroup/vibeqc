@@ -8,6 +8,7 @@ this script never publishes artifacts, starts background work or changes default
 from __future__ import annotations
 
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -37,7 +38,9 @@ from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.cuda_tune import tune_cuda
 
 
-def fixture(i, b, k, j, seed):
+def fixture(
+    i: typing.Any, b: typing.Any, k: typing.Any, j: typing.Any, seed: typing.Any
+) -> typing.Any:
     """F[bij] = sum_k X[ibk]^2 Y[bkj]; no molecular-method claim."""
     dimensions = {"i": i, "b": b, "k": k, "j": j}
     spaces = {
@@ -61,7 +64,7 @@ def fixture(i, b, k, j, seed):
     return program, feeds
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     target = cuda_target_info(args.architecture)
     compiler = CudaCompilerAdapter(args.nvcc, target)
     program, feeds = fixture(*args.shape, args.seed)
@@ -159,7 +162,7 @@ def run(args):
     return 0 if row["status"] == "accepted" else 1
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nvcc", type=Path, required=True)
     parser.add_argument("--architecture", default="sm_120")

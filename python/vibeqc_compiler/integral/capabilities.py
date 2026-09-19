@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Iterable, Mapping
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +27,9 @@ from .ir import (
     build_integral_ir,
 )
 from .shell_spec import FUSED_SHELL_SPECS, ShellClassSpec
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 CAPABILITY_STREAMING_FOCK = "streaming_fock"
 CAPABILITY_MIXED_FOCK = "mixed_fock"
@@ -87,8 +90,8 @@ def query_integral_capability(
     integral: IntegralIR,
     *,
     backend: str = "cuda",
-    component_indices=None,
-    output_indices=None,
+    component_indices: typing.Any = None,
+    output_indices: typing.Any = None,
 ) -> CapabilityCheck:
     """Query the existing backend's semantic input boundary without emitting code.
 

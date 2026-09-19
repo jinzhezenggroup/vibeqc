@@ -7,6 +7,7 @@ neither probes a device nor creates a second executable/profile cache.
 from __future__ import annotations
 
 import ctypes
+import typing
 from dataclasses import asdict, dataclass
 
 from .provenance import canonical_hash
@@ -40,7 +41,7 @@ class CaptureContract:
     runtime_hash: str
     unsupported_effects: tuple[str, ...] = ()
 
-    def __post_init__(self):
+    def __post_init__(self) -> typing.Any:
         for field, cls in (
             ("compilation", CompilationIdentity),
             ("workload", WorkloadSignature),

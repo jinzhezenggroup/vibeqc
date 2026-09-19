@@ -8,7 +8,7 @@ module evaluates only the additive geometry-dependent D3 energy and dE/dR.
 from __future__ import annotations
 
 import ctypes
-from collections.abc import Sequence
+import typing
 from dataclasses import dataclass
 from typing import Self
 
@@ -21,6 +21,9 @@ from vibeqc_compiler.method import (
 )
 
 from . import _native
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass(frozen=True)
@@ -86,7 +89,7 @@ def _correction(graph: MethodIR) -> DispersionCorrectionPrimitive:
     return nodes[0]
 
 
-def _normalize_system(value) -> tuple[np.ndarray, np.ndarray]:
+def _normalize_system(value: typing.Any) -> tuple[np.ndarray, np.ndarray]:
     try:
         atomic_numbers, coordinates = value
     except (TypeError, ValueError) as error:
@@ -124,7 +127,7 @@ class D3CorrectionBatch:
         device: str = "cpu",
         device_id: int = 0,
         maximum_bytes: int = 256 * 1024 * 1024,
-    ):
+    ) -> None:
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
         if type(maximum_bytes) is not int or not 0 < maximum_bytes < 2**64:
@@ -233,7 +236,7 @@ class D3CorrectionBatch:
     def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.close()
 
     def _require_open(self) -> None:
@@ -376,8 +379,8 @@ class D3CorrectionBatch:
 
 def evaluate_d3_correction(
     method: str | MethodSpec | MethodIR,
-    atomic_numbers,
-    coordinates,
+    atomic_numbers: typing.Any,
+    coordinates: typing.Any,
     *,
     device: str = "cpu",
     device_id: int = 0,

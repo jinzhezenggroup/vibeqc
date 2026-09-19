@@ -5,12 +5,13 @@
 """Audited Libxc 7.0 CAM-B3LYP-family scalar expressions."""
 
 import math
+import typing
 from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Graph
 
 
-def energy_expression(spec):
+def energy_expression(spec: typing.Any) -> typing.Any:
     """Return the range-separated semilocal energy DAG and feature variables."""
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
@@ -30,7 +31,7 @@ def energy_expression(spec):
     rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
 
-    def b88_enhancement(density, sigma):
+    def b88_enhancement(density: typing.Any, sigma: typing.Any) -> typing.Any:
         beta_b88 = F("0.0042")
         gamma_b88 = F(6)
         x2 = sigma * density.pow(-8 / 3)
@@ -39,7 +40,7 @@ def energy_expression(spec):
             1 + gamma_b88 * beta_b88 * x * graph.transcendental_unary("asinh", x)
         )
 
-    def b88_exchange(short_range=False):
+    def b88_exchange(short_range: typing.Any = False) -> typing.Any:
         terms = []
         omega = spec.range_omega
         for density, sigma in ((ra, saa), (rb, sbb)):
@@ -61,14 +62,14 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def vwn_correlation():
+    def vwn_correlation() -> typing.Any:
         # VWN5 parameters in Hartree, matching Libxc 7.0 lda_c_vwn.mpl.
         av = (F("0.0310907"), F("0.01554535"), -1 / (6 * math.pi**2))
         bv = (F("3.72744"), F("7.06042"), F("1.13107"))
         cv = (F("12.9352"), F("18.0578"), F("13.0045"))
         x0v = (F("-0.10498"), F("-0.32500"), F("-0.0047584"))
 
-        def aux(index):
+        def aux(index: typing.Any) -> typing.Any:
             aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
             q = math.sqrt(float(4 * cc - bb * bb))
             root = rs.pow(0.5)
@@ -89,7 +90,7 @@ def energy_expression(spec):
         epsilon = g0 + gm * fz * (1 - z.pow(4)) / fpp + (g1 - g0) * fz * z.pow(4)
         return n * epsilon
 
-    def lyp_correlation():
+    def lyp_correlation() -> typing.Any:
         a_lyp = F("0.04918")
         b_lyp = F("0.132")
         c_lyp = F("0.2533")

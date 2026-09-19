@@ -1,6 +1,7 @@
 """Real-device response-operator tier; run only inside an allocated Slurm job."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -26,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_cuda_df_matrix_free_rhf_response_matches_explicit_and_solves():
+def test_cuda_df_matrix_free_rhf_response_matches_explicit_and_solves() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     meta, arrays = load_fixture("h2")
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:
