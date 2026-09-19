@@ -1,0 +1,134 @@
+{
+  "files": [
+    {
+      "path": "ISSUE-171-halogen-refresh-collect.py",
+      "bytes": 5111,
+      "sha256": "1b0807dfe0c13a4ff5914ee9c2f49a32dd4b17badcf9334bd2b125844beafe47"
+    },
+    {
+      "path": "ISSUE-171-halogen-refresh-prepare.py",
+      "bytes": 2092,
+      "sha256": "e0109e1f2dcb23d0108c302b2f33ace545fdf57cbb131e7735495a57810a3ff9"
+    },
+    {
+      "path": "ISSUE-171-halogen-refresh-run.sh",
+      "bytes": 1567,
+      "sha256": "e1b1849ef12dad51036659c8f1f1a3e34f6d2f8367c77817628d3a237e589e34"
+    },
+    {
+      "path": "cpu-build.log",
+      "bytes": 27728,
+      "sha256": "56d5c5823f0dd963991939daccffdbf836b4e24a7e44e4a6a3669d34cd02bfe8"
+    },
+    {
+      "path": "cpu-configure.log",
+      "bytes": 586,
+      "sha256": "7312b3a0e950b214c8d0bd080b95eeb6954c8e5b31e476b747b095b78c8e15ae"
+    },
+    {
+      "path": "cpu-ctest.log",
+      "bytes": 589,
+      "sha256": "10ec80f526777d36dc08e53969e4722e7d67280305f604f36d5f7613da99167f"
+    },
+    {
+      "path": "cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-endpoints.json",
+      "bytes": 12951,
+      "sha256": "c2e909078f66f08751eb672418e6588476f3464475bfb613f338d6eef58d3a3b"
+    },
+    {
+      "path": "cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-tests.log",
+      "bytes": 2249,
+      "sha256": "82873aa12dc6687d66c03f23363e4df86a27c57ae47cfc53759363a8a87f5bd3"
+    },
+    {
+      "path": "cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-build.log",
+      "bytes": 76376,
+      "sha256": "3702996e131bcff84e54d829b61c3047cfef9e036178c7d77fdfc27643a4ab23"
+    },
+    {
+      "path": "cuda-configure.log",
+      "bytes": 1132,
+      "sha256": "0ba22cdede1d17db6990320244728c4c4a30c0867b85e55fde4a556e0815b398"
+    },
+    {
+      "path": "cuda-ctest.log",
+      "bytes": 707,
+      "sha256": "94e32fd476b1387cc6c77c8f2685687eb30da133d21e5f1cea6afad968ddf825"
+    },
+    {
+      "path": "cuda-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-endpoints.json",
+      "bytes": 15293,
+      "sha256": "65980a9de71d1965f3c03e664686bd76c1ecbcbeb234cde851f61e42c50cbae7"
+    },
+    {
+      "path": "cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-memcheck.log",
+      "bytes": 1066,
+      "sha256": "c6c19d34d238bce4b264c487afd66aff853012f9442dbb5e9758d53e134b98c4"
+    },
+    {
+      "path": "cuda-tests.log",
+      "bytes": 2292,
+      "sha256": "1aee92033c4815f9289630f3ee1e2d1c7b32d660bdb66be635a44a84dd4a6b7c"
+    },
+    {
+      "path": "cuda.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "final-source-identity.json",
+      "bytes": 122245,
+      "sha256": "e6c29464ca5687ff906c2f7b12dac13a06e7f4fca4cc9650dc0bfe00fca798a9"
+    },
+    {
+      "path": "measured-source/tests/python/test_ecp_heavy.py",
+      "bytes": 14336,
+      "sha256": "6e33c57adcdfd70629a51bde6d02bb518c76e8ff39673d8459f92d96afb287bd"
+    },
+    {
+      "path": "measured-source/tools/qualify_ecp_heavy.py",
+      "bytes": 7451,
+      "sha256": "1cfca99f298c84e72417272c1cfb2b28c6ab537ddd3adbdbce01ce86c40145b0"
+    },
+    {
+      "path": "source-identity.json",
+      "bytes": 77560,
+      "sha256": "04d5ab38aebcdaed55517d44e5e8cee9a57bc739508acfb4f8ce838649986840"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 1150,
+      "sha256": "28590da3dd549c94524b91d7f73cb45fa8e742d5d06fd71d915ccf307a7de1ac"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 433,
+      "sha256": "5d3dc5217d84be3cd60a974aa003055417e10ef0436de1bcf0b03ed21227b758"
+    }
+  ]
+}
