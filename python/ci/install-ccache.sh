@@ -43,3 +43,5 @@ else
 fi
 
 mkdir -p "${CCACHE_DIR:-/root/.cache/ccache}"
+ccache --zero-stats
+ccache --show-config
