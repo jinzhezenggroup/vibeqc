@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import pytest
-
 from vibeqc import Calculator
 
 if TYPE_CHECKING:

@@ -184,14 +184,13 @@ class BenchmarkServer {
       if (!check_cuda(cudaMemcpy(&actual, output_, sizeof(float), cudaMemcpyDeviceToHost),
                       "cudaMemcpy(validation)") ||
           !std::isfinite(actual)) {
-        std::fprintf(stderr, "FAIL: FP32 %s validation is not finite\n",
-                     workload_name(workload));
+        std::fprintf(stderr, "FAIL: FP32 %s validation is not finite\n", workload_name(workload));
         return false;
       }
     }
 
-    std::cout << "READY device=" << properties_.name
-              << " cases=compute,memory,gather,mixed" << std::endl;
+    std::cout << "READY device=" << properties_.name << " cases=compute,memory,gather,mixed"
+              << std::endl;
     return true;
   }
 
