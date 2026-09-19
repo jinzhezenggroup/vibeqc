@@ -75,6 +75,7 @@ def source_identity(source: Path) -> str:
         source / "tools/generate_grid_kernels.py",
         source / "tools/generate_mp2_native.py",
         source / "tools/generate_xc_cpu.py",
+        source / "tools/generate_xc_gradient_cuda.py",
     }
     for directory in ("src", "include", "cmake/3rdparty/implib"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())

@@ -397,3 +397,22 @@ library hash, resource bounds and timing samples. Component endpoint timings
 zero the other component's coefficients while retaining the full engine;
 they must not be described as isolated CUDA kernel timings or a specialized
 schedule promotion.
+
+## Stationary DFT CPU diagnostic
+
+`complete_rks_gradient_diagnostic` can consume a current native CPU scalar-ECP
+LDA/PBE RKS/UKS snapshot. The shared compiler plan declares separate local and
+nonlocal ECP sources, complete AO/ECP-center motion, effective-charge attraction
+and effective-charge nuclear repulsion. Generated TensorIR owns spin-summed
+density weights and the complete nine-source reduction. The private snapshot
+binds the exact ECP terms/core counts from the energy owner; replay, replacement
+and closure revoke its derivative access.
+
+This diagnostic reuses the independent CPU ECP derivative provider. It retains
+two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. It does not enable
+public DFT/ECP forces, CUDA ECP gradients, or an overall resource/performance
+capability. The first qualification is Cartesian s/p LANL2DZ-Na/STO-3G-H in
+`tests/python/test_ecp_stationary_cpu.py`, with independent full-grid-response
+PySCF gradients and multistep reconverged energy differences.
+
+See [the stationary ECP decision](../.agents/notes/implemented/architecture/2026-09-19-ecp-stationary-cpu.md).

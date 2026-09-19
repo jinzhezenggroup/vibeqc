@@ -76,3 +76,16 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
             "", pbe=False, iterations=3, compiler=compiler, cache=cache
         )
     assert not cache.exists()
+
+
+def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit():
+    from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
+    from vibeqc_compiler.xc.geometry_cuda import emit_native_geometry_cuda
+
+    ao = emit_grid_policy()
+    gradient = emit_native_geometry_cuda()
+    assert "namespace vibeqc_grid_policy {" in ao
+    assert "namespace vibeqc_grid_policy {" not in gradient
+    assert "vibeqc_grid_policy::" not in gradient
+    assert "namespace vibeqc_xc_gradient_grid_policy {" in gradient
+    assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
