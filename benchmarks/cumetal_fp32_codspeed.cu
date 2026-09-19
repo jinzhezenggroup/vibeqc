@@ -224,8 +224,7 @@ class BenchmarkServer {
       // Include nonzero, block-boundary and wraparound indices: index zero alone
       // cannot distinguish the gather permutation from a contiguous read.
       const unsigned int size = workload_elements(workload);
-      for (unsigned int index :
-           {0U, 1U, 96U, 97U, 255U, 256U, size / 2U, size - 2U, size - 1U}) {
+      for (unsigned int index : {0U, 1U, 96U, 97U, 255U, 256U, size / 2U, size - 2U, size - 1U}) {
         float actual = 0.0F;
         if (!check_cuda(cudaMemcpy(&actual, output_ + index, sizeof(float), cudaMemcpyDeviceToHost),
                         "cudaMemcpy(validation)")) {
