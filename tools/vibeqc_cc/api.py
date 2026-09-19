@@ -132,6 +132,7 @@ def energy(
     options=None,
     t1=None,
     t2=None,
+    warm_start=None,
     compiler=None,
     cache=None,
     device=0,
@@ -152,6 +153,15 @@ def energy(
         raise NotImplementedError(
             "RCCSD exposes energy only; forces are not implemented"
         )
+    if warm_start is not None:
+        from .gpu_state import AmplitudeSnapshot
+
+        if not isinstance(warm_start, AmplitudeSnapshot):
+            raise TypeError("RCCSD warm_start must be AmplitudeSnapshot")
+        if t1 is not None or t2 is not None:
+            raise ValueError("RCCSD warm_start cannot be combined with raw t1/t2")
+        if backend != "cuda-resident":
+            t1, t2 = warm_start.for_reference(snapshot)
     if backend == "cpu":
         state = solve(snapshot, provider, options=options, t1=t1, t2=t2)
     elif backend in ("cuda", "cuda-resident"):
@@ -164,17 +174,18 @@ def energy(
         else:
             from .resident_solver import solve_gpu_resident as selected_solver
 
-        state = selected_solver(
-            snapshot,
-            provider,
-            compiler=compiler,
-            cache=cache,
-            options=options,
-            t1=t1,
-            t2=t2,
-            device=device,
-            provider_peak_bytes=provider_peak_bytes,
-        )
+        kwargs = {
+            "compiler": compiler,
+            "cache": cache,
+            "options": options,
+            "t1": t1,
+            "t2": t2,
+            "device": device,
+            "provider_peak_bytes": provider_peak_bytes,
+        }
+        if backend == "cuda-resident":
+            kwargs["warm_start"] = warm_start
+        state = selected_solver(snapshot, provider, **kwargs)
     else:
         raise ValueError("RCCSD backend must be 'cpu', 'cuda' or 'cuda-resident'")
     reference = snapshot.reference_energy

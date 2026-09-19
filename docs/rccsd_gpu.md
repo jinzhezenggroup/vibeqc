@@ -155,3 +155,19 @@ Cached wall times in this one observation were 1.09 s ordinary and 0.73 s
 resident, but this PR does **not** promote a speedup: compilation is excluded,
 fixtures are tiny, CUDA context/module state is shared with the process, and no
 representative molecular benchmark matrix has been qualified yet.
+
+### Reuse and isolation
+
+A resident owner is reusable after convergence: calling `solve()` again starts
+from the retained converged amplitudes and does not repeat the one-time large
+input upload. `amplitude_snapshot()` detaches the current T1/T2 together with
+the exact reference identity for a later explicit warm start. A warm snapshot
+is accepted only by the identical `ReferenceSnapshot`; geometry, generation or
+orbital changes are rejected before JIT compilation/device upload. Supplying an
+identity-bearing warm snapshot together with raw T arrays is also rejected.
+
+Two independently prepared owners may coexist on one device. The RTX 5090 test
+keeps H2 and H2O owners alive simultaneously, verifies distinct resident-state
+identities, and converges both without cross-state contamination. These tests
+establish single-system owner reuse/context isolation; they are not the
+homogeneous native prepared batch required by #149 C.

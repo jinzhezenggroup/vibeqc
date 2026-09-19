@@ -28,7 +28,7 @@ from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resid
 
 from tools.vibeqc_posthf.reference import ReferenceSnapshot, immutable
 
-from .gpu_state import solver_plans
+from .gpu_state import AmplitudeSnapshot, solver_plans
 from .solver import CCSDResult, PreparedCCSD, SolverOptions
 
 
@@ -253,6 +253,7 @@ class PreparedResidentCCSD:
         options=None,
         t1=None,
         t2=None,
+        warm_start=None,
         device=0,
         provider_peak_bytes=0,
     ):
@@ -265,6 +266,14 @@ class PreparedResidentCCSD:
         if type(device) is not int or device < 0:
             raise ValueError("device must be a nonnegative visible CUDA ordinal")
         self.options = SolverOptions() if options is None else options
+        if warm_start is not None:
+            if not isinstance(warm_start, AmplitudeSnapshot):
+                raise TypeError("resident CC warm_start must be AmplitudeSnapshot")
+            if t1 is not None or t2 is not None:
+                raise ValueError(
+                    "resident CC warm_start cannot be combined with raw t1/t2"
+                )
+            t1, t2 = warm_start.for_reference(snapshot)
         self.snapshot, self.device = snapshot, device
         o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
         primary, replay, diagnostic = solver_plans(
@@ -339,6 +348,10 @@ class PreparedResidentCCSD:
 
     def amplitudes(self, *, last=False):
         return self.primary.amplitudes(last=last)
+
+    def amplitude_snapshot(self):
+        """Detach the current amplitudes with exact-reference warm-start identity."""
+        return AmplitudeSnapshot(self.snapshot.identity, *self.amplitudes())
 
     def independent(self, t1, t2):
         return self.replay.execute({**self.cpu.feeds, "t1": t1, "t2": t2}).outputs
@@ -509,6 +522,7 @@ def solve_gpu_resident(
     options=None,
     t1=None,
     t2=None,
+    warm_start=None,
     device=0,
     provider_peak_bytes=0,
 ):

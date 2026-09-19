@@ -62,7 +62,10 @@ plan budget; no hidden second amplitude/DIIS allocation is created.
 
 Real RTX 5090 / CUDA 12.9 / sm_120 tests cover H2, H2O and CH4 convergence,
 reference amplitude/energy agreement, reusable solved-owner amplitudes, provider
-release after preparation, explicit nonconvergence and zero-DIIS resident Jacobi.
+release after preparation, explicit nonconvergence, zero-DIIS resident Jacobi,
+repeated solve without another large upload, and simultaneous independent H2/H2O
+owners. Identity-bearing `AmplitudeSnapshot` warm starts reject changed
+geometry/generation/orbitals before compilation/upload.
 H2O uses 15 current iterations / 29 primary runs with 11,920 B initial large H2D,
 zero per-iteration large H2D/D2H, 524 B scalar-control D2H, and one 880 B final
 amplitude download. The same ordinary-stream control law reports 356,720 B

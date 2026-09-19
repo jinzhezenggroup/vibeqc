@@ -1,6 +1,7 @@
 """#149-B device-resident RCCSD iteration and transfer contract."""
 
 import os
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,7 @@ from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor.cuda_resident_emit import resident_source
 
-from tools.vibeqc_cc.gpu_state import solver_plans
+from tools.vibeqc_cc.gpu_state import AmplitudeSnapshot, solver_plans
 from tools.vibeqc_cc.resident_solver import (
     PreparedResidentCCSD,
     _resident_extension,
@@ -78,6 +79,25 @@ def test_resident_solver_requires_explicit_compiler_cache_and_rhf(tmp_path):
             provider,
             compiler=CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120")),
             cache="cache",
+        )
+
+
+def test_resident_warm_start_requires_exact_reference_before_compile(tmp_path):
+    snapshot, provider, _, arrays = fixture_problem("h2")
+    compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
+    warm = AmplitudeSnapshot(snapshot.identity, arrays["t1"], arrays["t2"])
+    changed = replace(snapshot, geometry_hash="changed")
+    with pytest.raises(ValueError, match="reference/geometry/orbital change"):
+        PreparedResidentCCSD(changed, provider, compiler, tmp_path, warm_start=warm)
+    with pytest.raises(ValueError, match="combined"):
+        PreparedResidentCCSD(
+            snapshot,
+            provider,
+            compiler,
+            tmp_path,
+            warm_start=warm,
+            t1=arrays["t1"],
+            t2=arrays["t2"],
         )
 
 
@@ -221,3 +241,42 @@ def test_internal_energy_facade_selects_resident_backend(tmp_path):
     assert result.backend == "cuda-resident" and result.converged
     assert result.provenance["backend"] == "cuda-fp64-resident"
     assert abs(result.total_energy - meta["total_energy"]) <= 1e-8
+
+
+@pytest.mark.skipif(
+    not _REAL, reason="requires explicitly allocated resident CUDA window"
+)
+def test_resident_repeated_solve_reuses_uploaded_owner(tmp_path):
+    snapshot, provider, meta, _ = fixture_problem("h2")
+    compiler, cache = _compiler_cache(tmp_path)
+    with PreparedResidentCCSD(snapshot, provider, compiler, cache) as prepared:
+        first = prepared.solve()
+        uploaded = prepared.primary.transfers["h2d_bytes"]
+        warm = prepared.amplitude_snapshot()
+        second = prepared.solve()
+        assert first.converged and second.converged
+        assert prepared.primary.transfers["h2d_bytes"] == uploaded
+        assert abs(second.total_energy - meta["total_energy"]) <= 1e-8
+        np.testing.assert_allclose(warm.t1, first.t1, atol=2e-12, rtol=2e-12)
+        np.testing.assert_allclose(warm.t2, first.t2, atol=2e-12, rtol=2e-12)
+
+
+@pytest.mark.skipif(
+    not _REAL, reason="requires explicitly allocated resident CUDA window"
+)
+def test_two_resident_owners_keep_state_isolated(tmp_path):
+    h2 = fixture_problem("h2")
+    water = fixture_problem("h2o")
+    compiler, cache = _compiler_cache(tmp_path)
+    with (
+        PreparedResidentCCSD(h2[0], h2[1], compiler, cache) as first,
+        PreparedResidentCCSD(water[0], water[1], compiler, cache) as second,
+    ):
+        assert first.state_identity != second.state_identity
+        a = first.solve()
+        b = second.solve()
+        assert a.converged and b.converged
+        assert abs(a.total_energy - h2[2]["total_energy"]) <= 1e-8
+        assert abs(b.total_energy - water[2]["total_energy"]) <= 1e-8
+        assert first.state_identity == a.provenance["resident_state_identity"]
+        assert second.state_identity == b.provenance["resident_state_identity"]
