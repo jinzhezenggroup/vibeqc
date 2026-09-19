@@ -36,8 +36,7 @@ class AnalyticGaussianAO(NativeAO):
         exponents = np.array([0.4, 0.9, 1.7])
         value = np.exp(-np.sum(points**2, axis=1)[:, None] * exponents)
         jets = np.stack(
-            [value]
-            + [-2 * points[:, k, None] * exponents * value for k in range(3)]
+            [value] + [-2 * points[:, k, None] * exponents * value for k in range(3)]
         )
         return jets[: 1 if order == 0 else 4]
 
