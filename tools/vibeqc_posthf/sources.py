@@ -49,6 +49,18 @@ def pointer(array):
     return array.ctypes.data_as(_DOUBLE)
 
 
+_C_INT_MAX = 2 ** (8 * ct.sizeof(ct.c_int) - 1) - 1
+_C_SIZE_T_MAX = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
+
+
+def _valid_cuda_device(value):
+    return type(value) is int and 0 <= value <= _C_INT_MAX
+
+
+def _valid_size_t_budget(value):
+    return type(value) is int and 1 <= value <= _C_SIZE_T_MAX
+
+
 class NativeSource:
     """Copy a normalized system into a values-only CPU source; no AO N**4 cache.
 
@@ -516,10 +528,8 @@ class NativeSource:
         ):
             raise ValueError("DF gradient tile range/weights are invalid")
         if (
-            type(device_id) is not int
-            or device_id < 0
-            or type(stage_budget_bytes) is not int
-            or stage_budget_bytes < 1
+            not _valid_cuda_device(device_id)
+            or not _valid_size_t_budget(stage_budget_bytes)
         ):
             raise ValueError("DF gradient tile requires valid device/budget")
         gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
@@ -582,12 +592,10 @@ class NativeSource:
         if all(value is None for value in blocks):
             raise ValueError("one-electron CUDA gradient requires at least one weight")
         if (
-            type(device_id) is not int
-            or device_id < 0
+            not _valid_cuda_device(device_id)
             or type(schedule) is not int
             or schedule not in (0, 1, 2)
-            or type(stage_budget_bytes) is not int
-            or stage_budget_bytes < 1
+            or not _valid_size_t_budget(stage_budget_bytes)
         ):
             raise ValueError(
                 "one-electron CUDA gradient requires valid device/schedule/budget"
@@ -641,10 +649,8 @@ class NativeSource:
         if value.shape != (self.nbf,) * 4 or not np.isfinite(value).all():
             raise ValueError("weighted ERI gradient requires finite [AO]*4 weights")
         if (
-            type(device_id) is not int
-            or device_id < 0
-            or type(stage_budget_bytes) is not int
-            or stage_budget_bytes < 1
+            not _valid_cuda_device(device_id)
+            or not _valid_size_t_budget(stage_budget_bytes)
         ):
             raise ValueError("weighted ERI gradient requires valid device/budget")
         gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
@@ -706,10 +712,8 @@ class NativeSource:
                 "weighted ERI shell weights have the wrong shape or values"
             )
         if (
-            type(device_id) is not int
-            or device_id < 0
-            or type(stage_budget_bytes) is not int
-            or stage_budget_bytes < 1
+            not _valid_cuda_device(device_id)
+            or not _valid_size_t_budget(stage_budget_bytes)
         ):
             raise ValueError("weighted ERI shell gradient requires valid device/budget")
         gradient = np.empty((4, 3), dtype=np.float64)
