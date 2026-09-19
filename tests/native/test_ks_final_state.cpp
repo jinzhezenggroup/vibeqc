@@ -57,6 +57,18 @@ void analytic_rks_and_uks() {
   near(gradient.diagnostic.component_energy, -1.4, "wrong KS component energy");
   near(gradient.diagnostic.reported_energy_error, 0, "identical KS energies disagreed");
 
+  Fixture cpu;
+  // Resolve the complete CPU strategy, including its schedule; relabeling a
+  // CUDA backend alone must remain invalid under the shared provider contract.
+  cpu.id.determinant.model = resolve_fock_build(cpu.id.determinant.model.spec, FockBackend::Cpu);
+  cpu.id.model.device = -1;
+  cpu.sync();
+  require(cpu.validate(true, &gradient), "CPU RKS state with explicit host device rejected");
+  near(gradient.weighted_density[0][0], -1, "wrong CPU RKS W");
+  cpu.id.model.device = 0;
+  cpu.sync();
+  require(!cpu.validate(), "CPU accepted a CUDA device ordinal");
+
   for (const std::size_t beta : {0U, 1U}) {
     Fixture uks;
     uks.id.determinant.model = ks_fock(FockSpin::Unrestricted);

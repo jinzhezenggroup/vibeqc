@@ -20,6 +20,8 @@ struct KsModelIdentity {
   std::size_t tile_points{};
   bool pbe{};
   unsigned spins{};
+  // CPU is exactly -1; CUDA is a nonnegative visible device ordinal. The
+  // determinant's resolved Fock backend is authoritative, never inferred here.
   int device{};
   std::uint64_t owner{};
   bool operator==(const KsModelIdentity&) const = default;

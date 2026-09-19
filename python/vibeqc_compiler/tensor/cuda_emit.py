@@ -12,6 +12,7 @@ from math import prod
 from .cuda_dtype import scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
+from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
 
@@ -65,6 +66,19 @@ def _value(plan, i, prefix=""):
     if node.op == "scaled_bilinear":
         operands = ", ".join(_read(child, "z", prefix) for child in args)
         return f"return {prefix}scaled_bilinear({operands}, error, {i});"
+    if node.op in TRANSCENDENTALS:
+        lines = [f"const {ty} x = {_read(args[0], 'z', prefix)};"]
+        if node.op in ("log", "power", "sqrt"):
+            predicate = "x >= 0.0" if node.op == "sqrt" else "x > 0.0"
+            lines.append(
+                f"if (!({predicate})) {{ atomicCAS(error, 0, -{len(plan.steps) + i + 1}); return 0.0; }}"
+            )
+        function = ("pow" if node.op == "power" else node.op) + scalar.suffix
+        arguments = "x"
+        if node.op == "power":
+            arguments += ", " + scalar.literal(a["exponent"])
+        lines.append(f"return finite(::{function}({arguments}), error, {i});")
+        return "\n".join(lines)
     if node.op == "einsum":
         domains = {}
         for child, labels in zip(node.inputs, a["labels"], strict=True):
@@ -131,6 +145,22 @@ return finite(value, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
     return f"return {_read(child, index, prefix)};"
+
+
+def _arithmetic_error_expression(plan, legacy):
+    """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
+
+    Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
+    and -[n+1,2n] is a scalar-domain error. The planner bounds the int range.
+    """
+    if not any(s.node.op in TRANSCENDENTALS for s in plan.steps):
+        return legacy
+    n = len(plan.steps)
+    return (
+        f"(arithmetic_error < -{n} ? "
+        'std::string("tensor transcendental domain error at step ") + '
+        f"std::to_string(-arithmetic_error - {n} - 1) : ({legacy}))"
+    )
 
 
 def _group_map(g, labels):
@@ -259,7 +289,7 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         raise ValueError("symbol_prefix must be a valid C++ identifier")
     prefix = symbol_prefix
     namespace = f"namespace {_name(prefix, 'generated')} {{" if prefix else ""
-    parts = ['#include "cuda_runtime.cuh"', "using namespace vibeqc_tensor;"]
+    parts = ['#include "cuda_graph_context.cuh"', "using namespace vibeqc_tensor;"]
     if namespace:
         parts.append(namespace)
     dtypes = sorted({step.node.spec.dtype for step in plan.steps})
@@ -340,13 +370,17 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         library_offset + plan.library_bytes + aligned(plan.reservations.total)
     )
     assert error_offset + ALIGNMENT == plan.allocation_bytes
+    error_expression = _arithmetic_error_expression(
+        plan,
+        'std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1)',
+    )
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
     try {{
         if (!result) throw std::runtime_error("null plan output");
         *result = nullptr;
-        auto ctx = std::make_unique<Context>();
+        auto ctx = std::make_unique<GraphContext>();
         ctx->prepare(device, {plan.target.compute_capability_major}, {plan.target.compute_capability_minor},
                      {plan.allocation_bytes}ULL, {error_offset}ULL, {library_offset}ULL,
                      {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
@@ -354,7 +388,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
         {math_mode}
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
-        *result = ctx.release();
+        *result = static_cast<Context*>(ctx.release());
         return 0;
     }} catch (const DeviceAllocationError& e) {{
         error_text(error, size, e.what()); return 2;
@@ -362,11 +396,12 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
         error_text(error, size, e.what()); return 3;
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
-extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<Context*>(pointer); }}
-extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const void* const* inputs, void* const* outputs,
-                          int profile, Metrics* result, char* error, size_t size) {{
+extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<GraphContext*>(static_cast<Context*>(pointer)); }}
+static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
+                          char* graph_reason, size_t graph_reason_size, char* error, size_t size) {{
     if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
-    auto& ctx = *static_cast<Context*>(pointer);
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
     std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
     if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
     try {{
@@ -378,9 +413,11 @@ extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const void* const* i
         metrics.prepare_device_delta = ctx.metrics.prepare_device_delta;
         auto* p = ctx.arena;
         cuda_check(cudaEventRecord(ctx.begin, ctx.stream));
-        cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
         ctx.section(profile, metrics.input_ms, [&] {{ {" ".join(copies_in)} }});
-        {" ".join(_launch(plan, i, prefix) for i in range(len(plan.steps)))}
+        ctx.submit_region(profile, [&] {{
+            cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
+            {" ".join(_launch(plan, i, prefix) for i in range(len(plan.steps)))}
+        }});
         int arithmetic_error = 0;
         ctx.section(profile, metrics.output_ms, [&] {{
             {" ".join(copies_out)}
@@ -393,14 +430,34 @@ extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const void* const* i
         metrics.device_ms = elapsed;
         metrics.observed_device_delta = std::max(ctx.metrics.prepare_device_delta, ctx.device_delta());
         *result = metrics;
+        if (graph_result) *graph_result = ctx.graph.metrics;
+        error_text(graph_reason, graph_reason_size, ctx.graph.reason.c_str());
         if (arithmetic_error)
-            throw std::runtime_error(std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1));
+            throw std::runtime_error({error_expression});
         return 0;
     }} catch (const std::exception& e) {{
         // Drain queued host transfers before Python may release their arrays.
         cudaStreamSynchronize(ctx.stream);
         error_text(error, size, e.what()); return 1;
     }}
+}}
+extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, char* error, size_t size) {{
+    return {_name(prefix, "tensor_run_impl")}(pointer, inputs, outputs, profile, result, nullptr, nullptr, 0, error, size);
+}}
+extern "C" int {_name(prefix, "tensor_run_graph")}(void* pointer, const void* const* inputs, void* const* outputs,
+                          int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
+                          char* reason, size_t reason_size, char* error, size_t size) {{
+    return {_name(prefix, "tensor_run_impl")}(pointer, inputs, outputs, profile, result, graph_result, reason, reason_size, error, size);
+}}
+extern "C" int {_name(prefix, "tensor_graph_configure")}(void* pointer, int enabled, const char* identity,
+                          char* error, size_t size) {{
+    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
+    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
+    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    try {{ ctx.configure_graph(enabled != 0, identity); return 0; }}
+    catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" int {_name(prefix, "tensor_probe")}(int device, char* result, size_t size) {{
     try {{

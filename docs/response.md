@@ -154,9 +154,56 @@ source has no auxiliary basis or the binary lacks CUDA support. The real-device
 test compares this action with the independent explicit MO matrix from
 `DFProvider`.
 
-A direct four-center CUDA J/K response backend is not promoted by this slice;
-the evidence labels that absence explicitly instead of treating the CUDA DF
-path as equivalent to the conventional four-center Hamiltonian.
+`CudaDirectJKBackend` adapts the existing method-neutral `FockPlan` to the
+shared RHF response operator. It requests exact full-Coulomb J/K, FP64 and
+**zero screening**, preserving the `conventional-unscreened` Hamiltonian. It
+copies the source's actual shell records rather than resolving a basis name.
+The prepared CUDA provider is reused across signed, symmetric density actions;
+raw J and K are returned without core-Hamiltonian contamination or additional
+RHF factors. There is no CPU integral fallback or substitution of a DF operator.
+
+This is a **host-orchestrated response with CUDA J/K contractions**, not an
+entirely GPU-resident CPHF implementation. AO/MO transforms, response vectors,
+GMRES, orthogonalization and result storage still use the existing host path.
+The generic Fock evaluation also computes unused Fock/energy outputs; those
+costs must be included in any future timing. No speedup is asserted here.
+`diagnostics` records these boundaries and the exact native provider identity.
+The device budget bounds retained direct J/K allocations, not the preparation
+peak, host arrays, full response solve or complete Hessian. A global budgeted
+execution milestone remains separate.
+
+The caller owns the `NativeSource` lifetime. Closed sources/backends, unrelated
+geometry/basis/reference/Hamiltonian identities, nonsymmetric or nonfinite
+inputs, unavailable CUDA and impossible device allocations fail explicitly.
+Invalid results never increment successful action counts. The backend is
+qualified for closed-shell RHF only; UHF/KS and molecular Hessian/HVP endpoints
+are not enabled by its existence.
+
+```python
+import numpy as np
+from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_posthf.export import export_rhf
+from tools.vibeqc_response import CudaDirectJKBackend, RHFResponseOperator
+
+with NativeSource([(1, (0, 0, 0)), (1, (0, 0, 1.4))]) as source:
+    reference, _ = export_rhf(source, backend="cpu", tolerance=1e-12)
+    with CudaDirectJKBackend(source, device_budget_bytes=64 << 20) as backend:
+        problem = RHFResponseOperator.build_problem(reference, backend)
+        operator = RHFResponseOperator(problem, backend)
+        action = operator.apply(np.ones(problem.dimension))
+```
+
+Run `tests/python/test_response_direct.py` for CPU-only ownership/identity and
+failure contracts. In an explicitly allocated Slurm GPU job, set
+`VIBEQC_RESPONSE_CUDA_TEST=1` and run
+`tests/python/test_response_direct_cuda.py`. Device tests compare raw signed J/K
+with committed independent AO-integral fixtures (including an f-shell case),
+CPHF actions with explicit MO matrices and finite orbital rotations, and all
+three shared multi-RHS strategies with independently evaluated true residuals.
+One test binds an actual native RHF SCF snapshot. These checks are not complete
+molecular-Hessian or all-device-solver acceptance.
+
+See the [direct CUDA response decision](../.agents/notes/implemented/numerics/2026-09-19-direct-cuda-rhf-response.md).
 
 ## UHF CPHF boundary
 

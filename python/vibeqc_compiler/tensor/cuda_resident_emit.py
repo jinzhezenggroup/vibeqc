@@ -22,8 +22,8 @@ kernels; when it defines ``vibeqc_resident_post_run`` the action runs after a
 """
 
 from vibeqc_compiler.tensor.cuda_dtype import scalar_type, symmetry_tolerance
+from vibeqc_compiler.tensor.cuda_emit import _arithmetic_error_expression, emit_cuda
 from vibeqc_compiler.tensor.cuda_emit import _launch as _emit_launch
-from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 
 
 def _flat_parts(permuted_axes, shape):
@@ -136,6 +136,10 @@ def resident_source(plan, *, prefix="", extension=""):
     else:
         post_run = ""
 
+    error_expression = _arithmetic_error_expression(
+        plan,
+        'std::string(\n                arithmetic_error < 0 ? "tensor division by zero at step "\n                                     : "non-finite tensor at step ")\n                + std::to_string(std::abs(arithmetic_error) - 1)',
+    )
     return f"""{base}
 
 #include "cuda_resident.cuh"
@@ -189,10 +193,7 @@ extern "C" int resident_run(void* pointer, int profile, Metrics* result, char* e
                                                   ctx.device_delta());
         *result = metrics;
         if (arithmetic_error)
-            throw std::runtime_error(std::string(
-                arithmetic_error < 0 ? "tensor division by zero at step "
-                                     : "non-finite tensor at step ")
-                + std::to_string(std::abs(arithmetic_error) - 1));
+            throw std::runtime_error({error_expression});
         (void)ctx;
         {post_run}
         return 0;

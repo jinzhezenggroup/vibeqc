@@ -20,7 +20,7 @@ from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
-from .ir import Node
+from .ir import TRANSCENDENTALS, Node
 from .program import Program, _hash
 from .types import checked_size
 
@@ -32,7 +32,9 @@ VALIDATION_CHUNK = 4096
 # Two NumPy iterator buffers, two reusable FP64 scratch buffers and one mask.
 VALIDATION_BYTES = VALIDATION_CHUNK * (4 * 8 + 1)
 VIEWS = frozenset(("transpose", "reshape", "slice", "broadcast"))
-ELEMENTWISE = frozenset(("add", "multiply", "divide", "scaled_bilinear"))
+ELEMENTWISE = (
+    frozenset(("add", "multiply", "divide", "scaled_bilinear")) | TRANSCENDENTALS
+)
 
 
 def strides(shape) -> tuple[int, ...]:
@@ -48,7 +50,7 @@ def aligned(size: int) -> int:
 
 @dataclass(frozen=True)
 class TensorSchedule:
-    """Small explicit search space; ordinary single-stream execution only.
+    """Small explicit search space over one stable stream, optionally replayed.
 
     Recompute duplicates shared intermediates between output roots. It does
     not duplicate work within a root or promise arbitrary out-of-core output
@@ -309,7 +311,13 @@ def plan_cuda(
         target.target_info
     )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
+    if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
+        raise ValueError("too many steps for transcendental domain diagnostics")
     for node, _ in nodes:
+        if node.op in TRANSCENDENTALS and node.spec.dtype != "float64":
+            raise ValueError(
+                "CUDA transcendental primitives are qualified only for float64"
+            )
         scalar = scalar_type(node.spec.dtype)
         checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
@@ -335,6 +343,8 @@ def plan_cuda(
             scalar.coefficient(pair)
         if "coefficient" in node.attrs:
             scalar.coefficient(node.attrs["coefficient"])
+        if "exponent" in node.attrs:
+            scalar.coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }

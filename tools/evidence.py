@@ -39,6 +39,14 @@ def main() -> int:
         command.add_argument("--revision", required=name == "audit-migration")
         command.add_argument("--output", type=Path, required=True)
     commands.add_parser("check")
+    changes = commands.add_parser("check-change")
+    changes.add_argument(
+        "--base", required=True, help="Explicit local Git revision; never fetched"
+    )
+    changes.add_argument("--output", type=Path)
+    campaigns = commands.add_parser("audit-campaigns")
+    campaigns.add_argument("--revision")
+    campaigns.add_argument("--output", type=Path, required=True)
     publication = commands.add_parser("publish")
     publication.add_argument("--run-directory", type=Path, required=True)
     publication.add_argument("--specification", type=Path, required=True)
@@ -56,8 +64,24 @@ def main() -> int:
         )
         return 0
     blobs = tracked_blobs(args.root, getattr(args, "revision", None))
-    if args.command == "check":
+    if args.command in {"check", "check-change"}:
         errors = check(blobs, json.loads(blobs[POLICY_PATH]))
+        report = None
+        if args.command == "check-change":
+            from tools.vibeqc_validation.retention_review import review_changes
+
+            report = review_changes(
+                tracked_blobs(args.root, args.base),
+                blobs,
+                json.loads(blobs[POLICY_PATH]),
+            )
+            report["base"] = args.base
+            errors.extend(report["errors"])
+            print(
+                f"Evidence change: {report['changed_files']} files, "
+                f"{report['changed_bytes']} bytes; "
+                f"{report['review_bytes']}/{report['review_max_bytes']} review bytes"
+            )
         # Scientific envelope validation remains in normal Python CI, while
         # storage checks do not install numerical dependencies in pre-commit.
         for path, data in blobs.items():
@@ -78,17 +102,26 @@ def main() -> int:
                         errors.append(
                             f"{path}: missing/changed publication member {target}"
                         )
+        if report is not None and args.output:
+            report["errors"] = errors
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(
             "\n".join(errors)
             if errors
             else "Evidence retention and publication checks passed."
         )
         return int(bool(errors))
-    result = (
-        inventory(blobs)
-        if args.command == "inventory"
-        else migration_audit(blobs, args.revision)
-    )
+    if args.command == "audit-campaigns":
+        from tools.vibeqc_validation.retention_review import campaign_inventory
+
+        result = campaign_inventory(blobs, json.loads(blobs[POLICY_PATH]))
+    else:
+        result = (
+            inventory(blobs)
+            if args.command == "inventory"
+            else migration_audit(blobs, args.revision)
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
@@ -98,7 +131,14 @@ def main() -> int:
             {
                 k: v
                 for k, v in result.items()
-                if k in {"classes", "removed_files", "removed_bytes"}
+                if k
+                in {
+                    "classes",
+                    "removed_files",
+                    "removed_bytes",
+                    "total_files",
+                    "total_bytes",
+                }
             },
             sort_keys=True,
         )

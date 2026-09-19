@@ -64,6 +64,14 @@ right-hand side**: `docs/response.md` assigns nuclear-perturbation RHS
 construction to the caller. This work reuses that operator and does not add a
 second response solver.
 
+The shared response layer now also has an explicit direct-CUDA J/K adapter,
+`CudaDirectJKBackend`; see [response backend boundaries](response.md#backend-boundary).
+It does not change this document's CPU-only molecular Hessian scope. Its
+AO/MO transforms and Krylov solve remain host-orchestrated, and nuclear
+directional RHS, complete HVP assembly and device-resident execution are
+separate #180 integration gates.
+
+
 **#141 / #144 — first derivatives**, used to build the response RHS:
 
 - one-electron raw tensors, `build_one_electron_derivative_ir(..., weighted=False)`

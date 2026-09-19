@@ -88,6 +88,8 @@ def compile_options(plan) -> tuple[str, ...]:
                 if not separator and i + 1 < len(tokens):
                     value = tokens[i + 1]
                 forbidden = {
+                    "--fmad": "true",
+                    "-fmad": "true",
                     "--ftz": "true",
                     "-ftz": "true",
                     "--prec-div": "false",

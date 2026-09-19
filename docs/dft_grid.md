@@ -233,3 +233,13 @@ automatically promote a schedule or assert DFT energy/force performance.
 The [DFT01 evidence archive](../benchmarks/results/dft-grid-160/README.md)
 preserves the clean scientific revision, raw numerical/timing records,
 sanitizer logs, actual loaded-library versions and capacity scope.
+
+
+## Complete stationary CPU consumer
+
+The generated grid-response building block is consumed by the internal
+[complete native-state CPU RKS gradient diagnostic](ks_diagnostics.md#native-cpu-stationary-gradient-diagnostic).
+That consumer binds the physical native atomic measures, point coordinates,
+D/F/C/W and grid identity, and adds all remaining molecular sources. The grid
+module alone is still not a complete gradient, and neither interface enables
+public DFT forces or qualifies native CUDA grid-response execution.

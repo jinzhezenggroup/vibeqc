@@ -27,7 +27,7 @@ from types import MappingProxyType
 import numpy as np
 
 from .interpreter import evaluate_nodes
-from .ir import Node
+from .ir import Node, _execution_power_exponent
 from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
@@ -315,6 +315,37 @@ def _zeros(spec) -> np.ndarray:
     return np.zeros(spec.shape, dtype=spec.dtype)
 
 
+def _transcendental_partial(node: Node, values, weight) -> np.ndarray:
+    """Weighted scalar partials; primal/domain validation precedes reference AD."""
+    x = values[0]
+    if node.op == "exp":
+        return np.exp(x) * weight
+    if node.op == "log":
+        # Divide the seed directly: forming 1/x first overflows on subnormals.
+        return weight / x
+    if node.op == "sqrt":
+        if np.any(x == 0):
+            raise ValueError("tensor sqrt derivative requires strictly positive input")
+        return weight / (np.dtype(node.spec.dtype).type(2) * np.sqrt(x))
+    p = _execution_power_exponent(node.attrs["exponent"], node.spec.dtype)
+    if p == 0:
+        return np.zeros_like(weight)
+    if p == 1:
+        return weight.copy()
+    factor = np.dtype(node.spec.dtype).type(float(p))
+    exponent = np.dtype(node.spec.dtype).type(float(p - 1))
+    # Do not reuse rounded x**p / x: x**p may underflow while the slope does not.
+    return (weight * np.power(x, exponent)) * factor
+
+
+def _jvp_transcendental(node: Node, values, tangents) -> np.ndarray:
+    return _transcendental_partial(node, values, tangents[0])
+
+
+def _vjp_transcendental(node: Node, values, bar) -> list[np.ndarray]:
+    return [_transcendental_partial(node, values, bar)]
+
+
 def _jvp_add(node: Node, values, tangents) -> np.ndarray:
     result = _zeros(node.spec)
     for tangent, coefficient in zip(tangents, node.attrs["coefficients"]):
@@ -414,6 +445,7 @@ _JVP_RULES = {
     "multiply": _jvp_multiply,
     "divide": _jvp_divide,
     "scaled_bilinear": _jvp_scaled_bilinear,
+    **dict.fromkeys(("exp", "log", "sqrt", "power"), _jvp_transcendental),
     "einsum": _jvp_einsum,
     "transpose": _jvp_transpose,
     "reshape": _jvp_reshape,
@@ -567,6 +599,7 @@ _VJP_RULES = {
     "multiply": _vjp_multiply,
     "divide": _vjp_divide,
     "scaled_bilinear": _vjp_scaled_bilinear,
+    **dict.fromkeys(("exp", "log", "sqrt", "power"), _vjp_transcendental),
     "einsum": _vjp_einsum,
     "transpose": _vjp_transpose,
     "reshape": _vjp_reshape,

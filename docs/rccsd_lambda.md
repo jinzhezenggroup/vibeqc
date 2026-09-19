@@ -1,9 +1,11 @@
-# Generated RCCSD Lambda equation actions
+# RCCSD Lambda equations and bound CPU response
 
 `tools.vibeqc_cc.build_lambda_programs(nocc, nvir)` generates the fixed-amplitude
 energy gradient, residual Jacobian-vector product and transpose action for the
 same conventional real RCCSD equations as `build_ccsd_program`. It is an internal
-mathematical frontend, **not a Lambda solver or nuclear-gradient capability**.
+mathematical frontend. `BoundCCSDLambda` additionally solves the amplitude-response
+equation from a converged internal CPU CCSD result. Neither interface enables
+a native/public response method or a nuclear-gradient capability.
 
 ## Equations and coordinates
 
@@ -83,8 +85,9 @@ primal/adjoint/Krylov peak-memory bound.
 
 CPU numerical tests and CUDA **planning** are covered. The CUDA planner retains
 its normal provider/workspace reservations. Actual CUDA compilation/execution,
-resident Lambda state, molecular Lambda convergence and native/public response
-APIs are not validated by this slice.
+resident Lambda state and native/public response APIs remain unqualified.
+The separate bound CPU consumer below establishes small molecular Lambda solves;
+it does not promote those same actions to a GPU solver.
 
 ## Validation and remaining consumers
 
@@ -101,11 +104,101 @@ PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
   tests/python/test_cc_lambda.py
 ```
 
-The solved-state consumer still needs validated SCF/CC identity binding,
-independent physical CC/Lambda residuals, shared implicit-solve integration and
-complete state/workspace admission. Fixed-orbital parameter/RDM weights and
-orbital/Z-vector/nuclear response remain separate work. In particular, this
-frontend must not enable `compute_forces` or close the complete #152/#153 tasks.
+## Bound converged-state CPU consumer
+
+```python
+from tools.vibeqc_cc import BoundCCSDLambda, LambdaOptions, SolverOptions, solve
+
+# snapshot is the validated RHF ReferenceSnapshot used by this provider.
+cc = solve(snapshot, provider, options=SolverOptions(
+    residual_tolerance=1e-11, energy_tolerance=1e-13,
+))
+bound = BoundCCSDLambda(snapshot, cc, options=LambdaOptions())
+lambda_result = bound.solve(reference_identity=snapshot.identity)
+```
+
+`BoundCCSDLambda` accepts the internal `CCSDResult` from `solve`, or `.state`
+from the energy facade, not an arbitrary amplitude tuple. It verifies the
+RHF/reference and conventional-unscreened Hamiltonian identities, both CC
+equation identities, the replayed reference and Fock/integral hashes, and the
+actual finite FP64 amplitude shapes and simultaneous T2 symmetry. Replayed
+Fock blocks must also match `C.T @ F @ C` of the supplied reference. It then
+recomputes energy and physical R1/R2 with the expanded primal equations;
+claimed convergence or a small historical residual is not sufficient.
+
+The bound numerical feeds are copied into immutable bytes-backed arrays.
+Subsequent changes to the caller's replay dictionaries cannot alter a solve.
+Without `current_reference`, this is explicitly a **detached immutable tooling
+snapshot**. A runtime owner can pass `current_reference=callback`, where the
+callback checks provider lifetime and returns the current reference/generation
+identity. It is checked before and after actions and publication. Every solve
+also requires the expected reference identity explicitly. A detached snapshot
+is not a claim that its originating native provider remains current or open.
+
+The existing generated RHS and transpose act in dense Frobenius coordinates.
+The thin block adapter uses the existing `PackedLayout` maps and passes
+`sqrt(W) * lambda_p` to the shared solver, preserving all doubles orbit weights.
+`checked_transpose_solve` and `ResponseGMRES` are shared with the generic
+implicit-VJP adapter; the #179 GMRES implementation is unchanged. The CC
+consumer does **not** flatten redundant T2 into an `ImplicitSolveSpec`, build a
+dense mapping matrix, differentiate iterations, or implement another solver.
+
+Acceptance is independent at each boundary:
+
+- Fresh physical CC singles/doubles maxima must satisfy `cc_tolerance <= 1e-9`.
+- The generic checked solver reevaluates the true transpose residual, validates
+  returned solution/status/resource diagnostics, and checks solver identity.
+- The consumer reevaluates Lambda stationarity using the expanded derivative
+  programs. Its physical maximum and Euclidean-weighted norm, and the original
+  true-residual norm, must satisfy `lambda_tolerance <= 1e-9` regardless of a
+  looser injected solver tolerance.
+
+A rejected primal, stale state, nonfinite value, failed/stagnant adjoint or
+insufficient workspace raises before a successful Lambda result is published.
+`CCSDLambdaResult` separately reports SCF residual, CC singles/doubles maxima,
+CC weighted norm, both Lambda residual norms, Lambda physical maximum,
+iterations/actions, exact state/equation identities and execution backends.
+`lambda1` and `lambda2` retain the stated Lagrangian normalization; they are not
+unconverted external Lambda arrays or physical RDMs.
+
+## Resource and capability boundary
+
+`LambdaOptions.max_bytes` admits the simultaneous logical numeric storage for
+bound inputs/reference, amplitude-coordinate and publication scratch, the
+largest generated interpreter program, and the opaque solver's declared
+workspace **before replay conversion or interpreter execution**. The solver
+also enforces its own workspace limit. This is a conservative tooling numeric
+reservation, not measured native allocation or process RSS: caller-owned replay
+lists, Python IR/layout objects, and opaque NumPy/BLAS workspaces are excluded.
+No complete molecular host/device peak-memory or performance claim is made.
+The existing packing-map reference implementation retains its element limit.
+
+Only CPU interpreter actions and the host-controlled shared GMRES are enabled;
+`backend="cuda"` is rejected explicitly. Fresh small-system native HF inputs use
+the existing `export_rhf` bridge, including its disclosed host canonicalization.
+Neither fixture input nor native export is misrepresented as a resident GPU
+reference provider. CPU/native endpoint tests require no PySCF solver.
+
+```bash
+PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+VIBEQC_LIBRARY=/path/to/current/cpu/libvibeqc.so python -m pytest -q \
+  tests/python/test_cc_lambda_solver.py tests/python/test_cc_lambda.py \
+  tests/python/test_implicit_vjp.py tests/python/test_implicit_response.py
+```
+
+The new tests compare converged molecular Lambda against tiny numerical
+Jacobian solves and multi-step Lagrangian stationarity differences, include
+native HF -> CC -> Lambda endpoints with changed geometry and a determinant
+reference, and exercise stale/corrupt states, immutable outputs, false solver
+success, true nonconvergence and resource rejection. Dense Jacobians are
+strictly test-only. GPU execution/residency and native response-provider
+integration remain part of #152 B. Fixed-orbital Fock/integral weights belong to
+#152 C; physical RDM conventions and orbital/Z-vector/nuclear response remain
+separate work. No force capability or higher derivative is enabled here.
+
+See the [bound-state decision](../.agents/notes/implemented/numerics/2026-09-19-bound-ccsd-lambda.md)
+for why this consumer shares the generic checked-solve boundary rather than
+building a dense packed-coordinate incidence matrix.
 
 See the [dense-symmetry adjoint decision](../.agents/notes/implemented/numerics/2026-09-19-dense-symmetry-cc-adjoints.md)
 for the representation choice and rejected alternatives.

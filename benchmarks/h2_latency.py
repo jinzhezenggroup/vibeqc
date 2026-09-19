@@ -4,7 +4,7 @@ import argparse
 import statistics
 import time
 
-from _support import environment_metadata, write_result
+from _support import environment_metadata, raw_output_path, write_result
 from vibeqc import Calculator
 
 
@@ -14,6 +14,7 @@ def main() -> None:
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument(
         "--output",
+        type=raw_output_path,
         default=".artifacts/benchmarks/h2_latency.json",
         help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
