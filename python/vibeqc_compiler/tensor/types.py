@@ -77,10 +77,7 @@ class Index:
         if selection is not None:
             selection = tuple(selection)
             object.__setattr__(self, "selection", selection)
-            if any(
-                type(i) is not int or not self.start <= i < stop
-                for i in selection
-            ):
+            if any(type(i) is not int or not self.start <= i < stop for i in selection):
                 raise ValueError("gather coordinates must lie inside the index range")
 
     @property

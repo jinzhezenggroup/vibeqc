@@ -229,6 +229,7 @@ class MethodIR:
         )
         if not all(isinstance(primitive, allowed) for primitive in self.primitives):
             raise UnsupportedMethod("MethodIR contains an unsupported primitive")
+
         def primitive_order(primitive: MethodPrimitive) -> int:
             if isinstance(primitive, SemilocalXCPrimitive):
                 return 0
