@@ -260,6 +260,7 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --parallel
