@@ -25,22 +25,20 @@ void require_close(double actual, double expected, double tolerance, const char*
 class ScopedEnv {
  public:
   explicit ScopedEnv(const char* name, const char* value) : name_(name) {
-    if (value == nullptr) {
-      previous_ = std::getenv(name_);
-      unsetenv(name_);
-    } else {
-      previous_ = std::getenv(name_);
-      setenv(name_, value, 1);
-    }
-  }
-  ~ScopedEnv() {
-    if (previous_ == nullptr)
+    if (const char* previous = std::getenv(name_)) previous_ = previous;
+    if (value == nullptr)
       unsetenv(name_);
     else
-      setenv(name_, previous_, 1);
+      setenv(name_, value, 1);
+  }
+  ~ScopedEnv() {
+    if (!previous_)
+      unsetenv(name_);
+    else
+      setenv(name_, previous_->c_str(), 1);
   }
   const char* name_;
-  const char* previous_;
+  std::optional<std::string> previous_;
 };
 
 using Threshold = std::optional<double>;
