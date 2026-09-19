@@ -4,6 +4,20 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_D3_DATA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/d3_data.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_d3_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_d3/generate_native_data.py"
+    OUTPUTS "${VIBEQC_D3_DATA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/gfn1_d3.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/covalent_radii.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/manifest.json"
+    ARGS --output "${VIBEQC_D3_DATA_HEADER}"
+    COMMENT "Generating pinned compact D3(BJ) tables")
+
   set(VIBEQC_XC_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/xc_cpu_generated.hpp")
   vibeqc_register_generated_sources(
