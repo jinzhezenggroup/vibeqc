@@ -30,7 +30,7 @@ def test_gfn2_manifest_resolves_complete_canonical_graph():
         "overlap_integrals",
         "multipole_integrals",
         "h0",
-        "scc_multipole",
+        "scc_electrostatics",
         "spin_polarization",
         "hamiltonian",
         "repulsion",
@@ -56,6 +56,15 @@ def test_gfn2_manifest_resolves_complete_canonical_graph():
         "dispersion",
     )
     assert requirements["requested_products"] == ("energy", "nuclear-gradient")
+
+    scc = next(p for p in method.primitives if p.kind == "scc_electrostatics")
+    assert scc.model == "gfn2-es2-es3-aes2"
+    assert scc.requires == (
+        "coordination_number",
+        "overlap_integrals",
+        "multipole_integrals",
+    )
+    assert "third-order-shell" in requirements["parameter_tables"]["orbital"]
 
     assert method.runtime_requirements == {
         "scc_fixed_point": True,
