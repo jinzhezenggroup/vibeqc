@@ -16,8 +16,6 @@ output-format = "github"
 include = [
   "python/vibeqc_compiler/common/resources.py",
   "python/vibeqc_compiler/common/specialization.py",
-  "python/vibeqc_compiler/dft/grid.py",
-  "python/vibeqc_compiler/dft/prepared.py",
   "python/vibeqc_compiler/integral/__init__.py",
   "python/vibeqc_compiler/integral/batch_benchmark.py",
   "python/vibeqc_compiler/integral/blocks.py",
@@ -52,7 +50,6 @@ include = [
   "python/vibeqc_compiler/integral/weighted_eri_execute.py",
   "python/vibeqc_compiler/integral/weighted_eri_inputs.py",
   "python/vibeqc_compiler/integral/weighted_eri_native.py",
-  "python/vibeqc_compiler/method/spec.py",
   "python/vibeqc_compiler/tensor/ad_program.py",
   "python/vibeqc_compiler/tensor/autodiff.py",
   "python/vibeqc_compiler/tensor/cuda_emit.py",
@@ -61,7 +58,6 @@ include = [
   "python/vibeqc_compiler/tensor/cuda_resident.py",
   "python/vibeqc_compiler/tensor/cuda_tune.py",
   "python/vibeqc_compiler/tensor/ir.py",
-  "python/vibeqc_compiler/tensor/types.py",
   "python/vibeqc_compiler/xc/prepared.py",
 ]
 
