@@ -103,22 +103,34 @@ screening, and grid prescription outside v1 is recorded in
 [the COSX discrete-reference Agent Note](../.agents/notes/implemented/numerics/2026-09-19-cosx-discrete-reference.md).
 
 
-## Bounded native CUDA candidate
+## Explicit prepared CUDA provider
 
-CudaCosxStagingPlan remains an explicit diagnostic class rather than a
-registered Fock provider, but its scientific kernels are now fully device-side.
-It reuses the existing CUDA spatial-grid owner for AO values and its immutable
-packed normalized basis. The unit point-charge ESP operator is evaluated on the
-device through generated_one_electron_values.cuh: the existing generated
-nuclear-attraction DAG has an independent external center C, and COSX takes the
-negative of its signed unit-charge value to obtain positive
-<mu|1/|r-C||nu>.
+The bounded native path is registered through the common #202 Fock contract as
+`FockApproximation::SeminumericalCosx`. Its independent `FockCosxSpec`
+owns the v1 mathematical grid/approximation identity; the implementation may
+reuse the common molecular-grid materializer, but COSX does not inherit XC-grid
+method identity. `ResolvedFockBuild::cosx_tile_points` is a separate execution
+identity so a prepared owner cannot be replayed after a resource-policy change.
 
-For each bounded point tile the device computes ESP matrices, density
-projection, ESP application, one-sided K accumulation, and final
-symmetrization on one owner stream. No global Ngrid x NAO^2 tensor is allocated
-and no host ESP tensor or per-tile ESP H2D transfer remains.
+`PreparedFockPlan` materializes the explicit COSX grid, reserves the complete
+bounded COSX device footprint before direct/DF planning, and owns one
+`CudaCosxStagingPlan`. The common composition boundary therefore represents
+both direct-J + COSX-K and RI-J + COSX-K without duplicating Coulomb logic.
+RHF uses the spin-summed density convention; UHF evaluates independent alpha
+and beta COSX exchange matrices through the same provider.
 
-This is still explicit-only. It does not register COSX with FockBuildSpec,
-AUTO, SCF, hybrid DFT, or derivative capability. Provider/grid identity and
-native performance qualification remain the next #246 slice.
+The scientific kernels remain fully device-side. The existing CUDA spatial-grid
+owner supplies normalized AO values and an immutable packed basis. The unit
+point-charge ESP operator is evaluated through
+`generated_one_electron_values.cuh`: the generated nuclear-attraction DAG has
+an independent external center C, and COSX negates its signed unit-charge value
+to obtain positive `<mu|1/|r-C||nu>`. ESP generation, density projection,
+weighted ESP application, one-sided K accumulation, and final symmetrization
+run on one owner stream with no global `Ngrid x NAO^2` tensor or host ESP
+transfer.
+
+Promotion is intentionally narrow. The CUDA provider is **explicit only**:
+no AUTO selector chooses COSX, provider batching is not advertised, derivative
+order is zero, and force requests remain unsupported. Chain-of-spheres
+screening, fitting variants, complete SCF/hybrid-DFT endpoint qualification,
+analytic derivatives, and the measured RI-K crossover remain later #246 work.
