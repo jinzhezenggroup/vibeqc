@@ -196,7 +196,15 @@ class ScalarCEmitter:
             return " * ".join(arguments)
         if node.operation == "reciprocal":
             return f"1.0 / {arguments[0]}"
-        if node.operation in ("exp", "log", "log1p", "expm1"):
+        if node.operation in (
+            "exp",
+            "log",
+            "log1p",
+            "expm1",
+            "atan",
+            "asinh",
+            "erf",
+        ):
             return f"{node.operation}({arguments[0]})"
         if node.operation == "power":
             payload = node.payload
@@ -221,7 +229,8 @@ class ScalarCEmitter:
             raise RuntimeError("materialized dependency was not emitted before use")
         code = self._operation_code(identifier)
         if (
-            node.operation in ("exp", "power", "log", "log1p", "expm1")
+            node.operation
+            in ("exp", "power", "log", "log1p", "expm1", "atan", "asinh", "erf")
             or identifier in self._fma_by_add
         ):
             return code

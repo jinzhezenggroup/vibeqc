@@ -9,6 +9,7 @@
 #include "api/handles.hpp"
 #include "api/ks_snapshot.hpp"
 #include "dft/xc_point.hpp"
+#include "integrals/ecp.hpp"
 #include "methods/dft_method.hpp"
 
 struct vibeqc_ks_snapshot {
@@ -95,8 +96,20 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
         values.push_back(static_cast<double>(source.export_synchronizations));
       }
     }
+    // ECP CPU v4 binds the exact Hamiltonian of the live owner. All-electron
+    // v2 and CUDA v3 keep their existing wire layouts and capability domains.
+    const bool ecp_cpu = cpu && !source.system.ecp_terms.empty();
+    if (ecp_cpu) {
+      for (const auto& atom : source.system.atoms) values.push_back(atom.ecp_core);
+      values.push_back(static_cast<double>(source.system.ecp_terms.size()));
+      for (const auto& term : source.system.ecp_terms)
+        for (double value :
+             {static_cast<double>(term.atom_index), static_cast<double>(term.channel),
+              static_cast<double>(term.power), term.exponent, term.coefficient})
+          values.push_back(value);
+    }
     const std::array<std::uint64_t, 16> info{
-        cpu ? 2U : 3U,
+        ecp_cpu ? 4U : (cpu ? 2U : 3U),
         n,
         identity.model.spins,
         source.system.atoms.size(),
@@ -144,6 +157,43 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
     const auto status = check_current(*batch, *snapshot);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
     std::copy(snapshot->values.begin(), snapshot->values.end(), values);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
+// Diagnostic-only reuse of the independent CPU ECP provider. Return separate
+// local/projector all-center derivatives; generated TensorIR owns their D weights.
+// Re-read the actual owner under its token instead of accepting a caller's ECP.
+vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
+                                                    const vibeqc_ks_snapshot* snapshot,
+                                                    double* values, std::size_t count) {
+  if (!batch || !snapshot || !values) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  try {
+    auto status = check_current(*batch, *snapshot);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (snapshot->token.identity.determinant.model.backend != vibeqc::scf::FockBackend::Cpu)
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    vibeqc::methods::detail::KsDerivativeSnapshot source;
+    std::string detail;
+    status = vibeqc::methods::detail::read_dft_derivative_state(*batch->plan, snapshot->index,
+                                                                snapshot->token, source, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (source.system.ecp_terms.empty()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    const auto n = source.state.orbitals.at(0).values.size();
+    const auto atoms = source.system.atoms.size();
+    if (!n || atoms > std::numeric_limits<std::size_t>::max() / 6 / n / n ||
+        count != 6 * atoms * n * n)
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    const auto ecp = vibeqc::integrals::checked_ecp_integrals(source.system, true);
+    if (ecp.local_derivative.size() != count / 2 || ecp.nonlocal_derivative.size() != count / 2)
+      return VIBEQC_STATUS_INTERNAL_ERROR;
+    status = check_current(*batch, *snapshot);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    std::copy(ecp.local_derivative.begin(), ecp.local_derivative.end(), values);
+    std::copy(ecp.nonlocal_derivative.begin(), ecp.nonlocal_derivative.end(), values + count / 2);
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);

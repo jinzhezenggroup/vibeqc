@@ -78,10 +78,19 @@ oracle retains its own nodes, harmonics and normalization; its integral path
 does not call the generated grid wrapper. The existing grid limits, Newton
 stopping policy, node order and append semantics are preserved.
 
-The CUDA adapter retains allocation/launch/scatter, AO expansion metadata and
-the method's two-grid convergence policy. It remains conservatively classified
-as scientific in the ownership ledger. This does not claim complete adapter
-retirement or expanded method support.
+`integral/ecp_policy.py` owns the fixed coarse/refined grid orders and the
+finite absolute-error acceptance predicate. Generated host/device checks reject
+nonfinite inputs and accept equality at the unchanged value/derivative limits.
+The HF resource inventory reads the same refined-grid dimensions. Raw exports
+still use caller-selected grids; only complete-method execution applies this gate.
+
+The CUDA adapter retains allocation, launches, indexing, symmetry/physical-atom
+scatter, shared basis expansion metadata and failure handling. It is classified
+as runtime after the scientific operations and convergence admission have moved
+to generated helpers. This is an ownership reclassification of retained adapter
+code, not deletion of the adapter or of hundreds of scientific code lines. The
+independent CPU `ecp.cpp` implementation and its convergence policy remain an
+explicit oracle/fallback. See the [ownership audit](../.agents/notes/implemented/architecture/2026-09-19-ecp-generated-policy.md).
 
 Orbital f uses the existing Gaussian DAG, generated component normalization and
 molecular real-spherical expansion. The compiler-owned orbital limit also
@@ -388,3 +397,22 @@ library hash, resource bounds and timing samples. Component endpoint timings
 zero the other component's coefficients while retaining the full engine;
 they must not be described as isolated CUDA kernel timings or a specialized
 schedule promotion.
+
+## Stationary DFT CPU diagnostic
+
+`complete_rks_gradient_diagnostic` can consume a current native CPU scalar-ECP
+LDA/PBE RKS/UKS snapshot. The shared compiler plan declares separate local and
+nonlocal ECP sources, complete AO/ECP-center motion, effective-charge attraction
+and effective-charge nuclear repulsion. Generated TensorIR owns spin-summed
+density weights and the complete nine-source reduction. The private snapshot
+binds the exact ECP terms/core counts from the energy owner; replay, replacement
+and closure revoke its derivative access.
+
+This diagnostic reuses the independent CPU ECP derivative provider. It retains
+two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. It does not enable
+public DFT/ECP forces, CUDA ECP gradients, or an overall resource/performance
+capability. The first qualification is Cartesian s/p LANL2DZ-Na/STO-3G-H in
+`tests/python/test_ecp_stationary_cpu.py`, with independent full-grid-response
+PySCF gradients and multistep reconverged energy differences.
+
+See [the stationary ECP decision](../.agents/notes/implemented/architecture/2026-09-19-ecp-stationary-cpu.md).

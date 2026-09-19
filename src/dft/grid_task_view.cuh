@@ -28,4 +28,17 @@ struct GridTaskView {
   cudaStream_t stream{};
   int* error{};
 };
+
+/** Immutable packed AO source owned by the same CUDA grid plan.
+ *
+ * This view has no task generation because geometry/basis data are frozen for
+ * the owner's lifetime. Consumers may borrow it only while the owner remains
+ * alive and must enqueue on stream when combining it with task views.
+ */
+struct GridBasisView {
+  std::uint64_t version{};
+  std::size_t natom{}, nprimitive{}, nao{};
+  const double* basis{};
+  cudaStream_t stream{};
+};
 }  // namespace vibeqc::dft

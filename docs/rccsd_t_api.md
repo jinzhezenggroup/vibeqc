@@ -1,0 +1,195 @@
+# Composed RCCSD(T) energy API (#150 C)
+
+`tools.vibeqc_cc.ccsd_t_api` composes the independently validated RCCSD and
+standard perturbative-triples implementations into one energy-only endpoint.
+It does not introduce another set of coupled-cluster equations.
+
+The supported scientific model is the same one fixed by #150: real canonical
+closed-shell RHF, all electrons active, conventional four-center integrals and
+standard noniterative `(T)`. Frozen-core, open-shell, ECP and alternative
+triples approximations are not silently substituted.
+
+## Execution contract
+
+`rccsd_t_method_capabilities("rccsd(t)")` returns the canonical energy-only
+capability; `"ccsd(t)"` is an alias. These capabilities describe the internal
+Python facade. Forces raise `NotImplementedError` before execution.
+
+`rccsd_t_energy(snapshot, provider, backend=...)` runs
+
+```text
+validated RHF snapshot
+  -> physical RCCSD solve
+  -> independent expanded R1/R2 acceptance
+  -> exact accepted CC-state identity
+  -> bounded standard (T) tiles
+  -> E_HF, E_CCSD, E_(T), E_corr and E_total
+```
+
+The CPU route uses the audited tiled reference. The production GPU composition
+uses `backend="cuda-resident"`: the RCCSD stage is the #555 resident solver and
+the triples stage is the #448 generated bounded-tile executor. The older
+host-staged `backend="cuda"` RCCSD helper is deliberately not promoted by this
+facade. CUDA requires an explicit `CudaCompilerAdapter` and a `pathlib.Path`
+compilation cache. Invalid requests fail before the RCCSD solve; CUDA errors
+never silently select CPU execution. `options=SolverOptions(...)`, raw `t1/t2`
+or an identity-bearing `warm_start` are forwarded to the RCCSD facade.
+
+The borrowed conventional CPU integral provider and validated RHF snapshot
+are the existing RCCSD preparation contract, including for resident execution.
+There is no new AO transformation or provider read after CCSD acceptance.
+`ovvv`, `ovoo`, `ovov`, `fov` and orbital energies come from the exact retained
+`CCSDResult.replay_inputs`; amplitudes come from its final `t1/t2`, never the
+initial guess. The audited equations and fixed triples denominator guard are
+reused unchanged on both backends. CPU oracle comparison on CUDA is opt-in via
+`triples_oracle=True`, and is disabled by default.
+
+## State and lifetime contract
+
+A successful `(T)` calculation is impossible unless RCCSD first converges and
+passes its independent physical residual replay. Resident CUDA results must
+also carry `resident_solved_state_identity`; that identity is bound into the
+RCCSD(T) result provenance. If RCCSD exhausts its iterations or becomes
+nonfinite, no triples value, RCCSD(T) correlation energy or RCCSD(T) total
+energy is published.
+
+The result retains `ccsd` and its replayable `state`, plus tile diagnostics in
+`triples` on success. Failed CCSD states may retain a last finite diagnostic
+CCSD energy, but this never counts as an RCCSD(T) energy. Provider, compilation,
+allocation and triples failures raise for a single point; batch execution
+captures each exception independently.
+
+The RCCSD facade's resident convenience owner closes before the triples phase.
+The final amplitudes and replay inputs are host-owned. `CudaTriplesTiles`
+extracts and uploads exact tile feeds into one resident owner per tile, closes
+that owner, and proceeds to the next tile. This is an explicit host handoff;
+there is no persistent CC-to-triples device-pointer ownership contract.
+
+## Memory and work contract
+
+Triples never allocate a complete `nocc^3 * nvir^3` T3 or denominator tensor.
+`triples_max_bytes` is passed to every CUDA tile plan and infeasible plans fail
+explicitly. `vir_chunk_size` changes execution partitioning, not method
+semantics.
+
+Occupied space is full within each tile. The virtual `a` ranges partition the
+triangular `a >= b >= c` domain, so `virtual_triple_count` is
+`nvir * (nvir + 1) * (nvir + 2) / 6` independently of the tile partition.
+Prefix-bounded virtual labels retain full W1 summation axes. This bounds tile
+storage; it does not promise constant work or constant host storage with system
+size. Dense CC replay inputs and final amplitudes remain retained on the host.
+
+`SolverOptions.max_bytes` bounds the existing CCSD logical storage contract;
+`triples_max_bytes` bounds each CUDA tile plan independently. The endpoint
+device peak is the maximum of the CCSD combined plan reservation and the triples
+tile peak plus the caller's `provider_peak_bytes` reservation, since the solver
+and tiles execute sequentially. Per-tile peaks, host triples input bytes and
+CCSD logical bytes are reported separately. These are numeric-buffer accounting,
+not measured process RSS or a total host/device memory cap. CPU execution reports
+zero device bytes and an unknown (`null`) triples workspace peak; the CUDA tile
+budget does not enforce a CPU workspace limit.
+
+## Results and endpoint artifacts
+
+`RCCSDTResult` reports the following quantities separately:
+
+- RHF reference energy;
+- RCCSD correlation energy;
+- perturbative `(T)` correction;
+- total correlation energy `E_CCSD + E_(T)`;
+- total electronic+nuclear energy `E_HF + E_CCSD + E_(T)`.
+
+The deterministic `ccsd_state_identity` binds exact replay inputs, final
+amplitudes, CCSD energy, reference/integral/equation identities and, for CUDA,
+`resident_solved_state_identity`. `result_identity` additionally binds the
+triples inventory, backend, partition and all energy components. Elapsed times
+are excluded from these scientific identities. Failure artifacts carry a
+diagnostic state identity without certifying a converged root.
+
+Provenance also records tile count, semantic work count, device-plan peaks,
+generated triples artifact keys, runtime device and upstream CCSD provenance.
+`timing.ccsd_s` covers the complete facade call (preparation through independent
+replay and owner cleanup); `timing.triples_s` covers input extraction and tile
+execution. `timing.endpoint_s` covers both phases and identity bookkeeping.
+`timing.triples_detail` preserves CUDA extraction/compilation/upload/run/download
+timings; CPU tiles supply no internal timing breakdown. HF generation precedes
+this endpoint and is outside its timing scope.
+
+`result.write(path)` returns and writes a compact JSON record with
+`schema="vibeqc.rccsd-t.endpoint/1"`. `record_hash` is the SHA-256 of canonical
+JSON of every other field, including timings. Consequently repeated identical
+scientific results can have different artifact hashes. Serialization uses
+`allow_nan=False`; nonfinite values fail before opening the destination.
+The artifact contains energies, provenance and tile scalars, not amplitude,
+integral or iteration-history arrays. Use `result.state.write(path)` separately
+when a full CCSD replay artifact is needed.
+
+## Homogeneous prepared batches
+
+`PreparedRCCSDTBatch` and `rccsd_t_batch_energy` provide the #150 C batch-state
+contract at the internal post-HF facade. All items must have the same
+`(nocc, nvir)` shape, checked before any provider read or solver execution.
+Empty input is valid and returns `shape=None, items=()`. Invalid global execution
+settings and force requests are rejected even for empty batches.
+Every item owns independent amplitudes, DIIS history,
+convergence and failure status; failure of one item does not corrupt its
+neighbors. The control loop is sequential today, while generated compiler
+artifacts are reused through the shared cache. No ragged or padded batch claim
+is made.
+
+Preparation materializes the input pairs and borrows their snapshots/providers;
+it creates no CCSD or device owner. `prepared.execute()` creates fresh per-item
+state on every call and returns input-ordered indexed outcomes. Nonconvergence
+retains the item's CCSD state with no triples/total energy; exceptions produce
+`status="error"`, a reason, and `result=None`. Subsequent items continue. Batch
+settings do not accept shared raw amplitudes or warm-start state. Providers stay
+caller-owned and must remain usable for their item's CCSD solve.
+
+This `supports_batch=True` capability describes this internal homogeneous
+prepared/session API only. It is not a claim that the public native C
+`PreparedBatch` boundary executes CCSD(T).
+
+## Public native boundary
+
+The reserved ABI identifier `VIBEQC_METHOD_RCCSD_T` remains inactive in
+`src/methods/registry.cpp`. This is intentional: current RCCSD/RCCSD(T)
+execution is still owned by the generated Python/JIT post-HF facade, and there
+is no native `PreparedCalculation`/`PreparedBatch` CC owner in `src/cc/` to
+register honestly. `Calculator("ccsd(t)")` therefore continues to report the
+reserved method as unavailable rather than dispatching through a Python special
+case.
+
+Native method registration, if promoted later under #149 C, must reuse the same
+reference/equation/state identities and may activate the existing enum without
+renumbering it. Until that owner exists, this facade is the executable #150 C
+composition boundary and the native capability remains fail-closed.
+
+## Validation
+
+CPU endpoint tests cover H2, He, H2O, NH3 and CH4 using committed reference
+inputs. H2/He exercise the approximately-zero triples limit; H2O/NH3/CH4 carry
+nonzero `(T)` corrections and are checked independently from the CCSD energy.
+The tests also cover nonconvergence, force/backend rejection, endpoint artifact
+serialization, homogeneous batch admission, ragged-batch rejection and
+per-item failure isolation.
+
+```bash
+PYTHONPATH=python:. python -m pytest tests/python/test_ccsd_t_api.py \
+    tests/python/test_cc_triples.py tests/python/test_cc_triples_tiles.py -q
+```
+
+Real-device numerical and memory evidence for the two GPU stages remains in the
+retained #555 RCCSD resident evidence and #448 triples-tile evidence. A composed
+CUDA run uses those exact owners and records both identities in the endpoint
+result; it does not reinterpret either benchmark as a new performance claim.
+The endpoint tests cover CUDA admission/dispatch with a test double and do not
+claim new composed GPU numerical qualification. Every real-GPU test or benchmark
+must run through Slurm on `main`, with `--gres=gpu:5090:1` and a finite `--time`,
+preserving scheduler-assigned device visibility.
+
+---
+
+Implementation attribution:
+
+Agent: ChatGPT
+Model: GPT-5.6 Sol

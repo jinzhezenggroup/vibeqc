@@ -288,10 +288,6 @@ class KsPreparedCalculation final : public PreparedCalculation {
     if (cuda_) return cuda_->final_state_token(token, detail);
 #endif
     token = {};
-    if (!system_.ecp_terms.empty()) {
-      detail = "CPU ECP final-state handoff is not qualified";
-      return VIBEQC_STATUS_NOT_IMPLEMENTED;
-    }
     if (!cpu_physical_) {
       detail = "CPU KS owner has no successful current final state";
       return VIBEQC_STATUS_INVALID_ARGUMENT;

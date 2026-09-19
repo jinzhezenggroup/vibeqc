@@ -66,9 +66,9 @@ class FixedDensityXC:
     def __init__(self, spec):
         if not isinstance(spec, FunctionalSpec):
             raise TypeError("expected FunctionalSpec")
-        if any((spec.exact_exchange, spec.range_omega, spec.long_range_exchange)):
+        if any((spec.exact_exchange, spec.long_range_exchange)):
             raise UnsupportedXC(
-                "fixed-density LDA/GGA integration requires semilocal metadata"
+                "fixed-density semilocal LDA/GGA integration cannot hide exact-exchange metadata"
             )
         self._contraction = ContractionProgram(spec)
         self._program = self._contraction.program

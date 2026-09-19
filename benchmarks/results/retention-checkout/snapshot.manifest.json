@@ -3,8 +3,8 @@
   "source_revision": "e215b30685f8a36ef0cc5772c9166837527f64a2",
   "retention": "Existing ancestor Git objects only; no new external copy, release, tag or asset. Recovery requires retaining source history; history rewriting or object removal can make the snapshot unavailable.",
   "history_rewritten": false,
-  "moved_files": 197,
-  "moved_bytes": 40562398,
+  "moved_files": 205,
+  "moved_bytes": 43163752,
   "files": [
     {
       "path": "benchmarks/results/issue206-aot-and-stock/README.md",
@@ -1474,7 +1474,12 @@
       "path": "benchmarks/results/issue385-df-signatures/baseline/384-nsys-summary.json",
       "bytes": 60263,
       "sha256": "8b2ec344e40e362e9e34693bb4689e670855201f4ce351be5d45aa2ac4306497",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 144,
+      "retained_fields_sha256": "0e5a661534db81766363738c0f35a97aa898a0ef6c1e956b0d5c53bab88b4ddf"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/baseline/384-nsys.json",
@@ -1504,7 +1509,12 @@
       "path": "benchmarks/results/issue385-df-signatures/baseline/768-nsys-summary.json",
       "bytes": 94231,
       "sha256": "7f9623e753af8c7797c56c20c188c0961f08059a9ab23fbbb0c3e6ece4a74681",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 234,
+      "retained_fields_sha256": "43912b22b8cc4fa4181976c1ac9e3450a5fff16ae61b3a9a172354a2f35d2e49"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/baseline/768-nsys.json",
@@ -1774,7 +1784,12 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/384-nsys-summary.json",
       "bytes": 249214,
       "sha256": "c43636513b92c722cc6a8dd9129c511372e2a145c42b4258728fd3f7dbd18a89",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 144,
+      "retained_fields_sha256": "2dcd141ca7ea624a7553852935b2246279cfeac1f1eff5fffd1447ea6c029c07"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/384-nsys.json",
@@ -1804,7 +1819,12 @@
       "path": "benchmarks/results/issue385-df-signatures/packet/768-nsys-summary.json",
       "bytes": 402266,
       "sha256": "a842b0e1a26957ad105639ded3da57f2e2ee83e5f52e26e798c3f9816cd78959",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 234,
+      "retained_fields_sha256": "3e41e979be80aa73980e03cd025c9461426d2f9df2755b3fa05927eb7933c355"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/packet/768-nsys.json",
@@ -1996,7 +2016,12 @@
       "path": "benchmarks/results/issue385-df-signatures/uniform/384-nsys-summary.json",
       "bytes": 394404,
       "sha256": "8b9065de2d5874f3f9f10c8f3c3852b300433fee87df0362586abcab5ac4e395",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 987,
+      "retained_fields_sha256": "6e400ef16c5ca528940ab853919acd1887d7f9bbb4c234495d4a09f21fce455a"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/uniform/384-nsys.json",
@@ -2020,7 +2045,12 @@
       "path": "benchmarks/results/issue385-df-signatures/uniform/768-nsys-summary.json",
       "bytes": 623336,
       "sha256": "27d18603c897fa60b593eb39b1eeff3a80e15b27089d32d440e2f140379285ae",
-      "checkout": "retained"
+      "checkout": "retained",
+      "compacted_fields": [
+        "launch_records"
+      ],
+      "omitted_launch_record_count": 1596,
+      "retained_fields_sha256": "0e88048f64d2d3aece5a38a9ff3642c74e841cbd57d780507dbab2c879e7c86a"
     },
     {
       "path": "benchmarks/results/issue385-df-signatures/uniform/768-nsys.json",
@@ -2344,7 +2374,7 @@
       "path": "benchmarks/results/issue394-000-rys/ownership.json",
       "bytes": 137592,
       "sha256": "16999f48867558a17b101a86d990f24c49d2abdc830bd19734d8b7bef8a1c8ad",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue394-000-rys/profiles/000.1.json",
@@ -2746,7 +2776,7 @@
       "path": "benchmarks/results/issue399-density-seed/journals.json",
       "bytes": 209084,
       "sha256": "4b7b404c3c61eb4cb8ac268e38969b4d741a8559e0d8d5863de3539b0d437177",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/measurements/v1-384-final-energy.json",
@@ -2824,7 +2854,7 @@
       "path": "benchmarks/results/issue399-density-seed/ownership.json",
       "bytes": 132351,
       "sha256": "7cd37f44774bc47332fcd48896f4d6d4ba7246e8f1a1a419c8fc0ba75f357511",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue399-density-seed/profiles/384.0-dense.host.json",
@@ -3035,6 +3065,244 @@
       "bytes": 4269,
       "sha256": "b1b0b171db9ee071fadfd3ef87f90de1ac139971c98f6251276ffb11f6fc7002",
       "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/192-406.json",
+      "bytes": 221198,
+      "sha256": "f67542866625bfe57a6e3802240ca0a7c335aaad13ccbe3682eb1ea8643db37b",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/192-extended-406.json",
+      "bytes": 131439,
+      "sha256": "a97dba0cac52644642021ea168cf468c65aaf5f5e7ca42460a3f5a47c7e0c8a4",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/384-404.json",
+      "bytes": 153158,
+      "sha256": "e2f5728f31e23805bbc1f2fd3b3ecc52486eaf68b82abe2c46d385b74f36c1e1",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/384-406.json",
+      "bytes": 297034,
+      "sha256": "9c40403355550ab69d5954b8db6a1bf550815f3208e9d832e84962aa7d5566ec",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/384-407.json",
+      "bytes": 153169,
+      "sha256": "3013d6d43dea503f66b0fd48095dd80c557099e8cd754af1f583f7a819d3abae",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/384-default.json",
+      "bytes": 153274,
+      "sha256": "359da0195fb7da516e62e52f05088d09c2fcdb9c999a10413965dcfd96f266d1",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/768-404.json",
+      "bytes": 226206,
+      "sha256": "1ba17b6d525922968c5af89e5667fdc6ffedac9d54e8e04111d39719ea4444b9",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/768-406.json",
+      "bytes": 437638,
+      "sha256": "812ba95b6058fc45d1e47fb3c02e4066a258ef1f0bc1459910e4ee6e0182587a",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/768-407.json",
+      "bytes": 226146,
+      "sha256": "d3287620c6d3e8e526c4c804438b3bed949f40b78b618a8ce0e77cdcd8d4f3b0",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/768-default.json",
+      "bytes": 226360,
+      "sha256": "42c332eea55c611d621186a5b90bf2ff43af30e9bc3101531abec8647fb9b2a8",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/README.md",
+      "bytes": 8270,
+      "sha256": "f0137cd660be05ae5b438111a53850a8692a4861d7e48800ab4b2f2b1f67ca5f",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/builds.json",
+      "bytes": 674,
+      "sha256": "65fb16abee6098ba31d1815246a5e66a9047a5841da34f5d79869cf299fa9bb4",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/derivative-384-results.json",
+      "bytes": 125596,
+      "sha256": "09fbf5857b958eaf2e3513b4361b10cfe1c38b32b40247f39b89c816b21c732e",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/derivative-768-results.json",
+      "bytes": 126805,
+      "sha256": "bdbfcf8028bf7bf1b753171600f30b8b258a875c6db912943e3b148d76ea98ba",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/derivative-batch.json",
+      "bytes": 40642,
+      "sha256": "a888774aa03d9edce786cd1807de6bd669c7ad66abc55289f9e98928fe611a70",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/initial-value-384-results.json",
+      "bytes": 529187,
+      "sha256": "51490884eea246b4e6555a5c9121a6f777b50a9172256cff45d47710ecb714e5",
+      "checkout": "git-history"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/initial-value-768-results.json",
+      "bytes": 531624,
+      "sha256": "25bbb5d19fc00a4813dfc1fbb633aaf15d3d26b9b151f84f4e9fda43b4025ffc",
+      "checkout": "git-history"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/initial-value-batch.json",
+      "bytes": 278463,
+      "sha256": "081b49b90f4c08dfe57a4eaf27afacaf904a6004790c9b810e3c9fd9da8721c5",
+      "checkout": "retained",
+      "compacted_fields": [
+        "compiled",
+        "groups"
+      ],
+      "retained_fields_sha256": "694598cc876ef5eea8ec1ce42e4eb75275504d9ece0a8bb0862adc0e6a9ac849"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/ownership.json",
+      "bytes": 797,
+      "sha256": "f00a5eaa8173a63fd7024e2c1e1047cdf0ef738dddeb52ea8537262d43440e42",
+      "checkout": "git-history"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/profiles/384-candidate-reuse.json",
+      "bytes": 35093,
+      "sha256": "bbde20294e26f90d195abe51ed0776d244754fa9818058214938c2333d153a1b",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/profiles/384-legacy-off.json",
+      "bytes": 35159,
+      "sha256": "3b0b0e127c1b4a496af24c2b5f6579d9fd6b4a99acc587219e11e5fd28466ca2",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/profiles/768-candidate-reuse.json",
+      "bytes": 36864,
+      "sha256": "1af750bd2e9b73cd798039616f2f62c880e90c7439642e6b901eff43ded26867",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/profiles/768-legacy-off.json",
+      "bytes": 36855,
+      "sha256": "3cea58d99971b9ea48e0e7e891ae37a4e2f5921f9359c9943d876d2dc3562908",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/rejected-value-v2.json",
+      "bytes": 127718,
+      "sha256": "2fbb31624d73c27ca767c6502528dac83a6aa36352d30b5e1981cb67d8773ac9",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/rejected-value-v4.json",
+      "bytes": 82372,
+      "sha256": "922214b2188baec3a4ead704545e2726a6856c490af25c4d97a3a0cd27355ec2",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/batch-source.patch.gz",
+      "bytes": 68038,
+      "sha256": "03385234972525a559d8b4fdbb8c8342bf9a1c1bdbeeb5d6d0c8153f3d5bca4d",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/collect.py",
+      "bytes": 5072,
+      "sha256": "fb08c0a04fca27de46869b08b6ec15a9032880cf36292fbb952616aa86211ddd",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/final-source.patch.gz",
+      "bytes": 62125,
+      "sha256": "b75d5a8313216503e3df567021fcbff30375dd061c970a39ca7c96c9893c6169",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/qualification-source.patch.gz",
+      "bytes": 41829,
+      "sha256": "a2e043cd0cd60b808357d0f992aef6457ce5077e40a3ec3be6ac453779e7bb41",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/reduce_profiles.py",
+      "bytes": 4083,
+      "sha256": "46d7240f26f7a2fd12e277a5c4e597f0b63ee8235c231d2d01c35d044d8a0b55",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/value-v2-source.patch.gz",
+      "bytes": 58315,
+      "sha256": "aa8db8f0f844f455e458d64d8e0dc11a069ac08db7fe9425131b76dc3351b06a",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/reproduction/value-v4-source.patch.gz",
+      "bytes": 59951,
+      "sha256": "88fe56eac985fc4d0bda3435d2db3b77638862c80d3e63060d1b389f759d9c31",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/source-snapshots.json",
+      "bytes": 1537,
+      "sha256": "ec71521612088592116691086980977ce0fa9e316c59e3af41890c8209e45329",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/timings.json",
+      "bytes": 4657,
+      "sha256": "9c399d00047b3ea59cc7d935431e524a6f82971a6398569411da9d4802b90aac",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/validation.json",
+      "bytes": 3515,
+      "sha256": "22b9d97fc6367116390eb6ef1592e37ef64c78dec587b903047eab3ab186a2c2",
+      "checkout": "retained"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/value-384-results.json",
+      "bytes": 529183,
+      "sha256": "64943b0609e71e46f5d578c60ecfd25aadd8264b14b6c0ba26261a427bda2e78",
+      "checkout": "git-history"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/value-768-results.json",
+      "bytes": 531536,
+      "sha256": "98e0e7d0a1ebaab67fac7c727ba3cd34c2667c6a28d0867460725e037a880c6a",
+      "checkout": "git-history"
+    },
+    {
+      "path": "benchmarks/results/issue404-407-df/value-batch.json",
+      "bytes": 277677,
+      "sha256": "7bc434ce7d231b2c360b8982982f40e7a2eec92c155c4b01b53663aad54d0a33",
+      "checkout": "retained",
+      "compacted_fields": [
+        "compiled",
+        "groups"
+      ],
+      "retained_fields_sha256": "f1ead4a6eccd10a466493ae286b70c5d596919f9e6ddb840f1e2220e7a979b11"
     },
     {
       "path": "benchmarks/results/issue404-combined-rys/192-energy.json",
@@ -5509,6 +5777,8 @@
       "checkout": "retained"
     }
   ],
-  "file_count": 917,
-  "total_bytes": 55852909
+  "file_count": 955,
+  "total_bytes": 61722168,
+  "compacted_files": 8,
+  "compacted_bytes_saved": 2193359
 }

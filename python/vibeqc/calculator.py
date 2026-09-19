@@ -7,7 +7,7 @@ import json
 import math
 import os
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache, lru_cache
 from importlib import resources
 from pathlib import Path
@@ -529,6 +529,26 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
         self._capabilities = method_capabilities(self._method_name)
+        if (
+            self._capabilities.family == "density_functional"
+            and self._device_name == "cuda"
+            and self._method
+            in (
+                _native.METHOD_LDA_RKS,
+                _native.METHOD_PBE_RKS,
+                _native.METHOD_LDA_UKS,
+                _native.METHOD_PBE_UKS,
+            )
+        ):
+            # #163 C2 is a Python public capability layered on the native KS
+            # prepared owner plus the compiler-owned CUDA gradient consumer.
+            # Keep the backend-neutral C registry conservative: CPU/native-C
+            # callers do not inherit a force capability they cannot execute.
+            self._capabilities = replace(
+                self._capabilities,
+                supported_properties=self._capabilities.supported_properties
+                | {"forces"},
+            )
         if self._capabilities.family == "density_functional":
             if self._precision_mode != _native.PRECISION_FP64:
                 raise NotImplementedError("DFT supports explicit FP64 precision only")
@@ -1201,6 +1221,40 @@ class Calculator:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
+        if (
+            compute_forces
+            and self._capabilities.family == "density_functional"
+            and self._device_name == "cuda"
+        ):
+            # Reuse the prepared-batch owner because the stationary snapshot ABI
+            # is intentionally tied to a live native owner.  This avoids a second
+            # scientific implementation in the single-system path.
+            with self.prepare_batch(
+                [native_atoms],
+                charges=[charge],
+                multiplicities=[multiplicity],
+                warm_start=False,
+                resource_plan=resource_plan,
+            ) as batch:
+                item = batch.execute(
+                    strict=True, properties=requested_properties
+                ).items[0]
+                return Result(
+                    energy=item.energy,
+                    forces=item.forces,
+                    converged=item.converged,
+                    iterations=item.iterations,
+                    energy_change=item.energy_change,
+                    density_rms=item.density_rms,
+                    executed_backend=item.executed_backend,
+                    basis_metadata=item.basis_metadata,
+                    accuracy=item.accuracy,
+                    resource_diagnostics=batch.resource_diagnostics,
+                    precision=item.precision,
+                    physical_residual_rms=item.physical_residual_rms,
+                    ks_diagnostic=item.ks_diagnostic,
+                    ks_transport_diagnostic=batch.ks_transport_diagnostics[0],
+                )
         context = ctypes.c_void_p()
         _native.check(
             self._library,

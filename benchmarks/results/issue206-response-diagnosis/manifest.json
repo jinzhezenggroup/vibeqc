@@ -1,7 +1,7 @@
 {
   "schema": "vibeqc.issue206.response-diagnosis.retention.v1",
   "source_commit": "55b6843d1a0ea5016b2a95463bc021e68473770b",
-  "scope": "Untimed final-state, fixed-weight derivative and response-only diagnostics. Clean Slurm 9904 samples unchanged. Original failed CPU adapter retained. The NPZ response container is losslessly expanded into individual NPY members for review-size policy. No production numerical change. Keeps #206 open.",
+  "scope": "Untimed final-state, fixed-weight derivative and response-only diagnostics. Clean Slurm 9904 samples unchanged. Original failed CPU adapter retained. The NPZ response container is losslessly expanded into individual NPY members for review-size policy. No production numerical change. Keeps #206 open. Byte-identical semantic array members share canonical retained blobs; each original member identity/hash/size remains explicit.",
   "records": [
     {
       "source": "diagnose-final-density.py",
@@ -239,7 +239,7 @@
     },
     {
       "source": "oh-response-weights-v1/response-arrays.npz#unchanged_cuda_response_a.npy",
-      "retained": "diagnosis/oh-response-weights-v1/arrays/unchanged_cuda_response_a.npy.gz",
+      "retained": "diagnosis/oh-response-weights-v1/arrays/cuda_bar_a.npy.gz",
       "encoding": "gzip",
       "original_bytes": 268712,
       "original_sha256": "4d88c36431380cd5467d32d88421149a8b03f0081eb7ccee88facdb3012225fc",
@@ -248,7 +248,7 @@
     },
     {
       "source": "oh-response-weights-v1/response-arrays.npz#unchanged_cuda_response_m.npy",
-      "retained": "diagnosis/oh-response-weights-v1/arrays/unchanged_cuda_response_m.npy.gz",
+      "retained": "diagnosis/oh-response-weights-v1/arrays/cuda_bar_m.npy.gz",
       "encoding": "gzip",
       "original_bytes": 69320,
       "original_sha256": "73ac588d3005d6192f0f38d231528cffb795f5edbd48558059cdc5f4e17448fe",
@@ -275,7 +275,7 @@
     },
     {
       "source": "oh-response-weights-v1/response-arrays.npz#cpu_raw_gram_fp64_a.npy",
-      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_raw_gram_fp64_a.npy.gz",
+      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_factor_first_same_cuda_eigensystem_a.npy.gz",
       "encoding": "gzip",
       "original_bytes": 268712,
       "original_sha256": "718f412f5b391eb46be32be949a01b3af3eef36cdbc063dd8071affb0b52fa33",
@@ -293,7 +293,7 @@
     },
     {
       "source": "oh-response-weights-v1/response-arrays.npz#cpu_rounded_gram_extended_map_a.npy",
-      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_rounded_gram_extended_map_a.npy.gz",
+      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_factor_first_same_cuda_eigensystem_a.npy.gz",
       "encoding": "gzip",
       "original_bytes": 268712,
       "original_sha256": "718f412f5b391eb46be32be949a01b3af3eef36cdbc063dd8071affb0b52fa33",
@@ -311,7 +311,7 @@
     },
     {
       "source": "oh-response-weights-v1/response-arrays.npz#cpu_raw_gram_and_map_extended_a.npy",
-      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_raw_gram_and_map_extended_a.npy.gz",
+      "retained": "diagnosis/oh-response-weights-v1/arrays/cpu_factor_first_same_cuda_eigensystem_a.npy.gz",
       "encoding": "gzip",
       "original_bytes": 268712,
       "original_sha256": "718f412f5b391eb46be32be949a01b3af3eef36cdbc063dd8071affb0b52fa33",
@@ -381,5 +381,10 @@
       ],
       "encoding": "lossless individual NPY members; original ZIP container remains in local artifacts"
     }
-  ]
+  ],
+  "deduplication": {
+    "policy": "Byte-identical retained payloads may share one canonical stored blob. Logical source-member identities remain separate records and are independently hash-checked after decoding.",
+    "aliased_records": 5,
+    "removed_duplicate_stored_bytes": 1039367
+  }
 }

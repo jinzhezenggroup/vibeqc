@@ -7,6 +7,15 @@ can import lightweight contracts without importing NumPy/TensorIR.
 from importlib import import_module
 
 _EXPORTS = {
+    "BasisBinding": ".basis_binding",
+    "CorrectionProvenance": ".correction",
+    "CorrectionResult": ".correction",
+    "GCPSpec": ".gcp",
+    "GeometricCounterpoisePrimitive": ".gcp",
+    "RangeSeparatedExchangePrimitive": ".spec",
+    "r2scan3c_def2_mtzvpp_h_ar": ".basis_binding",
+    "r2scan3c_gcp": ".gcp",
+    "validate_basis_snapshot": ".basis_binding",
     "BackendCapability": ".typecheck",
     "D3Spec": ".dispersion",
     "D4Spec": ".dispersion",

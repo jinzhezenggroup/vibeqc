@@ -107,7 +107,7 @@ def _emit_operator_helpers(attraction):
     for angular in product(range(4), repeat=2):
         suffix = f"{angular[0]}{angular[1]}"
         lines += [
-            f"__device__ __noinline__ {return_type} {name}_{suffix}({arguments}) {{",
+            f"static __device__ __noinline__ {return_type} {name}_{suffix}({arguments}) {{",
             "  switch (component) {",
         ]
         for index, components in enumerate(

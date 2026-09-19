@@ -319,9 +319,9 @@ def test_checked_in_snapshot_has_only_git_identity():
     assert audit["schema"] == "vibeqc.git-snapshot.v1"
     assert not any(key.startswith("archive_") for key in audit)
     records = module._records(manifest)
-    assert len(records) == audit["file_count"] == 917
+    assert len(records) == audit["file_count"] == 955
     assert sum(record["bytes"] for record in records) == audit["total_bytes"]
     removed = [record for record in records if record["checkout"] == "git-history"]
-    assert len(removed) == audit["moved_files"] == 197
+    assert len(removed) == audit["moved_files"] == 205
     assert sum(record["bytes"] for record in removed) == audit["moved_bytes"]
     assert audit["history_rewritten"] is False
