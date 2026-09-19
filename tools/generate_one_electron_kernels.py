@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.integral.one_electron_cpu import emit_one_electron_st_cpu
 from vibeqc_compiler.integral.one_electron_cuda import (
     emit_one_electron_values_cuda,
     one_electron_program_inventory,
@@ -36,23 +37,33 @@ from tools.generate_df_kernels import write_if_changed
 def main():
     """Keep generated code out of source control and preserve unchanged mtimes."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
     parser.add_argument("--policy-output", type=Path)
+    parser.add_argument("--cpu-st-output", type=Path)
     args = parser.parse_args()
     if args.derivatives and args.policy_output:
         parser.error("--policy-output applies only to values")
+    if not args.output and not args.cpu_st_output:
+        parser.error("at least one generated output is required")
+    if args.inventory and not args.output:
+        parser.error("--inventory requires --output")
     policy_source = emit_one_electron_policy_cuda() if args.policy_output else None
     if policy_source is not None:
         write_if_changed(args.policy_output, policy_source)
-    source = (
-        emit_one_electron_derivatives_cuda()
-        if args.derivatives
-        else emit_one_electron_values_cuda()
-    )
-    write_if_changed(args.output, source)
+    if args.cpu_st_output:
+        write_if_changed(args.cpu_st_output, emit_one_electron_st_cpu())
+    source = None
+    if args.output:
+        source = (
+            emit_one_electron_derivatives_cuda()
+            if args.derivatives
+            else emit_one_electron_values_cuda()
+        )
+        write_if_changed(args.output, source)
     if args.inventory:
+        assert source is not None
         payload = {
             **(
                 one_electron_derivative_inventory()

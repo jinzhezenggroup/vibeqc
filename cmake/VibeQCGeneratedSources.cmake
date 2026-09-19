@@ -17,6 +17,17 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/manifest.json"
     ARGS --output "${VIBEQC_D3_DATA_HEADER}"
     COMMENT "Generating pinned compact D3(BJ) tables")
+  set(VIBEQC_ONE_ELECTRON_ST_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_st_cpu.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_one_electron_st_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+    OUTPUTS "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --cpu-st-output "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}")
 
   set(VIBEQC_XC_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/xc_cpu_generated.hpp")
