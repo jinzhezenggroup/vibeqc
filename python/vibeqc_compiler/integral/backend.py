@@ -8,30 +8,7 @@ class definitions or cache implementation belongs here.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from vibeqc_compiler.common.backend import (
-        BenchmarkExecutor,
-    )
-    from vibeqc_compiler.common.backend import (
-        CompilerAdapter,
-    )
-    from vibeqc_compiler.common.backend import (
-        DeviceProbe,
-    )
-    from vibeqc_compiler.common.backend import (
-        RegistryEmitter,
-    )
-    from vibeqc_compiler.common.backend import (
-        ResourceParser,
-    )
-    from vibeqc_compiler.common.backend import (
-        SourceEmitter,
-    )
-    from vibeqc_compiler.common.backend import (
-        TargetInfo,
-    )
-    from vibeqc_compiler.common.backend import (
-        TargetScheduleShape,
-    )
+    pass
 else:
     import sys
     from importlib import import_module

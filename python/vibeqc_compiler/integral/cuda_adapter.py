@@ -8,21 +8,7 @@ class definitions or cache implementation belongs here.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from vibeqc_compiler.common.cuda_adapter import (
-        CudaBenchmarkExecutor,
-    )
-    from vibeqc_compiler.common.cuda_adapter import (
-        CudaCompilerAdapter,
-    )
-    from vibeqc_compiler.common.cuda_adapter import (
-        CudaCompileResult,
-    )
-    from vibeqc_compiler.common.cuda_adapter import (
-        CudaExecutionProfile,
-    )
-    from vibeqc_compiler.common.cuda_adapter import (
-        resolve_cuda_execution_profile,
-    )
+    pass
 else:
     import sys
     from importlib import import_module
