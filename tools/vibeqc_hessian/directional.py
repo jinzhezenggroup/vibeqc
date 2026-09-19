@@ -51,6 +51,8 @@ def directional_rhf_response(
     jk_backend="cpu",
     device_id=0,
     device_budget_bytes=64 << 20,
+    response_execution="host",
+    response_device_budget_bytes=128 << 20,
     solver_options=None,
     first_backend="cpu",
     first_compiler=None,
@@ -79,6 +81,15 @@ def directional_rhf_response(
         raise ValueError("jk_backend must be cpu or cuda")
     if first_backend not in ("cpu", "cuda"):
         raise ValueError("first_backend must be cpu or cuda")
+    if response_execution not in ("host", "cuda-resident"):
+        raise ValueError("response_execution must be host or cuda-resident")
+    if response_execution == "cuda-resident" and jk_backend != "cuda":
+        raise ValueError("cuda-resident response requires jk_backend='cuda'")
+    if (
+        type(response_device_budget_bytes) is not int
+        or not 0 < response_device_budget_bytes < 2**63
+    ):
+        raise ValueError("response_device_budget_bytes must be a positive int64")
     if first_backend == "cuda":
         from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
@@ -104,6 +115,31 @@ def directional_rhf_response(
             backend = NativeJKBackend(state.source)
         problem = RHFResponseOperator.build_problem(state.reference, backend)
         operator = RHFResponseOperator(problem, backend)
+        resident_owner = None
+        if response_execution == "cuda-resident":
+            retained_provider = backend.device_resident_bytes
+            if retained_provider >= response_device_budget_bytes:
+                raise ValueError(
+                    "direct J/K retained storage leaves no resident response budget"
+                )
+            restart = min(operator.dimension, options.restart, options.max_iterations)
+            vector_slots = min(4096, max(8, 3 * restart + 32))
+            resident_owner = stack.enter_context(
+                backend.resident_response(
+                    problem,
+                    vector_slots=vector_slots,
+                    device_budget_bytes=response_device_budget_bytes
+                    - retained_provider,
+                )
+            )
+            if (
+                retained_provider + resident_owner.workspace_bytes
+                > response_device_budget_bytes
+            ):
+                raise RuntimeError(
+                    "combined retained J/K and resident response storage exceeds budget"
+                )
+            operator._krylov_engine = resident_owner
         first_diagnostics = None
         first_started = time.perf_counter()
         if first_backend == "cuda":
@@ -124,6 +160,9 @@ def directional_rhf_response(
             operator, frozen, overlap, options=options
         )
         response_seconds = time.perf_counter() - response_started
+        resident_diagnostics = (
+            resident_owner.diagnostics if resident_owner is not None else None
+        )
         # Check the live state again before publishing detached outputs.
         state.validate()
         identity = canonical_hash(
@@ -134,6 +173,10 @@ def directional_rhf_response(
                 "operator": problem.operator_identity,
                 "solver_options": asdict(options),
                 "first_backend": first_backend,
+                "response_execution": response_execution,
+                "resident_response": resident_owner.identity
+                if resident_owner is not None
+                else None,
                 "first_programs": first_diagnostics["program_identities"]
                 if first_diagnostics
                 else None,
@@ -157,8 +200,25 @@ def directional_rhf_response(
             if first_backend == "cuda"
             else "host",
             "jk_backend": jk_backend,
-            "ao_mo_transforms": "host",
-            "krylov_execution": "host",
+            "response_execution": response_execution,
+            "ao_mo_transforms": (
+                "mixed: rhs/reconstruction host, operator cuda-resident"
+                if resident_owner is not None
+                else "host"
+            ),
+            "operator_ao_mo_transforms": (
+                "cuda-resident" if resident_owner is not None else "host"
+            ),
+            "rhs_reconstruction": "host",
+            "response_vector_storage": (
+                "cuda-resident" if resident_owner is not None else "host"
+            ),
+            "krylov_execution": (
+                "cuda-resident-host-controlled"
+                if resident_owner is not None
+                else "host"
+            ),
+            "small_least_squares": "host",
             "molecular_hvp": False,
             "nuclear_response_solves": 1,
             "rhs_count": 1,
@@ -183,6 +243,13 @@ def directional_rhf_response(
             diag["first_derivative_provider"] = first_diagnostics
         if jk_backend == "cuda":
             diag["jk_provider"] = backend.diagnostics
+        if resident_diagnostics is not None:
+            diag["resident_response"] = resident_diagnostics
+            diag["retained_response_device_bytes"] = (
+                backend.device_resident_bytes
+                + resident_diagnostics["owned_device_bytes"]
+            )
+            diag["response_device_budget_bytes"] = response_device_budget_bytes
     return DirectionalRHFResponse(
         immutable(vector),
         immutable(frozen),

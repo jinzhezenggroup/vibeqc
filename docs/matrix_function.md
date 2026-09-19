@@ -1,25 +1,27 @@
 # Symmetric matrix-function custom rule
 
 `vibeqc_compiler.method.SymmetricMatrixFunctionSpec` defines a backend-neutral
-matrix-function contract and a CPU reference implementation of the symmetric
-inverse square root and its first-order JVP/VJP. It is a reusable mathematical
-primitive, not a DFT energy component or an MP2-specific response implementation.
+matrix-function contract and CPU reference implementations of symmetric inverse
+square root and pseudoinverse first-order JVP/VJP rules. It is a reusable
+mathematical primitive, not a DFT energy component or an MP2-specific response
+implementation.
 
 ## Supported boundary
 
 The current implementation supports real FP64 symmetric matrices, the full
-Frobenius inner product, and first derivatives of `inverse_sqrt`. A missing
-relative threshold selects the full SPD inverse square root. A positive relative
-threshold selects a truncated symmetric inverse square root on a locally stable
-rank branch. Complex values, packed metrics, other matrix functions and second
+Frobenius inner product, and first derivatives of `inverse_sqrt` and
+`pseudoinverse`. A missing relative threshold selects the full SPD branch. A
+positive relative threshold selects a truncated locally stable rank branch.
+Complex values, packed metrics, other matrix functions and second
 matrix-function derivatives are not supported.
 
 CPU eigendecomposition prepares the spectral state. The derivative contractions
 are emitted as an ordinary, serializable TensorIR `Program`, interpretable on
-CPU and accepted by the existing CUDA planner. **CUDA planning is not device
-execution**: native factorization, device-state ownership, automatic dispatch of
-this custom rule from a complete method graph, and public molecular force
-integration remain separate work. No public method capability changes here.
+CPU and accepted by the existing CUDA planner. For the runtime-sized DF metric
+consumer, `matrix_function_cuda.py` also emits the pseudoinverse CUDA custom-rule
+lowering. Native code still owns factorization, eigensystem/rank validation,
+scratch, streams and method integration; the generated custom rule owns only
+the spectral response arithmetic.
 
 ```python
 import numpy as np
@@ -43,17 +45,19 @@ method-level automatic custom-rule composition is not implied by this example.
 
 ## Spectral and branch contract
 
-For `M = U diag(lambda) U.T`, define `f_i = 1/sqrt(lambda_i)` on retained modes
-and zero on discarded modes. The derivative is
+For `M = U diag(lambda) U.T`, define `f_i` as either
+`1/sqrt(lambda_i)` (`inverse_sqrt`) or `1/lambda_i` (`pseudoinverse`) on
+retained modes and zero on discarded modes. The derivative is
 
 ```text
 L_M(E) = U [K * (U.T sym(E) U)] U.T
 K_ij = (f_i - f_j) / (lambda_i - lambda_j)
 ```
 
-Within retained modes the cancellation-free formula is
+For `inverse_sqrt`, retained/retained entries use the cancellation-free
 `K_ij = -1 / (sqrt(lambda_i) * sqrt(lambda_j) *
-(sqrt(lambda_i) + sqrt(lambda_j)))`. It includes the repeated-eigenvalue limit
+(sqrt(lambda_i) + sqrt(lambda_j)))`. For `pseudoinverse`, they use
+`K_ij = -1/(lambda_i*lambda_j)`. Both include the repeated-eigenvalue limit
 without differentiating arbitrary eigenvector orientations. Discarded/discarded
 entries are zero. **Retained/discarded entries are not zero**: a fixed rank does
 not freeze the spectral projector. Degeneracy within one side of the cutoff is
@@ -96,10 +100,15 @@ python tools/check_compiler_structure.py
 ```
 
 The tests use tiny matrices: closed-form scalar/diagonal derivatives, an
-independent Kronecker/Sylvester solve, multistep finite differences, full-Frobenius
-dot tests, repeated-eigenspace rotations, retained/discarded response, scale and
-rotation covariance, state/rank failures, and the existing #293 metric-response
-oracle. The latter remains unchanged and is never a compiler dependency.
+independent Kronecker/Sylvester solve, pseudoinverse closed forms and finite
+differences, full-Frobenius dot tests, repeated-eigenspace rotations,
+retained/discarded response, scale/rotation covariance, state/rank failures,
+and the independent #293 metric-response oracle. The production generated CUDA
+header carries the same versioned `pseudoinverse-frechet-v1` rule identity.
 
 See the [decision note](../.agents/notes/implemented/numerics/2026-09-19-symmetric-matrix-function-rule.md)
 for the ownership rationale and rejected alternatives.
+
+Native CPU and generated CUDA spectral coefficients use ordered divisions and
+overflow-safe symmetrization for representable FP64 responses. See the
+[spectral-range decision](../.agents/notes/implemented/numerics/2026-09-19-native-spectral-range.md).

@@ -35,6 +35,7 @@ from .problem import (
     ResponseUnsupported,
     RotationLayout,
 )
+from .resident_cuda import CudaResidentRHFResponse
 from .uhf import (
     UHFReferenceSnapshot,
     UHFResponseOperator,
@@ -47,6 +48,7 @@ __all__ = [
     "CPKSResponseOperator",
     "CudaDFJKBackend",
     "CudaDirectJKBackend",
+    "CudaResidentRHFResponse",
     "DenseAOResponseBackend",
     "DenseMatrixResponseOperator",
     "DiagonalPreconditioner",

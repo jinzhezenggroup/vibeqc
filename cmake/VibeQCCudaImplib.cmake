@@ -94,7 +94,10 @@ function(vibeqc_attach_cuda_implib target)
   set(VIBEQC_CUBLAS_SYMBOLS
     cublasCreate_v2
     cublasDaxpy_v2
+    cublasDcopy_v2
     cublasDdot_v2
+    cublasDnrm2_v2
+    cublasDscal_v2
     cublasDestroy_v2
     cublasDgeam
     cublasDgemmStridedBatched

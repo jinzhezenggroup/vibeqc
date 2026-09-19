@@ -244,6 +244,18 @@ def test_invalid_backend_options_and_closed_state_fail_before_sources(monkeypatc
         monkeypatch.setattr(directional, "generated_directional_first_order", forbidden)
         with pytest.raises(ValueError, match="jk_backend"):
             directional_rhf_response(state, np.zeros((2, 3)), jk_backend="auto")
+        with pytest.raises(ValueError, match="response_execution"):
+            directional_rhf_response(
+                state, np.zeros((2, 3)), response_execution="device"
+            )
+        with pytest.raises(ValueError, match="requires jk_backend"):
+            directional_rhf_response(
+                state, np.zeros((2, 3)), response_execution="cuda-resident"
+            )
+        with pytest.raises(ValueError, match="response_device_budget"):
+            directional_rhf_response(
+                state, np.zeros((2, 3)), response_device_budget_bytes=0
+            )
         with pytest.raises(TypeError, match="solver_options"):
             directional_rhf_response(state, np.zeros((2, 3)), solver_options={})
         with pytest.raises(ValueError, match="geometry"):

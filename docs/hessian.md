@@ -21,10 +21,13 @@ The HVP keeps the existing `NativeRHFState` admission boundary (all-electron
 closed-shell conventional RHF, at most 12 Cartesian AOs/four atoms). Second
 integrals and the final relaxation contraction are currently CPU-generated.
 Directional H1/S1 and direct J/K may independently use their qualified CUDA
-providers, in which case the result is explicitly labelled mixed host/device;
-AO/MO transforms and Krylov remain host-side. There is still no public
-Calculator Hessian/HVP API, production-size memory claim, or all-device HVP
-claim. See
+providers. B2 additionally allows the iterative RHF response operator and
+Krylov vectors/orthogonalization to remain on that direct-J/K CUDA stream via
+response_execution="cuda-resident". Nuclear/metric RHS construction and
+final D/W reconstruction remain host-side, while the B3 second-integral HVP
+and relaxation contractions are still CPU consumers. The result is therefore
+a mixed host/device HVP, not an all-device HVP. There is still no public
+Calculator Hessian/HVP API or production-size global-memory claim. See
 [the matrix-free RHF HVP decision note](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
 ## Scope of this slice
@@ -37,9 +40,9 @@ Explicitly outside this slice, and left fail-closed rather than approximated:
 
 - **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
   #161's derivative kernels;
-- **device-resident AO/MO/Krylov execution** (slice B2) remains separate;
-  bounded conventional RHF matrix-free HVP (B3) and block/full-Hessian
-  assembly (B4) are implemented under the small-system tools boundary;
+- **bounded full-Hessian execution** (slice B4) remains a small-system tools
+  capability rather than a public production endpoint; B2 device-resident
+  response and B3 matrix-free HVP are implemented under the same bounded tools boundary;
 - **DF, ECP, range-separated and meta-GGA Hessians** — each needs its own
   complete second-derivative/response chain and is *not* inherited from energy
   or first-force support;
@@ -511,9 +514,12 @@ workspace. The default block size is `min(4, 3*natoms)`, including single-atom
 states; callers can choose any explicit block size from one through 3*natoms.
 
 These B3/B4 paths remain within the declared small-system conventional-RHF tools
-domain. B2 device-resident AO/MO/Krylov execution, production-size
-qualification, a public Calculator Hessian endpoint and DFT Hessians remain
-separate. See the
+domain. B2 now closes the iterative response-residency slice: response vectors,
+orthogonalization, operator AO/MO transforms and direct J/K actions can stay on
+device under the existing #179 GMRES controller. RHS/reconstruction and B3/B4
+second-integral/relaxation/full-assembly consumers retain their documented host
+boundaries. Production-size qualification, a public Calculator Hessian endpoint
+and DFT Hessians remain separate. See the
 [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
 [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md)
 and [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md).

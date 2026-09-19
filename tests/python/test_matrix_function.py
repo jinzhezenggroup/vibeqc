@@ -6,6 +6,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from vibeqc_compiler.method.matrix_function import SymmetricMatrixFunctionSpec
+from vibeqc_compiler.method.matrix_function_cuda import (
+    emit_pseudoinverse_vjp_cuda,
+)
 from vibeqc_compiler.tensor import Program, execute
 
 
@@ -374,6 +377,69 @@ def test_response_graph_can_be_planned_for_cuda_without_a_device():
     assert plan.program is program
     assert plan.peak_bytes > 0
     # Planning is not GPU execution or a native eigensolver capability claim.
+
+
+def _reference_pseudoinverse(matrix, threshold):
+    """Independent spectral value used only as a finite-difference oracle."""
+    values, vectors = np.linalg.eigh(matrix)
+    keep = values > (0 if threshold is None else threshold * values[-1])
+    return sum(
+        np.outer(vectors[:, i], vectors[:, i]) / values[i]
+        for i in range(len(values))
+        if keep[i]
+    )
+
+
+def test_pseudoinverse_rule_value_vjp_and_fixed_rank_finite_difference():
+    matrix, tangent, bar = _fixture([0.02, 0.05, 1.0, 3.0])
+    spec = SymmetricMatrixFunctionSpec(
+        4, "df-metric-pseudoinverse", 0.1, function="pseudoinverse"
+    )
+    state = spec.prepare(matrix)
+    np.testing.assert_allclose(
+        state.value, _reference_pseudoinverse(matrix, 0.1), atol=2e-14, rtol=3e-13
+    )
+    analytic = state.jvp(tangent)
+    errors = []
+    for step in (1e-3, 3e-4, 1e-4):
+        finite = (
+            _reference_pseudoinverse(matrix + step * tangent, 0.1)
+            - _reference_pseudoinverse(matrix - step * tangent, 0.1)
+        ) / (2 * step)
+        errors.append(np.max(np.abs(finite - analytic)))
+    assert errors[-1] < 3e-8
+    assert errors[-1] < errors[0] * 0.05
+    np.testing.assert_allclose(
+        np.vdot(analytic, bar),
+        np.vdot(tangent, state.vjp(bar)),
+        atol=4e-14,
+        rtol=4e-13,
+    )
+    assert state.rank == 2
+    assert spec.to_payload()["derivative_rule"] == "pseudoinverse-frechet-v1"
+
+
+def test_pseudoinverse_full_rank_closed_form():
+    matrix, _, bar = _fixture([1.0, 2.0, 5.0])
+    state = SymmetricMatrixFunctionSpec(
+        3, "full-rank-pseudoinverse", function="pseudoinverse"
+    ).prepare(matrix)
+    inverse = np.linalg.inv(matrix)
+    symmetric_bar = (bar + bar.T) / 2
+    np.testing.assert_allclose(state.value, inverse, atol=2e-15, rtol=3e-14)
+    np.testing.assert_allclose(
+        state.vjp(bar),
+        -inverse @ symmetric_bar @ inverse,
+        atol=3e-14,
+        rtol=4e-13,
+    )
+
+
+def test_pseudoinverse_cuda_lowering_carries_custom_rule_identity():
+    source = emit_pseudoinverse_vjp_cuda()
+    assert "custom-rule: pseudoinverse-frechet-v1" in source
+    assert "launch_symmetric_pseudoinverse_vjp" in source
+    assert "li > cutoff" in source and "lj > cutoff" in source
 
 
 def test_nonobject_payload_is_a_type_error():

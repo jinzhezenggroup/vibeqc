@@ -154,6 +154,7 @@ def solve_rhf_nuclear_perturbation(operator, frozen_fock, overlap, *, options=No
         layout.pack(-prepared.rhs),
         options=options or GMRESOptions(),
         raise_on_failure=True,
+        collect_basis=False,
     )
     return _reconstruct_rhf_nuclear_response(operator, prepared, result)
 

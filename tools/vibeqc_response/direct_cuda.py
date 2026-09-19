@@ -204,6 +204,21 @@ class CudaDirectJKBackend:
             self.statistics["seconds"] += time.perf_counter() - started
             return matrices
 
+    def resident_response(
+        self, problem, *, vector_slots=128, device_budget_bytes=64 << 20
+    ):
+        """Create a response-vector/Krylov owner on this exact direct-J/K stream."""
+        with self._lock:
+            self._ensure_open()
+            from .resident_cuda import CudaResidentRHFResponse
+
+            return CudaResidentRHFResponse(
+                self,
+                problem,
+                vector_slots=vector_slots,
+                device_budget_bytes=device_budget_bytes,
+            )
+
     def close(self):
         """Release only the owned Fock plan; the caller owns source lifetime."""
         with self._lock:
