@@ -17,7 +17,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import D3Spec, D4Spec, DispersionCorrectionPrimitive
 
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
@@ -61,7 +61,7 @@ class MethodSpec:
     semilocal_components: tuple[tuple[str, Fraction], ...]
     exact_exchange: Fraction = Fraction(0)
     version: str = METHOD_CATALOG_VERSION
-    dispersion: D3Spec | None = None
+    dispersion: D3Spec | D4Spec | None = None
 
     def __post_init__(self):
         if not isinstance(self.identifier, str) or not self.identifier.strip():
@@ -81,8 +81,10 @@ class MethodSpec:
             _require_fraction(coefficient, f"component {name}")
             if not coefficient:
                 raise UnsupportedMethod("zero-valued manifest components are ambiguous")
-        if self.dispersion is not None and not isinstance(self.dispersion, D3Spec):
-            raise TypeError("dispersion requires a D3Spec")
+        if self.dispersion is not None and not isinstance(
+            self.dispersion, (D3Spec, D4Spec)
+        ):
+            raise TypeError("dispersion requires a D3Spec or D4Spec")
         _require_fraction(self.exact_exchange, "exact exchange")
         if self.exact_exchange < 0:
             raise UnsupportedMethod("exact-exchange coefficient must be nonnegative")
@@ -261,8 +263,10 @@ class MethodIR:
                 operators.append("semilocal-xc")
             elif isinstance(primitive, ExactExchangePrimitive):
                 operators.append(primitive.operator + "-exchange")
-            else:
+            elif isinstance(primitive.specification, D3Spec):
                 operators.append("geometry-d3-bj")
+            else:
+                operators.append("geometry-d4-bj-eeq")
         return {
             "spin": self.spin,
             "reference": self.reference,

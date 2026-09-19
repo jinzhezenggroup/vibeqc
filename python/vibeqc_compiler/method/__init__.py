@@ -1,6 +1,11 @@
 """Canonical method composition above scientific compiler primitives."""
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import (
+    D3Spec,
+    D4Spec,
+    DispersionCorrectionPrimitive,
+    r2scan3c_d4_eeq,
+)
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
 from .spec import (
@@ -21,6 +26,7 @@ from .stationary_gradient import (
 __all__ = [
     "METHOD_CATALOG",
     "D3Spec",
+    "D4Spec",
     "DispersionCorrectionPrimitive",
     "ExactExchangePrimitive",
     "ImplicitSolveSpec",
@@ -33,5 +39,6 @@ __all__ = [
     "StationaryMeanField",
     "SymmetricMatrixFunctionSpec",
     "UnsupportedMethod",
+    "r2scan3c_d4_eeq",
     "resolve_method",
 ]
