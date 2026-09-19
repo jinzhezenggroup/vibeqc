@@ -12,6 +12,7 @@ import os
 import platform
 import subprocess
 import tempfile
+import typing
 from pathlib import Path
 
 from vibeqc import Atom, Calculator, electron_state, estimate_hf_resources
@@ -22,7 +23,14 @@ H2 = [(1, (0, 0, -0.7)), (1, (0, 0, 0.7))]
 WATER = [(8, (0, 0, 0)), (1, (1.43, 0, 1.11)), (1, (-1.43, 0, 1.11))]
 
 
-def payload(calculator, systems, *, unrestricted, fitted, multiplicities=None):
+def payload(
+    calculator: typing.Any,
+    systems: typing.Any,
+    *,
+    unrestricted: typing.Any,
+    fitted: typing.Any,
+    multiplicities: typing.Any = None,
+) -> typing.Any:
     """Serialize actual resolved primitives before the native measurement scope."""
     lines = [f"{len(systems)} {int(unrestricted)} {int(fitted)}"]
     multiplicities = [1] * len(systems) if multiplicities is None else multiplicities
@@ -47,7 +55,7 @@ def payload(calculator, systems, *, unrestricted, fitted, multiplicities=None):
     return "\n".join(lines) + "\n"
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

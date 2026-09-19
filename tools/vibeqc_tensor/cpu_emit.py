@@ -6,11 +6,12 @@ an independent implementation. There is no per-operation Python runtime.
 """
 
 import re
+import typing
 from fractions import Fraction
 from math import prod
 
 
-def emit_cpu(program, *, function_name):
+def emit_cpu(program: typing.Any, *, function_name: typing.Any) -> typing.Any:
     if not re.fullmatch(r"[A-Za-z_]\w*", function_name, flags=re.ASCII):
         raise ValueError("invalid native CPU function name")
     nodes = program.live_nodes

@@ -91,7 +91,8 @@ q = input_tensor("q", parameter)
 equation = Program({"residual": add(multiply(x, x), q, coefficients=(1, -1))})
 plan = ImplicitSolveSpec(equation, "x", ("q",), "positive-root").compile()
 state = BoundImplicitState(
-    plan, {"x": np.array(2.0), "q": np.array(4.0)},
+    plan,
+    {"x": np.array(2.0), "q": np.array(4.0)},
     reference_identity="root-at-q4",
 )
 result = state.vjp(np.array(1.0), reference_identity="root-at-q4")

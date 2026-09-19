@@ -4,6 +4,7 @@ The public symbols are loaded lazily so build-time-safe method code generators
 can import lightweight contracts without importing NumPy/TensorIR.
 """
 
+import typing
 from importlib import import_module
 
 _EXPORTS = {
@@ -64,7 +65,7 @@ _EXPORTS = {
 __all__ = list(_EXPORTS)
 
 
-def __getattr__(name):
+def __getattr__(name: typing.Any) -> typing.Any:
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     value = getattr(import_module(_EXPORTS[name], __name__), name)

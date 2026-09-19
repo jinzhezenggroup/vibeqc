@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import sys as _compiler_sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +32,13 @@ from tools.vibeqc_cc.oracle import dense_feeds
 from tools.vibeqc_validation.schema import block_error, file_hash
 
 
-def run(output, compiler, cache, *, compile_only=False):
+def run(
+    output: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    compile_only: typing.Any = False,
+) -> typing.Any:
     output.mkdir(parents=True, exist_ok=True)
     reference_path = ROOT / "tests/reference_data/cc/rccsd-b.json"
     references = load_references(reference_path)

@@ -6,6 +6,7 @@ import json
 import os
 import resource
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ from benchmarks._cases import benchmark_cases
 from tools.vibeqc_validation.schema import file_hash
 
 
-def main():
+def main() -> typing.Any:
     """Keep baseline/candidate process peaks independent, including startup/driver RSS."""
     cases = benchmark_cases()
     parser = argparse.ArgumentParser(description=__doc__)

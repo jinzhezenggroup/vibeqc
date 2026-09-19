@@ -7,6 +7,7 @@ capacity allowance and is also charged by the native allocation ledger.
 
 import json
 import os
+import typing
 from dataclasses import asdict
 
 from .resources import ResourceCandidate, ResourceEstimate, checked_bytes
@@ -18,8 +19,15 @@ from .resources_df import (
 
 
 def cuda_df_candidates(
-    library, items, *, diis_history, device, first_phase, last_phase, requested_budget=0
-):
+    library: typing.Any,
+    items: typing.Any,
+    *,
+    diis_history: typing.Any,
+    device: typing.Any,
+    first_phase: typing.Any,
+    last_phase: typing.Any,
+    requested_budget: typing.Any = 0,
+) -> typing.Any:
     """Return actual resident/source choices for the native fleet's buckets.
 
     Buckets retain all their device plans. Temporary setup/force storage is

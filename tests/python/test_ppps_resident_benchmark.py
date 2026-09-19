@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,7 @@ from vibeqc_compiler.integral.production import load_production_kernel_selection
 from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
 
 
-def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
+def test_ppps_resident_benchmark_groups_contiguous_ket_tasks() -> typing.Any:
     """Keep the synthetic 1110 descriptor and independent oracle visible."""
 
     source = emit_ppps_resident_bra_benchmark_cuda(512, 2, 1, 3, 3)
@@ -30,7 +31,9 @@ def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
     assert "VIBEQC_FUSED_LAUNCH" not in source
 
 
-def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
+def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(
+    tmp_path: Path,
+) -> typing.Any:
     """Compile locally and schedule every real-GPU check through Slurm."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")

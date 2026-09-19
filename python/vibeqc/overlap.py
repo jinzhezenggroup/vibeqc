@@ -1,6 +1,7 @@
 """Bounded native CPU overlap matrices for independent AO bases."""
 
 import ctypes
+import typing
 
 import numpy as np
 
@@ -10,15 +11,15 @@ from .calculator import Atom
 
 
 def cross_overlap(
-    target,
-    source,
-    atoms,
+    target: typing.Any,
+    source: typing.Any,
+    atoms: typing.Any,
     *,
-    source_atoms=None,
-    charge=0,
-    multiplicity=1,
-    maximum_bytes=128 << 20,
-):
+    source_atoms: typing.Any = None,
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+    maximum_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Return row-major ``<target AO | source AO>`` in the public AO conventions.
 
     ``target`` and ``source`` are calculators supplying their orbital bases.

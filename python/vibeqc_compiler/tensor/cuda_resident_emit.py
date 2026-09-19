@@ -21,12 +21,14 @@ kernels; when it defines ``vibeqc_resident_post_run`` the action runs after a
 *successful* evaluation.
 """
 
+import typing
+
 from vibeqc_compiler.tensor.cuda_dtype import scalar_type, symmetry_tolerance
 from vibeqc_compiler.tensor.cuda_emit import _arithmetic_error_expression, emit_cuda
 from vibeqc_compiler.tensor.cuda_emit import _launch as _emit_launch
 
 
-def _flat_parts(permuted_axes, shape):
+def _flat_parts(permuted_axes: typing.Any, shape: typing.Any) -> typing.Any:
     """Row-major flat index of a symmetry partner — same arithmetic as the
     ordinary interpreter's C-order symmetry verification."""
     strides = []
@@ -44,7 +46,7 @@ def _flat_parts(permuted_axes, shape):
     return " + ".join(terms)
 
 
-def _validation_body(plan):
+def _validation_body(plan: typing.Any) -> typing.Any:
     """Emit one finiteness/symmetry validation kernel per input slot, matching
     ``PreparedCuda._validate`` tolerances exactly."""
     validations, calls = [], []
@@ -81,7 +83,9 @@ __global__ void resident_validate_{slot}(unsigned char* p, int* error) {{
     return "".join(validations), calls
 
 
-def resident_source(plan, *, prefix="", extension=""):
+def resident_source(
+    plan: typing.Any, *, prefix: typing.Any = "", extension: typing.Any = ""
+) -> typing.Any:
     """Append the resident ABI to the verified ordinary TU.
 
     ``prefix`` must match the value used to compile the ordinary artifact.
@@ -108,7 +112,7 @@ def resident_source(plan, *, prefix="", extension=""):
     inputs = [plan.steps[i] for i in plan.inputs]
     outputs = [plan.steps[i] for _, i in plan.outputs]
 
-    def span_rows(steps):
+    def span_rows(steps: typing.Any) -> typing.Any:
         return ", ".join(
             f"{{{s.offset}ULL,{s.node.spec.size * s.node.spec.itemsize}ULL}}"
             for s in steps

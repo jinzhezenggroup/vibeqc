@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +22,7 @@ from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.native import emit_native
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cxx", default="c++")
     parser.add_argument("--output", type=Path, required=True)

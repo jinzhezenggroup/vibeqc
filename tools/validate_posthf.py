@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -54,7 +55,7 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def source_hash():
+def source_hash() -> typing.Any:
     files = [
         *ROOT.glob("src/posthf/*"),
         *ROOT.glob("tools/vibeqc_posthf/*.py"),
@@ -65,7 +66,7 @@ def source_hash():
     return canonical_hash({str(p.relative_to(ROOT)): file_hash(p) for p in files})
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument("--generated-df", action="store_true")

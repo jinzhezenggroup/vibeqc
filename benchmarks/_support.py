@@ -8,11 +8,13 @@ import platform
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterable
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 

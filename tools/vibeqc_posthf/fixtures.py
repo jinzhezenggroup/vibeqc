@@ -1,6 +1,7 @@
 """Load committed independent post-HF fixtures without importing PySCF."""
 
 import json
+import typing
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
@@ -14,7 +15,7 @@ from .reference import ReferenceSnapshot
 ROOT = Path(__file__).resolve().parents[2] / "tests/reference_data/posthf"
 
 
-def load_fixture(name):
+def load_fixture(name: typing.Any) -> typing.Any:
     """Check scalar/array provenance before returning independent fixture data."""
     metadata = json.loads((ROOT / (name + ".json")).read_text())
     if (
@@ -36,7 +37,7 @@ def load_fixture(name):
     return metadata, arrays
 
 
-def source_arguments(metadata):
+def source_arguments(metadata: typing.Any) -> typing.Any:
     """Recover the original unnormalized physical basis and geometry exactly."""
     inputs = metadata["inputs"]
     atoms = tuple(
@@ -44,7 +45,7 @@ def source_arguments(metadata):
         for z, x in zip(inputs["atomic_numbers"], inputs["coordinates"])
     )
 
-    def shells(records):
+    def shells(records: typing.Any) -> typing.Any:
         return tuple(
             Shell(
                 s["atom_index"],
@@ -69,8 +70,13 @@ def source_arguments(metadata):
 
 
 def fixture_snapshot(
-    metadata, arrays, *, label="conventional", metric=None, generation_id="fixture-1"
-):
+    metadata: typing.Any,
+    arrays: typing.Any,
+    *,
+    label: typing.Any = "conventional",
+    metric: typing.Any = None,
+    generation_id: typing.Any = "fixture-1",
+) -> typing.Any:
     """Import identical-C reference values with explicit Hamiltonian identity."""
     args = source_arguments(metadata)
     record = metadata["records"][label]

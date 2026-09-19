@@ -1,5 +1,6 @@
 """CUDA scalar lowering of shared S/T/V first-derivative DAG roots."""
 
+import typing
 from itertools import product
 
 from .cuda import CudaEmitter
@@ -19,7 +20,7 @@ from .one_electron_derivatives import (
 from .shell_spec import cartesian_components
 
 
-def one_electron_derivative_inventory():
+def one_electron_derivative_inventory() -> typing.Any:
     """Record mathematical center/sign/layout contracts before runtime scheduling."""
     return {
         "schema": "vibeqc.one_electron_derivatives",
@@ -36,7 +37,7 @@ def one_electron_derivative_inventory():
     }
 
 
-def _emit_axis_permutations():
+def _emit_axis_permutations() -> typing.Any:
     """Exploit Cartesian-axis covariance without widening the public AO family.
 
     Every primitive operator is a scalar under an x/y or x/z coordinate swap.
@@ -83,7 +84,7 @@ def _emit_axis_permutations():
     return "\n".join(lines + ["  return result;", "}"])
 
 
-def _emit_gradient_helpers(attraction):
+def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
     """Emit two x-axis roots; reuse them for y/z through exact permutations.
 
     Attraction evaluates Boys values once before all three axis calls. Keeping
@@ -196,7 +197,7 @@ def _emit_gradient_helpers(attraction):
     return "\n".join(lines)
 
 
-def emit_one_electron_derivatives_cuda():
+def emit_one_electron_derivatives_cuda() -> typing.Any:
     """Emit primitive gradient roots; normalized AO weights belong to the caller."""
     prefix = (
         _emit_support_cuda()

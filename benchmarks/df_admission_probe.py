@@ -13,6 +13,7 @@ import os
 import statistics
 import subprocess
 import time
+import typing
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
@@ -43,7 +44,7 @@ TRACE_CONTROLS = ("TRACE", "HOST_TRACE", "PROGRESS_TRACE", "SHELL_COUNTERS")
 
 
 @contextmanager
-def controls(variant, trace=None):
+def controls(variant: typing.Any, trace: typing.Any = None) -> typing.Any:
     """Set every arm completely and restore its caller even after a failure."""
     updates = dict(zip(CONTROLS, VARIANTS[variant], strict=True))
     updates.update({name: None for name in TRACE_CONTROLS})
@@ -66,7 +67,9 @@ def controls(variant, trace=None):
                 os.environ[key] = value
 
 
-def errors(result, reference_energy, reference_force):
+def errors(
+    result: typing.Any, reference_energy: typing.Any, reference_force: typing.Any
+) -> typing.Any:
     """Reject broadcasting/nonfinite output before evaluating physical errors."""
     energy = np.asarray(result.energies)
     force = np.asarray([item.forces for item in result.items])
@@ -82,7 +85,7 @@ def errors(result, reference_energy, reference_force):
     )
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=benchmark_cases(), required=True)
     parser.add_argument("--orbital-basis-file", type=Path)
@@ -231,7 +234,7 @@ def main():
         "samples": [],
     }
 
-    def save():
+    def save() -> typing.Any:
         args.output.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
 
     save()
@@ -246,7 +249,12 @@ def main():
             payload["prepare_seconds"] = time.perf_counter() - start
             with owner as batch:
 
-                def execute(phase, variant, repeat, trace=None):
+                def execute(
+                    phase: typing.Any,
+                    variant: typing.Any,
+                    repeat: typing.Any,
+                    trace: typing.Any = None,
+                ) -> typing.Any:
                     start = time.perf_counter()
                     result = batch.execute(strict=True)
                     seconds = time.perf_counter() - start

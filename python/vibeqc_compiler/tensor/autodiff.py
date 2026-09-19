@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import typing
 from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
@@ -39,7 +40,7 @@ DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 BACKEND = "numpy-cpu-autodiff"
 
 
-def _coefficient(pair, dtype):
+def _coefficient(pair: typing.Any, dtype: typing.Any) -> typing.Any:
     """Convert a reduced rational pair without importing execution state."""
     return np.dtype(dtype).type(float(Fraction(*pair)))
 
@@ -208,7 +209,7 @@ def _input_nodes(program: Program) -> dict[str, Node]:
     return {name: nodes[0] for name, nodes in _input_groups(program).items()}
 
 
-def _input_cotangent(nodes, bars) -> np.ndarray:
+def _input_cotangent(nodes: typing.Any, bars: typing.Any) -> np.ndarray:
     """Return an owned cotangent summed over all uses of one public feed."""
     result = np.zeros(nodes[0].spec.shape, dtype=nodes[0].spec.dtype)
     for node in nodes:
@@ -218,7 +219,7 @@ def _input_cotangent(nodes, bars) -> np.ndarray:
     return result
 
 
-def _validate_vector(value, spec, label: str) -> np.ndarray:
+def _validate_vector(value: typing.Any, spec: typing.Any, label: str) -> np.ndarray:
     """Validate a tangent or cotangent against its exact logical contract."""
     array = np.asarray(value)
     if array.shape != spec.shape or array.dtype != np.dtype(spec.dtype):
@@ -272,7 +273,7 @@ def _validate_cotangents(
     return result
 
 
-def _select_names(mapping: Mapping, names, label: str) -> dict:
+def _select_names(mapping: Mapping, names: typing.Any, label: str) -> dict:
     """Select requested names without silently accepting typos or duplicates."""
     if names is None:
         return dict(mapping)
@@ -290,7 +291,7 @@ def _select_names(mapping: Mapping, names, label: str) -> dict:
     return selected
 
 
-def _require_general_inputs(program: Program, names) -> None:
+def _require_general_inputs(program: Program, names: typing.Any) -> None:
     """Fail closed before returning an unweighted packed-space adjoint."""
     inputs = _input_nodes(program)
     for name in names:
@@ -311,11 +312,13 @@ def _check_budget(
         raise ValueError("autodiff logical retained-byte budget exceeded")
 
 
-def _zeros(spec) -> np.ndarray:
+def _zeros(spec: typing.Any) -> np.ndarray:
     return np.zeros(spec.shape, dtype=spec.dtype)
 
 
-def _transcendental_partial(node: Node, values, weight) -> np.ndarray:
+def _transcendental_partial(
+    node: Node, values: typing.Any, weight: typing.Any
+) -> np.ndarray:
     """Weighted scalar partials; primal/domain validation precedes reference AD."""
     x = values[0]
     if node.op == "exp":
@@ -338,32 +341,36 @@ def _transcendental_partial(node: Node, values, weight) -> np.ndarray:
     return (weight * np.power(x, exponent)) * factor
 
 
-def _jvp_transcendental(node: Node, values, tangents) -> np.ndarray:
+def _jvp_transcendental(
+    node: Node, values: typing.Any, tangents: typing.Any
+) -> np.ndarray:
     return _transcendental_partial(node, values, tangents[0])
 
 
-def _vjp_transcendental(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_transcendental(
+    node: Node, values: typing.Any, bar: typing.Any
+) -> list[np.ndarray]:
     return [_transcendental_partial(node, values, bar)]
 
 
-def _jvp_add(node: Node, values, tangents) -> np.ndarray:
+def _jvp_add(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     result = _zeros(node.spec)
     for tangent, coefficient in zip(tangents, node.attrs["coefficients"]):
         result += _coefficient(coefficient, node.spec.dtype) * tangent
     return result
 
 
-def _jvp_multiply(node: Node, values, tangents) -> np.ndarray:
+def _jvp_multiply(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return tangents[0] * values[1] + values[0] * tangents[1]
 
 
-def _jvp_divide(node: Node, values, tangents) -> np.ndarray:
+def _jvp_divide(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     x, y = values
     dx, dy = tangents
     return scaled_bilinear_value(dx, y, x, dy, y, y)
 
 
-def _jvp_einsum(node: Node, values, tangents) -> np.ndarray:
+def _jvp_einsum(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     labels = node.attrs["labels"]
     output = list(node.attrs["output"])
     coefficient = _coefficient(node.attrs["coefficient"], node.spec.dtype)
@@ -380,21 +387,21 @@ def _jvp_einsum(node: Node, values, tangents) -> np.ndarray:
     return result
 
 
-def _jvp_transpose(node: Node, values, tangents) -> np.ndarray:
+def _jvp_transpose(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.transpose(tangents[0], node.attrs["axes"])
 
 
-def _jvp_reshape(node: Node, values, tangents) -> np.ndarray:
+def _jvp_reshape(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return tangents[0].reshape(node.spec.shape, order="C")
 
 
-def _jvp_slice(node: Node, values, tangents) -> np.ndarray:
+def _jvp_slice(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return tangents[0][
         tuple(slice(start, stop) for start, stop in node.attrs["ranges"])
     ]
 
 
-def _jvp_gather(node: Node, values, tangents) -> np.ndarray:
+def _jvp_gather(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.take(
         tangents[0],
         np.asarray(node.attrs["positions"], dtype=np.intp),
@@ -402,11 +409,11 @@ def _jvp_gather(node: Node, values, tangents) -> np.ndarray:
     )
 
 
-def _jvp_reduce(node: Node, values, tangents) -> np.ndarray:
+def _jvp_reduce(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.sum(tangents[0], axis=node.attrs["axes"], dtype=node.spec.dtype)
 
 
-def _jvp_broadcast(node: Node, values, tangents) -> np.ndarray:
+def _jvp_broadcast(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     axes = node.attrs["axes"]
     order = tuple(sorted(range(len(axes)), key=lambda axis: axes[axis]))
     shape = [1] * len(node.spec.indices)
@@ -415,7 +422,12 @@ def _jvp_broadcast(node: Node, values, tangents) -> np.ndarray:
     return np.broadcast_to(tangents[0].transpose(order).reshape(shape), node.spec.shape)
 
 
-def _vjp_scaled_bilinear(node, values, bar, active=(True,) * 6):
+def _vjp_scaled_bilinear(
+    node: typing.Any,
+    values: typing.Any,
+    bar: typing.Any,
+    active: typing.Any = (True,) * 6,
+) -> typing.Any:
     a, b, c, d, e, f = values
     zero, one = _zeros(node.spec), np.ones(node.spec.shape, dtype=node.spec.dtype)
     result = []
@@ -430,7 +442,9 @@ def _vjp_scaled_bilinear(node, values, bar, active=(True,) * 6):
     return result
 
 
-def _jvp_scaled_bilinear(node, values, tangents):
+def _jvp_scaled_bilinear(
+    node: typing.Any, values: typing.Any, tangents: typing.Any
+) -> typing.Any:
     # Higher derivatives remain expressible. As with the ordinary add rule,
     # accumulation of six partials is not a global cancellation-safe reduction.
     result = _zeros(node.spec)
@@ -456,7 +470,7 @@ _JVP_RULES = {
 }
 
 
-def _jvp_node(node: Node, values, tangents) -> np.ndarray:
+def _jvp_node(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     """Dispatch one primitive and reject any future primitive without a rule."""
     try:
         rule = _JVP_RULES[node.op]
@@ -465,18 +479,20 @@ def _jvp_node(node: Node, values, tangents) -> np.ndarray:
     return rule(node, values, tangents)
 
 
-def _vjp_add(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_add(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     return [
         _coefficient(coefficient, node.spec.dtype) * bar
         for coefficient in node.attrs["coefficients"]
     ]
 
 
-def _vjp_multiply(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_multiply(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     return [bar * values[1], bar * values[0]]
 
 
-def _vjp_divide(node: Node, values, bar, active=(True, True)) -> list[np.ndarray]:
+def _vjp_divide(
+    node: Node, values: typing.Any, bar: typing.Any, active: typing.Any = (True, True)
+) -> list[np.ndarray]:
     x, y = values
     zero = _zeros(node.spec)
     return [
@@ -485,7 +501,9 @@ def _vjp_divide(node: Node, values, bar, active=(True, True)) -> list[np.ndarray
     ]
 
 
-def _einsum_vjp_reference(node: Node, values, bar) -> list[np.ndarray]:
+def _einsum_vjp_reference(
+    node: Node, values: typing.Any, bar: typing.Any
+) -> list[np.ndarray]:
     """Explicit-coordinate VJP for repeated labels within one operand.
 
     Repeated labels impose a diagonal constraint.  Renaming them to fresh
@@ -528,7 +546,7 @@ def _einsum_vjp_reference(node: Node, values, bar) -> list[np.ndarray]:
     return contributions
 
 
-def _vjp_einsum(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_einsum(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     labels = node.attrs["labels"]
     output = list(node.attrs["output"])
     coefficient = _coefficient(node.attrs["coefficient"], node.spec.dtype)
@@ -555,22 +573,22 @@ def _vjp_einsum(node: Node, values, bar) -> list[np.ndarray]:
     return contributions
 
 
-def _vjp_transpose(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_transpose(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     inverse = tuple(np.argsort(node.attrs["axes"]))
     return [np.transpose(bar, inverse)]
 
 
-def _vjp_reshape(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_reshape(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     return [bar.reshape(node.inputs[0].spec.shape, order="C")]
 
 
-def _vjp_slice(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_slice(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     result = _zeros(node.inputs[0].spec)
     result[tuple(slice(start, stop) for start, stop in node.attrs["ranges"])] = bar
     return [result]
 
 
-def _vjp_gather(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_gather(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     result = _zeros(node.inputs[0].spec)
     index = [slice(None)] * result.ndim
     index[node.attrs["axis"]] = np.asarray(node.attrs["positions"], dtype=np.intp)
@@ -578,14 +596,14 @@ def _vjp_gather(node: Node, values, bar) -> list[np.ndarray]:
     return [result]
 
 
-def _vjp_reduce(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_reduce(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     input_shape = node.inputs[0].spec.shape
     reduced = set(node.attrs["axes"])
     shape = [1 if axis in reduced else size for axis, size in enumerate(input_shape)]
     return [np.broadcast_to(bar.reshape(shape), input_shape)]
 
 
-def _vjp_broadcast(node: Node, values, bar) -> list[np.ndarray]:
+def _vjp_broadcast(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     axes = node.attrs["axes"]
     kept = set(axes)
     reduced = tuple(axis for axis in range(len(node.spec.indices)) if axis not in kept)
@@ -618,7 +636,9 @@ AD_RULES = {
 AD_PRIMITIVES = frozenset(AD_RULES)
 
 
-def _vjp_node(node: Node, values, bar, active=None) -> list[np.ndarray]:
+def _vjp_node(
+    node: Node, values: typing.Any, bar: typing.Any, active: typing.Any = None
+) -> list[np.ndarray]:
     """Dispatch one primitive and reject any future primitive without a rule."""
     try:
         rule = _VJP_RULES[node.op]
@@ -630,7 +650,7 @@ def _vjp_node(node: Node, values, bar, active=None) -> list[np.ndarray]:
 
 
 def _jvp_arrays(
-    program: Program, values: Mapping[Node, np.ndarray], tangents
+    program: Program, values: Mapping[Node, np.ndarray], tangents: typing.Any
 ) -> dict[Node, np.ndarray]:
     """Evaluate every live SSA definition in forward tangent mode."""
     result = {}
@@ -662,7 +682,10 @@ def _jvp_arrays(
 
 
 def _vjp_arrays(
-    program: Program, values: Mapping[Node, np.ndarray], cotangents, selected=None
+    program: Program,
+    values: Mapping[Node, np.ndarray],
+    cotangents: typing.Any,
+    selected: typing.Any = None,
 ) -> dict[Node, np.ndarray]:
     """Propagate cotangents through one primal evaluation in reverse order."""
     live = program.live_nodes
@@ -714,7 +737,7 @@ def jvp(
     feeds: Mapping,
     tangents: Mapping,
     *,
-    outputs=None,
+    outputs: typing.Any = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> JVPResult:
     """Evaluate one forward tangent direction through a TensorIR program.
@@ -749,7 +772,7 @@ def vjp(
     feeds: Mapping,
     cotangents: Mapping,
     *,
-    inputs=None,
+    inputs: typing.Any = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> VJPResult:
     """Propagate one cotangent without materializing a dense Jacobian.
@@ -786,7 +809,7 @@ def vjp(
     )
 
 
-def _inner(left, right) -> float:
+def _inner(left: typing.Any, right: typing.Any) -> float:
     """Real Euclidean inner product accumulated in float64."""
     left = np.asarray(left, dtype=np.float64).reshape(-1)
     right = np.asarray(right, dtype=np.float64).reshape(-1)
@@ -795,7 +818,9 @@ def _inner(left, right) -> float:
     return float(np.dot(left, right))
 
 
-def _default_atol(program: Program, tangent_names, cotangent_names) -> float:
+def _default_atol(
+    program: Program, tangent_names: typing.Any, cotangent_names: typing.Any
+) -> float:
     """Use a scale-aware absolute guard for the requested dense spaces."""
     inputs = _input_nodes(program)
     dtypes = {inputs[name].spec.dtype for name in tangent_names if name in inputs}

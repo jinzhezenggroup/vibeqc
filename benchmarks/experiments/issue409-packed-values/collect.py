@@ -12,12 +12,13 @@ import hashlib
 import json
 import math
 import re
+import typing
 from pathlib import Path
 
 LIMIT = 1 << 20
 
 
-def bind_changed_diagnostics(clean_path: Path, companion_directory: Path):
+def bind_changed_diagnostics(clean_path: Path, companion_directory: Path) -> typing.Any:
     """Join completed clean samples to a separately completed diagnostic run.
 
     A timeout after clean timing does not invalidate completed measurements.
@@ -35,11 +36,11 @@ def bind_changed_diagnostics(clean_path: Path, companion_directory: Path):
     companion_path = companion_directory / "768-changed-clean.json"
     companion = json.loads(companion_path.read_text())
 
-    def require(condition, reason):
+    def require(condition: typing.Any, reason: typing.Any) -> typing.Any:
         if not condition:
             raise ValueError(f"invalid changed diagnostic companion: {reason}")
 
-    def sha(path):
+    def sha(path: typing.Any) -> typing.Any:
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
     require(campaign.get("diagnostics_only") is True, "not a diagnostics-only run")
@@ -119,7 +120,7 @@ def bind_changed_diagnostics(clean_path: Path, companion_directory: Path):
     }
 
 
-def main():
+def main() -> typing.Any:
     """Reject incomplete clean cells unless explicitly preparing a partial draft."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, required=True)
@@ -135,7 +136,9 @@ def main():
         "incomplete": [],
     }
 
-    def retain(path, name, *, value=None):
+    def retain(
+        path: typing.Any, name: typing.Any, *, value: typing.Any = None
+    ) -> typing.Any:
         """Keep exact input hashes even when whitespace-only JSON compaction is needed."""
         original = path.read_bytes()
         data = (

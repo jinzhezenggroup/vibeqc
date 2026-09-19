@@ -11,6 +11,7 @@ import ctypes
 import json
 import math
 import os
+import typing
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -90,7 +91,7 @@ _CUDA_SCHEDULE_VARIABLES = (
 )
 
 
-def _cuda_library_identity(library):
+def _cuda_library_identity(library: typing.Any) -> typing.Any:
     """Hash an explicitly loaded artifact once without selecting/probing a GPU."""
     from .profiles import file_hash
 
@@ -104,16 +105,16 @@ def _cuda_library_identity(library):
 
 
 def _basis_record(
-    atoms,
-    basis,
-    representation,
-    backend,
-    charge,
-    multiplicity,
-    role,
+    atoms: typing.Any,
+    basis: typing.Any,
+    representation: typing.Any,
+    backend: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    role: typing.Any,
     *,
-    derivative_order=1,
-):
+    derivative_order: typing.Any = 1,
+) -> typing.Any:
     selected = _snapshot_basis(basis, representation)
     mode = (
         selected.representation
@@ -165,7 +166,7 @@ def _basis_record(
     return record
 
 
-def _ecp_workspace(item, *, cuda=False):
+def _ecp_workspace(item: typing.Any, *, cuda: typing.Any = False) -> typing.Any:
     """Conservative two-grid peak, including the selected CUDA radial batch."""
     from vibeqc_compiler.integral.ecp_policy import (
         REFINED_POLAR_POINTS,
@@ -195,7 +196,7 @@ def _ecp_workspace(item, *, cuda=False):
     )
 
 
-def _cpu_item_inventory(item, diis_history):
+def _cpu_item_inventory(item: typing.Any, diis_history: typing.Any) -> typing.Any:
     """Bound the existing resident CPU route by its preparation/iteration phases.
 
     The CPU DF implementation currently retains the ordinary four-center
@@ -264,7 +265,9 @@ def _cpu_item_inventory(item, diis_history):
     }
 
 
-def _small_cuda_item_inventory(library, item, diis_history):
+def _small_cuda_item_inventory(
+    library: typing.Any, item: typing.Any, diis_history: typing.Any
+) -> typing.Any:
     """Query the existing small native route without constructing a CUDA plan.
 
     Its exact numeric arena needs no external eigensolver workspace. Packed
@@ -323,30 +326,30 @@ def _small_cuda_item_inventory(library, item, diis_history):
 
 
 def hf_resource_request(
-    systems,
+    systems: typing.Any,
     *,
-    method="rhf",
-    basis="sto-3g",
-    backend="cpu",
-    basis_representation=None,
-    charges=None,
-    multiplicities=None,
-    density_fitting="none",
-    auxiliary_basis=None,
-    diis_history=8,
-    max_iterations=100,
-    energy_tolerance=1e-10,
-    density_tolerance=1e-8,
-    screening_tolerance=1e-12,
-    precision="fp64",
-    density_fitting_relative_threshold=1e-10,
-    density_fitting_memory_budget_bytes=0,
-    name="hf",
-    first_phase=0,
-    last_phase=0,
-    device_id=0,
-    library=None,
-):
+    method: typing.Any = "rhf",
+    basis: typing.Any = "sto-3g",
+    backend: typing.Any = "cpu",
+    basis_representation: typing.Any = None,
+    charges: typing.Any = None,
+    multiplicities: typing.Any = None,
+    density_fitting: typing.Any = "none",
+    auxiliary_basis: typing.Any = None,
+    diis_history: typing.Any = 8,
+    max_iterations: typing.Any = 100,
+    energy_tolerance: typing.Any = 1e-10,
+    density_tolerance: typing.Any = 1e-8,
+    screening_tolerance: typing.Any = 1e-12,
+    precision: typing.Any = "fp64",
+    density_fitting_relative_threshold: typing.Any = 1e-10,
+    density_fitting_memory_budget_bytes: typing.Any = 0,
+    name: typing.Any = "hf",
+    first_phase: typing.Any = 0,
+    last_phase: typing.Any = 0,
+    device_id: typing.Any = 0,
+    library: typing.Any = None,
+) -> typing.Any:
     """Resolve real basis/spin inputs into one serialized-fleet provider request.
 
     Workspace scales with the largest serialized item. Retained item state and
@@ -646,7 +649,9 @@ def hf_resource_request(
     return ResourceRequest(name, identity, (candidate,), exclusions)
 
 
-def estimate_hf_resources(systems, *, budget=None, **options):
+def estimate_hf_resources(
+    systems: typing.Any, *, budget: typing.Any = None, **options: typing.Any
+) -> typing.Any:
     """Return an HF dry-run plan using compact topology and no native execution."""
     budget = ResourceBudget() if budget is None else budget
     return plan_resources((hf_resource_request(systems, **options),), budget)

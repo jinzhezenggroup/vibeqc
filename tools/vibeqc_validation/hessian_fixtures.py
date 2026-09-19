@@ -1,9 +1,13 @@
 """Shared geometry/basis data; constructing the native fixtures needs no oracle."""
 
+import typing
+
 from vibeqc.calculator import Primitive, Shell
 
 
-def _source_inputs(atoms, basis, charge, spin):
+def _source_inputs(
+    atoms: typing.Any, basis: typing.Any, charge: typing.Any, spin: typing.Any
+) -> typing.Any:
     shells = []
     for atom in range(len(atoms)):
         # Fixture tags carry the exact atom index, independently of element.
@@ -20,7 +24,7 @@ def _source_inputs(atoms, basis, charge, spin):
     }
 
 
-def fixture_inputs(name):
+def fixture_inputs(name: typing.Any) -> typing.Any:
     """Return one of the A2 fixtures (Bohr, Cartesian).
 
     ``h2``: 2 AO / 1 occ / 1 virt.  ``water``: genuine STO-3G O (7 AO /
@@ -98,7 +102,7 @@ def fixture_inputs(name):
     raise ValueError(f"unknown A2 fixture {name!r}")
 
 
-def oracle_system(source):
+def oracle_system(source: typing.Any) -> typing.Any:
     """Build the separate PySCF finite-difference oracle only when requested."""
     from pyscf import gto
 

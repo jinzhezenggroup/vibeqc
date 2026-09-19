@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import typing
 from collections.abc import Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -31,7 +32,6 @@ from vibeqc_compiler.common.capture import (
     CaptureContract,
     _GraphMetrics,
 )
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import (
     _PREPARATION_LOCK,
     CudaArtifact,
@@ -57,6 +57,9 @@ from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
 # Allocation snapshots for provider accounting must not race another owned
 # handle's creation/destruction. Executions themselves remain independent.
@@ -204,7 +207,13 @@ def compile_cuda(
     return CudaArtifact(library, metadata)
 
 
-def tensor_capture_contract(plan, artifact, device, *, resource_plan=None):
+def tensor_capture_contract(
+    plan: typing.Any,
+    artifact: typing.Any,
+    device: typing.Any,
+    *,
+    resource_plan: typing.Any = None,
+) -> typing.Any:
     """Qualify only the fixed-topology, device-only emitted launch sequence."""
     launches = 1  # per-run arithmetic-error reset
     for step in plan.steps:
@@ -284,10 +293,10 @@ class PreparedCuda:
         artifact: CudaArtifact,
         *,
         device: int = 0,
-        resource_plan=None,
-        resource_owner=None,
+        resource_plan: typing.Any = None,
+        resource_owner: typing.Any = None,
         execution_mode: str = "ordinary",
-    ):
+    ) -> None:
         if execution_mode not in ("ordinary", "cuda-graph"):
             raise ValueError("execution_mode must be ordinary or cuda-graph")
         self.execution_mode = execution_mode
@@ -439,7 +448,7 @@ class PreparedCuda:
                 self.close()
                 raise RuntimeError(error.value.decode())
 
-    def invalidate_graph(self):
+    def invalidate_graph(self) -> typing.Any:
         """Discard replay state without changing buffers or the immutable plan.
 
         Shape/schedule/artifact/device changes require a new PreparedCuda owner.
@@ -464,7 +473,7 @@ class PreparedCuda:
                 self._graph_needs_setup = True
                 self.graph_status = "invalidated; warmup required"
 
-    def _validate(self, value, node):
+    def _validate(self, value: typing.Any, node: typing.Any) -> typing.Any:
         """Bound validation scratch even for transposed symmetry partners."""
         flat = value.reshape(-1)
         for start in range(0, flat.size, VALIDATION_CHUNK):
@@ -638,7 +647,7 @@ class PreparedCuda:
             )
             return CudaExecution(outputs, metrics, backend)
 
-    def close(self):
+    def close(self) -> typing.Any:
         """Release resources once; cannot race an execution using their pointers."""
         with self._lock:
             if self._pointer:
@@ -647,12 +656,12 @@ class PreparedCuda:
                 self._pointer = ctypes.c_void_p()
             self._inputs, self._scratch, self._mask = [], [], None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if getattr(self, "_pointer", None):
             self.close()

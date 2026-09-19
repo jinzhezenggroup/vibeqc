@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -75,7 +76,10 @@ class DFValueFixture:
 
 
 def make_df_value_fixture(
-    angular: tuple[int, ...], *, variant="asymmetric", primitive_lengths=None
+    angular: tuple[int, ...],
+    *,
+    variant: typing.Any = "asymmetric",
+    primitive_lengths: typing.Any = None,
 ) -> DFValueFixture:
     """Generate a full Cartesian/spherical M or A shell block with signed contractions."""
     count = len(angular)

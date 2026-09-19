@@ -1,11 +1,12 @@
 """Current-state documentation claims for conventional public MP2 forces."""
 
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_mp2_documentation_states_exact_force_and_batch_boundary():
+def test_mp2_documentation_states_exact_force_and_batch_boundary() -> typing.Any:
     text = (ROOT / "docs/mp2.md").read_text(encoding="utf-8")
     for claim in (
         "force = -gradient",
@@ -23,7 +24,7 @@ def test_mp2_documentation_states_exact_force_and_batch_boundary():
     assert 'singlepoint(..., properties=("energy", "forces"))` rejects MP2' not in text
 
 
-def test_method_table_no_longer_calls_conventional_mp2_forces_planned():
+def test_method_table_no_longer_calls_conventional_mp2_forces_planned() -> typing.Any:
     text = (ROOT / "docs/methods.md").read_text(encoding="utf-8")
     assert "Conventional energy and analytic forces implemented on CPU/CUDA" in text
     assert (

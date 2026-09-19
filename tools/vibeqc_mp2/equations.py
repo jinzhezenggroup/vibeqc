@@ -1,5 +1,7 @@
 """Restricted spatial MP2 tile equations expressed in the shared TensorIR."""
 
+import typing
+
 from tools.vibeqc_tensor import (
     Index,
     IndexSpace,
@@ -14,7 +16,9 @@ from tools.vibeqc_tensor import (
 )
 
 
-def energy_program(shape, *, differentiable=False):
+def energy_program(
+    shape: typing.Any, *, differentiable: typing.Any = False
+) -> typing.Any:
     """Consume g[i,j,a,b]=(ia|jb), x[i,j,a,b]=(ib|ja), no spin compression.
 
     Inputs are rectangular tiles, so x is a separately requested/reordered
@@ -32,7 +36,7 @@ def energy_program(shape, *, differentiable=False):
         )
     )
 
-    def tensor(name, indices):
+    def tensor(name: typing.Any, indices: typing.Any) -> typing.Any:
         return input_tensor(
             name,
             TensorSpec(
@@ -64,7 +68,7 @@ def energy_program(shape, *, differentiable=False):
     )
 
 
-def cpu_capacity(program):
+def cpu_capacity(program: typing.Any) -> typing.Any:
     """Conservative numeric capacity including interpreter temporaries.
 
     The shared interpreter retains logical nodes. Add two maximum-sized

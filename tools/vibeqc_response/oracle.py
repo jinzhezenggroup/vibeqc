@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 
 from tools.vibeqc_posthf.conventions import MOBlock
 from tools.vibeqc_posthf.reference import immutable
 
 
-def explicit_rhf_response_matrix(problem, provider):
+def explicit_rhf_response_matrix(
+    problem: typing.Any, provider: typing.Any
+) -> typing.Any:
     """Assemble the tiny MO response matrix from explicit chemists' ERIs.
 
     For the density-response parameterization in :class:`RotationLayout`:
@@ -44,7 +48,7 @@ def explicit_rhf_response_matrix(problem, provider):
     return immutable(matrix.reshape(layout.dimension, layout.dimension))
 
 
-def _expm_small(matrix, *, terms=18):
+def _expm_small(matrix: typing.Any, *, terms: typing.Any = 18) -> typing.Any:
     """Matrix exponential for the tiny finite-difference rotations used here."""
     value = np.asarray(matrix, dtype=np.float64)
     result = np.eye(value.shape[0])
@@ -57,7 +61,14 @@ def _expm_small(matrix, *, terms=18):
     return result
 
 
-def finite_rotation_jvp(problem, backend, vector, *, step=1e-6, exchange_fraction=0.5):
+def finite_rotation_jvp(
+    problem: typing.Any,
+    backend: typing.Any,
+    vector: typing.Any,
+    *,
+    step: typing.Any = 1e-6,
+    exchange_fraction: typing.Any = 0.5,
+) -> typing.Any:
     """Return the finite-rotation derivative of the occupied-virtual gradient.
 
     The parameterization uses ``C(t)=C exp(-t K)`` with the generator from
@@ -76,7 +87,7 @@ def finite_rotation_jvp(problem, backend, vector, *, step=1e-6, exchange_fractio
     occupied = problem.layout.occupied
     virtual = problem.layout.virtual
 
-    def gradient(sign):
+    def gradient(sign: typing.Any) -> typing.Any:
         rotated = coefficients @ _expm_small(-sign * step * generator)
         occupied_coefficients = rotated[:, occupied]
         density = 2.0 * occupied_coefficients @ occupied_coefficients.T

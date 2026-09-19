@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import traceback
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -40,7 +41,13 @@ from .profiles import (
 )
 
 
-def dft_density_candidates(prepared, source, *, stamp, delta_density=None):
+def dft_density_candidates(
+    prepared: typing.Any,
+    source: typing.Any,
+    *,
+    stamp: typing.Any,
+    delta_density: typing.Any = None,
+) -> typing.Any:
     """Expose executable D/C registrations to the existing tuning workflow.
 
     These fixed-input candidates retain the ordinary #138 evidence records
@@ -92,7 +99,7 @@ def source_identity(source: Path) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def read_xyz(path: Path, *, units="angstrom") -> list:
+def read_xyz(path: Path, *, units: typing.Any = "angstrom") -> list:
     """Read one ordinary XYZ geometry and convert coordinates to public-API Bohr."""
     lines = path.read_text().splitlines()
     count = int(lines[0])
@@ -115,7 +122,9 @@ def read_xyz(path: Path, *, units="angstrom") -> list:
     return atoms
 
 
-def rank_hotspots(rows: list[dict], *, coverage=0.97, maximum_classes=8) -> list[dict]:
+def rank_hotspots(
+    rows: list[dict], *, coverage: typing.Any = 0.97, maximum_classes: typing.Any = 8
+) -> list[dict]:
     """Use exact active primitive work; never compile absent shell classes by default."""
     if not 0 < coverage <= 1 or maximum_classes < 1:
         raise ValueError("coverage must be in (0,1] and class limit positive")
@@ -146,7 +155,7 @@ def rank_hotspots(rows: list[dict], *, coverage=0.97, maximum_classes=8) -> list
 
 
 def endpoint_gate(
-    baseline: list[dict], candidate: list[dict], *, minimum_speedup=1.02
+    baseline: list[dict], candidate: list[dict], *, minimum_speedup: typing.Any = 1.02
 ) -> dict:
     """Reject noisy/slower proposals and changed SCF branches without dropping samples."""
     if len(baseline) != len(candidate) or len(baseline) < 4:
@@ -206,9 +215,9 @@ def _worker(
     workload: Path,
     output: Path,
     *,
-    generic=False,
-    profile=False,
-    timeout=600,
+    generic: typing.Any = False,
+    profile: typing.Any = False,
+    timeout: typing.Any = 600,
 ) -> dict:
     env = {**os.environ, "VIBEQC_LIBRARY": str(library), "VIBEQC_PROFILE": "off"}
     # Ambient debugging masks would otherwise turn an A/B into a comparison of
@@ -243,7 +252,16 @@ def _worker(
     return json.loads(output.read_text())
 
 
-def _compare(base, candidate, workload, directory, *, repeats, generic, timeout):
+def _compare(
+    base: typing.Any,
+    candidate: typing.Any,
+    workload: typing.Any,
+    directory: typing.Any,
+    *,
+    repeats: typing.Any,
+    generic: typing.Any,
+    timeout: typing.Any,
+) -> typing.Any:
     samples = {"baseline": [], "candidate": []}
     # Alternate fresh processes in balanced ABBA blocks. Startup, cold SCF,
     # and warmup are outside each sample; all raw repeats enter the gate.
@@ -262,7 +280,16 @@ def _compare(base, candidate, workload, directory, *, repeats, generic, timeout)
     return endpoint_gate(samples["baseline"], samples["candidate"])
 
 
-def _build(source, build, manifest, target, nvcc, *, timeout, jobs):
+def _build(
+    source: typing.Any,
+    build: typing.Any,
+    manifest: typing.Any,
+    target: typing.Any,
+    nvcc: typing.Any,
+    *,
+    timeout: typing.Any,
+    jobs: typing.Any,
+) -> typing.Any:
     command = [
         "cmake",
         "-S",
@@ -301,7 +328,9 @@ def _build(source, build, manifest, target, nvcc, *, timeout, jobs):
     return library.resolve(), time.monotonic() - started
 
 
-def _native_kernel_paths(build, architecture, name):
+def _native_kernel_paths(
+    build: typing.Any, architecture: typing.Any, name: typing.Any
+) -> typing.Any:
     """Locate the generated source and exact object in a class-mode native build."""
     relative = (
         Path("generated/production_shell_kernels")
@@ -317,7 +346,7 @@ def _native_kernel_paths(build, architecture, name):
     )
 
 
-def run(args) -> dict:
+def run(args: typing.Any) -> dict:
     """Tune measured hotspots; publish only complete accepted endpoint replacements."""
     source = args.source_dir.resolve()
     if not (source / "python/vibeqc_compiler/integral/autotune.py").is_file():
@@ -409,7 +438,7 @@ def run(args) -> dict:
     atomic_json(workload_path, workload)
     started = time.monotonic()
 
-    def remaining():
+    def remaining() -> typing.Any:
         seconds = args.budget_seconds - (time.monotonic() - started)
         if seconds <= 0:
             raise TimeoutError("local autotuning budget exhausted")

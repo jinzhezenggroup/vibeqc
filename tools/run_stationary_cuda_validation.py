@@ -9,6 +9,7 @@ import argparse
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +17,7 @@ sys.path.insert(0, str(ROOT / "python"))
 from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--sanitizer",

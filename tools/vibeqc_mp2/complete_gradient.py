@@ -9,6 +9,7 @@ bounded method implementation.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -48,7 +49,13 @@ class CompleteGradientValidation:
     diagnostics: dict
 
 
-def _tiled_correlation_energy(g, orbital_energies, occupied, *, tile=8):
+def _tiled_correlation_energy(
+    g: typing.Any,
+    orbital_energies: typing.Any,
+    occupied: typing.Any,
+    *,
+    tile: typing.Any = 8,
+) -> typing.Any:
     """Accumulate restricted MP2 energy without a molecular T2/denominator."""
 
     eps = np.asarray(orbital_energies, dtype=np.float64)
@@ -88,16 +95,16 @@ def _tiled_correlation_energy(g, orbital_energies, occupied, *, tile=8):
 
 
 def complete_gradient_validation(
-    source,
-    orbital_calculator,
-    auxiliary_calculator=None,
+    source: typing.Any,
+    orbital_calculator: typing.Any,
+    auxiliary_calculator: typing.Any = None,
     *,
-    density_fitted=False,
-    device_id=0,
-    provider_budget_bytes=256 << 20,
-    weight_output_budget_bytes=256 << 20,
-    consumer_maximum_bytes=128 << 20,
-):
+    density_fitted: typing.Any = False,
+    device_id: typing.Any = 0,
+    provider_budget_bytes: typing.Any = 256 << 20,
+    weight_output_budget_bytes: typing.Any = 256 << 20,
+    consumer_maximum_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Run a fresh CUDA RHF/MP2/Z-vector/gradient validation chain.
 
     Conventional response uses the existing CPU-streamed exact J/K action;

@@ -8,6 +8,8 @@ primitive expression does not discard its validated scheduling structure.
 
 from __future__ import annotations
 
+import typing
+
 from .cuda import CudaEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
 from .weighted_eri import (
@@ -21,9 +23,9 @@ def emit_weighted_eri_function(
     kernel: WeightedEriKernel,
     name: str,
     *,
-    inline_single_use=False,
-    backend="cuda",
-    packed_weights=False,
+    inline_single_use: typing.Any = False,
+    backend: typing.Any = "cuda",
+    packed_weights: typing.Any = False,
 ) -> str:
     """Emit one complete center-gradient result with shared scalar CSE.
 
@@ -91,9 +93,9 @@ def emit_weighted_eri_function(
 def emit_weighted_eri_header(
     functions: tuple[tuple[WeightedEriKernel, str], ...],
     *,
-    inline_single_use=False,
-    backend="cuda",
-    packed_weights=False,
+    inline_single_use: typing.Any = False,
+    backend: typing.Any = "cuda",
+    packed_weights: typing.Any = False,
 ) -> str:
     """Wrap bounded helpers in one shared geometry/result interface.
 
@@ -140,7 +142,7 @@ struct Gradient { double value; double center[4][3]; };
     )
 
 
-def emit_psss_weighted_header(*, inline_single_use=False) -> str:
+def emit_psss_weighted_header(*, inline_single_use: typing.Any = False) -> str:
     """Generate the first native migration candidate without replacing queues."""
     return emit_weighted_eri_header(
         ((build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 0, 0))), "psss"),),

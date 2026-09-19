@@ -1,6 +1,7 @@
 """Small independent first-order matrix-function gates; no native library/GPU."""
 
 import json
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -12,12 +13,12 @@ from vibeqc_compiler.method.matrix_function_cuda import (
 from vibeqc_compiler.tensor import Program, execute
 
 
-def _symmetric(rng, n):
+def _symmetric(rng: typing.Any, n: typing.Any) -> typing.Any:
     raw = rng.normal(size=(n, n))
     return (raw + raw.T) / 2
 
 
-def _fixture(eigenvalues):
+def _fixture(eigenvalues: typing.Any) -> typing.Any:
     rng = np.random.default_rng(466)
     n = len(eigenvalues)
     q, _ = np.linalg.qr(rng.normal(size=(n, n)))
@@ -27,7 +28,7 @@ def _fixture(eigenvalues):
     return matrix, tangent, rng.normal(size=(n, n))
 
 
-def _reference(matrix, threshold):
+def _reference(matrix: typing.Any, threshold: typing.Any) -> typing.Any:
     """Independent forward spectral evaluation, never calls the new primitive."""
     values, vectors = np.linalg.eigh(matrix)
     keep = values > (0 if threshold is None else threshold * values[-1])
@@ -38,7 +39,7 @@ def _reference(matrix, threshold):
     )
 
 
-def test_scalar_and_diagonal_closed_form():
+def test_scalar_and_diagonal_closed_form() -> typing.Any:
     state = SymmetricMatrixFunctionSpec(1, "scalar").prepare(np.array([[4.0]]))
     np.testing.assert_array_equal(state.value, [[0.5]])
     np.testing.assert_array_equal(state.jvp(np.array([[3.0]])), [[-3 / 16]])
@@ -64,7 +65,9 @@ def test_scalar_and_diagonal_closed_form():
         ([0.03, 0.03, 2.0, 2.0], 0.1),
     ],
 )
-def test_multistep_finite_differences_and_full_frobenius_dot(spectrum, threshold):
+def test_multistep_finite_differences_and_full_frobenius_dot(
+    spectrum: typing.Any, threshold: typing.Any
+) -> typing.Any:
     matrix, tangent, bar = _fixture(spectrum)
     state = SymmetricMatrixFunctionSpec(len(spectrum), "random", threshold).prepare(
         matrix
@@ -87,7 +90,7 @@ def test_multistep_finite_differences_and_full_frobenius_dot(spectrum, threshold
     )
 
 
-def test_independent_sylvester_oracle():
+def test_independent_sylvester_oracle() -> typing.Any:
     """Different algorithm: solve S dX + dX S = -X dM X for X=S^-1."""
     root = np.array([[2.0, 0.3, -0.2], [0.3, 1.7, 0.1], [-0.2, 0.1, 2.5]])
     matrix = root @ root
@@ -102,7 +105,9 @@ def test_independent_sylvester_oracle():
     np.testing.assert_allclose(state.jvp(tangent), expected, atol=2e-15, rtol=2e-14)
 
 
-def test_fixed_rank_keeps_cross_subspace_response_including_psd_nullspace():
+def test_fixed_rank_keeps_cross_subspace_response_including_psd_nullspace() -> (
+    typing.Any
+):
     matrix = np.diag([0.0, 4.0])
     tangent = np.array([[0.0, 1.0], [1.0, 0.0]])
     state = SymmetricMatrixFunctionSpec(2, "psd", 0.1).prepare(matrix)
@@ -114,7 +119,7 @@ def test_fixed_rank_keeps_cross_subspace_response_including_psd_nullspace():
     assert np.linalg.norm(state.jvp(tangent)) > 0.1
 
 
-def test_repeated_eigenspace_gauge_invariance(monkeypatch):
+def test_repeated_eigenspace_gauge_invariance(monkeypatch: typing.Any) -> typing.Any:
     matrix = np.diag([0.02, 0.02, 2.0, 2.0])
     spec = SymmetricMatrixFunctionSpec(4, "gauge", 0.1)
     state = spec.prepare(matrix)
@@ -128,7 +133,7 @@ def test_repeated_eigenspace_gauge_invariance(monkeypatch):
     gauge[:2, :2] = rotation
     gauge[2:, 2:] = rotation.T
 
-    def rotated_eigh(value):
+    def rotated_eigh(value: typing.Any) -> typing.Any:
         eigenvalues, eigenvectors = eigh(value)
         return eigenvalues, eigenvectors @ gauge
 
@@ -141,7 +146,7 @@ def test_repeated_eigenspace_gauge_invariance(monkeypatch):
     assert rotated.identity == state.identity
 
 
-def test_rotation_covariance_and_scale_covariance():
+def test_rotation_covariance_and_scale_covariance() -> typing.Any:
     matrix, tangent, bar = _fixture([0.03, 0.04, 1.0, 3.0])
     spec = SymmetricMatrixFunctionSpec(4, "covariant", 0.1)
     state = spec.prepare(matrix)
@@ -161,7 +166,7 @@ def test_rotation_covariance_and_scale_covariance():
         assert scaled.rank == state.rank
 
 
-def test_rank_change_and_cutoff_failure_and_state_rebinding():
+def test_rank_change_and_cutoff_failure_and_state_rebinding() -> typing.Any:
     spec = SymmetricMatrixFunctionSpec(2, "branch", 0.1)
     state = spec.prepare(np.diag([0.05, 1.0]))
     with pytest.raises(ValueError, match="unresolved"):
@@ -176,7 +181,7 @@ def test_rank_change_and_cutoff_failure_and_state_rebinding():
     assert spec.prepare(np.diag([0.2, 1.0])).rank == 2
 
 
-def test_manifest_and_generated_program_roundtrip():
+def test_manifest_and_generated_program_roundtrip() -> typing.Any:
     matrix, tangent, _ = _fixture([0.02, 1.0, 3.0])
     spec = SymmetricMatrixFunctionSpec(3, "roundtrip", 0.1)
     restored = SymmetricMatrixFunctionSpec.from_payload(
@@ -213,14 +218,16 @@ def test_manifest_and_generated_program_roundtrip():
         {"kind": "other"},
     ],
 )
-def test_payload_rejects_unknown_or_mismatched_contract(change):
+def test_payload_rejects_unknown_or_mismatched_contract(
+    change: typing.Any,
+) -> typing.Any:
     payload = SymmetricMatrixFunctionSpec(2, "payload").to_payload()
     payload.update(change)
     with pytest.raises(ValueError):
         SymmetricMatrixFunctionSpec.from_payload(payload)
 
 
-def test_missing_payload_field_rejected():
+def test_missing_payload_field_rejected() -> typing.Any:
     payload = SymmetricMatrixFunctionSpec(2, "payload").to_payload()
     del payload["branch_guard"]
     with pytest.raises(ValueError, match="missing"):
@@ -247,7 +254,7 @@ def test_missing_payload_field_rejected():
         {"relative_threshold": 1e-13},
     ],
 )
-def test_invalid_spec(kwargs):
+def test_invalid_spec(kwargs: typing.Any) -> typing.Any:
     with pytest.raises(ValueError):
         SymmetricMatrixFunctionSpec(
             **({"size": 2, "matrix_identity": "invalid"} | kwargs)
@@ -269,12 +276,12 @@ def test_invalid_spec(kwargs):
         np.zeros((2, 2)),
     ],
 )
-def test_invalid_matrix_fails_before_result(matrix):
+def test_invalid_matrix_fails_before_result(matrix: typing.Any) -> typing.Any:
     with pytest.raises(ValueError):
         SymmetricMatrixFunctionSpec(2, "bad", 0.1).prepare(matrix)
 
 
-def test_full_rank_singular_and_unresolved_positive_input_rejected():
+def test_full_rank_singular_and_unresolved_positive_input_rejected() -> typing.Any:
     spec = SymmetricMatrixFunctionSpec(2, "spd")
     with pytest.raises(ValueError, match="SPD"):
         spec.prepare(np.diag([0.0, 1.0]))
@@ -284,10 +291,10 @@ def test_full_rank_singular_and_unresolved_positive_input_rejected():
         SymmetricMatrixFunctionSpec(1, "overflow").prepare(np.array([[1e-300]]))
 
 
-def test_workspace_preflight_before_eigensolve(monkeypatch):
+def test_workspace_preflight_before_eigensolve(monkeypatch: typing.Any) -> typing.Any:
     spec = SymmetricMatrixFunctionSpec(2, "budget")
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("must reject before factorization")
 
     monkeypatch.setattr(np.linalg, "eigh", forbidden)
@@ -299,7 +306,7 @@ def test_workspace_preflight_before_eigensolve(monkeypatch):
         spec.prepare(np.eye(2), max_bytes=True)
 
 
-def test_exact_logical_budget_and_detached_immutable_state():
+def test_exact_logical_budget_and_detached_immutable_state() -> typing.Any:
     spec = SymmetricMatrixFunctionSpec(2, "snapshot")
     original = np.diag([1.0, 4.0])[::-1, ::-1]
     saved = original.copy()
@@ -320,7 +327,7 @@ def test_exact_logical_budget_and_detached_immutable_state():
         state.vjp(np.full((2, 2), np.nan))
 
 
-def test_matches_existing_293_metric_response_without_runtime_loading():
+def test_matches_existing_293_metric_response_without_runtime_loading() -> typing.Any:
     from tools.vibeqc_mp2.gradient import _inverse_sqrt_metric_response
 
     for spectrum in ([0.02, 0.05, 1.0, 3.0], [1.0, 2.0, 4.0]):
@@ -332,7 +339,7 @@ def test_matches_existing_293_metric_response_without_runtime_loading():
         np.testing.assert_allclose(result.vjp(bar), oracle, atol=2e-14, rtol=3e-13)
 
 
-def test_composes_with_generated_objective_vjp():
+def test_composes_with_generated_objective_vjp() -> typing.Any:
     """An ordinary #151 reverse graph supplies the custom matrix-function seed."""
     from vibeqc_compiler.tensor import (
         Index,
@@ -368,7 +375,7 @@ def test_composes_with_generated_objective_vjp():
     )
 
 
-def test_response_graph_can_be_planned_for_cuda_without_a_device():
+def test_response_graph_can_be_planned_for_cuda_without_a_device() -> typing.Any:
     from vibeqc_compiler.integral.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
@@ -379,7 +386,7 @@ def test_response_graph_can_be_planned_for_cuda_without_a_device():
     # Planning is not GPU execution or a native eigensolver capability claim.
 
 
-def _reference_pseudoinverse(matrix, threshold):
+def _reference_pseudoinverse(matrix: typing.Any, threshold: typing.Any) -> typing.Any:
     """Independent spectral value used only as a finite-difference oracle."""
     values, vectors = np.linalg.eigh(matrix)
     keep = values > (0 if threshold is None else threshold * values[-1])
@@ -390,7 +397,7 @@ def _reference_pseudoinverse(matrix, threshold):
     )
 
 
-def test_pseudoinverse_rule_value_vjp_and_fixed_rank_finite_difference():
+def test_pseudoinverse_rule_value_vjp_and_fixed_rank_finite_difference() -> typing.Any:
     matrix, tangent, bar = _fixture([0.02, 0.05, 1.0, 3.0])
     spec = SymmetricMatrixFunctionSpec(
         4, "df-metric-pseudoinverse", 0.1, function="pseudoinverse"
@@ -419,7 +426,7 @@ def test_pseudoinverse_rule_value_vjp_and_fixed_rank_finite_difference():
     assert spec.to_payload()["derivative_rule"] == "pseudoinverse-frechet-v1"
 
 
-def test_pseudoinverse_full_rank_closed_form():
+def test_pseudoinverse_full_rank_closed_form() -> typing.Any:
     matrix, _, bar = _fixture([1.0, 2.0, 5.0])
     state = SymmetricMatrixFunctionSpec(
         3, "full-rank-pseudoinverse", function="pseudoinverse"
@@ -435,19 +442,19 @@ def test_pseudoinverse_full_rank_closed_form():
     )
 
 
-def test_pseudoinverse_cuda_lowering_carries_custom_rule_identity():
+def test_pseudoinverse_cuda_lowering_carries_custom_rule_identity() -> typing.Any:
     source = emit_pseudoinverse_vjp_cuda()
     assert "custom-rule: pseudoinverse-frechet-v1" in source
     assert "launch_symmetric_pseudoinverse_vjp" in source
     assert "li > cutoff" in source and "lj > cutoff" in source
 
 
-def test_nonobject_payload_is_a_type_error():
+def test_nonobject_payload_is_a_type_error() -> typing.Any:
     with pytest.raises(TypeError, match="object"):
         SymmetricMatrixFunctionSpec.from_payload([])
 
 
-def test_nonfinite_eigensystem_rejected(monkeypatch):
+def test_nonfinite_eigensystem_rejected(monkeypatch: typing.Any) -> typing.Any:
     monkeypatch.setattr(
         np.linalg, "eigh", lambda matrix: (np.array([np.nan, 1.0]), np.eye(2))
     )

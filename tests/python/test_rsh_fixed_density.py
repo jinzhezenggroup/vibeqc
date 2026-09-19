@@ -1,6 +1,7 @@
 """#167A range-separated composition and fixed-density variational gates."""
 
 import json
+import typing
 from fractions import Fraction
 from pathlib import Path
 
@@ -23,7 +24,9 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.program import build_program
 
 
-def test_cam_manifests_resolve_explicit_sr_lr_primitives_without_new_science():
+def test_cam_manifests_resolve_explicit_sr_lr_primitives_without_new_science() -> (
+    typing.Any
+):
     cam = resolve_method("CAM-B3LYP")
     camh = resolve_method("CAMH-B3LYP")
     for method, long_range in ((cam, Fraction(65, 100)), (camh, Fraction(1, 2))):
@@ -57,7 +60,9 @@ def test_cam_manifests_resolve_explicit_sr_lr_primitives_without_new_science():
         compile_fixed_density_method(cam)
 
 
-def test_cam_b3lyp_scalar_energy_and_potential_coefficients_match_pinned_oracle():
+def test_cam_b3lyp_scalar_energy_and_potential_coefficients_match_pinned_oracle() -> (
+    typing.Any
+):
     method = resolve_method("CAM-B3LYP", spin="polarized")
     spec = method.primitives[0].functional
     point = np.array([[0.3, 0.2, 0.015, 0.003, 0.01, 0.0, 0.0]]).T
@@ -91,7 +96,7 @@ def test_cam_b3lyp_scalar_energy_and_potential_coefficients_match_pinned_oracle(
     np.testing.assert_allclose(actual_u, expected_u, rtol=2e-12, atol=2e-13)
 
 
-def test_rsh_libxc_source_manifest_is_pinned():
+def test_rsh_libxc_source_manifest_is_pinned() -> typing.Any:
     root = Path(__file__).resolve().parents[2]
     source = root / "external/libxc-7.0.0"
     manifest = json.loads((source / "rsh-manifest.json").read_text())
@@ -99,7 +104,7 @@ def test_rsh_libxc_source_manifest_is_pinned():
         assert file_hash(source / name) == item["sha256"]
 
 
-def _cam_spec(identifier, omega):
+def _cam_spec(identifier: typing.Any, omega: typing.Any) -> typing.Any:
     return MethodSpec(
         identifier,
         (
@@ -114,7 +119,9 @@ def _cam_spec(identifier, omega):
     )
 
 
-def test_cam_range_parameter_changes_semilocal_and_operator_identity_and_rejects_stale_k():
+def test_cam_range_parameter_changes_semilocal_and_operator_identity_and_rejects_stale_k() -> (
+    typing.Any
+):
     low = resolve_method(_cam_spec("CAM-test-low", Fraction(1, 5)))
     high = resolve_method(_cam_spec("CAM-test-high", Fraction(2, 5)))
     assert low.identity != high.identity
@@ -137,7 +144,9 @@ def test_cam_range_parameter_changes_semilocal_and_operator_identity_and_rejects
         assemble_fixed_density_exchange(high, density, stale)
 
 
-def test_cam_polarized_zero_spin_limit_recovers_unpolarized_scalar_energy():
+def test_cam_polarized_zero_spin_limit_recovers_unpolarized_scalar_energy() -> (
+    typing.Any
+):
     rho, sigma = 0.6, 0.024
     restricted = resolve_method("CAM-B3LYP").primitives[0].functional
     polarized = resolve_method("CAM-B3LYP", spin="polarized").primitives[0].functional
@@ -150,7 +159,7 @@ def test_cam_polarized_zero_spin_limit_recovers_unpolarized_scalar_energy():
     np.testing.assert_allclose(e_u, e_r, rtol=2e-13, atol=2e-14)
 
 
-def _range_moments(omega):
+def _range_moments(omega: typing.Any) -> typing.Any:
     argument, rho = 0.41, 0.73
     full = reference_moments(0, argument, rho, CoulombKernel())[0]
     short = reference_moments(0, argument, rho, CoulombKernel("short_range", omega))[0]
@@ -159,12 +168,14 @@ def _range_moments(omega):
     return short, long
 
 
-def test_restricted_fixed_density_exchange_uses_166_sr_lr_operator_values():
+def test_restricted_fixed_density_exchange_uses_166_sr_lr_operator_values() -> (
+    typing.Any
+):
     method = resolve_method("CAM-B3LYP")
     omega = Fraction(33, 100)
     short, long = _range_moments(float(omega))
 
-    def evaluate(d):
+    def evaluate(d: typing.Any) -> typing.Any:
         density = np.array([[d]])
         raw = {
             ("short-range", omega): density * short,
@@ -182,7 +193,9 @@ def test_restricted_fixed_density_exchange_uses_166_sr_lr_operator_values():
     np.testing.assert_allclose(derivative, expected_v, rtol=3e-11)
 
 
-def test_unrestricted_fixed_density_exchange_has_same_variational_coefficient():
+def test_unrestricted_fixed_density_exchange_has_same_variational_coefficient() -> (
+    typing.Any
+):
     method = resolve_method("CAM-B3LYP", spin="polarized")
     omega = Fraction(33, 100)
     short, long = _range_moments(float(omega))

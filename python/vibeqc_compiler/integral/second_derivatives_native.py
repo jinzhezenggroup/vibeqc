@@ -5,6 +5,8 @@ native owner is the established weighted-integral Plan with a coordinate-tile
 result policy; this module adds no allocator, stream or compilation cache.
 """
 
+import typing
+
 from vibeqc_compiler.common.provenance import canonical_hash
 
 from .cuda import CudaEmitter
@@ -15,7 +17,12 @@ from .second_derivatives import SecondDerivativeKernel, require_second_consumer
 SECOND_RECORD_TAG = 0x32445648
 
 
-def second_program_identity(integral, component_indices, output_indices, backend):
+def second_program_identity(
+    integral: typing.Any,
+    component_indices: typing.Any,
+    output_indices: typing.Any,
+    backend: typing.Any,
+) -> typing.Any:
     """Bind immutable operator, derivative, subset and coordinate-output semantics."""
     if backend not in ("cpu", "cuda"):
         raise ValueError("second derivative native backend must be cpu or cuda")
@@ -30,7 +37,9 @@ def second_program_identity(integral, component_indices, output_indices, backend
     )
 
 
-def emit_second_derivative_primitive(kernel: SecondDerivativeKernel, *, backend="cuda"):
+def emit_second_derivative_primitive(
+    kernel: SecondDerivativeKernel, *, backend: typing.Any = "cuda"
+) -> typing.Any:
     """Emit one to twelve output coordinates using the common scalar C emitter.
 
     The callable takes primitive exponents, mathematical-center xyz positions,
@@ -166,7 +175,9 @@ def emit_second_derivative_primitive(kernel: SecondDerivativeKernel, *, backend=
     return "\n".join(lines) + "\n"
 
 
-def emit_second_derivative_runtime(kernel, *, backend="cuda"):
+def emit_second_derivative_runtime(
+    kernel: typing.Any, *, backend: typing.Any = "cuda"
+) -> typing.Any:
     """Bind a tagged packed primitive record to shared CPU/CUDA Plan storage.
 
     Records retain the existing primitive prefix for common finite/center/tile

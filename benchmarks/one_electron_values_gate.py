@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from contextlib import ExitStack
 from dataclasses import asdict
 from pathlib import Path
@@ -28,7 +29,7 @@ from tools.vibeqc_validation.performance import assess_comparison, measure_inter
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def main():
+def main() -> typing.Any:
     """Keep exact inputs, every SCF residual/iteration count and raw A/B samples."""
     cases = benchmark_cases()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -144,16 +145,16 @@ def main():
     cudart = ctypes.CDLL("libcudart.so.12")
     cudart.cudaDeviceSynchronize.restype = ctypes.c_int
 
-    def synchronize():
+    def synchronize() -> typing.Any:
         if cudart.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 
-    def select(selection):
+    def select(selection: typing.Any) -> typing.Any:
         os.environ[selection_variable] = (
             "generated" if selection == "candidate" else "reference"
         )
 
-    def prepare():
+    def prepare() -> typing.Any:
         resource_budget = (
             ResourceBudget(host_bytes=2 << 30, device_bytes=16 << 30)
             if args.observe_resources
@@ -167,7 +168,7 @@ def main():
             inactive_eigensolver_profiling=not (args.fitted or args.observe_resources),
         )
 
-    def diagnostics(result, batch):
+    def diagnostics(result: typing.Any, batch: typing.Any) -> typing.Any:
         return {
             "energies": result.energies.tolist(),
             "forces": [item.forces.tolist() for item in result.items],
@@ -189,7 +190,7 @@ def main():
 
     samples = []
 
-    def cold(selection):
+    def cold(selection: typing.Any) -> typing.Any:
         with prepare() as batch:
             return diagnostics(batch.execute(strict=True), batch)
 
@@ -218,7 +219,12 @@ def main():
         for workload in ("unchanged-geometry", "changed-geometry"):
             counts = {side: 0 for side in batches}
 
-            def replay(side, *, counts=counts, workload=workload):
+            def replay(
+                side: typing.Any,
+                *,
+                counts: typing.Any = counts,
+                workload: typing.Any = workload,
+            ) -> typing.Any:
                 counts[side] += 1
                 positions = base_positions
                 if workload == "changed-geometry":

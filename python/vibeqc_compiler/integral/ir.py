@@ -8,6 +8,7 @@ the backend schedule IR.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from enum import Enum
 from math import isfinite
@@ -186,7 +187,7 @@ class EcpRadialTerm:
     exponent: float
     coefficient: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> typing.Any:
         if (
             type(self.channel) is not int
             or not -1 <= self.channel <= ECP_MAX_PROJECTOR_ANGULAR
@@ -210,7 +211,7 @@ class EcpCenter:
     center: int
     terms: tuple[EcpRadialTerm, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> typing.Any:
         checked_index(self.center, "ECP center")
         object.__setattr__(self, "terms", tuple(self.terms))
         if not self.terms or any(not isinstance(t, EcpRadialTerm) for t in self.terms):

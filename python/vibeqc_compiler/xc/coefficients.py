@@ -6,6 +6,7 @@ Directional differentiation of those same roots generates response coefficients
 including both the feature Hessian and the changing sigma Jacobian.
 """
 
+import typing
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -30,7 +31,14 @@ class CoefficientProgram:
     before: dict
     after: dict
 
-    def bind(self, gradient, v, *, delta_gradient=None, delta_v=None):
+    def bind(
+        self,
+        gradient: typing.Any,
+        v: typing.Any,
+        *,
+        delta_gradient: typing.Any = None,
+        delta_v: typing.Any = None,
+    ) -> typing.Any:
         """Bind the same validated point ABI for diagnostic and native execution."""
         v = immutable(v)
         size = 7 if self.spin == "polarized" else 3
@@ -38,7 +46,7 @@ class CoefficientProgram:
             raise ValueError("invalid XC feature gradient")
         spins, npoint = (2 if self.spin == "polarized" else 1), v.shape[1]
 
-        def bind_gradient(values, prefix):
+        def bind_gradient(values: typing.Any, prefix: typing.Any) -> typing.Any:
             if self.family == "lda":
                 return {}
             values = immutable(values)
@@ -62,7 +70,7 @@ class CoefficientProgram:
             raise ValueError("direction inputs require a response coefficient program")
         return variables, npoint
 
-    def unpack(self, values, npoint):
+    def unpack(self, values: typing.Any, npoint: typing.Any) -> typing.Any:
         """Map generated coefficient roots to their compact bilinear labels."""
         spins = 2 if self.spin == "polarized" else 1
         result = {"rho": np.zeros((spins, npoint))}
@@ -78,7 +86,14 @@ class CoefficientProgram:
                 result[kind][spin, :, axis] = value
         return {key: immutable(value) for key, value in result.items()}
 
-    def evaluate(self, gradient, v, *, delta_gradient=None, delta_v=None):
+    def evaluate(
+        self,
+        gradient: typing.Any,
+        v: typing.Any,
+        *,
+        delta_gradient: typing.Any = None,
+        delta_v: typing.Any = None,
+    ) -> typing.Any:
         """Interpret diagnostic point coefficients with no AO-pair expansion."""
         variables, npoint = self.bind(
             gradient, v, delta_gradient=delta_gradient, delta_v=delta_v
@@ -89,7 +104,13 @@ class CoefficientProgram:
 
 
 @lru_cache(maxsize=16)
-def coefficient_program(spin, family="gga", *, kinetic=False, response=False):
+def coefficient_program(
+    spin: typing.Any,
+    family: typing.Any = "gga",
+    *,
+    kinetic: typing.Any = False,
+    response: typing.Any = False,
+) -> typing.Any:
     """Derive and factor the ingredient pullback using the shared scalar AD.
 
     ``kinetic=True`` preserves the original generic coefficient helper's tau-half
@@ -163,7 +184,7 @@ class AOJetPullbackProgram:
     before: dict
     after: dict
 
-    def bind(self, coefficients, work):
+    def bind(self, coefficients: typing.Any, work: typing.Any) -> typing.Any:
         """Bind D-contracted AO jets and already weighted point coefficients.
 
         Differentiating both AO legs before binding x/y to the same symmetric
@@ -191,7 +212,7 @@ class AOJetPullbackProgram:
             values[f"x{j}"] = values[f"y{j}"] = work[j].reshape(-1)
         return values, shape
 
-    def unpack(self, values, shape):
+    def unpack(self, values: typing.Any, shape: typing.Any) -> typing.Any:
         return immutable(
             np.stack(
                 [
@@ -201,13 +222,13 @@ class AOJetPullbackProgram:
             )
         )
 
-    def evaluate(self, coefficients, work):
+    def evaluate(self, coefficients: typing.Any, work: typing.Any) -> typing.Any:
         values, shape = self.bind(coefficients, work)
         return self.unpack(evaluate_array_graph(self.graph, self.roots, values), shape)
 
 
 @lru_cache(maxsize=2)
-def jet_pullback_program(family):
+def jet_pullback_program(family: typing.Any) -> typing.Any:
     """Generate AO-jet adjoints from the same compact potential bilinears.
 
     The full symmetric-D trace contains rho*x0*y0 and, for GGA, each

@@ -15,6 +15,8 @@ would halve both contributions -- an error that is small enough to look like
 ordinary numerical disagreement rather than a mistake.
 """
 
+import typing
+
 import numpy as np
 
 __all__ = [
@@ -24,7 +26,7 @@ __all__ = [
 ]
 
 
-def _validated(matrix, *, name: str):
+def _validated(matrix: typing.Any, *, name: str) -> typing.Any:
     """Return ``matrix`` as a finite square float64 array, or raise."""
     values = np.asarray(matrix, dtype=np.float64)
     if values.ndim != 2 or values.shape[0] != values.shape[1]:
@@ -34,7 +36,7 @@ def _validated(matrix, *, name: str):
     return values
 
 
-def two_electron_weight(density):
+def two_electron_weight(density: typing.Any) -> typing.Any:
     """Return ``W_μνλσ = ½ P_μν P_λσ − ¼ P_μλ P_νσ``.
 
     This is the weight the #178 ``weighted_hessian`` consumer expects for the
@@ -51,7 +53,7 @@ def two_electron_weight(density):
     return 0.5 * coulomb - 0.25 * exchange
 
 
-def weight_energy(weight, eri):
+def weight_energy(weight: typing.Any, eri: typing.Any) -> typing.Any:
     """Contract an integral weight against chemist-notation ERIs ``(μν|λσ)``.
 
     This is the shape the #178 weighted consumer performs internally:
@@ -67,7 +69,7 @@ def weight_energy(weight, eri):
     return float(np.einsum("uvls,uvls->", weight, eri))
 
 
-def two_electron_energy(density, eri):
+def two_electron_energy(density: typing.Any, eri: typing.Any) -> typing.Any:
     """Return ``½ Tr[P G(P)]`` straight from its definition.
 
     Computed independently of :func:`two_electron_weight` -- it builds ``G``

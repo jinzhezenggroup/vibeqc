@@ -59,10 +59,10 @@ supported. No hidden pair compression or symmetry weight is applied.
 For a complete 2-AO/2-MO tensor the transformation is
 
 ```python
-one = np.einsum('uvwx,up->pvwx', ao, C, optimize=False)
-two = np.einsum('pvwx,vq->pqwx', one, C, optimize=False)
-three = np.einsum('pqwx,wr->pqrx', two, C, optimize=False)
-mo = np.einsum('pqrx,xs->pqrs', three, C, optimize=False)
+one = np.einsum("uvwx,up->pvwx", ao, C, optimize=False)
+two = np.einsum("pvwx,vq->pqwx", one, C, optimize=False)
+three = np.einsum("pqwx,wr->pqrx", two, C, optimize=False)
+mo = np.einsum("pqrx,xs->pqrs", three, C, optimize=False)
 ```
 
 `test_complete_tiny_transform_explicit_eight_loops` independently checks every
