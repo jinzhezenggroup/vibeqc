@@ -163,6 +163,16 @@ def test_cpu_autotune_numerical_gate_timing_and_parallel_evidence(compiler, tmp_
     assert all(row["numerical"]["passed"] for row in ready)
     assert all(row["compiled_resources"]["artifact_keys"] for row in ready)
     assert all(row["compiled_resources"]["cold_load_seconds"] >= 0 for row in ready)
+    for row in ready:
+        static = row["static_resources"]
+        actual_bytes = row["compiled_resources"]["numeric_storage_bytes"]
+        assert static["schema"] == "vibeqc.cpu.static-cost.v2"
+        assert actual_bytes == static["estimated_numeric_storage_bytes"]
+        assert actual_bytes <= static["estimated_runtime_working_set_bytes"]
+        assert (
+            static["estimated_runtime_working_set_bytes"]
+            <= limits.maximum_working_set_bytes
+        )
     if len(targets) > 1:
         nonbaseline = [
             row for row in ready if row["candidate"]["target"]["name"] != "generic"
@@ -222,4 +232,44 @@ def test_cpu_autotune_rejects_numerically_wrong_reference(compiler, tmp_path):
                 parallel_tasks=2,
                 parallel_workers=(1,),
             ),
+        )
+
+
+def test_cpu_static_cost_accounts_for_record_storage():
+    """The complete consumer owns its AoS record buffer, not only SIMD lanes."""
+    ir = build_weighted_eri_ir((1, 0, 0, 0))
+    schedule = cpu_tune_candidates(ir, targets=(GENERIC_CPU_TARGET,))[0]
+    small = cpu_static_cost(ir, schedule, record_count=5)
+    large = cpu_static_cost(ir, schedule, record_count=4096)
+    assert (
+        large["estimated_runtime_working_set_bytes"]
+        > small["estimated_runtime_working_set_bytes"]
+    )
+    # Four exponents, twelve coordinates and one coefficient per record.
+    assert large["estimated_runtime_working_set_bytes"] >= 4096 * 17 * 8
+
+
+def test_cpu_autotune_rejects_record_budget_before_compilation(monkeypatch, tmp_path):
+    import vibeqc_compiler.integral.cpu_tune as tuning
+
+    ir = build_weighted_eri_ir((1, 0, 0, 0))
+    primitives, centers = _fixture()
+
+    def forbidden_compile(*args, **kwargs):
+        raise AssertionError("insufficient record storage reached compilation")
+
+    monkeypatch.setattr(
+        tuning, "compile_first_derivative_cpu_lane_shell", forbidden_compile
+    )
+    with pytest.raises(RuntimeError, match="scalar baseline"):
+        tune_cpu_first_derivative_shell(
+            ir,
+            None,
+            tmp_path,
+            primitives=primitives,
+            centers=centers,
+            independent_reference=np.zeros((ir.signature.component_count, 13)),
+            reference_identity="preflight-must-precede-numerical-gate",
+            targets=(GENERIC_CPU_TARGET,),
+            limits=CpuTuneLimits(maximum_candidates=1, maximum_working_set_bytes=1000),
         )

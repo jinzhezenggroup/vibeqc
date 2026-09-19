@@ -292,11 +292,20 @@ def cpu_static_cost(
     noutput = 1 + 3 * len(integral.operator.centers)
     component_count = integral.signature.component_count
     vector_live_bytes = maxima["peak_live_values"] * lanes * 8
-    runtime_working_set = (
-        lanes * (ninput + 1 + noutput) * 8
-        + component_count * noutput * 8
-        + vector_live_bytes
+    # Match the complete-shell evaluator's conservative numeric reservation,
+    # including the AoS record buffer and both shell/tile result storage. The
+    # lane-only estimate omitted these owned arrays and admitted undersized
+    # caller budgets. Keep record capacity identical between planning/execution.
+    record_capacity = max(128, record_count)
+    tile_output_values = max(len(tile) for tile in tiles) * noutput
+    native_stack_values = lanes * (ninput + 1 + noutput) + tile_output_values
+    numeric_storage_bytes = 8 * (
+        record_capacity * (ninput + 1)
+        + 4 * tile_output_values
+        + native_stack_values
+        + component_count * noutput
     )
+    runtime_working_set = numeric_storage_bytes + vector_live_bytes
     logical_traffic = (
         record_count * (ninput + 1) * 8
         + lane_tiles * lanes * (ninput + 1) * 8
@@ -310,13 +319,15 @@ def cpu_static_cost(
     source_bytes = sum(len(source.encode("utf-8")) for source in sources)
     cache = cache_info or detect_cpu_cache_info()
     return {
-        "schema": "vibeqc.cpu.static-cost.v1",
+        "schema": "vibeqc.cpu.static-cost.v2",
         "target": target.to_payload(),
         "schedule": schedule.to_payload(),
         "component_tile_size": tune_schedule.component_tile_size,
         "component_tiles": len(tiles),
         "component_count": component_count,
         "record_count": record_count,
+        "record_capacity": record_capacity,
+        "estimated_numeric_storage_bytes": numeric_storage_bytes,
         "vector_width_fp64": lanes,
         "lane_utilization": utilization,
         "tail_fraction": 1.0 - utilization,
@@ -560,12 +571,10 @@ def tune_cpu_first_derivative_shell(
         evaluator = FirstDerivativeCpuLaneShellEvaluator(
             artifact,
             record_capacity=max(128, record_count),
-            budget_bytes=max(
-                limits.maximum_working_set_bytes,
-                8 << 20,
-            ),
+            budget_bytes=limits.maximum_working_set_bytes,
         )
         compiled_resources["cold_load_seconds"] = time.perf_counter() - load_start
+        compiled_resources["numeric_storage_bytes"] = evaluator.numeric_bytes
         actual = evaluator.contract(primitives, centers)
         error = float(np.max(np.abs(actual - reference)))
         numerical = {

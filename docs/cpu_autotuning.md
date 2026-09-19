@@ -32,9 +32,17 @@ Every candidate records a labeled static resource payload before compilation:
 - arithmetic/materialization/rematerialization/FMA counts;
 - generated source bytes;
 - estimated AoS-to-SoA traffic and total logical load/store bytes;
-- estimated bounded runtime working-set bytes;
+- estimated bounded runtime working-set bytes, including the actual AoS record
+  capacity, full-shell/tile result buffers, native lane scratch and live values;
 - detected L1-data/L2 sizes when the operating system exposes them, plus
   working-set fit booleans.
+
+The `vibeqc.cpu.static-cost.v2` record includes complete-consumer numeric
+storage; the evaluator's numeric reservation is also recorded after loading.
+`maximum_working_set_bytes` is enforced without silently increasing it. The
+bound is per concurrent endpoint, not the aggregate tuning process: compiler
+metadata, loaded code, allocator overhead, and additional parallel workers are
+not covered by this per-endpoint estimate.
 
 These are estimates, not measured register counts. The portable C++ path does
 not expose a stable compiler register/spill report, so the manifest explicitly
@@ -107,8 +115,13 @@ Representative static/compiled rows:
 | AVX2 pressure-remat | 4 | 29 | 28,772 B | 2,200 B | 0.659 s | 0.00089 s |
 | AVX2 explicit FMA | 4 | 29 | 25,403 B | 2,200 B | 0.658 s | 0.00087 s |
 
-The host exposed 32 KiB L1-data and 512 KiB L2 caches; all of these bounded
-working sets fit both cache-size estimates.
+The retained v1 manifest/table reports a historical lane-only working-set
+estimate; it omitted the evaluator's AoS record buffer and result reservations.
+It must not be used as complete-consumer memory-admission evidence. With the
+same 192-record capacity, the corrected v2 estimate is 28,456 B for the generic
+row and 29,872 B for these AVX2 rows. Those recalculated estimates still fit the
+host's 32 KiB L1-data and 512 KiB L2 caches. This corrects resource accounting;
+it does not replace or claim to rerun the retained timing measurements.
 
 The complete-consumer result is intentionally different from the isolated
 #469 microkernel result. #469 measured about 1.90x raw AVX2 speedup on an FDPS
