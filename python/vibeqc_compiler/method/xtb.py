@@ -320,6 +320,7 @@ class XtbMethodIR:
             )
         if not isinstance(self.parameter_set, XtbParameterSet):
             raise TypeError("XtbMethodIR requires an XtbParameterSet")
+        _validate_gfn2_parameter_set(self.parameter_set)
         if self.reference not in _REFERENCES:
             raise UnsupportedXtbMethod(f"unsupported xTB reference {self.reference!r}")
         object.__setattr__(
