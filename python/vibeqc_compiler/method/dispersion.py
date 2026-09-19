@@ -1,4 +1,4 @@
-"""Explicit D3(BJ) composition semantics; no public runtime capability (#492)."""
+"""Explicit two-body D3(BJ) composition and production correction semantics."""
 
 import math
 import re
@@ -6,6 +6,10 @@ from dataclasses import asdict, dataclass
 from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
+
+D3_TABLE_SHA256 = "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e"
+D3_RADII_SHA256 = "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+
 
 
 @dataclass(frozen=True)
@@ -98,3 +102,27 @@ class DispersionCorrectionPrimitive:
 
     def to_payload(self):
         return self.semantic_payload()
+
+def pbe_d3_bj_spec():
+    """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
+    return D3Spec(
+        s6=1.0,
+        s8=0.7875,
+        a1=0.4289,
+        a2=4.4407,
+        table_sha256=D3_TABLE_SHA256,
+        radii_sha256=D3_RADII_SHA256,
+    )
+
+
+def pbe0_d3_bj_spec():
+    """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
+    return D3Spec(
+        s6=1.0,
+        s8=1.2177,
+        a1=0.4145,
+        a2=4.8593,
+        table_sha256=D3_TABLE_SHA256,
+        radii_sha256=D3_RADII_SHA256,
+    )
+

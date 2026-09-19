@@ -17,7 +17,12 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
-from .dispersion import D3Spec, DispersionCorrectionPrimitive
+from .dispersion import (
+    D3Spec,
+    DispersionCorrectionPrimitive,
+    pbe0_d3_bj_spec,
+    pbe_d3_bj_spec,
+)
 
 METHOD_IR_VERSION = "dft-method-ir-v1"
 METHOD_CATALOG_VERSION = "dft-method-catalog-v1"
@@ -313,6 +318,17 @@ METHOD_CATALOG = MappingProxyType(
             "PBE0",
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
+        ),
+        "PBE-D3(BJ)": MethodSpec(
+            "PBE-D3(BJ)",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            dispersion=pbe_d3_bj_spec(),
+        ),
+        "PBE0-D3(BJ)": MethodSpec(
+            "PBE0-D3(BJ)",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+            dispersion=pbe0_d3_bj_spec(),
         ),
     }
 )
