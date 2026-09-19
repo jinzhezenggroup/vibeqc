@@ -50,7 +50,7 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
     if (packed_begin >= work_count) return;
     const std::uint32_t packed_item = packed_begin + lane;
     if (packed_item < work_count) {
-      contract_two_electron_force_ssss_task<Unrestricted>(
+      contract_two_electron_force_ssss_fallback_task<Unrestricted>(
           batch, active_shell_quartet_tiles[packed_item], screening_tolerance, schwarz_bounds,
           density, active, forces, generated_shell_class_mask);
     }

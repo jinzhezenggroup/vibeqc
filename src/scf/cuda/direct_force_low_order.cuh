@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_native_gradient_types.cuh"
@@ -23,37 +24,34 @@
 
 namespace vibeqc::scf::cuda_execution {
 
-/** Evaluate and write one complete density-weighted ssss force shell task. */
+/**
+ * Portable/unprofiled ssss fallback using the shared order-zero gradient.
+ *
+ * The measured sm_120 production path is compiler-generated. Keep only this
+ * schedule-level fallback for targets without an accepted AOT profile; the
+ * former cache-specialized handwritten ssss derivative formula is retired.
+ */
 template <bool Unrestricted>
-__device__ __forceinline__ void contract_two_electron_force_ssss_task(
+__device__ __forceinline__ void contract_two_electron_force_ssss_fallback_task(
     const DeviceBatch& batch, ActiveShellQuartetTile task, double screening_tolerance,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
     std::uint64_t generated_shell_class_mask) {
-  // Every s shell contains one Cartesian AO, so a valid ssss shell quartet
-  // occupies exactly the first compact tile and needs no AO-pair decoding.
   if (task.tile != 0U) return;
-  if ((generated_shell_class_mask & std::uint64_t{1}) != 0U) return;
+  if ((generated_shell_class_mask & (std::uint64_t{1} << kSsssShellClass)) != 0U) return;
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
   const std::int32_t system = batch.shell_pair_systems[first_pair];
   if (active[system] == 0) return;
 
   const std::int32_t shells[4] = {
-      batch.shell_pair_first[first_pair],
-      batch.shell_pair_second[first_pair],
-      batch.shell_pair_first[second_pair],
-      batch.shell_pair_second[second_pair],
-  };
+      batch.shell_pair_first[first_pair], batch.shell_pair_second[first_pair],
+      batch.shell_pair_first[second_pair], batch.shell_pair_second[second_pair]};
   for (unsigned slot = 0; slot < 4; ++slot) {
     if (batch.shell_angular[shells[slot]] != 0U) return;
   }
 
-  const std::int32_t center_atoms[4] = {
-      batch.shell_atoms[shells[0]],
-      batch.shell_atoms[shells[1]],
-      batch.shell_atoms[shells[2]],
-      batch.shell_atoms[shells[3]],
-  };
+  const std::int32_t center_atoms[4] = {batch.shell_atoms[shells[0]], batch.shell_atoms[shells[1]],
+                                        batch.shell_atoms[shells[2]], batch.shell_atoms[shells[3]]};
   std::int32_t unique_center_atoms[4];
   unsigned unique_center_count = 0;
   for (unsigned center = 0; center < 4; ++center) {
@@ -61,9 +59,7 @@ __device__ __forceinline__ void contract_two_electron_force_ssss_task(
     for (unsigned previous = 0; previous < unique_center_count; ++previous) {
       duplicate_center = duplicate_center || center_atoms[center] == unique_center_atoms[previous];
     }
-    if (!duplicate_center) {
-      unique_center_atoms[unique_center_count++] = center_atoms[center];
-    }
+    if (!duplicate_center) unique_center_atoms[unique_center_count++] = center_atoms[center];
   }
   if (unique_center_count == 1) return;
 
@@ -76,44 +72,31 @@ __device__ __forceinline__ void contract_two_electron_force_ssss_task(
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[0]]) - system_ao_begin,
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[1]]) - system_ao_begin,
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[2]]) - system_ao_begin,
-      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[3]]) - system_ao_begin,
-  };
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[3]]) - system_ao_begin};
   if (schwarz_bounds[physical_offset + matrix_index(ao[0], ao[1], n)] *
           schwarz_bounds[physical_offset + matrix_index(ao[2], ao[3], n)] <
       screening_tolerance) {
     return;
   }
-  const double density_coefficient = direct_force_density_coefficient<Unrestricted>(
+  const double coefficient = direct_force_density_coefficient<Unrestricted>(
       n, physical_offset, spin_offset, density, ao[0], ao[1], ao[2], ao[3]);
-  if (density_coefficient == 0.0) return;
-  const double component_weight = density_coefficient *
-                                  batch.direct_ao_coefficients[system_ao_begin + ao[0]] *
-                                  batch.direct_ao_coefficients[system_ao_begin + ao[1]] *
-                                  batch.direct_ao_coefficients[system_ao_begin + ao[2]] *
-                                  batch.direct_ao_coefficients[system_ao_begin + ao[3]];
-  const SsssWeightedGradient gradient = contracted_eri_cartesian_source_ssss_weighted_gradient(
-      batch, first_pair, second_pair, shells[0], shells[1], shells[2], shells[3], component_weight);
+  if (coefficient == 0.0) return;
 
+  const CartesianQuartetGradient gradient = contracted_eri_cartesian_source_order01_gradient<0>(
+      batch, system, static_cast<std::int32_t>(ao[0]), static_cast<std::int32_t>(ao[1]),
+      static_cast<std::int32_t>(ao[2]), static_cast<std::int32_t>(ao[3]));
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
     const std::int64_t coordinate = static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
     for (unsigned axis = 0; axis < 3; ++axis) {
       double derivative = 0.0;
-      double fourth_derivative = 0.0;
-      for (unsigned center = 0; center < 3; ++center) {
-        const double value = gradient.center[center][axis];
-        fourth_derivative -= value;
+      for (unsigned center = 0; center < 4; ++center) {
         if (center_atoms[center] == unique_center_atoms[atom]) {
-          derivative += value;
+          derivative += coefficient * gradient.center[center][axis];
         }
       }
-      if (center_atoms[3] == unique_center_atoms[atom]) {
-        derivative += fourth_derivative;
-      }
       derivative_sum[axis] += derivative;
-      if (derivative != 0.0) {
-        atomicAdd(forces + coordinate + axis, -derivative);
-      }
+      if (derivative != 0.0) atomicAdd(forces + coordinate + axis, -derivative);
     }
   }
   const std::int64_t final_coordinate =

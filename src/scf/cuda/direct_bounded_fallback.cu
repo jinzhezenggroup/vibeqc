@@ -148,7 +148,7 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
         if constexpr (Force) {
           if (angular_order == 0U) {
-            contract_two_electron_force_ssss_task<Unrestricted>(
+            contract_two_electron_force_ssss_fallback_task<Unrestricted>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
           } else if (angular_order == 1U) {
             contract_two_electron_force_psss_task<Unrestricted>(
