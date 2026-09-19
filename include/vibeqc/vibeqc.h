@@ -146,6 +146,71 @@ typedef struct vibeqc_system vibeqc_system;
 typedef struct vibeqc_calculation vibeqc_calculation;
 typedef struct vibeqc_batch vibeqc_batch;
 
+typedef struct vibeqc_d3_batch vibeqc_d3_batch;
+
+typedef int32_t vibeqc_d3_damping;
+enum { VIBEQC_D3_DAMPING_BJ = 1 };
+
+/** Geometry-only D3 system. Coordinates are Bohr and copied at prepare. */
+typedef struct vibeqc_d3_system_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const int32_t* atomic_numbers;
+  const double* coordinates;
+  uint32_t atom_count;
+} vibeqc_d3_system_descriptor;
+
+/** Two-body D3(BJ) model. s9 must remain zero in the production v1 slice. */
+typedef struct vibeqc_d3_bj_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_d3_damping damping;
+  double s6;
+  double s8;
+  double a1;
+  double a2;
+  double s9;
+  double cn_cutoff;
+  double pair_cutoff;
+  double pair_switch_width;
+  uint64_t maximum_bytes;
+} vibeqc_d3_bj_descriptor;
+
+/** Optional changed geometry for one prepared D3 batch member. */
+typedef struct vibeqc_d3_batch_input_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const double* coordinates;
+  uint32_t coordinate_count;
+} vibeqc_d3_batch_input_descriptor;
+
+/** Caller-owned result buffer; gradient is dE/dR (not force). */
+typedef struct vibeqc_d3_batch_item_result_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_status status;
+  double energy;
+  double* gradient;
+  uint32_t gradient_count;
+  vibeqc_backend executed_backend;
+} vibeqc_d3_batch_item_result_descriptor;
+
+/** Bounded production owner diagnostics. */
+typedef struct vibeqc_d3_runtime_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_backend backend;
+  uint64_t plan_host_bytes;
+  uint64_t execution_host_bytes;
+  uint64_t device_bytes;
+  uint64_t table_bytes;
+  uint64_t workspace_bytes;
+  uint64_t maximum_bytes;
+  uint64_t total_atoms;
+  uint32_t system_count;
+  uint32_t maximum_atoms;
+} vibeqc_d3_runtime_diagnostic;
+
 typedef uint32_t vibeqc_batch_flags;
 enum {
   /** Retain each converged AO density for the next execution of the plan. */
@@ -980,6 +1045,37 @@ VIBEQC_API vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch,
                                               uint32_t input_count,
                                               vibeqc_batch_item_result_descriptor* results,
                                               uint32_t result_count);
+
+/** Canonical compact-table identities compiled into the D3 production owner. */
+VIBEQC_API const char* vibeqc_d3_table_sha256(void);
+VIBEQC_API const char* vibeqc_d3_radii_sha256(void);
+
+/**
+ * Prepare a standalone two-body D3(BJ) ragged fleet.
+ *
+ * The owner copies atomic numbers and prepared geometries. maximum_bytes bounds
+ * the plan plus worst-case execution staging and, on CUDA, device ownership.
+ */
+VIBEQC_API vibeqc_status vibeqc_d3_batch_prepare(
+    vibeqc_context* context, const vibeqc_d3_system_descriptor* systems,
+    uint32_t system_count, const vibeqc_d3_bj_descriptor* model,
+    vibeqc_d3_batch** batch);
+VIBEQC_API void vibeqc_d3_batch_destroy(vibeqc_d3_batch* batch);
+VIBEQC_API vibeqc_status vibeqc_d3_batch_get_diagnostic(
+    const vibeqc_d3_batch* batch, vibeqc_d3_runtime_diagnostic* diagnostic);
+
+/**
+ * Execute correction-only energy / analytic dE/dR with item failure isolation.
+ *
+ * inputs may be NULL with input_count=0. Otherwise there must be one descriptor
+ * per prepared system; coordinates=NULL,count=0 means the original prepared
+ * geometry for that member. A successful function return means the replay was
+ * structurally valid; inspect each item status for scientific failures.
+ */
+VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(
+    vibeqc_d3_batch* batch, const vibeqc_d3_batch_input_descriptor* inputs,
+    uint32_t input_count, vibeqc_d3_batch_item_result_descriptor* results,
+    uint32_t result_count);
 
 #ifdef __cplusplus
 }
