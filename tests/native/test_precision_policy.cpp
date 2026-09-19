@@ -336,6 +336,40 @@ vibeqc::scf::ScfResult run_cpu_rhf(std::optional<vibeqc_precision_mode> precisio
   return vibeqc::scf::run_rhf(system, options, nullptr);
 }
 
+void verify_one_electron_provider_policy() {
+  using vibeqc::runtime::cuda_provider_capabilities;
+  using vibeqc::runtime::CudaProviderKind;
+  using vibeqc::scf::cuda_policy::resolve_one_electron_value_policy;
+
+  const auto nvidia = cuda_provider_capabilities(CudaProviderKind::Nvidia);
+  const auto cumetal = cuda_provider_capabilities(CudaProviderKind::CuMetal);
+  {
+    ScopedEnv mapping("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", nullptr);
+    ScopedEnv configured_cumetal("CUMETAL_ROOT", "/configured-but-inactive");
+    const auto policy = resolve_one_electron_value_policy(nvidia);
+    require(policy.mapping == 1U && !policy.diagnostic_override && !policy.capability_fallback,
+            "configured-but-inactive CuMetal must not change NVIDIA auto selection");
+  }
+  {
+    ScopedEnv mapping("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", nullptr);
+    const auto policy = resolve_one_electron_value_policy(cumetal);
+    require(policy.mapping == 0U && !policy.diagnostic_override && !policy.capability_fallback,
+            "CuMetal without shell-warp capability must select the safe pair-thread default");
+  }
+  {
+    ScopedEnv mapping("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp");
+    const auto policy = resolve_one_electron_value_policy(cumetal);
+    require(policy.mapping == 0U && policy.diagnostic_override && policy.capability_fallback,
+            "unsupported CuMetal shell-warp override must fall back safely and visibly");
+  }
+  {
+    ScopedEnv mapping("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread");
+    const auto policy = resolve_one_electron_value_policy(nvidia);
+    require(policy.mapping == 0U && policy.diagnostic_override && !policy.capability_fallback,
+            "explicit pair-thread diagnostic override must remain deterministic");
+  }
+}
+
 void verify_cpu_provenance() {
   const vibeqc::scf::ScfResult fp64 =
       run_cpu_rhf(std::optional<vibeqc_precision_mode>(VIBEQC_PRECISION_FP64));
@@ -379,6 +413,7 @@ int main() {
     verify_auto_with_legacy_override();
     verify_nullopt_legacy_parity();
     verify_converged_fock_reuse_rms();
+    verify_one_electron_provider_policy();
     verify_cpu_provenance();
     std::cout << "validated precision policy controller and CPU provenance\n";
     return EXIT_SUCCESS;

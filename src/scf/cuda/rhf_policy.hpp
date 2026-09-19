@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "runtime/cuda_provider.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::scf::cuda_policy {
@@ -127,7 +128,18 @@ bool ppps_signature_bucketing_requested() noexcept;
 bool psps_signature_bucketing_requested() noexcept;
 bool ppss_signature_bucketing_requested() noexcept;
 unsigned ppps_resident_block_threads_requested() noexcept;
-/** 0: one AO pair per thread; 1: one shell pair per warp. */
+struct OneElectronValuePolicy {
+  /** 0: one AO pair per thread; 1: one shell pair per warp. */
+  unsigned mapping{};
+  /** An explicit diagnostic selector was supplied. */
+  bool diagnostic_override{};
+  /** The selector requested a schedule the active provider does not advertise. */
+  bool capability_fallback{};
+};
+/** Resolve one-electron scheduling from an explicit provider capability contract. */
+OneElectronValuePolicy resolve_one_electron_value_policy(
+    const runtime::CudaProviderCapabilities& provider) noexcept;
+/** Mapping selected for the active configured CUDA provider. */
 unsigned one_electron_value_mapping_requested() noexcept;
 /** Generated derivatives default; reference/none/0 selects the retained native exception. */
 bool generated_one_electron_derivatives_requested() noexcept;

@@ -1,5 +1,7 @@
 """Keep method/backend ownership out of reusable CPU SCF reference interfaces."""
 
+from pathlib import Path
+
 import pytest
 
 from tools.check_scf_structure import audit_scf_structure
@@ -9,6 +11,20 @@ def test_current_shared_scf_dependencies_are_valid():
     report = audit_scf_structure()
     assert not report["errors"]
     assert report["modules"]
+
+
+def test_one_electron_mapping_uses_explicit_cuda_provider_capability():
+    root = Path(__file__).resolve().parents[2]
+    policy = (root / "src/scf/cuda/rhf_policy.cpp").read_text(encoding="utf-8")
+    provider = (root / "src/runtime/cuda_provider.hpp").read_text(encoding="utf-8")
+    cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
+    workflow = (root / ".github/workflows/cumetal-cuda.yml").read_text(encoding="utf-8")
+
+    assert "CUMETAL_ROOT" not in policy
+    assert "active_cuda_provider()" in policy
+    assert "templated_shell_warp_one_electron" in provider
+    assert 'VIBEQC_CUDA_PROVIDER "nvidia"' in cmake
+    assert "-DVIBEQC_CUDA_PROVIDER=cumetal" in workflow
 
 
 def test_component_trace_cannot_depend_on_scf_provider(tmp_path):
