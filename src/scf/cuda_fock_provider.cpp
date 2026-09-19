@@ -87,12 +87,10 @@ DirectJkMatrices CudaFockProviderView::build(FockBuildSpec spec, const std::vect
   DirectJkMatrices out;
   out.nbf = nbf();
   if (seminumerical_exchange_) {
-    require(!spec.coulomb.present && spec.exchange.present,
-            "COSX Fock provider is exchange-only");
+    require(!spec.coulomb.present && spec.exchange.present, "COSX Fock provider is exchange-only");
     const bool spin_resolved = spec.spin == FockSpin::Unrestricted;
     out.exchange_alpha = seminumerical_exchange_->build_exchange(density, spin_resolved);
-    if (spin_resolved)
-      out.exchange_beta = seminumerical_exchange_->build_exchange(beta, true);
+    if (spin_resolved) out.exchange_beta = seminumerical_exchange_->build_exchange(beta, true);
     return out;
   }
   std::string detail;

@@ -56,8 +56,7 @@ std::size_t cosx_scratch_bytes(const AoBasis& basis, std::size_t tile_points) {
   const std::size_t matrix = mul(basis.nao, basis.nao);
   const std::size_t doubles =
       add(add(add(matrix, mul(tile_points, matrix)), tile_points),
-          add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)),
-              add(matrix, matrix)));
+          add(add(mul(tile_points, basis.nao), mul(tile_points, basis.nao)), add(matrix, matrix)));
   return add(mul(doubles, sizeof(double)), sizeof(int));
 }
 

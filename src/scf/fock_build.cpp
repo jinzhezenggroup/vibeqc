@@ -263,8 +263,7 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
       (spec.coulomb.present && spec.coulomb.approximation == FockApproximation::DensityFitted) ||
       (spec.exchange.present && spec.exchange.approximation == FockApproximation::DensityFitted);
   const bool cosx =
-      spec.exchange.present &&
-      spec.exchange.approximation == FockApproximation::SeminumericalCosx;
+      spec.exchange.present && spec.exchange.approximation == FockApproximation::SeminumericalCosx;
   if (cosx) require(cosx_tile_points > 0, "COSX execution tile must be positive");
   if (fitted) {
     require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
@@ -294,8 +293,7 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
 void validate_resolved_fock_build(const ResolvedFockBuild& strategy) {
   require(
       strategy == resolve_fock_build(strategy.spec, strategy.backend, strategy.screening_tolerance,
-                                     strategy.metric_relative_threshold,
-                                     strategy.cosx_tile_points),
+                                     strategy.metric_relative_threshold, strategy.cosx_tile_points),
       "Fock execution state differs from its resolved mathematical request");
 }
 

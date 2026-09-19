@@ -1,9 +1,8 @@
-#include "scf/cuda_fock_provider.hpp"
-
 #include <stdexcept>
 #include <utility>
 
 #include "dft/grid.hpp"
+#include "scf/cuda_fock_provider.hpp"
 
 #if VIBEQC_HAS_CUDA
 #include "dft/cuda_cosx.hpp"
@@ -27,8 +26,8 @@ dft::GridSpec grid_spec(const FockCosxSpec& spec) {
 
 class CosxExchangeAdapter final : public CudaSeminumericalExchangeProvider {
  public:
-  CosxExchangeAdapter(const core::System& system, const FockCosxSpec& spec,
-                      std::size_t tile_points, int device, std::size_t max_device_bytes)
+  CosxExchangeAdapter(const core::System& system, const FockCosxSpec& spec, std::size_t tile_points,
+                      int device, std::size_t max_device_bytes)
       : grid_(system, grid_spec(spec)),
         plan_(system, grid_.points(), grid_.weights(), tile_points, device, max_device_bytes) {
     const auto& source = plan_.diagnostic();
@@ -50,11 +49,9 @@ class CosxExchangeAdapter final : public CudaSeminumericalExchangeProvider {
     return diagnostic_;
   }
 
-  std::vector<double> build_exchange(std::span<const double> density,
-                                     bool spin_resolved) override {
-    auto result = plan_.build(
-        density, spin_resolved ? dft::CosxDensityConvention::spin_resolved
-                               : dft::CosxDensityConvention::rhf_spin_summed);
+  std::vector<double> build_exchange(std::span<const double> density, bool spin_resolved) override {
+    auto result = plan_.build(density, spin_resolved ? dft::CosxDensityConvention::spin_resolved
+                                                     : dft::CosxDensityConvention::rhf_spin_summed);
     return std::move(result.exchange);
   }
 
@@ -67,10 +64,9 @@ class CosxExchangeAdapter final : public CudaSeminumericalExchangeProvider {
 
 }  // namespace
 
-std::unique_ptr<CudaSeminumericalExchangeProvider>
-make_cuda_seminumerical_exchange_provider(const core::System& system, const FockCosxSpec& spec,
-                                          std::size_t tile_points, int device,
-                                          std::size_t max_device_bytes) {
+std::unique_ptr<CudaSeminumericalExchangeProvider> make_cuda_seminumerical_exchange_provider(
+    const core::System& system, const FockCosxSpec& spec, std::size_t tile_points, int device,
+    std::size_t max_device_bytes) {
 #if VIBEQC_HAS_CUDA
   return std::make_unique<CosxExchangeAdapter>(system, spec, tile_points, device, max_device_bytes);
 #else

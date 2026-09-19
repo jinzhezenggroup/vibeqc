@@ -34,10 +34,9 @@ class CudaSeminumericalExchangeProvider {
 
 /** Construct the concrete COSX adapter without importing DFT implementation
  * types into the common SCF prepared-owner boundary. */
-std::unique_ptr<CudaSeminumericalExchangeProvider>
-make_cuda_seminumerical_exchange_provider(const core::System& system, const FockCosxSpec& spec,
-                                          std::size_t tile_points, int device,
-                                          std::size_t max_device_bytes);
+std::unique_ptr<CudaSeminumericalExchangeProvider> make_cuda_seminumerical_exchange_provider(
+    const core::System& system, const FockCosxSpec& spec, std::size_t tile_points, int device,
+    std::size_t max_device_bytes);
 
 /** Borrow one item in an existing direct, DF, or COSX CUDA plan. The enclosing
  * geometry cache owns every handle and immutable DF data object and must

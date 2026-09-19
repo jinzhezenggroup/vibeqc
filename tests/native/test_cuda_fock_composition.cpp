@@ -202,9 +202,8 @@ std::vector<double> symmetric_density(std::size_t n, double scale = 1.0) {
   std::vector<double> out(n * n);
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = 0; j <= i; ++j) {
-      const double value =
-          scale * (i == j ? 0.22 + 0.01 * static_cast<double>(i)
-                          : 0.025 / static_cast<double>(1 + i + j));
+      const double value = scale * (i == j ? 0.22 + 0.01 * static_cast<double>(i)
+                                           : 0.025 / static_cast<double>(1 + i + j));
       out[i * n + j] = out[j * n + i] = value;
     }
   return out;
@@ -232,8 +231,8 @@ void cosx_provider_composition() {
   matrix(actual.coulomb, expected_j.coulomb, "direct-J/COSX-K Coulomb");
 
   const dft::MolecularGrid grid(system, grid_spec(spec.exchange.cosx));
-  const auto expected_k = dft::build_cosx_reference(
-      system, grid.points(), grid.weights(), density, dft::CosxDensityConvention::rhf_spin_summed);
+  const auto expected_k = dft::build_cosx_reference(system, grid.points(), grid.weights(), density,
+                                                    dft::CosxDensityConvention::rhf_spin_summed);
   matrix(actual.exchange_alpha, expected_k.exchange, "direct-J/COSX-K exchange");
   require(actual.exchange_beta.empty(), "restricted COSX returned beta exchange");
 
@@ -279,10 +278,10 @@ void cosx_provider_composition() {
   const auto uj_strategy = resolve_fock_build(uj_spec, FockBackend::Cpu, 0.0, cutoff);
   const auto uj_expected = build_exact_direct_jk(uj_strategy, n, exact.eri, alpha, beta);
   matrix(u_actual.coulomb, uj_expected.coulomb, "UHF direct-J/COSX-K Coulomb");
-  const auto ka = dft::build_cosx_reference(
-      system, grid.points(), grid.weights(), alpha, dft::CosxDensityConvention::spin_resolved);
-  const auto kb = dft::build_cosx_reference(
-      system, grid.points(), grid.weights(), beta, dft::CosxDensityConvention::spin_resolved);
+  const auto ka = dft::build_cosx_reference(system, grid.points(), grid.weights(), alpha,
+                                            dft::CosxDensityConvention::spin_resolved);
+  const auto kb = dft::build_cosx_reference(system, grid.points(), grid.weights(), beta,
+                                            dft::CosxDensityConvention::spin_resolved);
   matrix(u_actual.exchange_alpha, ka.exchange, "UHF COSX alpha K");
   matrix(u_actual.exchange_beta, kb.exchange, "UHF COSX beta K");
 

@@ -427,8 +427,8 @@ void verify_cosx_provider_semantics() {
 
   const auto resolved = resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 7);
   require(resolved.spec == spec && resolved.schedule == FockSchedule::CudaIndependent &&
-              resolved.metric_relative_threshold == 1.0e-10 &&
-              resolved.cosx_tile_points == 7 && !resolved.legacy_density_fitting,
+              resolved.metric_relative_threshold == 1.0e-10 && resolved.cosx_tile_points == 7 &&
+              !resolved.legacy_density_fitting,
           "RI-J/COSX-K semantics were not preserved by resolution");
 
   const auto& registration =
@@ -496,9 +496,8 @@ void verify_cosx_provider_semantics() {
           "COSX grid change did not invalidate the resolved mathematical identity");
   require(resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 8) != resolved,
           "COSX tile change did not invalidate resolved execution identity");
-  require_rejected(
-      [&] { (void)resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 0); },
-      "COSX accepted a zero point tile");
+  require_rejected([&] { (void)resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10, 0); },
+                   "COSX accepted a zero point tile");
 
   auto exact = make_hf_fock_spec(FockSpin::Restricted);
   exact.exchange.cosx = spec.exchange.cosx;
