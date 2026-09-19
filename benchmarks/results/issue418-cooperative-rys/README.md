@@ -135,14 +135,17 @@ establish cold/changed-geometry or stock GPU4PySCF performance, and keep #206 op
 
 ## Retention and reproduction
 
-`manifest.json` records byte/hash-verified restoration of all retained records.
-The final bundle contains 245 records, including the initial failures and skips.
-Large root audits and raw compiler records use deterministic gzip; binaries,
-routine build output and temporary generated headers remain local. Header hashes,
-source patch, compiler commands/resources, numerical failures, setup/recording
-failures, sanitizer conclusions and every timing sample are retained. The first
-ordering-sensitive root audit is preserved alongside the corrected paired-node
-audit, so ordering differences are not misreported as physical errors.
+`manifest.json` remains the byte/hash inventory of the original 245-record
+bundle, including initial failures and skips. The compact checkout keeps every
+clean timing sample, aggregate diagnostic record, endpoint analysis, source/build
+identity, sanitizer conclusion and root audit. Twenty-two intrusive diagnostic
+`*.journal.jsonl*` execution-flow files now live only in the checksum-bound
+[`retention-488`](../retention-488/README.md) Git-history snapshot. Their timings
+were never pooled into the clean medians; restore them byte-for-byte only when
+replaying low-level work/epoch traces. Large root audits and selected compiler
+records continue to use deterministic gzip. The first ordering-sensitive root
+audit remains beside the corrected paired-node audit, so ordering differences are
+not misreported as physical errors.
 
 `reproduction/` contains the actual local drivers; paths identify the Python,
 CUDA 12.9.1 and frozen CPU-oracle library used on this machine. Run every GPU

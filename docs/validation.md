@@ -322,7 +322,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
   --time=00:20:00 bash -lc \
   'VIBEQC_LIBRARY=$PWD/build/libvibeqc.so PYTHONPATH=$PWD/python:$PWD \
    python benchmarks/issue174_precision_boundaries.py \
-     --output benchmarks/results/issue174-precision-boundaries.json'
+     --output .artifacts/benchmarks/issue174-precision-boundaries.json'
 ```
 
 Each accepted diagnostic sample must use the frozen warm density, report no

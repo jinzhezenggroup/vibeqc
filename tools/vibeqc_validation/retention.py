@@ -43,6 +43,12 @@ TRANSIENT_ARCHIVE_SUFFIXES = (
     ".tar.zst",
     ".7z",
 )
+TRANSIENT_FLOW_SUFFIXES = (
+    ".progress.jsonl",
+    ".progress.jsonl.gz",
+    ".journal.jsonl",
+    ".journal.jsonl.gz",
+)
 BUILD_SUFFIXES = {".o", ".obj", ".so", ".a", ".dll", ".dylib", ".cubin", ".ptx", ".pyc"}
 CLASSES = (
     "reference",
@@ -84,6 +90,7 @@ def classify(path: str) -> str:
             "attempts" in p.parts
             or any(s.lower() in TRANSIENT_SUFFIXES for s in p.suffixes)
             or lower_path.endswith(TRANSIENT_ARCHIVE_SUFFIXES)
+            or lower_path.endswith(TRANSIENT_FLOW_SUFFIXES)
         ):
             return "transient"
         return "accepted-evidence"
@@ -228,6 +235,31 @@ def check(blobs: dict[str, bytes], policy: dict) -> list[str]:
             errors.append(f"{path}: exception requires an owner")
         if path not in blobs or digest(blobs[path]) != exception.get("sha256"):
             errors.append(f"{path}: stale exception (missing or changed bytes)")
+    review_path = policy.get("legacy_large_review_path")
+    review_threshold = policy.get("legacy_large_review_threshold_bytes")
+    if review_path is not None or review_threshold is not None:
+        if not isinstance(review_path, str) or not review_path:
+            errors.append("legacy_large_review_path must be a nonempty string")
+        elif review_path not in blobs:
+            errors.append(f"{review_path}: missing legacy large-evidence review")
+        if type(review_threshold) is not int or review_threshold <= 0:
+            errors.append(
+                "legacy_large_review_threshold_bytes must be a positive integer"
+            )
+        elif isinstance(review_path, str) and review_path in blobs:
+            try:
+                review = json.loads(blobs[review_path])
+            except (ValueError, UnicodeError, TypeError):
+                errors.append(
+                    f"{review_path}: invalid legacy large-evidence review JSON"
+                )
+            else:
+                from .retention_review import large_legacy_review_errors
+
+                errors.extend(
+                    large_legacy_review_errors(blobs, review, review_threshold)
+                )
+
     for path, data in sorted(blobs.items()):
         if len(data) > MAX_TRACKED_BYTES:
             errors.append(

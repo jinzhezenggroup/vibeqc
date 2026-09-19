@@ -144,6 +144,126 @@ def _publication_members(blobs: dict[str, bytes]) -> set[str]:
     return covered
 
 
+LEGACY_LARGE_REVIEW_SCHEMA = "vibeqc.legacy-large-evidence-review.v1"
+LEGACY_CLASSIFICATIONS = {
+    "required-compact-accepted-evidence",
+    "test-reference-input",
+}
+
+
+def _family(path: str) -> str:
+    relative = path[len(RESULT_ROOT) :]
+    return relative.split("/", 1)[0] if "/" in relative else "(root)"
+
+
+def large_legacy_review_errors(
+    blobs: dict[str, bytes], review: dict, threshold: int
+) -> list[str]:
+    """Require exact review identities for every retained large result blob.
+
+    This is a storage review, not scientific re-acceptance.  Family reasons and
+    review documents explain why large legacy bytes remain in the checkout; each
+    file hash prevents a reviewed historical record from drifting silently.
+    """
+    errors: list[str] = []
+    if review.get("schema") != LEGACY_LARGE_REVIEW_SCHEMA:
+        return ["legacy large-evidence review has unsupported schema"]
+    if type(threshold) is not int or threshold <= 0:
+        return ["legacy_large_review_threshold_bytes must be a positive integer"]
+    if review.get("threshold_bytes") != threshold:
+        errors.append("legacy large-evidence review threshold differs from policy")
+    families = review.get("families")
+    rows = review.get("files")
+    if not isinstance(families, dict) or not isinstance(rows, list):
+        return [*errors, "legacy large-evidence review requires families and files"]
+
+    for family, entry in sorted(families.items()):
+        if not isinstance(entry, dict):
+            errors.append(f"legacy review family {family!r} is not an object")
+            continue
+        for field in ("owner", "reason", "review_document"):
+            value = entry.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"legacy review family {family!r} requires {field}")
+        document = entry.get("review_document")
+        if isinstance(document, str):
+            try:
+                safe_relative(document)
+            except ValueError as error:
+                errors.append(str(error))
+            else:
+                if document not in blobs:
+                    errors.append(
+                        f"legacy review family {family!r} missing review document {document}"
+                    )
+
+    indexed: dict[str, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            errors.append("legacy large-evidence review file row is not an object")
+            continue
+        path = row.get("path")
+        try:
+            safe_relative(path)
+        except (TypeError, ValueError) as error:
+            errors.append(str(error))
+            continue
+        if not path.startswith(RESULT_ROOT):
+            errors.append(f"{path}: legacy review path is outside benchmark results")
+            continue
+        if path in indexed:
+            errors.append(f"{path}: duplicate legacy large-evidence review row")
+            continue
+        indexed[path] = row
+        expected_family = _family(path)
+        if row.get("family") != expected_family:
+            errors.append(f"{path}: legacy review family does not match path")
+        if expected_family not in families:
+            errors.append(f"{path}: legacy review family metadata is missing")
+        if row.get("classification") not in LEGACY_CLASSIFICATIONS:
+            errors.append(f"{path}: unsupported legacy evidence classification")
+        if not isinstance(row.get("role"), str) or not row["role"].strip():
+            errors.append(f"{path}: legacy review requires a file role")
+        data = blobs.get(path)
+        if data is None:
+            errors.append(f"{path}: reviewed large evidence is missing")
+            continue
+        if len(data) != row.get("bytes") or digest(data) != row.get("sha256"):
+            errors.append(f"{path}: reviewed large evidence bytes changed")
+        if len(data) < threshold:
+            errors.append(
+                f"{path}: legacy review row is below the configured threshold"
+            )
+
+    expected = {
+        path
+        for path, data in blobs.items()
+        if path.startswith(RESULT_ROOT) and len(data) >= threshold
+    }
+    missing = sorted(expected - indexed.keys())
+    extra = sorted(indexed.keys() - expected)
+    if missing:
+        errors.append("unreviewed large benchmark evidence: " + ", ".join(missing))
+    if extra:
+        errors.append("stale legacy large-evidence review rows: " + ", ".join(extra))
+    return errors
+
+
+def large_legacy_review_members(blobs: dict[str, bytes], policy: dict) -> set[str]:
+    """Return exact reviewed large paths only when the whole review is valid."""
+    path = policy.get("legacy_large_review_path")
+    threshold = policy.get("legacy_large_review_threshold_bytes")
+    if not isinstance(path, str) or type(threshold) is not int or path not in blobs:
+        return set()
+    try:
+        review = json.loads(blobs[path])
+    except (ValueError, UnicodeError, TypeError):
+        return set()
+    if large_legacy_review_errors(blobs, review, threshold):
+        return set()
+    return {row["path"] for row in review["files"]}
+
+
 def campaign_inventory(blobs: dict[str, bytes], policy: dict) -> dict:
     """List every results family and its actual retention-review evidence.
 
@@ -152,12 +272,12 @@ def campaign_inventory(blobs: dict[str, bytes], policy: dict) -> dict:
     Hash-bound publications still need the normal scientific validation suite.
     """
     covered = _publication_members(blobs)
+    large_reviewed = large_legacy_review_members(blobs, policy)
     rows, families = [], {}
     for path, data in sorted(blobs.items()):
         if not path.startswith(RESULT_ROOT):
             continue
-        relative = path[len(RESULT_ROOT) :]
-        family = relative.split("/", 1)[0] if "/" in relative else "(root)"
+        family = _family(path)
         category = classify(path)
         justified = _justified(path, data, policy)
         status = (
@@ -165,6 +285,8 @@ def campaign_inventory(blobs: dict[str, bytes], policy: dict) -> dict:
             if justified
             else "publication-bound"
             if path in covered
+            else "legacy-large-reviewed"
+            if path in large_reviewed
             else "transient-or-build"
             if category in {"transient", "generated-build"}
             else "manual-review"
