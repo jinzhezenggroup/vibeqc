@@ -1,4 +1,4 @@
-"""All-seven-source CUDA RKS gradient diagnostic with explicit host export.
+"""All-seven-source CUDA RKS/UKS gradient diagnostic with explicit host export.
 
 This is a small-domain diagnostic, not public Calculator force support. Native
 CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
@@ -301,9 +301,9 @@ def complete_rks_cuda_gradient_diagnostic(
     max_primitive_records=2_000_000,
     max_grid_pair_visits=100_000_000,
 ):
-    """Consume a current native CUDA RKS snapshot with all seven plan sources.
+    """Consume a current native CUDA RKS/UKS snapshot with all seven plan sources.
 
-    Domain: real FP64 direct all-electron s/p LDA/PBE RKS, native version-one
+    Domain: real FP64 direct all-electron s/p LDA/PBE RKS/UKS, native version-three
     unpruned grid and distinct noncolliding centers. No CPKS is required.
     Device ordinal comes only from the opaque native snapshot. CUDA source
     accumulators, grid owner and one TensorIR consumer coexist under the stated
@@ -315,8 +315,8 @@ def complete_rks_cuda_gradient_diagnostic(
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
-    if state._source.backend != "cuda" or contract.spin != "unpolarized":
-        raise NotImplementedError("CUDA diagnostic requires a native CUDA RKS state")
+    if state._source.backend != "cuda":
+        raise NotImplementedError("CUDA diagnostic requires a native CUDA KS state")
     if state._source.metadata[0] != 3 or state._source.grid_spec is None:
         raise NotImplementedError("CUDA diagnostic requires snapshot v3 raw measures")
     if (
@@ -363,6 +363,7 @@ def complete_rks_cuda_gradient_diagnostic(
         raise ValueError("grid work budget exceeded")
     method, _ = resolve_ks_method(state.identity.method)
     plan = StationaryGradientPlan(method, StationaryMeanField(SCF_POINT_MODEL))
+    density = state.density if contract.spin == "polarized" else state.density[0]
     if plan.source_names != _SOURCE_NAMES:
         raise ValueError(
             "CUDA runtime source coverage differs from StationaryGradientPlan"
@@ -403,7 +404,7 @@ def complete_rks_cuda_gradient_diagnostic(
         + 8
         * (
             30 * primitive_tile
-            + 4 * n * n
+            + 4 * plan.spin_blocks * n * n
             + 120 * na
             + 26 * integral_terms
             + 3 * tile_points
@@ -473,7 +474,7 @@ def complete_rks_cuda_gradient_diagnostic(
                 ingredients=("rho", "gradient", "tau") if pbe else ("rho",),
             )
         )
-        ao.set_density(state.density[0])
+        ao.set_density(density)
         for source, rank, operator in (
             ("one_electron", 2, "kinetic"),
             ("overlap_pulay", 2, "overlap"),

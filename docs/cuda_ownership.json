@@ -355,6 +355,71 @@
       "owner": "xc",
       "retirement_condition": "Retain external/formula oracles. The compiler spatial contraction owns sparse local AO maps and interior-v1 validation; the resident KS contraction owns dense borrowed buffers and the SCF tail/spin domain. They share point algebra and AO/ingredient policies. Retire native contraction glue after an equivalent compiler-owned device consumer passes independent numerical, resource and full endpoint gates. The superseded host-controlled method driver and its RKS LDA-fallback entry point are removed.",
       "status": "resident_prepared_cuda_energy_only"
+    },
+    "ecp": {
+      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
+      "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
+      "evidence": [
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_ir.py",
+        "tests/native/test_ecp_projector.cpp",
+        "tests/python/test_ecp_f.py",
+        "tests/python/test_ecp_validation.py",
+        "tests/native/test_ecp_capabilities.cpp",
+        "benchmarks/results/ecp-f-171/README.md",
+        "tests/python/test_ecp_f_projector.py",
+        "benchmarks/results/ecp-f-projector-171/README.md"
+      ],
+      "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
+    },
+    "df_response_weights": {
+      "owner": "scf_tensor",
+      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. Compatible singleton resident RHF response borrows existing full J/K capacity even when occupied factors are unavailable; this dense reuse requires no factor reservation or new allocation. Occupied response additionally requires the shared twofold-work-reduction policy and actual projection capacity; immutable raw values are reused only with matching source identity. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Automatic occupied-space response shares SCF/seed/final exchange workload and capacity admission, without an AO/rank endpoint, equal-basis or GPU-name whitelist. Automatic factor reservation is method/rank-aware and declines optional storage when it would force a dense resident plan into streaming; UHF, unknown and unprofitable ranks retain dense accounting. Execution additionally requires a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
+      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
+      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+      "retained_duplicate_reason": "oracle",
+      "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
+      "evidence": [
+        "tests/python/test_df_response_weights_cuda.py",
+        "benchmarks/results/issue206-metric-gemv/README.md",
+        "benchmarks/results/issue206-metric-gemv/summary.json",
+        "benchmarks/results/issue308-shell-schedules/summary.json",
+        "tests/python/test_df_resident_response_cuda.py",
+        "benchmarks/results/issue308-768ao-response/README.md",
+        "benchmarks/results/issue308-768ao-response/summary.json",
+        "tests/python/test_df_occupied_response_cuda.py",
+        "tests/native/test_df_occupied_response.cpp",
+        "benchmarks/results/issue377-379-df/README.md",
+        "tests/native/test_df_shell_pairs.cpp",
+        "tests/python/test_df_shell_derivatives_cuda.py",
+        "benchmarks/results/issue382-packed-df/README.md",
+        "docs/df_tuning.md",
+        "tests/python/test_df_exchange_policy.py",
+        "tests/python/test_df_auto_exchange_cuda.py",
+        ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
+        "tests/python/test_df_resources.py"
+      ],
+      "status": "native_baseline_with_opt_in_control"
+    },
+    "d4_dispersion": {
+      "owner": "d4_dispersion",
+      "current_default": "Internal bounded molecular complete EEQ-D4 qualification on CPU/CUDA for standard and r2SCAN-3c profiles; no public production DFT-D4 endpoint.",
+      "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
+      "missing_capability": "Production provider/runtime integration, compiler-generated derivative execution, scalable GPU scheduling/performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
+      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
+      "evidence": [
+        "docs/d4_reference.md",
+        "tests/data/d4/oracle_manifest.json",
+        "tests/data/d4/eeq_oracle_manifest.json",
+        "tests/native/test_d4_eeq.cpp",
+        "tests/native/test_d4_eeq_cuda.cu",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
+        ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md"
+      ],
+      "status": "oracle"
     }
   },
   "files": [
@@ -432,6 +497,13 @@
       "role": "oracle",
       "subsystem": "d4_dispersion",
       "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
+      "regions": []
+    },
+    {
+      "path": "src/dft/dispersion/d4_eeq.hpp",
+      "role": "oracle",
+      "subsystem": "d4_dispersion",
+      "reason": "Pinned EEQ2019 charge solve/coordinate response and complete D4 chain-rule CPU/device qualification mathematics. Independent DFT-D4 4.2.0 oracle fixtures and real-device tests validate it; retained as a bounded oracle, not a performance-promoted production kernel.",
       "regions": []
     },
     {
