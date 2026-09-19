@@ -142,6 +142,9 @@ macro(vibeqc_add_native_tests)
     set_target_properties(vibeqc_cosx_cuda_tests PROPERTIES CUDA_STANDARD 20)
     add_test(NAME vibeqc_cosx_cuda_tests COMMAND vibeqc_cosx_cuda_tests)
     set_tests_properties(vibeqc_cosx_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
+    vibeqc_native_test(vibeqc_cosx_fock_provider_tests
+                       tests/native/test_cosx_fock_provider.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
   endif()
 
   vibeqc_native_test(vibeqc_dft_api_tests tests/native/test_dft_api.cpp NO_SRC_INCLUDE)
