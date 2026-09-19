@@ -436,6 +436,23 @@
       "sha256": "4a8432a55b83ca108371251a94e2f8a95bcbf52f467dbe5bd8bb667ea176a6dd"
     },
     {
+      "bytes": 9233,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 182,
+        "scientific": 0
+      },
+      "path": "src/integrals/first_directional_runtime.cuh",
+      "physical_lines": 195,
+      "reason": "Shared bounded device storage, primitive staging, generated-program dispatch, typed output lifetime and failure-atomic publication. Integral, directional and matrix-weight contraction equations are emitted by the common compiler.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "04291ce3d4232ee20b9306b748aa26d9d8547ae09271f1186540e1c715a6486a",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/integrals/range_moments.hpp",
       "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
       "regions": [],
@@ -3877,7 +3894,7 @@
   ],
   "generated_bytes": 0,
   "maintained_code_lines": {
-    "runtime": 10447,
+    "runtime": 10629,
     "scientific": 12768,
     "oracle": 312,
     "fallback": 0,
@@ -4089,7 +4106,7 @@
   },
   "per_subsystem": {
     "runtime": {
-      "runtime": 4678,
+      "runtime": 4860,
       "scientific": 5,
       "oracle": 0,
       "fallback": 0,
