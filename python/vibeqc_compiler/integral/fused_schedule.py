@@ -17,7 +17,7 @@ from .cuda_schedule import (
     ScheduleIR,
     default_schedule,
 )
-from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
+from .cuda_target import CudaTargetInfo
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import AXES, ShellClassSpec
 
@@ -64,7 +64,7 @@ def build_fused_shell_plan(
     consumers: tuple[KernelConsumer | str, ...] | None = None,
     schedule: ScheduleIR | None = None,
     recurrence: str | None = None,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo | None = None,
     integral: IntegralIR | None = None,
 ) -> FusedShellPlan:
     """Lower integral and schedule IRs into deterministic CUDA lookup tables.
@@ -75,6 +75,11 @@ def build_fused_shell_plan(
     are supplied, they must agree rather than silently rebuilding the IR.
     """
 
+    if target is None:
+        raise ValueError(
+            "CUDA target must be explicit; pass cuda_target_info('sm_XX') "
+            "or a runtime-probed CudaTargetInfo"
+        )
     if integral is None:
         selected_consumers = (KernelConsumer.FORCE,) if consumers is None else consumers
         selected_recurrence = "subset_wick" if recurrence is None else recurrence
@@ -362,8 +367,14 @@ def evaluate_fused_shell_observables(
         variables["inverse_two_q"],
     )
 
-    plan = build_fused_shell_plan(spec, integral=selected_integral)
-    coulomb = {state: _coulomb_value(state, variables) for state in plan.coulomb_states}
+    maximum_order = selected_integral.maximum_coulomb_order
+    coulomb_states = tuple(
+        (x_order, y_order, total - x_order - y_order)
+        for total in range(maximum_order + 1)
+        for x_order in range(total + 1)
+        for y_order in range(total - x_order + 1)
+    )
+    coulomb = {state: _coulomb_value(state, variables) for state in coulomb_states}
     value = 0.0
     for first_state, first_coefficient, _ in value_first_terms:
         for second_state, second_coefficient, _ in value_second_terms:

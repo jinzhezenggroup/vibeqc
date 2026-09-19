@@ -25,6 +25,7 @@ from vibeqc_compiler.integral.blocks import (
 from vibeqc_compiler.integral.cache import integral_cache_key
 from vibeqc_compiler.integral.capabilities import query_integral_capability
 from vibeqc_compiler.integral.cuda_schedule import CudaKernelIR, schedule_candidates
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.ir import (
     ContractionOutput,
     IntegralIR,
@@ -45,6 +46,8 @@ from vibeqc_compiler.integral.shell_signature import (
     ShellSignature,
 )
 from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPECS, PSPS_SPEC
+
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 def request_ir(family, *, derivative=False, atoms=None, angular=None):
@@ -348,9 +351,13 @@ def test_legacy_catalog_adapter_and_cuda_boundary():
     assert query_integral_capability(legacy).supported
     generic = request_ir("four_center_eri", derivative=True)
     with pytest.raises(ValueError, match="CUDA"):
-        CudaKernelIR(generic, schedule_candidates(legacy)[0])
+        CudaKernelIR(
+            generic,
+            schedule_candidates(legacy, target=TEST_CUDA_TARGET)[0],
+            TEST_CUDA_TARGET,
+        )
     with pytest.raises(ValueError, match="CUDA"):
-        schedule_candidates(generic)
+        schedule_candidates(generic, target=TEST_CUDA_TARGET)
     assert integral_cache_key(legacy) != integral_cache_key(generic)
 
 

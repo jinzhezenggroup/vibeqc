@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 from vibeqc_compiler.integral.cuda_emitter import emit_shell_class_fused_cuda
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.ir import KernelConsumer
 from vibeqc_compiler.integral.production import (
@@ -215,6 +216,13 @@ def main() -> None:
             )
         kernel = None
         component_metadata = {"lowering": "fused"}
+    fused_target = None
+    if arguments.lowering == "fused":
+        if arguments.architecture is None:
+            parser.error(
+                "--architecture is required for fused CUDA schedule generation"
+            )
+        fused_target = cuda_target_info(arguments.architecture)
     if arguments.format == "cuda":
         if arguments.shell_class == "psss" and arguments.lowering != "fused":
             output = emit_psss_cuda(kernel)
@@ -226,12 +234,16 @@ def main() -> None:
             specification = FUSED_SPECS[arguments.shell_class]
             output = emit_shell_class_fused_cuda(
                 specification,
-                build_fused_shell_plan(specification, consumers=consumers),
+                build_fused_shell_plan(
+                    specification, consumers=consumers, target=fused_target
+                ),
             )
     else:
         if arguments.lowering == "fused":
             specification = FUSED_SPECS[arguments.shell_class]
-            plan = build_fused_shell_plan(specification, consumers=consumers)
+            plan = build_fused_shell_plan(
+                specification, consumers=consumers, target=fused_target
+            )
             source = emit_shell_class_fused_cuda(specification, plan)
             block_threads = plan.block_threads
             output = (

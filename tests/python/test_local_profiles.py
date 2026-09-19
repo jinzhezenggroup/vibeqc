@@ -11,6 +11,9 @@ import numpy as np
 import pytest
 from vibeqc import profiles
 from vibeqc.autotune import endpoint_gate, rank_hotspots, read_xyz
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
+
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 @pytest.fixture
@@ -358,14 +361,19 @@ def test_generic_numerical_driver_supports_tuned_s_and_p_consumers():
     for name in ("ssss", "pppp"):
         for consumer in ("force", "fock"):
             spec = FUSED_SHELL_SPEC_BY_NAME[name]
-            trial = supported_schedule_trials(spec, consumer)[0]
+            trial = supported_schedule_trials(spec, consumer, target=TEST_CUDA_TARGET)[
+                0
+            ]
             consumers = (
                 (KernelConsumer.FOCK, KernelConsumer.FORCE)
                 if consumer == "fock"
                 else (KernelConsumer.FORCE,)
             )
             plan = build_fused_shell_plan(
-                spec, consumers=consumers, schedule=trial.schedule
+                spec,
+                consumers=consumers,
+                schedule=trial.schedule,
+                target=TEST_CUDA_TARGET,
             )
             source = emit_shell_class_resource_cuda(spec, plan)
             driver = emit_numerical_driver(

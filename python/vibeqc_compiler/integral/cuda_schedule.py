@@ -7,7 +7,7 @@ from enum import Enum
 from math import comb
 
 from .backend import TargetScheduleShape
-from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
+from .cuda_target import CudaTargetInfo
 from .expr import (
     AlgebraForm,
     AlgebraFusion,
@@ -199,7 +199,7 @@ class CudaKernelIR:
 
     integral: IntegralIR
     schedule: CudaScheduleIR
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET
+    target: CudaTargetInfo
 
     def __post_init__(self) -> None:
         # Import lazily because capability reporting also enumerates schedules.
@@ -220,7 +220,7 @@ KernelIR = CudaKernelIR
 
 def schedule_candidates(
     integral: IntegralIR,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo,
 ) -> tuple[CudaScheduleIR, ...]:
     """Enumerate legal CUDA schedules from explicit target capabilities."""
 
@@ -315,7 +315,7 @@ def schedule_candidates(
 
 def default_schedule(
     integral: IntegralIR,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo,
 ) -> CudaScheduleIR:
     """Return the conservative component schedule for ``target``."""
 
@@ -337,7 +337,7 @@ def default_schedule(
 
 def tuning_schedule_candidates(
     integral: IntegralIR,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo,
 ) -> tuple[CudaScheduleIR, ...]:
     """Expand target-legal schedule families into a bounded tuning search."""
 

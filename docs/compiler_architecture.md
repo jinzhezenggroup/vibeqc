@@ -63,11 +63,19 @@ resource gates, `process` handles external processes, `inputs` normalizes input,
 from analysis to policy is guarded by `TYPE_CHECKING`.
 
 Generic CUDA targets, compilation, parsed resource records, artifact handles,
-metrics and preparation synchronization are owned by `common`. Integral and
-TensorIR execution no longer depend on one another's runtime classes. DFT and
-XC use that same artifact cache and allocation lock. The public global resource
-planner and local-profile hashing/atomic-JSON helpers are re-exported from their
-original `vibeqc` APIs; their implementations are not duplicated. Shared evidence
+metrics and preparation synchronization are owned by `common`. Static
+`CudaTargetInfo` catalog entries contain architecture-level limits only; concrete
+device topology such as SM count is unknown until a runtime probe enriches the
+target. Generic scheduling APIs require an explicit target or architecture
+instead of silently selecting `sm_120`. Measured production and local profiles
+may still record device topology as qualification provenance. The rationale is
+retained in
+`.agents/notes/implemented/compatibility/2026-09-20-explicit-cuda-target-topology.md`.
+
+Integral and TensorIR execution no longer depend on one another's runtime
+classes. DFT and XC use that same artifact cache and allocation lock. The public
+global resource planner and local-profile hashing/atomic-JSON helpers are re-exported
+from their original `vibeqc` APIs; their implementations are not duplicated. Shared evidence
 and timing helpers do not import benchmark command modules.
 
 ## Workload specialization contract

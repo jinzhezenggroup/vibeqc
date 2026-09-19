@@ -13,10 +13,7 @@ from ..cuda_schedule import (
     ScheduleKind,
     tuning_schedule_candidates,
 )
-from ..cuda_target import (
-    DEFAULT_CUDA_TARGET,
-    CudaTargetInfo,
-)
+from ..cuda_target import CudaTargetInfo
 from ..ir import IntegralIR, KernelConsumer, build_integral_ir
 from ..production import load_production_kernel_selections
 from ..shell_spec import ShellClassSpec
@@ -30,8 +27,8 @@ class ScheduleTrial:
 
     spec: ShellClassSpec
     schedule: ScheduleIR
+    target: CudaTargetInfo
     consumer: KernelConsumer = KernelConsumer.FORCE
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET
     # An explicit IR is optional for compatibility with the legacy CLI, but
     # when present it must remain the source of mathematical intent throughout
     # model construction and CUDA benchmark emission.
@@ -167,7 +164,7 @@ def _known_production_fock_subgroup_schedules(
 def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo | None = None,
     *,
     integral: IntegralIR | None = None,
 ) -> tuple[ScheduleTrial, ...]:
@@ -178,6 +175,11 @@ def supported_schedule_trials(
     requested consumer's kernels.
     """
 
+    if target is None:
+        raise ValueError(
+            "CUDA target must be explicit for schedule trials; "
+            "pass cuda_target_info('sm_XX') or a runtime-probed target"
+        )
     if any(order > 6 for order in spec.pair_orders):
         raise ValueError(f"{spec.name} is outside the current pair-order CUDA lowering")
     if any(order > 3 for order in spec.angular):

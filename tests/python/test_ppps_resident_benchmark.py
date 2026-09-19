@@ -12,15 +12,20 @@ from vibeqc_compiler.integral.benchmark import (
     emit_ppps_resident_bra_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
 )
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.production import load_production_kernel_selections
 from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
+
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
     """Keep the synthetic 1110 descriptor and independent oracle visible."""
 
-    source = emit_ppps_resident_bra_benchmark_cuda(512, 2, 1, 3, 3)
+    source = emit_ppps_resident_bra_benchmark_cuda(
+        512, 2, 1, 3, 3, target=TEST_CUDA_TARGET
+    )
     assert "resident_task_count" in source
     assert "GeneratedPppsResidentTask" in source
     assert "generated_ppps_resident_bra_force_rhf_kernel<<<" in source
@@ -44,7 +49,9 @@ def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
     # retaining the same per-bra primitive reuse and compact synthetic data.
     task_count = 32768
     source_path.write_text(
-        emit_ppps_resident_bra_benchmark_cuda(task_count, 2, 1, 3, 3),
+        emit_ppps_resident_bra_benchmark_cuda(
+            task_count, 2, 1, 3, 3, target=TEST_CUDA_TARGET
+        ),
         encoding="utf-8",
     )
     compiled = subprocess.run(
@@ -113,6 +120,7 @@ def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
         consumers=selection.consumers,
         schedule=selection.schedule,
         recurrence=selection.recurrence,
+        target=TEST_CUDA_TARGET,
     )
     production_source = tmp_path / "generated_ppps_production_benchmark.cu"
     production_executable = tmp_path / "generated_ppps_production_benchmark"

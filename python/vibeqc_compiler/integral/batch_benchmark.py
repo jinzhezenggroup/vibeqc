@@ -27,6 +27,7 @@ from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.cuda_resources import KernelResources as KernelResources
 
 from .benchmark import emit_shell_class_benchmark_cuda
+from .cuda_target import CudaTargetInfo, cuda_target_info
 from .ir import KernelConsumer
 from .production import load_production_fock_manifest, load_production_manifest
 from .shell_spec import (
@@ -387,6 +388,7 @@ def emit_candidate_translation_unit(
     iterations: int,
     samples: int,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    target: CudaTargetInfo | None = None,
 ) -> str:
     """Emit one independently compilable candidate benchmark translation unit.
 
@@ -404,6 +406,7 @@ def emit_candidate_translation_unit(
         iterations=iterations,
         samples=samples,
         consumer=selected_consumer,
+        target=target,
     )
     entry = f"vibeqc_run_shell_class_{spec.name}"
     source = source.replace("int main() {", f'extern "C" int {entry}() {{', 1)
@@ -675,6 +678,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 iterations=arguments.iterations,
                 samples=arguments.samples,
                 consumer=selected_consumer,
+                target=cuda_target_info(arguments.architecture),
             )
             (directory / f"{spec.name}_candidate.cu").write_text(
                 source, encoding="utf-8"

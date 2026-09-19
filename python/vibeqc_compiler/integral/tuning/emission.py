@@ -18,11 +18,7 @@ from ..cuda_schedule import (
     PairStorage,
     ScheduleKind,
 )
-from ..cuda_target import (
-    DEFAULT_CUDA_TARGET,
-    cuda_target_info,
-    normalize_cuda_architecture,
-)
+from ..cuda_target import cuda_target_info, normalize_cuda_architecture
 from ..fused_schedule import build_fused_shell_plan
 from ..ir import KernelConsumer, build_integral_ir
 from ..shell_spec import ShellClassSpec
@@ -216,10 +212,15 @@ def emit_schedule_driver(
     """Emit a driver that validates its allocated GPU before benchmarking."""
 
     items = tuple(trials)
-    selected_architecture = normalize_cuda_architecture(
-        architecture
-        or (items[0].target.architecture if items else DEFAULT_CUDA_TARGET.architecture)
-    )
+    if architecture is None:
+        if not items:
+            raise ValueError(
+                "empty schedule driver requires an explicit CUDA architecture"
+            )
+        architecture = items[0].target.architecture
+    selected_architecture = normalize_cuda_architecture(architecture)
+    if any(item.target.architecture != selected_architecture for item in items):
+        raise ValueError("schedule driver trials must match the selected architecture")
     expected_target = cuda_target_info(selected_architecture)
     declarations = "\n".join(
         f'extern "C" int {trial.entry_point}();' for trial in items

@@ -16,6 +16,7 @@ from vibeqc_compiler.integral import (
     build_fused_shell_plan,
     build_integral_ir,
 )
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.production import (
     KernelSelection,
     emit_multi_registry_header,
@@ -27,6 +28,8 @@ from vibeqc_compiler.integral.production import (
     load_production_kernel_selections,
     resolve_production_profile,
 )
+
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 def _rys3_manifest(path: Path, consumers: list[str]) -> None:
@@ -154,7 +157,9 @@ def test_production_selection_preserves_explicit_integral_ir():
         architecture="sm_120",
         spec=spec,
         consumers=(KernelConsumer.FORCE,),
-        schedule=build_fused_shell_plan(spec, integral=integral).schedule,
+        schedule=build_fused_shell_plan(
+            spec, integral=integral, target=TEST_CUDA_TARGET
+        ).schedule,
         integral=integral,
     )
 
