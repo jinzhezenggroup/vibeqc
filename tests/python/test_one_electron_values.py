@@ -22,12 +22,8 @@ def test_generated_value_header_helpers_have_internal_linkage():
     """Header-defined noinline device helpers must be reusable by multiple CUDA TUs."""
 
     source = emit_one_electron_values_cuda()
-    assert source.count(
-        "static __device__ __noinline__ ST overlap_kinetic_"
-    ) == 16
-    assert source.count(
-        "static __device__ __noinline__ double attraction_"
-    ) == 16
+    assert source.count("static __device__ __noinline__ ST overlap_kinetic_") == 16
+    assert source.count("static __device__ __noinline__ double attraction_") == 16
     assert "\n__device__ __noinline__ ST overlap_kinetic_" not in source
     assert "\n__device__ __noinline__ double attraction_" not in source
 
