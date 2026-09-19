@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
@@ -55,35 +57,24 @@ def _feature_request(jets, ingredients):
     return jets, requested, need_gradient
 
 
-def _publish(requested, rho, gradient, tau):
-    """Build nonlinear sigma only after each complete spin gradient is reduced."""
-    values = {
-        "rho": np.asarray(rho),
-        "gradient": np.asarray(gradient),
-        "tau": np.asarray(tau),
-    }
-    if "sigma" in requested:
-        values["sigma"] = np.stack(
-            [
-                np.sum(values["gradient"][a] * values["gradient"][b], axis=1)
-                for a, b in ((0, 0), (0, 1), (1, 1))
-            ]
-        )
-    return {key: immutable(values[key]) for key in requested}
+DENSITY_FEATURE_SCALAR_ROWS = (
+    "rho_a",
+    "rho_b",
+    "sigma_aa",
+    "sigma_ab",
+    "sigma_bb",
+    "tau_a",
+    "tau_b",
+)
 
 
-def density_features(jets, density, *, ingredients=None):
-    """Contract rho, grad(rho), sigma(aa,ab,bb), tau=1/2 sum D gradχ·gradχ.
+def _sigma(gradient):
+    return np.stack(
+        [np.sum(gradient[a] * gradient[b], axis=1) for a, b in ((0, 0), (0, 1), (1, 1))]
+    )
 
-    rho/tau have shape [spin,point], gradient [spin,point,xyz], and sigma
-    [aa/ab/bb,point]. The cross-spin sigma_ab carries no extra factor of two.
-    This CPU reference uses matrix contractions and includes all active AOs.
 
-    ``ingredients`` prunes unneeded reductions for semilocal consumers. A
-    rho-only request accepts value-only jets; omitting tau avoids its three
-    additional density-matrix products per spin. The default preserves the
-    full diagnostic feature ABI.
-    """
+def _density_feature_arrays(jets, density, ingredients):
     jets, requested, need_gradient = _feature_request(jets, ingredients)
     d = spin_densities(density, jets.shape[2])
     value, derivatives = jets[0], jets[1:4]
@@ -108,6 +99,70 @@ def density_features(jets, density, *, ingredients=None):
                     for derivative in derivatives
                 )
             )
+    return requested, np.asarray(rho), np.asarray(gradient), np.asarray(tau)
+
+
+def _publish(requested, rho, gradient, tau):
+    """Build nonlinear sigma only after each complete spin gradient is reduced."""
+    values = {"rho": rho, "gradient": gradient, "tau": tau}
+    if "sigma" in requested:
+        values["sigma"] = _sigma(gradient)
+    return {key: immutable(values[key]) for key in requested}
+
+
+@dataclass(frozen=True)
+class DensityFeatureBlock:
+    """Owned feature-major scalar ABI plus optional Cartesian spin gradients."""
+
+    scalar: np.ndarray
+    gradient: np.ndarray | None
+    requested: tuple[str, ...]
+
+    def features(self):
+        result = {}
+        if "rho" in self.requested:
+            result["rho"] = self.scalar[:2]
+        if "gradient" in self.requested:
+            result["gradient"] = self.gradient
+        if "sigma" in self.requested:
+            result["sigma"] = self.scalar[2:5]
+        if "tau" in self.requested:
+            result["tau"] = self.scalar[5:7]
+        return result
+
+
+def density_feature_block(jets, density, *, ingredients=None):
+    """Produce one canonical C-order scalar feature owner for compiled consumers."""
+    requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
+    npoint = np.asarray(jets).shape[1]
+    scalar = np.zeros((len(DENSITY_FEATURE_SCALAR_ROWS), npoint))
+    if "rho" in requested:
+        scalar[:2] = rho
+    if "sigma" in requested:
+        scalar[2:5] = _sigma(gradient)
+    if "tau" in requested:
+        scalar[5:7] = tau
+    scalar.setflags(write=False)
+    owned_gradient = None
+    if gradient.ndim == 3:
+        owned_gradient = np.ascontiguousarray(gradient, dtype=np.float64)
+        owned_gradient.setflags(write=False)
+    return DensityFeatureBlock(scalar, owned_gradient, requested)
+
+
+def density_features(jets, density, *, ingredients=None):
+    """Contract rho, grad(rho), sigma(aa,ab,bb), tau=1/2 sum D gradχ·gradχ.
+
+    rho/tau have shape [spin,point], gradient [spin,point,xyz], and sigma
+    [aa/ab/bb,point]. The cross-spin sigma_ab carries no extra factor of two.
+    This CPU reference uses matrix contractions and includes all active AOs.
+
+    ``ingredients`` prunes unneeded reductions for semilocal consumers. A
+    rho-only request accepts value-only jets; omitting tau avoids its three
+    additional density-matrix products per spin. The default preserves the
+    full diagnostic feature ABI.
+    """
+    requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
     return _publish(requested, rho, gradient, tau)
 
 

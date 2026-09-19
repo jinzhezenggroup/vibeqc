@@ -434,11 +434,32 @@
       "regions": []
     },
     {
+      "path": "src/dft/grid_response_adjoint.hpp",
+      "role": "scientific",
+      "subsystem": "xc",
+      "regions": [],
+      "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue."
+    },
+    {
       "path": "src/dft/grid_task_view.cuh",
       "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
       "regions": [],
       "role": "runtime",
       "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/stationary_gradient_cuda.cuh",
+      "role": "runtime",
+      "subsystem": "xc",
+      "reason": "Finite diagnostic owner, explicit stream leases, transfers and failure-before-publication boundaries.",
+      "regions": [
+        {
+          "start": "__global__ void primitive_kernel",
+          "stop": "}  // namespace vibeqc_stationary_cuda",
+          "role": "scientific",
+          "reason": "Primitive normalization, generated derivative contraction, XC coefficient/jet layout and deterministic atom/source reductions are maintained scientific glue. Shared compiler graphs and SCF point model own the differentiated mathematics."
+        }
+      ]
     },
     {
       "path": "src/dft/xc_point.hpp",

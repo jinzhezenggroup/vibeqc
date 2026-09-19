@@ -22,9 +22,9 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from .grid_response import grid_response_program
 
 
-def emit_grid_contraction(iterations=3):
-    """Generate primal and local VJP entries from existing Graph roots only."""
-    lines = ['#include "grid_response_cpu.hpp"']
+def emit_grid_partials(iterations=3, *, device=False):
+    """Shared local AD construction for CPU and CUDA traversal owners."""
+    lines = []
     identities = {}
     for kind, names in (
         ("norm", ("x", "y", "z")),
@@ -41,15 +41,21 @@ def emit_grid_contraction(iterations=3):
         emitter = ScalarCEmitter(graph, {name: name for name in names})
         emitter.emit(roots)
         lines += [
-            f"static std::array<double, {len(roots)}> local_{kind}({', '.join('double ' + name for name in names)}) {{",
+            f"{'__device__' if device else 'static'} std::array<double, {len(roots)}> local_{kind}({', '.join('double ' + name for name in names)}) {{",
             *emitter.lines,
             "return {" + ", ".join(emitter.reference(root) for root in roots) + "};",
             "}",
         ]
         identities[kind] = program.identity
     identity = canonical_hash({"schema": "grid-cpu-adjoint-v1", "programs": identities})
+    lines.append(f"// Shared grid graphs: {identity}")
+    return "\n".join(lines) + "\n"
+
+
+def emit_grid_contraction(iterations=3):
+    """Generate primal and local VJP entries from existing Graph roots only."""
+    lines = ['#include "grid_response_cpu.hpp"', emit_grid_partials(iterations)]
     lines += [
-        f"// Shared grid graphs: {identity}",
         'extern "C" int grid_contract(const double* points, size_t np, const double* centers, size_t na, const int64_t* owners, const double* seeds, double* output, size_t no, size_t budget, size_t max_pairs, double tolerance) noexcept {',
         "return vibeqc_grid_cpu::contract(points, np, centers, na, owners, seeds, output, no, budget, max_pairs, tolerance, local_norm, local_ratio, local_log, local_becke);",
         "}",
@@ -91,7 +97,7 @@ class NativeGridContraction:
             compiler,
             cache,
             path,
-            headers=(header,),
+            headers=(header, asset_path("src/dft/grid_response_adjoint.hpp")),
             options=("-ffp-contract=off", f"-I{header.parent}"),
         )
         self.identity = self.artifact.metadata["key"]

@@ -165,16 +165,17 @@ class ContractionProgram:
         return result
 
     def potential_tile(self, jets, features, weights):
-        """Consume complete-density features from a validated collocation owner.
-
-        FixedDensityXC and local-task adapters share this entry point so
-        native collocation does not have to repeat its feature reductions.
-        Partial AO density contributions must be combined before this call.
-        """
+        """Consume complete-density features from a validated collocation owner."""
         if self.contract.request.observable != "potential":
             raise ValueError("potential tile requires a potential request")
-        weights = immutable(weights, shape=(jets.shape[1],))
         rows = self.scalar_values(features)
+        return self.potential_from_rows(jets, features, weights, rows)
+
+    def potential_from_rows(self, jets, features, weights, rows):
+        """Assemble the unchanged potential after an explicitly planned scalar call."""
+        if self.contract.request.observable != "potential":
+            raise ValueError("potential rows require a potential request")
+        weights = immutable(weights, shape=(jets.shape[1],))
         v = self._gradient(rows, jets.shape[1])
         coefficients = self.coefficients.evaluate(
             _functional_gradient(self.spec, features), v

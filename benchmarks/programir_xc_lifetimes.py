@@ -53,6 +53,7 @@ def main():
             ) as prepared,
         ):
             original_ao, original_xc = basis.evaluate, program.evaluate
+            original_rows = getattr(program, "potential_from_rows", None)
 
             def track_ao(*a, **kw):
                 before.append(
@@ -76,11 +77,22 @@ def main():
                     refs.append((name, value.nbytes, weakref.ref(value)))
                 return result
 
+            def track_rows(*a, **kw):
+                result = original_rows(*a, **kw)
+                for name in ("potential", "electrons"):
+                    value = result[name]
+                    refs.append((name, value.nbytes, weakref.ref(value)))
+                return result
+
             basis.evaluate, program.evaluate = track_ao, track_xc
+            if original_rows is not None:
+                program.potential_from_rows = track_rows
             try:
                 actual = prepared.execute(data["density_spin"])
             finally:
                 basis.evaluate, program.evaluate = original_ao, original_xc
+                if original_rows is not None:
+                    program.potential_from_rows = original_rows
             np.testing.assert_allclose(
                 actual["energy"],
                 data[f"{args.functional}_spin_energy"][0],
@@ -119,6 +131,15 @@ def main():
                     for k, v in prepared.statistics.items()
                     if k.endswith(("calls", "products")) or k == "tiles"
                 },
+                "program_calls": (
+                    None
+                    if prepared.tile_program is None
+                    else [call.name for call in prepared.tile_program.calls]
+                ),
+                "tile_layouts": prepared.statistics.get("tile_layouts"),
+                "tile_boundary_releases": prepared.statistics.get(
+                    "tile_boundary_releases"
+                ),
                 "host_source_hashes": program.metadata["host_source_hashes"],
                 "native_library_sha256": file_hash(Path(os.environ["VIBEQC_LIBRARY"])),
                 "scope": "live returned AO/potential/electron ndarray payload before each new collocation; excludes provider interiors, caller history, allocator/RSS and GPU/SCF claims",

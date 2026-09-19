@@ -21,6 +21,7 @@ from vibeqc_compiler.tensor import (
 from vibeqc_compiler.tensor.cuda_plan import Reservations, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.cuda_search import (
     TensorScheduleSpace,
+    TensorScreeningPolicy,
     TensorSearchLimits,
     estimate_schedule,
     execution_key,
@@ -213,7 +214,15 @@ def test_compiled_register_block_cliff_is_rejected():
 def fake_cuda(monkeypatch):
     """Exercise the actual tuner with CPU outputs and explicitly synthetic times."""
     calls = SimpleNamespace(
-        compiled=[], prepared=[], measured=0, bad_resources=False, noisy=False
+        compiled=[],
+        prepared=[],
+        measured=0,
+        bad_resources=False,
+        noisy=False,
+        measurements=[],
+        timings={},
+        active=0,
+        maximum_active=0,
     )
 
     def compile_plan(plan, compiler, cache):
@@ -246,14 +255,20 @@ def fake_cuda(monkeypatch):
             calls.prepared.append(plan)
 
         def __enter__(self):
+            calls.active += 1
+            calls.maximum_active = max(calls.maximum_active, calls.active)
             return self
 
         def __exit__(self, *args):
-            pass
+            calls.active -= 1
 
         def execute(self, feeds, profile=False):
             return SimpleNamespace(
-                outputs=execute(self.plan.program, feeds).outputs, metrics={}
+                outputs=execute(self.plan.program, feeds).outputs,
+                metrics={
+                    "threads": self.plan.schedule.threads,
+                    "fixture": float(feeds["x"][0]),
+                },
             )
 
     def measure(evaluate, synchronize, *, prepare, repeats, **kwargs):
@@ -262,8 +277,13 @@ def fake_cuda(monkeypatch):
         for _ in range(repeats):
             for name, seconds in (("baseline", 10), ("candidate", 8)):
                 prepare(name)
-                evaluate(name)
+                metrics = evaluate(name)
+                if name == "candidate":
+                    seconds = calls.timings.get(
+                        (metrics["threads"], metrics["fixture"]), seconds
+                    )
                 result.append({"selection": name, "seconds": seconds})
+        calls.measurements.append({**metrics, "repeats": repeats, "samples": result})
         return result
 
     monkeypatch.setattr(cuda_tune, "compile_cuda", compile_plan)
@@ -491,3 +511,229 @@ def test_unemittable_candidate_does_not_abort_other_candidates(monkeypatch):
     assert rejected.stage == "legality"
     assert "emission unsupported" in rejected.reason
     assert accepted.status == "ready"
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"maximum_finalists": 0},
+        {"maximum_finalists": True},
+        {"maximum_finalists": 4097},
+        {"repeats": 4},
+        {"repeats": 31},
+        {"repeats": 5.0},
+        {"fixture_indices": ()},
+        {"fixture_indices": (0, 0)},
+        {"fixture_indices": (-1,)},
+        {"fixture_indices": (8,)},
+        {"fixture_indices": (True,)},
+        {"fixture_indices": (0.0,)},
+    ],
+)
+def test_screening_policy_rejects_invalid_or_unbounded_inputs(options):
+    with pytest.raises(ValueError):
+        TensorScreeningPolicy(**options)
+
+
+def test_screening_policy_copies_fixture_indices():
+    indices = [1, 0]
+    policy = TensorScreeningPolicy(fixture_indices=indices)
+    indices[0] = 2
+    assert policy.fixture_indices == (1, 0)
+
+
+@pytest.mark.parametrize(
+    "screening", ["auto", False, TensorScreeningPolicy(fixture_indices=(1,))]
+)
+def test_invalid_screening_fails_before_compilation(tmp_path, fake_cuda, screening):
+    with pytest.raises((ValueError, TypeError), match="screening"):
+        run_fake_tuning(tmp_path, screening=screening)
+    assert fake_cuda.compiled == []
+
+
+def run_screened_tuning(tmp_path, *, fixtures=2, **options):
+    return cuda_tune.tune_cuda(
+        plan_cuda(vector_program(), TARGET),
+        None,
+        [{"x": np.linspace(i, i + 1, 65)} for i in range(fixtures)],
+        tmp_path,
+        schedules=[TensorSchedule(threads=t) for t in (64, 256, 512)],
+        **(
+            {"repeats": 7, "screening": TensorScreeningPolicy(maximum_finalists=1)}
+            | options
+        ),
+    )
+
+
+def test_shortlist_ranks_all_compiled_candidates_before_full_qualification(
+    tmp_path, fake_cuda
+):
+    fake_cuda.timings = {(64, 0): 9, (256, 0): 5, (512, 0): 7}
+    result = run_screened_tuning(tmp_path)
+    summary = result.evidence["search_summary"]
+    assert summary["compilation_attempts"] == summary["screened_candidates"] == 3
+    assert summary["endpoint_candidates"] == 1
+    assert summary["shortlist_pruned"] == 2
+    assert result.evidence["schema_version"] == 3
+    assert result.evidence["screening_plan"]["active"]
+    assert result.plan.schedule.threads == 256  # not the first compiled candidate
+    assert fake_cuda.measured == 5  # 3 screens + 2 fresh all-fixture measurements
+    assert [m["repeats"] for m in fake_cuda.measurements] == [5, 5, 5, 7, 7]
+    assert [m["fixture"] for m in fake_cuda.measurements] == [0, 0, 0, 0, 1]
+    rows = result.evidence["candidates"]
+    assert [r["shortlist_rank"] for r in rows] == [3, 1, 2]
+    assert [r["status"] for r in rows] == ["pruned", "accepted", "pruned"]
+    assert all(
+        "promotion_profiles" not in r and "gates" not in r for r in (rows[0], rows[2])
+    )
+    assert len(rows[1]["samples"]) == 2
+    assert rows[1]["samples"][0] is not rows[1]["screening"]["samples"][0]
+    assert fake_cuda.active == 0 and fake_cuda.maximum_active == 2
+    assert len(fake_cuda.compiled) == 4  # finalists reuse artifacts, not recompilation
+    assert len(fake_cuda.prepared) == 5  # baseline, 3 screens, reopened finalist
+
+
+def test_screen_success_cannot_bypass_a_later_fixture_performance_failure(
+    tmp_path, fake_cuda
+):
+    fake_cuda.timings = {(64, 0): 1, (64, 1): 12}
+    result = run_screened_tuning(tmp_path)
+    assert result.plan.schedule == TensorSchedule()
+    assert result.evidence["selected_profiles"] == []
+    row = result.evidence["candidates"][0]
+    assert row["screening"]["score"] == 10
+    assert row["gates"][0]["passed"] and not row["gates"][1]["passed"]
+    assert row["status"] == "rejected" and "promotion_profiles" not in row
+
+
+def test_screen_success_cannot_bypass_later_fixture_numerical_failure(
+    tmp_path, fake_cuda, monkeypatch
+):
+    prepared = cuda_tune.PreparedCuda
+
+    class BadPrepared(prepared):
+        def execute(self, feeds, profile=False):
+            result = super().execute(feeds, profile=profile)
+            if self.plan.schedule.threads == 64 and feeds["x"][0] == 1:
+                result.outputs["result"][0] += 1
+            return result
+
+    monkeypatch.setattr(cuda_tune, "PreparedCuda", BadPrepared)
+    result = run_screened_tuning(tmp_path)
+    row = result.evidence["candidates"][0]
+    assert row["screening"]["score"] > 1
+    assert "numerical gate failed" in row["reason"]
+    assert len(row["samples"]) == 1  # retain the first completed fixture
+    assert result.evidence["selected_profiles"] == []
+    assert fake_cuda.active == 0
+
+
+def test_shared_noise_gate_still_controls_screened_winners(tmp_path, fake_cuda):
+    fake_cuda.noisy = True
+    result = run_screened_tuning(tmp_path)
+    assert result.evidence["selected_profiles"] == []
+    assert result.evidence["candidates"][0]["gates"][0]["passed"]
+    assert result.evidence["candidates"][0]["status"] == "rejected"
+
+
+def test_negative_screens_are_ranked_not_mistaken_for_promotions(tmp_path, fake_cuda):
+    fake_cuda.timings = {(t, i): 11 for t in (64, 256, 512) for i in (0, 1)}
+    result = run_screened_tuning(tmp_path)
+    assert result.evidence["search_summary"]["endpoint_candidates"] == 1
+    assert result.evidence["selected_profiles"] == []
+    assert result.evidence["candidates"][0]["shortlist_rank"] == 1  # stable tie
+
+
+def test_screening_uses_all_declared_representatives_and_worst_ratio(
+    tmp_path, fake_cuda
+):
+    fake_cuda.timings = {(64, 0): 2, (64, 1): 12, (256, 0): 7, (256, 1): 7}
+    result = run_screened_tuning(
+        tmp_path,
+        fixtures=4,
+        repeats=10,
+        screening=TensorScreeningPolicy(maximum_finalists=1, fixture_indices=(1, 0)),
+    )
+    assert result.plan.schedule.threads == 256
+    assert [m["fixture"] for m in fake_cuda.measurements[:6]] == [1, 0] * 3
+    assert result.evidence["candidates"][0]["screening"]["score"] == pytest.approx(
+        10 / 12
+    )
+    assert fake_cuda.measured == 10  # six screens + four qualification fixtures
+
+
+@pytest.mark.parametrize(
+    "options, reason",
+    [
+        ({"screening": None}, "explicitly disabled"),
+        ({"screening": TensorScreeningPolicy(maximum_finalists=3)}, "already fits"),
+        ({"fixtures": 1, "repeats": 5}, "would not reduce"),
+    ],
+)
+def test_screening_is_bypassed_when_disabled_or_not_cost_effective(
+    tmp_path, fake_cuda, options, reason
+):
+    result = run_screened_tuning(tmp_path, **options)
+    assert not result.evidence["screening_plan"]["active"]
+    assert reason in result.evidence["screening_plan"]["reason"]
+    assert result.evidence["search_summary"]["screening_candidates"] == 0
+    assert result.evidence["search_summary"]["endpoint_candidates"] == 3
+    assert all("screening" not in r for r in result.evidence["candidates"])
+
+
+def test_screening_policy_and_selected_representatives_change_evidence_identity(
+    tmp_path, fake_cuda
+):
+    original = run_screened_tuning(tmp_path)
+    changed = run_screened_tuning(
+        tmp_path,
+        screening=TensorScreeningPolicy(maximum_finalists=1, fixture_indices=(1,)),
+    )
+    disabled = run_screened_tuning(tmp_path, screening=None)
+    assert len({r.evidence["key"] for r in (original, changed, disabled)}) == 3
+    assert original.plan.program.logical_hash == changed.plan.program.logical_hash
+
+
+def test_compiled_resource_failures_never_reach_screening(tmp_path, fake_cuda):
+    fake_cuda.bad_resources = True
+    result = run_screened_tuning(tmp_path)
+    assert fake_cuda.measured == 0
+    assert result.evidence["search_summary"]["screening_candidates"] == 0
+    assert result.evidence["selected_profiles"] == []
+
+
+@pytest.mark.parametrize(
+    "invalid", [float("nan"), float("inf"), -float("inf"), 0.0, -1.0]
+)
+def test_invalid_probe_samples_are_retained_but_never_ranked(
+    tmp_path, fake_cuda, invalid
+):
+    fake_cuda.timings = {(t, 0): invalid for t in (64, 256, 512)}
+    result = run_screened_tuning(tmp_path)
+    assert result.evidence["selected_profiles"] == []
+    assert result.evidence["search_summary"]["endpoint_candidates"] == 0
+    assert result.evidence["search_summary"]["screened_candidates"] == 0
+    assert all(
+        "positive finite paired" in r["reason"] for r in result.evidence["candidates"]
+    )
+
+
+def test_deadline_after_screening_does_not_promote_or_reopen_finalist(
+    tmp_path, fake_cuda, monkeypatch
+):
+    clock = [0.0]
+    monkeypatch.setattr(cuda_tune.time, "monotonic", lambda: clock[0])
+    measure = cuda_tune.measure_interleaved
+
+    def expire_after_third_screen(*args, **kwargs):
+        rows = measure(*args, **kwargs)
+        if fake_cuda.measured == 3:
+            clock[0] = 601.0
+        return rows
+
+    monkeypatch.setattr(cuda_tune, "measure_interleaved", expire_after_third_screen)
+    result = run_screened_tuning(tmp_path)
+    assert result.evidence["selected_profiles"] == []
+    assert result.evidence["search_summary"]["endpoint_candidates"] == 0
+    assert "deadline exhausted" in result.evidence["candidates"][0]["reason"]
+    assert len(fake_cuda.prepared) == 4 and fake_cuda.active == 0

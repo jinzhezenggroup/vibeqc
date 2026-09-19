@@ -260,6 +260,30 @@ jobs:
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[0-spherical-cpu]'
               --deselect
               'tests/python/test_ecp_f_projector.py::test_f_projector_complete_hf[1-spherical-cpu]'
+              # The module-scoped analytic Hessian fixture computes a complete
+              # water Hessian before the first parametrized check. On hosted
+              # runners that setup alone is ~27 minutes, so keep the H2 path
+              # on routine CI and run the water qualification nightly/manual.
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_first_order_sources_match_independent_native_derivatives[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_reference_is_the_native_converged_state[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_total_matches_independent_pyscf_hessian[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_components_match_independent_finite_difference_oracle[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_raw_total_invariants[water]'
+              --deselect
+              'tests/python/test_hessian_analytic.py::test_three_step_directional_differences_of_native_forces[water]'
+              # Au resource-boundary replay is a full qualification loop
+              # (multiple converged displaced calculations) and currently
+              # costs another ~7-10 minutes per spin case. The ordinary Au
+              # energy/force checks remain on every PR.
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-0-Au]'
+              --deselect
+              'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
             )
           fi
           .venv/bin/python -m pytest tests/python -q \
