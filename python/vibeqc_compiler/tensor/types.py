@@ -10,7 +10,19 @@ from dataclasses import dataclass, replace
 from math import prod
 
 MAX_ELEMENTS = (1 << 63) - 1
-SPACE_KINDS = frozenset({"occupied", "virtual", "ao", "auxiliary", "batch", "spin"})
+SPACE_KINDS = frozenset(
+    {
+        "occupied",
+        "virtual",
+        "ao",
+        "auxiliary",
+        "batch",
+        "spin",
+        "atom",
+        "pair",
+        "cartesian",
+    }
+)
 
 
 def checked_size(value: int, name: str) -> int:
