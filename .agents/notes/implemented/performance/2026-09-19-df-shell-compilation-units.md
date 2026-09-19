@@ -74,3 +74,46 @@ Refs #522, #349, #353, #444, #435.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Local qualification observations
+
+A CUDA 12.9.86 / GCC 11.4 / sm_120 real+PTX build on an AMD EPYC 7K62
+measured the original full-optimization monolith at 752.705 seconds. The 64
+independent class objects took a 382.326-second span with the existing two-job
+pool, with a maximum individual class job of 17.470 seconds. These are DF-owner
+compilation measurements, not whole-CI durations, repeated statistical estimates
+or a promised time on GitHub runners. Other CPU validation work overlapped on
+the 48-core host. The initial complete library and two native-test targets took
+635.84 seconds and included unrelated objects.
+
+The 534 panel/packet kernel identities are preserved. Cuobjdump reports identical
+static shared, stack and local-memory usage for every corresponding kernel;
+maximum static shared storage remains 40,464 bytes. NVCC nevertheless makes
+other code-generation decisions after partitioning: 330 register counts decrease,
+and none increase. Identical source mathematics is not proof of identical SASS.
+
+The controlled same-rest-of-library old-object substitution has a raw DSO size
+of 183,557,096 bytes versus 319,000,360 for the class-unit library. Conversely,
+gzip level 6 payload size changes from 85,870,743 to 73,463,199 bytes. Neither
+raw size nor register count alone establishes runtime performance. Keep this
+tradeoff visible when qualifying cold and prepared execution; the substituted
+comparison library is a local test artifact, not a source-identity-qualified
+release. No release or distribution was published.
+
+The original native shell-pair test assumed small AO domains could not select
+Rys. The old monolith reproduces that assertion failure after dimension-only
+admission was retired. The updated test runs both explicit legacy and automatic
+policies, genuinely exercises all three explicit schedules, and conserves Boys
+plus Rys primitive work and the independent Rys root count. Both native GPU
+targets pass under Slurm on the 5090. The obsolete zero-Rys assertion was not
+fixed by changing production mathematics or restoring the retired AO whitelist.
+
+A final-tree incremental check disables ccache for the mutation arms. Changing
+only the production manifest's qualification flag rebuilds exactly the light
+DF dispatcher and the source-identity owner in 4.801 seconds, with no numerical
+class objects changed. A class-003-only generated-header edit rebuilds exactly
+that numerical object in 13.021 seconds. Restoring the original inputs and
+rebuilding leaves a 0.183-second no-op build with no changed objects. Both
+mutation tests restore their original inputs in `finally` blocks and finish
+with a clean tracked worktree. This measures actual object invalidation, not
+just unchanged generated-source hashes or a reported cache hit percentage.

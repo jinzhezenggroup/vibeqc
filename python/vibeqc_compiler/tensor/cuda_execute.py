@@ -1,4 +1,4 @@
-"""Compile, prepare and execute complete FP64 TensorIR programs on CUDA.
+"""Compile, prepare and execute typed TensorIR programs on CUDA.
 
 Compilation is explicit and may run without a GPU. Preparation, probing and
 execution require the caller's allocated GPU (on this workstation, Slurm).
@@ -38,6 +38,7 @@ from vibeqc_compiler.common.provenance import (
     toolchain_identity,
 )
 
+from .cuda_dtype import compile_options, symmetry_tolerance
 from .cuda_emit import emit_cuda
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
@@ -90,6 +91,7 @@ def compile_cuda(
     """
     if compiler.target != plan.target:
         raise ValueError("compiler target does not match tensor plan target")
+    options = compile_options(plan)
     source = emit_cuda(plan)
     host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
     if not host_compiler:
@@ -124,7 +126,7 @@ def compile_cuda(
             "machine": platform.machine(),
             "libc": platform.libc_ver(),
         },
-        "options": ["--fmad=false", "c++17", "O3", "shared", "fPIC", "cublas"],
+        "options": [*options, "c++17", "O3", "shared", "fPIC", "cublas"],
     }
     key = canonical_hash(identity)
     cache = Path(cache).resolve()
@@ -142,7 +144,7 @@ def compile_cuda(
                 library,
                 includes=(asset_path("src/tensor"),),
                 libraries=("cublas",),
-                options=("--fmad=false",),
+                options=options,
             )
             (directory / "compiler.log").write_text(result.stdout + result.stderr)
             if result.returncode:
@@ -261,7 +263,7 @@ class PreparedCuda:
             {
                 "artifact": artifact.metadata["key"],
                 "device": self.device,
-                "precision": "fp64",
+                "precision": plan.precision,
                 "host_layout": "C staging; arbitrary caller strides",
                 "python": platform.python_version(),
                 "numpy": np.__version__,
@@ -271,7 +273,9 @@ class PreparedCuda:
 
         try:
             self._inputs = [
-                np.empty(plan.steps[i].node.spec.shape, dtype=np.float64)
+                np.empty(
+                    plan.steps[i].node.spec.shape, dtype=plan.steps[i].node.spec.dtype
+                )
                 for i in plan.inputs
             ]
             self._scratch = (
@@ -310,6 +314,7 @@ class PreparedCuda:
                 raise ValueError(f"non-finite tensor input: {node.attrs['name']}")
         if not value.size:
             return
+        atol, rtol = symmetry_tolerance(node.spec.dtype)
         for symmetry in node.spec.symmetries:
             iterator = np.nditer(
                 (value, value.transpose(symmetry.permutation)),
@@ -320,12 +325,12 @@ class PreparedCuda:
             )
             for left, right in iterator:
                 delta, tolerance = (v[: left.size] for v in self._scratch)
-                np.multiply(right, symmetry.sign, out=delta)
+                np.multiply(right, symmetry.sign, out=delta, dtype=np.float64)
                 np.subtract(left, delta, out=delta)
                 np.abs(delta, out=delta)
                 np.abs(right, out=tolerance)
-                np.multiply(tolerance, 1e-10, out=tolerance)
-                np.add(tolerance, 1e-11, out=tolerance)
+                np.multiply(tolerance, rtol, out=tolerance)
+                np.add(tolerance, atol, out=tolerance)
                 mask = self._mask[: left.size]
                 np.less_equal(delta, tolerance, out=mask)
                 if not mask.all():
@@ -357,16 +362,19 @@ class PreparedCuda:
                 value = feeds[name]
                 if (
                     not isinstance(value, np.ndarray)
-                    or value.dtype != np.float64
+                    or value.dtype != np.dtype(node.spec.dtype)
                     or value.shape != node.spec.shape
                 ):
                     raise ValueError(
-                        f"input {name} must be an FP64 ndarray with shape {node.spec.shape}"
+                        f"input {name} must be a {node.spec.dtype} ndarray with shape {node.spec.shape}"
                     )
                 np.copyto(staged, value)
                 self._validate(staged, node)
             outputs = {
-                name: np.empty(self.plan.steps[i].node.spec.shape, dtype=np.float64)
+                name: np.empty(
+                    self.plan.steps[i].node.spec.shape,
+                    dtype=self.plan.steps[i].node.spec.dtype,
+                )
                 for name, i in self.plan.outputs
             }
             input_ptrs = (ctypes.c_void_p * max(1, len(self._inputs)))(
@@ -417,7 +425,10 @@ class PreparedCuda:
                     tracked_host_bytes=host_owned,
                     resource_tracking_scope="owned ndarrays, native device buffers and measured retained provider allocations; iterator/runtime overhead reported separately",
                 )
-            return CudaExecution(outputs, metrics)
+            metrics["precision"] = self.plan.precision
+            return CudaExecution(
+                outputs, metrics, f"cuda-{self.plan.precision}-ordinary-stream"
+            )
 
     def close(self):
         """Release resources once; cannot race an execution using their pointers."""
