@@ -96,6 +96,32 @@ are checked against the independent pinned XC integration fixtures and
 density-direction energy variations. This is not DFT SCF and supplies no
 geometric XC forces; those remain with #162/#165.
 
+### Executable MethodIR exact exchange
+
+The fixed-density consumer now also accepts an explicitly compiled MethodIR plan.
+compile_fixed_density_method lowers one SemilocalXCPrimitive plus an optional
+full-range ExactExchangePrimitive to the existing FockBuildSpec boundary. It
+does not inspect the method identifier and does not own another J/K
+implementation. The selected exact or density-fitted providers therefore remain
+the common FockPlan sources.
+
+The MethodIR exact-exchange fraction is a physical exchange fraction rather
+than the raw-K coefficient used by FockBuildSpec. With the public density
+conventions the lowering is cK = -a_x/2 for restricted total density and
+cK = -a_x for unrestricted spin densities. PBE0 therefore requests -1/8 K for
+RKS and -1/4 K for UKS. FockPlan uses that same coefficient for fixed-density
+two-electron energy and Fock assembly, so the executable boundary cannot apply
+different hybrid weights to those observables.
+
+FixedDensityMethodPlan records the semantic MethodIR identity, reference/spin,
+provider choices and energy/Fock capability. FixedDensityMeanField.from_method
+requires an already prepared FockPlan to match that request before evaluation
+and attaches both method and executable-plan provenance to its result. Existing
+direct FixedDensityMeanField construction retains the historical unit-J,
+absent-K semilocal contract and identity. This slice deliberately does not
+register PBE0 SCF or geometric forces; those require the stationary/response
+work owned by #162/#163/#165.
+
 ## Densities, operators, and coefficients
 
 `FockBuildSpec` version 1 records spin, requested derivative order, and
