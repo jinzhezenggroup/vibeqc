@@ -288,9 +288,10 @@ def test_vector_empty_shape_and_explicit_errors(dtype):
         jvp(program, {k: args[k] for k in ("x", "y")}, {"y": args["d_y"]})
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize("fuse", [False, True])
 @pytest.mark.parametrize("mode", ["jvp", "vjp", "vjp_y"])
-def test_scaled_division_on_allocated_cuda(mode, fuse, tmp_path):
+def test_scaled_division_on_allocated_cuda(mode, fuse, dtype, tmp_path):
     """No implicit GPU probing; execute only in an explicitly allocated job."""
     import os
     from pathlib import Path
@@ -309,24 +310,29 @@ def test_scaled_division_on_allocated_cuda(mode, fuse, tmp_path):
         nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
     )
     rows, expected = [], []
-    candidates = _cases(np.float64)
+    candidates = _cases(dtype)
     if mode == "vjp_y":
-        candidates.append(tuple(np.asarray(v) for v in (1e-300, 1e-100, 1, 1, 1e300)))
+        values = (
+            (1e-300, 1e-100, 1, 1, 1e300)
+            if dtype == np.float64
+            else (1e-35, 1e-15, 1, 1, 1e35)
+        )
+        candidates.append(tuple(np.asarray(v, dtype=dtype) for v in values))
     for row in candidates:
         x, y, dx, dy, w = map(_rational, row)
         if mode == "jvp":
             values = [(dx * y - x * dy) / (y * y)]
         else:
             values = [w / y, -w * x / (y * y)] if mode == "vjp" else [-w * x / (y * y)]
-        values = [_rounded(v, np.float64) for v in values]
+        values = [_rounded(v, dtype) for v in values]
         if all(np.isfinite(values)):
             rows.append(row)
             expected.append(values)
     inputs = {
-        name: np.array([row[i] for row in rows])
+        name: np.array([row[i] for row in rows], dtype=dtype)
         for i, name in enumerate(("x", "y", "d_x", "d_y", "bar_out"))
     }
-    primal = _program(np.float64, (len(rows),))
+    primal = _program(dtype, (len(rows),))
     if mode == "jvp":
         program = linearize(primal, ["x", "y"]).program
         names = ["d_out"]
@@ -344,20 +350,20 @@ def test_scaled_division_on_allocated_cuda(mode, fuse, tmp_path):
         for _ in range(2):
             actual = prepared.execute(feeds).outputs
             for i, name in enumerate(names):
-                _close(actual[name], np.asarray(expected)[:, i], np.float64)
+                _close(actual[name], np.asarray(expected, dtype=dtype)[:, i], dtype)
         # The fused primitive must keep the native zero-denominator diagnostic
         # and allow an independent subsequent execution on the same handle.
         with pytest.raises(RuntimeError, match="division by zero"):
             prepared.execute({**feeds, "y": np.zeros_like(feeds["y"])})
         overflow = {name: np.ones_like(value) for name, value in feeds.items()}
-        overflow["y"].fill(np.finfo(np.float64).tiny)
+        overflow["y"].fill(np.finfo(dtype).tiny)
         if mode == "jvp":
             overflow["d_x"].fill(0)
         with pytest.raises(RuntimeError, match="non-finite"):
             prepared.execute(overflow)
         actual = prepared.execute(feeds).outputs
         for i, name in enumerate(names):
-            _close(actual[name], np.asarray(expected)[:, i], np.float64)
+            _close(actual[name], np.asarray(expected, dtype=dtype)[:, i], dtype)
 
 
 def test_scaled_cuda_source_contract_without_runtime_or_device():
@@ -376,9 +382,12 @@ def test_scaled_cuda_source_contract_without_runtime_or_device():
         assert "__fma_rn(ma, mb, -p)" in source
         assert "atomicCAS(error, 0, -(node + 1))" in source
         assert "finite(scalbn(ratio, exponent - ee - ef), error, node)" in source
-    # This repair does not silently advertise an FP32 CUDA backend.
-    with pytest.raises(ValueError, match="only float64"):
-        plan_cuda(
-            linearize(_program(np.float32), ["x", "y"]).program,
-            cuda_target_info("sm_80"),
-        )
+    fp32 = plan_cuda(
+        linearize(_program(np.float32), ["x", "y"]).program,
+        cuda_target_info("sm_80"),
+    )
+    source = emit_cuda(fp32)
+    assert "__device__ inline float scaled_bilinear(" in source
+    assert "__fmaf_rn(ma, mb, -p)" in source
+    assert "scalbnf(ratio, exponent - ee - ef)" in source
+    assert "dp < -52" in source

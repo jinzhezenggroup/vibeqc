@@ -445,10 +445,13 @@ void rejected_api_requests_revoke_tokens() {
     std::unique_ptr<vibeqc_ks_snapshot, decltype(&vibeqc_ks_snapshot_destroy_v1)> proof(
         raw_snapshot, vibeqc_ks_snapshot_destroy_v1);
     std::vector<double> values(metadata[15], 79.0);
-    require(metadata[0] == 1 && metadata[1] == 2 && metadata[2] == 1 &&
+    require(metadata[0] == 3 && metadata[1] == 2 && metadata[2] == 1 &&
                 vibeqc_ks_snapshot_copy_v1(batch.get(), proof.get(), values.data(),
                                            values.size()) == VIBEQC_STATUS_SUCCESS,
             "stationary bridge failed to export the native sources");
+    require(values.size() >= 3 && values[values.size() - 3] > 0 && values[values.size() - 2] == 1 &&
+                values[values.size() - 1] == 1,
+            "CUDA KS snapshot v3 omitted measured export work");
     require(vibeqc_ks_snapshot_check_v1(batch.get(), proof.get()) == VIBEQC_STATUS_SUCCESS,
             "current stationary proof failed validation");
     if (rejected == 2) ++outputs[1].abi_version;

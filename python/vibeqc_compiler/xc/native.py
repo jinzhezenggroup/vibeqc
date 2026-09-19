@@ -23,6 +23,7 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .contractions import ContractionProgram, _pack
 from .program import validate_features
+from .spec import UnsupportedXC
 
 
 def _cache_source(path, source):
@@ -145,15 +146,19 @@ class _PointFunction:
         ]
         self.function.restype = ct.c_int
 
-    def evaluate(self, variables, npoint):
-        values = (
-            np.stack(
-                [np.broadcast_to(variables[name], (npoint,)) for name in self.variables]
+    def evaluate_matrix(self, values):
+        """Consume an already-owned feature-major FP64 matrix without repacking."""
+        values = np.asarray(values)
+        if (
+            values.dtype != np.float64
+            or values.ndim != 2
+            or values.shape[0] != len(self.variables)
+            or not values.flags.c_contiguous
+        ):
+            raise ValueError(
+                "native XC matrix requires contiguous [variable,point] FP64"
             )
-            if self.variables
-            else np.empty((0, npoint))
-        )
-        values = immutable(values)
+        npoint = values.shape[1]
         output = np.empty((self.outputs, npoint))
         code = self.function(
             values.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -165,6 +170,16 @@ class _PointFunction:
         if code:
             raise ArithmeticError(f"native XC point evaluation failed at output {code}")
         return output
+
+    def evaluate(self, variables, npoint):
+        values = (
+            np.stack(
+                [np.broadcast_to(variables[name], (npoint,)) for name in self.variables]
+            )
+            if self.variables
+            else np.empty((0, npoint))
+        )
+        return self.evaluate_matrix(immutable(values))
 
 
 class _NativeCoefficients:
@@ -249,3 +264,21 @@ class NativeContractionProgram(ContractionProgram):
             variables = dict(zip(self.spec.features, x[:, active], strict=True))
             result[:, active] = self._scalar.evaluate(variables, int(active.sum()))
         return dict(zip(self.program.outputs, result, strict=True))
+
+    def scalar_values_packed(self, features):
+        """Consume ProgramIR-owned polarized features with no hidden materialization."""
+        if self.spec.spin != "polarized":
+            raise ValueError(
+                "packed native scalar input currently requires polarized XC"
+            )
+        x, active = validate_features(
+            self.spec, features, order=self.program.order, copy=False
+        )
+        if not np.all(active):
+            raise UnsupportedXC("packed derivative XC requires an all-active tile")
+        count = len(self._scalar.variables)
+        expected = tuple(self.spec.features[:count])
+        if tuple(self._scalar.variables) != expected:
+            raise ValueError("native scalar variables are not a dense feature prefix")
+        raw = self._scalar.evaluate_matrix(x[:count])
+        return dict(zip(self.program.outputs, raw, strict=True))

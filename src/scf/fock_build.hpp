@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_FOCK_BUILD_HPP
 #define VIBEQC_SCF_FOCK_BUILD_HPP
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -12,7 +13,7 @@ namespace vibeqc::scf {
 
 enum class FockSpin { Restricted, Unrestricted };
 enum class FockOperator { FullRange, ShortRange, LongRange };
-enum class FockApproximation { Exact, DensityFitted };
+enum class FockApproximation { Exact, DensityFitted, SeminumericalCosx };
 enum class FockBackend { Cpu, Cuda };
 enum class FockSchedule {
   CpuReference,
@@ -25,12 +26,34 @@ enum class FockSchedule {
 enum class FockPrecision { Float64 };
 enum class FockMatrixLayout { RowMajor, ColumnMajor };
 
+/** Versioned discrete COSX approximation identity.
+ *
+ * Version zero means no COSX model is attached. Version one is the current
+ * explicit, symmetrized, unfitted and unscreened reference model. The grid
+ * prescription lives here rather than inheriting XC quadrature implicitly.
+ */
+struct FockCosxSpec {
+  std::uint32_t version{};
+  std::uint32_t grid_version{};
+  std::size_t radial_points{};
+  std::size_t angular_polar{};
+  std::size_t angular_azimuth{};
+  unsigned partition_iterations{};
+  double coincident_tolerance{};
+  std::array<double, 119> element_radii{};
+  bool symmetrize{};
+  bool overlap_fitting{};
+  bool screening{};
+  bool operator==(const FockCosxSpec&) const = default;
+};
+
 struct FockTermSpec {
   bool present{true};
   double coefficient{1.0};
   FockOperator op{FockOperator::FullRange};
   double omega{};
   FockApproximation approximation{FockApproximation::Exact};
+  FockCosxSpec cosx{};
   bool operator==(const FockTermSpec&) const = default;
 };
 
@@ -73,6 +96,8 @@ struct FockProviderCapabilities {
   bool cartesian{};
   bool spherical{};
   bool batching{};
+  bool coulomb{};
+  bool exchange{};
   bool independent_terms{};
   bool arbitrary_coefficients{};
   bool legacy_adapter_only{};
@@ -110,6 +135,11 @@ const FockProviderRegistration& fock_provider_registration(FockApproximation app
 FockProviderCapabilities fock_provider_capabilities(FockApproximation approximation,
                                                     FockBackend backend);
 void require_fock_provider_executable(FockApproximation approximation, FockBackend backend);
+/** Build the explicit COSX v1 model identity independently of XC GridSpec. */
+FockCosxSpec make_cosx_v1_spec(std::size_t radial_points = 48, std::size_t angular_polar = 16,
+                               std::size_t angular_azimuth = 32, unsigned partition_iterations = 3,
+                               double coincident_tolerance = 1.0e-12,
+                               std::array<double, 119> element_radii = {});
 FockBuildSpec make_hf_fock_spec(FockSpin spin,
                                 FockApproximation approximation = FockApproximation::Exact);
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,

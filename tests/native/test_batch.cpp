@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -222,6 +223,92 @@ int main() {
     }
 
     vibeqc_batch_destroy(batch);
+
+    vibeqc_system* h2_stretched =
+        make_hydrogen_system(context, {{{0.0, 0.0, -0.8}}, {{0.0, 0.0, 0.8}}}, 0);
+    const std::array<const vibeqc_system*, 2> mp2_systems{{h2, h2_stretched}};
+    vibeqc_method_descriptor mp2_method{sizeof(vibeqc_method_descriptor),
+                                        VIBEQC_ABI_VERSION,
+                                        VIBEQC_METHOD_MP2,
+                                        100,
+                                        8,
+                                        1.0e-12,
+                                        1.0e-12,
+                                        0.0};
+    vibeqc_batch* mp2_batch = nullptr;
+    require(vibeqc_batch_prepare(context, mp2_systems.data(), mp2_systems.size(), &mp2_method, 0,
+                                 &mp2_batch) == VIBEQC_STATUS_SUCCESS,
+            "MP2 batch preparation failed");
+    std::array<double, 6> failed_forces{};
+    failed_forces.fill(123.0);
+    std::array<double, 6> neighbor_forces{};
+    auto failed_output = output(failed_forces.data(), failed_forces.size());
+    failed_output.energy = 987.0;
+    failed_output.iterations = 123;
+    failed_output.energy_change = 456.0;
+    failed_output.density_rms = 789.0;
+    failed_output.converged = 1;
+    failed_output.executed_backend = VIBEQC_BACKEND_HYBRID_CUDA;
+    failed_output.bucket_id = 77;
+    failed_output.warm_start_used = 1;
+    failed_output.warm_start_fallback = 1;
+    std::array<vibeqc_batch_item_result_descriptor, 2> mp2_isolated{
+        failed_output, output(neighbor_forces.data(), neighbor_forces.size())};
+    std::array<double, 6> invalid_mp2_coordinates{
+        0.0, 0.0, std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.8};
+    std::array<vibeqc_batch_input_descriptor, 2> mp2_inputs{{
+        {sizeof(vibeqc_batch_input_descriptor), VIBEQC_ABI_VERSION, invalid_mp2_coordinates.data(),
+         invalid_mp2_coordinates.size()},
+        {sizeof(vibeqc_batch_input_descriptor), VIBEQC_ABI_VERSION, nullptr, 0},
+    }};
+    require(vibeqc_batch_execute(mp2_batch, mp2_inputs.data(), mp2_inputs.size(),
+                                 mp2_isolated.data(), mp2_isolated.size()) == VIBEQC_STATUS_SUCCESS,
+            "MP2 item failure aborted the batch call");
+    require(mp2_isolated[0].status == VIBEQC_STATUS_INVALID_ARGUMENT,
+            "invalid MP2 coordinates were not isolated");
+    require(mp2_isolated[0].energy == 987.0 && mp2_isolated[0].iterations == 123 &&
+                mp2_isolated[0].energy_change == 456.0 && mp2_isolated[0].density_rms == 789.0 &&
+                mp2_isolated[0].converged == 1 &&
+                mp2_isolated[0].executed_backend == VIBEQC_BACKEND_HYBRID_CUDA &&
+                mp2_isolated[0].bucket_id == 77 && mp2_isolated[0].warm_start_used == 1 &&
+                mp2_isolated[0].warm_start_fallback == 1,
+            "failed MP2 item modified caller metadata");
+    require(std::all_of(failed_forces.begin(), failed_forces.end(),
+                        [](double value) { return value == 123.0; }),
+            "failed MP2 item modified caller force storage");
+    require(mp2_isolated[1].status == VIBEQC_STATUS_SUCCESS,
+            "failed MP2 item prevented its neighbor from succeeding");
+    std::array<double, 6> recovered_h2_forces{};
+    std::array<double, 6> recovered_stretched_forces{};
+    std::array<vibeqc_batch_item_result_descriptor, 2> mp2_recovered{{
+        output(recovered_h2_forces.data(), recovered_h2_forces.size()),
+        output(recovered_stretched_forces.data(), recovered_stretched_forces.size()),
+    }};
+    require(vibeqc_batch_execute(mp2_batch, nullptr, 0, mp2_recovered.data(),
+                                 mp2_recovered.size()) == VIBEQC_STATUS_SUCCESS &&
+                mp2_recovered[0].status == VIBEQC_STATUS_SUCCESS &&
+                mp2_recovered[1].status == VIBEQC_STATUS_SUCCESS,
+            "MP2 batch did not recover after an isolated failure");
+    std::array<double, 1> short_forces{321.0};
+    std::array<double, 6> valid_neighbor_forces{};
+    auto short_output = output(short_forces.data(), short_forces.size());
+    short_output.energy = 654.0;
+    short_output.iterations = 42;
+    std::array<vibeqc_batch_item_result_descriptor, 2> short_buffer{{
+        short_output,
+        output(valid_neighbor_forces.data(), valid_neighbor_forces.size()),
+    }};
+    require(vibeqc_batch_execute(mp2_batch, nullptr, 0, short_buffer.data(), short_buffer.size()) ==
+                VIBEQC_STATUS_SUCCESS,
+            "MP2 output-buffer failure aborted the batch call");
+    require(short_buffer[0].status == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                short_buffer[0].energy == 654.0 && short_buffer[0].iterations == 42 &&
+                short_forces[0] == 321.0,
+            "MP2 output-buffer failure modified caller storage");
+    require(short_buffer[1].status == VIBEQC_STATUS_SUCCESS,
+            "MP2 output-buffer failure prevented its neighbor from succeeding");
+    vibeqc_batch_destroy(mp2_batch);
+    vibeqc_system_destroy(h2_stretched);
     vibeqc_system_destroy(h2);
     vibeqc_system_destroy(h3_plus);
     vibeqc_system_destroy(h4);

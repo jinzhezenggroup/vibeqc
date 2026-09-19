@@ -106,6 +106,9 @@ class RematerializationPolicy:
         ("expm1", 12.0),
         ("log", 12.0),
         ("log1p", 12.0),
+        ("atan", 12.0),
+        ("asinh", 12.0),
+        ("erf", 12.0),
     )
     live_range_weight: float = 1.0
     recomputation_weight: float = 1.0
@@ -655,6 +658,12 @@ class Graph:
                 result = target.exponential(visit(node.arguments[0]))
             elif node.operation in ("log", "log1p", "expm1"):
                 result = target.stable_unary(node.operation, visit(node.arguments[0]))
+            elif node.operation == "select_le":
+                result = target.select_le(*(visit(item) for item in node.arguments))
+            elif node.operation in ("atan", "asinh", "erf"):
+                result = target.transcendental_unary(
+                    node.operation, visit(node.arguments[0])
+                )
             elif node.operation == "power":
                 result = target.power(
                     visit(node.arguments[0]),
@@ -756,6 +765,10 @@ class Graph:
                 result = target.exponential(arguments[0])
             elif node.operation in ("log", "log1p", "expm1"):
                 result = target.stable_unary(node.operation, arguments[0])
+            elif node.operation == "select_le":
+                result = target.select_le(*arguments)
+            elif node.operation in ("atan", "asinh", "erf"):
+                result = target.transcendental_unary(node.operation, arguments[0])
             elif node.operation == "power":
                 exponent = float(node.payload)
                 if (
@@ -774,6 +787,48 @@ class Graph:
             return result
 
         return target, tuple(visit(root.identifier) for root in normalized_roots)
+
+    def select_le(
+        self,
+        left: Expr | Scalar,
+        right: Expr | Scalar,
+        if_true: Expr | Scalar,
+        if_false: Expr | Scalar,
+    ) -> Expr:
+        """Return a lazy piecewise expression using left <= right.
+
+        The inactive branch remains symbolic but interpreters and generated code
+        must not evaluate it. Differentiation preserves the predicate and
+        differentiates only branch values, matching Libxc's piecewise Maple
+        convention away from a join and choosing the left branch at equality.
+        """
+
+        left = self.coerce(left)
+        right = self.coerce(right)
+        if_true = self.coerce(if_true)
+        if_false = self.coerce(if_false)
+        if if_true.identifier == if_false.identifier:
+            return if_true
+        left_node = self.node(left)
+        right_node = self.node(right)
+        if left_node.operation == "constant" and right_node.operation == "constant":
+            return (
+                if_true
+                if float(self._constant_value(left_node))
+                <= float(self._constant_value(right_node))
+                else if_false
+            )
+        return self._intern(
+            Node(
+                "select_le",
+                (
+                    left.identifier,
+                    right.identifier,
+                    if_true.identifier,
+                    if_false.identifier,
+                ),
+            )
+        )
 
     def reciprocal(self, value: Expr) -> Expr:
         self._require_graph(value)
@@ -799,6 +854,23 @@ class Graph:
         """
         if operation not in ("log", "log1p", "expm1"):
             raise ValueError(f"unsupported stable unary operation {operation!r}")
+        self._require_graph(value)
+        node = self.node(value)
+        if node.operation == "constant":
+            return self.approximate_constant(
+                getattr(math, operation)(float(self._constant_value(node)))
+            )
+        return self._intern(Node(operation, (value.identifier,)))
+
+    def transcendental_unary(self, operation: str, value: Expr) -> Expr:
+        """Build an audited smooth transcendental scalar primitive.
+
+        These nodes are intentionally generic algebra operations. Scientific
+        domain policy remains with the XC consumer; this layer only owns exact
+        chain rules and native scalar lowering.
+        """
+        if operation not in ("atan", "asinh", "erf"):
+            raise ValueError(f"unsupported transcendental operation {operation!r}")
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
@@ -894,6 +966,14 @@ class Graph:
             elif node.operation == "reciprocal":
                 operand = Expr(self, node.arguments[0])
                 derivative = -visit(operand.identifier) * operand.pow(-2.0)
+            elif node.operation == "select_le":
+                left, right, if_true, if_false = node.arguments
+                derivative = self.select_le(
+                    Expr(self, left),
+                    Expr(self, right),
+                    visit(if_true),
+                    visit(if_false),
+                )
             elif node.operation == "exp":
                 operand = Expr(self, node.arguments[0])
                 derivative = visit(operand.identifier) * current
@@ -905,6 +985,20 @@ class Graph:
                 else:
                     denominator = operand + 1 if node.operation == "log1p" else operand
                     derivative = inner / denominator
+            elif node.operation in ("atan", "asinh", "erf"):
+                operand = Expr(self, node.arguments[0])
+                inner = visit(operand.identifier)
+                if node.operation == "atan":
+                    derivative = inner / (1 + operand.pow(2))
+                elif node.operation == "asinh":
+                    derivative = inner / (1 + operand.pow(2)).pow(0.5)
+                else:
+                    derivative = (
+                        2
+                        / math.sqrt(math.pi)
+                        * inner
+                        * self.exponential(-operand.pow(2))
+                    )
             elif node.operation == "power":
                 operand = Expr(self, node.arguments[0])
                 exponent = float(node.payload)
@@ -1424,29 +1518,73 @@ class Graph:
     def evaluate(self, expression: Expr, variables: Mapping[str, float]) -> float:
         """Evaluate one root for generator tests and finite-difference oracles."""
 
-        values: dict[int, float] = {}
-        for identifier in self.topological_order([expression]):
+        order = self.topological_order([expression])
+        if not any(
+            self.nodes[identifier].operation == "select_le" for identifier in order
+        ):
+            values: dict[int, float] = {}
+            for identifier in order:
+                node = self.nodes[identifier]
+                if node.operation == "constant":
+                    result = float(self._constant_value(node))
+                elif node.operation == "variable":
+                    result = float(variables[str(node.payload)])
+                elif node.operation == "add":
+                    result = sum(values[item] for item in node.arguments)
+                elif node.operation == "multiply":
+                    result = math.prod(values[item] for item in node.arguments)
+                elif node.operation == "reciprocal":
+                    result = 1.0 / values[node.arguments[0]]
+                elif node.operation == "exp":
+                    result = math.exp(values[node.arguments[0]])
+                elif node.operation in (
+                    "log",
+                    "log1p",
+                    "expm1",
+                    "atan",
+                    "asinh",
+                    "erf",
+                ):
+                    result = getattr(math, node.operation)(values[node.arguments[0]])
+                elif node.operation == "power":
+                    result = values[node.arguments[0]] ** float(node.payload)
+                else:
+                    raise ValueError(f"unsupported operation {node.operation!r}")
+                values[identifier] = result
+            return values[expression.identifier]
+
+        values = {}
+
+        def visit(identifier: int) -> float:
+            if identifier in values:
+                return values[identifier]
             node = self.nodes[identifier]
             if node.operation == "constant":
                 result = float(self._constant_value(node))
             elif node.operation == "variable":
                 result = float(variables[str(node.payload)])
             elif node.operation == "add":
-                result = sum(values[item] for item in node.arguments)
+                result = sum(visit(item) for item in node.arguments)
             elif node.operation == "multiply":
-                result = math.prod(values[item] for item in node.arguments)
+                result = math.prod(visit(item) for item in node.arguments)
             elif node.operation == "reciprocal":
-                result = 1.0 / values[node.arguments[0]]
+                result = 1.0 / visit(node.arguments[0])
             elif node.operation == "exp":
-                result = math.exp(values[node.arguments[0]])
-            elif node.operation in ("log", "log1p", "expm1"):
-                result = getattr(math, node.operation)(values[node.arguments[0]])
+                result = math.exp(visit(node.arguments[0]))
+            elif node.operation in ("log", "log1p", "expm1", "atan", "asinh", "erf"):
+                result = getattr(math, node.operation)(visit(node.arguments[0]))
+            elif node.operation == "select_le":
+                left, right, if_true, if_false = node.arguments
+                branch = if_true if visit(left) <= visit(right) else if_false
+                result = visit(branch)
             elif node.operation == "power":
-                result = values[node.arguments[0]] ** float(node.payload)
+                result = visit(node.arguments[0]) ** float(node.payload)
             else:
                 raise ValueError(f"unsupported operation {node.operation!r}")
             values[identifier] = result
-        return values[expression.identifier]
+            return result
+
+        return visit(expression.identifier)
 
     def operation_counts(self, roots: Sequence[Expr]) -> dict[str, int]:
         counts: dict[str, int] = {}

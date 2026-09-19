@@ -1,4 +1,4 @@
-"""Bounded real-parameter qualification: LANL2DZ Rb/Cs/Au with STO-3G hydrogen.
+"""Bounded real-parameter qualification: LANL2DZ Rb/Cs/Au/Br/I with STO-3G hydrogen.
 
 Parameters are loaded from the pinned test-only PySCF installation. This suite
 does not establish coverage of other heavy elements or ECP parameter families.
@@ -23,9 +23,17 @@ from vibeqc.ecp import ecp_integrals, resolve_ecp
 from vibeqc.profiles import canonical_hash
 
 # Atomic number, removed core, and an off-axis molecular geometry in bohr.
-CASES = {"Rb": (37, 28, 4.4), "Cs": (55, 46, 4.8), "Au": (79, 60, 3.0)}
-VALENCE_CHARGES = {"Rb": 9, "Cs": 9, "Au": 19}
+CASES = {
+    "Rb": (37, 28, 4.4),
+    "Cs": (55, 46, 4.8),
+    "Au": (79, 60, 3.0),
+    "Br": (35, 28, 2.85),
+    "I": (53, 46, 3.25),
+}
+VALENCE_CHARGES = {"Rb": 9, "Cs": 9, "Au": 19, "Br": 7, "I": 7}
 PARAMETER_SHA256 = {
+    "Br": "befb5b5ae3a88d48ab3565c8c1afbb87bc27c4bd6a5fb271a0c24e600d0ec6a7",
+    "I": "e270915093e0efcd4419608403ab23cc9bce5bfd9f0bb6aa3d972388c1025e5e",
     "Au": "618e1d76ee6ec1af1f846befb9ca9da96b54c8bbac109033cf5b34414b615642",
     "Rb": "9d8f07743d6859efb8fa6155fe1ac83e7e9de18bb453f51dcdb2846c202277aa",
     "Cs": "f5d99d7ab2ca5fae6d454127584aa3bc241de2ea8e3d4870d5889f8c23b0aa9e",

@@ -96,6 +96,32 @@ are checked against the independent pinned XC integration fixtures and
 density-direction energy variations. This is not DFT SCF and supplies no
 geometric XC forces; those remain with #162/#165.
 
+### Executable MethodIR exact exchange
+
+The fixed-density consumer now also accepts an explicitly compiled MethodIR plan.
+compile_fixed_density_method lowers one SemilocalXCPrimitive plus an optional
+full-range ExactExchangePrimitive to the existing FockBuildSpec boundary. It
+does not inspect the method identifier and does not own another J/K
+implementation. The selected exact or density-fitted providers therefore remain
+the common FockPlan sources.
+
+The MethodIR exact-exchange fraction is a physical exchange fraction rather
+than the raw-K coefficient used by FockBuildSpec. With the public density
+conventions the lowering is cK = -a_x/2 for restricted total density and
+cK = -a_x for unrestricted spin densities. PBE0 therefore requests -1/8 K for
+RKS and -1/4 K for UKS. FockPlan uses that same coefficient for fixed-density
+two-electron energy and Fock assembly, so the executable boundary cannot apply
+different hybrid weights to those observables.
+
+FixedDensityMethodPlan records the semantic MethodIR identity, reference/spin,
+provider choices and energy/Fock capability. FixedDensityMeanField.from_method
+requires an already prepared FockPlan to match that request before evaluation
+and attaches both method and executable-plan provenance to its result. Existing
+direct FixedDensityMeanField construction retains the historical unit-J,
+absent-K semilocal contract and identity. This slice deliberately does not
+register PBE0 SCF or geometric forces; those require the stationary/response
+work owned by #162/#163/#165.
+
 ## Densities, operators, and coefficients
 
 `FockBuildSpec` version 1 records spin, requested derivative order, and
@@ -226,6 +252,44 @@ Source-backed DF plans regenerate bounded tiles; resident/host-streamed DF
 plans use the same typed binding. CPU ragged fleets accept explicit resolved independent requests
 and retain per-item failure isolation and warm-state ownership.
 
+## COSX provider identity
+
+The internal strategy schema can represent `SeminumericalCosx` as a distinct
+exchange approximation. COSX is not an exact/DF schedule variant: its
+`FockTermSpec` carries a versioned `FockCosxSpec` containing the complete
+quadrature prescription (grid version, radial/angular sizes, partition
+iterations, coincident-center tolerance and element radii) plus the
+symmetrization/fitting/screening choices. Changing any of these fields changes
+the mathematical Fock identity.
+
+COSX v1 is currently restricted to full-range exchange, explicit
+symmetrization, no overlap fitting, no screening and derivative order zero.
+The provider domain therefore advertises exchange but not Coulomb and does not
+inherit the direct/DF first-derivative capability. This lets a method resolve
+an explicit `RI-J + COSX-K` request without implying that COSX may provide J.
+
+In CUDA builds, `cuda.cosx` is executable through the DFT-owned
+`PreparedCosxFockPlan`. That owner constructs the dedicated COSX grid directly
+from `FockCosxSpec`, reserves the bounded COSX device storage first, gives the
+remaining device budget to an ordinary J-only `PreparedFockPlan`, and returns
+the shared `DirectJkMatrices` used by standard Fock/energy assembly. RHF
+consumes the spin-summed density; UHF evaluates independent alpha/beta exchange.
+
+The ordinary `PreparedFockPlan` explicitly rejects COSX so its historical
+exact-vs-DF branch cannot silently misroute a new approximation. The CPU COSX
+implementation remains a correctness oracle rather than an executable provider.
+The public C Fock ABI still exposes only exact and density-fitted choices.
+The DFT layer additionally owns internal energy-only RHF/UHF controllers over
+this prepared provider. They use host DIIS/eigensolves, physical commutator
+convergence gates and unextrapolated final Fock rebuilding. Consequently this
+promotion supports internal fixed-density and energy-only SCF execution, but
+not AUTO selection, public method support, batching, proposal hooks or forces.
+
+See the
+[COSX provider-identity decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-provider-identity.md),
+[prepared-provider decision](../.agents/notes/implemented/architecture/2026-09-19-cosx-prepared-provider.md)
+and [COSX reference contract](cosx_reference.md).
+
 ## Validation and scope
 
 `vibeqc_fock_build_tests` uses independent pinned two-AO J/K values, distinct
@@ -248,6 +312,19 @@ truncated metric, and complete SCF/replay/changed-geometry force endpoints.
 The optional `vibeqc_cuda_fock_provider_tests --through-f-response` numerical
 tier adds signed d/f UHF responses against the complete CPU derivative tensors
 for both public representations and both independently prepared batch items.
+
+`vibeqc_cosx_fock_provider_tests` qualifies the internal fixed-density
+RI-J/COSX-K composition for RHF and UHF against independent CPU DF and discrete
+COSX oracles. It also checks that the dedicated grid exactly reproduces the
+resolved COSX identity, total device usage stays within the admitted budget,
+and the legacy exact/DF prepared owner rejects COSX rather than falling through
+to its DF branch.
+
+`vibeqc_cosx_scf_tests` covers cold RHF/UHF convergence, warm replay,
+strict warm determinant validation, nonconverged one-iteration state behavior
+and explicit force rejection. The returned density and energy are re-evaluated
+with independent CPU DF-J and discrete COSX-K oracles, including the final
+physical commutator residual.
 
 `tests/python/test_fock.py` exercises public independent choices, transactional
 failure, identity, source lifetime, SCF/replay/force consistency and semilocal XC

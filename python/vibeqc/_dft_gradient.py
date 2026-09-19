@@ -101,7 +101,7 @@ class StationaryKsState:
     def from_native(cls, batch, basis, grid=None, *, index=0):
         """Read the actual current #162 state and verify its AO/grid sources.
 
-        CPU plans have no #162 handoff and fail explicitly. Native SCF keeps
+        CPU RKS and CUDA KS owners provide a validated handoff. Native SCF keeps
         its own regularization identity; #163-A consumes that exact point model
         before applying the compiler-generated density/AO geometry pullback.
         """

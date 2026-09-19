@@ -4,7 +4,11 @@
 // kernels in one translation unit per candidate; equations remain generated.
 #include <type_traits>
 
+#ifdef VIBEQC_DF_SHELL_MATH_HEADER
+#include VIBEQC_DF_SHELL_MATH_HEADER
+#else
 #include "generated_df_rys_shell.cuh"
+#endif
 #include "generated_df_screening.cuh"
 #include "molecule/basis.hpp"
 #include "scf/cuda/df_shell_derivatives.cuh"

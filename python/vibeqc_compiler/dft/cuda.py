@@ -87,6 +87,25 @@ class DeviceGridTask:
         )
         return None if result is None else immutable(result)
 
+    def density_jets(self, jets):
+        """Borrow [spin,4,point,active AO] D-contracted jets within this lease.
+
+        Only requested jet slots are valid. Call before xc(), which reuses
+        the work arena. The consumer must finish on view.stream before return.
+        """
+        view = self.view
+        if type(jets) is not int or jets not in (1, 4):
+            raise ValueError("contracted jet domain must be one or four")
+        output = DOUBLE()
+        self._owner._call(
+            "grid_cuda_density_jets_v1",
+            self._owner._handle,
+            view.generation,
+            jets,
+            ct.byref(output),
+        )
+        return output
+
     def xc(self, weights, functional, *, restricted=False, reset=False, download=False):
         """Evaluate native LDA/PBE XC and scatter its local spin potentials.
 
@@ -317,6 +336,14 @@ class CudaGrid:
         lib.grid_cuda_view_v1.argtypes = [
             ct.c_void_p,
             ct.POINTER(GridTaskView),
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.grid_cuda_density_jets_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_uint64,
+            ct.c_uint,
+            ct.POINTER(DOUBLE),
             ct.c_char_p,
             ct.c_size_t,
         ]

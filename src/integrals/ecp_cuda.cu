@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
-#include <cmath>
 #include <stdexcept>
 
 #include "api/error.hpp"
@@ -115,8 +114,7 @@ __global__ void check_grid(const double* coarse, const double* fine, int size, i
                            int* failed) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= 2 * stride) return;
-  const double tolerance = (i % stride) < size ? 2e-9 : 2e-8;
-  if (!isfinite(fine[i]) || !isfinite(coarse[i]) || fabs(coarse[i] - fine[i]) > tolerance)
+  if (!generated::ecp_grid_pair_accepted(coarse[i], fine[i], (i % stride) >= size))
     atomicExch(failed, 1);
 }
 struct Arena {
@@ -231,8 +229,9 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
   };
   if (convergence) {
     auto coarse = arena.allocate<double>(2 * stride);
-    evaluate_grid(160, 32, coarse);
-    evaluate_grid(224, 44, output);
+    evaluate_grid(generated::ecp_coarse_radial_points, generated::ecp_coarse_polar_points, coarse);
+    evaluate_grid(generated::ecp_refined_radial_points, generated::ecp_refined_polar_points,
+                  output);
     auto failed = arena.allocate<int>(1);
     check(cudaMemsetAsync(failed, 0, sizeof(int), stream));
     check_grid<<<(2 * stride + 127) / 128, 128, 0, stream>>>(coarse, output, size, stride, failed);
@@ -293,8 +292,9 @@ vibeqc_status add_ecp_cuda(int device, const core::System& system, void* stream,
     if (forces && !density) throw std::invalid_argument("ECP force requires density weights");
     DeviceGuard device_guard;
     check(cudaSetDevice(device));
-    run(system, 160, 32, forces != nullptr, static_cast<cudaStream_t>(stream), nullptr, hcore,
-        density, forces, true);
+    run(system, generated::ecp_coarse_radial_points, generated::ecp_coarse_polar_points,
+        forces != nullptr, static_cast<cudaStream_t>(stream), nullptr, hcore, density, forces,
+        true);
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
     return map_ecp_exception(detail);

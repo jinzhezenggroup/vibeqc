@@ -27,17 +27,24 @@ def _pack(spec, features):
     contract proves that the requested energy/derivatives do not depend on
     those slots; unsupported physical derivatives are never filled with zeros.
     """
+    missing = set(spec.ingredients) - set(features)
+    if missing:
+        raise ValueError(f"missing active XC ingredients: {sorted(missing)}")
     rho = features["rho"]
     result = np.zeros((len(spec.features), rho.shape[1]))
     if spec.spin == "polarized":
         result[:2] = rho
         if "sigma" in features:
             result[2:5] = features["sigma"]
+        if "tau" in features:
+            result[5:7] = features["tau"]
     else:
         result[0] = rho.sum(axis=0)
         if "sigma" in features:
             aa, ab, bb = features["sigma"]
             result[1] = aa + 2 * ab + bb
+        if "tau" in features:
+            result[2] = features["tau"].sum(axis=0)
     return result
 
 
@@ -128,7 +135,11 @@ class ContractionProgram:
             outputs=self.contract.scalar_outputs,
         )
         ingredients = self.contract.ingredients
-        self.coefficients = coefficient_program(spec.spin, ingredients.family)
+        self.coefficients = coefficient_program(
+            spec.spin,
+            ingredients.family,
+            kinetic=ingredients.family == "mgga",
+        )
         self.response_coefficients = (
             coefficient_program(spec.spin, ingredients.family, response=True)
             if observable == "response"
@@ -146,9 +157,12 @@ class ContractionProgram:
 
     def features(self, jets, density):
         """Perform only the ingredient reductions declared by this functional."""
+        family = self.contract.ingredients.family
         requested = (
             ("rho",)
-            if self.contract.ingredients.family == "lda"
+            if family == "lda"
+            else ("rho", "gradient", "sigma", "tau")
+            if family == "mgga"
             else ("rho", "gradient", "sigma")
         )
         return density_features(jets, density, ingredients=requested)
@@ -165,16 +179,17 @@ class ContractionProgram:
         return result
 
     def potential_tile(self, jets, features, weights):
-        """Consume complete-density features from a validated collocation owner.
-
-        FixedDensityXC and local-task adapters share this entry point so
-        native collocation does not have to repeat its feature reductions.
-        Partial AO density contributions must be combined before this call.
-        """
+        """Consume complete-density features from a validated collocation owner."""
         if self.contract.request.observable != "potential":
             raise ValueError("potential tile requires a potential request")
-        weights = immutable(weights, shape=(jets.shape[1],))
         rows = self.scalar_values(features)
+        return self.potential_from_rows(jets, features, weights, rows)
+
+    def potential_from_rows(self, jets, features, weights, rows):
+        """Assemble the unchanged potential after an explicitly planned scalar call."""
+        if self.contract.request.observable != "potential":
+            raise ValueError("potential rows require a potential request")
+        weights = immutable(weights, shape=(jets.shape[1],))
         v = self._gradient(rows, jets.shape[1])
         coefficients = self.coefficients.evaluate(
             _functional_gradient(self.spec, features), v
@@ -241,7 +256,10 @@ class ContractionProgram:
             for i in indices:
                 for j in indices:
                     dv[i] += rows[(min(i, j), max(i, j))] * direction[j]
-            response = self.response_coefficients.evaluate(
+            response_coefficients = self.response_coefficients
+            if response_coefficients is None:
+                raise RuntimeError("response coefficient program is unavailable")
+            response = response_coefficients.evaluate(
                 gradient,
                 v,
                 delta_gradient=_functional_gradient(self.spec, delta),
@@ -341,7 +359,10 @@ class ContractionProgram:
             weighted = {"rho": weights * coefficients["rho"][spin]}
             if order:
                 weighted["gradient"] = weights[:, None] * coefficients["gradient"][spin]
-            pullback += self.jet_pullback.evaluate(weighted, work)
+            jet_pullback = self.jet_pullback
+            if jet_pullback is None:
+                raise RuntimeError("geometry pullback program is unavailable")
+            pullback += jet_pullback.evaluate(weighted, work)
         centers = np.zeros((natom, 3))
         points = np.zeros((jets.shape[1], 3))
         for k in range(3):

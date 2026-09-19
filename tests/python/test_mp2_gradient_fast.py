@@ -95,9 +95,13 @@ def test_water_complete_gradient_matches_directional_finite_differences():
                     atomic_numbers, positions - step * direction, strict=True
                 )
             ]
-            plus = calculator.singlepoint(plus_atoms, charge=arguments["charge"]).energy
+            plus = calculator.singlepoint(
+                plus_atoms, charge=arguments["charge"], properties=("energy",)
+            ).energy
             minus = calculator.singlepoint(
-                minus_atoms, charge=arguments["charge"]
+                minus_atoms,
+                charge=arguments["charge"],
+                properties=("energy",),
             ).energy
             finite = (plus - minus) / (2 * step)
             errors.append(abs(finite - expected))

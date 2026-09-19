@@ -35,19 +35,25 @@ import numpy as np
 
 from .autodiff import _input_groups, _input_nodes
 from .ir import (
+    TRANSCENDENTALS,
     Node,
+    _execution_power_exponent,
     add,
     broadcast,
     constant,
     divide,
     einsum,
+    exp,
     gather,
     input_tensor,
+    log,
     multiply,
+    power,
     reduce_sum,
     reshape,
     scaled_bilinear,
     slice_tensor,
+    sqrt,
     transpose,
 )
 from .packing import PackedLayout
@@ -231,6 +237,28 @@ def _incidence_constant(
     return constant(values, spec)
 
 
+def _transcendental_partial(node: Node, weight: Node) -> Node:
+    """Generate weighted partials while retaining the original error boundary."""
+    x = node.inputs[0]
+    if node.op == "exp":
+        return multiply(node, weight)
+    if node.op == "sqrt":
+        # Keeps sqrt's primal check and rejects the singular derivative at zero.
+        return divide(weight, add(node, coefficients=(2,)))
+    guard = _zero_like(node)
+    if node.op == "log":
+        return add(guard, divide(weight, x))
+    p = _execution_power_exponent(node.attrs["exponent"], node.spec.dtype)
+    if p == 0:
+        return add(guard, _zero_like(weight))
+    if p == 1:
+        return add(guard, weight)
+    # Retain the primal check even when its result is not needed by the slope.
+    # x**(p-1), rather than x**p/x, preserves slopes after primal underflow.
+    partial = add(multiply(weight, power(x, p - 1)), coefficients=(p,))
+    return add(guard, partial)
+
+
 def _jvp_graph(node: Node, operand_tangents) -> Node | None:
     """Generate one forward tangent expression, or None for exact zero."""
     if node.op == "add":
@@ -294,6 +322,8 @@ def _jvp_graph(node: Node, operand_tangents) -> Node | None:
     tangent = operand_tangents[0]
     if tangent is None:
         return None
+    if node.op in TRANSCENDENTALS:
+        return _transcendental_partial(node, tangent)
     if node.op == "transpose":
         return transpose(tangent, node.attrs["axes"])
     if node.op == "reshape":
@@ -449,6 +479,8 @@ def _vjp_graph(
     """
     if not any(active):
         return [None] * len(node.inputs)
+    if node.op in TRANSCENDENTALS:
+        return [_transcendental_partial(node, bar)]
     if node.op == "add":
         return [
             _scale(bar, coefficient) if needed else None
@@ -627,6 +659,10 @@ def _rebuild_node(node: Node, inputs) -> Node:
         return multiply(*inputs)
     if node.op == "divide":
         return divide(*inputs)
+    if node.op in ("exp", "log", "sqrt"):
+        return {"exp": exp, "log": log, "sqrt": sqrt}[node.op](*inputs)
+    if node.op == "power":
+        return power(inputs[0], _coefficient(node.attrs["exponent"]))
     if node.op == "scaled_bilinear":
         return scaled_bilinear(*inputs)
     if node.op == "einsum":

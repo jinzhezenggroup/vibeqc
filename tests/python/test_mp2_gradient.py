@@ -665,6 +665,25 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation():
     assert errors[-1] < errors[0]
 
 
+def test_canonical_orbital_rhs_skips_zero_derivative_degenerate_subspace():
+    meta, arrays = load_fixture("lih")
+    reference = fixture_snapshot(meta, arrays)
+    occupied = reference.nocc
+    eri = arrays["conventional_mo"]
+    values = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+    adjoint = canonical_energy_adjoint(
+        values,
+        reference.orbital_energies,
+        occupied,
+        reference_identity=reference.identity,
+        hamiltonian_id=reference.hamiltonian_id,
+    )
+    coefficients = reference.coefficients
+    hcore = coefficients.T @ arrays["conventional_h"] @ coefficients
+    orbital = canonical_orbital_rhs(hcore, eri, adjoint, occupied)
+    assert np.isfinite(orbital.response_rhs).all()
+
+
 def test_orbital_rhs_rejects_nonfinite_hamiltonian_data():
     energies = np.array([-0.8, 0.3])
     eri = np.zeros((2, 2, 2, 2))

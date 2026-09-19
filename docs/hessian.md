@@ -1,4 +1,4 @@
-# Analytic HF Hessians (issue #180, slice A)
+# Analytic HF Hessians and HVPs (issue #180)
 
 This document is the second-derivative dependency graph requested by step 1 of
 issue #180: it maps every term of the RHF energy to the Hessian contribution it
@@ -9,11 +9,23 @@ three different providers later.
 
 ## Current implementation status
 
-The native CPU tools path now consumes a VibeQC RHF snapshot and generated
-first/second integral derivatives, with native J/K response. PySCF is confined
-to external comparison oracles. The qualified small-system domain and remaining
-#180 production/GPU/HVP work are described below; a tiny analytic Hessian does
-not close the whole Hessian/HVP roadmap or expose a public Calculator API.
+The native tools path now consumes a VibeQC RHF snapshot and generated
+first/second integral derivatives, with native J/K response. In addition to the
+tiny dense analytic reference, `rhf_hvp` composes #178's direct
+`weighted_hvp` consumers with one directional #179 CPHF solve and shell-local
+first-integral relaxation contractions. It returns a complete conventional RHF
+`H @ v` without allocating the molecular Hessian or all-coordinate H1/S1
+tensors. PySCF remains confined to external comparison oracles.
+
+The HVP keeps the existing `NativeRHFState` admission boundary (all-electron
+closed-shell conventional RHF, at most 12 Cartesian AOs/four atoms). Second
+integrals and the final relaxation contraction are currently CPU-generated.
+Directional H1/S1 and direct J/K may independently use their qualified CUDA
+providers, in which case the result is explicitly labelled mixed host/device;
+AO/MO transforms and Krylov remain host-side. There is still no public
+Calculator Hessian/HVP API, production-size memory claim, or all-device HVP
+claim. See
+[the matrix-free RHF HVP decision note](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
 ## Scope of this slice
 
@@ -25,7 +37,9 @@ Explicitly outside this slice, and left fail-closed rather than approximated:
 
 - **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
   #161's derivative kernels;
-- **HVP and bounded full-Hessian execution** (slice B);
+- **device-resident AO/MO/Krylov execution** (slice B2) remains separate;
+  bounded conventional RHF matrix-free HVP (B3) and block/full-Hessian
+  assembly (B4) are implemented under the small-system tools boundary;
 - **DF, ECP, range-separated and meta-GGA Hessians** — each needs its own
   complete second-derivative/response chain and is *not* inherited from energy
   or first-force support;
@@ -63,6 +77,14 @@ Krylov solver with multi-RHS strategies, and two independent oracles
 right-hand side**: `docs/response.md` assigns nuclear-perturbation RHS
 construction to the caller. This work reuses that operator and does not add a
 second response solver.
+
+The shared response layer now also has an explicit direct-CUDA J/K adapter,
+`CudaDirectJKBackend`; see [response backend boundaries](response.md#backend-boundary).
+It does not change this document's CPU-only molecular Hessian scope. Its
+AO/MO transforms and Krylov solve remain host-orchestrated, and nuclear
+directional RHS, complete HVP assembly and device-resident execution are
+separate #180 integration gates.
+
 
 **#141 / #144 — first derivatives**, used to build the response RHS:
 
@@ -390,3 +412,136 @@ not installed; the no-oracle native test must not skip for that reason.
 
 See the [native first-order source decision](../.agents/notes/implemented/numerics/2026-09-19-hessian-native-first-order-sources.md)
 for the superseded PySCF-backed integration design and its replacement.
+
+## Directional nuclear RHS and density response
+
+`directional_rhf_response(state, direction, jk_backend="cpu" | "cuda")`
+implements one nuclear perturbation without retaining every coordinate's
+H1/S1 matrix. The input has shape `(atom, xyz)` and its magnitude is preserved.
+The first-integral adapter contracts each shell's mathematical-center gradient
+with the corresponding physical direction, including repeated atom slots and
+the independent nuclear-attraction center. It accumulates only two `(AO, AO)`
+matrices: the frozen-density Fock derivative and overlap derivative.
+
+The same `solve_rhf_nuclear_perturbation` helper now serves this direction and
+the existing complete-coordinate CPU Hessian assembly. It includes the known
+metric-density Fock response, solves the nonredundant CPHF problem once, and
+retains the occupied metric response and full occupied-energy response block.
+The returned response includes occupied coefficient derivatives, the complete
+AO density derivative and the energy-weighted-density derivative. In
+particular, the occupied-energy response cannot be replaced with only its
+diagonal or omitted from the latter.
+
+```python
+from tools.vibeqc_hessian import NativeRHFState, directional_rhf_response
+from tools.vibeqc_posthf.sources import NativeSource
+
+with NativeSource([(1, (0, 0, 0)), (1, (0.1, 0.2, 1.4))]) as source:
+    state = NativeRHFState.from_source(source)
+    result = directional_rhf_response(
+        state, [[0, 0, 0], [0.1, 0.2, 0.3]], jk_backend="cuda"
+    )
+    dP = result.response.density_derivative
+    dW = result.response.energy_weighted_density_derivative
+```
+
+This remains a **small-system tools integration** under `NativeRHFState`'s
+12-Cartesian-AO/four-atom, all-electron conventional RHF boundary. It does not
+remove that size limit, expose a Calculator derivative API or produce `Hv`.
+First-integral execution defaults to the existing generated CPU path.
+`first_backend="cuda"` plus an explicit `first_compiler` instead runs generated
+S/T/V/four-center derivatives, direction contraction, density weighting and
+AO-matrix accumulation on CUDA. Direction and density are uploaded once to a
+shared accumulator; only the final H1(v)/S1(v) matrices are downloaded.
+`jk_backend="cuda"` independently sends all metric/CPHF/final-response J/K
+actions to the exact unscreened CUDA provider, without a CPU or DF fallback.
+AO/MO transformations and Krylov work still remain host-side, so selecting both
+CUDA providers is not a complete GPU-resident response/HVP claim. No performance
+promotion or global peak-memory bound follows from those selections. The
+[directional CUDA provider](first_directional_derivatives.md) documents its
+compiler, ownership, memory and numerical boundaries.
+Diagnostics report actual residency, reference/operator identity, the single
+RHS/solve, input-matrix storage, solver controls and residuals. The CUDA plan's
+retained-allocation budget and the solver workspace budget remain separate.
+
+Direction arrays and published numeric results are detached and immutable.
+Invalid directions, wrong state/operator identity, closed sources, failed
+provider work and nonconverged or workspace-limited solves do not publish a
+partial result. No reference-engine derivative or fresh SCF solve occurs inside
+the directional consumer; displaced SCF solves are used only in its independent
+finite-difference tests.
+
+`tests/python/test_hessian_directional.py` checks generated inputs against the
+independent native integral derivative oracle, three-step finite differences
+of frozen Fock/overlap and reconverged density/energy-weighted density, occupied
+metric identities, translation/linearity, omitted-metric negatives and failed
+call recovery. Device qualification additionally runs
+`tests/python/test_hessian_directional_cuda.py` with
+`VIBEQC_RESPONSE_CUDA_TEST=1` inside a finite Slurm allocation. It forbids CPU
+J/K and all-coordinate/dense-input fallbacks and checks the CUDA-assisted
+response against independently reconverged density differences.
+
+The complete B3 conventional-RHF HVP now consumes exactly these directional
+density/energy-weighted-density responses. `rhf_hvp` uses #178
+`weighted_hvp` programs for the core, overlap/Pulay and two-electron skeleton,
+adds the direct nucleus-nucleus HVP, and contracts generated first derivatives
+against `D1(v)` / `W1(v)` for electronic relaxation. The result is raw
+`H @ v`; no post-hoc symmetry projection is applied. The independent
+bilinear identity, dense #449 `H @ v`, and three-step reconverged-gradient
+checks are in `tests/python/test_hessian_hvp.py`.
+
+B4 builds on that same HVP contract. rhf_hvp_many prepares several
+directional H1/S1 pairs, binds them to one shared RHF response operator and
+uses #179 solve_many with sequential, blocked or recycled strategy.
+The solver workspace is combined with a conservative retained numeric-storage
+bound; insufficient block budget fails before first-integral work.
+
+rhf_hessian applies canonical atom/xyz unit directions in bounded blocks and
+stores each returned Hv as one raw Hessian column. It never silently returns a
+diagonal or partial matrix. Full-output storage is reserved before the first
+block, raw symmetry is reported without post-hoc symmetrization, and block
+diagnostics retain each multi-RHS strategy/workspace/action record. The block
+inventory includes transform/validation scratch, stacked components and immutable
+publication copies. The full assembler separately charges its canonical-direction
+buffer, releases each completed block before starting the next, and reserves the
+three-matrix peak of raw-symmetry evaluation (which also covers immutable output
+publication). `complete_numeric_peak_bound_bytes` reports the maximum of assembly
+and output-publication phases rather than hiding those lifetimes inside the solver
+workspace. The default block size is `min(4, 3*natoms)`, including single-atom
+states; callers can choose any explicit block size from one through 3*natoms.
+
+These B3/B4 paths remain within the declared small-system conventional-RHF tools
+domain. B2 device-resident AO/MO/Krylov execution, production-size
+qualification, a public Calculator Hessian endpoint and DFT Hessians remain
+separate. See the
+[directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
+[matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md)
+and [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md).
+
+
+For explicit CUDA first-source qualification, add these arguments to the
+`directional_rhf_response` example above:
+
+```python
+from pathlib import Path
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+# Select the actual installed toolkit and target; compilation does not probe GPUs.
+compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), cuda_target_info("sm_120"))
+# Within the live source/state scope:
+result = directional_rhf_response(
+    state, [[0, 0, 0], [0.1, 0.2, 0.3]],
+    first_backend="cuda", first_compiler=compiler, jk_backend="cuda",
+)
+```
+
+`tests/python/test_hessian_first_cuda.py` checks the generated device sources
+against independent native first-integral derivatives and three-step displaced
+native Fock/overlap/density/energy-weighted-density differences. It forbids the
+CPU first-derivative interpreter, dense derivative inputs and CPU J/K on the
+CUDA execution side. `tests/python/test_first_directional_cuda.py` independently
+checks a selected f-shell contraction, repeated centers, signed weights, runtime
+compatibility, invalid/partial records, nonfinite arithmetic and failed-call
+recovery. Run these opt-in tests under a finite GPU allocation with
+`VIBEQC_RESPONSE_CUDA_TEST=1` and the selected `nvcc` on `PATH`.

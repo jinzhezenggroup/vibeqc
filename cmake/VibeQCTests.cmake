@@ -39,6 +39,8 @@ macro(vibeqc_add_native_tests)
     target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   endif()
 
+  vibeqc_native_test(vibeqc_tracked_allocator_tests tests/native/test_tracked_allocator.cpp
+                     NO_VIBEQC LIBRARIES Threads::Threads)
   vibeqc_native_test(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
   vibeqc_native_test(vibeqc_ecp_projector_tests tests/native/test_ecp_projector.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_ecp_capability_tests tests/native/test_ecp_capabilities.cpp)
@@ -54,6 +56,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_eigen_frame_tests tests/native/test_eigen_frame.cpp)
     vibeqc_native_test(vibeqc_initial_density_tests tests/native/test_initial_density.cpp)
     vibeqc_native_test(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+    vibeqc_native_test(vibeqc_native_gmres_tests tests/native/test_native_gmres.cpp)
+    vibeqc_native_test(vibeqc_mp2_gradient_tests tests/native/test_mp2_gradient.cpp)
   endif()
 
   if(VIBEQC_ENABLE_CUDA AND NOT WIN32)
@@ -64,6 +68,7 @@ macro(vibeqc_add_native_tests)
   endif()
 
   vibeqc_native_test(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  vibeqc_native_test(vibeqc_self_consistent_tests tests/native/test_self_consistent.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_batch_tests tests/native/test_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cpp_api_tests tests/native/test_cpp_batch.cpp NO_SRC_INCLUDE)
   vibeqc_native_test(vibeqc_cartesian_integral_tests tests/native/test_cartesian_integrals.cpp)
@@ -82,6 +87,8 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_spherical_tests tests/native/test_spherical.cpp)
   vibeqc_native_test(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
   vibeqc_native_test(vibeqc_grid_tests tests/native/test_grid.cpp)
+  vibeqc_native_test(vibeqc_runtime_workspace_tests tests/native/test_runtime_workspace.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_cosx_reference_tests tests/native/test_cosx_reference.cpp)
 
   add_executable(vibeqc_dft_tests
     tests/native/test_dft.cpp src/scf/density_factor.cpp src/dft/ao_grid.cpp
@@ -92,12 +99,22 @@ macro(vibeqc_add_native_tests)
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
+  vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_d4_eeq_tests tests/native/test_d4_eeq.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_xc_point_tests tests/native/test_xc_point.cpp NO_VIBEQC)
   target_compile_definitions(vibeqc_xc_point_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
+                       NO_VIBEQC SKIP_77)
+    set_target_properties(vibeqc_d4_reference_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
+    vibeqc_native_test(vibeqc_d4_eeq_cuda_tests tests/native/test_d4_eeq_cuda.cu
+                       NO_VIBEQC SKIP_77)
+    set_target_properties(vibeqc_d4_eeq_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
     vibeqc_native_test(vibeqc_xc_point_cuda_tests tests/native/test_xc_point_cuda.cu
                        NO_VIBEQC SKIP_77)
     target_compile_definitions(vibeqc_xc_point_cuda_tests PRIVATE
@@ -116,6 +133,37 @@ macro(vibeqc_add_native_tests)
     add_test(NAME vibeqc_dft_cuda_tests COMMAND vibeqc_dft_cuda_tests)
     set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
     vibeqc_native_test(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    add_executable(vibeqc_cosx_cuda_tests
+      tests/native/test_cosx_cuda.cu
+      src/dft/cuda_cosx.cu
+      "${VIBEQC_ONE_ELECTRON_HEADER}"
+      "${VIBEQC_GRID_SOURCE}"
+      src/dft/ao_grid.cpp
+      src/dft/grid.cpp
+      src/dft/cosx_reference.cpp
+      src/integrals/s_integrals.cpp
+      src/integrals/ecp.cpp
+      src/molecule/basis.cpp)
+    add_dependencies(vibeqc_cosx_cuda_tests vibeqc_ecp_codegen)
+    target_include_directories(vibeqc_cosx_cuda_tests PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/dft" "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_link_libraries(vibeqc_cosx_cuda_tests PRIVATE CUDA::cudart CUDA::cublas)
+    set_target_properties(vibeqc_cosx_cuda_tests PROPERTIES CUDA_STANDARD 20)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      target_compile_definitions(vibeqc_cosx_cuda_tests PRIVATE VIBEQC_COSX_TEST_INTERPOSE=1)
+      target_link_options(vibeqc_cosx_cuda_tests PRIVATE
+        "LINKER:--wrap=cudaMemcpyAsync" "LINKER:--wrap=cudaStreamSynchronize"
+        "LINKER:--wrap=cudaGetDevice")
+    endif()
+    add_test(NAME vibeqc_cosx_cuda_tests COMMAND vibeqc_cosx_cuda_tests)
+    set_tests_properties(vibeqc_cosx_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
+    vibeqc_native_test(vibeqc_cosx_fock_provider_tests
+                       tests/native/test_cosx_fock_provider.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cosx_scf_tests
+                       tests/native/test_cosx_scf.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
   endif()
 
@@ -145,6 +193,10 @@ macro(vibeqc_add_native_tests)
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_ecp_policy_cuda_tests tests/native/test_ecp_policy_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_ecp_policy_cuda_tests vibeqc_ecp_codegen)
+    target_include_directories(vibeqc_ecp_policy_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     vibeqc_native_test(vibeqc_cuda_fock_composition_tests tests/native/test_cuda_fock_composition.cpp)
   endif()
 

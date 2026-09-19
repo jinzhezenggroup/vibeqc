@@ -15,6 +15,7 @@
 #include <string>
 
 #include "../runtime/allocation_measurement.hpp"
+#include "../runtime/cuda_resources.cuh"
 #include "cuda_error.hpp"
 #include "metrics.hpp"
 
@@ -29,17 +30,6 @@ inline void blas_check(cublasStatus_t status) {
 inline void error_text(char* out, size_t size, const char* text) noexcept {
   if (out && size) std::snprintf(out, size, "%s", text);
 }
-
-// Switching is scoped to preparation/destruction. Execution rejects a caller
-// device mismatch instead of running pointers against another CUDA context.
-struct DeviceGuard {
-  int previous = 0;
-  explicit DeviceGuard(int device) {
-    cuda_check(cudaGetDevice(&previous));
-    cuda_check(cudaSetDevice(device));
-  }
-  ~DeviceGuard() { cudaSetDevice(previous); }
-};
 
 struct Context {
   int device = 0;
@@ -59,7 +49,7 @@ struct Context {
                bool needs_blas) {
     std::lock_guard<std::mutex> allocation_lock(vibeqc::runtime::allocation_measurement_mutex);
     device = ordinal;
-    DeviceGuard guard(device);
+    vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
     cudaDeviceProp property{};
     cuda_check(cudaGetDeviceProperties(&property, device));
     if (property.major != major || property.minor != minor)
@@ -149,7 +139,8 @@ struct Context {
   }
 };
 
-__device__ inline double finite(double value, int* error, int node) {
+template <class T>
+__device__ inline T finite(T value, int* error, int node) {
   if (!isfinite(value)) atomicCAS(error, 0, node + 1);
   return value;
 }
@@ -160,6 +151,13 @@ __device__ inline double quotient(double a, double b, int* error, int node) {
   }
   return finite(__ddiv_rn(a, b), error, node);
 }
+__device__ inline float quotient(float a, float b, int* error, int node) {
+  if (b == 0.0f) {
+    atomicCAS(error, 0, -(node + 1));
+    return 0.0f;
+  }
+  return finite(__fdiv_rn(a, b), error, node);
+}
 inline unsigned blocks(I count, int threads) {
   // A grid-stride loop bounds the grid, including on older CUDA devices.
   return static_cast<unsigned>(std::min<I>((count + threads - 1) / threads, 65535));
@@ -168,6 +166,13 @@ static __global__ void check_scale(double* values, I count, double scale, int* e
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < count; i += I(blockDim.x) * gridDim.x) {
     double value = finite(values[i], error, node);
     values[i] = finite(__dmul_rn(value, scale), error, node);
+  }
+}
+
+static __global__ void check_scale(float* values, I count, float scale, int* error, int node) {
+  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < count; i += I(blockDim.x) * gridDim.x) {
+    float value = finite(values[i], error, node);
+    values[i] = finite(__fmul_rn(value, scale), error, node);
   }
 }
 
@@ -185,6 +190,22 @@ inline void gemm(Context& context, char a_trans, char b_trans, int m, int n, int
     blas_check(cublasDgemm(context.handle, tb, ta, n, m, k, &alpha, b, ldb, a, lda, &beta, c, n));
   } else {
     blas_check(cublasDgemmStridedBatched(context.handle, tb, ta, n, m, k, &alpha, b, ldb, b_stride,
+                                         a, lda, a_stride, &beta, c, n, c_stride, batches));
+  }
+}
+// FP32 callers select CUBLAS_PEDANTIC_MATH when preparing the plan.
+inline void gemm(Context& context, char a_trans, char b_trans, int m, int n, int k, const float* a,
+                 const float* b, float* c, I a_stride, I b_stride, I c_stride, int batches,
+                 float beta) {
+  const float alpha = 1.0f;
+  const auto ta = a_trans == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const auto tb = b_trans == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const int lda = a_trans == 'N' ? k : m;
+  const int ldb = b_trans == 'N' ? n : k;
+  if (batches == 1) {
+    blas_check(cublasSgemm(context.handle, tb, ta, n, m, k, &alpha, b, ldb, a, lda, &beta, c, n));
+  } else {
+    blas_check(cublasSgemmStridedBatched(context.handle, tb, ta, n, m, k, &alpha, b, ldb, b_stride,
                                          a, lda, a_stride, &beta, c, n, c_stride, batches));
   }
 }

@@ -143,9 +143,11 @@ separate, explicit authorization, not an implicit extension of cleanup work.
 | `issue412-split-gram` | 5 | 0.52 |
 | `issues388-391-df` | 27 | 6.34 |
 
-The existing 1 MiB per-file guard remains. A 96 MiB aggregate
-`benchmarks/results/` budget prevents unchecked growth by many individually
-small reports; permanent test fixtures are outside that aggregate budget.
+The existing 1 MiB per-file guard remains. The aggregate
+`benchmarks/results/` budget in the authoritative
+[`evidence-policy.json`](../../evidence-policy.json) prevents unchecked growth
+by many individually small reports; permanent test fixtures are outside that
+aggregate budget. This cleanup does not change either configured limit.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

@@ -11,9 +11,9 @@ supplied equations and do not implement a complete CCSD/MP2 method.
 | CPU planning | Checked shapes, layouts, lifetimes, reservations and bounded GEMM tiles |
 | Source and compilation | Whole-program CUDA generation through the existing finite NVCC adapter |
 | Baseline execution | Unfused FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
-| Candidate execution | View elimination, ordered elementwise fusion, smaller panels and root recomputation |
+| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels and root recomputation |
 | Selection | Explicit bounded tuning, CPU/baseline parity, resource and complete-endpoint gates |
-| Graph capture | Ordinary stream reported explicitly; capture is not implemented |
+| Graph capture | Opt-in fixed-region replay with ordinary fallback |
 | Complete molecular CC solver | Outside this executor |
 
 ## Prepare and execute
@@ -62,9 +62,61 @@ states. Its budget charges the sum of every plan's peak, including sequential
 execution because all states remain resident. `execute(feeds, workers=...)`
 preserves system order and supports different nocc/nvir populations.
 
+## Optional compiled-region replay
+
+`PreparedCuda(plan, artifact, execution_mode="cuda-graph")` opts into shared
+compiler/runtime capture. The default remains `execution_mode="ordinary"`.
+The first eligible unprofiled call executes ordinarily; the second captures,
+instantiates and executes the fixed device region once; later calls replay.
+Numeric inputs refresh the existing device buffers without recapture. Validation,
+host transfers, detached outputs and arithmetic-error checks remain outside
+capture. Each complete endpoint still makes one native call.
+
+```python
+with PreparedCuda(plan, artifact, execution_mode="cuda-graph") as prepared:
+    prepared.execute(feeds)              # ordinary warmup
+    prepared.execute(feeds)              # capture, instantiate, execute
+    result = prepared.execute(new_feeds) # replay with refreshed numeric inputs
+    print(result.backend, result.metrics["graph_captures"])
+    prepared.invalidate_graph()          # next call warms up before recapture
+```
+
+The pure CaptureContract reuses specialization records and existing artifact
+keys. Identity includes program/compiler/artifact, schedule, shapes/layouts and
+precision, GPU UUID and driver/CUDA/cuBLAS versions. Native binding additionally
+includes the stream, arena and library-handle addresses. A different plan,
+schedule, artifact or device requires a new prepared owner. Invalidation discards
+only replay state. Graphs are destroyed before their referenced resources.
+
+Unsupported capture/instantiation and regions exceeding 4096 launches/nodes fall
+back to ordinary execution. Failed capture is not retried until invalidation.
+Graph-launch or asynchronous execution errors propagate, avoiding duplicate
+execution of possibly submitted work. Zero division and nonfinite intermediate
+checks remain active. `profile=True` uses ordinary section profiling and leaves
+an existing graph reusable. No convergence or DIIS policy changes.
+
+Graph metrics report mode/reason, cumulative capture/replay/fallback counts,
+capture/instantiate CPU time, region submission time and a retained device-memory
+delta. `diagnostics=True` adds this telemetry to an ordinary call without section
+fences. `device_ms` is the event interval around transfers and the device region,
+including host-submission gaps, not isolated kernel time. Unprofiled execution
+retains one explicit completion fence; pageable transfers may synchronize inside
+the CUDA runtime.
+
+Graph storage is outside the exact numeric-buffer budget. Its free-memory delta
+is an observation, not an allocation bound; driver host storage is unmeasured.
+Global ResourcePlan consumers therefore use ordinary fallback until graph storage
+has a budgeted candidate. The resident extension remains ordinary. No automatic
+profile promotion or full SCF/CC qualification is implied.
+
+The shared owner is `src/runtime/cuda_graph_region.cuh`. Existing device-tail-launch
+SCF/eigensolver experiments use a different control abstraction; ProgramIR and
+iterative electronic-structure adoption remain follow-on #460/#370/#507 work.
+See the [decision note](../.agents/notes/implemented/architecture/2026-09-19-compiled-cuda-replay.md).
+
 ## Layouts and contractions
 
-Materialized values use logical C-order strides. Eligible binary einsums group
+The baseline materializes values with logical C-order strides. Eligible binary einsums group
 declared labels into batch, M, N and K populations. No spin, orbital or symmetry
 relationship is inferred from matching extents. The direct path recognizes
 contiguous matrices in either transpose orientation and batch-prefix layouts.
@@ -95,6 +147,75 @@ Generated JVP/VJP programs from #151 are ordinary TensorIR programs and use
 the same planning, compilation and execution path. The fixed CC-like RTX 5090
 numerical/resource evidence is recorded in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md).
+
+### Opt-in producer/consumer layouts
+
+`TensorSchedule(layouts=True)` enables a bounded layout pass inside one TensorIR
+program. `DenseLayout` records logical shape, a slow-to-fast permutation of logical
+axis ordinals, physical element strides and base-address alignment. It is separate
+from `TensorSpec`: neither equation serialization nor logical/scientific hashes
+change. The descriptor includes transpose-view equivalence, but does not grant
+alias permissions or encode arbitrary padded/affine storage.
+
+For each eligible GEMM, the pass considers the two orientations of each operand
+and its grouped output order **jointly**, then costs the effects on all consumers
+and on the producers themselves. This avoids requiring two individually useful
+changes when both operands must change before any packing can disappear. Shared
+consumers are costed together; no duplicate tensor or persistent packed copy is
+silently created. There are at most 256 trials and four reverse-order sweeps per
+tile configuration. Strict cost improvements alone are accepted; ties retain the
+existing layout, and an exhausted search retains its legal best-so-far plan.
+
+Generated primitive kernels write contiguous physical elements while evaluating
+the corresponding logical coordinates. All generated reads and packed scatters
+honor the selected mapping. A GEMM may write an internal result in its natural
+matrix order even when the equation names another output order; downstream reads
+observe the same logical tensor. Direct NN/NT/TN/TT and grouped/batched eligibility
+are checked against **physical** axis order rather than assuming C-order.
+
+Inputs, constants and every named output remain pinned in logical C-order, so
+ordinary transfers and resident ABI spans do not change. Existing virtual-view,
+fusion and recomputation contracts remain intact. A virtual operand has no direct
+buffer descriptor and retains generated packing; this slice does not infer affine
+aliases through virtual views, create shared pack-once buffers, or propagate
+layouts across ProgramIR subsystems. Those remain follow-up work for #509/#460.
+
+`plan.layout_decision` reports attempted trials, changed steps and semantic panel
+conversion bytes, including repeated A packing across N tiles and B packing
+across M tiles. Its cost adds one logical tensor-read/write equivalent for each
+non-C generic access as a conservative stride penalty. This **cost score is not
+measured DRAM traffic or an additional memory allocation**. The pre-existing
+`estimated_traffic_bytes` remains a coarse logical node-traffic estimate; the
+separate conversion-byte field makes the additional packing work explicit.
+Layout selection is rerun whenever admission shrinks packing tiles, so costs and
+panel capacities describe the final schedule. Dense permutations do not enlarge
+arena slots or alter lifetimes; eliminated panels reduce the charged peak.
+
+Plan schema 2 serializes physical descriptors and the decision. The separate
+`plan.layout_identity` can be supplied as an exact `layout_identity` workload
+fact to #459 specialization guards; it must not replace scientific, compiler or
+full-plan identity checks. Existing artifact keys and native identity checks
+already include the complete plan, preventing reuse across different layouts.
+Generated JVP/VJP programs use the same pass without new derivative rules.
+
+This switch remains opt-in. `tune_cuda` includes layout-only and layout/view/fusion
+candidates and still requires parity, resource and complete-endpoint gates before
+selecting them for the supplied fixture domain. A static byte reduction is not a
+performance-promotion decision.
+
+A focused qualification runner retains local raw paired timings and identities:
+
+```bash
+# Execute within the site's finite GPU allocation.
+PYTHONPATH=python python tools/tensor_layout_benchmark.py \
+  --nvcc /path/to/nvcc --architecture sm_120 \
+  --shape 33 7 65 31 --repeats 10 --output .artifacts/tensor-layout-small
+# Repeat with --shape 65 9 97 63 to exercise a larger domain.
+```
+
+This measures a complete host-staged tensor contraction endpoint, not a complete
+molecular CCSD/DFT calculation. The design rationale and retained qualification
+results are in the [producer-layout note](../.agents/notes/implemented/performance/2026-09-19-tensor-producer-layouts.md).
 
 ## Budgets, lifetimes and limitations
 
@@ -158,15 +279,40 @@ traffic estimate and peak capacity are exposed in `TensorPlan.to_payload()`.
 ## Candidate selection and identity
 
 `TensorSchedule()` is the deterministic unfused baseline. Explicit candidate
-switches enable view elimination, small elementwise fusion and root
-recomputation. Fusion preserves arithmetic order and each intermediate's
+switches enable producer layouts, view elimination, small elementwise fusion and
+root recomputation. Fusion preserves arithmetic order and each intermediate's
 finite/zero-division check. It is restricted to complete same-domain
 elementwise consumers; a slice cannot hide an overflow by discarding entries.
 View chains have a bounded inline depth. These switches are experimental
 requests until a particular plan passes tuning gates.
 
-`tune_cuda(baseline, compiler, fixtures, cache, ...)` considers at most eight
-candidates and eight fixed-shape fixtures, with 5–30 paired repeats. It warms
+`tune_cuda(baseline, compiler, fixtures, cache, ...)` uses a structured
+`TensorScheduleSpace`: view elimination, fusion, recomputation, direct/packed
+GEMM, block threads and M/N/K panel dimensions. Its deterministic bounded walk
+visits single-axis changes before higher-order interactions without enumerating
+the full Cartesian product. Only implemented ordinary-stream dimensions are
+searched; vectorized reductions, cooperative/persistent kernels and shared-memory
+GEMM staging are not implied by these controls.
+
+`TensorSearchLimits` defaults to 128 generated candidates and 12 candidate
+compilation attempts, plus the mandatory baseline. Explicit `schedules=` remains
+supported; it is mutually exclusive with `search_space=`. The static pipeline
+checks planner legality/combined host-device memory, removes equivalent execution
+plans (including ineffective direct-GEMM tile changes), then applies source-size,
+register-pressure and occupancy policies before invoking NVCC. The same plan's
+aliases, lifetimes, outputs, reservations and allocation capacities participate
+in equivalence checking. `maximum_source_bytes` bounds generated source size;
+it is a compile-cost proxy, not a prediction of compilation seconds.
+
+Static register counts are scalar-liveness heuristics for generated kernels and
+occupancy is an upper bound without register-allocation granularity. Neither
+models cuBLAS internals. Packing panels remain global numeric buffers, not shared
+memory. Logical traffic excludes packing/provider/cache traffic; local memory is
+unknown until PTXAS reports it. These qualifications are retained in the evidence.
+Compiled candidates still require complete PTXAS register/stack/spill/shared data
+and feasible per-block resources before any candidate endpoint execution.
+
+Tuning supports eight fixed-shape fixtures, with 5–30 paired repeats. It warms
 the library first, records startup separately, and reuses the shared CG01
 interleaved measurement and noise assessment. Timings include input validation,
 host layout staging, transfers, packing, cuBLAS, all small kernels, result
@@ -180,7 +326,52 @@ gate and a paired bootstrap lower bound apply. An unsuccessful search retains
 the baseline and preserves all candidate failures/raw measurements. Tuning is
 explicit; installation never launches a search. The returned `TensorSelection`
 contains the concrete compiled winner and evidence path, with no global dispatch
-change or claim about unmeasured shapes.
+change or claim about unmeasured shapes. Schema-v3 tuning evidence retains
+static pruning/deadline/budget reasons and actual compilation-attempt counts.
+Artifacts record generated-source and binary sizes alongside compilation seconds
+and PTXAS resources.
+
+`TensorScreeningPolicy` adds a ranking-only representative-timing stage after
+compiled-resource checks. Its default uses fixture 0, five interleaved A/B pairs,
+and at most three full-qualification finalists. Select other existing fixtures
+with `fixture_indices=(...)`; the worst median baseline/candidate ratio across
+those representatives determines ordering. Exact ties preserve schedule generation
+order. No speed threshold or noisy screening observation grants a performance
+qualification. Rejected screens retain their negative evidence.
+
+The screen is bypassed when the available compilation budget already fits the
+finalist limit, or when its planned A/B-pair count plus finalist qualification
+would not reduce measurement work. `screening_plan` records that decision and
+counts, explicitly excluding compilation, startup and profiling costs. A reduced
+pair count is not a measured wall-time benefit. `screening=None` restores full
+qualification of every compiled candidate.
+
+Only baseline and one candidate context remain resident at once. Screening
+contexts are closed before a finalist reopens its existing artifact; finalists
+are not recompiled. Every finalist repeats warmup and obtains **fresh** full
+endpoint samples on **all** supplied fixtures, including the representatives.
+The original CPU/unfused-GPU parity, shared noise and bootstrap gates still apply.
+Pruned screens get no performance guard. A later numerical failure, slow fixture
+or exhausted deadline cannot be overridden by a fast screen, and all-failure
+searches retain the baseline. Policy and representative-fixture identities
+participate in the selection key, without changing mathematical or CUDA artifact
+identity recipes. Non-finite timing observations are rejected and recorded as
+JSON `null` with an `invalid_seconds` description rather than invalid JSON NaN/Inf.
+See the [screening decision note](../.agents/notes/implemented/performance/2026-09-19-tensor-screening-shortlist.md)
+for the sampling tradeoff and validation boundary.
+
+Accepted rows and the selected winner carry shared #459 `ImplementationProfile`
+records, with the original artifact key, schedule hash and candidate evidence
+hash. Correctness guards bind the equation, numeric-buffer budget, reservations
+and target; performance guards additionally restrict promotion to each measured
+input shape/dtype/stride domain and the existing baseline execution identity
+(GPU UUID, driver/runtime/libraries and Python/NumPy). Values stay in measurement
+provenance, not used as a benchmark-ID dispatch policy. Unmeasured layouts cannot satisfy the
+performance guard; missing target facts fail closed. These records live in the
+existing selection evidence, not a second profile database or automatic loader.
+The current API returns a concrete plan for the caller's measured workload; it
+does not install new global dispatch policy. See the
+[search rationale](../.agents/notes/implemented/performance/2026-09-19-tensor-schedule-search.md).
 
 The local artifact cache verifies each binary hash before loading. Identity
 includes equation/spec/layout/shape/precision, plan and schema, all tensor

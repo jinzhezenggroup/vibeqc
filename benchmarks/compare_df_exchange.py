@@ -16,7 +16,12 @@ from pathlib import Path
 
 import numpy as np
 from _cases import benchmark_cases
-from _support import cuda_accelerator_metadata, environment_metadata, write_result
+from _support import (
+    cuda_accelerator_metadata,
+    environment_metadata,
+    raw_output_path,
+    write_result,
+)
 from compare_gpu4pyscf_batch import _vibeqc_sample, scaled_geometries
 from vibeqc import Calculator
 
@@ -30,7 +35,7 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--energy-only", action="store_true")
     parser.add_argument("--memory-budget-bytes", type=int, default=1 << 30)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):
         parser.error("a finite Slurm GPU allocation is required")
