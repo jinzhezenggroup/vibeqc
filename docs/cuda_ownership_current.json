@@ -479,7 +479,7 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6737,
+      "bytes": 6721,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -492,7 +492,7 @@
       "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "ba864742e4833b613b8582daf3bf73e2f90f2ee3c4509202539f48b848c65832",
+      "sha256": "b3b23b0a959a59d5b63d939815078e3ffad53516e92a63b131d66d0ffb0241e1",
       "subsystem": "runtime"
     },
     {

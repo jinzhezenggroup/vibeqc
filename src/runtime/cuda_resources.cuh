@@ -7,8 +7,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "runtime/bounded_workspace.hpp"
-#include "runtime/resource_cuda.cuh"
+#include "bounded_workspace.hpp"
+#include "resource_cuda.cuh"
 
 namespace vibeqc::runtime {
 
