@@ -8,6 +8,8 @@ This is a deliberately narrow compiler prototype, not a whole-program optimizer.
 ## Contracts
 
 `ProgramBuffer` describes a disjoint ownership group and its numeric capacity.
+It may also bind the shared `DenseLayout` plus item size when a producer/consumer
+boundary has a qualified physical layout; the byte capacity must match exactly.
 `PlanCall` binds a named provider identity to explicit read/write buffers.
 `ProgramIR` validates the selected order and derives inclusive resource intervals.
 A value must be an input or have exactly one earlier producer. Duplicate owners,
@@ -24,7 +26,8 @@ or aliasing provider needs a different explicit contract, not this serial model.
 Serialization contains data only. `ProgramIR.from_payload()` rejects unknown or
 missing fields and reconstructs validation rather than trusting serialized
 lifetime claims. Identity includes provider bindings, buffer capacities/spaces,
-requested outputs and selected order. It is not an executable cache key or a
+qualified dense layouts/item sizes, requested outputs and selected order. It is
+not an executable cache key or a
 certificate that a native library or numerical state is current.
 
 `resource_request()` feeds the existing `common.resources` planner. Its accounting
@@ -74,6 +77,42 @@ only for the qualified dense CPU potential template. Graph construction and rele
 analysis happen during preparation, not per tile. Native state/provider checks,
 numerical domains, quadrature, precision, reduction order and failure propagation
 remain with the established owners.
+
+## Second consumer: DFT feature layout into native XC
+
+The initial lifetime slice kept the complete XC contraction opaque. The second
+qualified slice is narrower scientifically but more explicit operationally: for
+dense synchronous **polarized** CPU LDA/PBE potential tiles, ProgramIR records
+
+```text
+NativeAO.evaluate
+      | [jet, point, AO]
+      v
+dft.density_feature_block
+      | [feature, point] + optional [spin, point, xyz]
+      v
+xc.NativeContractionProgram.scalar_values_packed
+      | generated scalar rows
+      v
+xc.NativeContractionProgram.potential_from_rows
+```
+
+The DFT feature producer owns one C-contiguous FP64 feature-major buffer. The
+generated XC scalar consumer validates that exact owner without making the former
+validation copy, active-point gather, variable `np.stack`, or output scatter.
+Potential assembly still uses the existing coefficient and AO contraction code;
+no XC formula, quadrature, spin convention or reduction order is duplicated.
+
+The shared `DenseLayout` is the same physical-layout descriptor used by TensorIR,
+but ProgramIR imports only the backend-neutral contract. It does not import the
+TensorIR planner, choose arbitrary affine layouts, alias buffers, donate inputs,
+or infer asynchronous lifetimes. Unpolarized, spatial, CUDA, response and geometry
+routes retain their previous paths until independently qualified.
+
+Execution statistics additionally expose `tile_layouts` for these real boundary
+owners. Tests require the complete prepared endpoint to run with the legacy
+`scalar_values` repacking entry point disabled and verify that the native scalar
+input shares storage with the DFT-owned feature buffer.
 
 ## Validation and reproduction
 

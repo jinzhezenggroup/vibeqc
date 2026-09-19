@@ -186,6 +186,11 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
 
         monkeypatch.setattr(basis, "evaluate", collocate)
         monkeypatch.setattr(program, "potential_from_rows", contract)
+        monkeypatch.setattr(
+            program,
+            "scalar_values",
+            lambda *_a, **_kw: pytest.fail("packed path called legacy scalar repack"),
+        )
         with PreparedXCContractions(program, basis, grid, tile_points=7) as prepared:
             description = prepared.tile_program
             actual = prepared.execute(data["density_spin"])
