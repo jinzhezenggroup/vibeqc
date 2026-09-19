@@ -3804,7 +3804,10 @@ def test_cached_direct_plan_reuses_immutable_task_layout():
     assert "requested_quartet_direct && first_setup" in layout_setup
     assert "plan.total_shell_quartet_tiles" in layout_setup
     assert source.count("detail::make_direct_quartet_task_layout(") == 1
-    assert "**plan, candidate, options" in source
+    bucket_source = (
+        REPOSITORY_ROOT / "src" / "scf" / "cuda" / "rhf_bucket.cpp"
+    ).read_text(encoding="utf-8")
+    assert "**plan, candidate, options" in bucket_source
 
 
 def test_mixed_precision_is_budgeted_per_item_on_the_prepared_census():

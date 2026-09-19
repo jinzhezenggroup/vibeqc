@@ -3146,20 +3146,37 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 1920,
+      "bytes": 1501,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 34,
+        "runtime": 30,
         "scientific": 0
       },
       "path": "src/scf/cuda/resources.hpp",
-      "physical_lines": 55,
+      "physical_lines": 48,
       "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
       "regions": [],
       "role": "runtime",
-      "sha256": "9968a5815e0a86083e64fc224aa701f060d4ebea8c39d672ed1ac93a672e05e7",
+      "sha256": "5723430a05f36f726453b8cd4e5bf873450e08e07bd84057bcc12c1231baa0a8",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 2290,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 37,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/rhf_graph.hpp",
+      "physical_lines": 59,
+      "reason": "Host-only RAII contract for direct-HF CUDA Graph capture, executable lifetime, upload and replay; no scientific equations or device kernels.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "ae879d6dc2347ecf0b11cb0392b100832a544a537b785652e829d3f31dec7da9",
       "subsystem": "runtime"
     },
     {
@@ -3812,7 +3829,7 @@
     "fallback": 0,
     "oracle": 686,
     "performance_exception": 884,
-    "runtime": 11717,
+    "runtime": 11750,
     "scientific": 12044
   },
   "migration_ledger": {
@@ -4127,7 +4144,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 5060,
+      "runtime": 5093,
       "scientific": 5
     },
     "scf_tensor": {

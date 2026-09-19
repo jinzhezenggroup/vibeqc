@@ -13,9 +13,10 @@ namespace vibeqc::scf::cuda_execution {
 
 struct DirectTileValidationRecord;
 
-/** Sole owner of a bucket's streams, graphs, library workspaces and arena.
+/** Own a bucket's stream, library workspaces and numeric arena.
  * Teardown preserves stream-ordered allocation release and selects the owning
- * device. Borrowed eigensolver/matrix views never acquire lifetime ownership.
+ * device. RHF iteration Graphs have a separate host-control owner; borrowed
+ * eigensolver/matrix views never acquire lifetime ownership.
  */
 class CudaResources {
  public:
@@ -33,14 +34,6 @@ class CudaResources {
   cusolverDnHandle_t solver_{};
   cusolverDnParams_t solver_parameters_{};
   syevjInfo_t jacobi_{};
-  cudaGraph_t iteration_graph_{};
-  cudaGraphExec_t iteration_graph_exec_{};
-  // cuSOLVER XsyevBatched above 512 AOs executes efficiently on an ordinary
-  // stream but rejects CUDA Graph capture on CUDA 12.9.  Large-matrix SCF
-  // therefore replays a pre-solver Graph, launches the provider normally,
-  // then replays this post-solver Graph under host convergence control.
-  cudaGraph_t post_eigensolver_graph_{};
-  cudaGraphExec_t post_eigensolver_graph_exec_{};
   void* arena_{};
   DirectTileValidationRecord* direct_tile_validation_{};
   void* solver_workspace_{};

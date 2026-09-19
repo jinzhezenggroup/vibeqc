@@ -10,16 +10,6 @@ namespace vibeqc::scf::cuda_execution {
 CudaResources::~CudaResources() {
   std::lock_guard<std::mutex> allocation_lock(runtime::allocation_measurement_mutex);
   if (device_id_ >= 0) (void)cudaSetDevice(device_id_);
-  if (post_eigensolver_graph_exec_ != nullptr) {
-    (void)cudaGraphExecDestroy(post_eigensolver_graph_exec_);
-  }
-  if (post_eigensolver_graph_ != nullptr) {
-    (void)cudaGraphDestroy(post_eigensolver_graph_);
-  }
-  if (iteration_graph_exec_ != nullptr) {
-    (void)cudaGraphExecDestroy(iteration_graph_exec_);
-  }
-  if (iteration_graph_ != nullptr) (void)cudaGraphDestroy(iteration_graph_);
   if (jacobi_ != nullptr) (void)cusolverDnDestroySyevjInfo(jacobi_);
   if (solver_parameters_ != nullptr) {
     (void)cusolverDnDestroyParams(solver_parameters_);

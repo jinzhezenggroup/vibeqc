@@ -132,6 +132,8 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/df_uhf_scf.cpp
       src/scf/cuda_eigensolver_probe.cu
       src/scf/cuda_rhf.cpp
+      src/scf/cuda/rhf_bucket.cpp
+      src/scf/cuda/rhf_graph.cpp
       src/scf/cuda/one_electron_reference.cu
       src/scf/cuda/one_electron_force_reference.cu
       src/scf/cuda/nuclear_kernels.cu
