@@ -9,6 +9,13 @@ scientific specs and canonical IR. Built-ins may be AOT-compiled for release;
 advanced extensions may later opt into JIT, but AOT/JIT must not change the
 method's scientific identity.
 
+VibeQC uses a **single-wheel** model. The compiler may ship with the normal
+package so advanced capabilities are available without a second distribution.
+The important boundary is activation: ordinary built-in calculations use
+AOT/native artifacts and must not invoke code emission, compiler subprocesses,
+or require a local C++/CUDA compilation toolchain. JIT and autotuning are
+explicit on-demand capabilities and may require such a toolchain when requested.
+
 ## XC and method composition
 
 ```python
