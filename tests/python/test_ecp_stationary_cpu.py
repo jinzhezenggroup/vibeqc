@@ -13,6 +13,29 @@ from vibeqc_compiler.dft import NativeAO
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 
 
+def test_ecp_cpu_ao_spatial_jets_do_not_promote_ecp_higher_derivatives():
+    from vibeqc.basis_capabilities import basis_capability
+
+    atoms, record, mol = fixture(representation="cartesian")
+    points = np.array([[0.21, -0.15, 0.8], [0.43, 0.36, 2.1]])
+    with NativeAO(atoms, basis=record) as basis:
+        np.testing.assert_allclose(
+            basis.evaluate(points, 3),
+            mol.eval_gto("GTOval_cart_deriv3", points),
+            atol=2e-12,
+            rtol=2e-12,
+        )
+    assert basis_capability(record, atoms, operator="ao", derivative_order=3)[
+        "eligible"
+    ]
+    assert not basis_capability(
+        record, atoms, operator="nuclear_attraction", derivative_order=2
+    )["eligible"]
+    assert not basis_capability(
+        record, atoms, backend="cuda", operator="ao", derivative_order=2
+    )["eligible"]
+
+
 def reference(mol, state, method):
     from pyscf import dft, lib
 
