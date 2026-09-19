@@ -7,9 +7,7 @@ from pathlib import Path
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
-def raw_output_path(
-    path: str | Path, *, repository_root: Path | None = None
-) -> Path:
+def raw_output_path(path: str | Path, *, repository_root: Path | None = None) -> Path:
     """Reject execution output inside the reviewed benchmark result tree.
 
     This helper intentionally imports no benchmark/runtime/GPU dependencies so
