@@ -6,7 +6,7 @@
 #include <limits>
 
 #include "molecule/basis.hpp"
-#include "scf/cuda/checked_layout.hpp"
+#include "runtime/bounded_workspace.hpp"
 #include "scf/cuda/direct_constants.hpp"
 
 namespace vibeqc::scf::cuda_execution {
@@ -207,9 +207,11 @@ bool pack_host_batch(const std::vector<core::System>& systems,
         previous_block_offset + static_cast<std::int64_t>(system_shell_pair_block_count));
     std::size_t system_shell_pair_block_plus_one = 0;
     std::size_t system_shell_pair_block_quartet_count = 0;
-    if (!checked_add(system_shell_pair_block_count, 1, system_shell_pair_block_plus_one) ||
-        !checked_multiply(system_shell_pair_block_count, system_shell_pair_block_plus_one,
-                          system_shell_pair_block_quartet_count)) {
+    if (!vibeqc::runtime::checked_add(system_shell_pair_block_count, 1,
+                                      system_shell_pair_block_plus_one) ||
+        !vibeqc::runtime::checked_multiply(system_shell_pair_block_count,
+                                           system_shell_pair_block_plus_one,
+                                           system_shell_pair_block_quartet_count)) {
       return false;
     }
     system_shell_pair_block_quartet_count /= 2;
@@ -225,9 +227,9 @@ bool pack_host_batch(const std::vector<core::System>& systems,
         static_cast<std::int64_t>(system_shell_pair_block_quartet_count));
     std::size_t system_shell_pair_plus_one = 0;
     std::size_t system_shell_quartet_count = 0;
-    if (!checked_add(system_shell_pair_count, 1, system_shell_pair_plus_one) ||
-        !checked_multiply(system_shell_pair_count, system_shell_pair_plus_one,
-                          system_shell_quartet_count)) {
+    if (!vibeqc::runtime::checked_add(system_shell_pair_count, 1, system_shell_pair_plus_one) ||
+        !vibeqc::runtime::checked_multiply(system_shell_pair_count, system_shell_pair_plus_one,
+                                           system_shell_quartet_count)) {
       return false;
     }
     system_shell_quartet_count /= 2;
