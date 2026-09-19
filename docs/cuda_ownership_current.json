@@ -1,6 +1,106 @@
 {
-  "all_handwritten_scientific_lines": 13333,
-  "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
+  "schema": "vibeqc.cuda-ownership-report.v1",
+  "maintained_code_lines": {
+    "fallback": 0,
+    "oracle": 312,
+    "performance_exception": 253,
+    "runtime": 10898,
+    "scientific": 13006
+  },
+  "all_handwritten_scientific_lines": 13571,
+  "per_subsystem": {
+    "runtime": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 4861,
+      "scientific": 5
+    },
+    "ao_grid": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 566,
+      "scientific": 162
+    },
+    "xc": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 449,
+      "scientific": 631
+    },
+    "d4_dispersion": {
+      "fallback": 0,
+      "oracle": 297,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 0
+    },
+    "ecp": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 290
+    },
+    "low_rank": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 179,
+      "scientific": 65
+    },
+    "scf_tensor": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 97,
+      "runtime": 2095,
+      "scientific": 817
+    },
+    "direct_integrals": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 1644,
+      "scientific": 7090
+    },
+    "df_derivatives": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 843,
+      "scientific": 1398
+    },
+    "df_response_weights": {
+      "fallback": 0,
+      "oracle": 15,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 1103
+    },
+    "df_values": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 226,
+      "scientific": 168
+    },
+    "one_electron_derivatives": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 156,
+      "runtime": 0,
+      "scientific": 1277
+    },
+    "one_electron_values": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 35,
+      "scientific": 0
+    }
+  },
   "files": [
     {
       "bytes": 5274,
@@ -20,16 +120,16 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 36560,
+      "bytes": 37600,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 535,
+        "runtime": 551,
         "scientific": 162
       },
       "path": "src/dft/cuda_grid.cu",
-      "physical_lines": 751,
+      "physical_lines": 770,
       "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
       "regions": [
         {
@@ -52,7 +152,7 @@
         }
       ],
       "role": "runtime",
-      "sha256": "c67d0ce4c23053e4fc8cf99e9f71c532f9612ea2aea645414444c59b3dcd47b2",
+      "sha256": "2b58728e9e460f441db2f4cf7e1302826f347e904e3fa700654353904d6631eb",
       "subsystem": "ao_grid"
     },
     {
@@ -161,6 +261,23 @@
       "subsystem": "d4_dispersion"
     },
     {
+      "bytes": 4976,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 113
+      },
+      "path": "src/dft/grid_response_adjoint.hpp",
+      "physical_lines": 125,
+      "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "7fb630116d68d8fd966772570b23ccfcc73ebf6d7d284ec897b77975f2277ef9",
+      "subsystem": "xc"
+    },
+    {
       "bytes": 1192,
       "code_lines": {
         "fallback": 0,
@@ -176,6 +293,33 @@
       "role": "runtime",
       "sha256": "f8ff83ddfabd2cd1ee7fdd595d55e60a15c08d882da3f89506a6e1fb7a8a1fc5",
       "subsystem": "ao_grid"
+    },
+    {
+      "bytes": 15317,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 202,
+        "scientific": 125
+      },
+      "path": "src/dft/stationary_gradient_cuda.cuh",
+      "physical_lines": 347,
+      "reason": "Finite diagnostic owner, explicit stream leases, transfers and failure-before-publication boundaries.",
+      "regions": [
+        {
+          "code_lines": 125,
+          "first_line": 65,
+          "last_line": 194,
+          "reason": "Primitive normalization, generated derivative contraction, XC coefficient/jet layout and deterministic atom/source reductions are maintained scientific glue. Shared compiler graphs and SCF point model own the differentiated mathematics.",
+          "role": "scientific",
+          "start": "__global__ void primitive_kernel",
+          "stop": "}  // namespace vibeqc_stationary_cuda"
+        }
+      ],
+      "role": "runtime",
+      "sha256": "c4081ed45ee7885e5f7c6f04e4d302a96db45fe6fd64ca8e43164809686e9141",
+      "subsystem": "xc"
     },
     {
       "bytes": 13435,
@@ -243,6 +387,23 @@
       "regions": [],
       "role": "runtime",
       "sha256": "4a8432a55b83ca108371251a94e2f8a95bcbf52f467dbe5bd8bb667ea176a6dd",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 9233,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 182,
+        "scientific": 0
+      },
+      "path": "src/integrals/first_directional_runtime.cuh",
+      "physical_lines": 195,
+      "reason": "Shared bounded device storage, primitive staging, generated-program dispatch, typed output lifetime and failure-atomic publication. Integral, directional and matrix-weight contraction equations are emitted by the common compiler.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "04291ce3d4232ee20b9306b748aa26d9d8547ae09271f1186540e1c715a6486a",
       "subsystem": "runtime"
     },
     {
@@ -3490,209 +3651,6 @@
       "subsystem": "runtime"
     }
   ],
-  "generated": [
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_value_policy",
-      "outputs": [
-        "generated/generated_one_electron_policy.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_values",
-      "outputs": [
-        "generated/generated_one_electron_values.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "one_electron_derivatives",
-      "outputs": [
-        "generated/generated_one_electron_derivatives.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_values",
-      "outputs": [
-        "generated/df_values.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_derivatives",
-      "outputs": [
-        "generated/generated_df_derivatives.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_shell_derivatives",
-      "outputs": [
-        "generated/generated_df_shell_derivatives.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_rys_roots",
-      "outputs": [
-        "generated/generated_df_rys.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_rys.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_rys_shell",
-      "outputs": [
-        "generated/generated_df_rys_shell.cuh",
-        "generated/generated_df_rys_policy.hpp"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_rys_shell.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "weighted_eri",
-      "outputs": [
-        "generated/weighted_eri.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "aot_integrals",
-      "outputs": [
-        "generated/production_shell_kernels/**/*.cu",
-        "generated/production_shell_kernels/**/*.cuh",
-        "generated/production_shell_kernels/**/*.hpp"
-      ],
-      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_tensor",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/tensor",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_xc",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/xc",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_dft",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/dft",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "jit_integral",
-      "outputs": [],
-      "owner": "python/vibeqc_compiler/integral",
-      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "ao_grid_policy",
-      "outputs": [
-        "generated/generated_grid_policy.cu"
-      ],
-      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_policies",
-      "outputs": [
-        "generated/generated_df_policy.cuh",
-        "generated/generated_df_derivative_policy.cuh",
-        "generated/generated_df_derivative_schedule.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_policy.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "ecp_quadrature",
-      "outputs": [
-        "generated/generated_ecp_ao.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_derivative_production_policy",
-      "outputs": [
-        "generated/generated_df_production.hpp"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_sss_force_screening",
-      "outputs": [
-        "generated/generated_df_screening.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_screening.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_value_candidates",
-      "outputs": [
-        "generated/generated_df_value_candidates.cuh"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_value_candidates.py"
-    },
-    {
-      "files": [],
-      "measurement": "not materialized",
-      "name": "df_shell_class_units",
-      "outputs": [
-        "generated/df_shells/*.cu",
-        "generated/df_shells/*.cuh",
-        "generated/df_shells/*.hpp"
-      ],
-      "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
-    }
-  ],
-  "generated_bytes": 0,
-  "maintained_code_lines": {
-    "fallback": 0,
-    "oracle": 312,
-    "performance_exception": 253,
-    "runtime": 10498,
-    "scientific": 12768
-  },
   "migration_ledger": {
     "ao_grid": {
       "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
@@ -3710,16 +3668,16 @@
       "status": "partial"
     },
     "d4_dispersion": {
+      "owner": "d4_dispersion",
       "current_default": "No production DFT-D4 capability. Internal bounded fixed-charge GFN2-reference baseline on CPU and CUDA.",
+      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
+      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
+      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
       "evidence": [
         "docs/d4_reference.md",
         "tests/data/d4/oracle_manifest.json",
         ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md"
       ],
-      "generated_capability": "None for D4 execution; reference data export is reproducible and independent of the runtime.",
-      "missing_capability": "EEQ reference data, charge provider and response, MethodIR/public integration, generated derivative execution and performance qualification.",
-      "owner": "d4_dispersion",
-      "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
       "status": "oracle"
     },
     "df_derivatives": {
@@ -3738,7 +3696,12 @@
       "status": "retired"
     },
     "df_response_weights": {
+      "owner": "scf_tensor",
       "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere. Compatible singleton resident RHF response borrows existing full J/K capacity even when occupied factors are unavailable; this dense reuse requires no factor reservation or new allocation. Occupied response additionally requires the shared twofold-work-reduction policy and actual projection capacity; immutable raw values are reused only with matching source identity. Explicit incompatible schedules/probes retain panel execution; VIBEQC_DF_RESPONSE_STORAGE=panel preserves the prior route and jk-scratch opts eligible shapes into the checked borrow. Providers without GEAM (including CuMetal) reuse the existing J/K gather for raw layout conversion; NVIDIA retains GEAM through a compile-time capability check. Automatic occupied-space response shares SCF/seed/final exchange workload and capacity admission, without an AO/rank endpoint, equal-basis or GPU-name whitelist. Automatic factor reservation is method/rank-aware and declines optional storage when it would force a dense resident plan into streaming; UHF, unknown and unprofitable ranks retain dense accounting. Execution additionally requires a validated method-authorized final-state token with exact canonical density and matching device factor generations. It forms occupied projections and at most 64 auxiliary AO pseudo-density slices in borrowed J/K storage; unsupported or corrected states retain dense response. Explicit occupied response also validates both UHF spins, including rank-zero beta. Derivative pair auto selection folds dense shell pairs in the promoted 192--384 regime and emits folded packed AO pairs in the qualified 768 occupied domain. Packed production uses bounded 256-row rectangular BLAS blocks and at most 64 auxiliary AOs, aligned to shell boundaries. Explicit full/symmetric/packed pair and 64/128/256/384 block controls retain independent diagnostics; generated derivative mathematics is unchanged.",
+      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
+      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+      "retained_duplicate_reason": "oracle",
+      "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
       "evidence": [
         "tests/python/test_df_response_weights_cuda.py",
         "benchmarks/results/issue206-metric-gemv/README.md",
@@ -3759,11 +3722,6 @@
         ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
         "tests/python/test_df_resources.py"
       ],
-      "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
-      "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
-      "owner": "scf_tensor",
-      "retained_duplicate_reason": "oracle",
-      "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
       "status": "native_baseline_with_opt_in_control"
     },
     "df_values": {
@@ -3796,7 +3754,11 @@
       "status": "partial"
     },
     "ecp": {
+      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
       "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
+      "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
       "evidence": [
         "tests/python/test_ecp.py",
         "tests/python/test_ecp_ir.py",
@@ -3808,10 +3770,6 @@
         "tests/python/test_ecp_f_projector.py",
         "benchmarks/results/ecp-f-projector-171/README.md"
       ],
-      "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation.",
-      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital g and projector g or higher families unavailable. No broad heavy-element qualification.",
-      "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py and src/integrals/ecp_cuda.cu",
-      "retirement_condition": "Generated production radial/projector, AO/weight and host-grid arithmetic require independent moment/addition-theorem, Libcint, all-center derivative, complete HF and resource gates. Remaining AO expansion metadata and complete-method grid-convergence policy must preserve their scientific contracts before complete adapter retirement. Keep the independent ecp.cpp CPU oracle/fallback, including its own nodes/harmonics/normalization, separate from generated production algebra.",
       "status": "Bounded s/p/d/f orbitals and nonlocal projectors with generated projector/radial, AO/fixed-weight and host-grid arithmetic. No DFT, broad heavy-element or performance-promotion claim."
     },
     "low_rank": {
@@ -3897,98 +3855,201 @@
       "status": "resident_prepared_cuda_energy_only"
     }
   },
-  "per_subsystem": {
-    "ao_grid": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 550,
-      "scientific": 162
+  "generated": [
+    {
+      "name": "ao_grid_policy",
+      "outputs": [
+        "generated/generated_grid_policy.cu"
+      ],
+      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged.",
+      "measurement": "not materialized",
+      "files": []
     },
-    "d4_dispersion": {
-      "fallback": 0,
-      "oracle": 297,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 0
+    {
+      "name": "aot_integrals",
+      "outputs": [
+        "generated/production_shell_kernels/**/*.cu",
+        "generated/production_shell_kernels/**/*.cuh",
+        "generated/production_shell_kernels/**/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "df_derivatives": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 843,
-      "scientific": 1398
+    {
+      "name": "df_derivative_production_policy",
+      "outputs": [
+        "generated/generated_df_production.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "df_response_weights": {
-      "fallback": 0,
-      "oracle": 15,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 1103
+    {
+      "name": "df_derivatives",
+      "outputs": [
+        "generated/generated_df_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "df_values": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 226,
-      "scientific": 168
+    {
+      "name": "df_policies",
+      "outputs": [
+        "generated/generated_df_policy.cuh",
+        "generated/generated_df_derivative_policy.cuh",
+        "generated/generated_df_derivative_schedule.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_policy.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "direct_integrals": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 1644,
-      "scientific": 7090
+    {
+      "name": "df_rys_roots",
+      "outputs": [
+        "generated/generated_df_rys.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_rys.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "ecp": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 0,
-      "scientific": 290
+    {
+      "name": "df_rys_shell",
+      "outputs": [
+        "generated/generated_df_rys_shell.cuh",
+        "generated/generated_df_rys_policy.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_rys_shell.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "low_rank": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 179,
-      "scientific": 65
+    {
+      "name": "df_shell_class_units",
+      "outputs": [
+        "generated/df_shells/*.cu",
+        "generated/df_shells/*.cuh",
+        "generated/df_shells/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_shell_units.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "one_electron_derivatives": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 156,
-      "runtime": 0,
-      "scientific": 1277
+    {
+      "name": "df_shell_derivatives",
+      "outputs": [
+        "generated/generated_df_shell_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_shell_derivatives.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "one_electron_values": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 35,
-      "scientific": 0
+    {
+      "name": "df_sss_force_screening",
+      "outputs": [
+        "generated/generated_df_screening.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_screening.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "runtime": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 4679,
-      "scientific": 5
+    {
+      "name": "df_value_candidates",
+      "outputs": [
+        "generated/generated_df_value_candidates.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_value_candidates.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "scf_tensor": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 97,
-      "runtime": 2095,
-      "scientific": 817
+    {
+      "name": "df_values",
+      "outputs": [
+        "generated/df_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_cuda.py",
+      "measurement": "not materialized",
+      "files": []
     },
-    "xc": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 0,
-      "runtime": 247,
-      "scientific": 393
+    {
+      "name": "ecp_quadrature",
+      "outputs": [
+        "generated/generated_ecp_ao.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/ecp_projector.py",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "jit_dft",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/dft",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools.",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "jit_integral",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/integral",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools.",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "jit_tensor",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/tensor",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools.",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "jit_xc",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/xc",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools.",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "one_electron_derivatives",
+      "outputs": [
+        "generated/generated_one_electron_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "one_electron_value_policy",
+      "outputs": [
+        "generated/generated_one_electron_policy.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "one_electron_values",
+      "outputs": [
+        "generated/generated_one_electron_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py",
+      "measurement": "not materialized",
+      "files": []
+    },
+    {
+      "name": "weighted_eri",
+      "outputs": [
+        "generated/weighted_eri.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py",
+      "measurement": "not materialized",
+      "files": []
     }
-  },
-  "schema": "vibeqc.cuda-ownership-report.v1"
+  ],
+  "generated_bytes": 0,
+  "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics"
 }
