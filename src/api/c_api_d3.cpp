@@ -163,13 +163,17 @@ vibeqc_status vibeqc_d3_batch_execute(
       want_gradient[system] = output.gradient ? 1 : 0;
 
       auto prepared = batch->plan->default_coordinates(system);
-      if (!inputs || (!inputs[system].coordinates && inputs[system].coordinate_count == 0)) {
+      if (!inputs) {
         coordinates.insert(coordinates.end(), prepared.begin(), prepared.end());
         continue;
       }
 
       const auto& input = inputs[system];
       if (!vibeqc::api::valid_descriptor(&input)) return VIBEQC_STATUS_ABI_MISMATCH;
+      if (!input.coordinates && input.coordinate_count == 0) {
+        coordinates.insert(coordinates.end(), prepared.begin(), prepared.end());
+        continue;
+      }
       if (!input.coordinates || input.coordinate_count != 3u * atoms) {
         input_status[system] = VIBEQC_STATUS_INVALID_ARGUMENT;
         active[system] = 0;
