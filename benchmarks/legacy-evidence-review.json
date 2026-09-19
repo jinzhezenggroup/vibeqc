@@ -290,6 +290,11 @@
       "reason": "Reviewed retained large evidence for CG09: prepared FP64 TensorIR CUDA evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/tensor-cuda-146/README.md"
     },
+    "tensor-resource-scheduler-508": {
+      "owner": "tensor-resource-scheduler-508",
+      "reason": "Reviewed retained large evidence for TensorIR resource-aware scheduler qualification (#508). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/tensor-resource-scheduler-508/README.md"
+    },
     "weighted-eri-144": {
       "owner": "weighted-eri-144",
       "reason": "Reviewed retained large evidence for Weighted ERI derivative gates (#144). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
@@ -1453,6 +1458,14 @@
       "path": "benchmarks/results/tensor-cuda-146/virtual_residual-o8-v31-tuning.json",
       "role": "performance-samples",
       "sha256": "be3a1b3bf09ad614d8980c400474cb495e8469e00cb4b6db771a546bceb8cd02"
+    },
+    {
+      "bytes": 169698,
+      "classification": "required-compact-accepted-evidence",
+      "family": "tensor-resource-scheduler-508",
+      "path": "benchmarks/results/tensor-resource-scheduler-508/qualification.json",
+      "role": "decision-or-audit-record",
+      "sha256": "39414917b758b0c50da615b231fb4736c2b95fd5d43b2c05e95ce69a40dc71aa"
     },
     {
       "bytes": 313909,
