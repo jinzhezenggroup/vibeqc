@@ -1,5 +1,14 @@
 """Canonical method composition above scientific compiler primitives."""
 
+from vibeqc_compiler.common.nonlocal_correlation import (
+    NONLOCAL_CORRELATION_VERSION,
+    RVV10,
+    VV10,
+    NonlocalCorrelationSpec,
+    UnsupportedNonlocalCorrelation,
+    original_nonlocal_correlation,
+)
+
 from .basis_binding import (
     BasisBinding,
     r2scan3c_def2_mtzvpp_h_ar,
@@ -15,6 +24,7 @@ from .dispersion import (
 from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 from .matrix_function import SymmetricMatrixFunctionSpec
+from .nonlocal_correlation import NonlocalCorrelationPrimitive
 from .spec import (
     METHOD_CATALOG,
     ExactExchangePrimitive,
@@ -51,6 +61,9 @@ from .xtb import (
 __all__ = [
     "GFN2_PARAMETER_SET",
     "METHOD_CATALOG",
+    "NONLOCAL_CORRELATION_VERSION",
+    "RVV10",
+    "VV10",
     "XTB_METHOD_CATALOG",
     "BackendCapability",
     "BasisBinding",
@@ -69,18 +82,22 @@ __all__ = [
     "MethodIR",
     "MethodSpec",
     "MethodTypeError",
+    "NonlocalCorrelationPrimitive",
+    "NonlocalCorrelationSpec",
     "SemilocalXCPrimitive",
     "StationaryGradientPlan",
     "StationaryMeanField",
     "SymmetricMatrixFunctionSpec",
     "TypedMethodIR",
     "UnsupportedMethod",
+    "UnsupportedNonlocalCorrelation",
     "UnsupportedXtbMethod",
     "XtbMethodIR",
     "XtbMethodSpec",
     "XtbParameterSet",
     "XtbPrimitive",
     "infer_feature_types",
+    "original_nonlocal_correlation",
     "r2scan3c_d4_eeq",
     "r2scan3c_def2_mtzvpp_h_ar",
     "r2scan3c_gcp",
