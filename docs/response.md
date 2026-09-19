@@ -162,15 +162,31 @@ The prepared CUDA provider is reused across signed, symmetric density actions;
 raw J and K are returned without core-Hamiltonian contamination or additional
 RHF factors. There is no CPU integral fallback or substitution of a DF operator.
 
-This is a **host-orchestrated response with CUDA J/K contractions**, not an
-entirely GPU-resident CPHF implementation. AO/MO transforms, response vectors,
-GMRES, orthogonalization and result storage still use the existing host path.
-The generic Fock evaluation also computes unused Fock/energy outputs; those
-costs must be included in any future timing. No speedup is asserted here.
-`diagnostics` records these boundaries and the exact native provider identity.
-The device budget bounds retained direct J/K allocations, not the preparation
-peak, host arrays, full response solve or complete Hessian. A global budgeted
-execution milestone remains separate.
+The default `CudaDirectJKBackend` path remains host-orchestrated around CUDA
+J/K contractions. B2 adds an opt-in `CudaResidentRHFResponse` owner for exact
+conventional RHF. It borrows the same prepared direct-J/K source and CUDA
+stream, retains C/orbital energies, Krylov vectors, AO response density/Fock
+scratch and AO/MO transform scratch on device, and uses the existing #179 GMRES
+control flow rather than a second solver. Vector copy/AXPY/dot/norm and
+orthogonalization execute through cuBLAS; the direct J/K action is the existing
+device-to-device provider seam.
+
+The host still owns nuclear/metric RHS preparation, final occupied/density/
+energy-weighted-density reconstruction, the small Hessenberg least-squares
+problem, and convergence decisions. Thus diagnostics call this
+`cuda-resident-host-controlled`, not an all-device CPHF. During a resident
+operator action no density/J/K matrix crosses the PCIe boundary: only the
+4-byte native numerical-status flag returns; dot/norm reductions return
+scalars, and final solution publication is explicit. Directional Hessian
+consumers suppress final Arnoldi-basis publication. Host preconditioners and
+resident blocked-Arnoldi are not qualified and fail closed rather than falling
+back to host execution.
+
+The response device budget combines retained direct-J/K storage with the
+resident owner allocation. It excludes provider preparation temporaries,
+compiler/runtime metadata and CUDA-context/library-private memory. No speedup
+is asserted from residency alone; complete solve/action/transfer timings remain
+the relevant performance evidence.
 
 The caller owns the `NativeSource` lifetime. Closed sources/backends, unrelated
 geometry/basis/reference/Hamiltonian identities, nonsymmetric or nonfinite
@@ -234,3 +250,19 @@ still fails closed until a spin-resolved device J/K response plan has separate
 numerical and resource evidence. That gate is pinned by
 `tests/python/test_response_uhf.py`, so neither the UHF CPU bridge nor the RHF
 CUDA/DF backend is inferred as spin-resolved device support.
+
+
+## Resident response failure and validation scope
+
+Exceptional context exit destroys the resident native owner even when a solver
+traceback still retains vector leases. The original solver error is preserved;
+subsequent use of a retained vector rejects its closed owner. Ordinary explicit
+`close()` still rejects live vector leases. Hardware-independent lifecycle
+regressions cover memory, validation and runtime errors and idempotent teardown.
+
+The resident CUDA numerical comparison in `test_cuda_runtime.py` requires an
+explicit NVIDIA device allocation (`VIBEQC_RESOURCE_CUDA_TEST=1`) and skips under
+`CUMETAL_ROOT`. The CuMetal workflow reports that skip; its green status is not
+resident-response numerical qualification. NVIDIA compilation, host GMRES tests,
+and ownership tests are distinct from executing the resident operator/solver
+against the independent host-orchestrated CUDA reference.

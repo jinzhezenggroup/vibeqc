@@ -25,6 +25,7 @@ TEST_FILES = (
 GATE_NODEIDS = (
     "tests/python/test_cuda_runtime.py::test_cuda_minimal_rhf_matches_cpu_reference",
     "tests/python/test_cuda_runtime.py::test_cuda_minimal_uhf_matches_cpu_reference",
+    "tests/python/test_cuda_runtime.py::test_cuda_resident_rhf_response_matches_host_operator",
 )
 MODE = os.environ.get("CUMETAL_CUDA_TEST_MODE", "gate").strip().lower()
 TIMEOUT_SECONDS = int(os.environ.get("CUMETAL_CUDA_TEST_TIMEOUT_SECONDS", "60"))

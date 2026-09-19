@@ -532,3 +532,107 @@ def test_true_residual_norm_does_not_underflow_or_overflow(scale):
 def test_unrepresentable_rhs_norm_is_rejected():
     with pytest.raises(ValueError, match="norm overflows"):
         solve(_MatrixOperator(np.eye(2), 2), np.full(2, np.finfo(float).max))
+
+
+def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver():
+    class Wrapped:
+        def __init__(self, values):
+            self.values = np.asarray(values, dtype=float).copy()
+
+    class Engine:
+        resident = True
+
+        def __init__(self, matrix):
+            self.matrix = matrix
+            self.dimension = matrix.shape[0]
+            self.applies = 0
+
+        def reset(self):
+            pass
+
+        def from_host(self, value):
+            return Wrapped(value)
+
+        def zeros(self):
+            return Wrapped(np.zeros(self.dimension))
+
+        def copy(self, value):
+            return Wrapped(value.values)
+
+        def scale(self, value, alpha):
+            return Wrapped(alpha * value.values)
+
+        def subtract(self, left, right):
+            return Wrapped(left.values - right.values)
+
+        def norm(self, value):
+            return float(np.linalg.norm(value.values))
+
+        def apply(self, operator, value):
+            del operator
+            self.applies += 1
+            return Wrapped(self.matrix @ value.values)
+
+        def precondition(self, preconditioner, value):
+            assert preconditioner is None
+            return self.copy(value)
+
+        def orthogonalize(self, basis, value, *, reorthogonalize, tolerance):
+            work = value.values.copy()
+            coefficients = np.zeros(len(basis))
+            for _ in range(reorthogonalize):
+                for column, vector in enumerate(basis):
+                    projection = float(np.dot(vector.values, work))
+                    coefficients[column] += projection
+                    work -= projection * vector.values
+                norm = float(np.linalg.norm(work))
+                if norm <= tolerance:
+                    break
+            return Wrapped(work), coefficients, float(np.linalg.norm(work))
+
+        def combination(self, base, basis, coefficients, preconditioner):
+            assert preconditioner is None
+            out = base.values.copy()
+            for coefficient, vector in zip(coefficients, basis, strict=True):
+                out += coefficient * vector.values
+            return Wrapped(out)
+
+        def to_host(self, value):
+            return value.values.copy()
+
+        def stack_host(self, values):
+            return (
+                np.column_stack([value.values for value in values])
+                if values
+                else np.empty((self.dimension, 0))
+            )
+
+    operator = _synthetic_operator(size=6)
+    engine = Engine(operator.matrix)
+    operator._krylov_engine = engine
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("resident engine fell back to operator.apply")
+
+    operator.apply = forbidden
+    rhs = np.linspace(-1.0, 1.0, operator.dimension)
+    result = solve(
+        operator,
+        rhs,
+        options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
+        collect_basis=False,
+    )
+    assert result.converged
+    np.testing.assert_allclose(
+        operator.matrix @ result.solution, rhs, atol=2e-11, rtol=2e-11
+    )
+    assert engine.applies == result.operator_actions
+    assert result.basis.shape == (operator.dimension, 0)
+
+    with pytest.raises(ValueError, match="blocked GMRES.*resident"):
+        solve_many(
+            operator,
+            np.column_stack((rhs, rhs)),
+            strategy="blocked",
+            options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
+        )

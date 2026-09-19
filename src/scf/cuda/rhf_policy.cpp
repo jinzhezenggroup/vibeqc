@@ -253,9 +253,12 @@ unsigned ppps_resident_block_threads_requested() noexcept {
 }
 
 unsigned one_electron_value_mapping_requested() noexcept {
-  // The shared shell-warp policy passed the complete ownership-migration
-  // endpoint gate. Keep the thread layout as an explicit diagnostic schedule.
-  if (std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING") == nullptr) return 1U;
+  // The shared shell-warp policy passed the complete NVIDIA ownership-migration
+  // endpoint gate. CuMetal does not currently register the templated shell-warp
+  // one-electron kernel in its metallib, so keep the qualified pair-thread
+  // schedule there unless the user explicitly overrides the mapping.
+  if (std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING") == nullptr)
+    return std::getenv("CUMETAL_ROOT") == nullptr ? 1U : 0U;
   return selected("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp") ? 1U : 0U;
 }
 

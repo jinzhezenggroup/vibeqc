@@ -55,8 +55,14 @@ cublasStatus_t cublasSetPointerMode_v2(cublasHandle_t handle, cublasPointerMode_
 cublasStatus_t cublasSetMathMode(cublasHandle_t handle, cublasMath_t mode);
 cublasStatus_t cublasDaxpy_v2(cublasHandle_t handle, int n, const double* alpha, const double* x,
                               int incx, double* y, int incy);
+cublasStatus_t cublasDcopy_v2(cublasHandle_t handle, int n, const double* x, int incx, double* y,
+                              int incy);
 cublasStatus_t cublasDdot_v2(cublasHandle_t handle, int n, const double* x, int incx,
                              const double* y, int incy, double* result);
+cublasStatus_t cublasDnrm2_v2(cublasHandle_t handle, int n, const double* x, int incx,
+                              double* result);
+cublasStatus_t cublasDscal_v2(cublasHandle_t handle, int n, const double* alpha, double* x,
+                              int incx);
 cublasStatus_t cublasDgemv_v2(cublasHandle_t handle, cublasOperation_t trans, int m, int n,
                               const double* alpha, const double* a, int lda, const double* x,
                               int incx, const double* beta, double* y, int incy);
@@ -95,7 +101,10 @@ cublasStatus_t cublasDgeam(cublasHandle_t handle, cublasOperation_t transa,
 #define cublasSetStream cublasSetStream_v2
 #define cublasSetPointerMode cublasSetPointerMode_v2
 #define cublasDaxpy cublasDaxpy_v2
+#define cublasDcopy cublasDcopy_v2
 #define cublasDdot cublasDdot_v2
+#define cublasDnrm2 cublasDnrm2_v2
+#define cublasDscal cublasDscal_v2
 #define cublasDgemv cublasDgemv_v2
 #define cublasDgemm cublasDgemm_v2
 #define cublasSgemm cublasSgemm_v2

@@ -1,110 +1,68 @@
-"""Canonical method composition above scientific compiler primitives."""
+"""Canonical method composition above scientific compiler primitives.
 
-from vibeqc_compiler.common.nonlocal_correlation import (
-    NONLOCAL_CORRELATION_VERSION,
-    RVV10,
-    VV10,
-    NonlocalCorrelationSpec,
-    UnsupportedNonlocalCorrelation,
-    original_nonlocal_correlation,
-)
+The public symbols are loaded lazily so build-time-safe method code generators
+can import lightweight contracts without importing NumPy/TensorIR.
+"""
 
-from .basis_binding import (
-    BasisBinding,
-    r2scan3c_def2_mtzvpp_h_ar,
-    validate_basis_snapshot,
-)
-from .correction import CorrectionProvenance, CorrectionResult
-from .dispersion import (
-    D3Spec,
-    D4Spec,
-    DispersionCorrectionPrimitive,
-    r2scan3c_d4_eeq,
-)
-from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
-from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
-from .matrix_function import SymmetricMatrixFunctionSpec
-from .nonlocal_correlation import NonlocalCorrelationPrimitive
-from .spec import (
-    METHOD_CATALOG,
-    ExactExchangePrimitive,
-    MethodIR,
-    MethodSpec,
-    RangeSeparatedExchangePrimitive,
-    SemilocalXCPrimitive,
-    UnsupportedMethod,
-    resolve_method,
-)
-from .stationary_gradient import (
-    IntegralGradientBlock,
-    StationaryGradientPlan,
-    StationaryMeanField,
-)
-from .typecheck import (
-    BackendCapability,
-    FeatureType,
-    MethodTypeError,
-    TypedMethodIR,
-    infer_feature_types,
-    verify_method_ir,
-)
-from .xtb import (
-    GFN2_PARAMETER_SET,
-    XTB_METHOD_CATALOG,
-    UnsupportedXtbMethod,
-    XtbMethodIR,
-    XtbMethodSpec,
-    XtbParameterSet,
-    XtbPrimitive,
-    resolve_xtb_method,
-)
+from importlib import import_module
 
-__all__ = [
-    "GFN2_PARAMETER_SET",
-    "METHOD_CATALOG",
-    "NONLOCAL_CORRELATION_VERSION",
-    "RVV10",
-    "VV10",
-    "XTB_METHOD_CATALOG",
-    "BackendCapability",
-    "BasisBinding",
-    "CorrectionProvenance",
-    "CorrectionResult",
-    "D3Spec",
-    "D4Spec",
-    "DispersionCorrectionPrimitive",
-    "ExactExchangePrimitive",
-    "FeatureType",
-    "GCPSpec",
-    "GeometricCounterpoisePrimitive",
-    "ImplicitSolveSpec",
-    "ImplicitVJPPlan",
-    "IntegralGradientBlock",
-    "MethodIR",
-    "MethodSpec",
-    "MethodTypeError",
-    "NonlocalCorrelationPrimitive",
-    "NonlocalCorrelationSpec",
-    "RangeSeparatedExchangePrimitive",
-    "SemilocalXCPrimitive",
-    "StationaryGradientPlan",
-    "StationaryMeanField",
-    "SymmetricMatrixFunctionSpec",
-    "TypedMethodIR",
-    "UnsupportedMethod",
-    "UnsupportedNonlocalCorrelation",
-    "UnsupportedXtbMethod",
-    "XtbMethodIR",
-    "XtbMethodSpec",
-    "XtbParameterSet",
-    "XtbPrimitive",
-    "infer_feature_types",
-    "original_nonlocal_correlation",
-    "r2scan3c_d4_eeq",
-    "r2scan3c_def2_mtzvpp_h_ar",
-    "r2scan3c_gcp",
-    "resolve_method",
-    "resolve_xtb_method",
-    "validate_basis_snapshot",
-    "verify_method_ir",
-]
+_EXPORTS = {
+    "BasisBinding": ".basis_binding",
+    "CorrectionProvenance": ".correction",
+    "CorrectionResult": ".correction",
+    "GCPSpec": ".gcp",
+    "GeometricCounterpoisePrimitive": ".gcp",
+    "RangeSeparatedExchangePrimitive": ".spec",
+    "r2scan3c_def2_mtzvpp_h_ar": ".basis_binding",
+    "r2scan3c_gcp": ".gcp",
+    "validate_basis_snapshot": ".basis_binding",
+    "BackendCapability": ".typecheck",
+    "D3Spec": ".dispersion",
+    "D4Spec": ".dispersion",
+    "DensityFittingRHFResponsePlan": ".df_hf_response",
+    "DispersionCorrectionPrimitive": ".dispersion",
+    "ExactExchangePrimitive": ".spec",
+    "FeatureType": ".typecheck",
+    "GFN2_PARAMETER_SET": ".xtb",
+    "ImplicitSolveSpec": ".implicit",
+    "ImplicitVJPPlan": ".implicit",
+    "IntegralGradientBlock": ".stationary_gradient",
+    "METHOD_CATALOG": ".spec",
+    "MethodIR": ".spec",
+    "MethodSpec": ".spec",
+    "MethodTypeError": ".typecheck",
+    "NONLOCAL_CORRELATION_VERSION": "vibeqc_compiler.common.nonlocal_correlation",
+    "NonlocalCorrelationPrimitive": ".nonlocal_correlation",
+    "NonlocalCorrelationSpec": "vibeqc_compiler.common.nonlocal_correlation",
+    "RVV10": "vibeqc_compiler.common.nonlocal_correlation",
+    "SemilocalXCPrimitive": ".spec",
+    "StationaryGradientPlan": ".stationary_gradient",
+    "StationaryMeanField": ".stationary_gradient",
+    "SymmetricMatrixFunctionSpec": ".matrix_function",
+    "TypedMethodIR": ".typecheck",
+    "UnsupportedMethod": ".spec",
+    "UnsupportedNonlocalCorrelation": "vibeqc_compiler.common.nonlocal_correlation",
+    "UnsupportedXtbMethod": ".xtb",
+    "VV10": "vibeqc_compiler.common.nonlocal_correlation",
+    "XTB_METHOD_CATALOG": ".xtb",
+    "XtbMethodIR": ".xtb",
+    "XtbMethodSpec": ".xtb",
+    "XtbParameterSet": ".xtb",
+    "XtbPrimitive": ".xtb",
+    "infer_feature_types": ".typecheck",
+    "original_nonlocal_correlation": "vibeqc_compiler.common.nonlocal_correlation",
+    "r2scan3c_d4_eeq": ".dispersion",
+    "resolve_method": ".spec",
+    "resolve_xtb_method": ".xtb",
+    "verify_method_ir": ".typecheck",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name):
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(_EXPORTS[name], __name__), name)
+    globals()[name] = value
+    return value

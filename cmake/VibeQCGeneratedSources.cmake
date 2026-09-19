@@ -14,6 +14,17 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
+  set(VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_hf_response_contract.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_hf_response_contract_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
+    OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --contract-output "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}")
+
   set(VIBEQC_ECP_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_ecp_ao.cuh")
   vibeqc_register_generated_sources(
@@ -27,6 +38,26 @@ macro(vibeqc_register_host_generated_sources target)
 endmacro()
 
 macro(vibeqc_register_cuda_generated_sources target)
+  set(VIBEQC_MATRIX_FUNCTION_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_symmetric_matrix_function.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_matrix_function_cuda.py"
+    OUTPUTS "${VIBEQC_MATRIX_FUNCTION_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --output "${VIBEQC_MATRIX_FUNCTION_HEADER}")
+
+  set(VIBEQC_DF_HF_RESPONSE_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_hf_response.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
+    OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --cuda-output "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}")
+
   set(VIBEQC_DF_GENERATED_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/df_values.cuh")
   set(VIBEQC_DF_POLICY_HEADER

@@ -163,6 +163,57 @@ typedef struct vibeqc_fock_diagnostic {
 VIBEQC_API vibeqc_status vibeqc_fock_plan_diagnostic(const vibeqc_fock_plan* plan,
                                                      vibeqc_fock_diagnostic* diagnostic);
 
+/** Tools-only resident RHF response/Krylov vector owner.
+ *
+ * The owner borrows an exact CUDA Fock plan and therefore must be destroyed
+ * before its parent vibeqc_fock_plan. Coefficients are copied during creation.
+ * Vector slots remain on the parent's CUDA device. Small scalar dot/norm/status
+ * values are the only success-path Krylov transfers; final vector download is
+ * explicit. This ABI is additive and is not a public Calculator capability.
+ */
+typedef struct vibeqc_rhf_response_resident vibeqc_rhf_response_resident;
+
+typedef struct vibeqc_rhf_response_resident_diagnostic {
+  uint32_t struct_size, abi_version;
+  uint64_t nbf, nocc, nvirt, dimension, vector_slots;
+  uint64_t owned_device_bytes;
+  uint64_t h2d_bytes, d2h_bytes, synchronizations;
+  uint64_t operator_actions, blas_calls;
+  int32_t device_id;
+} vibeqc_rhf_response_resident_diagnostic;
+
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_create(
+    vibeqc_fock_plan* plan, const double* coefficients, uint64_t coefficient_count,
+    const double* orbital_energies, uint64_t energy_count, uint32_t nocc, uint32_t vector_slots,
+    uint64_t device_budget_bytes, vibeqc_rhf_response_resident** output);
+VIBEQC_API void vibeqc_rhf_response_resident_destroy(vibeqc_rhf_response_resident* owner);
+VIBEQC_API const char* vibeqc_rhf_response_resident_last_error(
+    const vibeqc_rhf_response_resident* owner);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_get_diagnostic(
+    const vibeqc_rhf_response_resident* owner, vibeqc_rhf_response_resident_diagnostic* diagnostic);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_upload(vibeqc_rhf_response_resident* owner,
+                                                             uint32_t slot, const double* values,
+                                                             uint64_t count);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_download(vibeqc_rhf_response_resident* owner,
+                                                               uint32_t slot, double* values,
+                                                               uint64_t count);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_zero(vibeqc_rhf_response_resident* owner,
+                                                           uint32_t slot);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_copy(vibeqc_rhf_response_resident* owner,
+                                                           uint32_t destination, uint32_t source);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_scale(vibeqc_rhf_response_resident* owner,
+                                                            uint32_t slot, double alpha);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_axpy(vibeqc_rhf_response_resident* owner,
+                                                           uint32_t destination, double alpha,
+                                                           uint32_t source);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_dot(vibeqc_rhf_response_resident* owner,
+                                                          uint32_t left, uint32_t right,
+                                                          double* value);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_norm(vibeqc_rhf_response_resident* owner,
+                                                           uint32_t slot, double* value);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_apply(vibeqc_rhf_response_resident* owner,
+                                                            uint32_t destination, uint32_t source);
+
 #ifdef __cplusplus
 }
 #endif

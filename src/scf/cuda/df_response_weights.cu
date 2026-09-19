@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <limits>
 
+#include "generated_df_hf_response.cuh"
+#include "generated_symmetric_matrix_function.cuh"
 #include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_packed_values.hpp"
@@ -62,14 +64,6 @@ __global__ void potential_kernel(std::size_t a, std::size_t terms, const double*
   potentials[tp] = value;
 }
 
-__global__ void coulomb_weights_kernel(std::size_t matrix, std::size_t a, std::size_t begin,
-                                       std::size_t count, double coefficient, const double* density,
-                                       const double* potential, double* weights) {
-  const auto pi = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (pi >= count * matrix) return;
-  weights[pi] += coefficient * density[pi % matrix] * potential[begin + pi / matrix];
-}
-
 /** Fold the physical Coulomb adjoint directly into public lower AO pairs.
  * Reading both density entries retains the dense adapter's exact convention,
  * even when its accepted symmetric input differs by floating-point roundoff.
@@ -105,12 +99,6 @@ __global__ void add_packed_exchange_block(std::size_t begin, std::size_t rows, s
   if (j <= i) weights[panel * pair_stride + i * (i + 1) / 2 + j] += (i == j ? 1 : 2) * block[k];
 }
 
-__global__ void coulomb_metric_kernel(std::size_t a, double coefficient, const double* charges,
-                                      double* bar_inverse) {
-  const auto pq = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (pq < a * a) bar_inverse[pq] += .5 * coefficient * charges[pq / a] * charges[pq % a];
-}
-
 /** R_Q = D^T A_Q D for a symmetric physical density, in two cubic products. */
 __global__ void right_density_kernel(std::size_t n, const double* values, const double* density,
                                      double* temporary) {
@@ -128,67 +116,6 @@ __global__ void left_density_kernel(std::size_t n, const double* density, const 
   double value = 0;
   for (std::size_t k = 0; k < n; ++k) value += density[k * n + ij / n] * temporary[k * n + ij % n];
   response[ij] = value;
-}
-
-__global__ void exchange_weights_kernel(std::size_t matrix, std::size_t a, std::size_t begin,
-                                        std::size_t count, std::size_t q, double coefficient,
-                                        const double* inverse, const double* response,
-                                        double* weights) {
-  const auto pi = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (pi >= count * matrix) return;
-  weights[pi] += -2 * coefficient * inverse[(begin + pi / matrix) * a + q] * response[pi % matrix];
-}
-
-__global__ void exchange_metric_kernel(std::size_t matrix, std::size_t a, std::size_t begin,
-                                       std::size_t count, std::size_t q, double coefficient,
-                                       const double* raw, const double* response,
-                                       double* bar_inverse) {
-  const auto p = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (p >= count) return;
-  double value = 0;
-  for (std::size_t ij = 0; ij < matrix; ++ij) value += raw[p * matrix + ij] * response[ij];
-  bar_inverse[(begin + p) * a + q] -= coefficient * value;
-}
-
-/** The two occurrences of A in exchange give -2*cK*D^T B_Q D.
- * B already contains the inverse, so no inverse follows this accumulation.
- */
-__global__ void fitted_exchange_weights_kernel(std::size_t matrix, double coefficient,
-                                               const double* response, double* weights) {
-  const auto ij = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (ij < matrix) weights[ij] -= 2 * coefficient * response[ij];
-}
-
-/** Eigenvectors are cuSOLVER column-major; all response matrices are row-major.
- * Stages compute sym(E) Q, Q^T temp with the divided differences, Q Ehat,
- * then temp Q^T. These include finite discarded eigenvalues, which a simple
- * -M+ E M+ formula would omit and give incorrect rank-deficient forces.
- */
-__global__ void metric_response_kernel(std::size_t a, unsigned stage, CudaDfMetricView metric,
-                                       const double* input, double* output) {
-  const auto ij = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
-  if (ij >= a * a) return;
-  const auto i = ij / a, j = ij % a;
-  const auto* q = metric.eigenvectors;
-  double value = 0;
-  for (std::size_t k = 0; k < a; ++k) {
-    if (stage == 0) value += .5 * (input[i * a + k] + input[k * a + i]) * q[k + j * a];
-    if (stage == 1) value += q[k + i * a] * input[k * a + j];
-    if (stage == 2) value += q[i + k * a] * input[k * a + j];
-    if (stage == 3) value += input[i * a + k] * q[j + k * a];
-  }
-  if (stage == 1) {
-    const double li = metric.eigenvalues[i], lj = metric.eigenvalues[j];
-    const double cutoff = metric.relative_threshold * metric.eigenvalues[a - 1];
-    const bool ki = li > cutoff, kj = lj > cutoff;
-    double divided = 0;
-    if (ki && kj)
-      divided = -1 / (li * lj);
-    else if (ki != kj)
-      divided = ((ki ? 1 / li : 0) - (kj ? 1 / lj : 0)) / (li - lj);
-    value *= divided;
-  }
-  output[ij] = value;
 }
 
 __global__ void symmetrize_kernel(std::size_t a, double* values, std::size_t count = 1) {
@@ -624,15 +551,9 @@ static cudaError_t contract_resident_response(
     consume(0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix);
   }
   runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
-                                                             transformed);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
-                                                             bar_inverse);
-  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
+  tensor::launch_symmetric_pseudoinverse_vjp(a, metric.eigenvectors, metric.eigenvalues,
+                                             metric.relative_threshold, bar_inverse, metric_temp,
+                                             transformed, bar_inverse, stream);
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   reverse.finish();
@@ -1052,20 +973,15 @@ static cudaError_t contract_occupied_response(
                                      packed_pairs && peak_count == a ? pair_stride * a : 0);
   runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
   if (!metric.full_rank) {
-    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
-                                                               metric_temp);
-    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
-                                                               transformed);
-    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
-                                                               metric_temp);
-    metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
-                                                               bar_inverse);
+    tensor::launch_symmetric_pseudoinverse_vjp(a, metric.eigenvectors, metric.eigenvalues,
+                                               metric.relative_threshold, bar_inverse, metric_temp,
+                                               transformed, bar_inverse, stream);
   } else {
     runtime::cuda_trace::trace_counter("response_full_rank_occupied_factor_first", 1);
     if (read_values)
       runtime::cuda_trace::trace_counter("response_streamed_occupied_factor_first", 1);
+    symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
   }
-  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   reverse.finish();
@@ -1252,15 +1168,9 @@ cudaError_t contract_cuda_df_response_weights(
     consume(0, {begin, matrix, 1, a}, count * matrix, weights);
   }
   runtime::cuda_trace::TraceRegion metric_response("metric_frechet_response", stream);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
-                                                             transformed);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
-                                                             metric_temp);
-  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
-                                                             bar_inverse);
-  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
+  tensor::launch_symmetric_pseudoinverse_vjp(a, metric.eigenvectors, metric.eigenvalues,
+                                             metric.relative_threshold, bar_inverse, metric_temp,
+                                             transformed, bar_inverse, stream);
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   metric_response.finish();

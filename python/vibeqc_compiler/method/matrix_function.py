@@ -28,8 +28,9 @@ from vibeqc_compiler.tensor import (
     transpose,
 )
 
+from .matrix_function_contract import RULE_VERSIONS
+
 VERSION = "symmetric-matrix-function-v1"
-RULE_VERSION = "inverse-sqrt-frechet-v1"
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ class SymmetricMatrixFunctionSpec:
             or not self.matrix_identity.strip()
         ):
             raise ValueError("matrix identity must be a nonempty string")
-        if self.function != "inverse_sqrt" or self.version != VERSION:
+        if self.function not in RULE_VERSIONS or self.version != VERSION:
             raise ValueError("unsupported matrix function or schema version")
         for name in ("relative_threshold", "branch_guard"):
             value = getattr(self, name)
@@ -87,7 +88,7 @@ class SymmetricMatrixFunctionSpec:
             "branch_guard": self.branch_guard,
             "dtype": "float64",
             "inner_product": "full-frobenius",
-            "derivative_rule": RULE_VERSION,
+            "derivative_rule": RULE_VERSIONS[self.function],
             "derivative_orders": [1],
         }
 
@@ -175,7 +176,7 @@ class SymmetricMatrixFunctionSpec:
             {"response": result},
             provenance={
                 "matrix_function": self.identity,
-                "rule": RULE_VERSION,
+                "rule": RULE_VERSIONS[self.function],
                 "spectral_state": "fixed-first-order-coefficients",
             },
         )
@@ -231,17 +232,25 @@ class SymmetricMatrixFunctionSpec:
         with np.errstate(over="raise", divide="raise", invalid="raise"):
             try:
                 function = np.zeros_like(values)
-                roots = np.sqrt(values[retained])
-                function[retained] = 1.0 / roots
+                retained_values = values[retained]
+                if self.function == "inverse_sqrt":
+                    roots = np.sqrt(retained_values)
+                    function[retained] = 1.0 / roots
+                    # Rationalized divided differences avoid cancellation,
+                    # including exact/near degeneracy in the retained subspace.
+                    retained_divided = (
+                        -1.0
+                        / roots[:, None]
+                        / roots[None, :]
+                        / (roots[:, None] + roots[None, :])
+                    )
+                else:
+                    function[retained] = 1.0 / retained_values
+                    retained_divided = (
+                        -1.0 / retained_values[:, None] / retained_values[None, :]
+                    )
                 divided = np.zeros((self.size, self.size))
-                # Rationalized divided differences avoid cancellation, including
-                # exact and near degeneracy inside the retained subspace.
-                divided[np.ix_(retained, retained)] = (
-                    -1.0
-                    / roots[:, None]
-                    / roots[None, :]
-                    / (roots[:, None] + roots[None, :])
-                )
+                divided[np.ix_(retained, retained)] = retained_divided
                 discarded = ~retained
                 cross = function[retained, None] / (
                     values[retained, None] - values[None, discarded]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
 
 import numpy as np
@@ -276,6 +277,72 @@ class MultiRHSResult:
         return self
 
 
+class _HostKrylovEngine:
+    """NumPy vector engine preserving the original #179 solver semantics."""
+
+    resident = False
+
+    def __init__(self, dimension):
+        self.dimension = dimension
+
+    def reset(self):
+        return None
+
+    def from_host(self, values):
+        return np.asarray(values, dtype=np.float64).copy()
+
+    def zeros(self):
+        return np.zeros(self.dimension)
+
+    def copy(self, value):
+        return np.asarray(value, dtype=np.float64).copy()
+
+    def scale(self, value, alpha):
+        return np.asarray(value, dtype=np.float64) * float(alpha)
+
+    def subtract(self, left, right):
+        return np.asarray(left, dtype=np.float64) - np.asarray(right, dtype=np.float64)
+
+    def norm(self, value):
+        return _vector_norm(value)
+
+    def apply(self, operator, value):
+        return np.asarray(operator.apply(value), dtype=np.float64)
+
+    def precondition(self, preconditioner, value):
+        if preconditioner is None:
+            return self.copy(value)
+        return np.asarray(preconditioner.apply(value), dtype=np.float64)
+
+    def orthogonalize(self, basis, value, *, reorthogonalize, tolerance):
+        matrix = (
+            np.column_stack(basis)
+            if basis
+            else np.empty((self.dimension, 0), dtype=np.float64)
+        )
+        return _orthogonalize_against(
+            matrix,
+            value,
+            reorthogonalize=reorthogonalize,
+            tolerance=tolerance,
+        )
+
+    def combination(self, base, basis, coefficients, preconditioner):
+        direction = np.zeros(self.dimension)
+        for coefficient, vector in zip(coefficients, basis, strict=True):
+            direction += float(coefficient) * np.asarray(vector, dtype=np.float64)
+        direction = self.precondition(preconditioner, direction)
+        return np.asarray(base, dtype=np.float64) + direction
+
+    def to_host(self, value):
+        return np.asarray(value, dtype=np.float64).copy()
+
+    def stack_host(self, values):
+        if not values:
+            return np.empty((self.dimension, 0))
+        return np.column_stack([self.to_host(value) for value in values])
+
+
 def _solve_single(
     operator,
     rhs,
@@ -285,22 +352,31 @@ def _solve_single(
     preconditioner=None,
     collect_basis=True,
 ):
-    """Restarted GMRES with a true residual at every requested checkpoint."""
-    b = np.asarray(rhs, dtype=np.float64)
-    if b.ndim != 1 or not np.isfinite(b).all():
+    """Restarted GMRES with one control flow and pluggable vector residency."""
+    b_host = np.asarray(rhs, dtype=np.float64)
+    if b_host.ndim != 1 or not np.isfinite(b_host).all():
         raise ValueError("GMRES RHS must be a finite vector")
-    n = b.size
+    n = b_host.size
     if n != operator.dimension:
         raise ValueError("GMRES RHS dimension mismatch")
-    x = (
-        np.zeros(n)
-        if initial_guess is None
-        else np.asarray(initial_guess, dtype=np.float64).copy()
-    )
-    if x.shape != (n,) or not np.isfinite(x).all():
-        raise ValueError("initial guess must be a finite vector of operator dimension")
+    guess_host = None
+    if initial_guess is not None:
+        guess_host = np.asarray(initial_guess, dtype=np.float64)
+        if guess_host.shape != (n,) or not np.isfinite(guess_host).all():
+            raise ValueError(
+                "initial guess must be a finite vector of operator dimension"
+            )
+
+    engine = getattr(operator, "_krylov_engine", None)
+    if engine is None:
+        engine = _HostKrylovEngine(n)
+    if getattr(engine, "dimension", None) != n:
+        raise ValueError("Krylov vector engine dimension mismatch")
+    engine.reset()
+
     required_workspace = _single_workspace_bytes(n, options)
     if required_workspace > options.max_workspace_bytes:
+        x = np.zeros(n) if guess_host is None else guess_host.copy()
         return SolveResult(
             immutable(x),
             False,
@@ -317,86 +393,87 @@ def _solve_single(
             basis=np.empty((n, 0)),
         )
 
+    b = engine.from_host(b_host)
+    x = engine.zeros() if guess_host is None else engine.from_host(guess_host)
     operator_actions = 0
     preconditioner_actions = 0
     ortho_seconds = 0.0
     operator_seconds = 0.0
     history = []
     total_steps = 0
-    recycled_vectors = 0
 
     def apply(value):
         nonlocal operator_actions, operator_seconds
         begin = time.perf_counter()
-        result = operator.apply(value)
+        result = engine.apply(operator, value)
         operator_seconds += time.perf_counter() - begin
         operator_actions += 1
-        return np.asarray(result, dtype=np.float64)
+        return result
 
-    def precond(value):
-        nonlocal preconditioner_actions
-        if preconditioner is None:
-            return value
-        preconditioner_actions += 1
-        return np.asarray(preconditioner.apply(value), dtype=np.float64)
+    def true_residual_norm(candidate):
+        image = apply(candidate)
+        return engine.norm(engine.subtract(b, image))
 
-    if initial_guess is not None:
-        # Charge the initial operator application separately from Krylov steps.
-        residual = b - apply(x)
-    else:
-        residual = b.copy()
-    beta = _vector_norm(residual)
-    history.append(beta)
-    rhs_norm = _vector_norm(b)
-    target = max(options.atol, options.rtol * rhs_norm)
-    if beta <= target:
+    def publish(
+        solution, converged, residual_norm, iterations, reason, basis, rhs_norm
+    ):
         return SolveResult(
-            immutable(x),
-            True,
-            beta,
-            _relative_residual(beta, rhs_norm),
-            0,
-            "initial_residual",
+            immutable(engine.to_host(solution)),
+            converged,
+            residual_norm,
+            _relative_residual(residual_norm, rhs_norm),
+            iterations,
+            reason,
             tuple(history),
             operator_actions,
             preconditioner_actions,
             ortho_seconds,
             operator_seconds,
             required_workspace,
-            recycled_vectors,
-            basis=np.empty((n, 0)),
+            basis=immutable(
+                engine.stack_host(basis) if collect_basis else np.empty((n, 0))
+            ),
         )
 
-    best_x = x.copy()
+    residual = (
+        engine.subtract(b, apply(x)) if guess_host is not None else engine.copy(b)
+    )
+    beta = engine.norm(residual)
+    history.append(beta)
+    rhs_norm = engine.norm(b)
+    target = max(options.atol, options.rtol * rhs_norm)
+    if beta <= target:
+        return publish(x, True, beta, 0, "initial_residual", (), rhs_norm)
+
+    best_x = engine.copy(x)
     best_residual = beta
-    best_basis = np.empty((n, 0))
+    best_basis = ()
     restart = min(n, options.restart, options.max_iterations)
     while total_steps < options.max_iterations:
-        v = np.zeros((n, restart + 1))
+        basis = [engine.scale(residual, 1.0 / beta)]
         h = np.zeros((restart + 1, restart))
-        v[:, 0] = residual / beta
-        base_x = best_x.copy()
+        base_x = engine.copy(best_x)
         steps_this_cycle = 0
-        candidate_x = best_x
+        candidate_x = engine.copy(best_x)
         candidate_residual = best_residual
         stagnation = 0
         for column in range(restart):
             if total_steps >= options.max_iterations:
                 break
             ortho_started = time.perf_counter()
-            work = precond(v[:, column])
+            work = engine.precondition(preconditioner, basis[column])
+            if preconditioner is not None:
+                preconditioner_actions += 1
             work = apply(work)
-            work, h[: column + 1, column], norm = _orthogonalize_against(
-                v[:, : column + 1],
+            work, coefficients, norm = engine.orthogonalize(
+                basis[: column + 1],
                 work,
                 reorthogonalize=options.reorthogonalize,
                 tolerance=options.breakdown_tolerance,
             )
+            h[: column + 1, column] = coefficients
             ortho_seconds += time.perf_counter() - ortho_started
             if norm <= options.breakdown_tolerance:
-                # Solve the current small least-squares problem before deciding
-                # whether this is convergence or a true invariant-subspace
-                # breakdown.  No denominator is clamped.
                 steps_this_cycle = column + 1
                 total_steps += 1
                 y, *_ = np.linalg.lstsq(
@@ -404,11 +481,15 @@ def _solve_single(
                     beta * np.eye(column + 1, 1)[:, 0],
                     rcond=None,
                 )
-                candidate_x = base_x + precond(v[:, : column + 1] @ y)
-                candidate_residual = _vector_norm(b - apply(candidate_x))
+                candidate_x = engine.combination(
+                    base_x, basis[: column + 1], y, preconditioner
+                )
+                if preconditioner is not None:
+                    preconditioner_actions += 1
+                candidate_residual = true_residual_norm(candidate_x)
                 history.append(candidate_residual)
                 break
-            v[:, column + 1] = work / norm
+            basis.append(engine.scale(work, 1.0 / norm))
             h[column + 1, column] = norm
             steps_this_cycle = column + 1
             total_steps += 1
@@ -422,27 +503,24 @@ def _solve_single(
                     beta * np.eye(column + 2, 1)[:, 0],
                     rcond=None,
                 )
-                candidate_x = base_x + precond(v[:, : column + 1] @ y)
-                candidate_residual = _vector_norm(b - apply(candidate_x))
+                candidate_x = engine.combination(
+                    base_x, basis[: column + 1], y, preconditioner
+                )
+                if preconditioner is not None:
+                    preconditioner_actions += 1
+                candidate_residual = true_residual_norm(candidate_x)
                 history.append(candidate_residual)
                 if candidate_residual <= target:
                     best_x, best_residual = candidate_x, candidate_residual
-                    best_basis = v[:, : column + 1].copy()
-                    return SolveResult(
-                        immutable(best_x),
+                    best_basis = tuple(basis[: column + 1])
+                    return publish(
+                        best_x,
                         True,
                         best_residual,
-                        _relative_residual(best_residual, rhs_norm),
                         total_steps,
                         "converged",
-                        tuple(history),
-                        operator_actions,
-                        preconditioner_actions,
-                        ortho_seconds,
-                        operator_seconds,
-                        required_workspace,
-                        recycled_vectors,
-                        basis=immutable(best_basis),
+                        best_basis,
+                        rhs_norm,
                     )
                 if candidate_residual >= best_residual * (
                     1.0 - options.stagnation_tolerance
@@ -452,81 +530,46 @@ def _solve_single(
                     stagnation = 0
                 if candidate_residual < best_residual:
                     best_x, best_residual = candidate_x, candidate_residual
-                    best_basis = v[:, : column + 1].copy()
+                    best_basis = tuple(basis[: column + 1])
                 if stagnation >= options.stagnation_window:
-                    return SolveResult(
-                        immutable(best_x),
+                    return publish(
+                        best_x,
                         False,
                         best_residual,
-                        _relative_residual(best_residual, rhs_norm),
                         total_steps,
                         "stagnation",
-                        tuple(history),
-                        operator_actions,
-                        preconditioner_actions,
-                        ortho_seconds,
-                        operator_seconds,
-                        required_workspace,
-                        recycled_vectors,
-                        basis=immutable(best_basis),
+                        best_basis,
+                        rhs_norm,
                     )
         if candidate_residual <= target:
-            return SolveResult(
-                immutable(candidate_x),
+            return publish(
+                candidate_x,
                 True,
                 candidate_residual,
-                _relative_residual(candidate_residual, rhs_norm),
                 total_steps,
                 "converged",
-                tuple(history),
-                operator_actions,
-                preconditioner_actions,
-                ortho_seconds,
-                operator_seconds,
-                required_workspace,
-                recycled_vectors,
-                basis=immutable(v[:, :steps_this_cycle]),
+                tuple(basis[:steps_this_cycle]),
+                rhs_norm,
             )
         if steps_this_cycle == 0:
             break
-        # Restart from the best true residual obtained in this cycle.
         if best_residual >= beta:
-            return SolveResult(
-                immutable(best_x),
+            return publish(
+                best_x,
                 False,
                 best_residual,
-                _relative_residual(best_residual, rhs_norm),
                 total_steps,
                 "breakdown" if best_residual > 0 else "singular",
-                tuple(history),
-                operator_actions,
-                preconditioner_actions,
-                ortho_seconds,
-                operator_seconds,
-                required_workspace,
-                recycled_vectors,
-                basis=immutable(best_basis),
+                best_basis,
+                rhs_norm,
             )
-        residual = b - apply(best_x)
-        beta = _vector_norm(residual)
+        residual = engine.subtract(b, apply(best_x))
+        beta = engine.norm(residual)
         history.append(beta)
 
     reason = "max_iterations" if total_steps >= options.max_iterations else "breakdown"
-    return SolveResult(
-        immutable(best_x),
-        False,
-        best_residual,
-        _relative_residual(best_residual, rhs_norm),
-        total_steps,
-        reason,
-        tuple(history),
-        operator_actions,
-        preconditioner_actions,
-        ortho_seconds,
-        operator_seconds,
-        required_workspace,
-        recycled_vectors,
-        basis=immutable(best_basis),
+    return publish(
+        best_x, False, best_residual, total_steps, reason, best_basis, rhs_norm
     )
 
 
@@ -688,6 +731,7 @@ def solve(
     recycle=None,
     preconditioner=None,
     raise_on_failure=False,
+    collect_basis=True,
 ):
     """Solve one RHS with bounded true-residual GMRES."""
     options = GMRESOptions() if options is None else options
@@ -726,15 +770,20 @@ def solve(
     else:
         if recycle is not None and initial_guess is None:
             initial_guess = recycle.initial_guess(operator.problem, rhs)
-        result = _solve_single(
-            operator,
-            rhs,
-            replace(
-                options, max_workspace_bytes=options.max_workspace_bytes - reservation
-            ),
-            initial_guess=initial_guess,
-            preconditioner=preconditioner,
-        )
+        engine = getattr(operator, "_krylov_engine", None)
+        workspace = getattr(engine, "solver_workspace", nullcontext)
+        with workspace():
+            result = _solve_single(
+                operator,
+                rhs,
+                replace(
+                    options,
+                    max_workspace_bytes=options.max_workspace_bytes - reservation,
+                ),
+                initial_guess=initial_guess,
+                preconditioner=preconditioner,
+                collect_basis=collect_basis or recycle is not None,
+            )
         if recycle is not None and result.converged:
             recycle.update(operator.problem, result)
     result = replace(
@@ -748,11 +797,20 @@ def solve(
 def _block_solve(operator, rhs, options):
     """Block GMRES with block-Arnoldi expansion and true residuals.
 
-    Expansion uses orthogonalized operator images rather than the projected
-    Galerkin residual.  This is required for indefinite/nonsymmetric
-    operators where the projected matrix can be singular even though the
-    operator is nonsingular.
+    Resident vector execution qualifies scalar/recycled GMRES only. The block
+    Arnoldi implementation remains host-only and fails rather than relabeling
+    host vector work as device-resident.
     """
+    if getattr(getattr(operator, "_krylov_engine", None), "resident", False):
+        raise ValueError(
+            "blocked GMRES is not qualified for resident vector execution; "
+            "use sequential or recycled"
+        )
+
+    # Expansion uses orthogonalized operator images rather than the projected
+    # Galerkin residual. This is required for indefinite/nonsymmetric operators
+    # where the projected matrix can be singular even though the operator is
+    # nonsingular.
     b = np.asarray(rhs, dtype=np.float64)
     n, nrhs = b.shape
     max_columns = min(n, nrhs + options.max_iterations)

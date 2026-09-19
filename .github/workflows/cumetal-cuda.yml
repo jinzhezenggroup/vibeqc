@@ -199,6 +199,26 @@ jobs:
           grep -q 'launch_success=true' /tmp/vibeqc-cuda-runtime.log
           grep -q 'PASS: CUDA runtime contracts' /tmp/vibeqc-cuda-runtime.log
 
+      - name: Install resident-response test dependency
+        if: github.event_name == 'pull_request'
+        run: uv pip install --python .venv/bin/python pytest
+
+      # This NVIDIA-only test skips on CuMetal. Keep the skip visible rather
+      # than labeling a successful collection as resident GPU qualification.
+      - name: Report NVIDIA-only resident-response test coverage
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 5
+        env:
+          CUMETAL_ROOT: /tmp/cumetal-install
+          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal/libvibeqc.dylib
+          CUMETAL_TRACE_GPU: "1"
+          PYTHONPATH: ${{ github.workspace }}/python:${{ github.workspace }}
+        run: |
+          .venv/bin/python -m pytest \
+            tests/python/test_cuda_runtime.py::test_cuda_resident_rhf_response_matches_host_operator \
+            -vv -rs
+
       - name: Preserve CUDA test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
