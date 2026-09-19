@@ -17,7 +17,8 @@ bool valid(FockSpin value) {
 }
 bool valid(FockBackend value) { return value == FockBackend::Cpu || value == FockBackend::Cuda; }
 bool valid(FockApproximation value) {
-  return value == FockApproximation::Exact || value == FockApproximation::DensityFitted;
+  return value == FockApproximation::Exact || value == FockApproximation::DensityFitted ||
+         value == FockApproximation::SeminumericalCosx;
 }
 bool valid(FockOperator value) {
   return value == FockOperator::FullRange || value == FockOperator::ShortRange ||
@@ -34,6 +35,22 @@ void canonicalize(FockTermSpec& term) {
   require(term.op == FockOperator::FullRange,
           "short-/long-range Fock providers are not implemented");
   require(term.omega == 0.0, "full-range Fock terms require omega=0");
+  if (term.approximation == FockApproximation::SeminumericalCosx) {
+    const auto& cosx = term.cosx;
+    require(cosx.version == 1 && cosx.grid_version == 1 && cosx.radial_points > 0 &&
+                cosx.angular_polar > 0 && cosx.angular_azimuth > 0 &&
+                cosx.partition_iterations > 0 && std::isfinite(cosx.coincident_tolerance) &&
+                cosx.coincident_tolerance > 0.0,
+            "COSX v1 requires a complete finite explicit grid identity");
+    for (double radius : cosx.element_radii)
+      require(std::isfinite(radius) && radius >= 0.0,
+              "COSX element radii must be finite and nonnegative");
+    require(cosx.symmetrize && !cosx.overlap_fitting && !cosx.screening,
+            "COSX v1 is explicitly symmetrized, unfitted and unscreened");
+  } else {
+    // Irrelevant approximation metadata must not perturb exact/DF identities.
+    term.cosx = {};
+  }
   // Eliminate negative zero from serialized mathematical identities.
   if (term.coefficient == 0.0) term.coefficient = 0.0;
   term.omega = 0.0;
@@ -83,19 +100,36 @@ constexpr FockProviderCapabilities supported_fock_domain() {
   capabilities.cartesian = true;
   capabilities.spherical = true;
   capabilities.batching = true;
+  capabilities.coulomb = true;
+  capabilities.exchange = true;
   capabilities.independent_terms = true;
   capabilities.arbitrary_coefficients = true;
   return capabilities;
 }
 
-constexpr FockProviderRegistration make_registration(std::string_view name,
-                                                     FockApproximation approximation,
-                                                     runtime::ProviderBackend backend,
-                                                     runtime::ProviderAvailability availability,
-                                                     std::string_view reason,
-                                                     std::string_view provenance) {
+constexpr FockProviderCapabilities cosx_fock_domain() {
+  FockProviderCapabilities capabilities;
+  capabilities.restricted = true;
+  capabilities.unrestricted = true;
+  capabilities.full_range = true;
+  capabilities.maximum_derivative_order = 0;
+  capabilities.maximum_angular_momentum = 3;
+  capabilities.cartesian = true;
+  capabilities.spherical = true;
+  capabilities.batching = false;
+  capabilities.coulomb = false;
+  capabilities.exchange = true;
+  capabilities.independent_terms = true;
+  capabilities.arbitrary_coefficients = true;
+  return capabilities;
+}
+
+constexpr FockProviderRegistration make_registration(
+    std::string_view name, FockApproximation approximation, runtime::ProviderBackend backend,
+    runtime::ProviderAvailability availability, std::string_view reason,
+    std::string_view provenance, FockProviderCapabilities capabilities = supported_fock_domain()) {
   return {{"scf.fock", name, 1, backend},
-          {approximation, supported_fock_domain()},
+          {approximation, capabilities},
           availability,
           runtime::ProviderFallback::None,
           runtime::ProviderRequirement::PreparedState | runtime::ProviderRequirement::Resources,
@@ -106,12 +140,16 @@ constexpr FockProviderRegistration make_registration(std::string_view name,
 #if VIBEQC_HAS_CUDA
 constexpr auto kCudaAvailability = runtime::ProviderAvailability::Executable;
 constexpr std::string_view kCudaReason{};
+constexpr auto kCosxCudaAvailability = runtime::ProviderAvailability::Executable;
+constexpr std::string_view kCosxCudaReason{};
 #else
 constexpr auto kCudaAvailability = runtime::ProviderAvailability::NotBuilt;
 constexpr std::string_view kCudaReason = "CUDA support was not compiled into this build";
+constexpr auto kCosxCudaAvailability = runtime::ProviderAvailability::NotBuilt;
+constexpr std::string_view kCosxCudaReason = "CUDA support was not compiled into this build";
 #endif
 
-constexpr std::array<FockProviderRegistration, 4> kFockProviders{{
+constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
     make_registration("cpu.exact", FockApproximation::Exact, runtime::ProviderBackend::Cpu,
                       runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
     make_registration("cpu.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cpu,
@@ -120,6 +158,13 @@ constexpr std::array<FockProviderRegistration, 4> kFockProviders{{
                       kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
     make_registration("cuda.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cuda,
                       kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
+    make_registration("cpu.cosx", FockApproximation::SeminumericalCosx,
+                      runtime::ProviderBackend::Cpu, runtime::ProviderAvailability::Unavailable,
+                      "the CPU COSX path is a correctness oracle, not a Fock provider",
+                      "src/dft/cosx_reference.cpp", cosx_fock_domain()),
+    make_registration("cuda.cosx", FockApproximation::SeminumericalCosx,
+                      runtime::ProviderBackend::Cuda, kCosxCudaAvailability, kCosxCudaReason,
+                      "src/dft/cosx_fock_provider.cpp", cosx_fock_domain()),
 }};
 
 runtime::ProviderBackend registry_backend(FockBackend backend) {
@@ -158,8 +203,26 @@ void require_fock_provider_executable(FockApproximation approximation, FockBacke
     throw std::runtime_error(runtime::provider_diagnostic(provider, "Fock preparation"));
 }
 
+FockCosxSpec make_cosx_v1_spec(std::size_t radial_points, std::size_t angular_polar,
+                               std::size_t angular_azimuth, unsigned partition_iterations,
+                               double coincident_tolerance, std::array<double, 119> element_radii) {
+  FockCosxSpec spec;
+  spec.version = 1;
+  spec.grid_version = 1;
+  spec.radial_points = radial_points;
+  spec.angular_polar = angular_polar;
+  spec.angular_azimuth = angular_azimuth;
+  spec.partition_iterations = partition_iterations;
+  spec.coincident_tolerance = coincident_tolerance;
+  spec.element_radii = std::move(element_radii);
+  spec.symmetrize = true;
+  return spec;
+}
+
 FockBuildSpec make_hf_fock_spec(FockSpin spin, FockApproximation approximation) {
-  require(valid(spin) && valid(approximation), "unknown HF spin/provider");
+  require(valid(spin) && (approximation == FockApproximation::Exact ||
+                          approximation == FockApproximation::DensityFitted),
+          "HF helper requires an exact or density-fitted J/K approximation");
   FockBuildSpec spec;
   spec.spin = spin;
   spec.coulomb.approximation = approximation;
@@ -177,21 +240,29 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
           "Fock screening tolerance must be nonnegative and finite");
   canonicalize(spec.coulomb);
   canonicalize(spec.exchange);
-  for (const auto* term : {&spec.coulomb, &spec.exchange}) {
-    if (!term->present) continue;
+  auto validate_term = [&](const FockTermSpec& term, bool coulomb) {
+    if (!term.present) return;
     const auto& capability =
-        fock_provider_registration(term->approximation, backend).domain.capabilities;
+        fock_provider_registration(term.approximation, backend).domain.capabilities;
+    require(coulomb ? capability.coulomb : capability.exchange,
+            coulomb ? "requested Fock provider does not implement Coulomb"
+                    : "requested Fock provider does not implement exchange");
     require(spec.spin == FockSpin::Restricted ? capability.restricted : capability.unrestricted,
             "requested Fock spin convention is outside the provider domain");
     require(spec.derivative_order <= capability.maximum_derivative_order,
             "requested Fock derivative order is outside the provider domain");
-    require(term->op == FockOperator::FullRange    ? capability.full_range
-            : term->op == FockOperator::ShortRange ? capability.short_range
-                                                   : capability.long_range,
+    require(term.op == FockOperator::FullRange    ? capability.full_range
+            : term.op == FockOperator::ShortRange ? capability.short_range
+                                                  : capability.long_range,
             "requested Fock operator is outside the provider domain");
-  }
-  const bool fitted = spec.coulomb.approximation == FockApproximation::DensityFitted ||
-                      spec.exchange.approximation == FockApproximation::DensityFitted;
+  };
+  validate_term(spec.coulomb, true);
+  validate_term(spec.exchange, false);
+  const bool fitted =
+      (spec.coulomb.present && spec.coulomb.approximation == FockApproximation::DensityFitted) ||
+      (spec.exchange.present && spec.exchange.approximation == FockApproximation::DensityFitted);
+  const bool cosx =
+      spec.exchange.present && spec.exchange.approximation == FockApproximation::SeminumericalCosx;
   if (fitted) {
     require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
                 metric_relative_threshold < 1.0,
@@ -207,9 +278,9 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
                           ? FockSchedule::CudaFused
                           : FockSchedule::CudaIndependent;
   else
-    result.schedule =
-        fitted ? (fitted_hf ? FockSchedule::LegacyDensityFitting : FockSchedule::CpuIndependent)
-               : FockSchedule::CpuReference;
+    result.schedule = fitted || cosx ? (fitted_hf ? FockSchedule::LegacyDensityFitting
+                                                  : FockSchedule::CpuIndependent)
+                                     : FockSchedule::CpuReference;
   result.screening_tolerance = screening_tolerance;
   result.metric_relative_threshold = fitted ? metric_relative_threshold : 0.0;
   result.legacy_density_fitting = fitted_hf;

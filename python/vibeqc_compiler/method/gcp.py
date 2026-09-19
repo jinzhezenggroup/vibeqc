@@ -1,0 +1,157 @@
+"""Versioned geometric counterpoise (gCP) correction manifests."""
+
+from __future__ import annotations
+
+import math
+import re
+from dataclasses import dataclass
+from typing import ClassVar
+
+GCP_SPEC_VERSION = "gcp-spec-v1"
+
+
+@dataclass(frozen=True)
+class GCPSpec:
+    """Audited gCP parameter set; the correction remains outside XC/SCF."""
+
+    basis: str
+    sigma: float
+    eta: float
+    eta_spec: float
+    alpha: float
+    beta: float
+    damping_scale: float
+    damping_exponent: float
+    parameter_sha256: str
+    implementation_sha256: str
+    vdw_radii_sha256: str
+    data_sha256: str
+    source_revision: str
+    supported_atomic_numbers: tuple[int, ...]
+    damping: bool = True
+    source: str = "dftd3/simple-dftd3"
+    license: str = "LGPL-3.0-or-later"
+    profile: str = "r2scan3c"
+    version: str = GCP_SPEC_VERSION
+
+    def __post_init__(self):
+        if self.version != GCP_SPEC_VERSION:
+            raise ValueError("unsupported gCP specification version")
+        if not all(
+            isinstance(v, str) and v
+            for v in (
+                self.basis,
+                self.source,
+                self.source_revision,
+                self.license,
+                self.profile,
+            )
+        ):
+            raise ValueError(
+                "gCP specification requires provenance and profile metadata"
+            )
+        for name in (
+            "sigma",
+            "eta",
+            "eta_spec",
+            "alpha",
+            "beta",
+            "damping_scale",
+            "damping_exponent",
+        ):
+            value = getattr(self, name)
+            if (
+                not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError(f"gCP {name} must be finite and positive")
+        for name in (
+            "parameter_sha256",
+            "implementation_sha256",
+            "vdw_radii_sha256",
+            "data_sha256",
+        ):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise ValueError(f"gCP {name} requires a SHA-256 digest")
+        if (
+            not isinstance(self.supported_atomic_numbers, tuple)
+            or not self.supported_atomic_numbers
+        ):
+            raise ValueError("gCP requires a finite supported-element domain")
+        if (
+            tuple(sorted(set(self.supported_atomic_numbers)))
+            != self.supported_atomic_numbers
+        ):
+            raise ValueError("gCP supported elements must be sorted and unique")
+
+    def to_payload(self):
+        return {
+            "version": self.version,
+            "basis": self.basis,
+            "profile": self.profile,
+            "sigma": self.sigma,
+            "eta": self.eta,
+            "eta_spec": self.eta_spec,
+            "alpha": self.alpha,
+            "beta": self.beta,
+            "damping": self.damping,
+            "damping_scale": self.damping_scale,
+            "damping_exponent": self.damping_exponent,
+            "parameter_sha256": self.parameter_sha256,
+            "implementation_sha256": self.implementation_sha256,
+            "vdw_radii_sha256": self.vdw_radii_sha256,
+            "data_sha256": self.data_sha256,
+            "source": self.source,
+            "source_revision": self.source_revision,
+            "license": self.license,
+            "supported_atomic_numbers": list(self.supported_atomic_numbers),
+        }
+
+
+def r2scan3c_gcp():
+    """Exact def2-mTZVPP gCP profile used by r2SCAN-3c, scoped to H-Ar."""
+
+    return GCPSpec(
+        basis="def2-mTZVPP",
+        sigma=1.0,
+        eta=1.315,
+        eta_spec=1.15,
+        alpha=0.9410,
+        beta=1.4636,
+        damping_scale=4.0,
+        damping_exponent=6.0,
+        parameter_sha256="3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
+        implementation_sha256="c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
+        vdw_radii_sha256="3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
+        data_sha256="c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2",
+        source_revision="41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+        supported_atomic_numbers=tuple(range(1, 19)),
+    )
+
+
+@dataclass(frozen=True)
+class GeometricCounterpoisePrimitive:
+    """Typed external correction node evaluated once outside the electronic SCF."""
+
+    specification: GCPSpec
+    kind: ClassVar[str] = "geometric_counterpoise"
+
+    def __post_init__(self):
+        if not isinstance(self.specification, GCPSpec):
+            raise TypeError("gCP primitive requires GCPSpec")
+
+    @property
+    def derivative_capabilities(self):
+        return ("energy", "nuclear-gradient")
+
+    def semantic_payload(self):
+        return {
+            "kind": self.kind,
+            "specification": self.specification.to_payload(),
+            "derivative_capabilities": self.derivative_capabilities,
+        }
+
+    def to_payload(self):
+        return self.semantic_payload()

@@ -87,12 +87,17 @@ def basis_capability(
 
                 try:
                     resolve_ecp(basis, atoms)
-                    if backend not in ("cpu", "cuda") or derivative_order > 1:
+                    cpu_spatial_ao = (
+                        backend == "cpu" and operator == "ao" and derivative_order <= 3
+                    )
+                    if backend not in ("cpu", "cuda") or (
+                        derivative_order > 1 and not cpu_spatial_ao
+                    ):
                         raise NotImplementedError(
                             f"ECP has no implemented {backend}/{operator} route"
                         )
-                    # LDA/PBE energies evaluate the same Gaussian AO values
-                    # and first spatial jets for valence ECP basis records.
+                    # CPU AO spatial jets are derivatives of the Gaussian
+                    # basis, not higher nuclear derivatives of the ECP.
                     # Core charges and residual potentials remain owned by
                     # the one-electron provider, not the XC AO evaluator.
                 except (ValueError, NotImplementedError) as error:

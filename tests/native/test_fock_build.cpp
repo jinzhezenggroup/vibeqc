@@ -418,6 +418,101 @@ void verify_scf_entry_preflight() {
       "CPU RHF fleet");
 }
 
+void verify_cosx_provider_semantics() {
+  auto spec = make_hf_fock_spec(FockSpin::Restricted);
+  spec.derivative_order = 0;
+  spec.coulomb.approximation = FockApproximation::DensityFitted;
+  spec.exchange.approximation = FockApproximation::SeminumericalCosx;
+  spec.exchange.cosx = make_cosx_v1_spec(12, 8, 16, 3, 1.0e-12);
+
+  const auto resolved = resolve_fock_build(spec, FockBackend::Cuda, 1.0e-12, 1.0e-10);
+  require(resolved.spec == spec && resolved.schedule == FockSchedule::CudaIndependent &&
+              resolved.metric_relative_threshold == 1.0e-10 && !resolved.legacy_density_fitting,
+          "RI-J/COSX-K semantics were not preserved by resolution");
+
+  const auto& registration =
+      fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  const auto& capability = registration.domain.capabilities;
+  require(capability.restricted && capability.unrestricted && capability.full_range &&
+              capability.maximum_derivative_order == 0 &&
+              capability.maximum_angular_momentum == 3 && capability.cartesian &&
+              capability.spherical && !capability.batching && !capability.coulomb &&
+              capability.exchange && capability.independent_terms &&
+              capability.arbitrary_coefficients,
+          "COSX registration overclaims or loses its exchange-only domain");
+#if VIBEQC_HAS_CUDA
+  require(vibeqc::runtime::provider_executable(registration),
+          "prepared CUDA COSX registration was not promoted");
+  require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  const auto executable =
+      fock_provider_capabilities(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  require(executable.available && executable.exchange && !executable.coulomb &&
+              executable.maximum_derivative_order == 0,
+          "executable COSX capability query differs from its registration");
+#else
+  require(!vibeqc::runtime::provider_executable(registration),
+          "CPU-only build advertised CUDA COSX execution");
+  std::string unavailable;
+  try {
+    require_fock_provider_executable(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
+  } catch (const std::runtime_error& error) {
+    unavailable = error.what();
+  }
+  require(unavailable.find("cuda.cosx") != std::string::npos &&
+              unavailable.find("not built") != std::string::npos,
+          "CPU-only COSX execution did not report a not-built provider");
+#endif
+
+  auto derivative = spec;
+  derivative.derivative_order = 1;
+  require_rejected([&] { (void)resolve_fock_build(derivative, FockBackend::Cuda); },
+                   "COSX silently inherited first-derivative capability");
+
+  auto coulomb_cosx = spec;
+  coulomb_cosx.coulomb.approximation = FockApproximation::SeminumericalCosx;
+  coulomb_cosx.coulomb.cosx = spec.exchange.cosx;
+  coulomb_cosx.exchange.approximation = FockApproximation::Exact;
+  coulomb_cosx.exchange.cosx = {};
+  require_rejected([&] { (void)resolve_fock_build(coulomb_cosx, FockBackend::Cuda); },
+                   "exchange-only COSX was accepted as a Coulomb provider");
+
+  auto malformed = spec;
+  malformed.exchange.cosx = {};
+  require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cuda); },
+                   "COSX without a versioned grid identity was accepted");
+  malformed = spec;
+  malformed.exchange.cosx.symmetrize = false;
+  require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cuda); },
+                   "COSX v1 without explicit symmetrization was accepted");
+  malformed = spec;
+  malformed.exchange.cosx.overlap_fitting = true;
+  require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cuda); },
+                   "unversioned COSX overlap fitting was accepted");
+  malformed = spec;
+  malformed.exchange.cosx.screening = true;
+  require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cuda); },
+                   "unversioned COSX screening was accepted");
+  malformed = spec;
+  malformed.exchange.cosx.element_radii[1] = -1.0;
+  require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cuda); },
+                   "invalid COSX element radius was accepted");
+
+  auto changed_grid = spec;
+  ++changed_grid.exchange.cosx.angular_azimuth;
+  require(resolve_fock_build(changed_grid, FockBackend::Cuda) != resolved,
+          "COSX grid change did not invalidate the resolved mathematical identity");
+
+  auto exact = make_hf_fock_spec(FockSpin::Restricted);
+  exact.exchange.cosx = spec.exchange.cosx;
+  const auto canonical_exact = resolve_fock_build(exact, FockBackend::Cpu);
+  require(canonical_exact.spec.exchange.cosx == FockCosxSpec{},
+          "irrelevant COSX metadata changed an exact-exchange identity");
+
+  require_rejected(
+      [&] { (void)make_hf_fock_spec(FockSpin::Restricted, FockApproximation::SeminumericalCosx); },
+      "HF helper incorrectly requested COSX for both J and K");
+}
+
 void verify_identity_and_invalid_inputs() {
   auto spec = make_hf_fock_spec(FockSpin::Restricted);
   const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 1.0e-12, 1.0e-10);
@@ -530,6 +625,7 @@ int main() {
     verify_independent_terms_and_coefficients();
     verify_unrestricted_coefficients_and_capabilities();
     verify_preflight_and_approximation_identity();
+    verify_cosx_provider_semantics();
     verify_scf_entry_preflight();
     verify_identity_and_invalid_inputs();
     std::cout

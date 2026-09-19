@@ -124,12 +124,12 @@ records bind these counts to the exact logs.
   metadata interned once per run and original JSON hashes preserved.
 - `components/` contains separate intrusive traces and executed counters.
   Nested GPU/host regions are inclusive and must not be added together.
-- `journals.json` retains the SCF/final-state journal prefix before force response,
+- [`journals.json` (historical snapshot)](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue399-density-seed/journals.json) retains the SCF/final-state journal prefix before force response,
   with original complete-journal hashes and row counts.
 - `profiles/` contains reduced Nsight captures, transfer/API counts and sampled
   memory. Sampled process high-water is a lower bound, including opaque runtime
   storage; it is not an exact allocation peak. No hardware occupancy is inferred.
-- `validation.json`, `builds.json` and `ownership.json` bind tests and physical
+- `validation.json`, `builds.json` and [`ownership.json` (historical snapshot)](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue399-density-seed/ownership.json) bind tests and physical
   CUDA changes to their logs and artifacts. Routine logs, binaries, profiler
   databases and checkpoint files are kept outside Git.
 
@@ -153,3 +153,12 @@ a finite `srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1` allocati
 preserving Slurm's device visibility. Exact drivers and reducers are in
 `reproduction/`; the [Agent Note](../../../.agents/notes/implemented/performance/2026-09-16-density-exchange-seed.md)
 explains ownership, fallbacks and rejected alternatives.
+
+### Historical storage
+
+The historical ownership inventory and journal prefix
+remain byte-recoverable from the existing ancestor snapshot. Clean timing
+samples, numerical evidence, source reconstruction and current production
+inventories are unchanged. For full-layout reproduction, restore the snapshot
+using the instructions in [retention-checkout](../retention-checkout/README.md).
+No Release, tag, upload or implicit history fetch is used.

@@ -135,7 +135,7 @@ Both arms also retain identical transfers and stream synchronization counts:
   checked source-operation counts. They are not hardware instruction counts.
 - `profiles/` contains separate Nsight CUDA-activity sums and memory sampling.
   These are different calls from the work traces; no cross-call event join is made.
-- `code-size.json`, `ownership.json` and `validation.json` bind binary/resource
+- `code-size.json`, [`ownership.json` (historical snapshot)](https://github.com/jinzhezenggroup/vibeqc/blob/e215b30685f8a36ef0cc5772c9166837527f64a2/benchmarks/results/issue394-000-rys/ownership.json) and `validation.json` bind binary/resource
   costs and verification to the measured artifacts. Logs, libraries, checkpoints
   and profiler databases remain outside Git.
 
@@ -168,3 +168,12 @@ the repository root with `PYTHONPATH=python:.` after qualification; the shell
 ledger additionally uses the matching generated header. The decision and future
 scope are recorded in the
 [Agent Note](../../../.agents/notes/implemented/performance/2026-09-16-000-rys-qualification.md).
+
+### Historical storage
+
+The historical ownership inventory
+remain byte-recoverable from the existing ancestor snapshot. Clean timing
+samples, numerical evidence, source reconstruction and current production
+inventories are unchanged. For full-layout reproduction, restore the snapshot
+using the instructions in [retention-checkout](../retention-checkout/README.md).
+No Release, tag, upload or implicit history fetch is used.

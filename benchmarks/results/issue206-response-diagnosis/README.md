@@ -103,13 +103,17 @@ why only the complete force establishes its consistency.
 
 ## Reproduction and limits
 
-`manifest.json` records 39 losslessly retained reports, arrays, traces and
-original scripts, including the failed adapter. The 2.1-MiB response NPZ is
-expanded into its exact individual NPY members, each hash checked, to respect
-the repository's per-file size policy. The original ZIP container and compiled
+`manifest.json` records 39 losslessly retained logical reports, arrays, traces
+and original scripts, including the failed adapter. The 2.1-MiB response NPZ is
+expanded into exact NPY member payloads, each hash checked, to respect the
+repository's per-file size policy. Eight semantic member names contain only
+three unique byte sequences; five duplicate stored copies are therefore mapped
+to canonical retained blobs. Every original member name, decoded SHA-256 and
+size remains a separate manifest record, so reconstruction is lossless while
+Git stores each identical payload once. The original ZIP container and compiled
 bridge remain in local artifacts; their SHA-256 identities are recorded. No
-array is rounded, filtered or omitted. Original scripts are gzipped to preserve
-the exact bytes executed, including the failed version.
+numerical array content is rounded, filtered or dropped. Original scripts are
+gzipped to preserve the exact bytes executed, including the failed version.
 
 The CPU-only audit checks every retained hash and recomputes the displayed
 force errors directly from arrays:
