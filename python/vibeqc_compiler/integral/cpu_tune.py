@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from itertools import islice, product
-from math import ceil, prod
+from math import ceil, isfinite, prod
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -130,14 +130,29 @@ class CpuTuneLimits:
     parallel_workers: tuple[int, ...] = (1, 2)
 
     def __post_init__(self) -> None:
+        # Admission precedes source generation and compilation. Reject values
+        # whose comparisons could silently disable a finite resource ceiling.
+        for name in (
+            "maximum_candidates",
+            "repeats",
+            "maximum_source_bytes",
+            "maximum_working_set_bytes",
+            "parallel_tasks",
+        ):
+            if type(getattr(self, name)) is not int:
+                raise ValueError(f"CPU tune {name} must be an integer")
         if not 1 <= self.maximum_candidates <= 64:
             raise ValueError("CPU tune candidate limit must be in 1..64")
         if not 5 <= self.repeats <= 30:
             raise ValueError("CPU tune repeats must be in 5..30")
         if self.maximum_source_bytes < 1 or self.maximum_working_set_bytes < 1:
             raise ValueError("CPU tune static byte budgets must be positive")
-        if self.maximum_compile_seconds <= 0:
-            raise ValueError("CPU tune compile budget must be positive")
+        if (
+            type(self.maximum_compile_seconds) not in (int, float)
+            or not isfinite(self.maximum_compile_seconds)
+            or self.maximum_compile_seconds <= 0
+        ):
+            raise ValueError("CPU tune compile budget must be finite and positive")
         if self.parallel_tasks < 2:
             raise ValueError("CPU tune parallel task count must be at least two")
         workers = tuple(self.parallel_workers)

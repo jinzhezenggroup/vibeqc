@@ -103,3 +103,22 @@ the `srun` launcher's memory statistic as compiler peak memory.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Concurrent final-head integration
+
+Before publishing the evidence, another review merged master through
+`e9f7e127f6603d421b1a6e777b8f01eecb7a2fb2`. That update contains #588's
+CPU-tuning limit admission checks and #589's CI-generated ownership report.
+It changes no file under `src/`, `include/`, `cmake/`, or `tools/`, and does not
+change `CMakeLists.txt`, CUDA generators, runtime code or benchmark runners
+relative to the measured source. Its code and tests were independently reviewed
+and integrated without restoring the deliberately removed ownership snapshot.
+The final combined tree passes **279 host regressions**, including CPU tuning,
+and all repository hooks. The first additional host invocation omitted the
+explicit library path and failed one benchmark import; setting `VIBEQC_LIBRARY`
+to the unchanged frozen library corrected the environment without changing a test.
+The GPU results above remain attributed to the exact measured source `e4f2f67`,
+not misrepresented as a newly rebuilt later documentation/CI/tuning-only head.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

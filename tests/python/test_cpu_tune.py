@@ -273,3 +273,33 @@ def test_cpu_autotune_rejects_record_budget_before_compilation(monkeypatch, tmp_
             targets=(GENERIC_CPU_TARGET,),
             limits=CpuTuneLimits(maximum_candidates=1, maximum_working_set_bytes=1000),
         )
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "maximum_candidates",
+        "repeats",
+        "maximum_source_bytes",
+        "maximum_working_set_bytes",
+        "parallel_tasks",
+    ],
+)
+@pytest.mark.parametrize("value", [True, 8.5, float("nan"), float("inf")])
+def test_cpu_tune_integer_limits_reject_lossy_or_nonfinite_values(field, value):
+    with pytest.raises(ValueError):
+        CpuTuneLimits(**{field: value})
+
+
+@pytest.mark.parametrize(
+    "value",
+    [True, "30", float("nan"), float("inf"), -float("inf"), 0, -1],
+)
+def test_cpu_tune_compile_limit_must_be_finite_positive_real(value):
+    with pytest.raises(ValueError):
+        CpuTuneLimits(maximum_compile_seconds=value)
+
+
+@pytest.mark.parametrize("value", [1, 0.5, 30.0])
+def test_cpu_tune_accepts_finite_integer_or_fractional_compile_seconds(value):
+    assert CpuTuneLimits(maximum_compile_seconds=value).maximum_compile_seconds == value
