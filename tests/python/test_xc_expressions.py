@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc.profiles import file_hash
+from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.dft.features import density_features
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph, Node
@@ -33,6 +34,53 @@ from tools.vibeqc_validation.schema import block_error
 def check(actual, expected, *, atol=1e-11, rtol=1e-10):
     result = block_error(actual, expected, atol=atol, rtol=rtol)
     assert result["passed"], result
+
+
+def test_piecewise_select_is_lazy_and_differentiates_selected_branch():
+    graph = Graph()
+    x = graph.variable("x")
+    selected = graph.select_le(x, 0, x * x, 1 / x)
+    derivative = graph.differentiate(selected, x)
+    assert graph.evaluate(selected, {"x": 0.0}) == 0.0
+    assert graph.evaluate(derivative, {"x": 0.0}) == 0.0
+    values = evaluate_array_graph(
+        graph, (selected, derivative), {"x": np.array([-1.0, 0.0, 2.0])}
+    )
+    np.testing.assert_allclose(values[0], [1.0, 0.0, 0.5])
+    np.testing.assert_allclose(values[1], [-2.0, 0.0, -0.25])
+    emitter = CudaEmitter(graph, {"x": "x"})
+    emitter.emit((selected, derivative))
+    source = "\n".join(emitter.lines)
+    assert "if (x <= 0.0)" in source
+    assert "1.0 / x" in source
+
+
+def _r2scan_unpolarized_feature(alpha, *, density=0.7, sigma=0.014):
+    k_factor = 3 / 10 * (6 * np.pi**2) ** (2 / 3)
+    eta = 0.001
+    x2 = sigma * density ** (-8 / 3)
+    tau = sigma / (8 * density) + alpha * (
+        k_factor * 2 ** (-2 / 3) + eta * x2 / 8
+    ) * density ** (5 / 3)
+    return np.array([[density], [sigma], [tau]])
+
+
+@pytest.mark.parametrize("alpha", [0.0, 1e-10, 2.5 - 1e-8, 2.5, 2.5 + 1e-8])
+def test_r2scan_physical_alpha_branches_are_finite(alpha):
+    program = build_program(functional("R2SCAN", spin="unpolarized"))
+    result = program.evaluate(_r2scan_unpolarized_feature(alpha))
+    assert np.isfinite(result).all()
+    assert result[program.outputs.index((2,)), 0] != 0
+
+
+def test_r2scan_switch_is_continuous_around_alpha_joins_and_low_density():
+    program = build_program(functional("R2SCAN", spin="unpolarized"), order=1)
+    for join, step in ((0.0, 1e-8), (2.5, 1e-8)):
+        left = program.evaluate(_r2scan_unpolarized_feature(join - step))[0, 0]
+        right = program.evaluate(_r2scan_unpolarized_feature(join + step))[0, 0]
+        assert abs(left - right) < 2e-8
+    low = _r2scan_unpolarized_feature(0.7, density=1e-10, sigma=1e-28)
+    assert np.isfinite(program.evaluate(low)).all()
 
 
 def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite():
@@ -69,16 +117,15 @@ def test_each_feature_derivative_against_pinned_independent_oracles(name, spin, 
     # Keep the existing FP64 block gate, including small-element handling.
     check(actual, expected, **tolerance)
     assert raw.shape == actual.shape
-    assert np.all(
-        actual[
-            [
-                i
-                for i, output in enumerate(program.outputs)
-                if any(j >= (5 if spin == "polarized" else 2) for j in output)
-            ]
-        ]
-        == 0
-    )
+    tau_rows = [
+        i
+        for i, output in enumerate(program.outputs)
+        if any(j >= (5 if spin == "polarized" else 2) for j in output)
+    ]
+    if "tau" in program.spec.ingredients:
+        assert np.any(actual[tau_rows] != 0)
+    else:
+        assert np.all(actual[tau_rows] == 0)
 
 
 def test_licenses_sources_and_reference_generator_hashes():
@@ -360,6 +407,24 @@ def test_cuda_source_determinism_output_groups_and_numeric_budget():
         plan_tiles(program, budget_bytes=plan.allocation_bytes - 1, tile_points=7)
     with pytest.raises(ValueError):
         plan_tiles(program, tile_points=True)
+
+
+def test_r2scan_generated_cuda_includes_tau_and_piecewise_mixed_derivatives():
+    spec = functional("R2SCAN", spin="unpolarized")
+    outputs = ((), (0,), (1,), (2,), (0, 2), (1, 2), (2, 2))
+    program = build_program(spec, order=2, outputs=outputs)
+    source, contract, _ = emit_cuda(program, XCSchedule("split", group_size=4))
+    assert emit_cuda(program, XCSchedule("split", group_size=4))[0] == source
+    assert contract["functional"]["ingredients"] == ("rho", "sigma", "tau")
+    assert contract["outputs"] == outputs
+    assert contract["placement"] == "branch_local_materialized"
+    assert all(
+        model.get("policy") == "branch_local_materialized"
+        for model in contract["static_models"]
+    )
+    assert "if (" in source
+    assert "input[2 * npoint + point]" in source
+    assert len(contract["groups"]) == 2
 
 
 @pytest.mark.parametrize("spin", [False, True])

@@ -10,10 +10,13 @@
     "GGA_X_PBE": "GGA_X_PBE",
     "GGA_C_PBE": "GGA_C_PBE",
     "LDA_XC_PW": "LDA_X,LDA_C_PW",
-    "PBE": "GGA_X_PBE,GGA_C_PBE"
+    "PBE": "GGA_X_PBE,GGA_C_PBE",
+    "MGGA_X_R2SCAN": "MGGA_X_R2SCAN",
+    "MGGA_C_R2SCAN": "MGGA_C_R2SCAN",
+    "R2SCAN": "MGGA_X_R2SCAN,MGGA_C_R2SCAN"
   },
-  "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
-  "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+  "script_sha256": "16faef8b76fcb916676b07346bc3c769085cc10c6a87c94df4732237676d1f66",
+  "arrays_sha256": "34787400c9ecabc5890ed75a87c0d868734c9e1c4263e5b235f691bc534bca7d",
   "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
   "typical_tolerance": {
     "atol": 1e-11,

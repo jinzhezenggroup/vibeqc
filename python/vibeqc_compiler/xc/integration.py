@@ -133,11 +133,12 @@ class FixedDensityXC:
 
         def collocation():
             if spatial is not None:
-                ingredients = (
-                    ("rho",)
-                    if self._contraction.contract.ingredients.family == "lda"
-                    else ("rho", "gradient", "sigma")
-                )
+                family = self._contraction.contract.ingredients.family
+                ingredients = {
+                    "lda": ("rho",),
+                    "gga": ("rho", "gradient", "sigma"),
+                    "mgga": ("rho", "gradient", "sigma", "tau"),
+                }[family]
                 for tile in spatial.iter_features(
                     d,
                     include_jets=True,

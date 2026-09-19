@@ -5,9 +5,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/resource_usage.hpp"
-#include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/direct_jk_plan.hpp"
 #include "scf/cuda/metadata_upload.hpp"
@@ -42,7 +42,7 @@ void direct_jk_require(bool condition, const char* message) {
 }
 std::size_t direct_jk_product(std::size_t a, std::size_t b) {
   std::size_t out;
-  if (!checked_multiply(a, b, out)) throw std::bad_alloc();
+  if (!vibeqc::runtime::checked_multiply(a, b, out)) throw std::bad_alloc();
   return out;
 }
 void direct_jk_finite(const std::vector<double>& values) {
@@ -133,7 +133,7 @@ std::size_t cuda_direct_jk_device_bytes(std::size_t batch, std::size_t nao, std:
   std::size_t bytes = sizeof(int);
   const auto add = [&](std::size_t count, std::size_t width) {
     const auto term = direct_jk_product(count, width);
-    if (!checked_add(bytes, term, bytes)) throw std::bad_alloc();
+    if (!vibeqc::runtime::checked_add(bytes, term, bytes)) throw std::bad_alloc();
   };
   const auto aos = direct_jk_product(batch, nao);
   const auto matrices = direct_jk_product(aos, nao);
@@ -203,7 +203,7 @@ vibeqc_status create_cuda_direct_jk_plan(int device_id, const std::vector<core::
     std::size_t metadata = 0;
     auto count = [&](const auto& values) {
       const auto bytes = direct_jk_product(values.size(), sizeof(values[0]));
-      if (!checked_add(metadata, bytes, metadata)) throw std::bad_alloc();
+      if (!vibeqc::runtime::checked_add(metadata, bytes, metadata)) throw std::bad_alloc();
     };
 #define VIBEQC_DIRECT_METADATA(F) \
   F(atom_offsets);                \
@@ -225,9 +225,9 @@ vibeqc_status create_cuda_direct_jk_plan(int device_id, const std::vector<core::
     const auto gradient_bytes =
         derivative_order ? direct_jk_product(coord_elements, sizeof(double)) : 0;
     std::size_t required = direct_jk_product(matrix_bytes, 6);
-    if (!checked_add(required, gradient_bytes, required) ||
-        !checked_add(required, sizeof(int), required) ||
-        !checked_add(required, metadata, required) || required > budget)
+    if (!vibeqc::runtime::checked_add(required, gradient_bytes, required) ||
+        !vibeqc::runtime::checked_add(required, sizeof(int), required) ||
+        !vibeqc::runtime::checked_add(required, metadata, required) || required > budget)
       throw std::bad_alloc();
     direct_jk_require(
         required == cuda_direct_jk_device_bytes(systems.size(), host.nbf,
