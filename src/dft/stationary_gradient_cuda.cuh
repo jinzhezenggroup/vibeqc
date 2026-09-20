@@ -2,6 +2,7 @@
 // Small-domain diagnostic runtime. Graph-emitted primitive, AO pullback and
 // Becke entries precede this include; compiler-emitted contraction bodies follow it.
 // This header owns only resource state, validation, transfers, launches and ABI.
+#include <limits>
 #include <vector>
 
 #include "../tensor/cuda_runtime.cuh"
@@ -20,6 +21,19 @@ struct Owner {
   int64_t *ao_ranges{}, *tasks{}, *ao_atoms{}, *point_atoms{};
   uint64_t uploads{}, downloads{}, launches{}, primitive_count{}, point_count{}, pair_visits{},
       task_count{}, task_batches{};
+  uint64_t primitive_epoch_begin{};
+  // Metrics are cumulative; admission applies only to work since the last reset.
+  void reset_primitive_work() noexcept { primitive_epoch_begin = primitive_count; }
+  void check_primitive_work(size_t work) const {
+    const auto used = primitive_count - primitive_epoch_begin;
+    if (used > max_primitive_work || work > max_primitive_work - used ||
+        work > std::numeric_limits<uint64_t>::max() - primitive_count)
+      throw std::invalid_argument("stationary primitive work budget exceeded");
+  }
+  void count_primitive_work(size_t work) {
+    check_primitive_work(work);
+    primitive_count += work;
+  }
 };
 // Caps make all products below representable before any allocation or pointer
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
@@ -164,6 +178,7 @@ int stationary_reset(void* pointer, const double* centers, double tolerance, cha
       throw std::invalid_argument("invalid reset");
     p->context.check_device();
     p->failed = false;
+    p->reset_primitive_work();
     auto stream = p->context.stream;
     cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), stream));
     cuda_check(cudaMemsetAsync(p->sources, 0, 21 * p->atoms * 8, stream));
@@ -196,8 +211,7 @@ int stationary_tasks(void* pointer, const int64_t* tasks, const double* factors,
         throw std::invalid_argument("stationary primitive work budget exceeded");
       primitive_work += size_t(work);
     }
-    if (p->primitive_count > p->max_primitive_work - primitive_work)
-      throw std::invalid_argument("stationary primitive work budget exceeded");
+    p->check_primitive_work(primitive_work);
     auto stream = p->context.stream;
     upload(*p, p->tasks, tasks, task_stride * count, stream);
     upload(*p, p->task_factors, factors, 2 * count, stream);
@@ -207,7 +221,7 @@ int stationary_tasks(void* pointer, const int64_t* tasks, const double* factors,
     task_reduce<<<blocks(21 * p->atoms, 64), 64, 0, stream>>>(
         p->task_values, p->tasks, count, p->ao_atoms, p->atoms, p->sources, p->context.error);
     p->launches += 2;
-    p->primitive_count += primitive_work;
+    p->count_primitive_work(primitive_work);
     p->task_count += count;
     ++p->task_batches;
     finished(*p, stream);
@@ -218,14 +232,14 @@ int stationary_nuclear(void* pointer, unsigned kind, int64_t a, int64_t b, doubl
   using namespace vibeqc_stationary_cuda;
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
-    if (!p || p->primitive_count >= p->max_primitive_work)
-      throw std::invalid_argument("stationary primitive work budget exceeded");
+    if (!p) throw std::invalid_argument("invalid stationary owner");
     check(*p);
+    p->check_primitive_work(1);
     auto stream = p->context.stream;
     nuclear_kernel<<<1, 1, 0, stream>>>(kind, a, b, za, zb, p->centers, p->atoms, p->sources,
                                         p->context.error);
     ++p->launches;
-    ++p->primitive_count;
+    p->count_primitive_work(1);
     finished(*p, stream);
   });
 }
