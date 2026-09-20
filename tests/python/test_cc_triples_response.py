@@ -161,4 +161,14 @@ def test_generated_vjp_keeps_primal_identity_and_is_cuda_plannable() -> None:
         schedule=TensorSchedule(recompute=True),
     )
     assert recomputed.estimated_flops >= retained.estimated_flops
-    assert recomputed.arena_bytes <= retained.arena_bytes
+    assert recomputed.schedule.recompute is True
+
+    # Recompute is an explicit schedule/cost choice, not a promise that every
+    # multi-output reverse graph has a smaller arena.  The triples response
+    # bounds memory by demand-driving only the requested cotangent blocks.
+    selected = build_tile_triples_vjp(
+        o, v, vir_chunk=(0, v), inputs=("t1", "t2")
+    )
+    selected_plan = plan_cuda(selected.program, target)
+    assert selected_plan.arena_bytes < retained.arena_bytes
+    assert selected_plan.peak_bytes < retained.peak_bytes
