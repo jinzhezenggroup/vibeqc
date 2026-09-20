@@ -214,14 +214,13 @@ def independent_semilocal_total_gradient(
     "method,charge,multiplicity",
     [("r2scan-rks", 0, 1), ("r2scan-uks", 1, 2)],
 )
-def test_complete_r2scan_cpu_gradient_analytic_and_reconverged_directional_fd(
+def test_complete_r2scan_cpu_gradient_reconverged_directional_fd(
     method: typing.Any,
     charge: typing.Any,
     multiplicity: typing.Any,
     record_property: typing.Any,
 ) -> None:
-    """Qualify the shared tau geometry in a complete stationary molecular gradient."""
-    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    """Hard gate: complete tau force agrees with fully reconverged energy differences."""
     calc = calculator(method, max_iterations=200)
     with (
         calc.prepare_batch(
@@ -229,7 +228,7 @@ def test_complete_r2scan_cpu_gradient_analytic_and_reconverged_directional_fd(
         ) as batch,
         NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
     ):
-        energy = batch.execute(strict=True).items[0].energy
+        batch.execute(strict=True)
         state = StationaryKsState.from_native(batch, basis)
         assert state.identity.method == method
         result = complete_rks_gradient_diagnostic(
@@ -241,16 +240,7 @@ def test_complete_r2scan_cpu_gradient_analytic_and_reconverged_directional_fd(
             integral_terms=17,
             primitive_tile=29,
         )
-        reference_energy, reference = independent_semilocal_total_gradient(
-            basis, state, method
-        )
-        assert energy == pytest.approx(reference_energy, abs=2e-8)
-        np.testing.assert_allclose(result.gradient, reference, atol=2e-6, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-9, rtol=0)
-        record_property(
-            "r2scan_analytic_max_error",
-            float(np.max(np.abs(result.gradient - reference))),
-        )
 
         xyz = np.asarray([position for _, position in ATOMS])
         direction = np.array(
@@ -279,6 +269,47 @@ def test_complete_r2scan_cpu_gradient_analytic_and_reconverged_directional_fd(
         assert abs(estimates[-1] - estimates[-2]) < 2e-6
         assert abs(estimates[-1] - actual) < 2e-6
         record_property("r2scan_fd_error", abs(estimates[-1] - actual))
+
+
+@pytest.mark.parametrize(
+    "method,charge,multiplicity",
+    [("r2scan-rks", 0, 1), ("r2scan-uks", 1, 2)],
+)
+def test_complete_r2scan_cpu_gradient_independent_analytic(
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    record_property: typing.Any,
+) -> None:
+    """Independent PySCF/libxc analytic gate when that validation stack is installed."""
+    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    calc = calculator(method, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/r2scan-gradient-tests",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference = independent_semilocal_total_gradient(
+            basis, state, method
+        )
+        assert energy == pytest.approx(reference_energy, abs=2e-8)
+        np.testing.assert_allclose(result.gradient, reference, atol=2e-6, rtol=0)
+        record_property(
+            "r2scan_analytic_max_error",
+            float(np.max(np.abs(result.gradient - reference))),
+        )
 
 
 @pytest.mark.parametrize("execution", ["reference", "native"])
