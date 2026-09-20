@@ -558,9 +558,12 @@ def _shell_to_atom(topology: Gfn2ElectronicTopology) -> tuple[int, ...]:
             owners[shell] = atom
         elif owner != atom:
             raise ValueError("GFN2 shell orbitals must share one atom owner")
-    if any(owner is None for owner in owners):
-        raise ValueError("GFN2 every shell must own at least one orbital")
-    return tuple(int(owner) for owner in owners)
+    resolved_owners: list[int] = []
+    for owner in owners:
+        if owner is None:
+            raise ValueError("GFN2 every shell must own at least one orbital")
+        resolved_owners.append(owner)
+    return tuple(resolved_owners)
 
 
 def _packed_spin_maps(
