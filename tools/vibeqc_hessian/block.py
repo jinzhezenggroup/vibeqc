@@ -375,9 +375,7 @@ def rhf_hvp_many(
         raise ValueError(
             "HVP block plus second-integral provider storage exceeds total_budget_bytes"
         )
-    actual_bound = max(
-        response_phase_bound, relaxation_phase_bound, second_phase_bound
-    )
+    actual_bound = max(response_phase_bound, relaxation_phase_bound, second_phase_bound)
     first_programs = (
         tuple(
             sorted(
