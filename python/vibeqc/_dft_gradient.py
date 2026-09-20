@@ -586,7 +586,7 @@ def _scf_domain_xc_geometry(
         point_values["energy"],
         point_values["rho"],
         point_values["gradient"] if contract.family != "lda" else None,
-        point_values["tau"] if contract.family == "mgga" else None,
+        point_values["kinetic"] if contract.family == "mgga" else None,
         ao_atoms=_native_ao_atoms(basis),
         natom=basis.natom,
     )
