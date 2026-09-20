@@ -1638,8 +1638,8 @@ def test_packed_response_qualification_cases_bracket_policy_threshold() -> None:
 
     cases = benchmark_cases()
     expected = {
-        "water-27mer-3x3x3-def2-svp-spherical": (27, 648),
-        "water-36mer-3x3x4-def2-svp-spherical": (36, 864),
+        "water-27mer-water27-derived-def2-svp-spherical": (27, 648),
+        "water-36mer-water27-derived-def2-svp-spherical": (36, 864),
     }
     for name, (waters, aos) in expected.items():
         case = cases[name]

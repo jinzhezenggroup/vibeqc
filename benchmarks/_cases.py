@@ -382,7 +382,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         )
         for element, position in tetramer[:9]
     )
-    cases["water-27mer-3x3x3-def2-svp-spherical"] = BenchmarkCase(
+    cases["water-27mer-water27-derived-def2-svp-spherical"] = BenchmarkCase(
         description=(
             "synthetic 27-water WATER27-derived scaling cluster, "
             "648 real spherical AOs, def2-SVP DF qualification"
@@ -400,7 +400,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         )
         for element, position in tetramer
     )
-    cases["water-36mer-3x3x4-def2-svp-spherical"] = BenchmarkCase(
+    cases["water-36mer-water27-derived-def2-svp-spherical"] = BenchmarkCase(
         description=(
             "synthetic WATER27-derived 32-mer plus translated tetramer, "
             "864 real spherical AOs, def2-SVP DF qualification"
