@@ -235,9 +235,7 @@ def build_catalog(
             "pair_cutoff": _finite(
                 resolved.get("pair_cutoff"), f"d4/{key}.pair_cutoff"
             ),
-            "atm_cutoff": _finite(
-                resolved.get("atm_cutoff"), f"d4/{key}.atm_cutoff"
-            ),
+            "atm_cutoff": _finite(resolved.get("atm_cutoff"), f"d4/{key}.atm_cutoff"),
             "charge_cn_cutoff": _finite(
                 resolved.get("charge_cn_cutoff"), f"d4/{key}.charge_cn_cutoff"
             ),
@@ -246,9 +244,7 @@ def build_catalog(
         }
         d4_records.append(
             {
-                "name": special.get(
-                    "name", f"{_display_name(key)}-D4(BJ-EEQ-ATM)"
-                ),
+                "name": special.get("name", f"{_display_name(key)}-D4(BJ-EEQ-ATM)"),
                 "cpp_symbol": _cpp_symbol(key, "D4"),
                 "python_spec": True,
                 "parameters": parameters,
@@ -289,9 +285,7 @@ def render_catalog(
     source_manifest: Path = SOURCE_MANIFEST,
     overrides_path: Path = OVERRIDES,
 ) -> str:
-    payload = _canonical_json_numbers(
-        build_catalog(source_manifest, overrides_path)
-    )
+    payload = _canonical_json_numbers(build_catalog(source_manifest, overrides_path))
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
 

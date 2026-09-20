@@ -23,9 +23,7 @@ def test_pinned_upstream_catalog_counts_and_representative_values() -> None:
 
     d3 = {record["name"]: record for record in payload["d3_bj"]}
     d4 = {
-        record["name"]: record
-        for record in payload["d4"]
-        if record.get("python_spec")
+        record["name"]: record for record in payload["d4"] if record.get("python_spec")
     }
 
     assert d3["B3LYP-D3(BJ)"]["parameters"] == {
