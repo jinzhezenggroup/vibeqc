@@ -74,12 +74,7 @@ class CudaSpinJKBackend:
         shells = (*source.shells, *(source.auxiliary_shells if fitted else ()))
         if any(shell.angular_momentum > 3 for shell in shells):
             raise NotImplementedError("CUDA spin response supports s/p/d/f shells only")
-        spec = FockBuildSpec.hf(
-            "unrestricted",
-            coulomb=approximation,
-            exchange=approximation,
-            derivative_order=0,
-        )
+        spec = self._build_spec(approximation)
         started = time.perf_counter()
         try:
             with ExitStack() as owners:
@@ -172,6 +167,15 @@ class CudaSpinJKBackend:
         ):
             raise ValueError("CUDA spin response source identity changed")
         self._plan._ensure_open()
+
+    def _build_spec(self, approximation: str) -> FockBuildSpec:
+        """HF owns both terms; a native KS subclass requests only Coulomb."""
+        return FockBuildSpec.hf(
+            "unrestricted",
+            coulomb=approximation,
+            exchange=approximation,
+            derivative_order=0,
+        )
 
     @property
     def diagnostics(self) -> typing.Any:

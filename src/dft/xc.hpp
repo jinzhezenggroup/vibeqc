@@ -56,6 +56,11 @@ XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid
                                        const std::vector<double>& density,
                                        std::size_t tile_points = 256, XcDensitySource source = {});
 
+XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                              const std::vector<double>& density,
+                                              std::size_t tile_points, XcDensitySource source,
+                                              double exchange_scale, double correlation_scale);
+
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
@@ -74,6 +79,11 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
                                  const std::vector<double>& beta_density,
                                  std::size_t tile_points = 256);
 
+SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                        const std::vector<double>& alpha_density,
+                                        const std::vector<double>& beta_density,
+                                        std::size_t tile_points, double exchange_scale,
+                                        double correlation_scale);
 struct R2scanPointValue {
   double energy{};
   double rho[2]{};

@@ -6,8 +6,10 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+from vibeqc import Atom
 from vibeqc_compiler.dft import (
     ExplicitGrid,
+    GridPolicy,
     GridSpec,
     MolecularGrid,
     NativeAO,
@@ -117,6 +119,32 @@ def test_partition_unity_coincidence_extremes_and_permutation() -> None:
         )
     same = partition_weights(points, np.zeros((3, 3)))
     np.testing.assert_allclose(same, 1 / 3, atol=1e-15)
+
+
+@pytest.mark.parametrize("atomic_number", [26, 54])
+def test_production_grid_transition_and_heavy_elements_are_finite_and_translation_covariant(
+    atomic_number: typing.Any,
+) -> None:
+    """Fe and Xe exercise sourced v2 radii beyond the light-element fixtures."""
+    spec = GridPolicy().resolve("lda-rks")
+    center = np.array([0.31, -0.27, 0.19])
+    shift = np.array([-0.42, 0.16, 0.23])
+    grid = MolecularGrid([Atom(atomic_number, tuple(center))], spec=spec)
+    moved = MolecularGrid([Atom(atomic_number, tuple(center + shift))], spec=spec)
+    assert grid.spec.version == 2
+    assert grid.resolved_radii == (dict(spec.element_radii)[atomic_number],)
+    explicit = grid.explicit()
+    moved_explicit = moved.explicit()
+    assert np.isfinite(explicit.points).all()
+    assert np.isfinite(explicit.weights).all()
+    assert np.all(explicit.weights > 0)
+    np.testing.assert_allclose(
+        moved_explicit.points, explicit.points + shift, atol=2e-12, rtol=0
+    )
+    np.testing.assert_allclose(
+        moved_explicit.weights, explicit.weights, atol=2e-14, rtol=0
+    )
+    np.testing.assert_array_equal(moved_explicit.owners, explicit.owners)
 
 
 @pytest.mark.parametrize("alpha", [0.01, 1, 100])

@@ -147,8 +147,8 @@ class CCSDGradientOptions:
             )
         if type(
             self.one_electron_schedule
-        ) is not int or self.one_electron_schedule not in (0, 1, 2):
-            raise ValueError("one_electron_schedule must be 0, 1 or 2")
+        ) is not int or self.one_electron_schedule not in (0, 1, 2, 3):
+            raise ValueError("one_electron_schedule must be 0, 1, 2 or 3")
         if self.eri_weight_mode not in ("dense", "shell"):
             raise ValueError("eri_weight_mode must be 'dense' or 'shell'")
         if self.derivative_backend == "cpu" and self.eri_weight_mode != "dense":
@@ -456,9 +456,12 @@ class BoundCCSDGradient:
             np.ones(operator.dimension),
             np.arange(1, operator.dimension + 1, dtype=float),
         ):
-            direction /= np.linalg.norm(direction)
+            normalized_direction = direction / np.linalg.norm(direction)
             if not np.allclose(
-                operator.apply(direction), matrix @ direction, atol=1e-10, rtol=1e-9
+                operator.apply(normalized_direction),
+                matrix @ normalized_direction,
+                atol=1e-10,
+                rtol=1e-9,
             ):
                 raise ImplicitSolveError(
                     "native RHF response action differs from generated Fock JVP"

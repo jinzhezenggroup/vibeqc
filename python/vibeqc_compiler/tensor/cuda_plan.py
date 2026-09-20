@@ -21,6 +21,12 @@ from math import prod
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
+from .batch_schedule import (
+    BatchScheduleIR,
+    analyze_batch_schedule,
+    index_table_length,
+    index_table_values,
+)
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
@@ -54,33 +60,16 @@ def aligned(size: int) -> int:
     )
 
 
-def _index_table_values(node: Node) -> tuple[int, ...] | None:
-    """Return the device table for one static indexed/ragged primitive.
+def _index_table_length(node: Node) -> int | None:
+    """Compatibility boundary; the shared batch scheduler owns table layout."""
+    return index_table_length(node)
 
-    Scatter-add stores a deterministic inverted index.  Each destination owns
-    a contiguous ascending list of source coordinates, preserving the existing
-    source-order accumulation while avoiding a full source-axis scan per output.
-    """
-    if node.op in ("gather", "indexed_gather"):
-        return tuple(node.attrs["positions"])
-    if node.op == "segment_sum":
-        return tuple(node.attrs["offsets"])
-    if node.op != "scatter_add":
+
+def _index_table_values(node: Node) -> tuple[int, ...] | None:
+    """Keep existing emitter/admission clients on the one shared table owner."""
+    if node.op not in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
         return None
-    positions = tuple(node.attrs["positions"])
-    if not positions:
-        return ()
-    axis = node.attrs["axis"]
-    target_extent = node.spec.shape[axis]
-    buckets = [[] for _ in range(target_extent)]
-    for source, target in enumerate(positions):
-        buckets[target].append(source)
-    offsets = [0]
-    sources = []
-    for bucket in buckets:
-        sources.extend(bucket)
-        offsets.append(len(sources))
-    return (*offsets, *sources)
+    return index_table_values(node)
 
 
 @dataclass(frozen=True)
@@ -189,6 +178,11 @@ class TensorPlan:
         return describe_precision(self.program)
 
     @property
+    def batch_schedule(self) -> BatchScheduleIR:
+        """Derive exact homogeneous/ragged scheduling facts for this plan."""
+        return analyze_batch_schedule(self.steps)
+
+    @property
     def allocation_bytes(self) -> int:
         # Error flag has a full alignment unit to keep every segment aligned.
         return (
@@ -205,11 +199,11 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            values = _index_table_values(node)
-            if values is None:  # pragma: no cover - planner constructs table owners
+            count = _index_table_length(node)
+            if count is None:  # pragma: no cover - planner constructs table owners
                 raise AssertionError(f"unexpected index-table owner: {node.op}")
             total = checked_size(
-                total + aligned(len(values) * 8),
+                total + aligned(count * 8),
                 "index table bytes",
             )
         return total
@@ -525,11 +519,11 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        values = _index_table_values(node)
-        if values is not None:
+        count = _index_table_length(node)
+        if count is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(values) * 8),
+                capacity + aligned(count * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
@@ -606,7 +600,7 @@ def plan_cuda(
             for step in steps
             if step.node.op == "constant"
         )
-        + sum(len(_index_table_values(step.node) or ()) * 8 for step in steps),
+        + sum((_index_table_length(step.node) or 0) * 8 for step in steps),
         "static host tensor bytes",
     )
     input_host_bytes = sum(

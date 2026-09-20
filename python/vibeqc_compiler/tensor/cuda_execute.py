@@ -143,6 +143,33 @@ def tensor_static_data(plan: TensorPlan) -> bytes:
     return result
 
 
+def _read_static_data(artifact: CudaArtifact, expected_bytes: int) -> np.ndarray:
+    """Read bounded bytes and bind the uploaded buffer to the compiled identity."""
+    descriptor = artifact.metadata.get("identity", {}).get("static_data", {})
+    size, digest = descriptor.get("bytes"), descriptor.get("sha256")
+    if (
+        type(size) is not int or size != expected_bytes
+        or not isinstance(digest, str) or len(digest) != 64
+        or any(c not in "0123456789abcdef" for c in digest)
+        or artifact.metadata.get("static_data_bytes") != size
+        or artifact.metadata.get("static_data_sha256") != digest
+    ):
+        raise ValueError("tensor static-data descriptor differs from compiled identity")
+    path = artifact.library.parent / "static.bin"
+    try:
+        with path.open("rb") as stream:
+            if os.fstat(stream.fileno()).st_size != size:
+                raise ValueError("tensor static-data size mismatch")
+            payload = np.fromfile(stream, dtype=np.uint8, count=size)
+            if os.fstat(stream.fileno()).st_size != size:
+                raise ValueError("tensor static-data size changed during read")
+    except OSError as error:
+        raise ValueError("tensor static-data file is unavailable") from error
+    if payload.nbytes != size or hashlib.sha256(memoryview(payload)).hexdigest() != digest:
+        raise ValueError("tensor static-data bytes differ from compiled identity")
+    return payload
+
+
 def compile_cuda(
     plan: TensorPlan, compiler: CudaCompilerAdapter, cache: Path
 ) -> CudaArtifact:
@@ -250,6 +277,8 @@ def compile_cuda(
         metadata.get("identity") != json.loads(json.dumps(identity))
         or metadata.get("key") != key
         or file_hash(library) != metadata.get("binary_sha256")
+        or metadata.get("static_data_bytes") != len(static_data)
+        or metadata.get("static_data_sha256") != static_sha256
         or not static_path.is_file()
         or static_path.stat().st_size != metadata.get("static_data_bytes")
         or file_hash(static_path) != metadata.get("static_data_sha256")
@@ -386,6 +415,14 @@ class PreparedCuda:
             raise ValueError("resource owner requires a global plan")
         if file_hash(artifact.library) != artifact.metadata.get("binary_sha256"):
             raise ValueError("tensor artifact binary hash mismatch")
+        from vibeqc_compiler.common.resources import ResourceAllocationError
+
+        # Validate before retaining staging buffers or touching the native device.
+        self._inputs, self._scratch, self._mask = [], [], None
+        try:
+            static_data = _read_static_data(artifact, plan.static_data_bytes)
+        except MemoryError as error:
+            raise ResourceAllocationError("host", str(error)) from error
         lib = self._library = ctypes.CDLL(str(artifact.library))
         lib.tensor_plan_identity.restype = ctypes.c_char_p
         if lib.tensor_plan_identity().decode() != plan.identity:
@@ -490,14 +527,6 @@ class PreparedCuda:
             # Release host owners now instead of relying on object collection.
             self._inputs, self._scratch, self._mask = [], [], None
             raise ResourceAllocationError("host", str(error)) from error
-        static_path = artifact.library.parent / "static.bin"
-        if (
-            not static_path.is_file()
-            or static_path.stat().st_size != artifact.metadata.get("static_data_bytes")
-            or file_hash(static_path) != artifact.metadata.get("static_data_sha256")
-        ):
-            raise ValueError("tensor artifact static-data hash mismatch")
-        static_data = np.fromfile(static_path, dtype=np.uint8)
         if lib.tensor_static_bytes() != static_data.nbytes:
             raise ValueError("native tensor static-data size mismatch")
         static_pointer = (

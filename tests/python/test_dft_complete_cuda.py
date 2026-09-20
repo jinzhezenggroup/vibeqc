@@ -76,6 +76,19 @@ def _calculator(method: typing.Any) -> typing.Any:
     )
 
 
+def _production_calculator(method: typing.Any) -> typing.Any:
+    from vibeqc import Calculator, KsOptions
+
+    return Calculator(
+        method=method,
+        device="cuda",
+        ks_options=KsOptions(),
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+        max_iterations=200,
+    )
+
+
 def _diagnostic(
     state: typing.Any, basis: typing.Any, compiler: typing.Any, **kwargs: typing.Any
 ) -> typing.Any:
@@ -181,6 +194,35 @@ def test_complete_cuda_independent_analytic(
                     > 1e-4
                 )
         assert result.execution.startswith("cuda-seven-source/")
+
+
+@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
+def test_production_grid_cuda_energy_and_force(
+    method: typing.Any, compiler: typing.Any
+) -> None:
+    """Production v2 default is qualified on the real-device water endpoint."""
+    from test_dft_complete_cpu import ATOMS, independent_gradient
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    calc = _production_calculator(method)
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state._source.grid_spec.version == 2
+        assert state._source.grid_provenance["policy_version"] == 2
+        result = _diagnostic(
+            state,
+            basis,
+            compiler,
+            tile_points=137,
+            primitive_tile=29,
+            integral_terms=17,
+        )
+        ref_energy, ref_gradient, _ = independent_gradient(basis, state, method)
+        assert energy == pytest.approx(ref_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
 
 
 @pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])

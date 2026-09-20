@@ -117,6 +117,7 @@ def compile_resident(
         "schema": RESIDENT_SCHEMA,
         "base": base.metadata["key"],
         "base_binary": base.metadata["binary_sha256"],
+        "static_data": base.metadata["identity"]["static_data"],
         "generated": canonical_hash(source),
         "extension": canonical_hash(extension),
         "sources": {
@@ -181,6 +182,8 @@ def compile_resident(
         metadata.get("identity") != json.loads(json.dumps(identity))
         or metadata.get("key") != key
         or file_hash(library) != metadata.get("binary_sha256")
+        or metadata.get("static_data_bytes") != base.metadata["identity"]["static_data"]["bytes"]
+        or metadata.get("static_data_sha256") != base.metadata["identity"]["static_data"]["sha256"]
         or not static_path.is_file()
         or static_path.stat().st_size != metadata.get("static_data_bytes")
         or file_hash(static_path) != metadata.get("static_data_sha256")

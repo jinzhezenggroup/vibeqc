@@ -127,6 +127,7 @@ DensityFittingScfData assemble_density_fitting_data(integrals::IntegralData one_
   std::vector<double>().swap(data.raw.three_center_derivative);
   std::vector<double>().swap(data.raw.metric_derivative);
   std::vector<double>().swap(data.three_center.values);
+  std::vector<double>().swap(data.three_center.auxiliary_major_values);
 }
 
 /** Build a budgeted record without materializing transformed DF tensors. */

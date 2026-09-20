@@ -78,6 +78,17 @@ def test_work_counts_follow_contractions_and_both_provider_grids(
         admit(state, basis, execution, max_ecp_pair_samples=expected - 1)
 
 
+def test_hybrid_admission_counts_exact_exchange_eri_derivative_pass() -> None:
+    state, basis, counts = inputs(ecp=False)
+    semilocal = admit(state, basis)["primitive_record_bound"]
+    state._source.method_ir = SimpleNamespace(full_range_exact_exchange=0.25)
+    hybrid = admit(state, basis)["primitive_record_bound"]
+    extra = sum(counts) ** 4
+    assert hybrid == semilocal + extra
+    with pytest.raises(ValueError, match="primitive work budget"):
+        admit(state, basis, max_primitive_records=hybrid - 1)
+
+
 def test_all_electron_has_no_ecp_work_or_dense_provider_limit() -> None:
     state, basis, _ = inputs(ecp=False)
     basis.nao = 17
