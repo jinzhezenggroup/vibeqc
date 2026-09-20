@@ -8,6 +8,7 @@ from itertools import product
 
 import numpy as np
 import pytest
+from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
 from vibeqc_compiler.integral.df_derivatives import (
     axis_polynomial,
     build_df_derivative_ir,
@@ -15,7 +16,6 @@ from vibeqc_compiler.integral.df_derivatives import (
     evaluate_df_derivative,
 )
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cpu
-from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
 from vibeqc_compiler.integral.df_values import (
     build_df_component_kernel,
     build_df_value_ir,

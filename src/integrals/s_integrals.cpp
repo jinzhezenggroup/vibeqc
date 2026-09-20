@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include "integrals/generated_df_cpu.hpp"
 #include "generated_one_electron_st_cpu.hpp"
 #include "integrals/ecp.hpp"
+#include "integrals/generated_df_cpu.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
 
@@ -793,7 +793,8 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
             for (const auto& second_primitive : second.shell->primitives) {
               for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
                 const double weight = component_factor * first_primitive.coefficient *
-                                      second_primitive.coefficient * auxiliary_primitive.coefficient;
+                                      second_primitive.coefficient *
+                                      auxiliary_primitive.coefficient;
                 cartesian.three_center[item] +=
                     weight * generated_df_cpu::three_center_value(
                                  first_primitive.exponent, first_center, angular(first.angular),

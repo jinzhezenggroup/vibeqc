@@ -8,9 +8,7 @@ namespace {
 scf::generated_df::Vec3 value_vec(Vec3 v) { return {v.x, v.y, v.z}; }
 scf::generated_df::Angular value_angular(Angular a) { return {a.x, a.y, a.z}; }
 scf::generated_df_derivatives::Vec3 derivative_vec(Vec3 v) { return {v.x, v.y, v.z}; }
-scf::generated_df_derivatives::Angular derivative_angular(Angular a) {
-  return {a.x, a.y, a.z};
-}
+scf::generated_df_derivatives::Angular derivative_angular(Angular a) { return {a.x, a.y, a.z}; }
 Vec3 response_vec(scf::generated_df_derivatives::Vec3 v) { return {v.x, v.y, v.z}; }
 Response response(scf::generated_df_derivatives::Response value) {
   return {value.value, response_vec(value.first), response_vec(value.second),
@@ -38,9 +36,8 @@ Response metric_derivative(double alpha, Vec3 a_center, Angular a, double gamma,
       derivative_angular(c)));
 }
 
-Response three_center_derivative(double alpha, Vec3 a_center, Angular a, double beta,
-                                 Vec3 b_center, Angular b, double gamma, Vec3 c_center,
-                                 Angular c) {
+Response three_center_derivative(double alpha, Vec3 a_center, Angular a, double beta, Vec3 b_center,
+                                 Angular b, double gamma, Vec3 c_center, Angular c) {
   return response(scf::generated_df_derivatives::three_center(
       alpha, derivative_vec(a_center), derivative_angular(a), beta, derivative_vec(b_center),
       derivative_angular(b), gamma, derivative_vec(c_center), derivative_angular(c)));

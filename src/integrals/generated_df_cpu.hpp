@@ -21,9 +21,9 @@ struct Response {
                                         Angular c);
 [[nodiscard]] Response metric_derivative(double alpha, Vec3 a_center, Angular a, double gamma,
                                          Vec3 c_center, Angular c);
-[[nodiscard]] Response three_center_derivative(double alpha, Vec3 a_center, Angular a,
-                                               double beta, Vec3 b_center, Angular b,
-                                               double gamma, Vec3 c_center, Angular c);
+[[nodiscard]] Response three_center_derivative(double alpha, Vec3 a_center, Angular a, double beta,
+                                               Vec3 b_center, Angular b, double gamma,
+                                               Vec3 c_center, Angular c);
 
 }  // namespace vibeqc::integrals::generated_df_cpu
 

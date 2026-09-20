@@ -181,10 +181,10 @@ std::vector<double> build_exchange(const DensityFittingThreeCenter& three_center
   for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
     if (use_dense_provider) {
       const double* bq = auxiliary_major + auxiliary * nbf * nbf;
-      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(),
-                       transformed_density.data(), 1.0, 0.0, dense_plan);
-      tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, transformed_density.data(), bq,
-                       exchange.data(), 1.0, 1.0, dense_plan);
+      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(), transformed_density.data(), 1.0,
+                       0.0, dense_plan);
+      tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, transformed_density.data(), bq, exchange.data(),
+                       1.0, 1.0, dense_plan);
       continue;
     }
 

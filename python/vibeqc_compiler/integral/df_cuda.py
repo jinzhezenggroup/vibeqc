@@ -221,6 +221,8 @@ def emit_df_values_cpu() -> str:
     source = source.replace("__forceinline__", "inline")
     source = source.replace("__noinline__", "")
     source = "\n".join(
-        line for line in source.splitlines() if not line.lstrip().startswith("#pragma unroll")
+        line
+        for line in source.splitlines()
+        if not line.lstrip().startswith("#pragma unroll")
     )
     return source + "\n"
