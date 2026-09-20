@@ -184,9 +184,7 @@ def test_denominator_source_changes_orbital_and_overlap_response(
     assert np.linalg.norm(denominator["overlap"]) > 1.0e-10
     assert np.linalg.norm(denominator["orbital_rhs"]) > 1.0e-10
 
-    without_denominator_rhs = (
-        state.orbital_rhs - denominator["orbital_rhs"].reshape(-1)
-    )
+    without_denominator_rhs = state.orbital_rhs - denominator["orbital_rhs"].reshape(-1)
     assert np.linalg.norm(state.orbital_rhs - without_denominator_rhs) > 1.0e-10
     without_denominator_overlap = (
         state.correlation_weights["overlap"] - denominator["overlap"]
