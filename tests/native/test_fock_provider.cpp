@@ -323,8 +323,7 @@ void prepared_identity() {
     const auto* fused = fitted.cpu_fitted_data();
     require(fused && fused->raw.metric_derivative.empty() &&
                 fused->raw.three_center_derivative.empty() &&
-                fused->df_gradient_orbital.has_value() &&
-                fused->df_gradient_auxiliary.has_value(),
+                fused->df_gradient_orbital.has_value() && fused->df_gradient_auxiliary.has_value(),
             "prepared CPU DF force source materialized coordinate derivative tensors");
   }
   require(!fitted.matches(system, &changed, mixed, -1, 0), "changed auxiliary basis accepted");
