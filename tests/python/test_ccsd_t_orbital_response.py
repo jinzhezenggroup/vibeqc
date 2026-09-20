@@ -175,6 +175,63 @@ def test_total_ccsdt_orbital_rhs_and_raw_weights_decompose(
     assert state.minimum_orbital_curvature > state.options.minimum_orbital_curvature
 
 
+
+def test_real_denominator_sources_chain_through_canonical_fock(
+    water_state: BoundCCSDTOrbitalResponse,
+) -> None:
+    state = water_state
+    rng = np.random.default_rng(158)
+    raw = state.baseline.raw_inputs
+    dh = rng.normal(size=raw["h"].shape)
+    dh = 0.5 * (dh + dh.T)
+    dg = rng.normal(size=raw["g"].shape)
+    # Preserve all eight chemists-ERI permutations in the perturbation.
+    dg = 0.125 * (
+        dg
+        + dg.transpose(1, 0, 2, 3)
+        + dg.transpose(0, 1, 3, 2)
+        + dg.transpose(1, 0, 3, 2)
+        + dg.transpose(2, 3, 0, 1)
+        + dg.transpose(3, 2, 0, 1)
+        + dg.transpose(2, 3, 1, 0)
+        + dg.transpose(3, 2, 1, 0)
+    )
+    du = rng.normal(scale=0.02, size=raw["rotation"].shape)
+    scale = np.sqrt(np.sum(dh * dh) + np.sum(dg * dg) + np.sum(du * du))
+    dh, dg, du = dh / scale, dg / scale, du / scale
+
+    denominator = state.component_weights["triples_denominator"]
+    analytic = (
+        np.sum(denominator["hcore"] * dh)
+        + np.sum(denominator["eri"] * dg)
+        + np.sum(denominator["rotation_gradient"] * du)
+    )
+    source = np.concatenate(
+        (
+            state.orbital_energy_weights["eps_o"],
+            state.orbital_energy_weights["eps_v"],
+        )
+    )
+
+    def objective(sign: float, step: float) -> float:
+        fock = _direct_fields(
+            raw["h"] + sign * step * dh,
+            raw["g"] + sign * step * dg,
+            raw["rotation"] + sign * step * du,
+            state.reference.nocc,
+        )["fock"]
+        return float(np.sum(source * np.diag(fock)))
+
+    for step in (1.0e-4, 3.0e-5, 1.0e-5):
+        np.testing.assert_allclose(
+            (objective(1.0, step) - objective(-1.0, step)) / (2 * step),
+            analytic,
+            atol=3e-8,
+            rtol=3e-7,
+        )
+
+
+
 def test_denominator_source_changes_orbital_and_overlap_response(
     water_state: BoundCCSDTOrbitalResponse,
 ) -> None:
@@ -210,9 +267,8 @@ def test_response_state_is_immutable_and_does_not_claim_forces(
 ) -> None:
     state = water_state
     assert state.response.corrected.provenance["orbital_response"] == "excluded"
-    assert (
-        "no nuclear derivatives" in state.response_identity or state.response_identity
-    )
+    assert not hasattr(state, "gradient")
+    assert not hasattr(state, "forces")
     for value in (
         state.orbital_rhs,
         state.weights["hcore"],
