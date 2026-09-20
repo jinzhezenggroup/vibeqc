@@ -206,3 +206,77 @@ def test_existing_schedule_search_can_cross_precision_variants() -> None:
     assert mixed[0].plan is not None
     assert mixed[0].plan.precision == "typed-fp32-fp64"
     assert mixed[0].plan.precision_schedule.source_equation == program.logical_hash
+
+
+def _qualified_reduction(scope: str) -> Program:
+    x = _parameter("x")
+    result = reduce_sum(x, (0,))
+    program = Program({"out": result})
+    return lower_precision(
+        program,
+        {
+            program.debug_names[result]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+                qualification=scope,
+            )
+        },
+    )
+
+
+def test_qualification_scope_is_part_of_schedule_plan_and_search_identity() -> None:
+    from vibeqc_compiler.tensor.cuda_search import execution_key
+
+    first = _qualified_reduction("workload-a/sm80/evidence-a")
+    second = _qualified_reduction("workload-b/sm120/evidence-b")
+    assert first.logical_hash == second.logical_hash
+    assert describe_precision(first).identity != describe_precision(second).identity
+    left = plan_cuda(first, cuda_target_info("sm_80"))
+    right = plan_cuda(second, cuda_target_info("sm_80"))
+    assert left.identity != right.identity
+    assert execution_key(left) != execution_key(right)
+    assert describe_precision(Program.loads(first.dumps())) == describe_precision(first)
+
+
+def test_relowering_retains_parent_precision_qualification_scope() -> None:
+    first = lower_precision(_qualified_reduction("evidence-a"), {})
+    second = lower_precision(_qualified_reduction("evidence-b"), {})
+    assert first.logical_hash == second.logical_hash
+    assert describe_precision(first).identity != describe_precision(second).identity
+
+
+def test_precision_request_integrity_is_checked_before_planning() -> None:
+    program = _qualified_reduction("evidence-a")
+    provenance = program.provenance
+    provenance["precision_request_identity"] = "0" * 64
+    altered = Program(program.outputs, program.definitions, provenance=provenance)
+    with pytest.raises(ValueError, match="precision request.*identity"):
+        describe_precision(altered)
+
+
+def test_cast_ad_matches_explicit_round_trip_rule_independently() -> None:
+    x = _parameter("x")
+    program = Program({"out": cast(cast(x, "float32"), "float64")})
+    primal = np.array([1 / 3, 1 + 2**-25, -1 / 7, 1e-20], dtype=np.float64)
+    direction = np.array([1 / 11, -1 / 13, 1 + 2**-24, 1e-30], dtype=np.float64)
+    seed = np.array([-1 / 3, 1 / 9, 1 - 2**-25, 1e-27], dtype=np.float64)
+    # This is the declared cast tangent/cotangent contract, independently
+    # evaluated with NumPy conversions, not another new AD implementation.
+    expected_jvp = direction.astype(np.float32).astype(np.float64)
+    expected_vjp = seed.astype(np.float32).astype(np.float64)
+    np.testing.assert_array_equal(
+        jvp(program, {"x": primal}, {"x": direction}).output_tangents["out"],
+        expected_jvp,
+    )
+    np.testing.assert_array_equal(
+        vjp(program, {"x": primal}, {"out": seed}).input_cotangents["x"], expected_vjp
+    )
+    forward = linearize(program, ["x"]).program
+    reverse = transpose_program(program, ["out"], inputs=["x"]).program
+    np.testing.assert_array_equal(
+        execute(forward, {"x": primal, "d_x": direction}).outputs["d_out"], expected_jvp
+    )
+    np.testing.assert_array_equal(
+        execute(reverse, {"x": primal, "bar_out": seed}).outputs["bar_x"], expected_vjp
+    )

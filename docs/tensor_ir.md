@@ -340,3 +340,8 @@ commit. The #151 CUDA records in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md)
 record JVP/VJP numerical, dot-test, recomputation, plan and device-delta
 evidence; they explicitly leave production promotion `not-run`.
+
+Precision-request identity and qualification scope are part of the resolved schedule,
+not the source equation hash. Cast AD uses the declared arithmetic linearization
+rather than the derivative of bit-level rounding; see the
+[precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).

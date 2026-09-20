@@ -155,9 +155,21 @@ class PrecisionSchedule:
     strict_audit_dtype: str = "float64"
     audit_owner: str = "method-controller"
     math_mode: str = STRICT_MATH_MODE
+    request_identity: str | None = None
+    qualification_scope: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         _dtype(self.strict_audit_dtype, "strict audit dtype")
+        if self.request_identity is not None and (
+            not isinstance(self.request_identity, str)
+            or len(self.request_identity) != 64
+            or any(c not in "0123456789abcdef" for c in self.request_identity)
+        ):
+            raise ValueError("invalid precision request identity")
+        if self.qualification_scope and self.request_identity is None:
+            raise ValueError(
+                "precision qualification scope requires a request identity"
+            )
         if self.audit_owner != "method-controller":
             raise ValueError("TensorIR precision audit owner must be method-controller")
         if self.math_mode != STRICT_MATH_MODE:
@@ -185,7 +197,12 @@ class PrecisionSchedule:
 
     def to_payload(self) -> dict:
         return {
-            "schema": "vibeqc.tensor.precision-schedule.v1",
+            "schema": "vibeqc.tensor.precision-schedule.v2",
+            "precision_request_identity": self.request_identity,
+            "qualification_scope": [
+                {"source_value": name, "qualification": qualification}
+                for name, qualification in self.qualification_scope
+            ],
             "source_equation": self.source_equation,
             "lowered_equation": self.lowered_equation,
             "strict_audit_dtype": self.strict_audit_dtype,
@@ -316,6 +333,7 @@ def lower_precision(
     )
     request = {
         "schema": "vibeqc.tensor.precision-request.v1",
+        "parent_precision_schedule_identity": describe_precision(program).identity,
         "source_equation": source_equation,
         "strict_audit_dtype": strict_audit_dtype,
         "math_mode": STRICT_MATH_MODE,
@@ -358,6 +376,46 @@ def conservative_precision_variants(program: Program) -> tuple[Program, ...]:
     if lowered.logical_hash == program.logical_hash:
         return (program,)
     return (program, lowered)
+
+
+def _request_scope(
+    program: Program, source: str
+) -> tuple[str | None, tuple[tuple[str, str], ...]]:
+    """Bind external qualification labels to source/value scope, not just provenance."""
+    provenance = program.provenance
+    request = provenance.get("precision_request")
+    recorded = provenance.get("precision_request_identity")
+    if request is None:
+        if recorded is not None:
+            raise ValueError("precision request identity has no request")
+        return None, ()
+    if (
+        not isinstance(request, dict)
+        or request.get("schema") != "vibeqc.tensor.precision-request.v1"
+    ):
+        raise ValueError("unsupported precision request schema")
+    if request.get("source_equation") != source or recorded != _hash(request):
+        raise ValueError("precision request scope or identity mismatch")
+    parent = request.get("parent_precision_schedule_identity")
+    if parent is not None and (
+        not isinstance(parent, str)
+        or len(parent) != 64
+        or any(c not in "0123456789abcdef" for c in parent)
+    ):
+        raise ValueError("invalid parent precision request identity")
+    directives = request.get("directives")
+    if not isinstance(directives, dict) or any(
+        not isinstance(name, str) for name in directives
+    ):
+        raise ValueError("precision request requires named directives")
+    qualifications = []
+    for name, payload in sorted(directives.items()):
+        if not isinstance(payload, dict):
+            raise TypeError("precision request directive must be an object")
+        directive = PrecisionDirective(**payload)
+        if directive.qualification is not None:
+            qualifications.append((name, directive.qualification))
+    return recorded, tuple(qualifications)
 
 
 def describe_precision(
@@ -411,10 +469,13 @@ def describe_precision(
     source = provenance.get("precision_source_equation", program.logical_hash)
     if not isinstance(source, str):
         raise TypeError("precision_source_equation provenance must be a string")
+    request_identity, scope = _request_scope(program, source)
     return PrecisionSchedule(
         source,
         program.logical_hash,
         tuple(values),
         tuple(casts),
         strict_audit_dtype,
+        request_identity=request_identity,
+        qualification_scope=scope,
     )

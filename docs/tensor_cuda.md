@@ -474,3 +474,8 @@ unless explicitly enabled by the caller's GPU allocation.
 The [archived CG09 records](../benchmarks/results/tensor-cuda-146/README.md)
 include the retained-provider allocation audit, all candidate samples and the
 measured selection/fallback results for six shape buckets.
+
+Precision-request identity and qualification scope are part of the resolved schedule,
+not the source equation hash. Cast AD uses the declared arithmetic linearization
+rather than the derivative of bit-level rounding; see the
+[precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).
