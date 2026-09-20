@@ -20,6 +20,12 @@ from math import prod
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
+from .batch_schedule import (
+    BatchScheduleIR,
+    analyze_batch_schedule,
+    index_table_length,
+    index_table_values,
+)
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
@@ -54,44 +60,15 @@ def aligned(size: int) -> int:
 
 
 def _index_table_length(node: Node) -> int | None:
-    """Count static table elements without allocating the table's host payload."""
-    if node.op in ("gather", "indexed_gather"):
-        return len(node.attrs["positions"])
-    if node.op == "segment_sum":
-        return len(node.attrs["offsets"])
-    if node.op == "scatter_add":
-        count = len(node.attrs["positions"])
-        return node.spec.shape[node.attrs["axis"]] + 1 + count if count else 0
-    return None
+    """Compatibility boundary; the shared batch scheduler owns table layout."""
+    return index_table_length(node)
 
 
 def _index_table_values(node: Node) -> tuple[int, ...] | None:
-    """Return the device table for one static indexed/ragged primitive.
-
-    Scatter-add stores a deterministic inverted index.  Each destination owns
-    a contiguous ascending list of source coordinates, preserving the existing
-    source-order accumulation while avoiding a full source-axis scan per output.
-    """
-    if node.op in ("gather", "indexed_gather"):
-        return tuple(node.attrs["positions"])
-    if node.op == "segment_sum":
-        return tuple(node.attrs["offsets"])
-    if node.op != "scatter_add":
+    """Keep existing emitter/admission clients on the one shared table owner."""
+    if node.op not in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
         return None
-    positions = tuple(node.attrs["positions"])
-    if not positions:
-        return ()
-    axis = node.attrs["axis"]
-    target_extent = node.spec.shape[axis]
-    buckets = [[] for _ in range(target_extent)]
-    for source, target in enumerate(positions):
-        buckets[target].append(source)
-    offsets = [0]
-    sources = []
-    for bucket in buckets:
-        sources.extend(bucket)
-        offsets.append(len(sources))
-    return (*offsets, *sources)
+    return index_table_values(node)
 
 
 @dataclass(frozen=True)
@@ -198,6 +175,11 @@ class TensorPlan:
     @cached_property
     def precision_schedule(self) -> PrecisionSchedule:
         return describe_precision(self.program)
+
+    @property
+    def batch_schedule(self) -> BatchScheduleIR:
+        """Derive exact homogeneous/ragged scheduling facts for this plan."""
+        return analyze_batch_schedule(self.steps)
 
     @property
     def allocation_bytes(self) -> int:

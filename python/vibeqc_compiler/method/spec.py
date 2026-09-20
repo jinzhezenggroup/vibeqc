@@ -251,7 +251,9 @@ class RangeSeparatedExchangePrimitive:
 
     @property
     def derivative_capabilities(self) -> typing.Any:
-        return ("energy", "fock")
+        # #249 supplies first nuclear derivatives for both range operators.
+        # Complete molecular forces still require a stationary mean-field owner.
+        return ("energy", "fock", "nuclear-gradient")
 
     def semantic_payload(self) -> typing.Any:
         return {

@@ -144,11 +144,21 @@ produce zero. Index expressions remain compilable for zero extents.
 
 Generated kernels cover ordered addition, products, division/denominators,
 transpose, logical reshape, slice, gather (including repeated coordinates),
-reduction and explicit broadcast. Packing scatter assigns unique destinations;
-generated derivative programs from #151 use incidence-matrix einsum nodes
-rather than a new mathematical scatter-add primitive.
+reduction, explicit broadcast, and the ragged `indexed_gather`, `scatter_add`
+and `segment_sum` primitives. Packing scatter still assigns unique GEMM
+destinations; TensorIR `scatter_add` instead has explicit repeated-destination
+accumulation semantics.
 
-Generated JVP/VJP programs from #151 are ordinary TensorIR programs and use
+`plan.batch_schedule` exposes a backend-neutral `BatchScheduleIR` with batch
+domains, degree histograms, and baseline-versus-scheduled ragged work. Static
+`scatter_add` maps are compiled into deterministic offsets-plus-members tables,
+so each output traverses only its members instead of scanning the full source
+axis. Members retain ascending source order, preserving the previous reduction
+order. `segment_sum` keeps its already-linear contiguous-offset lowering and
+`indexed_gather` remains a direct indexed load. This first scheduling slice
+does not yet add degree-bucketed warp/CTA queues or runtime-varying topology.
+
+Generated JVP/VJP programs from #151/#501 are ordinary TensorIR programs and use
 the same planning, compilation and execution path. The fixed CC-like RTX 5090
 numerical/resource evidence is recorded in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md).
@@ -479,3 +489,6 @@ Precision-request identity and qualification scope are part of the resolved sche
 not the source equation hash. Cast AD uses the declared arithmetic linearization
 rather than the derivative of bit-level rounding; see the
 [precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).
+
+The shared topology layout and admission boundary are recorded in the
+[ragged batch scheduling decision](../.agents/notes/implemented/architecture/2026-09-20-ragged-batch-schedule-ownership.md).
