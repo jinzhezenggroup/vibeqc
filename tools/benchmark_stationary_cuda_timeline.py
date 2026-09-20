@@ -35,12 +35,13 @@ SYSTEMS = {
         ("H", (0.10, 0.20, 1.70)),
         ("H", (1.60, -0.20, -0.50)),
     ],
-    "methane": [
-        ("C", (0.00, 0.00, 0.00)),
-        ("H", (1.18, 1.18, 1.18)),
-        ("H", (-1.18, -1.18, 1.18)),
-        ("H", (-1.18, 1.18, -1.18)),
-        ("H", (1.18, -1.18, -1.18)),
+    # 12 AO in the default minimal basis: large enough to expose n^4 source
+    # scaling while staying below the checked 2M primitive-record cap.
+    "acetylene": [
+        ("H", (-3.20, 0.00, 0.00)),
+        ("C", (-1.20, 0.00, 0.00)),
+        ("C", (1.20, 0.00, 0.00)),
+        ("H", (3.20, 0.00, 0.00)),
     ],
 }
 DEFAULT_METHODS = (
