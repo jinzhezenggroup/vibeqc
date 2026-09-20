@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Any
 
 import numpy as np
 
@@ -206,7 +207,7 @@ def gfn2_element_parameters(atomic_number: int) -> Gfn2ShortRangeElement:
         ) from error
 
 
-def gfn2_geometry(elements, *, coordinate_name: str = "coordinates") -> GeometryIR:
+def gfn2_geometry(elements: Any, *, coordinate_name: str = "coordinates") -> GeometryIR:
     elements = tuple(elements)
     for atomic_number in elements:
         gfn2_element_parameters(atomic_number)
@@ -219,7 +220,7 @@ def gfn2_geometry(elements, *, coordinate_name: str = "coordinates") -> Geometry
 
 def build_gfn2_pair_topology(
     geometry: GeometryIR,
-    coordinates,
+    coordinates: Any,
 ) -> PairTopology:
     """Build the exact molecular 25-bohr pair set for one geometry snapshot."""
 
@@ -265,7 +266,7 @@ def _require_gfn2_topology(geometry: GeometryIR, topology: PairTopology) -> None
         raise ValueError("GFN2 short-range topology requires the sharp 25-bohr cutoff")
 
 
-def _pair_constant(context: PairTensorContext, values):
+def _pair_constant(context: PairTensorContext, values: Any) -> Any:
     values = tuple(repr(float(value)) for value in values)
     if len(values) != len(context.topology.pairs):
         raise ValueError("GFN2 pair parameter length disagrees with topology")
@@ -279,7 +280,7 @@ def _pair_constant(context: PairTensorContext, values):
     )
 
 
-def _logistic(argument, one, minus_one):
+def _logistic(argument: Any, one: Any, minus_one: Any) -> Any:
     return divide(one, add(one, exp(multiply(minus_one, argument))))
 
 
@@ -316,12 +317,12 @@ class Gfn2ShortRangeProgram:
         if identity != self.identity:
             raise ValueError("stale GFN2 geometry compiler execution state")
 
-    def validate_coordinates(self, coordinates) -> None:
+    def validate_coordinates(self, coordinates: Any) -> None:
         expected = build_gfn2_pair_topology(self.geometry, coordinates)
         if expected.identity != self.topology.identity:
             raise ValueError("stale GFN2 pair topology for changed coordinates")
 
-    def coordinate_vjp(self, output: str):
+    def coordinate_vjp(self, output: str) -> Any:
         if output not in ("coordination", "repulsion_energy"):
             raise ValueError("unknown GFN2 short-range derivative output")
         return transpose_program(
