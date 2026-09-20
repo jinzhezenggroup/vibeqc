@@ -333,6 +333,6 @@ def test_native_uks_is_not_inferred_from_rks() -> None:
         batch.execute(strict=True)
         with (
             NativeAO(H2, charge=-1, multiplicity=2) as basis,
-            pytest.raises(ResponseUnsupported, match="CPU RKS"),
+            pytest.raises(ResponseUnsupported, match="all-electron RKS"),
         ):
             NativeRKSResponse.from_native(batch, basis)

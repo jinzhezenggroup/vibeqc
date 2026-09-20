@@ -23,6 +23,33 @@ struct RhfBucketItem {
 
 struct CudaRhfBucketPlan;
 
+enum class CudaDirectFinalStateRoute : std::uint8_t {
+  none,
+  scf_force_ready,
+  canonical_fallback,
+};
+
+enum class CudaDirectFinalStateFallbackReason : std::uint8_t {
+  none,
+  explicit_final_fock_rebuild,
+  unproven_density_generation,
+  legacy_finalization,
+};
+
+/** Lightweight audit of the last Direct-HF final-state publication. */
+struct CudaDirectFinalStateAudit {
+  CudaDirectFinalStateRoute route{CudaDirectFinalStateRoute::none};
+  CudaDirectFinalStateFallbackReason fallback_reason{CudaDirectFinalStateFallbackReason::none};
+  bool seed_provenance{};
+  bool physical_residual_validated{};
+  bool target_precision{};
+  bool orbital_frame_bound{};
+  bool physical_orbital_energies{};
+  bool restart_same_density_generation{};
+  std::uint32_t additional_physical_fock_builds{};
+  std::uint32_t additional_final_eigen_solves{};
+};
+
 /** Scalar-only resource query for the small native eigensolver route (<=16
  * public AOs). Reuses the production arena layout without packing tensors,
  * constructing a plan, selecting a device or querying a CUDA provider.
@@ -184,6 +211,10 @@ bool get_rhf_cuda_eigensolver_diagnostic(const CudaRhfBucketPlan* plan,
 
 bool get_rhf_cuda_inactive_eigensolver_profile(const CudaRhfBucketPlan* plan,
                                                CudaInactiveEigensolverProfile& profile) noexcept;
+
+/** Read the last synchronous Direct-HF final-state publication audit. */
+bool get_rhf_cuda_final_state_audit(const CudaRhfBucketPlan* plan,
+                                    CudaDirectFinalStateAudit& audit) noexcept;
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 

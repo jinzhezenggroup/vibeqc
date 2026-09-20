@@ -23,6 +23,10 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_xc_response_cuda_tests tests/native/test_xc_response_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    target_compile_definitions(vibeqc_xc_response_cuda_tests PRIVATE
+                               VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     # Run the same analytic/negative shared-policy suite through device algebra.
     vibeqc_native_test(vibeqc_df_final_validation_tests tests/native/test_final_state.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
@@ -76,6 +80,7 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_cartesian_integral_tests tests/native/test_cartesian_integrals.cpp)
   vibeqc_native_test(vibeqc_density_fitting_tests tests/native/test_density_fitting.cpp)
   vibeqc_native_test(vibeqc_density_factor_tests tests/native/test_density_factor.cpp)
+  vibeqc_native_test(vibeqc_scf_array_native_tests tests/native/test_scf_array_native.cpp)
   if(VIBEQC_ENABLE_CUDA)
     add_executable(vibeqc_df_occupied_probe benchmarks/df_occupied_probe.cpp)
     target_link_libraries(vibeqc_df_occupied_probe PRIVATE vibeqc)

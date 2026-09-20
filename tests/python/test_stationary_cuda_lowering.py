@@ -33,10 +33,10 @@ assert primitive == emit_first_derivative_cuda(requests)
 cpu=emit_first_derivative_cpu(requests)
 assert '__device__' not in cpu
 assert 'vibeqc_first_derivative_cpu' in cpu
-for pbe in (False,True):
-    method=resolve_method('PBE' if pbe else 'LDA_XC_PW',spin='unpolarized')
+for functional in (0,1,2):
+    method=resolve_method(('LDA_XC_PW','PBE','R2SCAN')[functional],spin='unpolarized')
     plan=StationaryGradientPlan(method,StationaryMeanField(SCF_POINT_MODEL))
-    s=emit_stationary_cuda(primitive,pbe=pbe,plan=plan)
+    s=emit_stationary_cuda(primitive,functional=functional,plan=plan)
     assert 'vibeqc_first_derivative_cpu' not in s
     assert '__device__ bool first_derivative' in s
     assert 'stationary_gradient_cuda.cuh' in s
@@ -53,10 +53,17 @@ for pbe in (False,True):
     for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
         assert scientific in s
         assert s.index(scientific) > include
-    assert s == emit_stationary_cuda(primitive,pbe=pbe,plan=plan)
+    assert f'stationary_functional = {functional}' in s
+    assert s == emit_stationary_cuda(primitive,functional=functional,plan=plan)
 template=open('src/dft/stationary_gradient_cuda.cuh').read()
 assert '__global__ void primitive_kernel' in template
 assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
+r2scan=emit_stationary_cuda(primitive,functional=2,plan=plan)
+assert 'stationary_coefficients = 5' in r2scan
+assert 'tau[0]' in r2scan and 'kinetic[0]' in r2scan
+for functional in (0,1):
+    plan=StationaryGradientPlan(resolve_method(('LDA_XC_PW','PBE')[functional],spin='unpolarized'),StationaryMeanField(SCF_POINT_MODEL))
+    assert emit_stationary_cuda(primitive,pbe=bool(functional),plan=plan) == emit_stationary_cuda(primitive,functional=functional,plan=plan)
 """
     subprocess.run(
         [sys.executable, "-c", script],

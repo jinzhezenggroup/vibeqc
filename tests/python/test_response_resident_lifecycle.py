@@ -22,6 +22,7 @@ def _owner() -> typing.Any:
     owner._closed = False
     owner._free = [0, 1]
     owner._live = set()
+    owner._retained = set()
     owner._vectors = WeakValueDictionary()
     owner.vector_slots = 2
     return owner, destroyed
@@ -115,6 +116,10 @@ def test_solver_releases_temporaries_even_when_a_profiler_retains_them(
 
     owner, _ = _owner()
     owner.dimension = 1
+    # Leave room for the solver's conservative preflight; this test exercises
+    # cleanup of a retained frame, independently of vector-slot admission.
+    owner.vector_slots = 64
+    owner._free = list(reversed(range(owner.vector_slots)))
     retained = []
 
     def retaining_solver(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:

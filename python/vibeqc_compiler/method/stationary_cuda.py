@@ -242,12 +242,14 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
       atomicExch(error, 1);
       return;
     }
-    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{};
-    if (stationary_pbe)
+    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{}, tau[2]{};
+    if (stationary_functional != 0)
       for (size_t s = 0; s < 2; ++s)
         for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
+    if (stationary_functional == 2)
+      for (size_t s = 0; s < 2; ++s) tau[s] = view.features[(5 * s + 4) * np + p];
     // The exact shared SCF point model, including vacuum/spin boundaries.
-    const auto xc = vibeqc::dft::point::evaluate(stationary_pbe, rho, g);
+    const auto xc = stationary_evaluate_point(rho, g, tau);
     if (!xc.valid) {
       atomicExch(error, 1);
       return;
@@ -264,11 +266,12 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
       }
       double pullback[4]{};
       for (size_t s = 0; s < 2; ++s) {
-        double c[4]{weights[p] * xc.rho[s]}, w[4]{};
+        double c[5]{weights[p] * xc.rho[s]}, w[4]{};
         for (size_t j = 0; j < stationary_jets; ++j) {
           w[j] = work[(4 * s + j) * stride + p * n + mu];
           if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
         }
+        if (stationary_functional == 2) c[4] = weights[p] * xc.kinetic[s];
         double local[4]{};
         ao_pullback(c, w, local);
         for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
@@ -311,18 +314,19 @@ def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
 def emit_stationary_cuda(
     primitive_source: typing.Any,
     *,
-    pbe: typing.Any,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
     plan: typing.Any,
     iterations: typing.Any = 3,
 ) -> typing.Any:
     """Compose explicit primitive lowering and shared XC geometric lowering.
 
-    The integral subsystem supplies a finite device dispatcher. Method lowering
-    consumes its source, without reaching into recurrence or scheduling policy.
+    ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
+    New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
     """
     return (
         primitive_source
-        + emit_geometry_cuda(pbe=pbe, iterations=iterations)
+        + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
         + emit_stationary_scientific_kernels(plan)
     )
@@ -331,7 +335,8 @@ def emit_stationary_cuda(
 def compile_stationary_cuda(
     primitive_source: typing.Any,
     *,
-    pbe: typing.Any,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
     plan: typing.Any,
     iterations: typing.Any,
     compiler: typing.Any,
@@ -343,7 +348,11 @@ def compile_stationary_cuda(
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
     source = emit_stationary_cuda(
-        primitive_source, pbe=pbe, plan=plan, iterations=iterations
+        primitive_source,
+        functional=functional,
+        pbe=pbe,
+        plan=plan,
+        iterations=iterations,
     )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)

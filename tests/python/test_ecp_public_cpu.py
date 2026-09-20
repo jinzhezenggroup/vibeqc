@@ -292,6 +292,7 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
     representation: str,
 ) -> None:
     from vibeqc._stationary_cpu_components import ComponentPrimitiveExecutor
+    from vibeqc._stationary_cpu_streaming import CompiledComponentExecutor
     from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 
     atoms, record, mol = fixture(representation=representation, d_shell=True)
@@ -303,6 +304,17 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
             2,
             CppCompilerAdapter(Path(os.environ.get("CXX", "c++"))),
         )
+        candidates = [
+            CompiledComponentExecutor(
+                basis,
+                Path(
+                    os.environ.get("VIBEQC_STATIONARY_CACHE", ".cache/stationary-cpu")
+                ),
+                tile,
+                CppCompilerAdapter(Path(os.environ.get("CXX", "c++"))),
+            )
+            for tile in (1, 2, 128)
+        ]
         n = basis.nao
         norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
         for op, intor, selections in (
@@ -345,6 +357,20 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
                         else weight * mol.atom_charge(nucleus),
                         nucleus,
                     )
+                    for candidate in candidates:
+                        mapped, actual = candidate.integral(
+                            op,
+                            indices,
+                            weight
+                            if nucleus is None
+                            else weight * mol.atom_charge(nucleus),
+                            nucleus,
+                        )
+                        assert mapped == owners
+                        np.testing.assert_allclose(
+                            actual, values, atol=2e-13, rtol=2e-13
+                        )
+                        assert candidate.records == executor.records
                     np.add.at(gradient, owners, values)
             for step in (3e-4, 1e-4):
                 energies = []
@@ -379,6 +405,68 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
         executor.calls[request] = original
         assert np.isfinite(executor.nuclear(0, 1, mol.atom_charges())).all()
         assert executor.records == before + 1
+        for candidate in candidates:
+            before = candidate.records
+            with pytest.raises(ArithmeticError, match="component derivative failed"):
+                candidate.integral("overlap", (8, n - 1), float("nan"))
+            assert candidate.records == before
+            _, zero = candidate.integral("four_center_eri", (8, 8, n - 1, n - 1), 0.0)
+            np.testing.assert_array_equal(zero, 0)
+
+
+def check_spd_paired_endpoint(
+    representation: str,
+    monkeypatch: typing.Any,
+    record_property: typing.Any,
+) -> None:
+    """Same-runner complete batches, exact budgets, replay and failure recovery.
+
+    The shared mathematical source cache is populated by the numerical gates;
+    cold here means a fresh prepared SCF batch, not a fresh C++ toolchain cache.
+    """
+    from vibeqc import _stationary_cpu
+
+    original = _stationary_cpu.complete_rks_gradient_diagnostic
+    results = {}
+    for strategy in ("python", "native"):
+        measurements = {}
+        gradients = []
+
+        def selected(
+            state: typing.Any,
+            basis: typing.Any,
+            strategy: str = strategy,
+            gradients: list = gradients,
+            **kwargs: typing.Any,
+        ) -> typing.Any:
+            value = original(state, basis, component_execution=strategy, **kwargs)
+            gradients.append(value.gradient.copy())
+            return value
+
+        with monkeypatch.context() as patch:
+            patch.setattr(_stationary_cpu, "complete_rks_gradient_diagnostic", selected)
+            test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
+                "pbe-rks",
+                representation,
+                measurements.__setitem__,
+                d_shell=True,
+            )
+        record_property(strategy, measurements)
+        results[strategy] = (measurements, gradients)
+    baseline, candidate = results["python"], results["native"]
+    assert len(baseline[1]) == len(candidate[1])
+    for old, new in zip(baseline[1], candidate[1], strict=True):
+        np.testing.assert_allclose(new, old, atol=2e-12, rtol=0)
+    for old, new in zip(
+        baseline[0]["generated_force"], candidate[0]["generated_force"], strict=True
+    ):
+        for counter in (
+            "primitive_records",
+            "primitive_record_bound",
+            "ecp_quadrature_pair_samples",
+            "ordered_quartets",
+        ):
+            assert old["work"][counter] == new["work"][counter]
 
 
 def test_cpu_f_ecp_forces_rejected_before_preparation(monkeypatch: typing.Any) -> None:

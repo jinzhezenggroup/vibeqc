@@ -75,6 +75,7 @@ wheel.py-api = "py3"
 "src/integrals/first_component_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_component_runtime.hpp"
 "src/integrals/first_directional_runtime.cuh" = "vibeqc_compiler/assets/src/integrals/first_directional_runtime.cuh"
 "src/integrals/first_derivative_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_derivative_runtime.hpp"
+"src/integrals/first_derivative_component_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_derivative_component_runtime.hpp"
 "src/scf/cuda_weighted_eri.hpp" = "vibeqc_compiler/assets/src/scf/cuda_weighted_eri.hpp"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
@@ -126,3 +127,62 @@ ignore = ["ANN401", "S101", "S603", "S607"]
 "tests/**/*.py" = ["S108", "S311", "S314", "S324"]
 "tools/**/*.py" = ["S108"]
 "tools/vibeqc_validation/retention.py" = ["S314"]
+
+# Python compiler type checking with Astral ty.
+# Files in the override contain pre-existing type debt as of 2026-09-19.
+# Keep their diagnostics visible as warnings and remove entries as they become clean.
+
+[tool.ty.environment]
+root = ["python"]
+
+[tool.ty.src]
+include = ["python/vibeqc_compiler"]
+
+[tool.ty.terminal]
+error-on-warning = false
+output-format = "github"
+
+[[tool.ty.overrides]]
+include = [
+  "python/vibeqc_compiler/common/resources.py",
+  "python/vibeqc_compiler/common/specialization.py",
+  "python/vibeqc_compiler/integral/batch_benchmark.py",
+  "python/vibeqc_compiler/integral/blocks.py",
+  "python/vibeqc_compiler/integral/capabilities.py",
+  "python/vibeqc_compiler/integral/cuda_schedule.py",
+  "python/vibeqc_compiler/integral/df_derivatives.py",
+  "python/vibeqc_compiler/integral/df_rys_shell.py",
+  "python/vibeqc_compiler/integral/df_shell_derivatives.py",
+  "python/vibeqc_compiler/integral/df_value_candidates.py",
+  "python/vibeqc_compiler/integral/df_values.py",
+  "python/vibeqc_compiler/integral/expr.py",
+  "python/vibeqc_compiler/integral/fused_schedule.py",
+  "python/vibeqc_compiler/integral/ir.py",
+  "python/vibeqc_compiler/integral/ir_serialization.py",
+  "python/vibeqc_compiler/integral/production.py",
+  "python/vibeqc_compiler/integral/range_separation.py",
+  "python/vibeqc_compiler/integral/rys.py",
+  "python/vibeqc_compiler/integral/second_derivatives.py",
+  "python/vibeqc_compiler/integral/second_derivatives_execute.py",
+  "python/vibeqc_compiler/integral/second_derivatives_inputs.py",
+  "python/vibeqc_compiler/integral/shell_class.py",
+  "python/vibeqc_compiler/integral/tuning/analysis.py",
+  "python/vibeqc_compiler/integral/tuning/cli.py",
+  "python/vibeqc_compiler/integral/tuning/driver.py",
+  "python/vibeqc_compiler/integral/weighted_eri_cuda.py",
+  "python/vibeqc_compiler/integral/weighted_eri_execute.py",
+  "python/vibeqc_compiler/integral/weighted_eri_inputs.py",
+  "python/vibeqc_compiler/integral/weighted_eri_native.py",
+  "python/vibeqc_compiler/tensor/ad_program.py",
+  "python/vibeqc_compiler/tensor/autodiff.py",
+  "python/vibeqc_compiler/tensor/cuda_emit.py",
+  "python/vibeqc_compiler/tensor/cuda_execute.py",
+  "python/vibeqc_compiler/tensor/cuda_plan.py",
+  "python/vibeqc_compiler/tensor/cuda_resident.py",
+  "python/vibeqc_compiler/tensor/cuda_tune.py",
+  "python/vibeqc_compiler/tensor/ir.py",
+  "python/vibeqc_compiler/xc/prepared.py",
+]
+
+[tool.ty.overrides.rules]
+all = "warn"

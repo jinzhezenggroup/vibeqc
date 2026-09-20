@@ -47,6 +47,25 @@ This migration imports no xTB Hamiltonian, SCC runtime, Fortran runtime, or
 external dispersion library into VibeQC. Independent upstream tools are only
 used to generate test fixtures.
 
+## Pinned dispersion parameter catalogs
+
+The repository-only snapshots under `tools/parameters/upstream/` retain the
+upstream damping-parameter tables used to generate VibeQC's static method
+catalog. The simple-dftd3 snapshot is pinned to commit
+`41d5a07b98ce15e97bec7a1815869725f6c7b0c2`; the DFT-D4 snapshot is pinned
+to commit `82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4`. Both are
+LGPL-3.0-or-later data/code distributions; the corresponding license texts
+already retained under `LICENSES/` apply. Exact source paths, revisions and
+SHA-256 digests are recorded in
+`tools/parameters/dispersion_parameter_sources.json`.
+
+These snapshots are development-time generation inputs only. Production
+VibeQC does not import, execute, or dynamically read simple-dftd3 or DFT-D4;
+the generated Python/C++ parameter constants remain runtime-self-contained.
+For D3, the generated catalog intentionally projects the upstream BJ pair
+parameters to VibeQC's currently validated two-body model with `s9=0`;
+upstream ATM availability is not claimed as a production D3 capability.
+
 ## r2SCAN-3c basis and gCP qualification data
 
 The canonical H-Ar def2-mTZVPP snapshot shipped under

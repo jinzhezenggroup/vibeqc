@@ -14,6 +14,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from vibeqc_compiler.common.liveness import EffectKind, LivenessNode, analyze_liveness
+
 from .ir import Node
 from .types import spec_from_payload, spec_to_payload
 
@@ -144,8 +146,22 @@ class Program:
 
     @property
     def live_nodes(self) -> tuple[Node, ...]:
-        live = set(_topological(self.outputs.values()))
-        return tuple(n for n in self.nodes if n in live)
+        """Return output-reachable nodes through shared compiler liveness."""
+        nodes = self.nodes
+        analysis = analyze_liveness(
+            tuple(
+                LivenessNode(
+                    key=node,
+                    reads=node.inputs,
+                    writes=(node,),
+                    effect=EffectKind.PURE,
+                )
+                for node in nodes
+            ),
+            roots=tuple(self.outputs.values()),
+        )
+        live = set(analysis.live_node_keys)
+        return tuple(node for node in nodes if node in live)
 
     @property
     def logical_hash(self) -> str:

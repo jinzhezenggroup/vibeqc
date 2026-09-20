@@ -12,6 +12,10 @@ from vibeqc_compiler.integral.ecp_policy import (
     REFINED_POLAR_POINTS,
     REFINED_RADIAL_POINTS,
 )
+from vibeqc_compiler.integral.first_derivative_schedule import (
+    DISPATCH_ROWS,
+    DISPATCH_WIDTH,
+)
 
 from .basis import BasisSet
 from .resources import checked_bytes
@@ -73,6 +77,9 @@ def cpu_force_inventory(
         "snapshot_and_ao": 8 * 8 * snapshot_values + 1024 * (1 + a + n + p),
         "xc_tiles": 8 * (128 * tile_points * n + 256 * tile_points + 64 * n * n),
         "integral_staging": 8 * (40 * primitive_tile + 64 * integral_terms + 256 * a),
+        # Include construction copies and the retained immutable metadata; the
+        # conservative full s/p/d table also covers smaller component domains.
+        "component_dispatch": 3 * 8 * (DISPATCH_ROWS * DISPATCH_WIDTH + 3 * n + 46),
         "tensor_and_grid_arenas": 32 << 20,
         "ecp_provider": ecp,
         "ecp_export_and_contraction": 8 * (24 * a * n * n + 24 * a * integral_terms),
