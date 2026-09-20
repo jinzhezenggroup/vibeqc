@@ -100,7 +100,12 @@ int main() {
                  &p.initial_t1, &p.initial_t2}) v->push_back(1.0);
   vibeqc::cc::SolverOptions options;
   int constructor_calls = 0;
-  { vibeqc::cc::Owner good(p, options, 0); constructor_calls = calls; }
+  { vibeqc::cc::Owner good(p, options, 0); constructor_calls = calls;
+    const auto detached = (good.n1 + good.n2) * sizeof(double);
+    if (good.diagnostic.numeric_capacity_bytes < 128 + good.layout.total + detached) {
+      std::cerr << "CUDA detached result storage was not reserved\n"; return 8;
+    }
+  }
   if (streams || allocations || device != 7 || constructor_calls < 18) return 1;
   for (int failure = 1; failure <= constructor_calls; ++failure) {
     calls = 0; fail_at = failure;

@@ -140,8 +140,10 @@ struct Owner {
     layout.arithmetic = reserve(layout, cursor, sizeof(int));
     layout.total = align256(cursor);
 
-    const auto combined =
-        checked_add(p.reference_retained_bytes, checked_add(problem_host_bytes(p), layout.total));
+    // Final detached host amplitudes coexist with this resident device arena.
+    const auto combined = checked_add(
+        checked_add(p.reference_retained_bytes, checked_add(problem_host_bytes(p), layout.total)),
+        checked_mul(elements, sizeof(double)));
     if (combined > options.max_bytes)
       throw std::length_error("RCCSD CUDA resident state exceeds correlation memory budget");
     try {

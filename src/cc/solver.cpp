@@ -165,7 +165,7 @@ std::size_t problem_host_bytes(const Problem& p) {
   const std::vector<double>* values[] = {&p.foo,  &p.fov,  &p.fvv,        &p.ovov,      &p.ovvo,
                                          &p.oovv, &p.ovvv, &p.ovoo,       &p.oooo,      &p.vvvv,
                                          &p.d1,   &p.d2,   &p.initial_t1, &p.initial_t2};
-  for (const auto* value : values) result = checked_add(result, bytes(value->size()));
+  for (const auto* value : values) result = checked_add(result, bytes(value->capacity()));
   return result;
 }
 
@@ -180,7 +180,16 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   std::size_t capacity = checked_add(p.reference_retained_bytes, problem_host_bytes(p));
   capacity = checked_add(capacity, bytes(iteration_elements));
   capacity = checked_add(capacity, bytes(replay_elements));
-  capacity = checked_add(capacity, bytes(checked_mul(2 + 2 * options.diis_size, elements)));
+  // Current, trial, error and a copied history vector coexist before trimming.
+  // DIIS additionally retains Gram/original augmented arrays while solve_linear
+  // owns its by-value matrix/RHS copies. These are numeric storage, not overhead.
+  capacity = checked_add(capacity, bytes(checked_mul(4 + 2 * options.diis_size, elements)));
+  if (options.diis_size) {
+    const std::size_t h = options.diis_size, n = h + 1;
+    const auto scratch = checked_add(
+        checked_mul(h, h), checked_add(checked_mul(2, checked_mul(n, n)), checked_mul(2, n)));
+    capacity = checked_add(capacity, bytes(scratch));
+  }
   if (capacity > options.max_bytes)
     throw std::length_error("RCCSD CPU solve exceeds correlation memory budget");
 
