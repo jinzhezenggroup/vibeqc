@@ -944,15 +944,14 @@ class NativeSource:
 
 
 class CudaDFSource(NativeSource):
-    """CG05 generated DF M/A source with explicit metric/raw-tile host staging.
+    """CG05 generated DF M/A source with explicit host or device consumption.
 
-    Source construction preserves the existing native source's setup accounting
-    and rejects/releases an over-budget prepared source. It is separate from
-    the preflight transformation budget. No conventional four-center GPU source
-    or GPU DF whitening is claimed by this adapter.
+    Host raw-tile reads are the compatibility/oracle route. A CUDA consumer may
+    instead take one-way ownership of the prepared native generated source,
+    after which raw host reads fail closed.
     """
 
-    backend = "cuda-generated-df-values-host-staged"
+    backend = "cuda-generated-df-values"
     supported_operators = frozenset(("coulomb_metric", "three_center_eri"))
 
     def __init__(
@@ -1007,6 +1006,7 @@ class CudaDFSource(NativeSource):
         )
         self.source_host_peak_bytes = int(diagnostics[0])
         self.source_device_bytes = int(diagnostics[1])
+        self.device_id = device_id
         object.__setattr__(
             self,
             "numeric_bytes",
@@ -1019,6 +1019,44 @@ class CudaDFSource(NativeSource):
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_df_metrics_v2.argtypes = [
+            ct.c_void_p,
+            ct.POINTER(ct.c_uint64),
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_create_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_double,
+            ct.POINTER(ct.c_void_p),
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_execute_v1.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            ct.c_size_t,
+            _DOUBLE,
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_metrics_v1.argtypes = [
+            ct.c_void_p,
+            ct.POINTER(ct.c_uint64),
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_destroy_v1.argtypes = [ct.c_void_p]
+        lib.vibeqc_posthf_df_rhf_jk_plan_destroy_v1.restype = None
+        self._device_handoff = False
 
     def _read(self, kind, begin, shape):
         if kind in ("overlap", "hcore"):
@@ -1054,17 +1092,60 @@ class CudaDFSource(NativeSource):
             return out
 
     def source_metrics(self):
-        """Cumulative synchronized GPU generation and explicit D2H timings."""
+        """Cumulative generated-value traffic for the explicit compatibility source."""
         with self._lock:
             self._check_open()
-            values = np.empty(2)
-            self._call("vibeqc_posthf_df_metrics_v1", self._df_handle, pointer(values))
+            counters = (ct.c_uint64 * 5)()
+            values = np.empty(3)
+            self._call(
+                "vibeqc_posthf_df_metrics_v2",
+                self._df_handle,
+                counters,
+                len(counters),
+                pointer(values),
+                values.size,
+            )
             return {
+                "generated_bytes": int(counters[0]),
+                "d2h_bytes": int(counters[1]),
+                "tile_count": int(counters[2]),
+                "host_staged_tiles": int(counters[3]),
+                "device_handoffs": int(counters[4]),
+                "subsequent_h2d_bytes": 0,
                 "generation_ms": float(values[0]),
                 "transfer_ms": float(values[1]),
+                "endpoint_ms": float(values[2]),
                 "host_setup_peak_bytes": self.source_host_peak_bytes,
                 "device_bytes": self.source_device_bytes,
+                "execution_path": (
+                    "device-resident-handoff"
+                    if counters[4]
+                    else "host-staged-compatibility"
+                ),
             }
+
+    def _create_device_rhf_jk_plan(self, threshold):
+        """Transfer this generated source into one device-resident J/K consumer."""
+        with self._lock:
+            self._check_open()
+            if self._device_handoff:
+                raise RuntimeError(
+                    "generated DF source already has a device-resident consumer"
+                )
+            handle = ct.c_void_p()
+            diagnostics = np.empty(6)
+            # The native source-transfer API consumes the generator on both
+            # success and setup failure, so make that lifetime transition
+            # observable before invoking it.
+            self._device_handoff = True
+            self._call(
+                "vibeqc_posthf_df_rhf_jk_plan_create_v1",
+                self._df_handle,
+                threshold,
+                ct.byref(handle),
+                pointer(diagnostics),
+            )
+            return handle, diagnostics
 
     def close(self):
         with self._lock:

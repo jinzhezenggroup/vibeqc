@@ -133,6 +133,14 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
         np.testing.assert_allclose(
             tile, a["raw_three_center"][slices], atol=1e-11, rtol=1e-10
         )
+        staged = source.source_metrics()
+        assert staged["execution_path"] == "host-staged-compatibility"
+        assert staged["generated_bytes"] >= tile.nbytes
+        assert staged["d2h_bytes"] >= tile.nbytes
+        assert staged["tile_count"] >= 1
+        assert staged["host_staged_tiles"] >= 1
+        assert staged["device_handoffs"] == 0
+        assert staged["subsequent_h2d_bytes"] == 0
         with DFProvider(snapshot, source, factor, auxiliary_tile=3) as provider:
             result = restricted_mp2(snapshot, provider)
             np.testing.assert_allclose(
@@ -145,4 +153,11 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
                 )
                 < 1e-9
             )
+            cached = provider.get(MOBlock.from_spaces(snapshot, "ovov"))
+            assert cached.diagnostics["execution_path"] == "host-staged-compatibility"
+            assert not cached.diagnostics["performance_claim_eligible"]
+            assert cached.diagnostics["generated_bytes"] > 0
+            assert cached.diagnostics["d2h_bytes"] > 0
+            assert cached.diagnostics["host_transform_calls"] > 0
+            assert cached.diagnostics["subsequent_h2d_bytes"] == 0
         assert source.source_device_bytes > 0

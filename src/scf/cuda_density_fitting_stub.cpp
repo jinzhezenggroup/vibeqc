@@ -98,6 +98,16 @@ std::size_t cuda_density_fitting_integral_source_coordinate_count(
   return 0U;
 }
 
+CudaDensityFittingSourceCounters cuda_density_fitting_integral_source_counters(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return {};
+}
+
+CudaDensityFittingSourceCounters cuda_density_fitting_jk_plan_source_counters(
+    const CudaDensityFittingJkPlan*) noexcept {
+  return {};
+}
+
 bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegralSource*, int,
                                                   std::size_t, std::size_t, std::size_t) noexcept {
   return false;
