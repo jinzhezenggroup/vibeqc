@@ -1,4 +1,4 @@
-"""Generate native CPU SCF tensor helpers from the bounded Array frontend."""
+"""Generate native CPU SCF helpers from validated SCF TensorIR equations."""
 
 from __future__ import annotations
 
