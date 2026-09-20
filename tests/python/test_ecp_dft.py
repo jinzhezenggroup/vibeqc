@@ -1,4 +1,4 @@
-"""Matched-grid LDA/PBE ECP energies; complete DFT forces remain unsupported."""
+"""Matched-grid LDA/PBE ECP energies, independent of public force qualification."""
 
 import os
 from dataclasses import asdict
@@ -94,10 +94,14 @@ def endpoint(method, device, representation):
         )
         < 1e-12
     )
-    with pytest.raises(ValueError, match="does not support properties.*forces"):
-        calc.singlepoint(
-            atoms, charge=spin, multiplicity=spin + 1, properties=("energy", "forces")
-        )
+    if device == "cpu" or representation != "cartesian":
+        with pytest.raises(ValueError, match="does not support properties.*forces"):
+            calc.singlepoint(
+                atoms,
+                charge=spin,
+                multiplicity=spin + 1,
+                properties=("energy", "forces"),
+            )
     return {
         "method": method,
         "device": device,

@@ -11,10 +11,14 @@ from vibeqc._dft_gradient import StationaryKsState
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 @pytest.mark.parametrize("serialized", [False, True])
-def test_cuda_ecp_diagnostic_does_not_promote_public_forces(
-    monkeypatch, tmp_path, method, serialized
+@pytest.mark.parametrize(
+    "representation,d_shell",
+    [("cartesian", False), ("spherical", False), ("cartesian", True)],
+)
+def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
+    monkeypatch, tmp_path, method, serialized, representation, d_shell
 ):
-    atoms, record, _ = fixture(representation="cartesian")
+    atoms, record, _ = fixture(representation=representation, d_shell=d_shell)
     basis = record
     if serialized:
         path = tmp_path / "ecp-basis.json"
@@ -24,17 +28,24 @@ def test_cuda_ecp_diagnostic_does_not_promote_public_forces(
     library = _native.load_library(device="cpu")
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
     calculator = Calculator(basis=basis, method=method, device="cuda")
-    assert calculator._capabilities.supported_properties == frozenset({"energy"})
+    admitted = representation == "cartesian" and not d_shell
+    assert ("forces" in calculator._capabilities.supported_properties) == admitted
+    cpu = Calculator(basis=basis, method=method, device="cpu")
+    assert cpu._capabilities.supported_properties == frozenset({"energy"})
 
     def forbidden(*args, **kwargs):
         pytest.fail("unqualified public ECP forces reached native preparation")
 
     monkeypatch.setattr(calculator, "prepare_batch", forbidden)
     spin = int(method.endswith("uks"))
-    with pytest.raises(ValueError, match="forces"):
-        calculator.singlepoint(
-            atoms, charge=spin, multiplicity=spin + 1, properties=("energy", "forces")
-        )
+    if not admitted:
+        with pytest.raises(ValueError, match="forces"):
+            calculator.singlepoint(
+                atoms,
+                charge=spin,
+                multiplicity=spin + 1,
+                properties=("energy", "forces"),
+            )
     # An all-electron basis still receives the existing C2 public capability.
     all_electron = replace(record, elements=(record.by_element[1],))
     qualified = Calculator(basis=all_electron, method=method, device="cuda")
@@ -43,7 +54,7 @@ def test_cuda_ecp_diagnostic_does_not_promote_public_forces(
     )
 
 
-def test_public_force_wrapper_rejects_bound_ecp_before_compilation(monkeypatch):
+def test_public_force_wrapper_rejects_cpu_owner_before_compilation(monkeypatch):
     from vibeqc import _stationary_cuda
 
     atoms, record, _ = fixture(representation="cartesian")
@@ -74,7 +85,7 @@ def test_public_force_wrapper_rejects_bound_ecp_before_compilation(monkeypatch):
     with calculator.prepare_batch([atoms]) as batch:
         batch.execute(strict=True, properties=("energy",))
         monkeypatch.setattr(batch, "_stationary_cuda_compiler", forbidden)
-        with pytest.raises(NotImplementedError, match="public.*ECP"):
+        with pytest.raises(NotImplementedError, match="qualified CUDA owner"):
             batch._public_dft_cuda_force(0, batch._systems[0])
         assert len(sources) == 1
         assert not sources[0]._handle

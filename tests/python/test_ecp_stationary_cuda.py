@@ -158,13 +158,6 @@ def test_ecp_complete_cuda_gradient_analytic_fd_and_live_owner(
         assert current._source.ecp_terms == state._source.ecp_terms
         replay = diagnostic(current, basis, compiler)
         np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
-        with pytest.raises(ValueError, match="forces"):
-            calc.singlepoint(
-                atoms,
-                charge=spin,
-                multiplicity=spin + 1,
-                properties=("energy", "forces"),
-            )
 
 
 def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner():

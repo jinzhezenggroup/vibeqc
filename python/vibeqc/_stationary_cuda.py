@@ -1,6 +1,6 @@
 """Complete CUDA RKS/UKS gradient diagnostic with explicit host export.
 
-This is a small-domain diagnostic, not public Calculator force support. Native
+This bounded consumer also supplies qualified public Calculator CUDA forces. Native
 CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
 records and gathers TensorIR inputs; all derivative/normalization/contraction,
 AO/features/XC work, atom scatter and final source reduction execute on CUDA.
@@ -313,7 +313,8 @@ def complete_rks_cuda_gradient_diagnostic(
     Compilation and the selected GPU allocation are explicit.
     Scalar-ECP v5 adds generated CUDA local/nonlocal derivatives and effective
     charges (nine sources). Its small dense export is separately budgeted and
-    preserves the checked native two-grid gate. Public forces remain disabled.
+    preserves the checked native two-grid gate. The public wrapper restricts ECP
+    force capability to Cartesian s/p records.
     """
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
