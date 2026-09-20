@@ -86,7 +86,7 @@ def _preprocess(source: str, defines: frozenset[str]) -> str:
 
     source = _COMMENT.sub("", source)
     active = True
-    stack: list[tuple[bool, bool]] = []
+    stack: list[tuple[bool, bool, bool]] = []
     output: list[str] = []
     for raw_line in source.splitlines():
         line = raw_line.strip()
@@ -98,30 +98,34 @@ def _preprocess(source: str, defines: frozenset[str]) -> str:
         if line.startswith("$ifdef "):
             symbol = line.split(None, 1)[1].strip()
             matched = symbol in defines
-            stack.append((active, matched))
+            stack.append((active, matched, False))
             active = active and matched
             continue
         if line.startswith("$elif "):
             if not stack:
                 raise MapleImportError("$elif without $ifdef")
-            parent, matched = stack[-1]
+            parent, matched, seen_else = stack[-1]
+            if seen_else:
+                raise MapleImportError("$elif after $else")
             symbol = line.split(None, 1)[1].strip()
             branch = (not matched) and symbol in defines
-            stack[-1] = (parent, matched or branch)
+            stack[-1] = (parent, matched or branch, False)
             active = parent and branch
             continue
         if line == "$else":
             if not stack:
                 raise MapleImportError("$else without $ifdef")
-            parent, matched = stack[-1]
-            stack[-1] = (parent, True)
+            parent, matched, seen_else = stack[-1]
+            if seen_else:
+                raise MapleImportError("$else after $else")
+            stack[-1] = (parent, True, True)
             active = parent and not matched
             continue
 
         if line == "$endif":
             if not stack:
                 raise MapleImportError("$endif without $ifdef")
-            parent, _ = stack.pop()
+            parent, _, _ = stack.pop()
             active = parent
             continue
         if line.startswith("$"):
@@ -160,11 +164,11 @@ def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleMod
         parameter_text, expression = (part.strip() for part in right.split("->", 1))
         if parameter_text.startswith("(") and parameter_text.endswith(")"):
             parameter_text = parameter_text[1:-1]
-        parameters = tuple(
-            item.strip() for item in parameter_text.split(",") if item.strip()
-        )
-        if not parameters or any(
-            not _IDENTIFIER.fullmatch(item) for item in parameters
+        parameters = tuple(item.strip() for item in parameter_text.split(","))
+        if (
+            not parameters
+            or len(set(parameters)) != len(parameters)
+            or any(not _IDENTIFIER.fullmatch(item) for item in parameters)
         ):
             raise MapleImportError(f"unsupported parameter list {parameter_text!r}")
         _parse_expression(expression)

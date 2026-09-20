@@ -105,3 +105,29 @@ Libxc/high-precision validation gates.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+
+## Independent parser review (2026-09-21)
+
+Two malformed-input cases violated the declared fail-closed grammar. Empty
+parameter slots were discarded during splitting, and repeated parameter names
+later overwrote an argument during dictionary binding. Conditional frames also
+could not distinguish a terminal `$else` from an earlier matched branch, so a
+second `$else` or a later `$elif` was accepted silently.
+
+The repair preserves split slots and rejects empty/repeated parameter names.
+Each conditional frame now tracks whether its terminal else occurred. Invalid
+continuations after else raise MapleImportError independently of branch activity;
+valid nested parent/child selection remains unchanged. No PBE scalar equation,
+source-hash rule, screening contract or emitter is changed.
+
+Independent review reproduced eight failures on the original parser, then passed
+all eight rejection cases plus six valid nested-selection cases after repair.
+The combined importer, parser and existing XC expression selection passed all
+125 tests without skips. Ruff check/format passed, and the compiler structure
+check covered 255 modules with zero dependency errors. This does not qualify
+arbitrary Maple, includes, piecewise screening or a production XC source switch.
+The PR remains an experimental Draft pending its final integration and review.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
