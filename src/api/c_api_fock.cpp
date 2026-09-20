@@ -911,9 +911,22 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_reconstruct_v1(
     resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, o, &two,
                               owner->transform_two, n, c_occ, n, &zero, owner->coulomb, n));
     ++owner->blas_calls;
+#if VIBEQC_CUDA_PROVIDER_CUMETAL
+    // CuMetal does not expose cublasDgeam. Preserve the same column-major A + A^T
+    // operation with its supported Level-1 surface, without changing the NVIDIA path.
+    resident_blas(
+        cublasDcopy(owner->blas, static_cast<int>(matrix), owner->coulomb, 1, owner->exchange, 1));
+    ++owner->blas_calls;
+    for (std::size_t column = 0; column < n; ++column) {
+      resident_blas(cublasDaxpy(owner->blas, static_cast<int>(n), &one, owner->coulomb + column,
+                                static_cast<int>(n), owner->exchange + column * n, 1));
+      ++owner->blas_calls;
+    }
+#else
     resident_blas(cublasDgeam(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, &one, owner->coulomb, n,
                               &one, owner->coulomb, n, owner->exchange, n));
     ++owner->blas_calls;
+#endif
 
     resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_N, n, o, o, &one, c_occ, n,
                               owner->transform_one, n, &zero, owner->transform_two, n));
