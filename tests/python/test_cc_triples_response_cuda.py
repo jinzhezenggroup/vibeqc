@@ -1,5 +1,7 @@
 """Bounded CUDA standard-(T) response and corrected-Lambda tests."""
 
+from __future__ import annotations
+
 import os
 import typing
 from pathlib import Path
@@ -7,7 +9,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from test_cc_lambda_cuda import _cc_state, _fake_cuda_runtime
-from typing_extensions import Self
 from vibeqc.profiles import find_nvcc
 from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
@@ -27,6 +28,9 @@ from tools.vibeqc_cc.triples_response_cuda import (
     solve_corrected_lambda_cuda,
 )
 from tools.vibeqc_response.problem import ResponseCompatibilityError
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 class _Plan:
