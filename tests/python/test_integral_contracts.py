@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -50,7 +51,13 @@ from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPECS, PSPS_SPEC
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
-def request_ir(family, *, derivative=False, atoms=None, angular=None):
+def request_ir(
+    family: typing.Any,
+    *,
+    derivative: typing.Any = False,
+    atoms: typing.Any = None,
+    angular: typing.Any = None,
+) -> typing.Any:
     """Use separate shell positions even when every slot belongs to one atom."""
     family = OperatorFamily(family)
     if family == OperatorFamily.SCALAR_ECP:
@@ -103,7 +110,9 @@ def request_ir(family, *, derivative=False, atoms=None, angular=None):
 
 @pytest.mark.parametrize("family", list(OperatorFamily))
 @pytest.mark.parametrize("derivative", [False, True])
-def test_operator_inventory_and_serialization(family, derivative):
+def test_operator_inventory_and_serialization(
+    family: typing.Any, derivative: typing.Any
+) -> None:
     integral = request_ir(family, derivative=derivative)
     payload = integral_to_payload(integral)
     assert integral_from_payload(json.loads(json.dumps(payload))) == integral
@@ -117,7 +126,7 @@ def test_operator_inventory_and_serialization(family, derivative):
         assert integral.recovered_derivative_centers == (integral.operator.centers[-1],)
 
 
-def test_attraction_has_a_charged_external_center_and_full_translation():
+def test_attraction_has_a_charged_external_center_and_full_translation() -> None:
     integral = request_ir("nuclear_attraction", derivative=True, atoms=(4, 4, 9))
     assert len(integral.signature.shells) == 2
     assert integral.operator.external_centers == (NuclearCenter(2, 8.0),)
@@ -130,7 +139,7 @@ def test_attraction_has_a_charged_external_center_and_full_translation():
         )
 
 
-def test_raw_derivatives_recover_before_same_atom_chain_rule():
+def test_raw_derivatives_recover_before_same_atom_chain_rule() -> None:
     integral = request_ir("three_center_eri", derivative=True, atoms=(5, 5, 8))
     request = BlockRequest("raw", integral, ShellTile((0, 0, 0), (3, 1, 1)))
     a = np.arange(9, dtype=float).reshape(3, 3) + 1
@@ -145,7 +154,7 @@ def test_raw_derivatives_recover_before_same_atom_chain_rule():
         assemble_raw_block(request, {0: a.ravel(), 1: b.ravel(), 2: (-a - b).ravel()})
 
 
-def test_arbitrary_weights_padded_strides_signs_and_atom_accumulation():
+def test_arbitrary_weights_padded_strides_signs_and_atom_accumulation() -> None:
     integral = request_ir(
         "four_center_eri", derivative=True, atoms=(7, 7, 2, 2), angular=(1, 1, 0, 0)
     )
@@ -165,7 +174,7 @@ def test_arbitrary_weights_padded_strides_signs_and_atom_accumulation():
     inputs = {i: np.arange(18, dtype=float) + 1 + i * 0.5 for i in range(3)}
     calls = []
 
-    def provider(descriptor, tile_request):
+    def provider(descriptor: typing.Any, tile_request: typing.Any) -> typing.Any:
         calls.append((descriptor.source, tile_request.tile.offsets))
         return WeightTile(layout, weights)
 
@@ -181,7 +190,7 @@ def test_arbitrary_weights_padded_strides_signs_and_atom_accumulation():
     assert integral_from_payload(integral_to_payload(integral)) == integral
 
 
-def test_all_centers_on_one_atom_cancel_without_collapsing_position_slots():
+def test_all_centers_on_one_atom_cancel_without_collapsing_position_slots() -> None:
     integral = request_ir("overlap", derivative=True, atoms=(3, 3))
     consumer = WeightedDerivative(
         WeightDescriptor(
@@ -201,7 +210,7 @@ def test_all_centers_on_one_atom_cancel_without_collapsing_position_slots():
     assert response.values == (0.0, 0.0, 0.0)
 
 
-def test_raw_value_tiles_are_bounded_and_return_request_metadata():
+def test_raw_value_tiles_are_bounded_and_return_request_metadata() -> None:
     integral = request_ir("overlap")
     consumer = RawBlock(TensorLayout(integral.signature.tensor_indices, (1, 1)), 16)
     integral = replace(integral, contractions=(consumer,))
@@ -224,7 +233,7 @@ def test_raw_value_tiles_are_bounded_and_return_request_metadata():
         BlockRequest("outside", integral, ShellTile((3, 0), (1, 1)))
 
 
-def test_unsupported_is_explicit_and_does_not_call_a_provider():
+def test_unsupported_is_explicit_and_does_not_call_a_provider() -> None:
     integral = request_ir("overlap")
     request = BlockRequest("unsupported", integral, ShellTile((0, 0), (3, 1)))
     response = unsupported_block_response(request, backend="cuda")
@@ -304,12 +313,12 @@ def test_unsupported_is_explicit_and_does_not_call_a_provider():
         ),
     ],
 )
-def test_invalid_semantic_contracts(factory, match):
+def test_invalid_semantic_contracts(factory: typing.Any, match: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError, OverflowError), match=match):
         factory()
 
 
-def test_cross_record_mismatches_fail_before_execution():
+def test_cross_record_mismatches_fail_before_execution() -> None:
     integral = request_ir("three_center_eri", derivative=True)
     signature = integral.signature
     with pytest.raises(ValueError, match="auxiliary"):
@@ -340,7 +349,7 @@ def test_cross_record_mismatches_fail_before_execution():
         integral_from_payload({**integral_to_payload(integral), "unrecognized": True})
 
 
-def test_legacy_catalog_adapter_and_cuda_boundary():
+def test_legacy_catalog_adapter_and_cuda_boundary() -> None:
     for spec in FUSED_SHELL_SPECS:
         signature = ShellSignature.from_shell_class(spec)
         assert signature.to_shell_class() == spec
@@ -361,7 +370,7 @@ def test_legacy_catalog_adapter_and_cuda_boundary():
     assert integral_cache_key(legacy) != integral_cache_key(generic)
 
 
-def test_weight_provider_layout_and_length_are_checked():
+def test_weight_provider_layout_and_length_are_checked() -> None:
     integral = request_ir("overlap", derivative=True)
     layout = TensorLayout(integral.signature.tensor_indices, (3, 1))
     consumer = WeightedDerivative(
@@ -383,7 +392,7 @@ def test_weight_provider_layout_and_length_are_checked():
         )
 
 
-def test_partial_derivatives_do_not_recover_unrequested_centers():
+def test_partial_derivatives_do_not_recover_unrequested_centers() -> None:
     integral = request_ir("nuclear_attraction", derivative=True)
     derivative = integral.operator.nuclear_derivative(
         parameters=NuclearCoordinates((2, 0))
@@ -402,7 +411,7 @@ def test_partial_derivatives_do_not_recover_unrequested_centers():
     assert response.to_payload()["derivative_centers"] == [2, 0]
 
 
-def test_runtime_atom_bindings_and_shell_indices_are_explicit():
+def test_runtime_atom_bindings_and_shell_indices_are_explicit() -> None:
     integral = build_integral_ir(PSPS_SPEC)
     layout = TensorLayout(
         ("center", "xyz") + integral.signature.tensor_indices, (4, 3, 3, 1, 3, 1)
@@ -431,7 +440,7 @@ def test_runtime_atom_bindings_and_shell_indices_are_explicit():
         )
 
 
-def test_spherical_intent_and_rys_values_are_separate_from_cuda_support():
+def test_spherical_intent_and_rys_values_are_separate_from_cuda_support() -> None:
     integral = request_ir("coulomb_metric", angular=(2, 0))
     signature = replace(
         integral.signature,
@@ -450,7 +459,7 @@ def test_spherical_intent_and_rys_values_are_separate_from_cuda_support():
         _ = request_ir("kinetic").required_rys_roots
 
 
-def test_cache_identity_includes_charge_binding_layout_weights_and_schema():
+def test_cache_identity_includes_charge_binding_layout_weights_and_schema() -> None:
     integral = request_ir("nuclear_attraction", derivative=True)
     different_charge = replace(
         integral,
@@ -489,7 +498,9 @@ def test_cache_identity_includes_charge_binding_layout_weights_and_schema():
         integral_from_payload(payload)
 
 
-def test_serialized_examples_are_reproducible_and_report_unavailable_lowering(tmp_path):
+def test_serialized_examples_are_reproducible_and_report_unavailable_lowering(
+    tmp_path: typing.Any,
+) -> None:
     output = tmp_path / "examples.json"
     subprocess.run(
         [
@@ -511,7 +522,9 @@ def test_serialized_examples_are_reproducible_and_report_unavailable_lowering(tm
         assert not example["cuda_lowering"]["supported"]
 
 
-def test_production_artifacts_and_catalog_are_byte_identical_to_baseline(tmp_path):
+def test_production_artifacts_and_catalog_are_byte_identical_to_baseline(
+    tmp_path: typing.Any,
+) -> None:
     """Pin the legacy registry/shard contract across this semantic refactor."""
     from vibeqc_compiler.integral.production import write_production_bundles
 
@@ -537,7 +550,9 @@ def test_production_artifacts_and_catalog_are_byte_identical_to_baseline(tmp_pat
     assert actual == baseline["artifacts"]
 
 
-def test_incompatible_production_profiles_are_rejected(tmp_path):
+def test_incompatible_production_profiles_are_rejected(
+    tmp_path: typing.Any,
+) -> None:
     from vibeqc_compiler.integral.production import resolve_production_profile
 
     manifest = json.loads(
@@ -556,7 +571,7 @@ def test_incompatible_production_profiles_are_rejected(tmp_path):
         resolve_production_profile(path, "sm_120")
 
 
-def test_external_weight_cache_keys_include_layout_and_scale():
+def test_external_weight_cache_keys_include_layout_and_scale() -> None:
     integral = request_ir("four_center_eri", derivative=True)
     weights = WeightDescriptor(
         "external", TensorLayout(integral.signature.tensor_indices, (3, 1, 1, 1))

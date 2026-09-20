@@ -18,12 +18,15 @@ import platform
 import statistics
 import subprocess
 import time
-from collections.abc import Callable
+import typing
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 BOHR_PER_ANGSTROM = 1.8897261254578281
 
@@ -78,7 +81,11 @@ def parse_workload(value: str) -> Workload:
 
 
 def _median_timed(
-    function: Callable[[], Any], *, warmup: int, repeats: int, synchronize=None
+    function: Callable[[], Any],
+    *,
+    warmup: int,
+    repeats: int,
+    synchronize: typing.Any = None,
 ) -> tuple[float, list[float]]:
     for _ in range(warmup):
         function()
@@ -94,7 +101,7 @@ def _median_timed(
     return statistics.median(samples), samples
 
 
-def _cutoff_method(method: str, cutoff_bohr: float):
+def _cutoff_method(method: str, cutoff_bohr: float) -> typing.Any:
     from vibeqc_compiler.method import METHOD_CATALOG
 
     base = METHOD_CATALOG[method]
@@ -161,7 +168,7 @@ def benchmark_vibeqc(
     }
 
 
-def _load_alchemi_params(path: Path, torch, device: str):
+def _load_alchemi_params(path: Path, torch: typing.Any, device: str) -> typing.Any:
     if not path.exists():
         raise FileNotFoundError(
             f"ALCHEMI parameter cache not found: {path}. Generate it with the "
@@ -215,7 +222,7 @@ def benchmark_alchemi(
     params = _load_alchemi_params(params_path, torch, device)
     damping = _damping(method)
 
-    def build_neighbors():
+    def build_neighbors() -> typing.Any:
         kwargs = {
             "positions": positions,
             "cutoff": cutoff_bohr,
@@ -227,7 +234,7 @@ def benchmark_alchemi(
             kwargs["method"] = neighbor_method
         return neighbor_list(**kwargs)
 
-    def unpack_neighbors(result):
+    def unpack_neighbors(result: typing.Any) -> typing.Any:
         if len(result) == 2:
             edge_index, ptr = result
             return edge_index, ptr, None
@@ -240,7 +247,9 @@ def benchmark_alchemi(
 
     edges, neighbor_ptr, shifts = unpack_neighbors(build_neighbors())
 
-    def evaluate(edge_index, ptr, unit_shifts):
+    def evaluate(
+        edge_index: typing.Any, ptr: typing.Any, unit_shifts: typing.Any
+    ) -> typing.Any:
         kwargs = {
             "positions": positions,
             "numbers": numbers,
@@ -255,10 +264,10 @@ def benchmark_alchemi(
             kwargs["unit_shifts"] = unit_shifts
         return dftd3(**kwargs)
 
-    def run_d3():
+    def run_d3() -> typing.Any:
         return evaluate(edges, neighbor_ptr, shifts)
 
-    def run_pipeline():
+    def run_pipeline() -> typing.Any:
         new_edges, new_ptr, new_shifts = unpack_neighbors(build_neighbors())
         return evaluate(new_edges, new_ptr, new_shifts)
 

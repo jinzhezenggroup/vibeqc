@@ -11,6 +11,7 @@ import difflib
 import hashlib
 import json
 import sys
+import typing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.report_cuda_ownership import ROLES, code_lines, validate_baseline
 
 
-def lines_and_roles(root, row):
+def lines_and_roles(root: typing.Any, row: typing.Any) -> typing.Any:
     """Bind the counting lexer and semantic regions to exact source bytes."""
     if row is None:
         return [], [], []
@@ -33,7 +34,9 @@ def lines_and_roles(root, row):
     return lines, roles, code_lines(source)
 
 
-def compare(old_root, old, new_root, new):
+def compare(
+    old_root: typing.Any, old: typing.Any, new_root: typing.Any, new: typing.Any
+) -> typing.Any:
     """Reconcile physical additions/removals and role shifts with report totals.
 
     SequenceMatcher's popularity heuristic is disabled so repeated braces and
@@ -90,7 +93,7 @@ def compare(old_root, old, new_root, new):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in (
         "baseline_root",

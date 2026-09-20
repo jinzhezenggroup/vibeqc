@@ -551,8 +551,11 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), cuda_target_info("sm_120"))
 # Within the live source/state scope:
 result = directional_rhf_response(
-    state, [[0, 0, 0], [0.1, 0.2, 0.3]],
-    first_backend="cuda", first_compiler=compiler, jk_backend="cuda",
+    state,
+    [[0, 0, 0], [0.1, 0.2, 0.3]],
+    first_backend="cuda",
+    first_compiler=compiler,
+    jk_backend="cuda",
 )
 ```
 

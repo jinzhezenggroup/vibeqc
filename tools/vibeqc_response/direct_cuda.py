@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import threading
 import time
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -20,7 +21,7 @@ from tools.vibeqc_posthf.sources import NativeSource
 from .backends import _checked_density
 
 
-def _source_record(source):
+def _source_record(source: typing.Any) -> typing.Any:
     """Bind NativeSource's immutable scientific fields, not just its dimensions."""
     source._check_open()
     return (
@@ -51,7 +52,13 @@ class CudaDirectJKBackend:
 
     hamiltonian_id = "conventional-unscreened"
 
-    def __init__(self, source, *, device_id=0, device_budget_bytes=64 << 20):
+    def __init__(
+        self,
+        source: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+        device_budget_bytes: typing.Any = 64 << 20,
+    ) -> None:
         self._lock = threading.RLock()
         self._plan = None
         if not isinstance(source, NativeSource):
@@ -137,14 +144,14 @@ class CudaDirectJKBackend:
             self.close()
             raise
 
-    def _ensure_open(self):
+    def _ensure_open(self) -> None:
         if self._plan is None:
             raise RuntimeError("CUDA direct response backend is closed")
         if _source_record(self.source) != self._source_record:
             raise ValueError("CUDA direct response source identity changed")
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Detached provenance with explicit execution and memory boundaries."""
         with self._lock:
             self._ensure_open()
@@ -160,7 +167,7 @@ class CudaDirectJKBackend:
                 "memory_scope": "retained direct J/K device allocations only; excludes preparation temporaries, host transforms/results, solver and CUDA context",
             }
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Bind only a matching conventional RHF reference, never DF/KS/UHF."""
         with self._lock:
             self._ensure_open()
@@ -177,7 +184,7 @@ class CudaDirectJKBackend:
                     raise ValueError(f"CUDA direct backend/reference {name} mismatch")
         return self
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Apply the prepared device provider; publish only complete raw J/K."""
         with self._lock:
             self._ensure_open()
@@ -205,8 +212,12 @@ class CudaDirectJKBackend:
             return matrices
 
     def resident_response(
-        self, problem, *, vector_slots=128, device_budget_bytes=64 << 20
-    ):
+        self,
+        problem: typing.Any,
+        *,
+        vector_slots: typing.Any = 128,
+        device_budget_bytes: typing.Any = 64 << 20,
+    ) -> typing.Any:
         """Create a response-vector/Krylov owner on this exact direct-J/K stream."""
         with self._lock:
             self._ensure_open()
@@ -219,21 +230,21 @@ class CudaDirectJKBackend:
                 device_budget_bytes=device_budget_bytes,
             )
 
-    def close(self):
+    def close(self) -> None:
         """Release only the owned Fock plan; the caller owns source lifetime."""
         with self._lock:
             if self._plan is not None:
                 self._plan.close()
                 self._plan = None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         with self._lock:
             self._ensure_open()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

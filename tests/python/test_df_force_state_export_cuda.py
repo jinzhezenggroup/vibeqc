@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def scf_export_probe(tmp_path_factory):
+def scf_export_probe(tmp_path_factory: typing.Any) -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID")
     pytest.importorskip("pyscf")
     compiler = shutil.which("c++")
@@ -53,8 +54,12 @@ def scf_export_probe(tmp_path_factory):
 @pytest.mark.parametrize("forces", (False, True))
 @pytest.mark.parametrize("budget", (0, 64 << 20))
 def test_actual_force_weighted_density(
-    scf_export_probe, mode, forces, budget, tmp_path
-):
+    scf_export_probe: typing.Any,
+    mode: typing.Any,
+    forces: typing.Any,
+    budget: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     binary, fixture = scf_export_probe
     arrays = tmp_path / "state.bin"
     completed = subprocess.run(

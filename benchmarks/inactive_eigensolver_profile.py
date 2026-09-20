@@ -14,9 +14,8 @@ import json
 import os
 import statistics
 import time
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from _cases import benchmark_cases
@@ -27,6 +26,9 @@ from _support import (
     write_result,
 )
 from vibeqc import BatchResult, Calculator, InactiveEigensolverProfileEntry
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _csv_choices(value: str, allowed: set[str]) -> tuple[str, ...]:

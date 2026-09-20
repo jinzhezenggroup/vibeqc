@@ -2,6 +2,7 @@
 
 import importlib
 import json
+import typing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,12 +10,14 @@ import pytest
 
 
 @pytest.fixture
-def gate(monkeypatch):
+def gate(monkeypatch: typing.Any) -> typing.Any:
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "benchmarks"))
     return importlib.import_module("real_molecule_gate")
 
 
-def test_reference_override_changes_only_requested_reference(gate, tmp_path):
+def test_reference_override_changes_only_requested_reference(
+    gate: typing.Any, tmp_path: typing.Any
+) -> None:
     for point in gate.real_molecule_gate_points():
         kwargs = {
             "repeats": 7,
@@ -37,12 +40,14 @@ def test_reference_override_changes_only_requested_reference(gate, tmp_path):
 @pytest.mark.parametrize(
     "value", ["96=nan", "96=inf", "96=-1e-11", "96=0", "0=1e-11", "96", "x=1e-11"]
 )
-def test_invalid_reference_override_rejected(gate, value):
+def test_invalid_reference_override_rejected(
+    gate: typing.Any, value: typing.Any
+) -> None:
     with pytest.raises(gate.argparse.ArgumentTypeError):
         gate._reference_override(value)
 
 
-def test_reference_loosening_rejected(gate):
+def test_reference_loosening_rejected(gate: typing.Any) -> None:
     point = gate.real_molecule_gate_points()[0]
     with pytest.raises(ValueError, match="only tighten"):
         gate._reference_tolerance(
@@ -51,7 +56,12 @@ def test_reference_loosening_rejected(gate):
 
 
 @pytest.mark.parametrize("overrides", [["96=1e-11", "96=1e-12"], ["384=1e-11"]])
-def test_ambiguous_or_unused_overrides_rejected(gate, monkeypatch, tmp_path, overrides):
+def test_ambiguous_or_unused_overrides_rejected(
+    gate: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    overrides: typing.Any,
+) -> None:
     argv = ["gate", "--dry-run", "--output-directory", str(tmp_path)]
     for value in overrides:
         argv += ["--reference-gradient-tolerance", value]
@@ -61,8 +71,8 @@ def test_ambiguous_or_unused_overrides_rejected(gate, monkeypatch, tmp_path, ove
 
 
 def test_summary_records_both_policies_and_preserves_failed_point(
-    gate, monkeypatch, tmp_path
-):
+    gate: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     monkeypatch.setattr(
         gate.sys,
         "argv",
@@ -78,7 +88,7 @@ def test_summary_records_both_policies_and_preserves_failed_point(
     )
     calls = []
 
-    def run(command, check):
+    def run(command: typing.Any, check: typing.Any) -> typing.Any:
         calls.append(command)
         failed = len(calls) == 1
         output = Path(command[command.index("--output") + 1])
@@ -116,7 +126,9 @@ def test_summary_records_both_policies_and_preserves_failed_point(
             )
 
 
-def test_full_fock_control_is_scoped_to_selected_reference(gate, tmp_path):
+def test_full_fock_control_is_scoped_to_selected_reference(
+    gate: typing.Any, tmp_path: typing.Any
+) -> None:
     for point in gate.real_molecule_gate_points():
         command = gate._point_command(
             point,
@@ -129,7 +141,9 @@ def test_full_fock_control_is_scoped_to_selected_reference(gate, tmp_path):
 
 
 @pytest.mark.parametrize("full_fock", [False, True])
-def test_reference_fock_setting_does_not_change_numerical_gates(gate, full_fock):
+def test_reference_fock_setting_does_not_change_numerical_gates(
+    gate: typing.Any, full_fock: typing.Any
+) -> None:
     comparison = importlib.import_module("compare_gpu4pyscf_batch")
     engine = SimpleNamespace()
     comparison._configure_reference_scf(

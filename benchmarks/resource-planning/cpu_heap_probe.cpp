@@ -13,6 +13,7 @@
 #include <new>
 #include <vector>
 
+#include "methods/generated_method_manifest.hpp"
 #include "methods/method.hpp"
 #include "molecule/basis.hpp"
 #include "scf/fleet.hpp"
@@ -104,17 +105,11 @@ int main(int argc, char** argv) {
   auto method = unrestricted ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF;
   const bool ks = argc == 2;
   if (ks) {
-    const std::string name(argv[1]);
-    if (name == "lda-rks")
-      method = VIBEQC_METHOD_LDA_RKS;
-    else if (name == "pbe-rks")
-      method = VIBEQC_METHOD_PBE_RKS;
-    else if (name == "lda-uks")
-      method = VIBEQC_METHOD_LDA_UKS;
-    else if (name == "pbe-uks")
-      method = VIBEQC_METHOD_PBE_UKS;
-    else
+    const auto* manifest = vibeqc::methods::generated::find_method(std::string_view(argv[1]));
+    if (manifest == nullptr ||
+        manifest->provider != vibeqc::methods::generated::PublicProvider::Dft)
       return 2;
+    method = manifest->method;
   }
   vibeqc::scf::ScfOptions options;
   options.density_fitting_mode =

@@ -3,6 +3,7 @@
 import json
 import shutil
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +29,9 @@ from vibeqc_compiler.integral.cpu_bundle import (
 from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 
-def test_cpu_target_selection_prefers_widest_supported_and_forces_safely(monkeypatch):
+def test_cpu_target_selection_prefers_widest_supported_and_forces_safely(
+    monkeypatch: typing.Any,
+) -> None:
     monkeypatch.delenv("VIBEQC_CPU_TARGET", raising=False)
     none = CpuRuntimeFeatures("x86_64", ())
     avx2 = CpuRuntimeFeatures("amd64", ("fma", "avx2"))
@@ -63,7 +66,7 @@ def test_cpu_target_selection_prefers_widest_supported_and_forces_safely(monkeyp
 
 
 @pytest.fixture(scope="module")
-def cpu_bundle(tmp_path_factory):
+def cpu_bundle(tmp_path_factory: typing.Any) -> typing.Any:
     executable = shutil.which("c++")
     if executable is None:
         pytest.skip("CPU C++ compiler required")
@@ -76,8 +79,8 @@ def cpu_bundle(tmp_path_factory):
 
 
 def test_bundle_materializes_portable_manifest_and_target_specific_cache(
-    cpu_bundle, tmp_path
-):
+    cpu_bundle: typing.Any, tmp_path: typing.Any
+) -> None:
     cpu_bundle.validate()
     assert tuple(target.name for target in cpu_bundle.targets) == (
         GENERIC_CPU_TARGET.name,
@@ -115,7 +118,9 @@ def test_bundle_materializes_portable_manifest_and_target_specific_cache(
     )
 
 
-def test_dispatch_loads_only_selected_compatible_candidate(cpu_bundle, monkeypatch):
+def test_dispatch_loads_only_selected_compatible_candidate(
+    cpu_bundle: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.delenv("VIBEQC_CPU_TARGET", raising=False)
     primitives = (
         (
@@ -166,10 +171,12 @@ def test_dispatch_loads_only_selected_compatible_candidate(cpu_bundle, monkeypat
     }
 
 
-def test_bundle_rejects_cross_architecture_before_loading(cpu_bundle, monkeypatch):
+def test_bundle_rejects_cross_architecture_before_loading(
+    cpu_bundle: typing.Any, monkeypatch: typing.Any
+) -> None:
     import vibeqc_compiler.integral.cpu_bundle as module
 
-    def forbidden_loader(*args, **kwargs):
+    def forbidden_loader(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("incompatible CPU binary must be rejected before dlopen")
 
     monkeypatch.setattr(module, "FirstDerivativeCpuLaneEvaluator", forbidden_loader)
@@ -180,7 +187,7 @@ def test_bundle_rejects_cross_architecture_before_loading(cpu_bundle, monkeypatc
         )
 
 
-def test_binary_target_gate_checks_runtime_abi(monkeypatch):
+def test_binary_target_gate_checks_runtime_abi(monkeypatch: typing.Any) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
     runtime = CpuRuntimeFeatures("x86_64", ())
     assert cpu_binary_target_supported("x86_64-linux-gnu", runtime)
@@ -188,7 +195,9 @@ def test_binary_target_gate_checks_runtime_abi(monkeypatch):
     assert not cpu_binary_target_supported("aarch64-linux-gnu", runtime)
 
 
-def test_bundle_rejects_forced_unsupported_isa_before_loading(cpu_bundle):
+def test_bundle_rejects_forced_unsupported_isa_before_loading(
+    cpu_bundle: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="unsupported"):
         FirstDerivativeCpuDispatchEvaluator(
             cpu_bundle,

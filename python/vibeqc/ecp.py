@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -18,7 +19,7 @@ from .basis import BasisSet, validate_ecp_data
 from .elements import checked_integer
 
 
-def resolve_ecp(basis, atoms):
+def resolve_ecp(basis: typing.Any, atoms: typing.Any) -> typing.Any:
     """Resolve immutable source records to atom-mapped scalar residual terms."""
     cores, terms = [], []
     metadata = basis.by_element if isinstance(basis, BasisSet) else {}
@@ -102,7 +103,7 @@ class ECPIntegrals:
     backend: str
     model_identity: str
 
-    def quadrature_difference(self, refined):
+    def quadrature_difference(self, refined: typing.Any) -> typing.Any:
         """Empirical discretization evidence; not a rigorous error bound."""
         if (
             not isinstance(refined, ECPIntegrals)
@@ -132,10 +133,10 @@ class ECPIntegrals:
         return result
 
     @property
-    def matrix(self):
+    def matrix(self) -> typing.Any:
         return self.local + self.nonlocal_
 
-    def contract(self, weights):
+    def contract(self, weights: typing.Any) -> typing.Any:
         """Contract fixed arbitrary real AO weights, including nonsymmetric ones."""
         if self.local_derivative is None:
             raise ValueError("ECP derivatives were not requested")
@@ -150,16 +151,16 @@ class ECPIntegrals:
 
 
 def ecp_integrals(
-    atoms,
-    basis,
+    atoms: typing.Any,
+    basis: typing.Any,
     *,
-    charge=0,
-    multiplicity=1,
-    device="cpu",
-    derivatives=True,
-    radial_points=160,
-    polar_points=32,
-):
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+    device: typing.Any = "cpu",
+    derivatives: typing.Any = True,
+    radial_points: typing.Any = 160,
+    polar_points: typing.Any = 32,
+) -> typing.Any:
     """Evaluate native ECP residuals, without SCF or evaluating electron repulsion.
 
     Quadrature settings are explicit. Compare a refined grid to assess

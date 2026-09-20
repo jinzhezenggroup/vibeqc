@@ -1,5 +1,6 @@
 """Conventional post-HF provider boundary for fixed-amplitude CPU evaluation."""
 
+import typing
 from hashlib import sha256
 
 import numpy as np
@@ -12,7 +13,14 @@ from tools.vibeqc_validation.schema import canonical_hash
 from .equations import BLOCKS, build_program
 
 
-def evaluate(snapshot, provider, t1, t2, *, max_bytes=256 << 20):
+def evaluate(
+    snapshot: typing.Any,
+    provider: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    *,
+    max_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Return energy and physical T1 residual, never an iteration update.
 
     Snapshot validity is owned by #147. The provider retains integral blocks

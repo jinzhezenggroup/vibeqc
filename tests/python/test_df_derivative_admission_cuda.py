@@ -3,6 +3,7 @@
 import ctypes
 import json
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def production_profile():
+def production_profile() -> typing.Any:
     """Query the allocated device, without adding a CuPy dependency."""
     assert os.environ.get("SLURM_JOB_ID")
     runtime = ctypes.CDLL("libcudart.so")
@@ -54,8 +55,12 @@ def production_profile():
 @pytest.mark.parametrize("buckets", ["off", "on", "packet"])
 @pytest.mark.parametrize("model", ["equal192", "practical96", "oh"])
 def test_qualified_lowering_without_ao_shape_admission(
-    model, buckets, production_profile, monkeypatch, tmp_path
-):
+    model: typing.Any,
+    buckets: typing.Any,
+    production_profile: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Exercise panel/group/packet consumers against independent full forces.
 
     The practical basis includes auxiliary f shells, which must retain the

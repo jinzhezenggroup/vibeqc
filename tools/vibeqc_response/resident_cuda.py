@@ -9,6 +9,7 @@ receives scalar reductions/status during iteration and explicit final results.
 from __future__ import annotations
 
 import ctypes as ct
+import typing
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
@@ -41,7 +42,7 @@ class _Diagnostic(ct.Structure):
     ]
 
 
-def _bind(lib):
+def _bind(lib: typing.Any) -> None:
     handle = ct.c_void_p
     lib.vibeqc_rhf_response_resident_create.argtypes = [
         ct.c_void_p,
@@ -84,15 +85,15 @@ def _bind(lib):
 class _ResidentVector:
     __slots__ = ("__weakref__", "_released", "owner", "slot")
 
-    def __init__(self, owner, slot):
+    def __init__(self, owner: typing.Any, slot: typing.Any) -> None:
         self.owner, self.slot, self._released = owner, slot, False
 
-    def release(self):
+    def release(self) -> None:
         if not self._released:
             self._released = True
             self.owner._release_slot(self.slot)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_released"):
             self.release()
 
@@ -102,7 +103,14 @@ class CudaResidentRHFResponse:
 
     resident = True
 
-    def __init__(self, backend, problem, *, vector_slots, device_budget_bytes):
+    def __init__(
+        self,
+        backend: typing.Any,
+        problem: typing.Any,
+        *,
+        vector_slots: typing.Any,
+        device_budget_bytes: typing.Any,
+    ) -> None:
         if not isinstance(backend, CudaDirectJKBackend):
             raise TypeError("resident RHF response requires CudaDirectJKBackend")
         if not isinstance(problem, ResponseProblem) or problem.method != "rhf":
@@ -172,7 +180,7 @@ class CudaResidentRHFResponse:
             }
         )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         # The native adapter borrows the parent's stream and direct-J/K plan.
@@ -192,7 +200,7 @@ class CudaResidentRHFResponse:
                 )
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         value = _Diagnostic(
@@ -210,11 +218,11 @@ class CudaResidentRHFResponse:
         }
 
     @property
-    def workspace_bytes(self):
+    def workspace_bytes(self) -> typing.Any:
         return self.diagnostics["owned_device_bytes"]
 
     @contextmanager
-    def solver_workspace(self):
+    def solver_workspace(self) -> typing.Any:
         # A returned/failed solver frame can be retained by a profiler or a
         # traceback. Its temporary leases must not depend on garbage collection.
         self.reset()
@@ -224,12 +232,12 @@ class CudaResidentRHFResponse:
             for vector in list(self._vectors.values()):
                 vector.release()
 
-    def reset(self):
+    def reset(self) -> None:
         if self._live:
             raise RuntimeError("resident Krylov reset with live vector leases")
         self._free = list(reversed(range(self.vector_slots)))
 
-    def _validate_vector(self, value):
+    def _validate_vector(self, value: typing.Any) -> None:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         if not isinstance(value, _ResidentVector) or value.owner is not self:
@@ -237,7 +245,7 @@ class CudaResidentRHFResponse:
         if value._released or value.slot not in self._live:
             raise ValueError("resident vector lease has been released")
 
-    def _allocate(self):
+    def _allocate(self) -> typing.Any:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         if not self._free:
@@ -248,13 +256,13 @@ class CudaResidentRHFResponse:
         self._vectors[slot] = vector
         return vector
 
-    def _release_slot(self, slot):
+    def _release_slot(self, slot: typing.Any) -> None:
         if slot in self._live:
             self._live.remove(slot)
             self._vectors.pop(slot, None)
             self._free.append(slot)
 
-    def from_host(self, values):
+    def from_host(self, values: typing.Any) -> typing.Any:
         values = np.asarray(values)
         if (
             values.shape != (self.dimension,)
@@ -271,7 +279,7 @@ class CudaResidentRHFResponse:
             vector.release()
             raise
 
-    def zeros(self):
+    def zeros(self) -> typing.Any:
         vector = self._allocate()
         try:
             self._call("zero", vector.slot)
@@ -280,7 +288,7 @@ class CudaResidentRHFResponse:
             vector.release()
             raise
 
-    def copy(self, value):
+    def copy(self, value: typing.Any) -> typing.Any:
         self._validate_vector(value)
         vector = self._allocate()
         try:
@@ -290,32 +298,32 @@ class CudaResidentRHFResponse:
             vector.release()
             raise
 
-    def scale(self, value, alpha):
+    def scale(self, value: typing.Any, alpha: typing.Any) -> typing.Any:
         vector = self.copy(value)
         self._call("scale", vector.slot, float(alpha))
         return vector
 
-    def subtract(self, left, right):
+    def subtract(self, left: typing.Any, right: typing.Any) -> typing.Any:
         self._validate_vector(left)
         self._validate_vector(right)
         result = self.copy(left)
         self._call("axpy", result.slot, -1.0, right.slot)
         return result
 
-    def dot(self, left, right):
+    def dot(self, left: typing.Any, right: typing.Any) -> typing.Any:
         self._validate_vector(left)
         self._validate_vector(right)
         output = ct.c_double()
         self._call("dot", left.slot, right.slot, ct.byref(output))
         return float(output.value)
 
-    def norm(self, value):
+    def norm(self, value: typing.Any) -> typing.Any:
         self._validate_vector(value)
         output = ct.c_double()
         self._call("norm", value.slot, ct.byref(output))
         return float(output.value)
 
-    def apply(self, operator, value):
+    def apply(self, operator: typing.Any, value: typing.Any) -> typing.Any:
         self._validate_vector(value)
         del operator
         result = self._allocate()
@@ -326,14 +334,21 @@ class CudaResidentRHFResponse:
             result.release()
             raise
 
-    def precondition(self, preconditioner, value):
+    def precondition(self, preconditioner: typing.Any, value: typing.Any) -> typing.Any:
         if preconditioner is not None:
             raise NotImplementedError(
                 "resident RHF Krylov does not permit a host preconditioner fallback"
             )
         return self.copy(value)
 
-    def orthogonalize(self, basis, value, *, reorthogonalize, tolerance):
+    def orthogonalize(
+        self,
+        basis: typing.Any,
+        value: typing.Any,
+        *,
+        reorthogonalize: typing.Any,
+        tolerance: typing.Any,
+    ) -> typing.Any:
         self._validate_vector(value)
         for vector in basis:
             self._validate_vector(vector)
@@ -349,7 +364,13 @@ class CudaResidentRHFResponse:
                 break
         return work, coefficients, self.norm(work)
 
-    def combination(self, base, basis, coefficients, preconditioner):
+    def combination(
+        self,
+        base: typing.Any,
+        basis: typing.Any,
+        coefficients: typing.Any,
+        preconditioner: typing.Any,
+    ) -> typing.Any:
         self._validate_vector(base)
         basis = tuple(basis)
         for vector in basis:
@@ -363,18 +384,18 @@ class CudaResidentRHFResponse:
             self._call("axpy", result.slot, float(coefficient), vector.slot)
         return result
 
-    def to_host(self, value):
+    def to_host(self, value: typing.Any) -> typing.Any:
         self._validate_vector(value)
         output = np.empty(self.dimension, dtype=np.float64)
         self._call("download", value.slot, output.ctypes.data_as(_DOUBLE), output.size)
         return output
 
-    def stack_host(self, values):
+    def stack_host(self, values: typing.Any) -> typing.Any:
         if not values:
             return np.empty((self.dimension, 0))
         return np.column_stack([self.to_host(value) for value in values])
 
-    def close(self):
+    def close(self) -> None:
         if not self._closed:
             if self._live:
                 raise RuntimeError(
@@ -384,10 +405,10 @@ class CudaResidentRHFResponse:
             self._handle = ct.c_void_p()
             self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, exc_type, _exc, _traceback):
+    def __exit__(self, exc_type: object, _exc: object, _traceback: object) -> None:
         if exc_type is not None:
             # Solver traceback frames still own their vectors while unwinding.
             # Revoke these leases before destroying the native owner instead of

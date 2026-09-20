@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import typing
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
@@ -14,7 +15,7 @@ from .problem import (
 )
 
 
-def rhf_operator_identity(backend):
+def rhf_operator_identity(backend: typing.Any) -> typing.Any:
     """Stable operator key for one RHF J/K backend."""
     return canonical_hash(
         {
@@ -26,7 +27,7 @@ def rhf_operator_identity(backend):
     )
 
 
-def cpks_operator_identity(backend, xc_kernel):
+def cpks_operator_identity(backend: typing.Any, xc_kernel: typing.Any) -> typing.Any:
     """Stable operator key for one CPKS semilocal kernel."""
     return canonical_hash(
         {
@@ -42,7 +43,7 @@ def cpks_operator_identity(backend, xc_kernel):
 class _BaseResponseOperator:
     """Shared validation/statistics for density-response operators."""
 
-    def __init__(self, problem: ResponseProblem, backend):
+    def __init__(self, problem: ResponseProblem, backend: typing.Any) -> None:
         if not isinstance(problem, ResponseProblem):
             raise TypeError("expected ResponseProblem")
         self.problem = problem
@@ -61,11 +62,11 @@ class _BaseResponseOperator:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return self.problem.operator_identity
 
     @property
-    def host_workspace_bytes(self):
+    def host_workspace_bytes(self) -> typing.Any:
         """Conservative logical host buffers simultaneously owned by one action."""
         backend = getattr(self.backend, "host_workspace_bytes", None)
         if type(backend) is not int or backend < 0:
@@ -87,7 +88,7 @@ class _BaseResponseOperator:
         )
 
     @property
-    def device_workspace_bytes(self):
+    def device_workspace_bytes(self) -> typing.Any:
         """Retained/peak device bytes declared by the selected response provider."""
         value = getattr(self.backend, "device_workspace_bytes", None)
         if type(value) is not int or value < 0:
@@ -95,7 +96,7 @@ class _BaseResponseOperator:
         return value
 
     @property
-    def resource_identity(self):
+    def resource_identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "problem": self.problem.identity,
@@ -107,7 +108,7 @@ class _BaseResponseOperator:
             }
         )
 
-    def _record(self, started, backend_started):
+    def _record(self, started: typing.Any, backend_started: typing.Any) -> None:
         self.statistics["actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started
         self.statistics["backend_seconds"] += time.perf_counter() - backend_started
@@ -120,13 +121,15 @@ class _BaseResponseOperator:
             self.statistics["peak_workspace_bytes"], workspace
         )
 
-    def _delta_density_ao(self, vector):
+    def _delta_density_ao(self, vector: typing.Any) -> typing.Any:
         x = self.problem.layout.validate_vector(vector)
         delta_mo = self.problem.layout.density_matrix(x)
         c = self.problem.reference.coefficients
         return x, c @ delta_mo @ c.T
 
-    def _base_action(self, vector, *, transpose=False):
+    def _base_action(
+        self, vector: typing.Any, *, transpose: typing.Any = False
+    ) -> typing.Any:
         started = time.perf_counter()
         x, delta_ao = self._delta_density_ao(vector)
         backend_started = time.perf_counter()
@@ -152,16 +155,18 @@ class _BaseResponseOperator:
             self.statistics["transpose_actions"] += 1
         return self.problem.layout.validate_vector(response.reshape(-1))
 
-    def _xc_response(self, delta_ao, *, transpose=False):
+    def _xc_response(
+        self, delta_ao: typing.Any, *, transpose: typing.Any = False
+    ) -> typing.Any:
         """Semilocal XC response; RHF has none."""
         del delta_ao, transpose
         return 0.0
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         """Apply the Jacobian action to one response vector."""
         return self._base_action(vector)
 
-    def apply_transpose(self, vector):
+    def apply_transpose(self, vector: typing.Any) -> typing.Any:
         """Apply the transpose action under the Euclidean response metric.
 
         The real closed-shell RHF/CPKS Jacobian is symmetric for the canonical
@@ -170,14 +175,14 @@ class _BaseResponseOperator:
         """
         return self._base_action(vector, transpose=True)
 
-    def apply_many(self, matrix):
+    def apply_many(self, matrix: typing.Any) -> typing.Any:
         """Apply the operator to every column while sharing operator state."""
         values = self.problem.validate_rhs(matrix)
         return np.column_stack(
             [self.apply(values[:, column]) for column in range(values.shape[1])]
         )
 
-    def dot_identity(self, left, right):
+    def dot_identity(self, left: typing.Any, right: typing.Any) -> typing.Any:
         """Return the JVP/VJP dot-product identity error."""
         left = self.problem.layout.validate_vector(left)
         right = self.problem.layout.validate_vector(right)
@@ -186,7 +191,7 @@ class _BaseResponseOperator:
         scale = max(1.0, abs(lhs), abs(rhs))
         return abs(lhs - rhs) / scale
 
-    def to_dense(self):
+    def to_dense(self) -> typing.Any:
         """Materialize the operator for tiny explicit-oracle tests only."""
         if self.dimension > 4096:
             raise ValueError("dense response materialization is tiny-system only")
@@ -208,7 +213,7 @@ class RHFResponseOperator(_BaseResponseOperator):
 
     exchange_fraction = 0.5
 
-    def __init__(self, problem, backend):
+    def __init__(self, problem: typing.Any, backend: typing.Any) -> None:
         super().__init__(problem, backend)
         if problem.method != "rhf":
             raise ResponseUnsupported("RHFResponseOperator requires an RHF problem")
@@ -219,12 +224,12 @@ class RHFResponseOperator(_BaseResponseOperator):
     @classmethod
     def build_problem(
         cls,
-        reference,
-        backend,
+        reference: typing.Any,
+        backend: typing.Any,
         *,
-        rhs_layout="ov-response-vector",
-        perturbation_labels=(),
-    ):
+        rhs_layout: typing.Any = "ov-response-vector",
+        perturbation_labels: typing.Any = (),
+    ) -> typing.Any:
         """Create the exact problem snapshot used by this operator."""
         return ResponseProblem.from_reference(
             reference,
@@ -246,7 +251,9 @@ class CPKSResponseOperator(_BaseResponseOperator):
 
     exchange_fraction = 0.0
 
-    def __init__(self, problem, backend, xc_kernel):
+    def __init__(
+        self, problem: typing.Any, backend: typing.Any, xc_kernel: typing.Any
+    ) -> None:
         super().__init__(problem, backend)
         if problem.method != "cpks":
             raise ResponseUnsupported("CPKSResponseOperator requires a CPKS problem")
@@ -276,13 +283,13 @@ class CPKSResponseOperator(_BaseResponseOperator):
     @classmethod
     def build_problem(
         cls,
-        reference,
-        backend,
-        xc_kernel,
+        reference: typing.Any,
+        backend: typing.Any,
+        xc_kernel: typing.Any,
         *,
-        rhs_layout="ov-response-vector",
-        perturbation_labels=(),
-    ):
+        rhs_layout: typing.Any = "ov-response-vector",
+        perturbation_labels: typing.Any = (),
+    ) -> typing.Any:
         """Create the exact CPKS problem snapshot used by this operator."""
         return ResponseProblem.from_reference(
             reference,
@@ -292,7 +299,9 @@ class CPKSResponseOperator(_BaseResponseOperator):
             perturbation_labels=perturbation_labels,
         )
 
-    def _xc_response(self, delta_ao, *, transpose=False):
+    def _xc_response(
+        self, delta_ao: typing.Any, *, transpose: typing.Any = False
+    ) -> typing.Any:
         if transpose:
             return self.xc_kernel.apply_transpose(delta_ao)
         return self.xc_kernel.apply(delta_ao)
@@ -307,7 +316,9 @@ class DenseMatrixResponseOperator:
     that a dense action is matrix-free.
     """
 
-    def __init__(self, problem, matrix, *, backend_identity):
+    def __init__(
+        self, problem: typing.Any, matrix: typing.Any, *, backend_identity: typing.Any
+    ) -> None:
         if not isinstance(problem, ResponseProblem):
             raise TypeError("expected ResponseProblem")
         value = np.asarray(matrix, dtype=np.float64)
@@ -327,7 +338,7 @@ class DenseMatrixResponseOperator:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "problem": self.problem.identity,
@@ -336,27 +347,27 @@ class DenseMatrixResponseOperator:
             }
         )
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         started = time.perf_counter()
         value = self.matrix @ np.asarray(vector, dtype=np.float64)
         self.statistics["actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started
         return value
 
-    def apply_transpose(self, vector):
+    def apply_transpose(self, vector: typing.Any) -> typing.Any:
         started = time.perf_counter()
         value = self.matrix.T @ np.asarray(vector, dtype=np.float64)
         self.statistics["transpose_actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started
         return value
 
-    def dot_identity(self, left, right):
+    def dot_identity(self, left: typing.Any, right: typing.Any) -> typing.Any:
         lhs = float(np.dot(left, self.apply(right)))
         rhs = float(np.dot(self.apply_transpose(left), right))
         return abs(lhs - rhs) / max(1.0, abs(lhs), abs(rhs))
 
 
-def validate_rotation_layout(problem):
+def validate_rotation_layout(problem: typing.Any) -> typing.Any:
     """Public checked accessor for callers implementing #153-style RHS code."""
     if not isinstance(problem.layout, RotationLayout):
         raise TypeError("problem layout is not a RotationLayout")

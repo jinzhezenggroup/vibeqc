@@ -9,6 +9,7 @@ enumerator is not a large-system packing planner.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -27,7 +28,7 @@ class PackedLayout:
     representatives: tuple[int, ...]
     weights: tuple[int, ...]
 
-    def __init__(self, spec: TensorSpec, *, max_elements: int = 1_000_000):
+    def __init__(self, spec: TensorSpec, *, max_elements: int = 1_000_000) -> None:
         """Build signed orbits using declared generators, including zero orbits."""
         checked_size(max_elements, "packing element budget")
         if spec.size > max_elements:
@@ -75,7 +76,7 @@ class PackedLayout:
     def size(self) -> int:
         return len(self.representatives)
 
-    def _packed(self, values) -> np.ndarray:
+    def _packed(self, values: typing.Any) -> np.ndarray:
         values = np.asarray(values)
         if values.shape != (self.size,) or values.dtype != np.dtype(self.spec.dtype):
             raise ValueError("packed array shape/real dtype does not match its layout")
@@ -83,7 +84,7 @@ class PackedLayout:
             raise ValueError("packed amplitudes must be finite")
         return values
 
-    def _dense(self, values) -> np.ndarray:
+    def _dense(self, values: typing.Any) -> np.ndarray:
         values = np.asarray(values)
         if values.shape != self.spec.shape or values.dtype != np.dtype(self.spec.dtype):
             raise ValueError("dense array shape/real dtype does not match its layout")
@@ -91,7 +92,7 @@ class PackedLayout:
             raise ValueError("dense values must be finite")
         return values
 
-    def unpack(self, values) -> np.ndarray:
+    def unpack(self, values: typing.Any) -> np.ndarray:
         """Expand independent amplitudes without imposing extra antisymmetries."""
         values = self._packed(values)
         result = np.zeros(self.spec.size, dtype=self.spec.dtype)
@@ -100,7 +101,9 @@ class PackedLayout:
                 result[i] = sign * values[packed]
         return result.reshape(self.spec.shape)
 
-    def pack(self, dense, *, atol: float = 1e-11, rtol: float = 1e-10) -> np.ndarray:
+    def pack(
+        self, dense: typing.Any, *, atol: float = 1e-11, rtol: float = 1e-10
+    ) -> np.ndarray:
         """Pack an already symmetric tensor, rejecting lossy projection."""
         if not all(np.isfinite(x) and x >= 0 for x in (atol, rtol)):
             raise ValueError("packing tolerances must be finite and nonnegative")
@@ -114,7 +117,7 @@ class PackedLayout:
             raise ValueError("dense tensor violates the declared packed symmetry")
         return packed
 
-    def unpack_transpose(self, dense_bar) -> np.ndarray:
+    def unpack_transpose(self, dense_bar: typing.Any) -> np.ndarray:
         """Adjoint of ``unpack`` under the dense and weighted packed metrics.
 
         The adjoint is the signed orbit sum divided by the orbit weight:
@@ -135,7 +138,7 @@ class PackedLayout:
         result /= np.asarray(self.weights, dtype=self.spec.dtype)
         return result
 
-    def pack_transpose(self, packed_bar) -> np.ndarray:
+    def pack_transpose(self, packed_bar: typing.Any) -> np.ndarray:
         """Adjoint of ``pack`` under the weighted packed and dense metrics.
 
         ``<pack(y), x>_packed = <y, pack_transpose(x)>_dense``.  The map
@@ -150,7 +153,7 @@ class PackedLayout:
             flat[representative] = weights[index] * packed_bar[index]
         return result.reshape(self.spec.shape)
 
-    def inner_product(self, left, right) -> float:
+    def inner_product(self, left: typing.Any, right: typing.Any) -> float:
         """Use orbit weights to equal sum(unpack(left) * unpack(right))."""
         left, right = self._packed(left), self._packed(right)
         return float(

@@ -8,6 +8,7 @@ resident GPU execution, a native method registration, an RDM or a force API.
 from __future__ import annotations
 
 import threading
+import typing
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
@@ -52,7 +53,7 @@ class LambdaOptions:
         default_factory=lambda: GMRESOptions(rtol=0.0, atol=1e-11)
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("cc_tolerance", "lambda_tolerance"):
             value = getattr(self, name)
             if (
@@ -92,17 +93,17 @@ class CCSDLambdaResult:
     status: str = field(default="converged", init=False)
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return True
 
 
-def _graph_bytes(program):
+def _graph_bytes(program: typing.Any) -> typing.Any:
     return sum(n.spec.size * n.spec.itemsize for n in program.live_nodes) + sum(
         n.spec.size * n.spec.itemsize for n in program.outputs.values()
     )
 
 
-def _feed_hash(feeds):
+def _feed_hash(feeds: typing.Any) -> typing.Any:
     return canonical_hash(
         {
             name: sha256(np.ascontiguousarray(value, dtype="<f8").tobytes()).hexdigest()
@@ -132,14 +133,14 @@ class BoundCCSDLambda:
 
     def __init__(
         self,
-        snapshot,
-        cc_result,
+        snapshot: typing.Any,
+        cc_result: typing.Any,
         *,
-        options=None,
-        solver=None,
+        options: typing.Any = None,
+        solver: typing.Any = None,
         current_reference: Callable[[], str] | None = None,
-        backend="cpu",
-    ):
+        backend: typing.Any = "cpu",
+    ) -> None:
         if backend != "cpu":
             raise NotImplementedError(
                 "bound RCCSD Lambda currently supports CPU tooling only"
@@ -329,7 +330,7 @@ class BoundCCSDLambda:
         )
         self._assert_current(snapshot.identity)
 
-    def _assert_current(self, reference_identity):
+    def _assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity or (
             self._current_reference is not None
             and self._current_reference() != self.reference_identity
@@ -340,7 +341,7 @@ class BoundCCSDLambda:
         if transpose_solver_contract(self.solver) != self._solver_contract:
             raise ResponseCompatibilityError("Lambda solver contract changed")
 
-    def _pack(self, arrays):
+    def _pack(self, arrays: typing.Any) -> typing.Any:
         return np.concatenate(
             [
                 layout.pack(_array(a, layout.spec.shape, "CC amplitude/response"))
@@ -348,14 +349,14 @@ class BoundCCSDLambda:
             ]
         )
 
-    def _unpack(self, vector):
+    def _unpack(self, vector: typing.Any) -> typing.Any:
         split = self.layouts[0].size
         return (
             self.layouts[0].unpack(vector[:split]),
             self.layouts[1].unpack(vector[split:]),
         )
 
-    def _run(self, program, extra=None):
+    def _run(self, program: typing.Any, extra: typing.Any = None) -> typing.Any:
         self._assert_current(self.reference_identity)
         result = execute(
             program,
@@ -369,13 +370,13 @@ class BoundCCSDLambda:
         self._assert_current(self.reference_identity)
         return result.outputs
 
-    def _rhs(self, programs):
+    def _rhs(self, programs: typing.Any) -> typing.Any:
         out = self._run(
             programs.energy_vjp.program, {"bar_correlation_energy": np.asarray(-1.0)}
         )
         return self.sqrt_weights * self._pack((out["bar_t1"], out["bar_t2"]))
 
-    def _transpose(self, programs, vector):
+    def _transpose(self, programs: typing.Any, vector: typing.Any) -> typing.Any:
         l1, l2 = self._unpack(vector / self.sqrt_weights)
         out = self._run(
             programs.residual_vjp.program,
@@ -392,7 +393,7 @@ class BoundCCSDLambda:
             class Operator:
                 dimension = len(owner.sqrt_weights)
 
-                def apply(self, vector):
+                def apply(self, vector: typing.Any) -> typing.Any:
                     return owner._transpose(owner.programs, vector)
 
             result = checked_transpose_solve(

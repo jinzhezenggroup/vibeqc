@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import time
+import typing
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from tools.vibeqc_validation.fixtures import calculator_inputs
 
 
 @contextmanager
-def _mixed_override(threshold):
+def _mixed_override(threshold: typing.Any) -> typing.Any:
     """Restore the process policy even after a failed native experiment."""
     key = "VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD"
     old = os.environ.get(key)
@@ -40,7 +41,7 @@ def _mixed_override(threshold):
             os.environ[key] = old
 
 
-def run(baseline_path: Path, output: Path):
+def run(baseline_path: Path, output: Path) -> typing.Any:
     """Compare matched iteration settings with an independently strict baseline.
 
     Only the arithmetic request changes between each matched pair. Both are
@@ -195,7 +196,7 @@ def run(baseline_path: Path, output: Path):
     return record
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path)
     parser.add_argument("--output", type=Path, required=True)

@@ -1,5 +1,6 @@
 # MB16-43/06 coordinates: grimme-lab/mstore a9070de0..., Apache-2.0.
 import math
+import typing
 
 import pytest
 
@@ -26,7 +27,7 @@ XYZ = (
 )
 
 
-def test_upstream_mb16_43_06_energy_fixture():
+def test_upstream_mb16_43_06_energy_fixture() -> None:
     result = evaluate_r2scan3c_gcp(ZS, XYZ)
     assert result.status == "ok"
     assert result.energy == pytest.approx(0.0113040952, abs=5.0e-8)
@@ -35,7 +36,7 @@ def test_upstream_mb16_43_06_energy_fixture():
     assert result.forces[0][0] == -result.gradient[0][0]
 
 
-def test_gcp_gradient_matches_all_cartesian_finite_differences():
+def test_gcp_gradient_matches_all_cartesian_finite_differences() -> None:
     result = evaluate_r2scan3c_gcp(ZS, XYZ)
     assert math.isfinite(result.energy)
     for h in (1.0e-4, 3.0e-5):
@@ -52,6 +53,8 @@ def test_gcp_gradient_matches_all_cartesian_finite_differences():
 
 
 @pytest.mark.parametrize("coordinate", [float("nan"), float("inf"), -float("inf")])
-def test_single_atom_gcp_rejects_nonfinite_geometry(coordinate):
+def test_single_atom_gcp_rejects_nonfinite_geometry(
+    coordinate: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="finite"):
         evaluate_r2scan3c_gcp((1,), ((coordinate, 0.0, 0.0),))

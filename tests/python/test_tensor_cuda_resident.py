@@ -8,6 +8,7 @@ suite.
 """
 
 import inspect
+import typing
 
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
@@ -30,7 +31,7 @@ from vibeqc_compiler.tensor.cuda_resident_emit import resident_source
 TARGET = cuda_target_info("sm_80")
 
 
-def doubled_pair_program():
+def doubled_pair_program() -> typing.Any:
     """Two inputs, two outputs: one elementwise and one symmmetric double."""
     occupied = IndexSpace("occupied", "occupied", 2)
     virtual = IndexSpace("virtual", "virtual", 3)
@@ -48,7 +49,7 @@ def doubled_pair_program():
     return Program({"squared": add(multiply(t1, t1)), "copy": add(t2)})
 
 
-def test_resident_source_keeps_the_ordinary_abi():
+def test_resident_source_keeps_the_ordinary_abi() -> None:
     """A resident artifact must remain a valid host-staged artifact."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     source = resident_source(plan)
@@ -62,7 +63,7 @@ def test_resident_source_keeps_the_ordinary_abi():
         assert ordinary in source, ordinary
 
 
-def test_resident_source_declares_the_resident_abi():
+def test_resident_source_declares_the_resident_abi() -> None:
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     source = resident_source(plan)
     for entry in (
@@ -76,7 +77,7 @@ def test_resident_source_declares_the_resident_abi():
     assert "return 1;" in source
 
 
-def test_resident_spans_match_the_pinned_plan_offsets():
+def test_resident_spans_match_the_pinned_plan_offsets() -> None:
     """Spans are compiled from pinned offsets; the planner must pin them."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     assert all(plan.steps[i].last_use == len(plan.steps) for i in plan.inputs)
@@ -89,7 +90,7 @@ def test_resident_spans_match_the_pinned_plan_offsets():
         assert f"{{{step.offset}ULL,{step.node.spec.size * 8}ULL}}" in source
 
 
-def test_resident_run_propagates_the_ordinary_status():
+def test_resident_run_propagates_the_ordinary_status() -> None:
     """A native non-finite/division error must not be reported as success.
 
     The resident path inlines the generated launch sequence directly
@@ -107,7 +108,7 @@ def test_resident_run_propagates_the_ordinary_status():
     assert "throw std::runtime_error" in source
 
 
-def test_resident_validation_covers_every_input_symmetry():
+def test_resident_validation_covers_every_input_symmetry() -> None:
     """Uploads must be checked like the ordinary path, before any kernel."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     source = resident_source(plan)
@@ -118,7 +119,7 @@ def test_resident_validation_covers_every_input_symmetry():
     assert "1e-11 + 1e-10 * fabs(peer)" in source
 
 
-def test_resident_requires_pinned_materialized_outputs():
+def test_resident_requires_pinned_materialized_outputs() -> None:
     """Resident spans are only valid while the planner pins outputs.
 
     This is the invariant the whole design rests on: every output step must
@@ -135,7 +136,7 @@ def test_resident_requires_pinned_materialized_outputs():
     assert resident_source(plan)
 
 
-def test_resident_source_rejects_an_unpinned_output():
+def test_resident_source_rejects_an_unpinned_output() -> None:
     """The emitter must fail closed when an output is not pinned for the
     full plan lifetime — this is the emitter's own check, not the planner's.
     A future planner change that recycles an output's arena offset must be
@@ -157,7 +158,7 @@ def test_resident_source_rejects_an_unpinned_output():
         resident_source(plan)
 
 
-def test_resident_extension_is_part_of_the_generated_source():
+def test_resident_extension_is_part_of_the_generated_source() -> None:
     """Any plan-specific post-run action must be visible in the identity."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     clean = resident_source(plan)
@@ -166,7 +167,7 @@ def test_resident_extension_is_part_of_the_generated_source():
     assert "// plan-specific tables" in extended
 
 
-def test_resident_run_without_extension_has_no_undefined_hook():
+def test_resident_run_without_extension_has_no_undefined_hook() -> None:
     """The default source must not reference an undefined post-run symbol."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     source = resident_source(plan)
@@ -174,7 +175,7 @@ def test_resident_run_without_extension_has_no_undefined_hook():
     assert "VIBEQC_RESIDENT_POST_RUN" not in source
 
 
-def test_resident_extension_post_run_is_wired_only_when_declared():
+def test_resident_extension_post_run_is_wired_only_when_declared() -> None:
     """A declared post-run action is emitted and its status propagated."""
     plan = plan_cuda(doubled_pair_program(), TARGET, max_bytes=1 << 26)
     declared = resident_source(
@@ -190,7 +191,7 @@ def test_resident_extension_post_run_is_wired_only_when_declared():
 # ── lease invalidation and identity normalisation regressions ──
 
 
-def test_lease_is_invalidated_by_generation_or_readiness():
+def test_lease_is_invalidated_by_generation_or_readiness() -> None:
     """A DeviceTensor lease must be rejected after its owner's generation
     advances or readiness is cleared — otherwise a stale download could
     read arena data that was already overwritten by a later run()."""
@@ -217,7 +218,7 @@ def test_lease_is_invalidated_by_generation_or_readiness():
         lease2._step()
 
 
-def test_download_before_run_or_after_invalidation_is_rejected():
+def test_download_before_run_or_after_invalidation_is_rejected() -> None:
     """``download(None, name=...)`` and stale-lease downloads must both be
     rejected — the arena is not safe to read before ``run()`` succeeds or
     after a later ``upload``/failed run invalidated ``_ready``."""
@@ -246,7 +247,7 @@ def test_download_before_run_or_after_invalidation_is_rejected():
         _check_lease(owner, None)
 
 
-def test_compile_resident_source_identity_rejects_external_dependencies():
+def test_compile_resident_source_identity_rejects_external_dependencies() -> None:
     """The _logical_name helper must raise for paths outside the checkout
     or installed-package roots — a silent fallback to a relative path with
     `..` components would embed filesystem prefixes in the artifact identity

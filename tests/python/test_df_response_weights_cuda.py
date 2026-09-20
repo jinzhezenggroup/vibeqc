@@ -1,6 +1,7 @@
 """Retained values use device force weights without changing the physical result."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -18,8 +19,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 def test_raw_upload_attribution_preserves_complete_response(
-    method, representation, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Diagnostic transfers and sink layouts preserve complete weighted response.
 
     Returning to default on the same prepared plan also exercises the pinned
@@ -89,8 +93,13 @@ def test_raw_upload_attribution_preserves_complete_response(
 @pytest.mark.parametrize("budget", (0, 64 << 20))
 @pytest.mark.parametrize("metric_dot", ("blas", "serial"))
 def test_response_route_and_host_ablation(
-    method, representation, budget, metric_dot, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    budget: typing.Any,
+    metric_dot: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Switch only force-weight placement, including reuse of a warm value plan.
 
     The source route must remain on device even when the diagnostic host switch

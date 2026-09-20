@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import typing
 from pathlib import Path
 
 # These are implementation boundaries, independent of #231's scientific CUDA
@@ -516,6 +517,7 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/direct_task_layout.hpp",
     "scf/generated_shell_task.hpp",
     "scf/rhf.hpp",
+    "scf/solver/iteration_control.hpp",
 )
 # Upstream physical-reference export is a host bridge for post-HF clients.
 CUDA_ALLOWED["cuda_hf_driver"] += (
@@ -606,7 +608,7 @@ def audit_scf_structure(root: Path = ROOT) -> dict:
     return {"modules": modules, "edges": edges, "errors": errors}
 
 
-def main():
+def main() -> typing.Any:
     """Return failure for a dependency violation; expose an optional JSON inventory."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")

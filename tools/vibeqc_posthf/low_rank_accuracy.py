@@ -1,5 +1,6 @@
 """Fixed-density observations connecting integral diagnostics to NUM01 evidence."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -22,7 +23,13 @@ class LowRankFixedDensityAudit:
     diagnostics: dict
 
 
-def audit_fixed_density(factor, density, *, axis_tile=2, budget=None):
+def audit_fixed_density(
+    factor: typing.Any,
+    density: typing.Any,
+    *,
+    axis_tile: typing.Any = 2,
+    budget: typing.Any = None,
+) -> typing.Any:
     """Compare the same RHF density against the unscreened raw target provider.
 
     The error source is integral_factorization, not total_numerical. Different

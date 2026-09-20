@@ -11,13 +11,23 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | --- | --- | --- |
 | `integral` | IntegralIR, scalar algebra, recurrence lowering, integral schedules and promotion | `common` |
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
+| `array_api` | Bounded symbolic array frontend that lowers ordinary array expressions directly to TensorIR; no method/runtime policy | `tensor` |
 | `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
 | `method` | Canonical MethodIR, stationary-gradient source plans and implicit-solve derivative rules; no solver/runtime policy | `common`, `xc`, `tensor` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
-The compiler owns mathematical IR and lowering. `method` is the composition front
-end above XC/TensorIR; representability there does not imply runtime support.
+The compiler owns mathematical IR and lowering. The compiler-internal
+[array frontend](array_api_frontend.md) sits strictly above TensorIR: it may
+construct ordinary TensorIR nodes/programs, but TensorIR does not import the
+frontend and no frontend-only node survives lowering. It retains TensorIR's
+index-space, representation, symmetry, exact-coefficient and AD semantics
+rather than replacing them with shape-only array semantics. The architectural
+rationale is recorded in the
+[Array API frontend note](../.agents/notes/implemented/architecture/2026-09-20-array-api-tensorir-frontend.md).
+
+`method` is the composition front end above XC/TensorIR; representability
+there does not imply runtime support.
 The [implicit-response primitive](implicit_response.md) emits ordinary TensorIR
 JVP/VJP/RHS/source programs without importing the runtime solver.
 `src/integrals`, `src/tensor` and `src/dft` own the corresponding native interfaces, runtime allocation and
@@ -130,8 +140,10 @@ consumer migration boundaries are recorded in the
 With the existing NumPy dependency available, CMake can run the generator
 scripts directly from an uninstalled checkout. Each script bootstraps the
 explicit `python/` package root; compiler libraries never manipulate `sys.path`.
-CMake recursively tracks compiler leaves as generation dependencies and uses
-the same source inventory as `vibeqc.autotune.source_identity`.
+CMake and `vibeqc.autotune.source_identity` expand the same
+`cmake/VibeQCSourceIdentity.json` inventory. CMake retains `CONFIGURE_DEPENDS`
+for recursive groups so adding or removing a covered source reconfigures the
+build before the compatibility hash is reused.
 
 The wheel includes the integral manifests, required native templates and their
 transitive local headers, plus the audited Libxc source and license provenance

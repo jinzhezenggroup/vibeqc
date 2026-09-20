@@ -1,6 +1,7 @@
 """A recorded fixed-density audit must replay without executing SCF again."""
 
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -11,13 +12,15 @@ from tools.vibeqc_numerics.replay import replay
 
 
 @pytest.fixture
-def report(tmp_path):
+def report(tmp_path: typing.Any) -> typing.Any:
     run(tmp_path, names=["h2"])
     return tmp_path / "report.json"
 
 
-def test_strict_operator_replay_and_corruption(report, monkeypatch):
-    def forbidden(*args, **kwargs):
+def test_strict_operator_replay_and_corruption(
+    report: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("an operator replay must not launch SCF")
 
     monkeypatch.setattr("tools.vibeqc_numerics.audit.probe_hf", forbidden)
@@ -30,7 +33,9 @@ def test_strict_operator_replay_and_corruption(report, monkeypatch):
         replay(report)
 
 
-def test_replay_checks_report_identity_before_array_allocation(report):
+def test_replay_checks_report_identity_before_array_allocation(
+    report: typing.Any,
+) -> None:
     record = json.loads(report.read_text())
     record["cases"][0]["model"]["basis_hash"] = "altered"
     report.write_text(json.dumps(record))
@@ -41,7 +46,9 @@ def test_replay_checks_report_identity_before_array_allocation(report):
 @pytest.mark.parametrize(
     "cases", [[], [{"name": "failed", "status": "strict_reference_failed"}]]
 )
-def test_replay_requires_successful_reference_evidence(report, cases):
+def test_replay_requires_successful_reference_evidence(
+    report: typing.Any, cases: typing.Any
+) -> None:
     record = json.loads(report.read_text())
     record.pop("record_hash")
     record["cases"] = cases
@@ -50,7 +57,7 @@ def test_replay_requires_successful_reference_evidence(report, cases):
     assert replay(report)["passed"] is False
 
 
-def test_extra_holdouts_have_stable_independent_reference_generations():
+def test_extra_holdouts_have_stable_independent_reference_generations() -> None:
     from tools.vibeqc_numerics.fixtures import REFERENCE_DIRECTORY, accuracy_suite
 
     assert {r["inputs"]["name"] for r in accuracy_suite()} >= {"hf", "h2-def2-svp"}

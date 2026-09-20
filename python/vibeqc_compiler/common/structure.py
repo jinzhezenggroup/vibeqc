@@ -2,17 +2,21 @@
 
 import ast
 import importlib.util
+import typing
 from pathlib import Path
 
 from .paths import PACKAGE
 
 # Generic backend services never reach into a scientific subsystem. TensorIR
-# and IntegralIR stay independent; XC reuses scalar algebra and DFT ingredients.
-# Method composition sits above XC/TensorIR; custom derivative rules emit tensor graphs.
+# and IntegralIR stay independent; the bounded Array API frontend may depend on
+# TensorIR but TensorIR never depends on that frontend. XC reuses scalar algebra
+# and DFT ingredients. Method composition sits above XC/TensorIR; custom
+# derivative rules emit tensor graphs.
 ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
     "tensor": {"tensor", "common"},
+    "array_api": {"array_api", "tensor"},
     "geometry": {"geometry", "tensor", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
@@ -78,14 +82,14 @@ def audit_structure(package: Path = PACKAGE) -> dict:
         # Track whether each import lives inside an explicit operation. Class
         # bodies and conditionals at module scope still execute during import.
         def visit(
-            node,
-            lazy=False,
+            node: typing.Any,
+            lazy: typing.Any = False,
             *,
-            parent=parent,
-            relative=relative,
-            owner=owner,
-            name=name,
-        ):
+            parent: typing.Any = parent,
+            relative: typing.Any = relative,
+            owner: typing.Any = owner,
+            name: typing.Any = name,
+        ) -> None:
             lazy = lazy or isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             if isinstance(node, ast.ImportFrom):
                 target = node.module or ""

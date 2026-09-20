@@ -6,7 +6,7 @@ import ctypes
 import json
 import math
 import os
-from collections.abc import Iterable, Sequence
+import typing
 from dataclasses import dataclass, field, replace
 from functools import cache, lru_cache
 from importlib import resources
@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from . import _generated_methods as _method_manifest
 from . import _native
 from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
 from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
@@ -24,21 +25,12 @@ from .elements import checked_integer
 from .profiles import canonical_hash
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
-_METHODS = {
-    "rhf": _native.METHOD_RHF,
-    "uhf": _native.METHOD_UHF,
-    "wb97m-v": _native.METHOD_WB97M_V,
-    "ccsd(t)": _native.METHOD_RCCSD_T,
-    "mp2": _native.METHOD_MP2,
-    "lda-rks": _native.METHOD_LDA_RKS,
-    "pbe-rks": _native.METHOD_PBE_RKS,
-    "lda-uks": _native.METHOD_LDA_UKS,
-    "pbe-uks": _native.METHOD_PBE_UKS,
-}
-
-_HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
+_METHODS = _method_manifest.METHOD_NAME_TO_ID
+_HF_METHODS = _method_manifest.HF_METHOD_IDS
 
 
 @dataclass(frozen=True)
@@ -46,7 +38,7 @@ class Atom:
     atomic_number: int
     position: tuple[float, float, float]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Own finite coordinates and validate nuclei independently of basis data."""
         z = element_number(self.atomic_number)
         xyz = tuple(float(v) for v in self.position)
@@ -249,7 +241,7 @@ def _named_basis_shells(name: str, atoms: Sequence[Atom]) -> tuple[Shell, ...]:
 
 
 @lru_cache(maxsize=8)
-def _named_basis_record(name, representation):
+def _named_basis_record(name: typing.Any, representation: typing.Any) -> typing.Any:
     """Wrap the unchanged bundled decimal tables in the public record schema."""
     canonical = name.lower().replace("_", "-")
     pack = _basis_pack()
@@ -281,7 +273,7 @@ def _named_basis_record(name, representation):
     )
 
 
-def _snapshot_basis(basis, representation=None):
+def _snapshot_basis(basis: typing.Any, representation: typing.Any = None) -> typing.Any:
     """Load local records once and detach all caller-owned primitive storage."""
     if isinstance(basis, os.PathLike) or (
         isinstance(basis, str) and basis.endswith(".json")
@@ -341,8 +333,8 @@ class Calculator:
         screening_tolerance: float | None = None,
         precision: str = "fp64",
         target_accuracy: TargetAccuracy | None = None,
-        resource_budget=None,
-        ks_options=None,
+        resource_budget: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -541,13 +533,7 @@ class Calculator:
                     for shell in element.shells
                 )
             )
-            and self._method
-            in (
-                _native.METHOD_LDA_RKS,
-                _native.METHOD_PBE_RKS,
-                _native.METHOD_LDA_UKS,
-                _native.METHOD_PBE_UKS,
-            )
+            and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # #163 C2 is a Python public capability layered on the native KS
             # prepared owner plus the compiler-owned CUDA gradient consumer.
@@ -574,7 +560,7 @@ class Calculator:
                 )
 
     @property
-    def ks_options(self):
+    def ks_options(self) -> typing.Any:
         """Resolved immutable KS model, or None for another method family."""
         return self._ks_options
 
@@ -605,7 +591,10 @@ class Calculator:
         )
 
     def _method_descriptor(
-        self, auxiliary_basis: ctypes.c_void_p | None = None, *, resource_plan=None
+        self,
+        auxiliary_basis: ctypes.c_void_p | None = None,
+        *,
+        resource_plan: typing.Any = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -711,17 +700,17 @@ class Calculator:
             else tuple(selected_basis)
         )
 
-    def _density_fitting_backend(self):
+    def _density_fitting_backend(self) -> typing.Any:
         if self._density_fitting_mode == _native.DENSITY_FITTING_CPU_REFERENCE:
             return "cpu"
         if self._density_fitting_mode == _native.DENSITY_FITTING_CUDA:
             return "cuda"
         return self._device_name
 
-    def _model_signature(self):
+    def _model_signature(self) -> typing.Any:
         """Detect replacement of scientific input snapshots before prepared reuse."""
 
-        def identity(basis):
+        def identity(basis: typing.Any) -> typing.Any:
             if basis is None:
                 return None
             if isinstance(basis, BasisSet):
@@ -773,7 +762,9 @@ class Calculator:
             }
         )
 
-    def basis_metadata(self, atoms, *, charge=0, multiplicity=1):
+    def basis_metadata(
+        self, atoms: typing.Any, *, charge: typing.Any = 0, multiplicity: typing.Any = 1
+    ) -> typing.Any:
         """Resolve complete orbital/auxiliary scientific identities for this model."""
         atoms = tuple(Atom.from_value(a) for a in atoms)
         checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
@@ -810,7 +801,9 @@ class Calculator:
         )
         return result
 
-    def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
+    def resolved_model(
+        self, atoms: typing.Any, *, charge: typing.Any = 0, multiplicity: typing.Any = 1
+    ) -> ResolvedModel:
         """Resolve the scientific HF or MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
@@ -836,13 +829,8 @@ class Calculator:
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
         auxiliary = metadata.get("auxiliary", orbital) if fitted else None
-        method_names = {
-            _native.METHOD_RHF: "rhf",
-            _native.METHOD_UHF: "uhf",
-            _native.METHOD_MP2: "mp2",
-        }
         try:
-            resolved_method = method_names[self._method]
+            resolved_method = _method_manifest.METHOD_ID_TO_NAME[self._method]
         except KeyError as error:
             raise NotImplementedError(
                 "accuracy model is unavailable for this method"
@@ -874,7 +862,13 @@ class Calculator:
             else None,
         )
 
-    def _accuracy_assessment(self, atoms, charge, multiplicity, converged):
+    def _accuracy_assessment(
+        self,
+        atoms: typing.Any,
+        charge: typing.Any,
+        multiplicity: typing.Any,
+        converged: typing.Any,
+    ) -> typing.Any:
         """Attach a request without inventing operator audits or certificates."""
         if self._target_accuracy is None:
             return None
@@ -884,7 +878,9 @@ class Calculator:
             converged=converged,
         )
 
-    def _preflight_hf_basis(self, atoms, *, compute_forces=True):
+    def _preflight_hf_basis(
+        self, atoms: typing.Any, *, compute_forces: typing.Any = True
+    ) -> None:
         """Check operators and AO jets needed by the selected mean-field outputs.
 
         Runtime shape/resource and occupation checks remain native. This data
@@ -1032,7 +1028,13 @@ class Calculator:
         )
         return system
 
-    def _resource_request(self, systems, *, charges=None, multiplicities=None):
+    def _resource_request(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
             from .resources_ks import ks_resource_request
@@ -1068,7 +1070,7 @@ class Calculator:
             systems,
             charges=charges,
             multiplicities=multiplicities,
-            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            method=_method_manifest.METHOD_ID_TO_NAME[self._method],
             basis=self._basis,
             auxiliary_basis=self._auxiliary_basis,
             backend=self._device_name,
@@ -1110,8 +1112,13 @@ class Calculator:
         return request
 
     def estimate_resources(
-        self, systems, *, charges=None, multiplicities=None, budget=None
-    ):
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+        budget: typing.Any = None,
+    ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
         from .resources import ResourceBudget, plan_resources
 
@@ -1134,8 +1141,8 @@ class Calculator:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan=None,
-    ):  # Return annotation is deferred to avoid an import cycle.
+        resource_plan: typing.Any = None,
+    ) -> typing.Any:  # Return annotation is deferred to avoid an import cycle.
         """Prepare a persistent native ragged batch for repeated execution.
 
         The profiling options are CUDA performance diagnostics and should
@@ -1167,7 +1174,7 @@ class Calculator:
         charges: Sequence[int] | None = None,
         multiplicities: Sequence[int] | None = None,
         strict: bool = False,
-    ):
+    ) -> typing.Any:
         """Execute a one-shot native ragged batch and return per-system status."""
 
         with self.prepare_batch(
@@ -1305,7 +1312,7 @@ class Calculator:
                 resource_plan=resource_plan,
             )
 
-            def prepare():
+            def prepare() -> typing.Any:
                 return self._library.vibeqc_calculation_prepare(
                     context,
                     system,

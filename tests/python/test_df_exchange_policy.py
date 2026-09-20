@@ -3,13 +3,14 @@
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture(scope="module")
-def exchange_policy(tmp_path_factory):
+def exchange_policy(tmp_path_factory: typing.Any) -> typing.Any:
     """Compile the production policy without CUDA or a native library."""
     compiler = shutil.which("c++")
     if not compiler:
@@ -42,7 +43,7 @@ int main() {
         check=True,
     )
 
-    def query(shapes, policy="auto"):
+    def query(shapes: typing.Any, policy: typing.Any = "auto") -> typing.Any:
         env = dict(os.environ)
         env.pop("VIBEQC_DF_EXCHANGE", None)
         if policy is not None:
@@ -61,7 +62,9 @@ int main() {
     return query
 
 
-def test_work_policy_tracks_contraction_costs(exchange_policy):
+def test_work_policy_tracks_contraction_costs(
+    exchange_policy: typing.Any,
+) -> None:
     """Compare modeled operation counts, including odd sizes and rank boundaries."""
     shapes = [
         (n, a, 1, rank)
@@ -78,7 +81,9 @@ def test_work_policy_tracks_contraction_costs(exchange_policy):
         assert reserved == selected  # Known RHF rank authorizes the reservation.
 
 
-def test_invalid_indexing_batch_and_explicit_controls(exchange_policy):
+def test_invalid_indexing_batch_and_explicit_controls(
+    exchange_policy: typing.Any,
+) -> None:
     """Invalid/overflowing dimensions reject before products; overrides survive."""
     invalid = [
         (0, 3, 1, 1),

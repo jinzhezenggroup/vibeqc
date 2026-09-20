@@ -2,6 +2,7 @@
 
 import json
 import re
+import typing
 from pathlib import Path
 
 from .policy import SCHEDULES, DfDerivativeTrial
@@ -9,7 +10,7 @@ from .policy import SCHEDULES, DfDerivativeTrial
 MANIFEST = Path(__file__).resolve().parents[1] / "production_df_derivatives.json"
 
 
-def _validate_profile(profile):
+def _validate_profile(profile: typing.Any) -> None:
     """Apply the same mathematical and evidence gates to both comparison arms."""
     if not isinstance(profile, dict) or type(profile.get("qualified")) is not bool:
         raise ValueError("explicit endpoint qualification status required")
@@ -51,7 +52,7 @@ def _validate_profile(profile):
             raise ValueError("both endpoints, sanitizer and gradient evidence required")
 
 
-def load_manifest(path=MANIFEST):
+def load_manifest(path: typing.Any = MANIFEST) -> typing.Any:
     """Reject unavailable math and unbound promotions before generating CUDA.
 
     An unqualified campaign may retain one qualified ``baseline`` profile per
@@ -83,7 +84,7 @@ def load_manifest(path=MANIFEST):
     return payload
 
 
-def emit_policy(path=MANIFEST):
+def emit_policy(path: typing.Any = MANIFEST) -> typing.Any:
     """Keep parsing and evidence handling out of the native response hot path."""
     manifest = load_manifest(path)
     entries = []

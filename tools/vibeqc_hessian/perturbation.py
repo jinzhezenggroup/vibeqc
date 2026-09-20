@@ -4,6 +4,7 @@ Single-coordinate and bounded multi-RHS Hessian consumers share the exact
 metric, occupied-response and energy-weighted-density conventions here.
 """
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -41,7 +42,7 @@ class RHFNuclearBatchResponse:
     solve_result: MultiRHSResult
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return self.solve_result.converged
 
 
@@ -52,7 +53,7 @@ class _PreparedNuclearPerturbation:
     overlap_mo: np.ndarray
 
 
-def _matrix(value, n, name):
+def _matrix(value: typing.Any, n: typing.Any, name: typing.Any) -> typing.Any:
     array = np.asarray(value)
     if (
         array.shape != (n, n)
@@ -68,7 +69,7 @@ def _matrix(value, n, name):
     return array
 
 
-def _validate_operator(operator):
+def _validate_operator(operator: typing.Any) -> typing.Any:
     if not isinstance(operator, RHFResponseOperator):
         raise TypeError("expected the shared RHFResponseOperator")
     ref = operator.problem.reference
@@ -85,12 +86,14 @@ def _validate_operator(operator):
     return ref, layout
 
 
-def _induced_fock(operator, density):
+def _induced_fock(operator: typing.Any, density: typing.Any) -> typing.Any:
     coulomb, exchange = operator.backend.coulomb_exchange(density)
     return coulomb - 0.5 * exchange
 
 
-def _prepare_rhf_nuclear_perturbation(operator, frozen_fock, overlap):
+def _prepare_rhf_nuclear_perturbation(
+    operator: typing.Any, frozen_fock: typing.Any, overlap: typing.Any
+) -> typing.Any:
     """Build one nuclear RHS without running Krylov or publishing a response."""
     ref, _ = _validate_operator(operator)
     nmo, nocc = ref.nmo, ref.nocc
@@ -109,7 +112,9 @@ def _prepare_rhf_nuclear_perturbation(operator, frozen_fock, overlap):
     return _PreparedNuclearPerturbation(*(immutable(value) for value in values))
 
 
-def _reconstruct_rhf_nuclear_response(operator, prepared, result):
+def _reconstruct_rhf_nuclear_response(
+    operator: typing.Any, prepared: typing.Any, result: typing.Any
+) -> typing.Any:
     """Reconstruct occupied and density responses from one solved rotation vector."""
     if not isinstance(prepared, _PreparedNuclearPerturbation):
         raise TypeError("expected a prepared RHF nuclear perturbation")
@@ -143,7 +148,13 @@ def _reconstruct_rhf_nuclear_response(operator, prepared, result):
     return RHFNuclearResponse(*(immutable(value) for value in values), result)
 
 
-def solve_rhf_nuclear_perturbation(operator, frozen_fock, overlap, *, options=None):
+def solve_rhf_nuclear_perturbation(
+    operator: typing.Any,
+    frozen_fock: typing.Any,
+    overlap: typing.Any,
+    *,
+    options: typing.Any = None,
+) -> typing.Any:
     """Solve A x = -b once, retaining occupied metric and energy responses."""
     if options is not None and not isinstance(options, GMRESOptions):
         raise TypeError("options must be GMRESOptions")
@@ -160,13 +171,13 @@ def solve_rhf_nuclear_perturbation(operator, frozen_fock, overlap, *, options=No
 
 
 def solve_rhf_nuclear_perturbations(
-    operator,
-    frozen_focks,
-    overlaps,
+    operator: typing.Any,
+    frozen_focks: typing.Any,
+    overlaps: typing.Any,
     *,
-    strategy="recycled",
-    options=None,
-):
+    strategy: typing.Any = "recycled",
+    options: typing.Any = None,
+) -> typing.Any:
     """Solve a bounded set of RHF nuclear perturbations with one multi-RHS call.
 
     Inputs have shape (nrhs, nmo, nmo). RHS construction retains the exact

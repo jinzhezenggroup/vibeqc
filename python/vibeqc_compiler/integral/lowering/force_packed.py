@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..cuda import CudaEmitter
-from ..fused_schedule import (
-    FusedShellPlan,
-)
 from ..shell_class import (
     build_weighted_shell_contraction_kernel,
 )
@@ -15,6 +14,11 @@ from ..shell_spec import (
 )
 from .algebra import _packed_force_integral
 from .common import _emitted_component_names, _generic_task_component_setup
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
 
 
 def _emit_packed_force_consumer_cuda(

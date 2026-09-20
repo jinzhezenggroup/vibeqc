@@ -6,6 +6,7 @@ scientific results; it does not interpret device free memory as owned usage.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -53,7 +54,7 @@ H2 = [(1, (0, 0, -0.7)), (1, (0, 0, 0.7))]
 WATER = [(8, (0, 0, 0)), (1, (1.43, 0, 1.11)), (1, (-1.43, 0, 1.11))]
 
 
-def hf_case(method, mode):
+def hf_case(method: typing.Any, mode: typing.Any) -> typing.Any:
     """Measure all retained ragged buckets across matching cold/warm histories."""
     systems = [H2, WATER, H2]
     fitted = mode != "direct"
@@ -166,7 +167,7 @@ def hf_case(method, mode):
     }
 
 
-def shared_case(compiler, cache):
+def shared_case(compiler: typing.Any, cache: typing.Any) -> typing.Any:
     """Retain HF and TensorIR simultaneously under one constrained budget."""
     calculator = Calculator(device="cuda")
     hf = calculator._resource_request([H2])
@@ -222,7 +223,7 @@ def shared_case(compiler, cache):
         }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)

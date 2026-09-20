@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import sqlite3
+import typing
 from collections import defaultdict
 from pathlib import Path
 
@@ -21,7 +22,7 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 
 
-def interval_union(intervals):
+def interval_union(intervals: typing.Any) -> typing.Any:
     """Merge overlapping clock intervals, preserving gaps and exact ns units."""
     merged = []
     for start, end in sorted(intervals):
@@ -34,7 +35,7 @@ def interval_union(intervals):
     return merged
 
 
-def intersect_duration(windows, activity):
+def intersect_duration(windows: typing.Any, activity: typing.Any) -> typing.Any:
     """Measure the union intersection, counting concurrent work only once."""
     left, right = interval_union(windows), interval_union(activity)
     i = j = total = 0
@@ -48,7 +49,7 @@ def intersect_duration(windows, activity):
     return total
 
 
-def _nvtx_regions(connection, strings):
+def _nvtx_regions(connection: typing.Any, strings: typing.Any) -> typing.Any:
     """Index synchronous thread ranges; ignore marks without a complete end."""
     tables = {r[0] for r in connection.execute("select name from sqlite_master")}
     result = defaultdict(list)
@@ -62,7 +63,9 @@ def _nvtx_regions(connection, strings):
     return {tid: sorted(rows) for tid, rows in result.items()}
 
 
-def execution_coverage(window, kernels, copies, memsets):
+def execution_coverage(
+    window: typing.Any, kernels: typing.Any, copies: typing.Any, memsets: typing.Any
+) -> typing.Any:
     """Measure recorded activity unions within a host interval, without sums.
 
     The uncovered interval includes submission gaps and host preparation. It
@@ -87,7 +90,7 @@ def execution_coverage(window, kernels, copies, memsets):
     }
 
 
-def summarize(database):
+def summarize(database: typing.Any) -> typing.Any:
     """Require actual kernel/API/copy activity, retaining exact correlation counts."""
     with sqlite3.connect(f"file:{database.resolve()}?mode=ro", uri=True) as connection:
         connection.row_factory = sqlite3.Row
@@ -133,7 +136,7 @@ def summarize(database):
         leaf = min(active, key=lambda r: r[1] - r[0])[2] if active else None
         leaves[api["correlationId"]] = leaf
 
-    def region(api):
+    def region(api: typing.Any) -> typing.Any:
         return leaves[api["correlationId"]]
 
     raw = []
@@ -339,7 +342,7 @@ def summarize(database):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("database", type=Path)
     parser.add_argument("--output", type=raw_output_path, required=True)

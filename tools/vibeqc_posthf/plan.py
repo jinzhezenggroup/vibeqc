@@ -1,5 +1,6 @@
 """Checked numeric capacities for resident MO blocks and bounded AO tiles."""
 
+import typing
 from dataclasses import dataclass
 
 from .plan_spec import numeric_capacity
@@ -8,7 +9,7 @@ PROVIDER_ALLOWANCE = 96 << 20
 WORKSPACE_BYTES = 4 << 20
 
 
-def aligned(n, alignment=256):
+def aligned(n: typing.Any, alignment: typing.Any = 256) -> typing.Any:
     return (n + alignment - 1) // alignment * alignment
 
 
@@ -33,11 +34,18 @@ class BlockPlan:
     backend: str
 
     @property
-    def peak_bytes(self):
+    def peak_bytes(self) -> typing.Any:
         return self.host_bytes + self.device_bytes
 
 
-def plan_block(snapshot, source, block, *, axis_tile, backend):
+def plan_block(
+    snapshot: typing.Any,
+    source: typing.Any,
+    block: typing.Any,
+    *,
+    axis_tile: typing.Any,
+    backend: typing.Any,
+) -> typing.Any:
     block.validate(snapshot)
     if type(axis_tile) is not int or axis_tile < 1:
         raise ValueError("axis_tile must be positive")

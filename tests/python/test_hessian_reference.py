@@ -4,6 +4,8 @@ Fixtures cover H2/STO-3G and a custom 12-AO water stress basis (5 occupied,
 7 virtual); additional comparisons use genuine 7-AO water/STO-3G.
 """
 
+import typing
+
 import numpy as np
 import pytest
 
@@ -47,7 +49,7 @@ _O = [
 ]
 
 
-def _h2_mol():
+def _h2_mol() -> typing.Any:
     return build_mol(
         [(1, [0.0, 0.0, 0.0]), (1, [0.1, 0.2, 1.4])],
         {"H0": list(_S), "H1": list(_S)},
@@ -56,7 +58,7 @@ def _h2_mol():
     )
 
 
-def _water_mol():
+def _water_mol() -> typing.Any:
     return build_mol(
         [(8, [0.0, 0.0, 0.0]), (1, [0.0, 0.958, 0.587]), (1, [0.0, -0.958, 0.587])],
         {"O0": list(_O), "H1": list(_S), "H2": list(_S)},
@@ -75,7 +77,9 @@ def _water_mol():
         (_water_mol, "water", 5e-4),
     ],
 )
-def test_reference_matches_energy_fd(mol_fn, label, fd_tol):
+def test_reference_matches_energy_fd(
+    mol_fn: typing.Any, label: typing.Any, fd_tol: typing.Any
+) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -93,7 +97,7 @@ def test_reference_matches_energy_fd(mol_fn, label, fd_tol):
         (_water_mol, "water", 1e-8),
     ],
 )
-def test_symmetry(mol_fn, label, sym_tol):
+def test_symmetry(mol_fn: typing.Any, label: typing.Any, sym_tol: typing.Any) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -110,7 +114,9 @@ def test_symmetry(mol_fn, label, sym_tol):
         (_water_mol, "water", 1e-4),
     ],
 )
-def test_translation_invariance(mol_fn, label, tr_tol):
+def test_translation_invariance(
+    mol_fn: typing.Any, label: typing.Any, tr_tol: typing.Any
+) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -128,7 +134,7 @@ def test_translation_invariance(mol_fn, label, tr_tol):
         (_water_mol, "water"),
     ],
 )
-def test_component_sum_equals_total(mol_fn, label):
+def test_component_sum_equals_total(mol_fn: typing.Any, label: typing.Any) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -158,7 +164,9 @@ def test_component_sum_equals_total(mol_fn, label):
         (_water_mol, "water", "nuclear"),
     ],
 )
-def test_component_nonzero(mol_fn, label, key):
+def test_component_nonzero(
+    mol_fn: typing.Any, label: typing.Any, key: typing.Any
+) -> None:
     """Each component must be non-trivial (negative case: removing it breaks)."""
     mol = mol_fn()
     s = System(mol)
@@ -176,7 +184,9 @@ def test_component_nonzero(mol_fn, label, key):
         (_water_mol, "water", 5e-3),
     ],
 )
-def test_frozen_density_wrong(mol_fn, label, tol):
+def test_frozen_density_wrong(
+    mol_fn: typing.Any, label: typing.Any, tol: typing.Any
+) -> None:
     """Negative case: removing orbital relaxation must shift the Hessian
     by more than the reference-vs-FD error."""
     mol = mol_fn()
@@ -194,7 +204,7 @@ def test_frozen_density_wrong(mol_fn, label, tol):
     )
 
 
-def _sto3g_water():
+def _sto3g_water() -> typing.Any:
     from pyscf import gto
 
     # String atom input also checks fresh-geometry reconstruction without
@@ -209,7 +219,9 @@ def _sto3g_water():
 
 
 @pytest.mark.parametrize("mol_fn", [_h2_mol, _water_mol, _sto3g_water])
-def test_reference_matches_analytic_hessian_and_gradient_differences(mol_fn):
+def test_reference_matches_analytic_hessian_and_gradient_differences(
+    mol_fn: typing.Any,
+) -> None:
     from tools.vibeqc_hessian.reference import _converged_rhf
 
     mol = mol_fn()
@@ -237,7 +249,7 @@ def test_reference_matches_analytic_hessian_and_gradient_differences(mol_fn):
 
 
 @pytest.mark.parametrize("step", [0.0, -1e-4, np.inf, np.nan])
-def test_invalid_steps_rejected(step):
+def test_invalid_steps_rejected(step: typing.Any) -> None:
     mol = _h2_mol()
     with pytest.raises(ValueError, match="finite and positive"):
         System(mol, h1=step)
@@ -247,14 +259,14 @@ def test_invalid_steps_rejected(step):
         fd_hessian(mol, h=step)
 
 
-def test_unconverged_reference_is_rejected(monkeypatch):
+def test_unconverged_reference_is_rejected(monkeypatch: typing.Any) -> None:
     from tools.vibeqc_hessian import reference
 
     class FailedRHF:
         converged = False
         e_tot = -1.0
 
-        def kernel(self):
+        def kernel(self) -> typing.Any:
             return self.e_tot
 
     monkeypatch.setattr(reference.scf, "RHF", lambda mol: FailedRHF())
@@ -264,7 +276,7 @@ def test_unconverged_reference_is_rejected(monkeypatch):
         fd_hessian(_h2_mol())
 
 
-def test_open_shell_and_spherical_reference_are_rejected():
+def test_open_shell_and_spherical_reference_are_rejected() -> None:
     from pyscf import gto
 
     hydrogen = gto.M(atom="H 0 0 0", basis="sto-3g", spin=1, cart=True, verbose=0)

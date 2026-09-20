@@ -10,7 +10,7 @@ tomllib = pytest.importorskip("tomllib")
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_installed_tensor_runtime_has_complete_local_header_closure():
+def test_installed_tensor_runtime_has_complete_local_header_closure() -> None:
     config = tomllib.loads((ROOT / "pyproject.toml").read_text())
     assets = config["tool"]["scikit-build"]["wheel"]["force-include"]
     pending = [ROOT / "src/tensor/cuda_runtime.cuh"]
@@ -32,7 +32,7 @@ def test_installed_tensor_runtime_has_complete_local_header_closure():
             pending.append(child)
 
 
-def test_transitive_resources_participate_in_all_tensor_consumer_identities():
+def test_transitive_resources_participate_in_all_tensor_consumer_identities() -> None:
     # These consumers directly include the shared Tensor CUDA runtime. Their
     # source/header inventories must invalidate artifacts when ownership changes.
     modules = (

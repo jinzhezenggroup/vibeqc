@@ -6,6 +6,7 @@ runtime axis-moment calls for the first useful total-angular-degree <=2 domain.
 Higher classes always retain the existing exact generic evaluator.
 """
 
+import typing
 from itertools import product
 
 from .cuda import CudaEmitter
@@ -21,7 +22,7 @@ from .shell_spec import cartesian_components
 VALUE_CLASSES = tuple(a for a in product(range(3), repeat=3) if sum(a) <= 2)
 
 
-def build_value_rys_ir(components):
+def build_value_rys_ir(components: typing.Any) -> typing.Any:
     """Substitute root-affine Gaussian means/covariances into the shared moments."""
     graph = Graph()
     root = graph.variable("root")
@@ -59,7 +60,7 @@ def build_value_rys_ir(components):
     return graph, values[0] * values[1] * values[2]
 
 
-def emit_df_value_candidates_cuda(manifest=None):
+def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
     """Emit candidates against shared geometry, Boys, Rys and normalization ABIs."""
     from .df_tuning.value_manifest import VALUE_MANIFEST, load_value_manifest
 

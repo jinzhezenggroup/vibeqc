@@ -7,6 +7,7 @@ roots and their equation identity remain supplied by the existing integral IR.
 
 import hashlib
 import re
+import typing
 from dataclasses import dataclass
 
 from .expr import Expr, Graph
@@ -100,7 +101,7 @@ class ScalarKernel:
     scientific_hash: str
     name: str = "integral_values"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "roots", tuple(self.roots))
         object.__setattr__(self, "inputs", tuple(self.inputs))
         if (
@@ -138,7 +139,7 @@ class ScalarKernel:
 
 def emit_opencl(
     kernel: ScalarKernel, target: RuntimeCapabilities, shape: ExecutionShape
-):
+) -> typing.Any:
     """Emit one FP64 scalar primitive kernel for ordinary native host submission."""
     if target.backend != "opencl":
         raise ValueError("OpenCL lowering requires an OpenCL target")
@@ -172,6 +173,6 @@ def emit_opencl(
     return "\n".join(lines)
 
 
-def source_hash(source):
+def source_hash(source: typing.Any) -> typing.Any:
     """Separate executable source identity from the shared scientific identity."""
     return hashlib.sha256(source.encode()).hexdigest()

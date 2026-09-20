@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import math
 import threading
+import typing
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
@@ -26,13 +27,13 @@ from .krylov import GMRESOptions, _single_workspace_bytes, _vector_norm, solve
 from .problem import ResponseCompatibilityError, ResponseProblem
 
 
-def _checked_bytes(value, name):
+def _checked_bytes(value: typing.Any, name: typing.Any) -> typing.Any:
     if type(value) is not int or not 0 <= value <= 2**63 - 1:
         raise ValueError(f"{name} must be a nonnegative signed-64-bit byte count")
     return value
 
 
-def _array(value, shape, name):
+def _array(value: typing.Any, shape: typing.Any, name: typing.Any) -> typing.Any:
     array = np.asarray(value)
     if array.dtype != np.dtype("float64") or array.shape != shape:
         raise ValueError(f"{name} must have real FP64 dtype and shape {shape}")
@@ -41,7 +42,7 @@ def _array(value, shape, name):
     return array
 
 
-def _immutable(value):
+def _immutable(value: typing.Any) -> typing.Any:
     # A bytes-backed snapshot cannot be made writable by setflags(), and does
     # not alias caller arrays or an executor's reusable staging buffer.
     value = np.asarray(value)
@@ -63,7 +64,7 @@ class TransposeSolver(Protocol):
     rtol: float
     atol: float
 
-    def solve(self, operator, rhs):
+    def solve(self, operator: typing.Any, rhs: typing.Any) -> typing.Any:
         """Return the #179 solution/status/residual/workspace result contract."""
         ...
 
@@ -76,26 +77,26 @@ class ResponseGMRES:
     options: GMRESOptions = field(default_factory=GMRESOptions)
     backend: str = field(default="python-response-gmres", init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.dimension) is not int or self.dimension < 1:
             raise ValueError("response dimension must be a positive integer")
         if not isinstance(self.options, GMRESOptions):
             raise TypeError("response callback requires GMRESOptions")
 
     @property
-    def workspace_bytes(self):
+    def workspace_bytes(self) -> typing.Any:
         return _single_workspace_bytes(self.dimension, self.options)
 
     @property
-    def rtol(self):
+    def rtol(self) -> typing.Any:
         return self.options.rtol
 
     @property
-    def atol(self):
+    def atol(self) -> typing.Any:
         return self.options.atol
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "callback": "vibeqc-response-gmres-v1",
@@ -106,7 +107,7 @@ class ResponseGMRES:
             }
         )
 
-    def solve(self, operator, rhs):
+    def solve(self, operator: typing.Any, rhs: typing.Any) -> typing.Any:
         if operator.dimension != self.dimension:
             raise ValueError("response callback dimension mismatch")
         return solve(operator, rhs, options=self.options)
@@ -144,7 +145,13 @@ class CheckedAdjointResult:
     workspace_bytes: int
 
 
-def checked_transpose_solve(operator, rhs, *, solver, assert_current=None):
+def checked_transpose_solve(
+    operator: typing.Any,
+    rhs: typing.Any,
+    *,
+    solver: typing.Any,
+    assert_current: typing.Any = None,
+) -> typing.Any:
     """Shared first-order adjoint acceptance for generated single/block states.
 
     The caller supplies the already-transposed Euclidean action and performs
@@ -161,17 +168,17 @@ def checked_transpose_solve(operator, rhs, *, solver, assert_current=None):
     rhs = _immutable(_array(rhs, (dimension,), "adjoint RHS"))
     actions = 0
 
-    def check():
+    def check() -> None:
         if assert_current is not None:
             assert_current()
         if transpose_solver_contract(solver) != contract:
             raise ResponseCompatibilityError("implicit solver contract changed")
 
     class CheckedOperator:
-        def __init__(self):
+        def __init__(self) -> None:
             self.dimension = dimension
 
-        def apply(self, vector):
+        def apply(self, vector: typing.Any) -> typing.Any:
             nonlocal actions
             check()
             vector = _immutable(_array(vector, (dimension,), "adjoint iterate"))
@@ -223,14 +230,14 @@ class ReferenceTensorExecutor:
     workspace_bytes: int = field(default=0, init=False)
 
     @property
-    def plan_identity(self):
+    def plan_identity(self) -> typing.Any:
         return self.plan.identity
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash({"plan": self.plan_identity, "backend": self.backend})
 
-    def execute(self, stage, feeds):
+    def execute(self, stage: typing.Any, feeds: typing.Any) -> typing.Any:
         return execute(
             self.plan.programs[stage],
             feeds,
@@ -259,7 +266,7 @@ class ResponseTransposeBinding:
     device_workspace_bytes: int
     identity: str
 
-    def __init__(self, plan, operator):
+    def __init__(self, plan: typing.Any, operator: typing.Any) -> None:
         if not isinstance(plan, ImplicitVJPPlan):
             raise TypeError("response binding requires an ImplicitVJPPlan")
         problem = getattr(operator, "problem", None)
@@ -332,7 +339,7 @@ class ResponseTransposeBinding:
         object.__setattr__(self, "_operator", operator)
         object.__setattr__(self, "_resource_identity", resource_identity)
 
-    def assert_current(self, reference_identity):
+    def assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity:
             raise ResponseCompatibilityError(
                 "response operator belongs to a different reference"
@@ -350,7 +357,7 @@ class ResponseTransposeBinding:
                 "response operator resource contract changed"
             )
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         return self._operator.apply_transpose(vector)
 
 
@@ -408,13 +415,13 @@ class BoundImplicitState:
         *,
         reference_identity: str,
         solver: TransposeSolver | None = None,
-        executor=None,
-        response_operator=None,
+        executor: typing.Any = None,
+        response_operator: typing.Any = None,
         current_reference: Callable[[], str] | None = None,
         primal_atol: float = 1e-10,
         max_bytes: int = 256 << 20,
         max_device_bytes: int | None = None,
-    ):
+    ) -> None:
         if not isinstance(plan, ImplicitVJPPlan):
             raise TypeError("expected a generated ImplicitVJPPlan")
         if not isinstance(reference_identity, str) or not reference_identity.strip():
@@ -541,7 +548,7 @@ class BoundImplicitState:
             )
         self._assert_current(reference_identity)
 
-    def _callback_contract(self):
+    def _callback_contract(self) -> typing.Any:
         solver, executor = self.solver, self.executor
         for obj in (solver, executor):
             for name in ("identity", "backend"):
@@ -598,7 +605,7 @@ class BoundImplicitState:
             ),
         }
 
-    def _assert_current(self, reference_identity):
+    def _assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity or (
             self._current_reference is not None
             and self._current_reference() != self.reference_identity
@@ -613,7 +620,7 @@ class BoundImplicitState:
                 "implicit solver/executor contract changed"
             )
 
-    def _run(self, stage, extra=None):
+    def _run(self, stage: typing.Any, extra: typing.Any = None) -> typing.Any:
         feeds = dict(self.feeds)
         if extra:
             feeds.update(extra)
@@ -633,7 +640,11 @@ class BoundImplicitState:
         }
 
     def vjp(
-        self, state_cotangent, *, reference_identity: str, direct=None
+        self,
+        state_cotangent: typing.Any,
+        *,
+        reference_identity: str,
+        direct: typing.Any = None,
     ) -> ImplicitVJPResult:
         """Apply the first-order implicit rule without any solver-history tape."""
         with self._lock:
@@ -665,7 +676,7 @@ class BoundImplicitState:
             class Operator:
                 dimension = spec.dimension
 
-                def apply(self, vector):
+                def apply(self, vector: typing.Any) -> typing.Any:
                     if owner.transpose_binding is not None:
                         return owner.transpose_binding.apply(vector)
                     return owner._run(

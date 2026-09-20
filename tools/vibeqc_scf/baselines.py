@@ -1,6 +1,7 @@
 """Explicit same-AO orbital transport/extrapolation for traditional baselines."""
 
 import time
+import typing
 
 import numpy as np
 
@@ -8,7 +9,13 @@ from .proposals import project_occupied
 from .state import metric_root, spin_counts, validate_density
 
 
-def transported_density(previous, model, overlap, *, older=None):
+def transported_density(
+    previous: typing.Any,
+    model: typing.Any,
+    overlap: typing.Any,
+    *,
+    older: typing.Any = None,
+) -> typing.Any:
     """Build a new, validated determinant from one/two prior geometry states.
 
     Compatible basis/charge/spin/Hamiltonian identities are required. Geometry

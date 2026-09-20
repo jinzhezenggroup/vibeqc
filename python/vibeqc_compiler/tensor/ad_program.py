@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from itertools import pairwise
@@ -40,11 +40,13 @@ from .ir import (
     _execution_power_exponent,
     add,
     broadcast,
+    cast,
     constant,
     divide,
     einsum,
     exp,
     gather,
+    indexed_gather,
     input_tensor,
     log,
     multiply,
@@ -52,6 +54,8 @@ from .ir import (
     reduce_sum,
     reshape,
     scaled_bilinear,
+    scatter_add,
+    segment_sum,
     slice_tensor,
     sqrt,
     transpose,
@@ -60,15 +64,18 @@ from .packing import PackedLayout
 from .program import Program
 from .types import Index, IndexSpace, TensorSpec
 
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
 GENERATION_SCHEMA = "vibeqc.tensor.ad_program"
-GENERATION_VERSION = 2
+GENERATION_VERSION = 3
 TANGENT_PREFIX = "d_"
 COTANGENT_PREFIX = "bar_"
 DEFAULT_MAX_ELEMENTS = 1_000_000
 ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
-def _select_names(mapping: Mapping, names, label: str) -> dict:
+def _select_names(mapping: Mapping, names: typing.Any, label: str) -> dict:
     if names is None:
         return dict(mapping)
     if isinstance(names, str):
@@ -85,16 +92,16 @@ def _select_names(mapping: Mapping, names, label: str) -> dict:
     return selected
 
 
-def _coefficient(pair) -> Fraction:
+def _coefficient(pair: typing.Any) -> Fraction:
     return Fraction(*pair)
 
 
-def _scale(node: Node, pair) -> Node:
+def _scale(node: Node, pair: typing.Any) -> Node:
     """Exact scalar multiple through a one-operand add node."""
     return add(node, coefficients=(_coefficient(pair),))
 
 
-def _combine(terms) -> Node | None:
+def _combine(terms: typing.Any) -> Node | None:
     """Exact ordered sum of non-None terms; None means identically zero."""
     terms = [term for term in terms if term is not None]
     if not terms:
@@ -130,7 +137,7 @@ def _scaled_partial(node: Node, weight: Node, index: int) -> Node:
     return scaled_bilinear(*terms, den1, den2)
 
 
-def _equation(labels, output) -> str:
+def _equation(labels: typing.Any, output: typing.Any) -> str:
     """Reconstruct an alphabetic equation from canonical integer labels."""
     unique = []
     for operand_labels in labels:
@@ -156,7 +163,9 @@ def _derivative_input(node: Node, name: str) -> Node:
     return input_tensor(name, spec)
 
 
-def _constant_ones_for_axes(operand: Node, axes, *, max_elements: int) -> Node | None:
+def _constant_ones_for_axes(
+    operand: Node, axes: typing.Any, *, max_elements: int
+) -> Node | None:
     """Create a minimal all-ones operand carrying only missing output labels."""
     axes = tuple(axes)
     if not axes:
@@ -200,7 +209,7 @@ def _identity_constant(
 def _incidence_constant(
     axis: Index,
     bar_axis: Index,
-    positions,
+    positions: typing.Any,
     dtype: str,
     representation: str,
     *,
@@ -259,7 +268,7 @@ def _transcendental_partial(node: Node, weight: Node) -> Node:
     return add(guard, partial)
 
 
-def _jvp_graph(node: Node, operand_tangents) -> Node | None:
+def _jvp_graph(node: Node, operand_tangents: typing.Any) -> Node | None:
     """Generate one forward tangent expression, or None for exact zero."""
     if node.op == "add":
         return _combine(
@@ -322,6 +331,8 @@ def _jvp_graph(node: Node, operand_tangents) -> Node | None:
     tangent = operand_tangents[0]
     if tangent is None:
         return None
+    if node.op == "cast":
+        return cast(tangent, node.spec.dtype)
     if node.op in TRANSCENDENTALS:
         return _transcendental_partial(node, tangent)
     if node.op == "transpose":
@@ -332,6 +343,21 @@ def _jvp_graph(node: Node, operand_tangents) -> Node | None:
         return slice_tensor(tangent, node.attrs["ranges"])
     if node.op == "gather":
         return gather(tangent, node.attrs["axis"], node.attrs["positions"])
+    if node.op == "indexed_gather":
+        axis = node.attrs["axis"]
+        return indexed_gather(
+            tangent, axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return scatter_add(
+            tangent, axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        return segment_sum(
+            tangent, axis, node.attrs["offsets"], node.spec.indices[axis]
+        )
     if node.op == "reduce":
         return reduce_sum(tangent, node.attrs["axes"])
     if node.op == "broadcast":
@@ -425,7 +451,7 @@ def _embed_axis(
     bar: Node,
     axis: int,
     input_axis: Index,
-    positions,
+    positions: typing.Any,
     dtype: str,
     *,
     max_elements: int,
@@ -479,6 +505,8 @@ def _vjp_graph(
     """
     if not any(active):
         return [None] * len(node.inputs)
+    if node.op == "cast":
+        return [cast(bar, node.inputs[0].spec.dtype)]
     if node.op in TRANSCENDENTALS:
         return [_transcendental_partial(node, bar)]
     if node.op == "add":
@@ -532,18 +560,35 @@ def _vjp_graph(
         return [transpose(summed, inverse)]
     if node.op == "slice":
         return [_slice_vjp_node(node, bar, max_elements=max_elements)]
-    if node.op == "gather":
+    if node.op in ("gather", "indexed_gather"):
         axis = node.attrs["axis"]
         return [
-            _embed_axis(
+            scatter_add(
                 bar,
                 axis,
-                node.inputs[0].spec.indices[axis],
                 node.attrs["positions"],
-                node.inputs[0].spec.dtype,
-                max_elements=max_elements,
+                node.inputs[0].spec.indices[axis],
             )
         ]
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return [
+            indexed_gather(
+                bar,
+                axis,
+                node.attrs["positions"],
+                node.inputs[0].spec.indices[axis],
+            )
+        ]
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        offsets = node.attrs["offsets"]
+        positions = tuple(
+            segment
+            for segment, (start, stop) in enumerate(pairwise(offsets))
+            for _ in range(start, stop)
+        )
+        return [indexed_gather(bar, axis, positions, node.inputs[0].spec.indices[axis])]
     raise ValueError(f"no demand-driven VJP rule for primitive: {node.op}")
 
 
@@ -620,7 +665,7 @@ class VJPProgram:
         }
 
 
-def _ancestors(roots) -> set[Node]:
+def _ancestors(roots: typing.Any) -> set[Node]:
     needed, pending = set(), list(roots)
     while pending:
         node = pending.pop()
@@ -630,7 +675,7 @@ def _ancestors(roots) -> set[Node]:
     return needed
 
 
-def _descendants_of(program: Program, roots) -> set[Node]:
+def _descendants_of(program: Program, roots: typing.Any) -> set[Node]:
     """Nodes that can reach one of ``roots`` through primal edges."""
     roots = set(roots)
     users = {}
@@ -646,7 +691,7 @@ def _descendants_of(program: Program, roots) -> set[Node]:
     return reachable
 
 
-def _rebuild_node(node: Node, inputs) -> Node:
+def _rebuild_node(node: Node, inputs: typing.Any) -> Node:
     """Recreate one primal primitive through its public constructor."""
     if node.op == "add":
         return add(
@@ -655,6 +700,8 @@ def _rebuild_node(node: Node, inputs) -> Node:
                 _coefficient(coefficient) for coefficient in node.attrs["coefficients"]
             ),
         )
+    if node.op == "cast":
+        return cast(inputs[0], node.spec.dtype)
     if node.op == "multiply":
         return multiply(*inputs)
     if node.op == "divide":
@@ -679,6 +726,21 @@ def _rebuild_node(node: Node, inputs) -> Node:
         return slice_tensor(inputs[0], node.attrs["ranges"])
     if node.op == "gather":
         return gather(inputs[0], node.attrs["axis"], node.attrs["positions"])
+    if node.op == "indexed_gather":
+        axis = node.attrs["axis"]
+        return indexed_gather(
+            inputs[0], axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return scatter_add(
+            inputs[0], axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        return segment_sum(
+            inputs[0], axis, node.attrs["offsets"], node.spec.indices[axis]
+        )
     if node.op == "reduce":
         return reduce_sum(inputs[0], node.attrs["axes"])
     if node.op == "broadcast":
@@ -690,8 +752,8 @@ def _rebuild(
     program: Program,
     replacements: Mapping[Node, Node],
     *,
-    extra_definitions=(),
-    provenance=None,
+    extra_definitions: typing.Any = (),
+    provenance: typing.Any = None,
 ) -> Program:
     """Rebuild a primal DAG with selected input definitions substituted."""
     mapping = {}
@@ -717,7 +779,7 @@ def _layout_hash(layout: PackedLayout) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
-def _unpack_dag(original: Node, layout: PackedLayout):
+def _unpack_dag(original: Node, layout: PackedLayout) -> typing.Any:
     """Create packed input -> dense unpack DAG and its definitions."""
     dense_size = original.spec.size
     packed_space = IndexSpace(f"packed_{original.attrs['name']}", "batch", layout.size)
@@ -844,10 +906,10 @@ def _dense_symmetry_adjoint(bar: Node, spec: TensorSpec) -> Node:
 
 def linearize(
     program: Program,
-    tangent_inputs,
+    tangent_inputs: typing.Any,
     *,
-    outputs=None,
-    packed=None,
+    outputs: typing.Any = None,
+    packed: typing.Any = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> JVPProgram:
     """Generate a demand-driven forward derivative :class:`Program`.
@@ -933,10 +995,10 @@ def linearize(
 
 def transpose_program(
     program: Program,
-    cotangent_outputs,
+    cotangent_outputs: typing.Any,
     *,
-    inputs=None,
-    packed=None,
+    inputs: typing.Any = None,
+    packed: typing.Any = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> VJPProgram:
     """Generate a demand-driven reverse derivative :class:`Program`.

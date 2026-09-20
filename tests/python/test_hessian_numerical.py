@@ -26,6 +26,7 @@ tens of minutes rather than seconds.
 """
 
 import os
+import typing
 from itertools import pairwise
 
 import numpy as np
@@ -42,7 +43,7 @@ from tools.vibeqc_hessian import (
 from tools.vibeqc_posthf.fixtures import load_fixture, source_arguments
 
 
-def _bundled_basis(fixture_name, atomic_numbers):
+def _bundled_basis(fixture_name: typing.Any, atomic_numbers: typing.Any) -> typing.Any:
     """Return the exact bundled shells a validation fixture was built with.
 
     Handing PySCF a basis *name* would compare two different basis definitions
@@ -127,7 +128,7 @@ SLOW_CASES = ("heh_df",)
 ROUNDOFF_RELATIVE = 1.0e-9
 
 
-def _hessian_scale(samples):
+def _hessian_scale(samples: typing.Any) -> typing.Any:
     """Return the largest absolute Hessian element across the reported steps.
 
     This is deliberately **not** clamped to 1. Clamping would silently turn
@@ -142,7 +143,7 @@ def _hessian_scale(samples):
     return magnitude
 
 
-def _case(name):
+def _case(name: typing.Any) -> typing.Any:
     if name in SLOW_CASES and os.environ.get("VIBEQC_HESSIAN_SLOW") != "1":
         pytest.skip(
             "set VIBEQC_HESSIAN_SLOW=1 to run the 18-AO d/f case; "
@@ -158,7 +159,7 @@ def _case(name):
 _REPORTS = {}
 
 
-def _report(name):
+def _report(name: typing.Any) -> typing.Any:
     if name not in _REPORTS:
         case = _case(name)
         gradient, settings = _calculator_gradient(case)
@@ -168,7 +169,7 @@ def _report(name):
     return _REPORTS[name]
 
 
-def _calculator_gradient(case):
+def _calculator_gradient(case: typing.Any) -> typing.Any:
     """Build a gradient callback that solves each displaced geometry cold.
 
     Every evaluation constructs a fresh native system through ``singlepoint``,
@@ -196,7 +197,7 @@ def _calculator_gradient(case):
         "multiplicity": case["multiplicity"],
     }
 
-    def gradient(coordinates, policy):
+    def gradient(coordinates: typing.Any, policy: typing.Any) -> typing.Any:
         atoms = [
             (symbol, tuple(float(value) for value in row))
             for symbol, row in zip(case["symbols"], coordinates)
@@ -212,7 +213,7 @@ def _calculator_gradient(case):
     return gradient, settings
 
 
-def _pyscf_basis(case, labels):
+def _pyscf_basis(case: typing.Any, labels: typing.Any) -> typing.Any:
     """Translate a case's bundled shells into PySCF's per-atom mapping.
 
     Every case carries explicit shell records, so there is no basis-name
@@ -239,7 +240,7 @@ def _pyscf_basis(case, labels):
     return {label: shells for label, shells in per_atom.items() if shells}
 
 
-def _assert_loaded_basis(mol, shells):
+def _assert_loaded_basis(mol: typing.Any, shells: typing.Any) -> None:
     """Verify PySCF loaded exactly the requested shells.
 
     Angular momenta alone would not catch a rounded coefficient table, which is
@@ -291,7 +292,7 @@ def _assert_loaded_basis(mol, shells):
             )
 
 
-def _pyscf_hessian(case):
+def _pyscf_hessian(case: typing.Any) -> typing.Any:
     """Return PySCF's analytic RHF Hessian in the oracle's axis order.
 
     Three conventions have to be reconciled, and each is quiet if it is wrong
@@ -356,7 +357,7 @@ def _pyscf_hessian(case):
 
 
 @pytest.mark.parametrize("name", FAST_CASES + SLOW_CASES)
-def test_gradient_is_deterministic(name):
+def test_gradient_is_deterministic(name: typing.Any) -> None:
     """The same geometry must produce bit-identical gradients.
 
     A finite-difference Hessian differences gradients taken at *different*
@@ -373,7 +374,9 @@ def test_gradient_is_deterministic(name):
 
 
 @pytest.mark.parametrize("name", FAST_CASES + SLOW_CASES)
-def test_invariance_residuals_follow_the_second_order_law(name):
+def test_invariance_residuals_follow_the_second_order_law(
+    name: typing.Any,
+) -> None:
     """The only departure from exact invariance is O(h^2) truncation.
 
     An exact Hessian satisfies ``H == H^T`` and ``sum_a H[a, c, b, d] == 0``
@@ -439,7 +442,7 @@ def test_invariance_residuals_follow_the_second_order_law(name):
 
 
 @pytest.mark.parametrize("name", FAST_CASES)
-def test_hessian_values_converge_with_step_size(name):
+def test_hessian_values_converge_with_step_size(name: typing.Any) -> None:
     """The Hessian itself stabilizes as the step shrinks.
 
     The invariance residuals above only constrain the antisymmetric part and
@@ -457,7 +460,7 @@ def test_hessian_values_converge_with_step_size(name):
 
 
 @pytest.mark.parametrize("name", FAST_CASES + SLOW_CASES)
-def test_hessian_matches_pyscf_analytic_reference(name):
+def test_hessian_matches_pyscf_analytic_reference(name: typing.Any) -> None:
     """The oracle agrees with an independent analytic Hessian.
 
     PySCF assembles the Hessian by an entirely separate route, so agreement
@@ -496,7 +499,9 @@ def test_hessian_matches_pyscf_analytic_reference(name):
         pytest.param(lambda xyz, policy: np.zeros((3, 3)), id="too-many-atoms"),
     ],
 )
-def test_numerical_hessian_rejects_broadcastable_gradient_shapes(bad_gradient):
+def test_numerical_hessian_rejects_broadcastable_gradient_shapes(
+    bad_gradient: typing.Any,
+) -> None:
     """A wrong but broadcastable shape must fail closed.
 
     The differencing writes into a ``(natom, 3)`` slot, so a scalar or a bare
@@ -510,10 +515,12 @@ def test_numerical_hessian_rejects_broadcastable_gradient_shapes(bad_gradient):
 
 
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
-def test_numerical_hessian_rejects_non_finite_gradients(value):
+def test_numerical_hessian_rejects_non_finite_gradients(
+    value: typing.Any,
+) -> None:
     """A non-finite gradient is rejected rather than propagated as data."""
 
-    def bad_gradient(xyz, policy):
+    def bad_gradient(xyz: typing.Any, policy: typing.Any) -> typing.Any:
         values = np.zeros_like(xyz)
         values[0, 0] = value
         return values
@@ -522,7 +529,7 @@ def test_numerical_hessian_rejects_non_finite_gradients(value):
         numerical_hessian(bad_gradient, H2["coordinates"], settings={}, steps=STEPS)
 
 
-def test_pyscf_basis_preserves_per_atom_ownership():
+def test_pyscf_basis_preserves_per_atom_ownership() -> None:
     """A VibeQC shell tuple must translate into PySCF's per-atom mapping.
 
     This runs in the default suite even though the d/f Hessian comparison is
@@ -547,7 +554,7 @@ def test_pyscf_basis_preserves_per_atom_ownership():
     assert bundled["H0"][0][1] == (3.425250914, 0.1543289673)
 
 
-def test_rounded_basis_table_is_rejected():
+def test_rounded_basis_table_is_rejected() -> None:
     """A reference built from a rounded table must be refused.
 
     This makes the exact-basis requirement concrete rather than a convention:
@@ -578,7 +585,7 @@ def test_rounded_basis_table_is_rejected():
     _assert_loaded_basis(exact, H2["basis"])
 
 
-def test_pyscf_basis_builds_the_requested_angular_momenta():
+def test_pyscf_basis_builds_the_requested_angular_momenta() -> None:
     """The translated basis must survive PySCF's own loading unchanged.
 
     Building the molecule is cheap -- no SCF -- so this guards the basis
@@ -605,7 +612,7 @@ def test_pyscf_basis_builds_the_requested_angular_momenta():
     assert mol.nao == 18
 
 
-def test_numerical_hessian_requires_three_distinct_steps():
+def test_numerical_hessian_requires_three_distinct_steps() -> None:
     """The oracle refuses a single-step request instead of implying a verdict."""
 
     gradient, settings = _calculator_gradient(H2)
@@ -616,7 +623,7 @@ def test_numerical_hessian_requires_three_distinct_steps():
             )
 
 
-def test_numerical_hessian_rejects_malformed_coordinates():
+def test_numerical_hessian_rejects_malformed_coordinates() -> None:
     """Coordinate shape and finiteness are validated before any solve is run."""
 
     gradient, settings = _calculator_gradient(H2)
@@ -630,7 +637,7 @@ def test_numerical_hessian_rejects_malformed_coordinates():
         )
 
 
-def test_forces_to_gradient_negates_and_copies():
+def test_forces_to_gradient_negates_and_copies() -> None:
     """The force/gradient sign boundary is a single named conversion."""
 
     forces = np.array([[1.0, -2.0, 3.0]])
@@ -641,7 +648,7 @@ def test_forces_to_gradient_negates_and_copies():
     assert forces[0, 0] == 1.0
 
 
-def test_hessian_error_helpers_report_the_whole_distribution():
+def test_hessian_error_helpers_report_the_whole_distribution() -> None:
     """Symmetry and translation helpers see raw arrays, including asymmetry."""
 
     asymmetric = np.zeros((1, 3, 1, 3))
@@ -660,7 +667,7 @@ def test_hessian_error_helpers_report_the_whole_distribution():
     assert difference["shape"] == [1, 3, 1, 3]
 
 
-def test_hessian_helpers_reject_wrong_layouts():
+def test_hessian_helpers_reject_wrong_layouts() -> None:
     """A matrix held in another layout must be rejected, not reduced.
 
     ``(3N, 3N)`` and ``(natom, natom, 3, 3)`` both hold the same numbers, and
@@ -683,7 +690,7 @@ def test_hessian_helpers_reject_wrong_layouts():
         hessian_difference(np.zeros((2, 3, 2, 3)), np.zeros((3, 3, 3, 3)))
 
 
-def test_numerical_hessian_records_an_independent_settings_copy():
+def test_numerical_hessian_records_an_independent_settings_copy() -> None:
     """The recorded policy must not alias the caller's dict.
 
     ``settings_hash`` is computed at call time, so a caller mutating its dict
@@ -706,14 +713,14 @@ def test_numerical_hessian_records_an_independent_settings_copy():
     assert settings["tolerances"] == (1.0e-12, 1.0e-10)
 
 
-def test_numerical_hessian_snapshots_reused_gradient_storage():
+def test_numerical_hessian_snapshots_reused_gradient_storage() -> None:
     """A native evaluator's reusable output buffer must not erase differences."""
     xyz = H2["coordinates"]
     buffer = np.empty_like(xyz)
     # The coupled quadratic has a known nonzero, translation-invariant Hessian.
     coupling = np.diag([2.0, 3.0, 5.0])
 
-    def gradient(coordinates, policy):
+    def gradient(coordinates: typing.Any, policy: typing.Any) -> typing.Any:
         buffer[0] = coupling @ (coordinates[0] - coordinates[1])
         buffer[1] = -buffer[0]
         return buffer
@@ -725,7 +732,9 @@ def test_numerical_hessian_snapshots_reused_gradient_storage():
 
 
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
-def test_hessian_helpers_reject_non_finite_measurements(value):
+def test_hessian_helpers_reject_non_finite_measurements(
+    value: typing.Any,
+) -> None:
     """Invalid input cannot become a numeric comparison or invariance verdict."""
     values = np.zeros((2, 3, 2, 3))
     values[0, 0, 0, 0] = value

@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def preparation_probe(tmp_path_factory):
+def preparation_probe(tmp_path_factory: typing.Any) -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID")
     compiler = shutil.which("c++")
     if not compiler:
@@ -109,8 +110,12 @@ int main(int argc, char** argv) {
 )
 @pytest.mark.parametrize("mode", ["exact", "reject", "partial", "small", "zero"])
 def test_preparation_owns_real_derivatives_and_prior_items(
-    preparation_probe, spherical, forces, generated, mode
-):
+    preparation_probe: typing.Any,
+    spherical: typing.Any,
+    forces: typing.Any,
+    generated: typing.Any,
+    mode: typing.Any,
+) -> None:
     values = json.loads(
         subprocess.check_output(
             [

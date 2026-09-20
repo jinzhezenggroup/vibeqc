@@ -5,12 +5,15 @@ they do not choose a production schedule or execute a device program."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from ..shell_spec import (
     DPPP_SPEC,
     ShellClassSpec,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _format_cuda_array(values: Sequence[int], columns: int = 12) -> str:

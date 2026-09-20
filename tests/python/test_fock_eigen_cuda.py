@@ -1,6 +1,7 @@
 """Independent fitted Fock consumers borrow the device provider by solve stage."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -16,7 +17,9 @@ pytestmark = pytest.mark.skipif(
 CONTROLS = {"energy_tolerance": 1e-12, "density_tolerance": 1e-10}
 
 
-def calls(components, provider, reason):
+def calls(
+    components: typing.Any, provider: typing.Any, reason: typing.Any
+) -> typing.Any:
     """Count actual leaves, so a missing or unused callback cannot pass."""
     return components[provider].get(reason, {}).get("calls", 0)
 
@@ -32,8 +35,13 @@ def calls(components, provider, reason):
     ),
 )
 def test_independent_fitted_scf_providers_and_complete_forces(
-    spin, representation, j, k, monkeypatch, tmp_path
-):
+    spin: typing.Any,
+    representation: typing.Any,
+    j: typing.Any,
+    k: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Compare device setup/iteration/final solves to the independent CPU oracle.
 
     Oxygen's d functions distinguish the AO representations. A separate CUDA
@@ -177,7 +185,9 @@ def test_independent_fitted_scf_providers_and_complete_forces(
                     assert result.forces is None
 
 
-def test_independent_fitted_empty_beta_and_failed_replay(monkeypatch, tmp_path):
+def test_independent_fitted_empty_beta_and_failed_replay(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """An empty spin is solved explicitly; a failed replay leaves sources usable."""
     assert os.environ.get("SLURM_JOB_ID")
     atoms = [("H", (0, 0, 0))]

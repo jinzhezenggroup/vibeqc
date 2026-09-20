@@ -4,6 +4,8 @@ This is an empirical discretization gate, not an error estimator or an adaptive
 grid prescription. Keep the independent CPU oracle's policy/tests separate.
 """
 
+import typing
+
 COARSE_RADIAL_POINTS = 160
 COARSE_POLAR_POINTS = 32
 REFINED_RADIAL_POINTS = 224
@@ -12,7 +14,7 @@ MATRIX_ABS_TOLERANCE = 2e-9
 DERIVATIVE_ABS_TOLERANCE = 2e-8
 
 
-def emit_ecp_policy_cpp():
+def emit_ecp_policy_cpp() -> typing.Any:
     """Emit host/device admission and the grids used by native orchestration.
 
     Nonfinite inputs must reject even when equal or when subtraction yields

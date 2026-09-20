@@ -12,6 +12,7 @@ import contextlib
 import io
 import json
 import sys
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from vibeqc.profiles import canonical_hash
 from tools.generate_validation_references import pyscf_molecule
 
 
-def generate(directory):
+def generate(directory: typing.Any) -> typing.Any:
     """Save same-C conventional and DF Hamiltonians, not only total energies."""
     import pyscf
     from pyscf import ao2mo, df, gto, mp, scf

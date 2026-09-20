@@ -1,5 +1,6 @@
 """Current D/C parity, independent pinned features and rejected-factor semantics."""
 
+import typing
 from dataclasses import FrozenInstanceError, replace
 from itertools import combinations
 
@@ -13,13 +14,13 @@ BASIS = canonical_hash({"basis": "synthetic", "geometry": [0, 0, 0]})
 KEYS = ("rho", "gradient", "sigma", "tau")
 
 
-def assert_features(actual, expected):
+def assert_features(actual: typing.Any, expected: typing.Any) -> None:
     assert actual.keys() == expected.keys()
     for key in actual:
         np.testing.assert_allclose(actual[key], expected[key], atol=1e-11, rtol=1e-10)
 
 
-def sample(counts=(3, 2), points=11):
+def sample(counts: typing.Any = (3, 2), points: typing.Any = 11) -> typing.Any:
     """Nonorthogonal factors exercise arbitrary PSD densities, not SCF assumptions."""
     rng = np.random.default_rng(235)
     c = tuple(rng.normal(size=(5, n)) / 3 for n in counts)
@@ -31,7 +32,9 @@ def sample(counts=(3, 2), points=11):
 
 
 @pytest.mark.parametrize("name", NAMES)
-def test_current_routes_against_independent_pyscf_features(name):
+def test_current_routes_against_independent_pyscf_features(
+    name: typing.Any,
+) -> None:
     meta, data = load_fixture(name)
     source = DensitySource(
         data["density"], basis_identity=canonical_hash(meta["inputs"])
@@ -50,7 +53,9 @@ def test_current_routes_against_independent_pyscf_features(name):
 
 @pytest.mark.parametrize("counts", [(3, 2), (3, 0), (0, 0)])
 @pytest.mark.parametrize("points", [0, 11])
-def test_fractional_ragged_and_empty_spin_channels(counts, points):
+def test_fractional_ragged_and_empty_spin_channels(
+    counts: typing.Any, points: typing.Any
+) -> None:
     source, c, occ, jets = sample(counts, points)
     checked = source.with_orbitals(c, occ, stamp=source.stamp, validation_rows=2)
     actual = checked.features(jets, stamp=source.stamp, route="orbitals")
@@ -66,7 +71,9 @@ REQUESTS = [r for size in range(1, 5) for r in combinations(KEYS, size)]
 
 @pytest.mark.parametrize("ingredients", REQUESTS)
 @pytest.mark.parametrize("njet", [4, 10, 20])
-def test_both_routes_prune_requested_outputs_and_accept_jet_orders(ingredients, njet):
+def test_both_routes_prune_requested_outputs_and_accept_jet_orders(
+    ingredients: typing.Any, njet: typing.Any
+) -> None:
     source, c, occ, jets = sample()
     checked = source.with_orbitals(c, occ, stamp=source.stamp)
     full = density_features(jets, source.density)
@@ -79,7 +86,7 @@ def test_both_routes_prune_requested_outputs_and_accept_jet_orders(ingredients, 
         assert_features(actual, {key: full[key] for key in ingredients})
 
 
-def test_total_density_occupations_are_split_once():
+def test_total_density_occupations_are_split_once() -> None:
     source, c, occ, jets = sample()
     total = 2 * source.density[0]
     source = DensitySource(total, basis_identity=BASIS)
@@ -96,7 +103,7 @@ def test_total_density_occupations_are_split_once():
     assert separate.stamp.density_identity != source.stamp.density_identity
 
 
-def test_signs_and_equal_occupation_rotations_preserve_density():
+def test_signs_and_equal_occupation_rotations_preserve_density() -> None:
     _, c, _, jets = sample((3, 3))
     occ = (np.array([0.7, 0.7, 0.2]),) * 2
     d = np.stack([(cs * f) @ cs.T for cs, f in zip(c, occ, strict=True)])
@@ -112,7 +119,9 @@ def test_signs_and_equal_occupation_rotations_preserve_density():
 
 
 @pytest.mark.parametrize("ids", [[4, 0, 2], [3], []])
-def test_local_ao_maps_retain_cross_terms_and_all_orbitals(ids):
+def test_local_ao_maps_retain_cross_terms_and_all_orbitals(
+    ids: typing.Any,
+) -> None:
     source, c, occ, jets = sample()
     checked = source.with_orbitals(c, occ, stamp=source.stamp)
     masked = np.zeros_like(jets)
@@ -137,7 +146,7 @@ def test_local_ao_maps_retain_cross_terms_and_all_orbitals(ids):
         assert np.max(abs(truncated["rho"] - expected["rho"])) > 1e-3
 
 
-def test_orbital_density_directions_include_sigma_cross_terms():
+def test_orbital_density_directions_include_sigma_cross_terms() -> None:
     source, c, occ, jets = sample()
     rng = np.random.default_rng(33)
     dc = tuple(rng.normal(size=cs.shape) / 5 for cs in c)
@@ -179,7 +188,7 @@ def test_orbital_density_directions_include_sigma_cross_terms():
     assert np.max(abs(expected["sigma"] - linear["sigma"])) > 1e-3
 
 
-def test_ao_node_keeps_tau_and_offdiagonal_gradient():
+def test_ao_node_keeps_tau_and_offdiagonal_gradient() -> None:
     # At a p-like AO node phi_0=0 but d_x phi_0=1. A second AO preserves
     # cross terms in grad rho, while the node alone contributes nonzero tau.
     jets = np.zeros((4, 1, 2))
@@ -211,7 +220,9 @@ def test_ao_node_keeps_tau_and_offdiagonal_gradient():
         ("role", "response"),
     ],
 )
-def test_stale_candidate_falls_back_but_stale_source_cannot_replay(field, value):
+def test_stale_candidate_falls_back_but_stale_source_cannot_replay(
+    field: typing.Any, value: typing.Any
+) -> None:
     source, c, occ, jets = sample()
     stale = replace(source.stamp, **{field: value})
     rejected = source.with_orbitals(c, occ, stamp=stale)
@@ -227,7 +238,9 @@ def test_stale_candidate_falls_back_but_stale_source_cannot_replay(field, value)
 @pytest.mark.parametrize(
     "bad", ["changed", "negative", "complex", "nan", "shape", "overflow"]
 )
-def test_invalid_candidates_clear_old_factors_and_preserve_original_d(bad):
+def test_invalid_candidates_clear_old_factors_and_preserve_original_d(
+    bad: typing.Any,
+) -> None:
     source, c, occ, jets = sample()
     checked = source.with_orbitals(c, occ, stamp=source.stamp)
     c, occ = list(c), list(occ)
@@ -255,7 +268,7 @@ def test_invalid_candidates_clear_old_factors_and_preserve_original_d(bad):
         rejected.features(jets, stamp=source.stamp, route="orbitals")
 
 
-def test_indefinite_and_response_densities_are_not_repaired():
+def test_indefinite_and_response_densities_are_not_repaired() -> None:
     source, c, occ, jets = sample()
     indefinite = DensitySource(np.diag([-0.2, 0.1, 0.3, 0, 0]), basis_identity=BASIS)
     rejected = indefinite.with_orbitals(c, occ, stamp=indefinite.stamp)
@@ -273,7 +286,7 @@ def test_indefinite_and_response_densities_are_not_repaired():
     )
 
 
-def test_zero_and_tiny_occupations_are_weighted_before_collocation():
+def test_zero_and_tiny_occupations_are_weighted_before_collocation() -> None:
     c = (np.full((2, 1), 1e200), np.full((2, 1), 1e200))
     occ = (np.array([0.0]), np.array([1e-300]))
     density = np.stack((np.zeros((2, 2)), np.full((2, 2), 1e100)))
@@ -285,7 +298,9 @@ def test_zero_and_tiny_occupations_are_weighted_before_collocation():
     assert_features(actual, density_features(jets, density))
 
 
-def test_content_identity_and_ownership_and_replay_without_reconstruction(monkeypatch):
+def test_content_identity_and_ownership_and_replay_without_reconstruction(
+    monkeypatch: typing.Any,
+) -> None:
     source, c, occ, jets = sample()
     raw = source.density.copy()
     rebuilt = DensitySource(raw, basis_identity=BASIS, density_generation=7)
@@ -302,7 +317,7 @@ def test_content_identity_and_ownership_and_replay_without_reconstruction(monkey
             array.setflags(write=True)
 
     # External compatibility scans must not reappear in orbital tile replay.
-    def no_reconstruction(*args, **kwargs):
+    def no_reconstruction(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("density compatibility was rechecked on replay")
 
     with monkeypatch.context() as m:
@@ -314,14 +329,14 @@ def test_content_identity_and_ownership_and_replay_without_reconstruction(monkey
 
 
 @pytest.mark.parametrize("ids", [[0, 0], [-1], [5], [1.5], [[1]]])
-def test_invalid_local_maps_fail(ids):
+def test_invalid_local_maps_fail(ids: typing.Any) -> None:
     source, _, _, jets = sample()
     with pytest.raises(ValueError, match="local AO IDs"):
         source.features(jets, stamp=source.stamp, ao_ids=ids)
 
 
 @pytest.mark.parametrize("ingredients", [(), ("rho", "rho"), ("unknown",)])
-def test_invalid_requests_fail_on_both_routes(ingredients):
+def test_invalid_requests_fail_on_both_routes(ingredients: typing.Any) -> None:
     source, c, occ, jets = sample()
     for function, args in (
         (density_features, (source.density,)),

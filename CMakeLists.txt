@@ -11,6 +11,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
 
 # Leaf lowering/tuning modules are scientific generator inputs too. Track
 # nested files for regeneration; facade timestamps alone cannot invalidate them.
@@ -187,25 +188,7 @@ vibeqc_register_host_generated_sources(vibeqc)
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
 # so the same installed build can be reused across homogeneous cluster nodes.
-file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
-     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-     "src/*" "include/*" "python/vibeqc_compiler/*.py"
-     "python/vibeqc_compiler/*.json" "python/vibeqc/*.py"
-     "tools/vibeqc_tensor/*.py" "tools/vibeqc_mp2/*.py"
-     "tools/vibeqc_posthf/plan_spec.py"
-     "cmake/3rdparty/implib/*")
-list(APPEND _vibeqc_identity_inputs "CMakeLists.txt"
-     "cmake/VibeQCCuda.cmake" "cmake/VibeQCCudaImplib.cmake"
-     "cmake/VibeQCGenerated.cmake" "cmake/VibeQCGeneratedSources.cmake"
-     "cmake/VibeQCSources.cmake" "cmake/VibeQCTests.cmake"
-     "cmake/3rdparty/implib_manifest.json"
-     "tools/generate_cuda_implib.py"
-     "tools/generate_shell_kernels.py" "tools/generate_ecp_kernels.py"
-     "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
-     "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
-     "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py"
-     "tools/generate_xc_gradient_cuda.py")
-list(SORT _vibeqc_identity_inputs)
+vibeqc_collect_source_identity_inputs(_vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
   file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}" _vibeqc_file_hash)

@@ -6,6 +6,7 @@ The independent CPU ECP oracle deliberately retains its own implementation.
 """
 
 import math
+import typing
 
 from .expr import Graph
 from .ir import ECP_MAX_ORBITAL_ANGULAR, ECP_MAX_PROJECTOR_ANGULAR
@@ -13,7 +14,7 @@ from .scalar_c import ScalarCEmitter
 from .shell_spec import cartesian_components
 
 
-def harmonic_roots():
+def harmonic_roots() -> typing.Any:
     """Real orthonormal harmonics in the existing projector slot order."""
     graph = Graph()
     x, y, z = (graph.variable(a) for a in "xyz")
@@ -37,7 +38,7 @@ def harmonic_roots():
     )
 
 
-def radial_map_roots():
+def radial_map_roots() -> typing.Any:
     """Map a Legendre abscissa to r=t/(1-t), including dr/dz."""
     graph = Graph()
     z, weight = (graph.variable(a) for a in ("z", "weight"))
@@ -45,7 +46,7 @@ def radial_map_roots():
     return graph, (t / (1 - t), weight / (2 * (1 - t) * (1 - t)))
 
 
-def _assign(graph, roots, targets):
+def _assign(graph: typing.Any, roots: typing.Any, targets: typing.Any) -> typing.Any:
     emitter = ScalarCEmitter(graph, {})
     emitter.emit(roots)
     return emitter.lines + [
@@ -54,7 +55,9 @@ def _assign(graph, roots, targets):
     ]
 
 
-def _scalar(name, arguments, expression):
+def _scalar(
+    name: typing.Any, arguments: typing.Any, expression: typing.Any
+) -> typing.Any:
     graph = Graph()
     root = expression(*(graph.variable(a) for a in arguments))
     emitter = ScalarCEmitter(graph, {})
@@ -67,7 +70,7 @@ def _scalar(name, arguments, expression):
     ]
 
 
-def emit_ecp_grid_cpp():
+def emit_ecp_grid_cpp() -> typing.Any:
     """Host-only helpers; grid sizes and Newton stopping policy are unchanged."""
     lines = _scalar(
         "ecp_legendre_next",
