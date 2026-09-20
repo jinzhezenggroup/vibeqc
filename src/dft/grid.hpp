@@ -10,7 +10,9 @@
 
 namespace vibeqc::dft {
 
-/** Table-free molecular quadrature matching GridSpec version 1. */
+/** Table-free molecular quadrature. Version 1 preserves the historical
+ * one-Bohr fallback exactly. Version 2 is a resolved production contract and
+ * requires an explicit radius for every element that is materialized. */
 struct GridSpec {
   std::uint32_t version{1};
   std::size_t radial_points{48};
@@ -18,8 +20,9 @@ struct GridSpec {
   std::size_t angular_azimuth{32};
   unsigned partition_iterations{3};
   double coincident_tolerance{1.0e-12};
-  /** Zero entries select the default one-Bohr radius; slot zero is unused.
-   * Fixed storage preserves immutable identity without borrowed pointers. */
+  /** In v1 zero selects the one-Bohr reference radius. In v2 zero is
+   * unsupported/fail-closed. Slot zero is unused. Fixed storage preserves
+   * immutable identity without borrowed pointers. */
   std::array<double, 119> element_radii{};
   bool operator==(const GridSpec&) const = default;
 };
