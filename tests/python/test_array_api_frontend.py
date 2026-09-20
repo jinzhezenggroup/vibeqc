@@ -18,12 +18,17 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    broadcast,
     einsum,
     execute,
+    gather,
     input_tensor,
     linearize,
     multiply,
     reduce_sum,
+    reshape,
+    slice_tensor,
+    transpose_program,
 )
 
 
@@ -206,6 +211,113 @@ def test_scf_density_expression_has_same_tensorir_identity() -> None:
     assert captured.logical_hash == manual.logical_hash
 
 
+def test_shape_index_frontend_matches_manual_tensorir_identity() -> None:
+    ao = IndexSpace("ao", "ao", 4)
+    batch = IndexSpace("batch", "batch", 2)
+    matrix = IndexSpace("matrix", "matrix", 2)
+    p = Index("p", ao)
+    spec = TensorSpec((p,), role="input")
+    reshaped_indices = (Index("r", matrix), Index("c", matrix))
+    broadcast_indices = (Index("b", batch), p)
+
+    captured = trace(
+        lambda x: {
+            "reshaped": xp.reshape(x, (2, 2), indices=reshaped_indices),
+            "broadcast": xp.broadcast_to(
+                x,
+                (2, 4),
+                indices=broadcast_indices,
+                axes=(1,),
+            ),
+            "sliced": xp.slice(x, ((1, 4),)),
+            "taken": xp.take(x, (3, 1, 3), axis=0),
+        },
+        {"x": spec},
+    )
+
+    x_node = input_tensor("x", spec)
+    manual = Program(
+        {
+            "reshaped": reshape(x_node, reshaped_indices),
+            "broadcast": broadcast(x_node, broadcast_indices, (1,)),
+            "sliced": slice_tensor(x_node, ((1, 4),)),
+            "taken": gather(x_node, 0, (3, 1, 3)),
+        }
+    )
+    assert captured.logical_hash == manual.logical_hash
+
+    values = np.arange(4.0)
+    outputs = execute(captured, {"x": values}).outputs
+    np.testing.assert_array_equal(outputs["reshaped"], values.reshape(2, 2))
+    np.testing.assert_array_equal(outputs["broadcast"], np.broadcast_to(values, (2, 4)))
+    np.testing.assert_array_equal(outputs["sliced"], values[1:4])
+    np.testing.assert_array_equal(outputs["taken"], values[[3, 1, 3]])
+
+
+def test_shape_index_frontend_fails_closed_on_ambiguous_semantics() -> None:
+    ao = IndexSpace("ao", "ao", 4)
+    occupied = IndexSpace("occ", "occupied", 4)
+    vector = input_array(
+        "x",
+        TensorSpec((Index("p", ao),), role="input"),
+    )
+
+    with pytest.raises(ValueError, match="explicit TensorIR indices"):
+        xp.reshape(vector, (2, 2))
+    with pytest.raises(ValueError, match="match the explicit target indices"):
+        xp.reshape(
+            vector,
+            (2, 2),
+            indices=(Index("p", ao),),
+        )
+    with pytest.raises(ValueError, match="explicit TensorIR indices and axes"):
+        xp.broadcast_to(vector, (2, 4))
+    with pytest.raises(ValueError, match="preserve existing domains"):
+        xp.broadcast_to(
+            vector,
+            (4,),
+            indices=(Index("i", occupied),),
+            axes=(0,),
+        )
+    with pytest.raises(TypeError, match="static tuple"):
+        xp.take(vector, [0, 1], axis=0)
+    with pytest.raises(TypeError, match="static tuple"):
+        xp.slice(vector, (slice(0, 2),))
+
+
+def test_captured_take_reuses_existing_jvp_and_vjp_rules() -> None:
+    ao = IndexSpace("ao", "ao", 4)
+    spec = TensorSpec(
+        (Index("p", ao),),
+        role="parameter",
+        differentiable=True,
+    )
+    captured = trace(
+        lambda x: {"out": xp.sum(xp.take(x, (2, 0, 2), axis=0))},
+        {"x": spec},
+    )
+
+    values = np.array([1.0, 2.0, 3.0, 4.0])
+    direction = np.array([0.5, -1.0, 2.0, 0.25])
+    forward = linearize(captured, ["x"]).program
+    forward_value = execute(
+        forward,
+        {"x": values, "d_x": direction},
+    ).outputs["d_out"]
+    assert forward_value == pytest.approx(direction[2] + direction[0] + direction[2])
+
+    reverse = transpose_program(captured, ["out"], inputs=["x"]).program
+    cotangent = np.array(1.5)
+    reverse_value = execute(
+        reverse,
+        {"x": values, "bar_out": cotangent},
+    ).outputs["bar_x"]
+    np.testing.assert_array_equal(
+        reverse_value,
+        np.array([1.5, 0.0, 3.0, 0.0]),
+    )
+
+
 def test_capability_report_does_not_claim_full_conformance() -> None:
     report = capabilities()
     assert report["surface"] == "array-api-shaped-internal-preview"
@@ -213,4 +325,8 @@ def test_capability_report_does_not_claim_full_conformance() -> None:
     assert report["array_namespace_protocol"] is False
     assert report["implicit_broadcast"] is False
     assert report["dtype_promotion"] is False
+    assert report["reshape_requires_explicit_indices"] is True
+    assert report["broadcast_requires_explicit_indices_and_axes"] is True
+    assert report["take_indices"] == "static-int-tuple"
+    assert report["slice_ranges"] == "static-half-open-unit-step"
     assert "einsum_extension" in report["functions"]

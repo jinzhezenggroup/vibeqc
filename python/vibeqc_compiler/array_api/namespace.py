@@ -6,6 +6,7 @@ import typing
 from fractions import Fraction
 
 from vibeqc_compiler.tensor import ir as tensor_ir
+from vibeqc_compiler.tensor.types import Index
 
 from .array import ExactScalar, VibeArray
 
@@ -29,6 +30,25 @@ def _binary_arrays(
     left: object, right: object, name: str
 ) -> tuple[VibeArray, VibeArray]:
     return _array(left, f"{name} left operand"), _array(right, f"{name} right operand")
+
+
+def _shape(value: object, name: str) -> tuple[int, ...]:
+    if not isinstance(value, tuple) or any(
+        type(extent) is not int or extent < 0 for extent in value
+    ):
+        raise TypeError(f"{name} shape must be a tuple of nonnegative integers")
+    return value
+
+
+def _target_indices(shape: object, indices: object, name: str) -> tuple[Index, ...]:
+    target_shape = _shape(shape, name)
+    if not isinstance(indices, tuple) or any(
+        not isinstance(index, Index) for index in indices
+    ):
+        raise TypeError(f"{name} requires an explicit tuple of TensorIR Index objects")
+    if tuple(index.extent for index in indices) != target_shape:
+        raise ValueError(f"{name} shape must match the explicit target indices")
+    return indices
 
 
 def add(x1: object, x2: object) -> VibeArray:
@@ -95,6 +115,72 @@ def log(x: object) -> VibeArray:
 
 def sqrt(x: object) -> VibeArray:
     return VibeArray(tensor_ir.sqrt(_array(x).node))
+
+
+def reshape(
+    x: object,
+    shape: tuple[int, ...],
+    *,
+    indices: tuple[Index, ...] | None = None,
+) -> VibeArray:
+    """Reshape only with explicit TensorIR target-index semantics."""
+    value = _array(x)
+    if indices is None:
+        raise ValueError(
+            "frontend reshape requires explicit TensorIR indices; "
+            "shape alone cannot define QC index spaces"
+        )
+    target = _target_indices(shape, indices, "reshape")
+    return VibeArray(tensor_ir.reshape(value.node, target))
+
+
+def broadcast_to(
+    x: object,
+    shape: tuple[int, ...],
+    *,
+    indices: tuple[Index, ...] | None = None,
+    axes: tuple[int, ...] | None = None,
+) -> VibeArray:
+    """Broadcast with explicit target indices and source-to-target axis map."""
+    value = _array(x)
+    if indices is None or axes is None:
+        raise ValueError(
+            "frontend broadcast_to requires explicit TensorIR indices and axes"
+        )
+    target = _target_indices(shape, indices, "broadcast_to")
+    if not isinstance(axes, tuple) or any(type(axis) is not int for axis in axes):
+        raise TypeError("broadcast_to axes must be a tuple of integers")
+    return VibeArray(tensor_ir.broadcast(value.node, target, axes))
+
+
+def slice(x: object, ranges: tuple[tuple[int, int], ...]) -> VibeArray:
+    """Static unit-step half-open slicing that retains TensorIR populations."""
+    value = _array(x)
+    if not isinstance(ranges, tuple) or any(
+        not isinstance(bounds, tuple)
+        or len(bounds) != 2
+        or any(type(bound) is not int for bound in bounds)
+        for bounds in ranges
+    ):
+        raise TypeError("slice ranges must be a static tuple of (start, stop) pairs")
+    return VibeArray(tensor_ir.slice_tensor(value.node, ranges))
+
+
+def take(
+    x: object,
+    indices: tuple[int, ...],
+    *,
+    axis: int,
+) -> VibeArray:
+    """Static gather along one axis, preserving the source scientific domain."""
+    value = _array(x)
+    if type(axis) is not int:
+        raise TypeError("take axis must be an integer")
+    if not isinstance(indices, tuple) or any(
+        type(index) is not int for index in indices
+    ):
+        raise TypeError("take indices must be a static tuple of integers")
+    return VibeArray(tensor_ir.gather(value.node, axis, indices))
 
 
 def sum(
