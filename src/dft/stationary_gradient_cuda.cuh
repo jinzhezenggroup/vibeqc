@@ -1,6 +1,7 @@
 #pragma once
 // Small-domain diagnostic runtime. Graph-emitted primitive, AO pullback and
-// Becke entries precede this include. No derivative mathematics lives here.
+// Becke entries precede this include; compiler-emitted contraction bodies follow it.
+// This header owns only resource state, validation, transfers, launches and ABI.
 #include <vector>
 
 #include "../tensor/cuda_runtime.cuh"
@@ -63,135 +64,15 @@ void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
   p.uploads += n * sizeof(T);
 }
 __global__ void primitive_kernel(unsigned kind, const double* records, size_t count, double* output,
-                                 int* error) {
-  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count; i += blockDim.x * gridDim.x) {
-    const double* r = records + record_stride * i;
-    double v[12]{};
-    for (size_t j = 0; j < record_stride; ++j)
-      if (!isfinite(r[j])) {
-        atomicExch(error, 1);
-        return;
-      }
-    for (size_t j = 0; j < 4; ++j)
-      if (!(r[j] > 0)) {
-        atomicExch(error, 1);
-        return;
-      }
-    if (!first_derivative(kind, r, r + 4, v)) {
-      atomicExch(error, 1);
-      return;
-    }
-    // Normalization and the plan's already generated source weight are
-    // contracted on device, once per primitive; no host derivative tensor.
-    double weight = r[24] * r[25];
-    for (size_t j = 0; j < 4; ++j) weight *= r[16 + j] * r[20 + j];
-    for (size_t j = 0; j < 12; ++j) output[12 * i + j] = finite(weight * v[j], error, 0);
-  }
-}
+                                 int* error);
 __global__ void primitive_reduce(const double* input, const int64_t* maps, size_t count, size_t na,
-                                 double* output, int* error) {
-  // A failed primitive leaves later output records unwritten. Never read
-  // that storage after the producer has reported an error on this stream.
-  if (*error) return;
-  const size_t coord = blockIdx.x * blockDim.x + threadIdx.x;
-  if (coord >= 3 * na) return;
-  double sum = 0;
-  for (size_t i = 0; i < count; ++i)
-    for (size_t center = 0; center < 4; ++center) {
-      const auto atom = maps[4 * i + center];
-      if (atom < -1 || atom >= int64_t(na)) {
-        atomicExch(error, 1);
-        return;
-      }
-      if (atom == int64_t(coord / 3)) sum += input[12 * i + 3 * center + coord % 3];
-    }
-  output[coord] = finite(output[coord] + sum, error, 0);
-}
-__global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error) {
-  bool valid = true;
-  for (size_t a = 0; a < na; ++a) {
-    for (size_t k = 0; k < 3; ++k)
-      if (!isfinite(centers[3 * a + k])) valid = false;
-    for (size_t b = 0; b < a; ++b)
-      if (vibeqc_grid_adjoint::distance(centers + 3 * a, centers + 3 * b, local_norm, valid)[0] <=
-          tolerance)
-        valid = false;
-  }
-  if (!valid) atomicExch(error, 1);
-}
+                                 double* output, int* error);
+__global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error);
 __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* work,
                                 const int64_t* ao_atoms, const int64_t* owners,
                                 const double* centers, size_t na, const double* weights,
-                                const double* raw, double* partial, double* scratch, int* error) {
-  const size_t lane = threadIdx.x;
-  const size_t np = view.npoint, n = view.nactive, stride = np * n;
-  double* grad = partial + lane * 9 * na;
-  for (size_t k = 0; k < 9 * na; ++k) grad[k] = 0;
-  double* ws = scratch + lane * 9 * na;
-  auto* distances = reinterpret_cast<std::array<double, 4>*>(ws + 5 * na);
-  auto* zeros = reinterpret_cast<size_t*>(ws + 4 * na);
-  for (size_t p = lane; p < np; p += workers) {
-    if (owners[p] < 0 || owners[p] >= int64_t(na) || !isfinite(weights[p]) || !isfinite(raw[p])) {
-      atomicExch(error, 1);
-      return;
-    }
-    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{};
-    if (stationary_pbe)
-      for (size_t s = 0; s < 2; ++s)
-        for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
-    // The exact shared SCF point model, including vacuum/spin boundaries.
-    const auto xc = vibeqc::dft::point::evaluate(stationary_pbe, rho, g);
-    if (!xc.valid) {
-      atomicExch(error, 1);
-      return;
-    }
-    for (size_t mu = 0; mu < n; ++mu) {
-      if (view.ao_ids[mu] >= view.nao) {
-        atomicExch(error, 1);
-        return;
-      }
-      const auto atom = ao_atoms[view.ao_ids[mu]];
-      if (atom < 0 || atom >= int64_t(na)) {
-        atomicExch(error, 1);
-        return;
-      }
-      double pullback[4]{};
-      for (size_t s = 0; s < 2; ++s) {
-        double c[4]{weights[p] * xc.rho[s]}, w[4]{};
-        for (size_t j = 0; j < stationary_jets; ++j) {
-          w[j] = work[(4 * s + j) * stride + p * n + mu];
-          if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
-        }
-        double local[4]{};
-        ao_pullback(c, w, local);
-        for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
-      }
-      for (size_t k = 0; k < 3; ++k) {
-        double value = 0;
-        for (size_t j = 0; j < stationary_jets; ++j)
-          value += pullback[j] * view.ao[stationary_shift[j][k] * stride + p * n + mu];
-        grad[3 * atom + k] -= value;
-        grad[3 * na + 3 * owners[p] + k] += value;
-      }
-    }
-    if (!vibeqc_grid_adjoint::contract_point(view.points + 3 * p, centers, na, owners[p],
-                                             xc.energy * raw[p], grad + 6 * na, ws, ws + na,
-                                             ws + 2 * na, ws + 3 * na, zeros, distances, local_norm,
-                                             local_ratio, local_log, local_becke)) {
-      atomicExch(error, 1);
-      return;
-    }
-  }
-  for (size_t k = 0; k < 9 * na; ++k) finite(grad[k], error, 0);
-}
-__global__ void geometry_reduce(const double* partial, size_t na, double* output, int* error) {
-  if (*error) return;
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= 9 * na) return;
-  double sum = 0;
-  for (size_t lane = 0; lane < workers; ++lane) sum += partial[lane * 9 * na + i];
-  output[i] = finite(output[i] + sum, error, 0);
-}
+                                const double* raw, double* partial, double* scratch, int* error);
+__global__ void geometry_reduce(const double* partial, size_t na, double* output, int* error);
 }  // namespace vibeqc_stationary_cuda
 
 extern "C" {

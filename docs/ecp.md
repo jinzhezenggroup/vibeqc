@@ -412,11 +412,26 @@ and closure revoke its derivative access.
 This diagnostic reuses the independent CPU ECP derivative provider. It retains
 two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. It does not enable
 public CPU DFT/ECP forces or an overall resource/performance
-capability. The first qualification is Cartesian s/p LANL2DZ-Na/STO-3G-H in
+capability. Work admission precedes derivative compilation and ECP execution,
+after the caller has prepared the SCF state and exported its snapshot. Defaults
+are 2 million primitive records, 1 million XC points, 100 million grid pair
+visits (including per-tile center-pair validation), and 100 million ECP
+quadrature pair-samples. Both interpreter and compiled consumers enforce these
+limits; directional reference grid work includes all `3*natom` traversals.
+The ECP dense-provider domain is at most 16 AOs, 8 atoms, 128 primitives and
+128 ECP terms. Pair-samples count both fixed CPU provider grids, all ECP
+centers, and triangular AO pairs, including radial shells that may be skipped.
+The returned work ledger reports bounds/budgets and checks the executed
+primitive count before publication. These are semantic work bounds, not FLOP,
+wall-time or total host-memory guarantees.
+
+Qualification covers Cartesian and real-spherical s/p LANL2DZ-Na/STO-3G-H in
 `tests/python/test_ecp_stationary_cpu.py`, with independent full-grid-response
 PySCF gradients and multistep reconverged energy differences.
 
 See [the stationary ECP decision](../.agents/notes/implemented/architecture/2026-09-19-ecp-stationary-cpu.md).
+The [CPU admission decision](../.agents/notes/implemented/performance/2026-09-20-cpu-stationary-work-admission.md)
+records the work contract and remaining public-endpoint prerequisites.
 
 ## Public CUDA semilocal ECP forces
 

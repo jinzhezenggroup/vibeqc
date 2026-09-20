@@ -2,13 +2,6 @@
   "path": "src/dft/stationary_gradient_cuda.cuh",
   "role": "runtime",
   "subsystem": "xc",
-  "reason": "Finite diagnostic owner, explicit stream leases, transfers and failure-before-publication boundaries.",
-  "regions": [
-    {
-      "start": "__global__ void primitive_kernel",
-      "stop": "}  // namespace vibeqc_stationary_cuda",
-      "role": "scientific",
-      "reason": "Primitive normalization, generated derivative contraction, XC coefficient/jet layout and deterministic atom/source reductions are maintained scientific glue. Shared compiler graphs and SCF point model own the differentiated mathematics."
-    }
-  ]
+  "reason": "Finite stationary-gradient owner for resource state, validation, stream leases, transfers, launch orchestration and failure-before-publication boundaries. Primitive and XC geometry contraction bodies are compiler-emitted by method/stationary_cuda.py.",
+  "regions": []
 }

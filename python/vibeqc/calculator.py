@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from . import _generated_methods as _method_manifest
 from . import _native
 from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
 from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
@@ -28,19 +29,8 @@ if TYPE_CHECKING:
 
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
-_METHODS = {
-    "rhf": _native.METHOD_RHF,
-    "uhf": _native.METHOD_UHF,
-    "wb97m-v": _native.METHOD_WB97M_V,
-    "ccsd(t)": _native.METHOD_RCCSD_T,
-    "mp2": _native.METHOD_MP2,
-    "lda-rks": _native.METHOD_LDA_RKS,
-    "pbe-rks": _native.METHOD_PBE_RKS,
-    "lda-uks": _native.METHOD_LDA_UKS,
-    "pbe-uks": _native.METHOD_PBE_UKS,
-}
-
-_HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
+_METHODS = _method_manifest.METHOD_NAME_TO_ID
+_HF_METHODS = _method_manifest.HF_METHOD_IDS
 
 
 @dataclass(frozen=True)
@@ -543,13 +533,7 @@ class Calculator:
                     for shell in element.shells
                 )
             )
-            and self._method
-            in (
-                _native.METHOD_LDA_RKS,
-                _native.METHOD_PBE_RKS,
-                _native.METHOD_LDA_UKS,
-                _native.METHOD_PBE_UKS,
-            )
+            and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # #163 C2 is a Python public capability layered on the native KS
             # prepared owner plus the compiler-owned CUDA gradient consumer.
@@ -845,13 +829,8 @@ class Calculator:
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
         auxiliary = metadata.get("auxiliary", orbital) if fitted else None
-        method_names = {
-            _native.METHOD_RHF: "rhf",
-            _native.METHOD_UHF: "uhf",
-            _native.METHOD_MP2: "mp2",
-        }
         try:
-            resolved_method = method_names[self._method]
+            resolved_method = _method_manifest.METHOD_ID_TO_NAME[self._method]
         except KeyError as error:
             raise NotImplementedError(
                 "accuracy model is unavailable for this method"
@@ -1091,7 +1070,7 @@ class Calculator:
             systems,
             charges=charges,
             multiplicities=multiplicities,
-            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            method=_method_manifest.METHOD_ID_TO_NAME[self._method],
             basis=self._basis,
             auxiliary_basis=self._auxiliary_basis,
             backend=self._device_name,

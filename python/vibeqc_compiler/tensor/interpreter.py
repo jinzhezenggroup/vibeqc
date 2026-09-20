@@ -64,6 +64,8 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
             [_coefficient(v, node.spec.dtype) for v in a["values"]],
             dtype=node.spec.dtype,
         ).reshape(node.spec.shape)
+    if op == "cast":
+        return operands[0].astype(node.spec.dtype, copy=True)
     if op == "add":
         result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
         for operand, coefficient in zip(operands, a["coefficients"]):

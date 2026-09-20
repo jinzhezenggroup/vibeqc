@@ -5,6 +5,8 @@
 #include <limits>
 #include <utility>
 
+#include "scf/solver/iteration_control.hpp"
+
 namespace vibeqc::scf::solver {
 
 /** Method-neutral fixed-point convergence policy.
@@ -62,7 +64,8 @@ SelfConsistentOutcome<State> run_self_consistent(State initial_state,
   SelfConsistentProgress latest;
   double previous_energy = std::numeric_limits<double>::infinity();
 
-  for (unsigned iteration = 1; iteration <= policy.max_iterations; ++iteration) {
+  bool converged = false;
+  run_bounded_iterations(policy.max_iterations, [&](unsigned iteration) {
     auto evaluation = evaluate(state, iteration);
 
     latest.iteration = iteration;
@@ -78,16 +81,17 @@ SelfConsistentOutcome<State> run_self_consistent(State initial_state,
         (!policy.require_residual || latest.residual_rms < policy.residual_tolerance);
 
     record(latest, evaluation);
-    State next_state = accept(state, std::move(evaluation), latest);
+    state = accept(state, std::move(evaluation), latest);
     if (latest.converged) {
-      return {std::move(next_state), latest, true};
+      converged = true;
+      return false;
     }
 
     previous_energy = latest.energy;
-    state = std::move(next_state);
-  }
+    return true;
+  });
 
-  return {std::move(state), latest, false};
+  return {std::move(state), latest, converged};
 }
 
 }  // namespace vibeqc::scf::solver
