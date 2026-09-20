@@ -13,6 +13,12 @@ EVIDENCE = (
     Path(__file__).resolve().parents[2] / "benchmarks/results/issue377-379-df/gpu4pyscf"
 )
 
+# This is the explicit retained-oracle inventory, not every executable workload.
+# New qualification-only endpoints need fresh independent reference generation.
+# Never discover this list from existing files: losing a retained fixture must
+# still fail the gate instead of silently reducing coverage.
+RETAINED_REFERENCE_AOS = (96, 192, 384, 768)
+
 
 def reference_inputs(aos: typing.Any) -> typing.Any:
     """Reuse the versioned independent results without loading a native backend."""
@@ -32,7 +38,7 @@ def reference_inputs(aos: typing.Any) -> typing.Any:
     )
 
 
-@pytest.mark.parametrize("aos", CASES)
+@pytest.mark.parametrize("aos", RETAINED_REFERENCE_AOS)
 def test_retained_independent_references_match_current_workloads(
     aos: typing.Any,
 ) -> None:
@@ -41,6 +47,15 @@ def test_retained_independent_references_match_current_workloads(
     energy, forces = independent_reference(reference, *args)
     np.testing.assert_array_equal(energy, args[1])
     np.testing.assert_array_equal(forces, args[2])
+
+
+@pytest.mark.parametrize("aos", (648, 864))
+def test_qualification_workloads_reject_unrelated_retained_reference(aos: int) -> None:
+    """New inputs cannot inherit scientific qualification from a smaller case."""
+    assert aos in CASES and aos not in RETAINED_REFERENCE_AOS
+    reference, args = reference_inputs(96)
+    with pytest.raises(RuntimeError, match="workload differs: case"):
+        independent_reference(reference, aos, *args[1:])
 
 
 @pytest.mark.parametrize(
