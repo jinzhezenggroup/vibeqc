@@ -559,8 +559,10 @@ extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const 
         if (bytes_count && !data)
             throw std::runtime_error("null tensor static-data payload");
         const auto* bytes = static_cast<const unsigned char*>(data);
+        ctx.static_ready = false;
         {external_copies}
         cuda_check(cudaStreamSynchronize(ctx.stream));
+        ctx.static_ready = true;
         return 0;
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
@@ -577,6 +579,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
                      {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
         vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
         {math_mode}
+        {"ctx->static_ready = false;" if not embed_static_data else ""}
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
         *result = static_cast<Context*>(ctx.release());
@@ -598,6 +601,7 @@ static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* 
     if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
     try {{
         ctx.check_device();
+        if (!ctx.static_ready) throw std::runtime_error("tensor static data is not initialized");
         if (!result || !inputs || !outputs) throw std::runtime_error("null tensor execution arguments");
         Metrics metrics;
         metrics.owned_device_bytes = ctx.metrics.owned_device_bytes;

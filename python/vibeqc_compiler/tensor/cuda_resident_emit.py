@@ -180,6 +180,8 @@ extern "C" int resident_run(void* pointer, int profile, Metrics* result, char* e
     }}
     try {{
         ctx.check_device();
+        if (!ctx.static_ready)
+            throw std::runtime_error("tensor static data is not initialized");
         Metrics metrics;
         metrics.owned_device_bytes = ctx.metrics.owned_device_bytes;
         metrics.provider_retained_bytes = ctx.metrics.provider_retained_bytes;

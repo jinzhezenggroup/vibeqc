@@ -177,6 +177,8 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "tensor_static_initialize" not in source
     assert "static const I" not in external
     assert "tensor_static_initialize" in external
+    assert "ctx->static_ready = false;" in external
+    assert "tensor static data is not initialized" in external
     assert plan.static_data_bytes == len(tensor_static_data(plan)) == 144
     input_bytes = sum(plan.steps[i].node.spec.size * 8 for i in plan.inputs)
     output_bytes = sum(plan.steps[i].node.spec.size * 8 for _, i in plan.outputs)
