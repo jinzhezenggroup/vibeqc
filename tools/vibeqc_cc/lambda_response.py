@@ -139,7 +139,8 @@ class BoundCCSDResponse:
                 or not isinstance(result.provenance, Mapping)
                 or result.provenance.get("equation_identity") != bound.equation_identity
                 or result.provenance.get("lagrangian") != "E_corr + <lambda, R>"
-                or result.provenance.get("tensor_backend") != "numpy-cpu-interpreter"
+                or result.provenance.get("tensor_backend")
+                not in {"numpy-cpu-interpreter", "cuda-fp64-ordinary-stream"}
             ):
                 raise ResponseCompatibilityError(
                     "Lambda result belongs to a different CC state or convention"

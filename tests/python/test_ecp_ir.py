@@ -64,12 +64,14 @@ def test_generated_harmonic_channel_addition_theorem() -> None:
             for v in (a, b)
         )
         dot = a @ b
-        for l, polynomial in enumerate(
+        for angular_momentum, polynomial in enumerate(
             (1.0, dot, (3 * dot * dot - 1) / 2, (5 * dot**3 - 3 * dot) / 2)
         ):
-            selected = slice(l * l, (l + 1) ** 2)
+            selected = slice(
+                angular_momentum * angular_momentum, (angular_momentum + 1) ** 2
+            )
             assert ya[selected] @ yb[selected] == pytest.approx(
-                (2 * l + 1) / (4 * math.pi) * polynomial, abs=3e-15
+                (2 * angular_momentum + 1) / (4 * math.pi) * polynomial, abs=3e-15
             )
 
 

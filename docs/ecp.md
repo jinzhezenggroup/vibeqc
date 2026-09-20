@@ -175,7 +175,7 @@ canonical MP2 with ECP is also rejected until its reference/provider gates are
 validated. The all-electron accuracy-model schema cannot represent an ECP
 Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
 LDA/PBE RKS/UKS energy-only calculations use the same ECP Hamiltonian, as
-described below. Public CPU DFT/ECP forces remain unsupported; CUDA force support has its own
+described below. Public CPU/CUDA DFT/ECP forces have their own
 bounded qualification below. No broad heavy-element validation follows from support
 for the parameter format.
 
@@ -191,7 +191,7 @@ nonlinear core correction. Atomic number still determines grid element identity.
 
 AO capability checks permit values and first spatial jets needed by LDA/GGA
 energies. They still validate ECP metadata and angular limits. Higher AO jets, DF/ECP and other DFT methods do not inherit support.
-Complete first forces use the separately qualified CUDA consumer below.
+Complete first forces use the separately qualified CPU/CUDA consumers below.
 
 ```python
 result = Calculator(method="pbe-rks", basis=basis, device="cuda").singlepoint(
@@ -410,9 +410,9 @@ binds the exact ECP terms/core counts from the energy owner; replay, replacement
 and closure revoke its derivative access.
 
 This diagnostic reuses the independent CPU ECP derivative provider. It retains
-two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. It does not enable
-public CPU DFT/ECP forces or an overall resource/performance
-capability. Work admission precedes derivative compilation and ECP execution,
+two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. The public CPU
+wrapper below additionally enforces numeric capacity and lifecycle gates.
+Work admission precedes derivative compilation and ECP execution,
 after the caller has prepared the SCF state and exported its snapshot. Defaults
 are 2 million primitive records, 1 million XC points, 100 million grid pair
 visits (including per-tile center-pair validation), and 100 million ECP
@@ -431,7 +431,47 @@ PySCF gradients and multistep reconverged energy differences.
 
 See [the stationary ECP decision](../.agents/notes/implemented/architecture/2026-09-19-ecp-stationary-cpu.md).
 The [CPU admission decision](../.agents/notes/implemented/performance/2026-09-20-cpu-stationary-work-admission.md)
-records the work contract and remaining public-endpoint prerequisites.
+records the work contract and the prerequisites addressed by the public wrapper.
+
+## Public CPU semilocal ECP forces
+
+Python `Calculator` and `PreparedBatch` expose LDA/PBE RKS/UKS first forces
+for Cartesian and real-spherical s/p scalar-ECP basis records, including
+all-electron fragments of those records. Default calls include forces;
+`properties=("energy",)` skips all derivative work. Standalone all-electron
+CPU records and higher-angular ECP records retain their existing capability.
+The native C method registry is unchanged. A C++ compiler (`CXX` or `c++`) is
+required for the shared generated consumers; `VIBEQC_STATIONARY_CACHE` selects
+their cache.
+
+The same nine-source stationary plan supplies force = -gradient. CPU ECP
+derivatives explicitly come from `checked_ecp_integrals`, the independent
+native CPU two-grid provider already used by CPU ECP energies. It checks
+160/32 against 224/44 quadrature, preserving the energy/derivative convergence
+gates. This is an explicit production provider contract, not a generated-ECP
+or PySCF implementation. Compiler-owned projector retirement remains open.
+
+The KS planner reserves a 256 MiB additional host staging cap per serialized
+force consumer. A conservative inventory covers AO/snapshot copies, both ECP
+grids, dense derivative export, generated integral/TensorIR staging and XC/grid
+tiles. Admission precedes snapshot export and is rechecked against actual
+snapshot metadata before derivative compilation. The domain and work limits
+are those of the CPU diagnostic above. Scientific/work rejection is separate
+from resource-plan feasibility. Python/compiler objects and processes, loaded
+code, compiler-managed stacks, BLAS/runtime internals and allocator overhead
+are excluded; this numeric bound is not a process RSS guarantee.
+
+Budgeted batches report inventory and semantic work in `generated_force`,
+separate from native SCF observations. Per-item failure publishes no force,
+closes snapshots and leaves adjacent items usable; subsequent energy or force
+replay can recover. `tests/python/test_ecp_public_cpu.py` checks four methods,
+both representations, independent PySCF full-grid-response gradients and
+two-step reconverged energy differences, plus mixed batches, geometry replay,
+byte/work rejection and snapshot cleanup. Physical qualification is bounded
+LANL2DZ Na / STO-3G H with the 24 x 8 x 16 unpruned XC grid; it is not a claim
+for arbitrary ECP families or a performance promotion.
+
+See [the CPU public-force contract](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cpu-forces.md).
 
 ## Public CUDA semilocal ECP forces
 
@@ -439,7 +479,7 @@ The Python `Calculator` and `PreparedBatch` support `energy` plus `forces` for
 CUDA FP64 direct LDA/PBE RKS/UKS with Cartesian or real-spherical s/p scalar
 ECP basis records.
 The default property set includes forces for these records; use
-`properties=("energy",)` to avoid derivative evaluation. CPU and higher-angular ECP records remain energy-only. The backend-neutral native C
+`properties=("energy",)` to avoid derivative evaluation. Higher-angular ECP records remain energy-only. The backend-neutral native C
 method registry remains conservative and does not advertise DFT forces.
 
 This route reuses the live energy owner's v5 snapshot and shared nine-source

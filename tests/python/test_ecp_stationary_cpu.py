@@ -92,7 +92,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
             multiplicity=spin + 1,
         ) as basis,
     ):
-        energy = batch.execute(strict=True).items[0].energy
+        energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 4
         assert state._source.ecp_cores == (10, 0)
@@ -157,19 +157,13 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
             )
             StationaryDerivativeContract(forged.identity).validate(forged)
         # A fresh ECP owner must never authorize the old derivative proof.
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         with pytest.raises(ValueError, match="stale"):
             state._source.ecp_derivatives()
         current = StationaryKsState.from_native(batch, basis)
         assert current.identity.solve_epoch > state.identity.solve_epoch
         assert current._source.ecp_terms == state._source.ecp_terms
-        with pytest.raises(ValueError, match="forces"):
-            calc.singlepoint(
-                atoms,
-                charge=spin,
-                multiplicity=spin + 1,
-                properties=("energy", "forces"),
-            )
+        assert "forces" in calc._capabilities.supported_properties
 
 
 def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None:
@@ -197,8 +191,8 @@ def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None
         Calculator(basis=other_record, **options).prepare_batch([atoms]) as other,
         NativeAO(atoms, basis=record) as basis,
     ):
-        batch.execute(strict=True)
-        other.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
+        other.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         changed_state = StationaryKsState.from_native(other, basis)
         assert state.identity.basis_identity == changed_state.identity.basis_identity
@@ -232,13 +226,15 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
     atoms, record, _ = fixture(representation="cartesian")
     calc = Calculator(basis=record, method="pbe-rks", ks_options=KsOptions(grid=GRID))
     with calc.prepare_batch([atoms]) as batch, NativeAO(atoms, basis=record) as basis:
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         kwargs = {
             "cache": ".cache/ecp-stationary-tests",
             "execution": execution,
             "tile_points": 137,
         }
+        if execution == "native":
+            kwargs["max_host_bytes"] = 256 << 20
         result = complete_rks_gradient_diagnostic(state, basis, **kwargs)
         limits = {
             "max_primitive_records": result.work["primitive_records"],
@@ -263,10 +259,27 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
                         complete_rks_gradient_diagnostic(
                             state, basis, **kwargs, **{name: invalid}
                         )
+            if execution == "native":
+                for invalid in (0, -1, True, 1.5, (1 << 40) + 1):
+                    with pytest.raises(ValueError, match="max_host_bytes"):
+                        complete_rks_gradient_diagnostic(
+                            state, basis, **(kwargs | {"max_host_bytes": invalid})
+                        )
+                host_bound = result.work["additional_host_numeric_bound"]
+                with pytest.raises(ValueError, match="additional-host byte"):
+                    complete_rks_gradient_diagnostic(
+                        state, basis, **(kwargs | {"max_host_bytes": host_bound - 1})
+                    )
+                kwargs["max_host_bytes"] = host_bound
+            else:
+                with pytest.raises(ValueError, match="compiled native consumer"):
+                    complete_rks_gradient_diagnostic(
+                        state, basis, **kwargs, max_host_bytes=256 << 20
+                    )
         StationaryDerivativeContract(state.identity).validate(state)
         boundary = complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)
         np.testing.assert_array_equal(boundary.gradient, result.gradient)
         # Rejection did not revoke the energy owner or authorize stale replay.
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         with pytest.raises(ValueError, match="stale"):
             complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)

@@ -631,6 +631,71 @@ class PreparedBatch:
             finally:
                 state._source.close()
 
+    def _public_dft_cpu_force(self, index: typing.Any, atoms: typing.Any) -> typing.Any:
+        """Bounded CPU ECP force; checked native CPU ECP is an explicit provider."""
+        from vibeqc_compiler.dft import NativeAO
+
+        from ._cpu_force_resources import (
+            CPU_FORCE_HOST_CAP,
+            cpu_force_inventory,
+            qualified_basis,
+        )
+        from ._dft_gradient import StationaryKsState
+        from ._stationary_cpu import complete_rks_gradient_diagnostic
+        from .ecp import resolve_ecp
+
+        calculator = self._calculator
+        if calculator._device_name != "cpu" or not qualified_basis(calculator._basis):
+            raise NotImplementedError(
+                "public CPU ECP forces require a qualified CPU owner"
+            )
+        if len(atoms) > 8:
+            raise ValueError("CPU public force dense-export domain exceeded")
+        with NativeAO(
+            atoms,
+            basis=calculator._basis,
+            representation=calculator._representation_name,
+            charge=self._charges[index],
+            multiplicity=self._multiplicities[index],
+        ) as basis:
+            grid = calculator._ks_options.grid
+            _, terms = resolve_ecp(calculator._basis, atoms)
+            inventory = cpu_force_inventory(
+                basis,
+                grid_points=len(atoms)
+                * grid.radial_points
+                * grid.angular_polar
+                * grid.angular_azimuth,
+                ecp_terms=len(terms),
+            )
+            if sum(inventory.values()) > CPU_FORCE_HOST_CAP:
+                raise ValueError("CPU force additional-host byte budget exceeded")
+            # Reject before exporting the live SCF/grid snapshot. The consumer
+            # repeats admission using the actual exported shape and term count.
+            state = StationaryKsState.from_native(self, basis, index=index)
+            try:
+                if state._source.backend != "cpu":
+                    raise NotImplementedError(
+                        "public CPU ECP forces require a qualified CPU owner"
+                    )
+                result = complete_rks_gradient_diagnostic(
+                    state,
+                    basis,
+                    execution="native",
+                    max_host_bytes=CPU_FORCE_HOST_CAP,
+                    cache=Path(
+                        os.environ.get(
+                            "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cpu"
+                        )
+                    ),
+                )
+                work = dict(result.work)
+                work["ecp_provider"] = "checked-native-cpu-two-grid-v1"
+                work["host_inventory"] = inventory
+                return -np.asarray(result.gradient).copy(), work
+            finally:
+                state._source.close()
+
     def execute(
         self,
         coordinates: Sequence[Sequence[Sequence[float]] | np.ndarray | None]
@@ -676,12 +741,11 @@ class PreparedBatch:
                 + ", ".join(sorted(unsupported))
             )
         compute_forces = "forces" in requested
-        public_dft_cuda_forces = (
+        public_dft_forces = (
             compute_forces
             and self._calculator._capabilities.family == "density_functional"
-            and self._calculator._device_name == "cuda"
         )
-        native_compute_forces = compute_forces and not public_dft_cuda_forces
+        native_compute_forces = compute_forces and not public_dft_forces
         if self._calculator._model_signature() != self._model_signature:
             raise RuntimeError(
                 "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
@@ -813,7 +877,7 @@ class PreparedBatch:
                 _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
             public_force = None
-            if succeeded and public_dft_cuda_forces:
+            if succeeded and public_dft_forces:
                 atoms = self._systems[index]
                 if coordinates is not None and coordinates[index] is not None:
                     xyz = np.asarray(coordinates[index], dtype=np.float64).reshape(
@@ -824,7 +888,12 @@ class PreparedBatch:
                         for atom, position in zip(atoms, xyz, strict=True)
                     )
                 try:
-                    public_force, force_work = self._public_dft_cuda_force(index, atoms)
+                    consumer = (
+                        self._public_dft_cuda_force
+                        if self._calculator._device_name == "cuda"
+                        else self._public_dft_cpu_force
+                    )
+                    public_force, force_work = consumer(index, atoms)
                     if self.resource_diagnostics is not None:
                         self.resource_diagnostics["generated_force"].append(
                             {"index": index, "work": force_work}
@@ -838,7 +907,7 @@ class PreparedBatch:
                 except (TypeError, ValueError):
                     output.status = _native.STATUS_INVALID_ARGUMENT
                     succeeded = False
-                except (RuntimeError, OSError):
+                except (RuntimeError, OSError, ArithmeticError):
                     output.status = _native.STATUS_NUMERICAL_FAILURE
                     succeeded = False
             physical_residual_rms = None
@@ -853,7 +922,7 @@ class PreparedBatch:
                     physical_residual_rms = diagnostic.physical_residual_rms
             forces = (
                 public_force
-                if succeeded and public_dft_cuda_forces
+                if succeeded and public_dft_forces
                 else np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
                 if succeeded and native_compute_forces
                 else None

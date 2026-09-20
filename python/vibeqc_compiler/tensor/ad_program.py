@@ -61,6 +61,7 @@ from .ir import (
     transpose,
 )
 from .packing import PackedLayout
+from .precision import derivative_precision_provenance
 from .program import Program
 from .types import Index, IndexSpace, TensorSpec
 
@@ -981,6 +982,7 @@ def linearize(
             "output_names": sorted(selected_outputs),
             "packed_inputs": program.provenance.get("packed_inputs", {}),
             "generation": "demand-driven",
+            **derivative_precision_provenance(program),
         },
     )
     return JVPProgram(
@@ -1091,6 +1093,7 @@ def transpose_program(
             "input_names": sorted(selected_inputs),
             "packed_inputs": program.provenance.get("packed_inputs", {}),
             "generation": "demand-driven",
+            **derivative_precision_provenance(program),
         },
     )
     return VJPProgram(
