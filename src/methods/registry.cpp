@@ -7,6 +7,7 @@
 #include "methods/hf_method.hpp"
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
+#include "methods/rccsd_method.hpp"
 #include "runtime/provider_registry.hpp"
 
 namespace vibeqc::methods {
@@ -53,10 +54,13 @@ constexpr MethodDefinition register_method(std::string_view name, vibeqc_method 
           batch};
 }
 
-constexpr std::array<MethodDefinition, 9> kMethods{{
+constexpr std::array<MethodDefinition, 10> kMethods{{
     register_method("mp2", VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, kEnergyAndForces,
                     detail::validate_mp2_system, detail::prepare_mp2_calculation,
                     detail::prepare_mp2_batch),
+    register_method("rccsd", VIBEQC_METHOD_RCCSD, VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER,
+                    VIBEQC_PROPERTY_ENERGY, detail::validate_rccsd_system,
+                    detail::prepare_rccsd_calculation, detail::prepare_rccsd_batch),
     register_method("rhf", VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, kEnergyAndForces,
                     detail::validate_hf_system, detail::prepare_hf_calculation,
                     detail::prepare_hf_batch),

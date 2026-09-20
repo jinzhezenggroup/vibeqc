@@ -171,6 +171,7 @@ struct BatchItemResult {
   bool warm_start_used{};
   bool warm_start_fallback{};
   std::optional<double> physical_residual_rms;
+  std::optional<vibeqc_correlation_diagnostic> correlation;
 };
 
 /** CUDA DF value/J/K plan evidence; peaks exclude generated-force staging. */
@@ -265,12 +266,21 @@ class Batch {
       results[i].bucket_id = native[i].bucket_id;
       results[i].warm_start_used = native[i].warm_start_used != 0;
       results[i].warm_start_fallback = native[i].warm_start_fallback != 0;
-      vibeqc_scf_diagnostic diagnostic{sizeof(vibeqc_scf_diagnostic), VIBEQC_ABI_VERSION};
+      vibeqc_scf_diagnostic diagnostic{sizeof(vibeqc_scf_diagnostic), VIBEQC_ABI_VERSION, 0, 0};
       const auto status = vibeqc_batch_get_scf_diagnostic(handle_, i, &diagnostic);
       if (status != VIBEQC_STATUS_NOT_IMPLEMENTED) {
         check(status);
         results[i].physical_residual_rms = diagnostic.physical_residual_rms;
       }
+      vibeqc_correlation_diagnostic correlation{};
+      correlation.struct_size = sizeof(correlation);
+      correlation.abi_version = VIBEQC_ABI_VERSION;
+      const auto correlation_status =
+          vibeqc_batch_get_correlation_diagnostic(handle_, i, &correlation);
+      if (correlation_status == VIBEQC_STATUS_SUCCESS)
+        results[i].correlation = correlation;
+      else if (correlation_status != VIBEQC_STATUS_NOT_IMPLEMENTED)
+        check(correlation_status);
       if (native[i].status != VIBEQC_STATUS_SUCCESS) results[i].forces.clear();
     }
     return results;
