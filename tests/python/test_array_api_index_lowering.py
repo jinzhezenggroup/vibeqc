@@ -55,11 +55,11 @@ def test_reshape_and_broadcast_reject_shape_only_semantics() -> None:
     b, s, p = Index("b", batch), Index("s", spin), Index("p", ao)
     vector = TensorSpec((b, p), role="input")
 
-    with pytest.raises(TypeError, match="explicit TensorIR indices"):
+    with pytest.raises(ValueError, match="explicit TensorIR indices"):
         trace(lambda x: xp.reshape(x, (6,)), {"x": vector})
-    with pytest.raises(TypeError, match="explicit TensorIR indices"):
+    with pytest.raises(ValueError, match="explicit TensorIR indices"):
         trace(lambda x: xp.broadcast_to(x, (2, 2, 3), axes=(0, 2)), {"x": vector})
-    with pytest.raises(TypeError, match="axis map"):
+    with pytest.raises(ValueError, match="explicit TensorIR indices and axes"):
         trace(
             lambda x: xp.broadcast_to(x, (2, 2, 3), indices=(b, s, p)),
             {"x": vector},

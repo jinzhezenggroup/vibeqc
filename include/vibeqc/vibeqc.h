@@ -464,7 +464,8 @@ typedef struct vibeqc_method_descriptor {
   const vibeqc_system* density_fitting_auxiliary_basis;
   /** Relative eigenvalue threshold used for the auxiliary metric. */
   double density_fitting_relative_threshold;
-  /** Planner budget in bytes; zero selects the implementation default. */
+  /** Planner budget in bytes. Positive values are hard upper bounds; zero
+   * selects the workload/device-aware resource policy. */
   uint64_t density_fitting_memory_budget_bytes;
   /**
    * Optional floating-point execution policy. Absent or zero callers keep the

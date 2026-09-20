@@ -234,6 +234,22 @@ std::size_t cuda_density_fitting_integral_source_device_bytes(
       static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation));
 }
 
+CudaDensityFittingMemoryInfo cuda_density_fitting_memory_info(int device_id) noexcept {
+  CudaDensityFittingMemoryInfo result;
+  if (device_id < 0) return result;
+  int previous = -1;
+  const bool have_previous = cudaGetDevice(&previous) == cudaSuccess;
+  if (cudaSetDevice(device_id) != cudaSuccess) return result;
+  std::size_t free_bytes = 0, total_bytes = 0;
+  if (cudaMemGetInfo(&free_bytes, &total_bytes) == cudaSuccess) {
+    result.free_bytes = free_bytes;
+    result.total_bytes = total_bytes;
+    result.available = true;
+  }
+  if (have_previous && previous >= 0 && previous != device_id) (void)cudaSetDevice(previous);
+  return result;
+}
+
 CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnostic(
     const CudaDensityFittingIntegralSource* source) noexcept {
   if (source == nullptr || source->implementation == nullptr) return {};

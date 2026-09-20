@@ -61,6 +61,14 @@ from .triples_cuda import (
     TriplesTileConfig,
     cpu_triples_tiles,
 )
+from .triples_response import (
+    TRIPLES_RESPONSE_INPUTS,
+    accumulate_tile_triples_vjp,
+    build_full_triples_vjp,
+    build_tile_triples_vjp,
+    full_triples_vjp,
+    tile_triples_vjp,
+)
 from .triples_tiles import (
     TileSpec,
     TriplesTileEnumerator,
@@ -71,6 +79,7 @@ from .triples_tiles import (
 )
 
 __all__ = [
+    "TRIPLES_RESPONSE_INPUTS",
     "BatchItemResult",
     "BatchRCCSDResult",
     "BatchRCCSDTResult",
@@ -100,18 +109,22 @@ __all__ = [
     "TileSpec",
     "TriplesTileConfig",
     "TriplesTileEnumerator",
+    "accumulate_tile_triples_vjp",
     "amplitude_layouts",
     "batch_energy",
     "build_ccsd_program",
+    "build_full_triples_vjp",
     "build_lambda_programs",
     "build_parameter_vjp",
     "build_program",
     "build_tile_triples_program",
+    "build_tile_triples_vjp",
     "build_triples_program",
     "complete_gradient_validation",
     "cpu_triples_tiles",
     "energy",
     "evaluate",
+    "full_triples_vjp",
     "gradient_capabilities",
     "method_capabilities",
     "rccsd_t_batch_energy",
@@ -122,6 +135,7 @@ __all__ = [
     "tile_triples_energy",
     "tile_triples_energy_masked",
     "tile_triples_energy_tensorir",
+    "tile_triples_vjp",
     "triples_energy",
     "triples_energy_tensorir",
     "triples_fullsum",

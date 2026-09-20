@@ -53,11 +53,14 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.7
     hooks:
+      # Generated parameter Python is byte-for-byte qualified against its source.
       - id: ruff
         args: ["--fix"]
         types_or: [python, pyi, jupyter]
+        exclude: ^python/vibeqc_compiler/method/_generated_parameters\.py$
       - id: ruff-format
         types_or: [python, pyi, jupyter]
+        exclude: ^python/vibeqc_compiler/method/_generated_parameters\.py$
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v23.1.1
     hooks:

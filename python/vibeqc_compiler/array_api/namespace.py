@@ -33,44 +33,23 @@ def _binary_arrays(
     return _array(left, f"{name} left operand"), _array(right, f"{name} right operand")
 
 
-def _shape(shape: object, name: str = "shape") -> tuple[int, ...]:
-    if not isinstance(shape, tuple) or any(
-        type(size) is not int or size < 0 for size in shape
+def _shape(value: object, name: str) -> tuple[int, ...]:
+    if not isinstance(value, tuple) or any(
+        type(extent) is not int or extent < 0 for extent in value
     ):
-        raise TypeError(f"{name} must be a tuple of nonnegative integers")
-    return typing.cast("tuple[int, ...]", shape)
+        raise TypeError(f"{name} shape must be a tuple of nonnegative integers")
+    return value
 
 
-def _indices(
-    indices: object,
-    *,
-    shape: tuple[int, ...],
-    operation: str,
-) -> tuple[Index, ...]:
-    if indices is None:
-        raise TypeError(
-            f"{operation} requires explicit TensorIR indices in the preview; "
-            "integer shape alone cannot establish scientific axis identity"
-        )
+def _target_indices(shape: object, indices: object, name: str) -> tuple[Index, ...]:
+    target_shape = _shape(shape, name)
     if not isinstance(indices, tuple) or any(
         not isinstance(index, Index) for index in indices
     ):
-        raise TypeError(
-            f"{operation} indices must be a tuple of TensorIR Index objects"
-        )
-    result = typing.cast("tuple[Index, ...]", indices)
-    if tuple(index.extent for index in result) != shape:
-        raise ValueError(f"{operation} shape must match the explicit TensorIR indices")
-    return result
-
-
-def _axis(axis: object, rank: int, operation: str) -> int:
-    if type(axis) is not int:
-        raise TypeError(f"{operation} axis must be an integer")
-    normalized = axis + rank if axis < 0 else axis
-    if not 0 <= normalized < rank:
-        raise ValueError(f"{operation} axis is out of range")
-    return normalized
+        raise TypeError(f"{name} requires an explicit tuple of TensorIR Index objects")
+    if tuple(index.extent for index in indices) != target_shape:
+        raise ValueError(f"{name} shape must match the explicit target indices")
+    return indices
 
 
 def add(x1: object, x2: object) -> VibeArray:
@@ -139,6 +118,74 @@ def sqrt(x: object) -> VibeArray:
     return VibeArray(tensor_ir.sqrt(_array(x).node))
 
 
+def reshape(
+    x: object,
+    shape: tuple[int, ...],
+    *,
+    indices: tuple[Index, ...] | None = None,
+) -> VibeArray:
+    """Reshape only with explicit TensorIR target-index semantics."""
+    value = _array(x)
+    if indices is None:
+        raise ValueError(
+            "frontend reshape requires explicit TensorIR indices; "
+            "shape alone cannot define QC index spaces"
+        )
+    target = _target_indices(shape, indices, "reshape")
+    return VibeArray(tensor_ir.reshape(value.node, target))
+
+
+def broadcast_to(
+    x: object,
+    shape: tuple[int, ...],
+    *,
+    indices: tuple[Index, ...] | None = None,
+    axes: tuple[int, ...] | None = None,
+) -> VibeArray:
+    """Broadcast with explicit target indices and source-to-target axis map."""
+    value = _array(x)
+    if indices is None or axes is None:
+        raise ValueError(
+            "frontend broadcast_to requires explicit TensorIR indices and axes"
+        )
+    target = _target_indices(shape, indices, "broadcast_to")
+    if not isinstance(axes, tuple) or any(type(axis) is not int for axis in axes):
+        raise TypeError("broadcast_to axes must be a tuple of integers")
+    return VibeArray(tensor_ir.broadcast(value.node, target, axes))
+
+
+def slice(x: object, ranges: tuple[tuple[int, int], ...]) -> VibeArray:
+    """Static unit-step half-open slicing that retains TensorIR populations."""
+    value = _array(x)
+    if not isinstance(ranges, tuple) or any(
+        not isinstance(bounds, tuple)
+        or len(bounds) != 2
+        or any(type(bound) is not int for bound in bounds)
+        for bounds in ranges
+    ):
+        raise TypeError("slice ranges must be a static tuple of (start, stop) pairs")
+    return VibeArray(tensor_ir.slice_tensor(value.node, ranges))
+
+
+def take(
+    x: object,
+    indices: tuple[int, ...],
+    *,
+    axis: int,
+) -> VibeArray:
+    """Static gather along one axis, preserving the source scientific domain."""
+    value = _array(x)
+    if type(axis) is not int:
+        raise TypeError("take axis must be an integer")
+    if not isinstance(indices, tuple) or any(
+        type(index) is not int for index in indices
+    ):
+        raise TypeError("take indices must be a static tuple of integers")
+    return VibeArray(
+        tensor_ir.gather(value.node, _axis(axis, value.ndim, "take"), indices)
+    )
+
+
 def sum(
     x: object,
     *,
@@ -163,78 +210,9 @@ def sum(
     return VibeArray(tensor_ir.reduce_sum(value.node, axes=axes))
 
 
-def reshape(
-    x: object,
-    shape: tuple[int, ...],
-    *,
-    indices: tuple[Index, ...] | None = None,
-) -> VibeArray:
-    """Row-major reshape with explicit scientific domains for every result axis."""
-    value = _array(x)
-    result_shape = _shape(shape)
-    result_indices = _indices(indices, shape=result_shape, operation="reshape")
-    return VibeArray(tensor_ir.reshape(value.node, result_indices))
-
-
 def permute_dims(x: object, axes: tuple[int, ...]) -> VibeArray:
     value = _array(x)
     return VibeArray(tensor_ir.transpose(value.node, axes))
-
-
-def broadcast_to(
-    x: object,
-    shape: tuple[int, ...],
-    *,
-    indices: tuple[Index, ...] | None = None,
-    axes: tuple[int, ...] | None = None,
-) -> VibeArray:
-    """Explicit broadcast; inserted axes and the input-to-output map are required."""
-    value = _array(x)
-    result_shape = _shape(shape)
-    result_indices = _indices(indices, shape=result_shape, operation="broadcast_to")
-    if axes is None:
-        raise TypeError(
-            "broadcast_to requires an explicit input-to-output axis map in the preview"
-        )
-    if not isinstance(axes, tuple) or any(type(axis) is not int for axis in axes):
-        raise TypeError("broadcast_to axes must be a tuple of integers")
-    return VibeArray(tensor_ir.broadcast(value.node, result_indices, axes))
-
-
-def slice(x: object, key: object) -> VibeArray:
-    """Static rank-preserving slicing with nonnegative unit-step slices only."""
-    value = _array(x)
-    items = key if isinstance(key, tuple) else (key,)
-    if len(items) > value.ndim:
-        raise IndexError("too many indices for symbolic VibeArray")
-    items = (*items, *(builtins.slice(None) for _ in range(value.ndim - len(items))))
-    ranges: list[tuple[int, int]] = []
-    for item, extent in zip(items, value.shape):
-        if not isinstance(item, builtins.slice):
-            raise TypeError(
-                "symbolic VibeArray indexing supports rank-preserving slices only"
-            )
-        if item.step not in (None, 1):
-            raise ValueError("symbolic VibeArray slices require unit step")
-        start = 0 if item.start is None else item.start
-        stop = extent if item.stop is None else item.stop
-        if type(start) is not int or type(stop) is not int:
-            raise TypeError("symbolic VibeArray slice bounds must be integers or None")
-        if start < 0 or stop < 0:
-            raise ValueError("symbolic VibeArray slice bounds must be nonnegative")
-        ranges.append((start, stop))
-    return VibeArray(tensor_ir.slice_tensor(value.node, tuple(ranges)))
-
-
-def take(x: object, indices: tuple[int, ...], *, axis: int) -> VibeArray:
-    """Gather static local positions along one existing scientific axis."""
-    value = _array(x)
-    selected_axis = _axis(axis, value.ndim, "take")
-    if not isinstance(indices, tuple) or any(
-        type(index) is not int for index in indices
-    ):
-        raise TypeError("take indices must be a tuple of static integers")
-    return VibeArray(tensor_ir.gather(value.node, selected_axis, indices))
 
 
 def matmul(x1: object, x2: object) -> VibeArray:
@@ -259,3 +237,37 @@ def einsum(
             coefficient=_exact(coefficient, "einsum coefficient"),
         )
     )
+
+
+def _axis(axis: object, rank: int, operation: str) -> int:
+    if type(axis) is not int:
+        raise TypeError(f"{operation} axis must be an integer")
+    normalized = axis + rank if axis < 0 else axis
+    if not 0 <= normalized < rank:
+        raise ValueError(f"{operation} axis is out of range")
+    return normalized
+
+
+def _getitem(x: object, key: object) -> VibeArray:
+    """Static rank-preserving slicing with nonnegative unit-step slices only."""
+    value = _array(x)
+    items = key if isinstance(key, tuple) else (key,)
+    if len(items) > value.ndim:
+        raise IndexError("too many indices for symbolic VibeArray")
+    items = (*items, *(builtins.slice(None) for _ in range(value.ndim - len(items))))
+    ranges: list[tuple[int, int]] = []
+    for item, extent in zip(items, value.shape):
+        if not isinstance(item, builtins.slice):
+            raise TypeError(
+                "symbolic VibeArray indexing supports rank-preserving slices only"
+            )
+        if item.step is not None and (type(item.step) is not int or item.step != 1):
+            raise ValueError("symbolic VibeArray slices require unit step")
+        start = 0 if item.start is None else item.start
+        stop = extent if item.stop is None else item.stop
+        if type(start) is not int or type(stop) is not int:
+            raise TypeError("symbolic VibeArray slice bounds must be integers or None")
+        if start < 0 or stop < 0:
+            raise ValueError("symbolic VibeArray slice bounds must be nonnegative")
+        ranges.append((start, stop))
+    return VibeArray(tensor_ir.slice_tensor(value.node, tuple(ranges)))

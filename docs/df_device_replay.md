@@ -69,9 +69,16 @@ simultaneously live plans.
 
 The HF resource alternatives expose `response_minimum`, `response_capacity`,
 and `response_host_capacity`, together with existing value tile dimensions,
-resident/peak bytes and recomputation identity. A positive DF request still
-splits equally between the value plan and response; UHF charges its host total
-density against the response portion. Insufficient budgets fail transactionally.
+resident/peak bytes and recomputation identity. A positive DF request is a hard
+upper bound: value and response owners divide that total according to the
+resolved workload rather than an unconditional 50/50 split. With a zero request,
+the resolver uses AO/auxiliary/atom/batch/DIIS dimensions plus live CUDA
+free/total memory when available, reserving explicit headroom. If the live probe
+is unavailable, the same dimensions produce a deterministic conservative
+fallback. The prepared owner records the resolved value/response allowances,
+headroom, observed memory and policy version for replay/cache identity and
+progress diagnostics. UHF continues to charge its host total density against
+the response portion. Insufficient budgets fail transactionally.
 
 ## Reproduction and evidence
 
@@ -126,3 +133,5 @@ batch-3 changed/restored geometries, partial tiles, rank rejection, failed-item
 neighbors, and measured global resource caps. All 16 native CPU tests and
 106 selected Python CPU checks pass; the three native CUDA DF/provider tests
 also pass.
+
+The workload/device-aware zero-budget policy and its replay invariants are documented in the [#598 resource-policy decision](../.agents/notes/implemented/performance/2026-09-20-df-resource-policy.md).

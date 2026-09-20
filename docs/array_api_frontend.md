@@ -56,16 +56,26 @@ Elementwise operations currently require identical TensorIR domains.
 | `pow/exp/log/sqrt` | Existing TensorIR real-valued contracts |
 | `sum` | Explicit reduction, `keepdims=False`, no dtype conversion |
 | `permute_dims` | Full TensorIR axis permutation |
+| `reshape` | Requires explicit target TensorIR `Index` metadata |
+| `broadcast_to` | Requires explicit target indices and source-axis map |
+| `slice` | Static unit-step half-open ranges; populations are retained |
+| `take` | Static integer gather along one axis; source domain is retained |
 | `matmul` | Rank-2 only |
 | `einsum` | VibeQC extension lowered to existing TensorIR einsum |
 | implicit broadcasting | Not yet supported |
 | dtype promotion/casts | Not yet supported |
-| reshape/new-domain creation | Not yet supported |
+| implicit reshape/domain inference | Not supported; target indices must be explicit |
 | dynamic shapes/control flow | Not supported |
 
 Exact scalar spelling accepts `int`, `Fraction`, or a rational string.
 Python floating-point spellings such as `0.5` are deliberately rejected so a
 frontend convenience cannot weaken TensorIR scientific identity.
+
+Shape-changing operations follow the same rule: integer extents alone never
+define AO/occupied/virtual/auxiliary meaning. `reshape` therefore requires
+explicit target `Index` objects, while `broadcast_to` additionally requires
+an explicit source-to-target axis map. TensorIR then validates preserved
+domains on every mapped axis; equal extents cannot authorize relabeling.
 
 Compiler code imports `vibeqc_compiler.array_api.namespace` explicitly.
 `__array_namespace__` and a versioned Array API declaration will only be added

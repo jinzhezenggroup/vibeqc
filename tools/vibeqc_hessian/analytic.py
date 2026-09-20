@@ -12,11 +12,11 @@ public production-size, CUDA, DF, ECP, DFT or matrix-free molecular HVP endpoint
 from __future__ import annotations
 
 import shutil
-import typing
 from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.integral.blocks import TensorLayout, WeightTile
 from vibeqc_compiler.integral.second_derivatives import (
     build_eri_second_ir,
@@ -61,14 +61,14 @@ _COMPILE_CACHE: dict = {}
 
 
 def _compile_cached(
-    key: typing.Any,
-    build_ir: typing.Any,
-    ir_extra: typing.Any,
-    adapter: typing.Any,
-    cache: typing.Any,
-    output_indices: typing.Any,
-    component_indices: typing.Any,
-) -> typing.Any:
+    key: object,
+    build_ir: object,
+    ir_extra: object,
+    adapter: object,
+    cache: object,
+    output_indices: object,
+    component_indices: object,
+) -> object:
     # The directory owns artifact lifetime; the compiler and ordered subsets
     # are part of execution/layout identity, not interchangeable cache hints.
     ck = (
@@ -91,14 +91,17 @@ def _compile_cached(
     return _COMPILE_CACHE[ck]
 
 
-def _tile_components(count: typing.Any, chunk: typing.Any = 64) -> typing.Any:
+def _tile_components(count: object, chunk: object = 64) -> object:
     for start in range(0, count, chunk):
         yield tuple(range(start, min(start + chunk, count)))
 
 
 def _scatter(
-    full: typing.Any, ci: typing.Any, center_atoms: typing.Any, data: typing.Any
-) -> typing.Any:
+    full: np.ndarray,
+    ci: tuple[int, ...],
+    center_atoms: tuple[int, ...],
+    data: dict[str, object],
+) -> np.ndarray:
     """Scatter a dense kernel result to a molecular Hessian tensor."""
     nat = data["state"].nat
     k = len(ci)
@@ -113,8 +116,11 @@ def _scatter(
 
 
 def _scatter_hvp(
-    full: typing.Any, ci: typing.Any, center_atoms: typing.Any, data: typing.Any
-) -> typing.Any:
+    full: np.ndarray,
+    ci: tuple[int, ...],
+    center_atoms: tuple[int, ...],
+    data: dict[str, object],
+) -> np.ndarray:
     """Scatter one recovered shell-center HVP onto physical atom rows."""
     nat = data["state"].nat
     k = len(ci)
@@ -127,19 +133,19 @@ def _scatter_hvp(
 
 
 def _run_kernel_summed(
-    data: typing.Any,
-    key: typing.Any,
-    build_ir: typing.Any,
-    ir_extra: typing.Any,
-    adapter: typing.Any,
-    cache: typing.Any,
-    prims: typing.Any,
-    centers: typing.Any,
-    weight_full_flat: typing.Any,
-    component_count: typing.Any,
+    data: dict[str, object],
+    key: object,
+    build_ir: object,
+    ir_extra: dict[str, object],
+    adapter: object,
+    cache: Path,
+    prims: tuple[object, ...],
+    centers: np.ndarray,
+    weight_full_flat: np.ndarray,
+    component_count: int,
     *,
-    direction: typing.Any = None,
-) -> typing.Any:
+    direction: np.ndarray | None = None,
+) -> np.ndarray:
     """Run one shell tuple through the weighted Hessian or HVP provider.
 
     The directional path expands physical displacements to mathematical
@@ -183,37 +189,131 @@ def _run_kernel_summed(
                 projections=None,
                 direction=center_direction,
             )
-            with PreparedSecondDerivative(art, record_capacity=8) as plan:
+            with PreparedSecondDerivative(
+                art,
+                record_capacity=8,
+                budget=data["resource_budget"],
+                device_id=data["device_id"],
+            ) as plan:
                 r = plan.contract(stream, profile=True)
+            data["second_executions"].append(r.diagnostics)
             full[list(oi)] += np.asarray(r.values).sum(axis=0)
     if hvp:
         return _scatter_hvp(full, ci, ca, data)
     return _scatter(full, ci, ca, data)
 
 
-def _provider_data(s: typing.Any) -> typing.Any:
+def _checked_second_hvp_options(
+    backend: str, compiler: object, device_id: int, budget_bytes: int
+) -> object:
+    """Validate one explicit #178 weighted-HVP execution backend."""
+    if backend not in ("cpu", "cuda"):
+        raise ValueError("second-integral backend must be cpu or cuda")
+    if type(budget_bytes) is not int or not 0 < budget_bytes < 2**63:
+        raise ValueError("second-integral budget must be a positive int64")
+    if backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        if not isinstance(compiler, CudaCompilerAdapter):
+            raise TypeError(
+                "CUDA second-integral HVPs require an explicit CudaCompilerAdapter"
+            )
+        if type(device_id) is not int or not 0 <= device_id < 2**31:
+            raise ValueError("CUDA second-integral device_id must be a nonnegative int")
+        resource_budget = ResourceBudget(
+            host_bytes=budget_bytes,
+            device_bytes=budget_bytes,
+            per_device_bytes=((device_id, budget_bytes),),
+        )
+        return compiler, device_id, resource_budget
+    if compiler is not None:
+        raise ValueError("second-integral compiler is only meaningful for CUDA")
+    return (
+        CppCompilerAdapter(Path(shutil.which("c++") or "c++")),
+        0,
+        ResourceBudget(host_bytes=budget_bytes, device_bytes=0),
+    )
+
+
+def _provider_data(
+    s: NativeRHFState,
+    *,
+    backend: str = "cpu",
+    compiler: object = None,
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+) -> dict[str, object]:
     _validate_analytic_domain(s)
+    adapter, provider_device, resource_budget = _checked_second_hvp_options(
+        backend, compiler, device_id, budget_bytes
+    )
     C, eps = s.C, s.eps
     W_e = (C[:, : s.nocc] * (2 * eps[: s.nocc])) @ C[:, : s.nocc].T
-    adapter = CppCompilerAdapter(Path(shutil.which("c++") or "c++"))
     return {
         "state": s,
         "shells": s.source.shells,
         "primitives": s.primitives,
         "adapter": adapter,
-        "cache": s.cache / "second-cache",
+        "cache": s.cache / f"second-cache-{backend}",
         "W_e": W_e,
         "density": s.P0,
+        "backend": backend,
+        "device_id": provider_device,
+        "budget_bytes": budget_bytes,
+        "resource_budget": resource_budget,
+        "second_executions": [],
+    }
+
+
+def _second_provider_diagnostics(data: dict[str, object]) -> dict[str, object]:
+    """Summarize the generated #178 provider without claiming hidden residency."""
+    executions = data["second_executions"]
+    timing_names = ("device_ms", "input_ms", "output_ms", "kernel_ms")
+    timing = {
+        name: sum(
+            (item.get("device_timing") or {}).get(name, 0.0) for item in executions
+        )
+        for name in timing_names
+    }
+    chunks = sum(item["chunks"] for item in executions)
+    cuda = data["backend"] == "cuda"
+    return {
+        "backend": f"{data['backend']}-generated-weighted-hvp",
+        "provider_backend": data["backend"],
+        "device_id": data["device_id"] if cuda else None,
+        "budget_bytes": data["budget_bytes"],
+        "program_identities": tuple(
+            sorted({item["program_identity"] for item in executions})
+        ),
+        "native_artifacts": tuple(
+            sorted({item["native_artifact"] for item in executions})
+        ),
+        "executions": len(executions),
+        "primitive_records": sum(item["records"] for item in executions),
+        "record_batches": chunks,
+        "record_batch_uploads": chunks if cuda else 0,
+        "result_tile_downloads": chunks if cuda else 0,
+        "raw_hessian_downloads": 0,
+        "intermediate_matrix_downloads": 0,
+        "peak_host_bytes": max(
+            (item["resources"]["peak_bytes"].get("host", 0) for item in executions),
+            default=0,
+        ),
+        "peak_device_bytes": max(
+            (item["resources"]["peak_bytes"].get("device", 0) for item in executions),
+            default=0,
+        ),
+        "device_timing_ms": timing if cuda else None,
     }
 
 
 def _run_one_electron(
-    data: typing.Any,
-    family: typing.Any,
-    weight: typing.Any,
+    data: dict[str, object],
+    family: str,
+    weight: np.ndarray,
     *,
-    direction: typing.Any = None,
-) -> typing.Any:
+    direction: np.ndarray | None = None,
+) -> np.ndarray:
     """Provider output for one one-electron family as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
@@ -290,8 +390,8 @@ def _run_one_electron(
 
 
 def _run_eri(
-    data: typing.Any, density: typing.Any, *, direction: typing.Any = None
-) -> typing.Any:
+    data: dict[str, object], density: np.ndarray, *, direction: np.ndarray | None = None
+) -> np.ndarray:
     """Provider output for four-center ERIs as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
@@ -352,7 +452,7 @@ def _run_eri(
     return total
 
 
-def provider_components(s: typing.Any) -> typing.Any:
+def provider_components(s: NativeRHFState) -> dict[str, np.ndarray]:
     """Return the frozen-skeleton components from the #178 providers.
 
     Keys ``core`` (kinetic + nuclear_attraction, weight P0), ``pulay``
@@ -369,18 +469,41 @@ def provider_components(s: typing.Any) -> typing.Any:
     return {"core": core, "pulay": pulay, "two_electron": two_electron}
 
 
-def provider_hvp_components(s: typing.Any, direction: typing.Any) -> typing.Any:
-    """Return frozen-skeleton second-integral HVP components directly."""
+def provider_hvp_components(
+    s: NativeRHFState,
+    direction: np.ndarray,
+    *,
+    backend: str = "cpu",
+    compiler: object = None,
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+    return_diagnostics: bool = False,
+) -> dict[str, np.ndarray] | tuple[dict[str, np.ndarray], dict[str, object]]:
+    """Return frozen-skeleton #178 HVP components on an explicit backend.
+
+    CUDA reuses the already-qualified generated second-derivative provider. It
+    streams packed primitive records to bounded device storage and downloads
+    only contracted coordinate HVP tiles; no raw integral Hessian is published.
+    """
     _validate_analytic_domain(s)
     vector = checked_direction(direction, s.nat)
-    data = _provider_data(s)
+    data = _provider_data(
+        s,
+        backend=backend,
+        compiler=compiler,
+        device_id=device_id,
+        budget_bytes=budget_bytes,
+    )
     p0 = s.P0
     core = _run_one_electron(data, "kinetic", p0, direction=vector) + _run_one_electron(
         data, "nuclear_attraction", p0, direction=vector
     )
     pulay = -_run_one_electron(data, "overlap", data["W_e"], direction=vector)
     two_electron = _run_eri(data, data["density"], direction=vector)
-    return {"core": core, "pulay": pulay, "two_electron": two_electron}
+    components = {"core": core, "pulay": pulay, "two_electron": two_electron}
+    if return_diagnostics:
+        return components, _second_provider_diagnostics(data)
+    return components
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +511,7 @@ def provider_hvp_components(s: typing.Any, direction: typing.Any) -> typing.Any:
 # ---------------------------------------------------------------------------
 
 
-def nuclear_closed_form(s: typing.Any) -> typing.Any:
+def nuclear_closed_form(s: NativeRHFState) -> np.ndarray:
     """Exact Coulomb second derivative: d^2 (Za Zb / |ra-rb|) / dx dy.
 
     For the pair contribution ``blk = Za Zb / d^3 (3 R R^T - I)`` the
@@ -412,7 +535,7 @@ def nuclear_closed_form(s: typing.Any) -> typing.Any:
     return H
 
 
-def nuclear_hvp(s: typing.Any, direction: typing.Any) -> typing.Any:
+def nuclear_hvp(s: NativeRHFState, direction: np.ndarray) -> np.ndarray:
     """Apply the exact nucleus-nucleus Hessian to one Cartesian direction."""
     _validate_analytic_domain(s)
     vector = checked_direction(direction, s.nat)
@@ -434,19 +557,19 @@ def nuclear_hvp(s: typing.Any, direction: typing.Any) -> typing.Any:
 # ---------------------------------------------------------------------------
 
 
-def build_reference(s: typing.Any) -> typing.Any:
+def build_reference(s: NativeRHFState) -> object:
     """Reuse the caller's validated native snapshot without rerunning SCF."""
     _validate_analytic_domain(s)
     return s.reference
 
 
-def _analytic_first_order_inputs(s: typing.Any) -> typing.Any:
+def _analytic_first_order_inputs(s: NativeRHFState) -> tuple[np.ndarray, np.ndarray]:
     """Generated S/T/V/ERI contractions, tied to the same native SCF density."""
     _validate_analytic_domain(s)
     return s.first_order_inputs
 
 
-def _validate_analytic_domain(s: typing.Any) -> None:
+def _validate_analytic_domain(s: NativeRHFState) -> None:
     if not isinstance(s, NativeRHFState):
         raise TypeError(
             "analytic Hessian requires NativeRHFState, not an oracle System"
@@ -454,7 +577,7 @@ def _validate_analytic_domain(s: typing.Any) -> None:
     s.validate()
 
 
-def cphf_relaxation(s: typing.Any) -> typing.Any:
+def cphf_relaxation(s: NativeRHFState) -> np.ndarray:
     """Electronic relaxation through #180 RHS contract and #179 solver.
 
     The first-order frozen Fock and overlap matrices are analytic. For every
@@ -515,7 +638,9 @@ def cphf_relaxation(s: typing.Any) -> typing.Any:
 # ---------------------------------------------------------------------------
 
 
-def analytic_hessian(s: typing.Any, *, relax: typing.Any = None) -> typing.Any:
+def analytic_hessian(
+    s: NativeRHFState, *, relax: np.ndarray | None = None
+) -> dict[str, np.ndarray]:
     """Return every component plus the total from the shared #178/#179 layers.
 
     This diagnostic integration is bounded to 12 AOs. A supplied relaxation

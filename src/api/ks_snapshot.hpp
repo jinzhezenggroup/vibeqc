@@ -20,6 +20,14 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
                                          const vibeqc_ks_snapshot* snapshot, double* values,
                                          std::size_t count);
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot);
+vibeqc_status vibeqc_ks_snapshot_energy_v1(const vibeqc_batch* batch,
+                                           const vibeqc_ks_snapshot* snapshot, double* energy);
+/** Private CPU RKS directional potential bridge; rho/gradient use total density.
+ * On failure, callers must discard the output buffer, including completed rows. */
+vibeqc_status vibeqc_xc_rks_response_batch_v1(std::uint32_t pbe, const double* rho,
+                                              const double* gradient, const double* delta_rho,
+                                              const double* delta_gradient, std::size_t point_count,
+                                              double* values, std::size_t value_count);
 vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
                                                     const vibeqc_ks_snapshot* snapshot,
                                                     double* values, std::size_t count);

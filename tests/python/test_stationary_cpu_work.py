@@ -1,6 +1,5 @@
 """CPU work admission metadata, independently enumerated without a native library."""
 
-import re
 import typing
 from itertools import product
 from types import SimpleNamespace
@@ -9,7 +8,6 @@ import numpy as np
 import pytest
 from vibeqc._cpu_force_resources import CPU_FORCE_HOST_CAP, cpu_force_inventory
 from vibeqc._stationary_cpu import _admit_work
-from vibeqc_compiler.common.paths import asset_path
 
 
 def inputs(*, ecp: bool = True) -> tuple[typing.Any, typing.Any, tuple[int, ...]]:
@@ -63,11 +61,9 @@ def test_work_counts_follow_contractions_and_both_provider_grids(
             )
     assert work["primitive_record_bound"] == records
     assert work["grid_pair_work_bound"] == (75 if execution == "native" else 378)
-    # Read the independent CPU provider's actual checked calls, so a future
-    # policy change cannot silently undercount its two-grid work.
-    source = asset_path("src/integrals/ecp.cpp").read_text()
-    grids = re.findall(r"ecp_integrals\(system, (\d+), (\d+), derivatives\)", source)
-    assert len(grids) == 2
+    # Independent literal prescription. Native tests separately compare both
+    # generated production grids with the retained pre-migration CPU oracle.
+    grids = ((160, 32), (224, 44))
     expected = 0
     for radial, polar in grids:
         for _center in (0, 2):

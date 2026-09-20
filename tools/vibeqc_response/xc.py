@@ -158,13 +158,7 @@ class FixedDensityXCDerivativeKernel:
         response = np.zeros((nspin, self.basis.nao, self.basis.nao))
         for tile in _tiles(self.grid, self.tile_points):
             jets = self.basis.evaluate(tile.points, self._contraction.contract.ao_order)
-            values = self._contraction.evaluate(
-                jets,
-                density,
-                tile.weights,
-                delta_density=direction,
-            )
-            response += values["response"]
+            response += self._response_tile(jets, density, direction, tile.weights)
             self.statistics["tiles"] += 1
         self.statistics["actions"] += 1
         self.statistics["seconds"] += perf_counter() - started
@@ -175,6 +169,18 @@ class FixedDensityXCDerivativeKernel:
             4 * self.basis.nao * self.basis.nao * 8,
         )
         return immutable(response)
+
+    def _response_tile(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        direction: typing.Any,
+        weights: typing.Any,
+    ) -> typing.Any:
+        """Default interior-domain chain; native SCF adapters bind their point model."""
+        return self._contraction.evaluate(
+            jets, density, weights, delta_density=direction
+        )["response"]
 
     def apply(self, delta_density: typing.Any) -> typing.Any:
         """Restricted solver adapter: total-D directions split equally by spin."""

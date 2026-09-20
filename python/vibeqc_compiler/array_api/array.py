@@ -98,4 +98,4 @@ class VibeArray:
     def __getitem__(self, key: object) -> VibeArray:
         from . import namespace
 
-        return namespace.slice(self, key)
+        return namespace._getitem(self, key)

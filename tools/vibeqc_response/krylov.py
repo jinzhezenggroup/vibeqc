@@ -778,6 +778,9 @@ def solve(
     collect_basis: typing.Any = True,
 ) -> typing.Any:
     """Solve one RHS with bounded true-residual GMRES."""
+    # A live reference lease must hold even when a zero RHS skips all actions.
+    validate_current = getattr(operator, "validate_current", lambda: None)
+    validate_current()
     options = GMRESOptions() if options is None else options
     b = np.asarray(rhs)
     if (
@@ -828,6 +831,7 @@ def solve(
                 preconditioner=preconditioner,
                 collect_basis=collect_basis or recycle is not None,
             )
+        validate_current()
         if recycle is not None and result.converged:
             recycle.update(operator.problem, result)
     result = replace(
@@ -835,6 +839,7 @@ def solve(
     )
     if raise_on_failure:
         result.require_converged()
+    validate_current()
     return result
 
 
@@ -1010,6 +1015,8 @@ def solve_many(
     raise_on_failure: typing.Any = False,
 ) -> typing.Any:
     """Compare sequential, blocked and recycled multi-RHS response solves."""
+    validate_current = getattr(operator, "validate_current", lambda: None)
+    validate_current()
     if strategy not in ("sequential", "blocked", "recycled"):
         raise ValueError("strategy must be sequential, blocked or recycled")
     if strategy == "blocked" and preconditioner is not None:
@@ -1117,4 +1124,5 @@ def solve_many(
         )
     if raise_on_failure:
         answer.require_converged()
+    validate_current()
     return answer

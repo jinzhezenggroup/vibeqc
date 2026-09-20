@@ -526,17 +526,27 @@ downloads only that final `(natoms,3)` result. No RHF coefficient formula is
 handwritten in the CUDA runtime; the generic compiler emits the declared weight
 products. CPU remains the default and no silent fallback is permitted.
 
-This does **not** make the complete HVP all-device: response reconstruction
+The #178 frozen-skeleton second-integral HVP consumer is independently
+selectable with `second_backend="cuda"` and an explicit `second_compiler`.
+It reuses the generated bounded second-derivative runtime: shell primitive and
+fixed-weight records are streamed to device storage, S/T/V/four-center second
+derivatives are contracted there, and only coordinate HVP tiles return to the
+host. No raw molecular integral Hessian or intermediate AO matrix is downloaded.
+CPU remains the default, there is no silent fallback, and scalar, multi-RHS and
+bounded full-Hessian callers preserve the selected provider/program identities
+and its host/device phase peak.
+
+This still does **not** make the complete HVP all-device: response reconstruction
 currently publishes D1/W1 on the host before the optional CUDA relaxation
-upload, #178 second-integral weighted HVP consumers and final molecular assembly
-remain host-side, and full-Hessian output remains host-owned. Block/full-Hessian
-budget diagnostics include the CUDA relaxation arena as a separate phase peak.
-Production-size qualification, a public Calculator Hessian endpoint and DFT
-Hessians remain separate. See the
+upload, while final molecular assembly and full-Hessian output remain host-owned.
+Block/full-Hessian diagnostics account for the response, CUDA relaxation and
+second-integral-provider phases separately. Production-size qualification, a
+public Calculator Hessian endpoint and DFT Hessians remain separate. See the
 [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
 [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md),
-[bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md)
-and [CUDA relaxation decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-relaxation.md).
+[bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md),
+[CUDA relaxation decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-relaxation.md)
+and [CUDA second-integral HVP decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-second-hvp.md).
 
 
 For explicit CUDA first-source qualification, add these arguments to the
@@ -551,11 +561,8 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), cuda_target_info("sm_120"))
 # Within the live source/state scope:
 result = directional_rhf_response(
-    state,
-    [[0, 0, 0], [0.1, 0.2, 0.3]],
-    first_backend="cuda",
-    first_compiler=compiler,
-    jk_backend="cuda",
+    state, [[0, 0, 0], [0.1, 0.2, 0.3]],
+    first_backend="cuda", first_compiler=compiler, jk_backend="cuda",
 )
 ```
 
@@ -576,3 +583,10 @@ relaxation substitution inside a CUDA-selected complete HVP, checks multi-RHS
 and full-Hessian composition, and requires zero raw derivative/intermediate
 matrix downloads. A matching CUDA Compute Sanitizer memcheck is an additional
 runtime gate; it is not a substitute for the numerical comparisons.
+
+`tests/python/test_hessian_second_cuda.py` qualifies the separately selectable
+#178 second-integral path. It compares core/Pulay/two-electron HVP components
+against the CPU generated provider, forbids construction of a CPU compiler in a
+CUDA-selected complete HVP, propagates the backend through multi-RHS/full-Hessian
+assembly, and checks that execution reports packed-record uploads and contracted
+tile downloads but no raw Hessian/intermediate-matrix downloads.

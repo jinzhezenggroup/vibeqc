@@ -56,6 +56,7 @@
     "cmake/VibeQCSourceIdentity.cmake",
     "cmake/3rdparty/implib_manifest.json",
     "tools/generate_cuda_implib.py",
+    "tools/generate_method_parameters.py",
     "tools/generate_shell_kernels.py",
     "tools/generate_ecp_kernels.py",
     "tools/generate_df_kernels.py",

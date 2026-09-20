@@ -170,12 +170,18 @@ Standalone arbitrary external weights also retain their documented upload
 boundary. Primitive values and center derivatives use the same generated
 interfaces in both execution modes.
 
-For a positive DF working-set request with forces, the J/K planner receives
-half the request and each sequential generated response bridge receives half.
-Energy-only J/K uses the whole request. UHF also charges its total
-spin-density temporary against the response portion. Without an explicit
-request, the response cap is 128 MiB. A resource ledger, when requested,
-enforces total owned device allocations across the complete execution.
+For a positive DF working-set request, the public value is a hard upper bound
+on the combined value/response owners and is never enlarged. Energy-only J/K
+uses the whole resolved allowance. Force calculations divide the same total
+according to the staged value/response workload instead of an unconditional
+50/50 split; UHF also charges its total spin-density temporary against the
+response owner. With a zero request, AO/auxiliary/atom/batch/DIIS dimensions
+resolve a bounded automatic allowance. CUDA owners use live free/total device
+memory when available while reserving explicit headroom; CPU/probe-unavailable
+resolution uses a deterministic conservative fallback. The resolved contract
+is frozen on the prepared owner and replayed without re-probing. A resource
+ledger, when requested, enforces total owned device allocations across the
+complete execution.
 Prepared response state and its CUDA plan are invalidated together when the
 mapping, effective budget, or metric cutoff changes; geometry invalidation follows
 the existing fixed-topology plan contract. Energy-only caches do not require a
@@ -313,3 +319,8 @@ At these archived revisions the generated path remained opt-in. The artificial
 small workloads supported integration, but did not establish the broader
 real-molecule promotion gate. Direct-HF and one-electron derivatives have separate
 promotion requirements.
+
+When live free memory is smaller than the desired reservation, automatic DF
+planning retains its half-free fallback and reports the actual reservation,
+not a target larger than observed free memory. This does not change the resolved
+value/response budget or establish device endpoint qualification.

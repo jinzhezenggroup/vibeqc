@@ -6,11 +6,12 @@ the operator backends include native J/K execution. It separates the problem sna
 matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
-layer (including `export_uhf`) are delivered, while the native converged
-RKS/UKS CPKS endpoint remains an open acceptance item for `#179`/`#162`.
+layer (including `export_uhf`) and the native CPU LDA/PBE RKS CPKS handoff are
+delivered. Native UKS/CUDA CPKS and remaining performance acceptance stay open
+under `#179`.
 
-This layer is not a new public electronic-structure method. RHF remains the
-registered HF method, and `#162` still owns the converged RKS/UKS SCF endpoint.
+This internal tooling is not a new public electronic-structure method. It
+consumes the converged native HF/KS endpoints rather than implementing SCF.
 
 The [generated implicit-response adapter](implicit_response.md) reuses this
 solver through an explicit callback. It generates transposed operators and source
@@ -125,11 +126,54 @@ and cross-spin terms; `apply()` retains the restricted mean. An optional
 matching `PreparedXCContractions` response owner selects bounded native CPU
 execution through `prepared=...`, with its shared numeric resource plan.
 
-Exact exchange, range-separated exchange, and unvalidated nonzero tau
-derivatives fail closed. The public path also requires a converged `KS`
-reference. Because the converged RKS/UKS endpoint is still owned by #162, no
-native RHF reference is relabeled as KS and no CPKS endpoint is claimed from
-an unconverged or mismatched reference.
+`NativeRKSResponse.from_native(batch, basis, grid=None, index=0)` connects the
+actual successful native CPU LDA/PBE RKS state to this same operator and solver.
+The optional explicit grid must exactly match the native points, weights and
+owners. The optional `functional` must match the canonical SCF composition.
+The adapter exports the native canonical orbitals, physical Fock, overlap,
+occupations, energy and residual without rerunning SCF or recanonicalizing.
+Its reference identity binds the native owner, model/provider, SCF domain and
+solve/density/orbital generations. Direct unscreened CPU J/K uses the matching
+native integral source. The batch and `NativeAO` must remain open; the adapter
+owns its integral source and revocable snapshot lease.
+
+```python
+from tools.vibeqc_response import NativeRKSResponse, solve_many
+
+# batch.execute(strict=True) has already converged; basis describes its exact AO source.
+with NativeRKSResponse.from_native(batch, basis) as response:
+    result = solve_many(response, rhs, strategy="recycled", raise_on_failure=True)
+```
+
+Native SCF quadrature includes low-density tails outside the legacy
+`interior-v1` kernel domain. The native adapter differentiates the existing
+scaled SCF point expression analytically in a restricted total-density
+direction and feeds Cartesian potential coefficients into the same compact AO
+assembly. It does not clip densities, omit tail points, finite-difference the
+production potential, or substitute the interior-domain model. Exact vacuum is
+accepted only with zero density/gradient direction. Undefined or unrepresentable
+point derivatives fail the action. See [the SCF point domain](xc_scf_domain.md)
+and [the binding decision](../.agents/notes/implemented/numerics/2026-09-20-native-rks-cpks.md).
+
+Every action and solve validates the live lease, including zero RHS and blocked
+zero-RHS solves that otherwise skip all actions. Replay (even of identical
+geometry), failed replay, batch closure and response closure revoke old solves
+and recycle spaces. Changed functional, grid, basis, provider or state are
+rejected before publication.
+
+This handoff qualifies all-electron CPU LDA/PBE RKS only. UKS, CUDA CPKS, DF,
+ECP, exact/range-separated exchange, and meta-GGA response remain unsupported.
+AO/MO transforms, XC tiling and Krylov orchestration are host-side. Existing
+solver workspace accounting is not a complete endpoint memory/performance
+claim; the native kernel does not yet qualify implicit-response resource binding.
+`tests/python/test_response_native_rks.py` checks independent libcint/Libxc
+actions, finite orbital rotations, reconverged one-electron perturbations,
+transpose/true residuals, multi-RHS/recycling, tails and lifecycle negatives.
+The native `vibeqc_rks_response_tests` target also exercises the actual private
+point-response ABI against 30 independent high-precision directions, its batch
+layout and invalid-input boundaries, and energy snapshot leases from real
+LDA/PBE H2 solves. See [point acceptance](xc_scf_domain.md#executable-evidence)
+for the fixture generator and cancellation-aware numerical gate.
 
 ## #153 interface
 
@@ -237,8 +281,8 @@ reused merely because alpha/beta dimensions happen to match.  The generic
 GMRES, blocked multi-RHS and recycling APIs operate on this response problem
 unchanged.
 
-This is the HF UHF response layer only.  A native converged RKS/UKS CPKS
-endpoint remains a dependency of `#162`; this module does not relabel a UHF
+This is the HF UHF response layer only. Native UKS CPKS remains open under
+`#179`; the separate CPU RKS adapter does not relabel a UHF
 state as a KS endpoint or enable unsupported XC derivatives.
 
 The direct CPU bridge can export a converged open-shell UHF solution through
