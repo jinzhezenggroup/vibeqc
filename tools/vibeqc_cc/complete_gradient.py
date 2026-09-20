@@ -412,9 +412,9 @@ class BoundCCSDOrbitalResponse:
             np.ones(operator.dimension),
             np.arange(1, operator.dimension + 1, dtype=float),
         ):
-            direction /= np.linalg.norm(direction)
+            normalized = direction / np.linalg.norm(direction)
             if not np.allclose(
-                operator.apply(direction), matrix @ direction, atol=1e-10, rtol=1e-9
+                operator.apply(normalized), matrix @ normalized, atol=1e-10, rtol=1e-9
             ):
                 raise ImplicitSolveError(
                     "native RHF response action differs from generated Fock JVP"
