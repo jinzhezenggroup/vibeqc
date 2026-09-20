@@ -23,3 +23,17 @@ Full integrated NVCC/GPU/endpoint-scaling acceptance remains separate.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Prepared-replay metric deltas
+
+Task-descriptor and task-batch counters are cumulative owner metrics for the same
+reason as primitive work. A prepared owner can serve multiple force executions,
+so endpoint evidence must subtract the pre-execution values for these counters as
+well. Reporting cumulative task counts next to per-execution primitive/transfer
+counts would make repeated-force evidence internally inconsistent without
+changing any scientific work. The prepared metric delta therefore includes both
+`task_descriptors` and `task_batches`, with a regression covering a nonzero
+pre-execution baseline.
+
+Agent: ChatGPT
+Model: GPT-5.6 Sol

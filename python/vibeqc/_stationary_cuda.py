@@ -645,6 +645,8 @@ def _metric_delta(after: typing.Any, before: typing.Any) -> typing.Any:
         "primitive_records",
         "xc_points",
         "grid_pair_visits",
+        "task_descriptors",
+        "task_batches",
     ):
         result[name] = after[name] - before[name]
     return result

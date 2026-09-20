@@ -61,6 +61,40 @@ def test_native_task_budget_is_per_reset_not_cumulative(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_task_metrics_are_reported_per_execution() -> None:
+    from vibeqc import _stationary_cuda as runtime
+
+    before = {
+        "owned_device_bytes": 1024,
+        "h2d_bytes": 100,
+        "d2h_bytes": 20,
+        "launches": 8,
+        "primitive_records": 50,
+        "xc_points": 11,
+        "grid_pair_visits": 17,
+        "task_descriptors": 9,
+        "task_batches": 3,
+    }
+    after = {
+        "owned_device_bytes": 1024,
+        "h2d_bytes": 140,
+        "d2h_bytes": 28,
+        "launches": 12,
+        "primitive_records": 67,
+        "xc_points": 16,
+        "grid_pair_visits": 29,
+        "task_descriptors": 14,
+        "task_batches": 5,
+    }
+
+    delta = runtime._metric_delta(after, before)
+
+    assert delta["task_descriptors"] == 5
+    assert delta["task_batches"] == 2
+    assert delta["primitive_records"] == 17
+    assert delta["owned_device_bytes"] == 1024
+
+
 PREAMBLE = r"""
 #include <cmath>
 #include <cstddef>
