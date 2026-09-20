@@ -6,8 +6,9 @@ the operator backends include native J/K execution. It separates the problem sna
 matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
-layer (including `export_uhf`) and the native CPU LDA/PBE RKS/UKS CPKS handoffs are
-delivered. Native CUDA CPKS and remaining performance acceptance stay open
+layer (including `export_uhf`), host-orchestrated spin CUDA exact/DF J/K, and
+the native CPU LDA/PBE RKS/UKS CPKS handoffs are delivered. Native CUDA CPKS
+and remaining performance acceptance stay open
 under `#179`.
 
 This internal tooling is not a new public electronic-structure method. It
@@ -312,11 +313,57 @@ The direct CPU bridge can export a converged open-shell UHF solution through
 `export_uhf`.  It canonicalizes the independently returned alpha and beta AO
 densities, rechecks both physical commutators and density/Fock reconstruction,
 and binds the result to the shared UHF response contract.  The bridge is
-intentionally limited to the small direct CPU Hamiltonian: CUDA/DF UHF response
-still fails closed until a spin-resolved device J/K response plan has separate
-numerical and resource evidence. That gate is pinned by
-`tests/python/test_response_uhf.py`, so neither the UHF CPU bridge nor the RHF
-CUDA/DF backend is inferred as spin-resolved device support.
+intentionally limited to the small direct CPU Hamiltonian. The older
+`CudaDFJKBackend` and `CudaDirectJKBackend` remain RHF-specific and are rejected
+by UHF, as pinned by `tests/python/test_response_uhf.py`.
+
+`CudaSpinJKBackend` explicitly prepares an unrestricted CUDA `FockPlan` for
+either exact or density-fitted J/K with zero screening. One evaluation produces
+`J[Delta Pa+Delta Pb]`, `K[Delta Pa]`, and `K[Delta Pb]`; the existing UHF operator
+then applies the same orbital action and shared Krylov controller. It uses raw
+J/K rather than subtracting hcore from a total Fock, preserving tiny signed
+directions. CUDA contracts the integrals; AO/MO transforms, returned matrices,
+and Krylov vectors remain on the host. This is not a resident spin solver.
+
+The backend borrows a `NativeSource` and owns its copied prepared Fock plan.
+Reference validation binds geometry, actual orbital basis/representation,
+Hamiltonian and both spin occupations. DF requires explicit auxiliary shells;
+its identity binds the prepared plan's mathematical identity, metric cutoff and
+retained rank. Its `prepared-spin-df:` identity is deliberately distinct from
+the older standalone `MetricFactor` identity. A matching native UHF snapshot is
+available through `backend.export_reference()`: this explicitly invokes the
+existing native SCF, canonicalizes its returned densities, and checks physical
+commutators plus density/Fock reconstruction with the same CUDA plan. Export
+uses CPU overlap/hcore preparation and NumPy canonicalization. Response actions
+never invoke SCF or CPU integral tiles.
+
+```python
+from tools.vibeqc_posthf.sources import NativeSource
+from tools.vibeqc_response import CudaSpinJKBackend, UHFResponseOperator, solve_many
+
+with NativeSource(atoms, basis, auxiliary_basis=auxiliary, charge=1,
+                  multiplicity=2) as source:
+    with CudaSpinJKBackend(source, approximation="density_fitted",
+                           device_budget_bytes=64 << 20) as backend:
+        reference, report = backend.export_reference()
+        problem = UHFResponseOperator.build_problem(reference, backend)
+        operator = UHFResponseOperator(problem, backend)
+        result = solve_many(operator, rhs, strategy="recycled")
+```
+
+The device budget bounds the provider's retained J/K allocations, excluding
+preparation temporaries, reference-export SCF/eigensolver caches, host
+matrices/solver workspace and CUDA context/library storage. Statistics
+distinguish setup and successful action timing; host API
+payload counts are not measured PCIe transfer counts. Closing the backend or
+borrowed source invalidates actions and zero-RHS solves. Invalid directions,
+failed SCF and impossible budgets cannot publish a successful action.
+
+With `VIBEQC_RESPONSE_CUDA_TEST=1` in a Slurm allocation,
+`tests/python/test_response_spin_cuda.py` checks independent signed raw J/K,
+native open-shell snapshots, explicit coupled MO matrices, true residuals for
+sequential/blocked/recycled solves, empty spin, identity and failure replay.
+See the [spin CUDA response decision](../.agents/notes/implemented/numerics/2026-09-20-spin-cuda-response.md).
 
 
 ## Resident response failure and validation scope

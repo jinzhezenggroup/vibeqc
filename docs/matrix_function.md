@@ -24,6 +24,13 @@ still owns factorization, eigensystem/rank validation, scratch, streams and
 method integration; the generated custom rule owns only the spectral response
 arithmetic.
 
+The runtime response multiplies the spectral rule by its seed before final
+range narrowing when the isolated coefficient is subnormal or nonfinite. This
+preserves representable weighted results without clipping eigenvalues; normal
+coefficients retain the established arithmetic. It does not widen the domain
+of surrounding FP64 matrix products or the precomputed reference graph. See the
+[native response/range decision](../.agents/notes/implemented/numerics/2026-09-20-native-matrix-function-weighted-range.md).
+
 ```python
 import numpy as np
 from vibeqc_compiler.method import SymmetricMatrixFunctionSpec

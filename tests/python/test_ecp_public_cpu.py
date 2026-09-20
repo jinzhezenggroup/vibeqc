@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
 import typing
+from pathlib import Path
 from time import perf_counter
 
 import numpy as np
@@ -12,6 +16,25 @@ from test_ecp_stationary_cpu import GRID, reference
 from vibeqc import Calculator, KsOptions, ResourceBudget, _native
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc_compiler.dft import NativeAO
+
+
+@pytest.fixture(autouse=True)
+def retain_endpoint_evidence(request: typing.Any) -> typing.Iterator[None]:
+    """Retain timings/errors/work even when CI does not request JUnit XML."""
+    yield
+    path = Path(".artifacts/spd-cpu")
+    path.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha256(request.node.nodeid.encode()).hexdigest()[:16]
+    (path / f"{key}.json").write_text(
+        json.dumps(
+            {
+                "test": request.node.nodeid,
+                "measurements": dict(request.node.user_properties),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def calculator(
@@ -36,9 +59,12 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
     representation: typing.Any,
     record_property: typing.Any,
     tmp_path: typing.Any,
+    d_shell: bool = False,
 ) -> None:
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation=representation)
+    atoms, record, mol = fixture(
+        spin=spin, representation=representation, d_shell=d_shell
+    )
     # Exercise serialized spherical ECP data through the real public endpoint.
     public_basis = record
     if representation == "spherical":
@@ -92,7 +118,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
     assert max(errors) < 2e-7
     record_property("fd_errors", errors)
-    if representation == "spherical":
+    if representation == "spherical" and not d_shell:
         # s/p real spherical and Cartesian spaces are equivalent, but public
         # normalized AO ordering/representation identities remain distinct.
         from dataclasses import replace
@@ -110,10 +136,15 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
 @pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
-    method: typing.Any, representation: typing.Any, record_property: typing.Any
+    method: typing.Any,
+    representation: typing.Any,
+    record_property: typing.Any,
+    d_shell: bool = False,
 ) -> None:
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation=representation)
+    atoms, record, mol = fixture(
+        spin=spin, representation=representation, d_shell=d_shell
+    )
     fragment = [("H", (0, 0, 0))] if spin else [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     systems, charges, multiplicities = [atoms, fragment], [spin, 0], [spin + 1] * 2
     calc = calculator(record, method)
@@ -139,15 +170,21 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     with bounded.prepare_batch(
         systems, charges=charges, multiplicities=multiplicities
     ) as batch:
+        started = perf_counter()
         cold = batch.execute(strict=True)
+        record_property("batch_cold_seconds", perf_counter() - started)
+        started = perf_counter()
         warm = batch.execute(strict=True)
+        record_property("batch_warm_seconds", perf_counter() - started)
         assert all(item.warm_start_used for item in warm.items)
         for a, b in zip(cold.items, warm.items):
             np.testing.assert_allclose(a.forces, b.forces, atol=1e-9, rtol=0)
         xyz = mol.atom_coords()
         moved = xyz.copy()
         moved[1] += [0.03, -0.02, 0.09]
+        started = perf_counter()
         replay = batch.execute(coordinates=[moved, None], strict=True)
+        record_property("batch_changed_geometry_seconds", perf_counter() - started)
         fresh_atoms = [(a, r) for (a, _), r in zip(atoms, moved)]
         fresh = calc.singlepoint(fresh_atoms, charge=spin, multiplicity=spin + 1)
         np.testing.assert_allclose(
@@ -169,6 +206,12 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         assert [item["index"] for item in work] == [0, 1]
         assert work[0]["work"]["ecp_quadrature_pair_samples"] > 0
         assert work[1]["work"]["ecp_quadrature_pair_samples"] == 0
+        if d_shell:
+            schedule = work[0]["work"]
+            assert schedule["primitive_compiled_kernels"] == 362
+            assert schedule["primitive_translation_units"] == 46
+            assert schedule["primitive_generated_source_bytes"] <= 64 << 20
+            assert schedule["primitive_largest_source_bytes"] <= 4 << 20
         for item in work:
             assert item["work"]["additional_host_numeric_bound"] <= 256 << 20
         assert all(
@@ -243,3 +286,108 @@ def test_cpu_force_budget_rejects_before_snapshot_export(
         monkeypatch.setattr(StationaryKsState, "from_native", forbidden)
         with pytest.raises(ValueError, match="additional-host byte"):
             batch._public_dft_cpu_force(0, batch._systems[0])
+
+
+def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
+    representation: str,
+) -> None:
+    from vibeqc._stationary_cpu_components import ComponentPrimitiveExecutor
+    from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+
+    atoms, record, mol = fixture(representation=representation, d_shell=True)
+    direction = np.array([[0.17, -0.11, 0.29], [-0.23, 0.31, -0.07]])
+    with NativeAO(atoms, basis=record, representation=representation) as basis:
+        executor = ComponentPrimitiveExecutor(
+            basis,
+            Path(os.environ.get("VIBEQC_STATIONARY_CACHE", ".cache/stationary-cpu")),
+            2,
+            CppCompilerAdapter(Path(os.environ.get("CXX", "c++"))),
+        )
+        n = basis.nao
+        norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
+        for op, intor, selections in (
+            (
+                "overlap",
+                "int1e_ovlp",
+                [(8, n - 1), (n - 2, n - 1), (n - 1, 8), (8, n - 2)],
+            ),
+            (
+                "kinetic",
+                "int1e_kin",
+                [(8, n - 1), (n - 2, n - 1), (n - 1, 8), (8, n - 2)],
+            ),
+            (
+                "nuclear_attraction",
+                "int1e_nuc",
+                [(8, n - 1), (n - 2, n - 1), (n - 1, 8), (8, n - 2)],
+            ),
+            (
+                "four_center_eri",
+                "int2e",
+                [
+                    (8, 1, n - 2, n - 1),
+                    (n - 2, n - 1, 8, 1),
+                    (n - 2, 8, n - 2, n - 1),
+                    (n - 1, n - 1, 8, 8),
+                ],
+            ),
+        ):
+            gradient = np.zeros((2, 3))
+            weights = (0.37, -0.81, 0.21, -0.49)
+            for indices, weight in zip(selections, weights):
+                nuclei = range(2) if op == "nuclear_attraction" else (None,)
+                for nucleus in nuclei:
+                    owners, values = executor.integral(
+                        op,
+                        indices,
+                        weight
+                        if nucleus is None
+                        else weight * mol.atom_charge(nucleus),
+                        nucleus,
+                    )
+                    np.add.at(gradient, owners, values)
+            for step in (3e-4, 1e-4):
+                energies = []
+                for sign in (1, -1):
+                    displaced = mol.copy()
+                    displaced.set_geom_(
+                        mol.atom_coords() + sign * step * direction, unit="Bohr"
+                    )
+                    values = displaced.intor(intor)
+                    energies.append(
+                        sum(
+                            weight * values[indices] / np.prod(norms[list(indices)])
+                            for indices, weight in zip(selections, weights)
+                        )
+                    )
+                assert (
+                    abs(
+                        (energies[0] - energies[1]) / (2 * step)
+                        - np.sum(gradient * direction)
+                    )
+                    < 2e-8
+                )
+        # A failed native derivative publishes nothing and does not advance
+        # semantic work; restoring the dispatch permits a valid subsequent call.
+        request = ("nuclear", ())
+        original = executor.calls[request]
+        before = executor.records
+        executor.calls[request] = (lambda *args: 1, 0)
+        with pytest.raises(ArithmeticError, match="component derivative failed"):
+            executor.nuclear(0, 1, mol.atom_charges())
+        assert executor.records == before
+        executor.calls[request] = original
+        assert np.isfinite(executor.nuclear(0, 1, mol.atom_charges())).all()
+        assert executor.records == before + 1
+
+
+def test_cpu_f_ecp_forces_rejected_before_preparation(monkeypatch: typing.Any) -> None:
+    atoms, record, _ = fixture(f_shell=True)
+    calc = calculator(record)
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
+        pytest.fail("unqualified f-shell forces reached preparation")
+
+    monkeypatch.setattr(calc, "prepare_batch", forbidden)
+    with pytest.raises(ValueError, match="forces"):
+        calc.singlepoint(atoms, properties=("energy", "forces"))

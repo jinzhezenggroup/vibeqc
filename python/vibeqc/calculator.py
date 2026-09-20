@@ -649,7 +649,8 @@ class Calculator:
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
             and not (
-                isinstance(self._basis, BasisSet)
+                self._device_name == "cuda"
+                and isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
                 and any(
                     shell.angular_momentum > 1
@@ -662,7 +663,7 @@ class Calculator:
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
+            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(
