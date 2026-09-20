@@ -102,33 +102,66 @@ def _context(args, meta, arrays):
             hamiltonian_id=metric.hamiltonian_id,
             metric=metric,
         )
+        oracle_source = CudaDFSource(
+            **source_arguments(meta), tile_capacity=args.df_tile_capacity
+        )
+        oracle_metric = MetricFactor.from_source(
+            oracle_source, relative_threshold=metric.relative_threshold
+        )
         provider = DFProvider(
             snapshot,
-            source,
-            metric,
+            oracle_source,
+            oracle_metric,
             axis_tile=args.axis_tile,
             auxiliary_tile=args.df_auxiliary_tile,
         )
-        return source, backend, snapshot, provider, metric, "native-cuda-df-streamed-jk"
+        return (
+            source,
+            backend,
+            snapshot,
+            provider,
+            metric,
+            "native-cuda-df-device-resident-jk",
+            oracle_source,
+        )
     source = NativeSource(**source_arguments(meta))
     snapshot = fixture_snapshot(meta, arrays)
     backend = NativeJKBackend(source, axis_tile=args.axis_tile)
     provider = ConventionalProvider(snapshot, source, axis_tile=args.axis_tile)
-    return source, backend, snapshot, provider, None, "native-cpu-shell-tile-jk"
+    return (
+        source,
+        backend,
+        snapshot,
+        provider,
+        None,
+        "native-cpu-shell-tile-jk",
+        None,
+    )
 
 
 def run(args):
     meta, arrays = load_fixture(args.case)
     started = time.perf_counter()
-    source, backend, snapshot, provider, metric, backend_label = _context(
-        args, meta, arrays
-    )
+    (
+        source,
+        backend,
+        snapshot,
+        provider,
+        metric,
+        backend_label,
+        oracle_source,
+    ) = _context(args, meta, arrays)
     try:
         problem = RHFResponseOperator.build_problem(snapshot, backend)
         operator = RHFResponseOperator(problem, backend)
+        oracle_started = time.perf_counter()
         with provider:
             explicit = explicit_rhf_response_matrix(problem, provider)
             provider_statistics = dict(getattr(provider, "statistics", {}))
+        oracle_endpoint_seconds = time.perf_counter() - oracle_started
+        oracle_source_metrics = (
+            oracle_source.source_metrics() if oracle_source is not None else None
+        )
         rng = np.random.default_rng(args.seed)
         rhs = rng.normal(size=(problem.dimension, args.rhs_count))
         options = GMRESOptions(
@@ -176,9 +209,13 @@ def run(args):
             "operator_backend_label": backend_label,
             "matrix_free": True,
             "metric_identity": None if metric is None else metric.identity,
+            "nbf": int(source.nbf),
+            "naux": int(source.naux),
             "source_metrics": source_metrics,
             "backend_statistics": dict(getattr(backend, "statistics", {})),
             "provider_statistics": provider_statistics,
+            "oracle_source_metrics": oracle_source_metrics,
+            "oracle_endpoint_seconds": oracle_endpoint_seconds,
             "dimension": problem.dimension,
             "rhs_count": int(rhs.shape[1]),
             "rhs_rank": int(np.linalg.matrix_rank(rhs, tol=1e-12)),
@@ -193,6 +230,8 @@ def run(args):
         if close is not None:
             close()
         source.close()
+        if oracle_source is not None:
+            oracle_source.close()
 
 
 def main():

@@ -195,6 +195,11 @@ def complete_gradient_validation(
                 device_id=device_id,
                 metric_threshold=metric.relative_threshold,
                 metric=metric,
+                # The complete RI gradient consumes this same source again
+                # after the Z-vector solve. Keep response device-resident, but
+                # re-prepare its generated source instead of transferring the
+                # one-way owner needed by the later gradient contractions.
+                reuse_generated_source=False,
             )
             if density_fitted
             else NativeJKBackend(

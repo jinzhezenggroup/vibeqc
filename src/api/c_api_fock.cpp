@@ -342,8 +342,18 @@ extern "C" vibeqc_status vibeqc_fock_plan_diagnostic(const vibeqc_fock_plan* pla
                 : !cuda                                                     ? "cpu-reference"
                 : info.variant.df_derivative_mapping                        ? "generated-serial"
                                                                             : "generated-atomic");
-  std::snprintf(out.one_electron_value_backend, sizeof(out.one_electron_value_backend), "%s",
-                cuda ? "cuda-generated" : "cpu-reference");
+  if (cuda) {
+    const auto provider = vibeqc::runtime::cuda_provider_name(info.variant.cuda_provider);
+    const char* policy = info.variant.one_electron_value_capability_fallback ? "fallback"
+                         : info.variant.one_electron_value_override          ? "override"
+                                                                             : "auto";
+    std::snprintf(out.one_electron_value_backend, sizeof(out.one_electron_value_backend),
+                  "cuda-generated:%.*s:%s", static_cast<int>(provider.size()), provider.data(),
+                  policy);
+  } else {
+    std::snprintf(out.one_electron_value_backend, sizeof(out.one_electron_value_backend), "%s",
+                  "cpu-reference");
+  }
   std::snprintf(out.one_electron_value_mapping, sizeof(out.one_electron_value_mapping), "%s",
                 !cuda                                     ? "dense"
                 : info.variant.one_electron_value_mapping ? "shell-warp"

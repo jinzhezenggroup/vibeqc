@@ -532,6 +532,10 @@ class Calculator:
         if (
             self._capabilities.family == "density_functional"
             and self._device_name == "cuda"
+            and not (
+                isinstance(self._basis, BasisSet)
+                and any(element.ecp_core_electrons for element in self._basis.elements)
+            )
             and self._method
             in (
                 _native.METHOD_LDA_RKS,
@@ -544,6 +548,8 @@ class Calculator:
             # prepared owner plus the compiler-owned CUDA gradient consumer.
             # Keep the backend-neutral C registry conservative: CPU/native-C
             # callers do not inherit a force capability they cannot execute.
+            # ECP basis sets remain energy-only: their explicit stationary
+            # diagnostic does not qualify the public C2 force endpoint.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties
