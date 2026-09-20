@@ -113,8 +113,7 @@ void compare_rks_chunk_history(bool pbe) {
   const auto solve = [&](const char* width) {
     require(::setenv("VIBEQC_CUDA_KS_CHUNK", width, 1) == 0,
             "could not select CUDA RKS history route");
-    const scf::PreparedFockPlan gpu(system, nullptr,
-                                    strategy(true, scf::FockBackend::Cuda), 0);
+    const scf::PreparedFockPlan gpu(system, nullptr, strategy(true, scf::FockBackend::Cuda), 0);
     dft::CudaKsPlan plan(gpu, basis, grid, options, pbe, 257);
     auto result = plan.run(nullptr, false, false);
     return std::pair{std::move(result), plan.transfers()};

@@ -387,8 +387,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (generation == std::numeric_limits<std::uint64_t>::max())
       throw std::overflow_error("CUDA KS density generation exhausted");
     std::string detail;
-    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density,
-                                             nullptr, matrix, j, nullptr, nullptr, jk_error, detail),
+    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density, nullptr,
+                                             matrix, j, nullptr, nullptr, jk_error, detail),
           detail);
     xc->enqueue(density, elements, ++generation);
     pending_generations[slot] = generation;
