@@ -1,13 +1,14 @@
 """Contract tests for the public conventional MP2 force evidence driver."""
 
 import json
+import typing
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 
-def test_validation_cases_cover_required_public_force_domain():
+def test_validation_cases_cover_required_public_force_domain() -> None:
     from tools.validate_mp2_public_force import validation_cases
 
     cases = validation_cases()
@@ -16,7 +17,7 @@ def test_validation_cases_cover_required_public_force_domain():
     assert cases["water-def2-svp"].minimum_ao_count > 12
 
 
-def test_fd_steps_require_three_distinct_positive_values():
+def test_fd_steps_require_three_distinct_positive_values() -> None:
     from tools.validate_mp2_public_force import parse_fd_steps
 
     assert parse_fd_steps("0.004,0.002,0.001") == (0.004, 0.002, 0.001)
@@ -25,7 +26,9 @@ def test_fd_steps_require_three_distinct_positive_values():
             parse_fd_steps(value)
 
 
-def test_run_directory_is_fresh_and_manifest_is_machine_readable(tmp_path):
+def test_run_directory_is_fresh_and_manifest_is_machine_readable(
+    tmp_path: typing.Any,
+) -> None:
     from tools.validate_mp2_public_force import initialize_run_directory
 
     destination = tmp_path / "run"
@@ -52,7 +55,7 @@ def test_run_directory_is_fresh_and_manifest_is_machine_readable(tmp_path):
         )
 
 
-def test_case_record_requires_complete_scientific_and_resource_gates():
+def test_case_record_requires_complete_scientific_and_resource_gates() -> None:
     from tools.validate_mp2_public_force import validate_case_record
 
     record = {
@@ -102,14 +105,20 @@ def test_case_record_requires_complete_scientific_and_resource_gates():
         validate_case_record(record, expected_steps=(0.004, 0.002, 0.001))
 
 
-def test_full_cartesian_finite_difference_recomputes_every_displacement():
+def test_full_cartesian_finite_difference_recomputes_every_displacement() -> None:
     from tools.validate_mp2_public_force import central_finite_difference_forces
 
     class QuadraticCalculator:
-        def __init__(self):
+        def __init__(self) -> None:
             self.calls = 0
 
-        def singlepoint(self, atoms, *, charge=0, properties=("energy",)):
+        def singlepoint(
+            self,
+            atoms: typing.Any,
+            *,
+            charge: typing.Any = 0,
+            properties: typing.Any = ("energy",),
+        ) -> typing.Any:
             del charge, properties
             self.calls += 1
             coordinates = np.asarray([position for _, position in atoms])
@@ -127,7 +136,7 @@ def test_full_cartesian_finite_difference_recomputes_every_displacement():
         )
 
 
-def test_fd_displacements_preserve_full_ordered_matrix_and_input():
+def test_fd_displacements_preserve_full_ordered_matrix_and_input() -> None:
     from tools.validate_mp2_public_force import _finite_difference_displacements
 
     atoms = (("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6)))
@@ -141,7 +150,9 @@ def test_fd_displacements_preserve_full_ordered_matrix_and_input():
     assert atoms == (("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6)))
 
 
-def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(tmp_path):
+def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(
+    tmp_path: typing.Any,
+) -> None:
     from tools.validate_mp2_public_force import (
         main,
         parallel_central_finite_difference_forces,
@@ -169,24 +180,26 @@ def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(tmp_path):
         )
 
 
-def test_parallel_fd_preserves_serial_force_order(monkeypatch):
+def test_parallel_fd_preserves_serial_force_order(
+    monkeypatch: typing.Any,
+) -> None:
     import tools.validate_mp2_public_force as driver
 
     class ImmediateExecutor:
-        def __init__(self, *, max_workers, mp_context):
+        def __init__(self, *, max_workers: typing.Any, mp_context: typing.Any) -> None:
             assert max_workers == 2
             assert mp_context.get_start_method() == "spawn"
 
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             return False
 
-        def map(self, function, tasks):
+        def map(self, function: typing.Any, tasks: typing.Any) -> typing.Any:
             return tuple(function(task) for task in tasks)
 
-    def quadratic_energy(payload):
+    def quadratic_energy(payload: typing.Any) -> typing.Any:
         _, _, _, atoms = payload
         coordinates = np.asarray([position for _, position in atoms])
         return float(np.sum(coordinates**2))
@@ -211,7 +224,7 @@ def test_parallel_fd_preserves_serial_force_order(monkeypatch):
         )
 
 
-def test_force_invariants_report_translation_and_torque_norms():
+def test_force_invariants_report_translation_and_torque_norms() -> None:
     from tools.validate_mp2_public_force import force_invariants
 
     positions = np.asarray([[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]])

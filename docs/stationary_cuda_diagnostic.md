@@ -4,11 +4,10 @@
 `StationaryGradientPlan` sources on CUDA: one-electron, Coulomb, XC AO motion,
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
 The result is an energy gradient in Eh/bohr; force is its negative. The public
-Python C2 endpoint reuses the all-electron subset for qualified CUDA LDA/PBE
-RKS/UKS forces. The ECP extension here remains diagnostic-only: ECP basis sets
-are energy-only at the public `Calculator` boundary, and its force wrapper
-independently rejects an ECP snapshot before compilation or contraction.
-This diagnostic does not close #163 or #396 or qualify public ECP forces.
+Python C2 endpoint reuses this consumer for qualified CUDA LDA/PBE RKS/UKS
+forces, including Cartesian and real-spherical s/p scalar ECP records. Public ECP scope and
+resource/work limits are described in [ecp.md](ecp.md#public-cuda-semilocal-ecp-forces).
+The native C and CPU DFT force capabilities are unchanged.
 
 The admitted domain is direct, all-electron, real FP64 integer RKS/UKS with canonical
 LDA/PBE, s/p single-component AOs and the native unpruned version-one grid.
@@ -98,17 +97,24 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.dft import NativeAO
 
 atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-compiler = CudaCompilerAdapter(Path("nvcc"),
-                               cuda_target_info("sm_120"), compile_timeout=600)
-calc = Calculator(method="pbe-rks", device="cuda",
-                  ks_options=KsOptions(grid=GridSpec(radial_points=24,
-                      angular_polar=8, angular_azimuth=16)),
-                  energy_tolerance=1e-12, density_tolerance=1e-10)
+compiler = CudaCompilerAdapter(
+    Path("nvcc"), cuda_target_info("sm_120"), compile_timeout=600
+)
+calc = Calculator(
+    method="pbe-rks",
+    device="cuda",
+    ks_options=KsOptions(
+        grid=GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+    ),
+    energy_tolerance=1e-12,
+    density_tolerance=1e-10,
+)
 with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
     energy = batch.execute(strict=True).items[0].energy
     state = StationaryKsState.from_native(batch, basis)
     result = complete_rks_cuda_gradient_diagnostic(
-        state, basis, compiler=compiler, cache=".cache/stationary-cuda")
+        state, basis, compiler=compiler, cache=".cache/stationary-cuda"
+    )
     forces = -result.gradient
 ```
 
@@ -176,7 +182,7 @@ The ECP workspace and export size are reported separately in `result.work`;
 ordinary source launch/primitive counters do not include ECP-provider kernels.
 The provider re-reads and validates the native final state, causing an additional
 explicit final-state export; this is not an entirely resident force path or a
-performance promotion. Public DFT/ECP forces remain gated.
+performance promotion. The public wrapper applies the same work/byte limits.
 
 Run the opt-in numerical gate on an allocated device with `VIBEQC_ECP_CUDA_TEST=1`,
 `VIBEQC_ECP_CUDA_TARGET` matching that device (for example `sm_89`), an explicit

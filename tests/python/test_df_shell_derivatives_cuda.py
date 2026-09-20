@@ -1,6 +1,7 @@
 """Execution and complete-force qualification of generated shell reuse."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -22,8 +23,15 @@ pytestmark = pytest.mark.skipif(
     "algebra,staging", [("scalar", "pageable"), ("blas", "pinned-panels")]
 )
 def test_shell_execution_and_return_to_generic(
-    buckets, method, representation, schedule, algebra, staging, monkeypatch, tmp_path
-):
+    buckets: typing.Any,
+    method: typing.Any,
+    representation: typing.Any,
+    schedule: typing.Any,
+    algebra: typing.Any,
+    staging: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Independent complete gradients and counters exclude a silent generic replay.
 
     Both orbital p and d shells are present: generated shell and generic

@@ -15,7 +15,7 @@ different.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+import typing
 from dataclasses import dataclass
 from enum import Enum
 
@@ -72,6 +72,9 @@ from .rys5_data import (
     RYS5_SMALLX_W1,
 )
 from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 
 class RysRecurrenceKind(str, Enum):
@@ -428,7 +431,7 @@ def rys2_table_roots_weights(
     )
 
 
-def _fixed_root_coefficients(nroots: int, high_accuracy: bool):
+def _fixed_root_coefficients(nroots: int, high_accuracy: bool) -> typing.Any:
     """Select interpolation precision without changing the fixed-root algorithm.
 
     The degree-17 tables are regenerated from 90-digit moments for consumers

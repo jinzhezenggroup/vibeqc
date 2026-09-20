@@ -2,6 +2,7 @@
 
 import ctypes as ct
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -11,16 +12,16 @@ from tools.vibeqc_posthf.sources import NativeSource
 
 
 def check_native(
-    source,
-    arrays,
-    hf_energy,
-    mo,
-    os_ref,
-    ss_ref,
-    backend,
-    tiles=(1, 2, 4, 8),
-    orders=None,
-):
+    source: typing.Any,
+    arrays: typing.Any,
+    hf_energy: typing.Any,
+    mo: typing.Any,
+    os_ref: typing.Any,
+    ss_ref: typing.Any,
+    backend: typing.Any,
+    tiles: typing.Any = (1, 2, 4, 8),
+    orders: typing.Any = None,
+) -> None:
     lib = source._library
     ptr = ct.POINTER(ct.c_double)
     sizeptr = ct.POINTER(ct.c_size_t)
@@ -116,7 +117,9 @@ def check_native(
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 @pytest.mark.parametrize("backend", [0, 1])
-def test_same_orbitals_native_components_and_permutations(name, backend):
+def test_same_orbitals_native_components_and_permutations(
+    name: typing.Any, backend: typing.Any
+) -> None:
     if backend and os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1":
         pytest.skip("requires allocated CUDA device")
     meta, a = load_fixture(name)

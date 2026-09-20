@@ -13,6 +13,7 @@ different correlated method).
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,7 +32,7 @@ class Capabilities:
     supports_batch: bool
     supported_properties: frozenset
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.method != "rccsd" or self.family != "coupled_cluster":
             raise ValueError("RCCSD capability identity mismatch")
         if "energy" not in self.supported_properties:
@@ -72,23 +73,23 @@ class RCCSDResult:
     state: CCSDResult
 
     @property
-    def status(self):
+    def status(self) -> typing.Any:
         return self.state.status
 
     @property
-    def reason(self):
+    def reason(self) -> typing.Any:
         return self.state.reason
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return self.state.converged
 
     @property
-    def iterations(self):
+    def iterations(self) -> typing.Any:
         return len(self.state.history)
 
     @property
-    def final_r1_max(self):
+    def final_r1_max(self) -> typing.Any:
         return (
             self.state.history[-1].get("independent_r1_max")
             if self.state.history
@@ -96,7 +97,7 @@ class RCCSDResult:
         )
 
     @property
-    def final_r2_max(self):
+    def final_r2_max(self) -> typing.Any:
         return (
             self.state.history[-1].get("independent_r2_max")
             if self.state.history
@@ -104,41 +105,41 @@ class RCCSDResult:
         )
 
     @property
-    def t1(self):
+    def t1(self) -> typing.Any:
         return self.state.t1
 
     @property
-    def t2(self):
+    def t2(self) -> typing.Any:
         return self.state.t2
 
     @property
-    def history(self):
+    def history(self) -> typing.Any:
         return self.state.history
 
     @property
-    def provenance(self):
+    def provenance(self) -> typing.Any:
         return self.state.provenance
 
-    def write(self, path):
+    def write(self, path: typing.Any) -> typing.Any:
         """Export the replayable state (replayed by ``tools.replay_ccsd``)."""
         return self.state.write(path)
 
 
 def energy(
-    snapshot,
-    provider,
+    snapshot: typing.Any,
+    provider: typing.Any,
     *,
-    backend="cpu",
-    options=None,
-    t1=None,
-    t2=None,
-    warm_start=None,
-    compiler=None,
-    cache=None,
-    device=0,
-    provider_peak_bytes=0,
-    compute_forces=False,
-):
+    backend: typing.Any = "cpu",
+    options: typing.Any = None,
+    t1: typing.Any = None,
+    t2: typing.Any = None,
+    warm_start: typing.Any = None,
+    compiler: typing.Any = None,
+    cache: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+    compute_forces: typing.Any = False,
+) -> typing.Any:
     """Return the energy-only RCCSD single point from an owned RHF reference.
 
     ``backend`` selects the physical-equation evaluator: ``"cpu"`` is the #148
@@ -220,15 +221,15 @@ class BatchRCCSDResult:
 
 
 def batch_energy(
-    problems,
+    problems: typing.Any,
     *,
-    backend="cpu",
-    options=None,
-    compiler=None,
-    cache=None,
-    device=0,
-    provider_peak_bytes=0,
-):
+    backend: typing.Any = "cpu",
+    options: typing.Any = None,
+    compiler: typing.Any = None,
+    cache: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+) -> typing.Any:
     """Execute independent energy-only systems, isolating every item's state.
 
     ``problems`` is an iterable of ``(snapshot, provider)`` pairs. Each item

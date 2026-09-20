@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import os
-from collections.abc import Iterable, Sequence
+import typing
 from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -14,7 +14,6 @@ from typing import Self
 import numpy as np
 
 from . import _native
-from .accuracy import AccuracyAssessment
 from .calculator import Atom, Calculator
 from .ks_diagnostics import (
     KsDiagnostic,
@@ -22,6 +21,11 @@ from .ks_diagnostics import (
     read_ks_diagnostic,
     read_ks_transport_diagnostic,
 )
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from .accuracy import AccuracyAssessment
 
 
 @dataclass(frozen=True)
@@ -352,7 +356,7 @@ class PreparedBatch:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
-        resource_plan=None,
+        resource_plan: typing.Any = None,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
@@ -484,7 +488,7 @@ class PreparedBatch:
             if inactive_eigensolver_profiling:
                 flags |= _native.BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING
 
-            def prepare():
+            def prepare() -> typing.Any:
                 return self._library.vibeqc_batch_prepare(
                     self._context,
                     handle_array,
@@ -549,7 +553,7 @@ class PreparedBatch:
         return self._multiplicities
 
     @property
-    def basis_metadata(self):
+    def basis_metadata(self) -> typing.Any:
         """Detached resolved provenance/identities for benchmark and result records."""
         return deepcopy(self._basis_metadata)
 
@@ -566,7 +570,7 @@ class PreparedBatch:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
 
-    def _stationary_cuda_compiler(self):
+    def _stationary_cuda_compiler(self) -> typing.Any:
         """Lazily bind the generated-force compiler to this native device."""
         compiler = getattr(self, "_c2_stationary_compiler", None)
         if compiler is not None:
@@ -587,8 +591,10 @@ class PreparedBatch:
         self._c2_stationary_compiler = compiler
         return compiler
 
-    def _public_dft_cuda_force(self, index, atoms):
-        """Execute the qualified seven-source plan against one live batch item."""
+    def _public_dft_cuda_force(
+        self, index: typing.Any, atoms: typing.Any
+    ) -> typing.Any:
+        """Execute the qualified seven/nine-source plan against one live item."""
         from vibeqc_compiler.dft import NativeAO
 
         from ._dft_gradient import StationaryKsState
@@ -604,10 +610,11 @@ class PreparedBatch:
         ) as basis:
             state = StationaryKsState.from_native(self, basis, index=index)
             try:
-                if state._source.hamiltonian == "scalar-semilocal-ecp":
+                if state._source.backend != "cuda" or (
+                    "forces" not in calculator._capabilities.supported_properties
+                ):
                     raise NotImplementedError(
-                        "public CUDA DFT forces do not support ECP; "
-                        "use the explicit stationary diagnostic"
+                        "public CUDA DFT forces require a qualified CUDA owner"
                     )
                 result = complete_rks_cuda_gradient_diagnostic(
                     state,
@@ -620,7 +627,7 @@ class PreparedBatch:
                     ),
                 )
                 # StationaryGradientPlan publishes +dE/dR. Public API is force.
-                return -np.asarray(result.gradient).copy()
+                return -np.asarray(result.gradient).copy(), dict(result.work)
             finally:
                 state._source.close()
 
@@ -789,6 +796,10 @@ class PreparedBatch:
 
             check_resource_status(self._library, status, self.resource_diagnostics)
 
+        if self.resource_diagnostics is not None:
+            # Separate from the native SCF ledger: generated libraries own
+            # their own bounded allocations and export/work observations.
+            self.resource_diagnostics["generated_force"] = []
         items: list[BatchItemResult] = []
         for index, output in enumerate(output_array):
             builds = ctypes.c_uint64()
@@ -813,7 +824,11 @@ class PreparedBatch:
                         for atom, position in zip(atoms, xyz, strict=True)
                     )
                 try:
-                    public_force = self._public_dft_cuda_force(index, atoms)
+                    public_force, force_work = self._public_dft_cuda_force(index, atoms)
+                    if self.resource_diagnostics is not None:
+                        self.resource_diagnostics["generated_force"].append(
+                            {"index": index, "work": force_work}
+                        )
                 except NotImplementedError:
                     output.status = _native.STATUS_NOT_IMPLEMENTED
                     succeeded = False
@@ -955,7 +970,9 @@ class PreparedBatch:
                 raise
         return result
 
-    def save_checkpoint(self, path, *, max_bytes=256 << 20):
+    def save_checkpoint(
+        self, path: typing.Any, *, max_bytes: typing.Any = 256 << 20
+    ) -> typing.Any:
         """Atomically persist retained HF seeds, identities and source diagnostics.
 
         Failed/no-state items keep their input slots. A one-item prepared batch
@@ -966,8 +983,13 @@ class PreparedBatch:
         return save_checkpoint(self, path, max_bytes=max_bytes)
 
     def load_checkpoint(
-        self, path, *, allow_warm=False, strict=True, max_bytes=256 << 20
-    ):
+        self,
+        path: typing.Any,
+        *,
+        allow_warm: typing.Any = False,
+        strict: typing.Any = True,
+        max_bytes: typing.Any = 256 << 20,
+    ) -> typing.Any:
         """Restore compatible seeds as proposals for the next normal execution.
 
         Exact restart is the default. ``allow_warm`` permits changed geometry or
@@ -993,8 +1015,13 @@ class PreparedBatch:
         self._warm_metadata = [None] * len(self._systems)
 
     def initialize_from(
-        self, source, *, policy=None, strict=True, maximum_host_bytes=256 << 20
-    ):
+        self,
+        source: typing.Any,
+        *,
+        policy: typing.Any = None,
+        strict: typing.Any = True,
+        maximum_host_bytes: typing.Any = 256 << 20,
+    ) -> typing.Any:
         """Project a converged source batch into this fresh target's AO metric.
 
         The next execute rebuilds and converges the target equations. See
@@ -1319,7 +1346,7 @@ class PreparedBatch:
         self._ensure_open()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
         self.close()
 
     def __del__(self) -> None:

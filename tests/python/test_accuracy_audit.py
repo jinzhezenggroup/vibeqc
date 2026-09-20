@@ -1,6 +1,7 @@
 """Native diagnostic solves must agree with independent HF references."""
 
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -13,7 +14,9 @@ from tools.vibeqc_validation.fixtures import calculator_inputs, load_fixtures
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4", "hf-plus-uhf"])
-def test_probe_and_physical_operator_against_pinned_pyscf(name):
+def test_probe_and_physical_operator_against_pinned_pyscf(
+    name: typing.Any,
+) -> None:
     reference = next(r for r in load_fixtures() if r["inputs"]["name"] == name)
     inputs = reference["inputs"]
     atoms = list(zip(inputs["atomic_numbers"], inputs["coordinates"], strict=True))
@@ -44,7 +47,7 @@ def test_probe_and_physical_operator_against_pinned_pyscf(name):
                 replace(probe, density=damaged)
 
 
-def test_hf_consumers_reject_mp2_model():
+def test_hf_consumers_reject_mp2_model() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator(method="mp2").resolved_model(atoms)
     with NativeSource(atoms) as source:
@@ -54,7 +57,7 @@ def test_hf_consumers_reject_mp2_model():
             StrictHFAudit(source, model)
 
 
-def test_failed_probe_preserves_failure_without_publishing_reference_state():
+def test_failed_probe_preserves_failure_without_publishing_reference_state() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator().resolved_model(atoms)
     with NativeSource(atoms) as source:
@@ -71,7 +74,7 @@ def test_failed_probe_preserves_failure_without_publishing_reference_state():
             StrictHFAudit(source, changed)
 
 
-def test_df_operator_audit_uses_same_metric_and_spin_factors():
+def test_df_operator_audit_uses_same_metric_and_spin_factors() -> None:
     atoms = [("He", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     for method, charge, multiplicity in (("rhf", 1, 1), ("uhf", 0, 2)):
         calc = Calculator(
@@ -87,7 +90,9 @@ def test_df_operator_audit_uses_same_metric_and_spin_factors():
             assert audit["orthonormal_commutator_max"] < 1e-9
 
 
-def test_probe_rejects_mixed_override_before_gpu_execution(monkeypatch):
+def test_probe_rejects_mixed_override_before_gpu_execution(
+    monkeypatch: typing.Any,
+) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator().resolved_model(atoms)
     monkeypatch.setenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", "1e-6")
@@ -98,7 +103,9 @@ def test_probe_rejects_mixed_override_before_gpu_execution(monkeypatch):
         probe_hf(source, model, backend="cuda")
 
 
-def test_explicit_arithmetic_experiment_requires_matching_settings(monkeypatch):
+def test_explicit_arithmetic_experiment_requires_matching_settings(
+    monkeypatch: typing.Any,
+) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator().resolved_model(atoms)
     monkeypatch.setenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", "1e-6")
@@ -113,7 +120,9 @@ def test_explicit_arithmetic_experiment_requires_matching_settings(monkeypatch):
             )
 
 
-def test_arithmetic_driver_restores_policy_after_failure(monkeypatch):
+def test_arithmetic_driver_restores_policy_after_failure(
+    monkeypatch: typing.Any,
+) -> None:
     from tools.vibeqc_numerics.precision_experiment import _mixed_override
 
     monkeypatch.setenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", "0")
@@ -128,7 +137,7 @@ def test_arithmetic_driver_restores_policy_after_failure(monkeypatch):
     reason="requires an explicitly allocated GPU",
 )
 @pytest.mark.parametrize("name", ["h2o", "hf-plus-uhf"])
-def test_cuda_probe_density_force_and_physical_residual(name):
+def test_cuda_probe_density_force_and_physical_residual(name: typing.Any) -> None:
     """Actual GPU execution must pass independent final-state numerical gates."""
     assert os.environ.get("SLURM_JOB_ID"), "this host's GPU tests require Slurm"
     reference = next(r for r in load_fixtures() if r["inputs"]["name"] == name)

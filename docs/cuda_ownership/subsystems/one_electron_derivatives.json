@@ -1,0 +1,15 @@
+{
+  "current_default": "Generated compiler-owned S/T/V weighted gradient with shell-warp scheduling; native cooperative execution is explicit only via VIBEQC_ONE_ELECTRON_DERIVATIVES=reference",
+  "evidence": [
+    "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
+    "docs/one_electron_derivatives.md",
+    "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
+    "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json",
+    ".agents/notes/implemented/performance/2026-09-19-one-electron-derivative-promotion.md"
+  ],
+  "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
+  "missing_capability": "No missing S/T/V first-derivative formula capability. The cooperative native route remains a measured performance exception for archived resident-DF unchanged replay (4.586/5.429 ms reference/generated) and Direct sdf18 changed geometry (36.667/39.352 ms). The slower scalar native force family is retired.",
+  "owner": "one_electron_derivatives",
+  "retirement_condition": "Completed for normal production; remove the retained cooperative exception only after requalification eliminates its documented endpoint wins while independent CPU/libcint oracle coverage remains.",
+  "status": "performance_exception"
+}

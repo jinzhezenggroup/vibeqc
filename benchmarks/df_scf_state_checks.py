@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from benchmarks._cases import benchmark_cases
 from benchmarks.issue308_stage_probe import sha256
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def validate_scf_export(

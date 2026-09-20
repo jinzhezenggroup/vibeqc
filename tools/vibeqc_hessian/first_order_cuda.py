@@ -5,6 +5,9 @@ Cartesian factors, external density contraction and global AO accumulation are
 emitted once by the common compiler and execute on the selected device.
 """
 
+from __future__ import annotations
+
+import typing
 from itertools import product
 
 import numpy as np
@@ -37,15 +40,15 @@ from .native import NativeRHFState
 
 
 def generated_directional_first_order_cuda(
-    state,
-    direction,
-    compiler,
+    state: typing.Any,
+    direction: typing.Any,
+    compiler: typing.Any,
     *,
-    device_id=0,
-    budget_bytes=64 << 20,
-    record_capacity=128,
-    component_tile=8,
-):
+    device_id: typing.Any = 0,
+    budget_bytes: typing.Any = 64 << 20,
+    record_capacity: typing.Any = 128,
+    component_tile: typing.Any = 8,
+) -> typing.Any:
     """Return frozen H1(v), overlap S1(v) and truthful execution diagnostics.
 
     All ordered shell contributions share a device accumulator; intermediate
@@ -69,7 +72,7 @@ def generated_directional_first_order_cuda(
     one = (DirectionalMatrixTerm(0, (0, 1)),)
     overlap = (DirectionalMatrixTerm(1, (0, 1)),)
 
-    def compiled(ir, indices, terms):
+    def compiled(ir: typing.Any, indices: typing.Any, terms: typing.Any) -> typing.Any:
         key = directional_identity(ir, indices, terms)
         if key not in programs:
             programs[key] = compile_directional_first(
@@ -91,7 +94,9 @@ def generated_directional_first_order_cuda(
     ) as owner:
         owner.reset(state.P0, direction)
 
-        def append(ir, slots, atoms, terms):
+        def append(
+            ir: typing.Any, slots: typing.Any, atoms: typing.Any, terms: typing.Any
+        ) -> None:
             count = ir.signature.component_count
             for start in range(0, count, component_tile):
                 indices = tuple(range(start, min(start + component_tile, count)))
@@ -155,16 +160,16 @@ def generated_directional_first_order_cuda(
 
 
 def generated_rhf_relaxation_contraction_cuda(
-    state,
-    density_response,
-    energy_weighted_density_response,
-    compiler,
+    state: typing.Any,
+    density_response: typing.Any,
+    energy_weighted_density_response: typing.Any,
+    compiler: typing.Any,
     *,
-    device_id=0,
-    budget_bytes=64 << 20,
-    record_capacity=128,
-    component_tile=8,
-):
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+    record_capacity: int = 128,
+    component_tile: int = 8,
+) -> typing.Any:
     """Contract RHF first-integral relaxation in generated CUDA code.
 
     The compiler owns the generic AO-weight pullback. RHF only declares the
@@ -206,7 +211,7 @@ def generated_rhf_relaxation_contraction_cuda(
         FirstGradientTerm((weight(2, (0, 2)), weight(0, (1, 3))), coefficient=-0.25),
     )
 
-    def compiled(ir, indices, terms):
+    def compiled(ir: typing.Any, indices: typing.Any, terms: typing.Any) -> typing.Any:
         key = first_gradient_identity(ir, indices, terms)
         if key not in programs:
             programs[key] = compile_first_gradient(
@@ -230,7 +235,9 @@ def generated_rhf_relaxation_contraction_cuda(
     ) as owner:
         owner.reset(weights)
 
-        def append(ir, slots, atoms, terms):
+        def append(
+            ir: typing.Any, slots: typing.Any, atoms: typing.Any, terms: typing.Any
+        ) -> None:
             count = ir.signature.component_count
             for start in range(0, count, component_tile):
                 indices = tuple(range(start, min(start + component_tile, count)))

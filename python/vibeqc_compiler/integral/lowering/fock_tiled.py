@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from ..fused_schedule import (
-    FusedShellPlan,
-)
-from ..shell_spec import (
-    ShellClassSpec,
-)
+from typing import TYPE_CHECKING
+
 from .common import _emitted_component_names, _generic_task_component_setup
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def _emit_packed_fock_consumer_cuda(

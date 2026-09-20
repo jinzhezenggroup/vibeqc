@@ -9,6 +9,7 @@ are deliberately outside this first contract.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from math import prod
 
@@ -28,7 +29,7 @@ class DenseLayout:
     order: tuple[int, ...] | None = None
     alignment: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "shape", tuple(self.shape))
         order = (
             tuple(range(len(self.shape))) if self.order is None else tuple(self.order)
@@ -104,7 +105,7 @@ class DenseLayout:
             )
         )
 
-    def transpose(self, axes) -> DenseLayout:
+    def transpose(self, axes: typing.Any) -> DenseLayout:
         """Describe a transposed view without changing its physical storage."""
         axes = tuple(axes)
         if any(type(axis) is not int for axis in axes) or sorted(axes) != list(

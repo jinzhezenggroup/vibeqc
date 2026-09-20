@@ -1,5 +1,6 @@
 """Pre-device CC contracts: physical equations, shifts, and warm-start identity."""
 
+import typing
 from dataclasses import replace
 from itertools import pairwise
 
@@ -21,7 +22,9 @@ from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
 
 
 @pytest.mark.parametrize("shape", [(1, 3), (2, 3)])
-def test_iteration_denominators_do_not_change_physical_residual(shape):
+def test_iteration_denominators_do_not_change_physical_residual(
+    shape: typing.Any,
+) -> None:
     feeds = dense_feeds(*random_case(*shape, seed=149))
     o, v = shape
     d1 = -np.arange(1, o * v + 1, dtype=np.float64).reshape(o, v)
@@ -38,7 +41,7 @@ def test_iteration_denominators_do_not_change_physical_residual(shape):
         assert np.max(np.abs(unshifted[f"next_t{k}"] - shifted[f"next_t{k}"])) > 1e-7
 
 
-def test_warm_start_is_owned_and_invalidates_same_shape_reference_change():
+def test_warm_start_is_owned_and_invalidates_same_shape_reference_change() -> None:
     snapshot = fixture_snapshot(*load_fixture("water"))
     o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
     t1, t2 = random_case(o, v)[2:]
@@ -64,7 +67,7 @@ def test_warm_start_is_owned_and_invalidates_same_shape_reference_change():
         AmplitudeSnapshot(snapshot.identity, np.zeros_like(t1, dtype=np.float32), t2)
 
 
-def test_denominators_preserve_physical_gaps_and_shift_multiplicity():
+def test_denominators_preserve_physical_gaps_and_shift_multiplicity() -> None:
     snapshot = fixture_snapshot(*load_fixture("water"))
     d1, d2 = denominators(snapshot, SolverOptions())
     shifted1, shifted2 = denominators(snapshot, SolverOptions(level_shift=0.4))
@@ -74,7 +77,7 @@ def test_denominators_preserve_physical_gaps_and_shift_multiplicity():
         denominators(snapshot, SolverOptions(denominator_threshold=100))
 
 
-def test_solver_plan_keeps_independent_replay_and_all_state_under_budget():
+def test_solver_plan_keeps_independent_replay_and_all_state_under_budget() -> None:
     target = cuda_target_info("sm_90")
     primary, replay, diagnostic = solver_plans(
         2, 3, target, SolverOptions(), provider_peak_bytes=1 << 20
@@ -99,7 +102,7 @@ def test_solver_plan_keeps_independent_replay_and_all_state_under_budget():
         )
 
 
-def test_gpu_cc_reference_helpers_reject_ks_snapshots():
+def test_gpu_cc_reference_helpers_reject_ks_snapshots() -> None:
     """Shared CPKS snapshots must not widen the RCCSD reference contract."""
     snapshot = replace(
         fixture_snapshot(*load_fixture("water")),

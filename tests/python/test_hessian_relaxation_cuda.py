@@ -1,8 +1,12 @@
 """Real-GPU qualification for generated RHF relaxation contraction."""
 
+from __future__ import annotations
+
 import os
 import shutil
+import typing
 from pathlib import Path
+from typing import NoReturn
 
 import numpy as np
 import pytest
@@ -25,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     nvcc = shutil.which("nvcc")
     assert nvcc, "selected CUDA qualification needs nvcc on PATH"
@@ -36,7 +40,7 @@ def compiler():
 
 
 @pytest.fixture(scope="module")
-def h2_case():
+def h2_case() -> typing.Any:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         vector = np.random.default_rng(1810).normal(size=(state.nat, 3))
@@ -45,7 +49,9 @@ def h2_case():
         yield state, vector, response
 
 
-def test_cuda_relaxation_matches_independent_cpu_contraction(h2_case, compiler):
+def test_cuda_relaxation_matches_independent_cpu_contraction(
+    h2_case: typing.Any, compiler: typing.Any
+) -> None:
     state, _, response = h2_case
     density = response.response.density_derivative
     weighted = response.response.energy_weighted_density_derivative
@@ -63,12 +69,12 @@ def test_cuda_relaxation_matches_independent_cpu_contraction(h2_case, compiler):
 
 
 def test_complete_hvp_can_select_cuda_relaxation_without_cpu_substitution(
-    h2_case, compiler, monkeypatch
-):
+    h2_case: typing.Any, compiler: typing.Any, monkeypatch: typing.Any
+) -> None:
     state, vector, _ = h2_case
     expected = rhf_hvp(state, vector)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> NoReturn:
         raise AssertionError("CUDA relaxation substituted the CPU contraction")
 
     monkeypatch.setattr(
@@ -96,7 +102,9 @@ def test_complete_hvp_can_select_cuda_relaxation_without_cpu_substitution(
     assert transfer["raw_derivative_downloads"] == 0
 
 
-def test_block_hvp_can_use_cuda_relaxation(h2_case, compiler):
+def test_block_hvp_can_use_cuda_relaxation(
+    h2_case: typing.Any, compiler: typing.Any
+) -> None:
     state, vector, _ = h2_case
     directions = np.stack((vector, -0.37 * vector))
     expected = rhf_hvp_many(state, directions, strategy="recycled")
@@ -120,7 +128,9 @@ def test_block_hvp_can_use_cuda_relaxation(h2_case, compiler):
     )
 
 
-def test_full_hessian_can_use_cuda_relaxation(h2_case, compiler):
+def test_full_hessian_can_use_cuda_relaxation(
+    h2_case: typing.Any, compiler: typing.Any
+) -> None:
     state, _, _ = h2_case
     expected = rhf_hessian(state, block_size=2, strategy="recycled")
     actual = rhf_hessian(

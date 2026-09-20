@@ -1,0 +1,7 @@
+{
+  "name": "one_electron_derivatives",
+  "outputs": [
+    "generated/generated_one_electron_derivatives.cuh"
+  ],
+  "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
+}

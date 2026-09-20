@@ -1,6 +1,7 @@
 """Independent spatial-jet, quadrature, spin-factor and ownership gates."""
 
 import json
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -20,13 +21,13 @@ from vibeqc_compiler.dft.fixtures import NAMES, ROOT, basis_arguments, load_fixt
 from tools.vibeqc_validation.schema import block_error
 
 
-def check(actual, expected):
+def check(actual: typing.Any, expected: typing.Any) -> None:
     result = block_error(actual, expected, atol=1e-11, rtol=1e-10)
     assert result["passed"], result
 
 
 @pytest.mark.parametrize("name", NAMES)
-def test_every_jet_and_spin_feature_against_libcint(name):
+def test_every_jet_and_spin_feature_against_libcint(name: typing.Any) -> None:
     meta, arrays = load_fixture(name)
     explicit = ExplicitGrid.read(ROOT / f"{name}-grid.json")
     check(explicit.points, arrays["partitioned_grid_points"])
@@ -66,7 +67,7 @@ def test_every_jet_and_spin_feature_against_libcint(name):
         )
 
 
-def test_jet_dictionary_and_spatial_center_chain_rule():
+def test_jet_dictionary_and_spatial_center_chain_rule() -> None:
     assert jet_indices(1) == ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
     meta, data = load_fixture("f_spherical")
     args = basis_arguments(meta)
@@ -98,7 +99,7 @@ def test_jet_dictionary_and_spatial_center_chain_rule():
             check(shifted.evaluate(points + [1e-5, 0, 0], 3), full)
 
 
-def test_partition_unity_coincidence_extremes_and_permutation():
+def test_partition_unity_coincidence_extremes_and_permutation() -> None:
     points = np.array(
         [[0, 0, 0], [0.1, -0.2, 0.5], [100, -200, 300], [1e12, 2e12, -1e12]]
     )
@@ -119,7 +120,9 @@ def test_partition_unity_coincidence_extremes_and_permutation():
 
 
 @pytest.mark.parametrize("alpha", [0.01, 1, 100])
-def test_known_radial_integrals_without_renormalization(alpha):
+def test_known_radial_integrals_without_renormalization(
+    alpha: typing.Any,
+) -> None:
     radius = 1 / np.sqrt(alpha)
     grid = MolecularGrid((("He", (0, 0, 0)),), GridSpec(96, 8, 16, ((2, radius),)))
     gaussian = sum(
@@ -141,7 +144,9 @@ def test_known_radial_integrals_without_renormalization(alpha):
 @pytest.mark.parametrize(
     "name,radius", [("water", 1), ("f_spherical", 1), ("diffuse", 10), ("tight", 0.04)]
 )
-def test_electron_integral_converges_to_overlap_trace(name, radius):
+def test_electron_integral_converges_to_overlap_trace(
+    name: typing.Any, radius: typing.Any
+) -> None:
     meta, data = load_fixture(name)
     args = basis_arguments(meta)
     total = data["density"].sum(axis=0)
@@ -163,7 +168,9 @@ def test_electron_integral_converges_to_overlap_trace(name, radius):
     assert errors[-1] < 1e-5 and errors[-1] < errors[0], (name, errors)
 
 
-def test_explicit_grid_hash_ownership_and_round_trip(tmp_path):
+def test_explicit_grid_hash_ownership_and_round_trip(
+    tmp_path: typing.Any,
+) -> None:
     grid = ExplicitGrid.read(ROOT / "h2-grid.json")
     path = tmp_path / "grid.json"
     grid.write(path)
@@ -179,7 +186,7 @@ def test_explicit_grid_hash_ownership_and_round_trip(tmp_path):
         MolecularGrid((("H", (0, 0, 0)),)).explicit(max_points=10)
 
 
-def test_grid_identity_motion_and_atom_order():
+def test_grid_identity_motion_and_atom_order() -> None:
     atoms = (("H", (0, 0, 0)), ("He", (0.3, 0.2, 1.4)))
     grid = MolecularGrid(atoms, GridSpec(3, 3, 6), multiplicity=2)
     changed = replace(grid, atoms=(("H", (0.1, 0, 0)), atoms[1]))
@@ -213,7 +220,7 @@ def test_grid_identity_motion_and_atom_order():
     )
 
 
-def test_density_factor_validation_and_native_lifetime():
+def test_density_factor_validation_and_native_lifetime() -> None:
     meta, data = load_fixture("h2")
     basis = NativeAO(**basis_arguments(meta))
     points = data["points"][:3]
@@ -252,6 +259,6 @@ def test_density_factor_validation_and_native_lifetime():
         {"element_radii": ((1, 1), (1, 2))},
     ],
 )
-def test_unsupported_grid_rules_fail(changes):
+def test_unsupported_grid_rules_fail(changes: typing.Any) -> None:
     with pytest.raises(ValueError):
         GridSpec(**changes)

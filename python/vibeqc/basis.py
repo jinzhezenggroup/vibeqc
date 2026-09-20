@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import typing
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from functools import cached_property
@@ -25,7 +26,9 @@ ORDERING = "CCA-cartesian; libcint-real-spherical"
 MAX_FILE_BYTES = 64 << 20
 
 
-def decimal_text(value, name, *, positive=False):
+def decimal_text(
+    value: typing.Any, name: typing.Any, *, positive: typing.Any = False
+) -> typing.Any:
     """Preserve decimal input; reject nonfinite and nonzero-to-zero FP64 casts."""
     if isinstance(value, bool) or not isinstance(value, (str, int, float)):
         raise TypeError(f"{name} must be a decimal string or real number")
@@ -54,7 +57,7 @@ def decimal_text(value, name, *, positive=False):
     return ("-" if sign else "") + "".join(map(str, digits)) + "E" + str(exponent)
 
 
-def _pairs(pairs):
+def _pairs(pairs: typing.Any) -> typing.Any:
     result = {}
     for key, value in pairs:
         if key in result:
@@ -63,7 +66,7 @@ def _pairs(pairs):
     return result
 
 
-def read_local_json(path):
+def read_local_json(path: typing.Any) -> typing.Any:
     """Bound a local interchange file and reject duplicate keys/nonfinite JSON."""
     path = Path(path)
     if path.stat().st_size > MAX_FILE_BYTES:
@@ -92,7 +95,7 @@ class BasisProvenance:
     license: str
     checksum: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not all(
             isinstance(v, str) and v.strip()
             for v in (self.source, self.version, self.license)
@@ -117,7 +120,7 @@ class BasisShell:
     coefficients: tuple[tuple[str, ...], ...]
     source_group: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "angular_momentum",
@@ -157,7 +160,7 @@ class BasisShell:
         object.__setattr__(self, "coefficients", coefficients)
 
 
-def validate_ecp_data(data):
+def validate_ecp_data(data: typing.Any) -> None:
     """Validate retained BSE scalar-ECP radial arrays without implementing them."""
     if not isinstance(data, list) or not data:
         raise ValueError("ECP data requires a nonempty potential list")
@@ -202,7 +205,7 @@ class ElementBasis:
     ecp_core_electrons: int = 0
     ecp_data: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "atomic_number",
@@ -248,7 +251,7 @@ class BasisSet:
     exponent_units: str = "bohr^-2"
     ordering: str = ORDERING
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("basis requires a nonempty name")
         if not isinstance(self.provenance, BasisProvenance):
@@ -273,28 +276,28 @@ class BasisSet:
         object.__setattr__(self, "elements", elements)
 
     @property
-    def by_element(self):
+    def by_element(self) -> typing.Any:
         """Return detached lookup storage; the owned records remain immutable."""
         return {e.atomic_number: e for e in self.elements}
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Canonical record and checksum, independent of its filesystem location."""
         payload = {"schema": SCHEMA, "schema_version": VERSION, **asdict(self)}
         payload["checksum"] = canonical_hash(payload)
         return payload
 
     @cached_property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Full data/provenance identity for result reproducibility."""
         return self.to_payload()["checksum"]
 
-    def write(self, path):
+    def write(self, path: typing.Any) -> None:
         """Export locally; no service lookup or runtime download is performed."""
         Path(path).write_text(
             json.dumps(self.to_payload(), indent=2, sort_keys=True) + "\n"
         )
 
-    def shells_for(self, atoms):
+    def shells_for(self, atoms: typing.Any) -> typing.Any:
         """Expand general contractions without normalization or dropping zeros."""
         from .basis_capabilities import require_basis
         from .calculator import Primitive, Shell
@@ -323,7 +326,7 @@ class BasisSet:
         return tuple(result)
 
 
-def load_basis(path):
+def load_basis(path: typing.Any) -> typing.Any:
     """Read a checked canonical record; BSE conversion is a separate explicit step."""
     payload, _ = read_local_json(path)
     if (

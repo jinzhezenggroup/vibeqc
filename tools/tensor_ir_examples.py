@@ -4,6 +4,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -38,7 +39,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _arrays(inputs) -> dict:
+def _arrays(inputs: typing.Any) -> dict:
     return {
         name: {
             "shape": list(value.shape),

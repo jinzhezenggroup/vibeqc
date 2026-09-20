@@ -7,6 +7,7 @@ contract when the pair set or cutoff contract changes.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from math import isfinite
@@ -20,14 +21,13 @@ from vibeqc_compiler.tensor import (
     TensorSpec,
     add,
     constant,
-    einsum,
-    gather,
+    indexed_gather,
     input_tensor,
     linearize,
     multiply,
     power,
     reduce_sum,
-    reshape,
+    scatter_add,
     sqrt,
     transpose_program,
 )
@@ -102,7 +102,9 @@ class PairTopology:
         object.__setattr__(self, "pairs", pairs)
 
     @classmethod
-    def complete(cls, atom_count: int, *, cutoff: PairCutoff | None = None):
+    def complete(
+        cls, atom_count: int, *, cutoff: PairCutoff | None = None
+    ) -> typing.Any:
         pairs = tuple(
             (i, j) for i in range(atom_count) for j in range(i + 1, atom_count)
         )
@@ -240,7 +242,7 @@ class PairProgram:
         if identity != self.identity:
             raise ValueError("stale pair compiler execution state")
 
-    def coordinate_jvp(self):
+    def coordinate_jvp(self) -> typing.Any:
         energy = self.program.outputs.get("energy")
         if energy is None or energy.spec.shape != ():
             raise ValueError("coordinate JVP requires scalar output named energy")
@@ -248,7 +250,7 @@ class PairProgram:
             self.program, [self.geometry.coordinate_name], outputs=["energy"]
         )
 
-    def coordinate_vjp(self):
+    def coordinate_vjp(self) -> typing.Any:
         energy = self.program.outputs.get("energy")
         if energy is None or energy.spec.shape != ():
             raise ValueError("coordinate VJP requires scalar output named energy")
@@ -278,8 +280,8 @@ def lower_geometry(geometry: GeometryIR, topology: PairTopology) -> PairTensorCo
     )
     left_positions = tuple(i for i, _ in topology.pairs)
     right_positions = tuple(j for _, j in topology.pairs)
-    left = reshape(gather(coordinates, 0, left_positions), (pair, cart))
-    right = reshape(gather(coordinates, 0, right_positions), (pair, cart))
+    left = indexed_gather(coordinates, 0, left_positions, pair)
+    right = indexed_gather(coordinates, 0, right_positions, pair)
     displacement = add(right, left, coefficients=(1, -1))
     squared_distance = reduce_sum(multiply(displacement, displacement), (1,))
     distance = sqrt(squared_distance)
@@ -313,18 +315,12 @@ def pair_to_atom(
 
     if value.spec.indices != (context.pair_index,):
         raise ValueError("pair_to_atom requires one scalar value per canonical pair")
-    atom, pair = context.atom_index, context.pair_index
-    spec = TensorSpec(
-        (Index("atom_row", atom.space), Index("pair_col", pair.space)),
-        dtype=value.spec.dtype,
-        role="constant",
-    )
-    rows = []
-    for a in range(context.topology.atom_count):
-        for owner, (i, j) in zip(context.topology.owners, context.topology.pairs):
-            rows.append(int(a == owner) if owners_only else int(a == i or a == j))
-    incidence = constant(tuple(rows), spec)
-    return einsum("p,ap->a", value, incidence)
+    atom = context.atom_index
+    left = scatter_add(value, 0, tuple(i for i, _ in context.topology.pairs), atom)
+    if owners_only:
+        return left
+    right = scatter_add(value, 0, tuple(j for _, j in context.topology.pairs), atom)
+    return add(left, right)
 
 
 def build_pair_program(
@@ -359,9 +355,9 @@ def build_pair_program(
 def inverse_power_program(
     geometry: GeometryIR,
     topology: PairTopology,
-    coefficients,
+    coefficients: typing.Any,
     *,
-    exponent=-1,
+    exponent: typing.Any = -1,
     parameter_identity: str | None = None,
 ) -> PairProgram:
     """Qualification potential: E = sum_p c_p * r_p**exponent."""

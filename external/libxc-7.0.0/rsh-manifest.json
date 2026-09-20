@@ -14,6 +14,14 @@
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lyp.mpl",
       "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac"
     },
+    "gga_c_p86.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_p86.c",
+      "sha256": "52be42531551867932584fd8180f003a2a5607db9fc147e68f93e02d4acf8ab7"
+    },
+    "gga_c_p86.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_p86.mpl",
+      "sha256": "48d9fe8f34ac880755d26ca1ec8528d8ac43eb34afe0146a1b8263124764f118"
+    },
     "gga_x_b88.mpl": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_b88.mpl",
       "sha256": "5ae2ac54b4cd3fec2cb59f777c3b445999d59b3f7e40e11ed078ec3328a00a4e"
@@ -45,6 +53,14 @@
     "hyb_gga_xc_cam_b3lyp.c": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_cam_b3lyp.c",
       "sha256": "8f542a15f19f084246b038905d04f67afc01bd3720de8e7110e8ae0a86d19384"
+    },
+    "lda_c_pz.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pz.c",
+      "sha256": "a50f2e2389c982f9ff8b5344f2b784adcf902f219a7fec62cbabe4f47ad17285"
+    },
+    "lda_c_pz.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pz.mpl",
+      "sha256": "ae94630760acb51ac41eeb480f823bb837d6b76aba9c5df40112ec96dbeacd8d"
     },
     "lda_c_vwn.mpl": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn.mpl",

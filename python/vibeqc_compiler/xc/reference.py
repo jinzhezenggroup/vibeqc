@@ -1,9 +1,13 @@
 """Independent closed-form exchange oracle (no DAG or differentiation engine)."""
 
+import typing
+
 import numpy as np
 
 
-def exchange_reference(features, *, spin, gga):
+def exchange_reference(
+    features: typing.Any, *, spin: typing.Any, gga: typing.Any
+) -> typing.Any:
     """Analytic energy, gradient and Hessian in the declared feature layout.
 
     Exchange is spin separable. In particular d²e/(d rho_b d sigma_aa) is

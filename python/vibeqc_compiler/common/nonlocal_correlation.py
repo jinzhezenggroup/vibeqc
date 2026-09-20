@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from types import MappingProxyType
@@ -18,7 +19,7 @@ class UnsupportedNonlocalCorrelation(ValueError):
     """The requested nonlocal-correlation definition is not audited."""
 
 
-def _require_fraction(value, label):
+def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
     if not isinstance(value, Fraction):
         raise UnsupportedNonlocalCorrelation(
             f"{label} requires an exact Fraction parameter"
@@ -35,7 +36,7 @@ class NonlocalCorrelationSpec:
     c: Fraction
     version: str = NONLOCAL_CORRELATION_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.variant not in _VARIANTS:
             raise UnsupportedNonlocalCorrelation(
                 f"unsupported nonlocal-correlation variant {self.variant!r}"
@@ -52,18 +53,18 @@ class NonlocalCorrelationSpec:
             )
 
     @property
-    def source(self):
+    def source(self) -> typing.Any:
         if self.variant == VV10:
             return "Vydrov-Van-Voorhis/JCP-133-244103-2010"
         return "Sabatini-Gorni-de-Gironcoli/PRB-87-041108R-2013"
 
     @property
-    def kernel_convention(self):
+    def kernel_convention(self) -> typing.Any:
         if self.variant == RVV10:
             return "finite-system-rvv10-q-kappa-total-density-v2"
         return "finite-system-real-space-total-density-v1"
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "variant": self.variant,
             "version": self.version,
@@ -80,7 +81,7 @@ class NonlocalCorrelationSpec:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
@@ -92,7 +93,7 @@ ORIGINAL_NONLOCAL_CORRELATION = MappingProxyType(
 )
 
 
-def original_nonlocal_correlation(variant):
+def original_nonlocal_correlation(variant: typing.Any) -> typing.Any:
     """Return an audited original VV10 or rVV10 parameterization."""
     try:
         return ORIGINAL_NONLOCAL_CORRELATION[variant]

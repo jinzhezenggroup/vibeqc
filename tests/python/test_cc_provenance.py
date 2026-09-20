@@ -3,6 +3,7 @@
 import ast
 import copy
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -13,13 +14,15 @@ ROOT = Path(__file__).resolve().parents[2]
 REFERENCE = ROOT / "tests/reference_data/cc/rccsd-a.json"
 
 
-def test_committed_equation_export_is_current():
+def test_committed_equation_export_is_current() -> None:
     saved = json.loads((REFERENCE.parent / "equations-2o2v.json").read_text())
     assert saved == json.loads(json.dumps(equation_artifact()))
 
 
 @pytest.mark.parametrize("mutation", ["input", "output", "version", "upstream"])
-def test_reference_corruption_is_rejected(tmp_path, mutation):
+def test_reference_corruption_is_rejected(
+    tmp_path: typing.Any, mutation: typing.Any
+) -> None:
     data = copy.deepcopy(load_references(REFERENCE))
     if mutation == "input":
         data["cases"][0]["inputs"]["t1"][0][0] += 0.1
@@ -35,14 +38,14 @@ def test_reference_corruption_is_rejected(tmp_path, mutation):
         load_references(path)
 
 
-def test_shared_evidence_schema_and_replay_exports(tmp_path):
+def test_shared_evidence_schema_and_replay_exports(tmp_path: typing.Any) -> None:
     records = run(tmp_path, REFERENCE)
     assert len(records) == 5
     assert all(r["stages"]["numerical"]["status"] == "pass" for r in records)
     assert all(r["stages"]["production"]["status"] == "not-run" for r in records)
 
 
-def test_production_facade_does_not_import_reference_or_pyscf():
+def test_production_facade_does_not_import_reference_or_pyscf() -> None:
     for name in ("__init__.py", "evaluate.py", "equations.py", "inventory.py"):
         tree = ast.parse((ROOT / "tools/vibeqc_cc" / name).read_text())
         for node in ast.walk(tree):

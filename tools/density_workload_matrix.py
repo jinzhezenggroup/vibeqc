@@ -1,6 +1,7 @@
 """Larger fixed-input extension of benchmark_density_sources, using its gates."""
 
 import json
+import typing
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
@@ -21,7 +22,7 @@ from vibeqc_compiler.dft import DensitySource, ExplicitGrid, NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 
 
-def validate_matrix_errors(errors):
+def validate_matrix_errors(errors: typing.Any) -> None:
     """Require every declared numerical gate, including equal-count key swaps.
 
     This is the fixed acceptance matrix, independent of which keys a measured
@@ -69,7 +70,7 @@ def validate_matrix_errors(errors):
         raise AssertionError("incomplete registered workload/error inventory")
 
 
-def load_workloads(directory):
+def load_workloads(directory: typing.Any) -> typing.Any:
     """Validate exporter, input and every numeric block before measurement."""
     directory = Path(directory)
     root = Path(__file__).resolve().parents[1]
@@ -135,7 +136,9 @@ def load_workloads(directory):
         yield name, meta, arrays, grid
 
 
-def original_source(basis, meta, data, *, generation=0):
+def original_source(
+    basis: typing.Any, meta: typing.Any, data: typing.Any, *, generation: typing.Any = 0
+) -> typing.Any:
     """Attach the actual occupied columns; never factorize or diagonalize D."""
     source = DensitySource(
         data["density_spin"].sum(axis=0)
@@ -151,7 +154,7 @@ def original_source(basis, meta, data, *, generation=0):
     )
 
 
-def batch_resources(endpoint, sources):
+def batch_resources(endpoint: typing.Any, sources: typing.Any) -> typing.Any:
     """Compose caller-owned replica inputs and returned output capacity under #203.
 
     Four systems replay serially through one prepared owner. All independent
@@ -208,7 +211,14 @@ def batch_resources(endpoint, sources):
     ).require_feasible()
 
 
-def measure_matrix(directory, artifact, programs, samples, errors, timings):
+def measure_matrix(
+    directory: typing.Any,
+    artifact: typing.Any,
+    programs: typing.Any,
+    samples: typing.Any,
+    errors: typing.Any,
+    timings: typing.Any,
+) -> typing.Any:
     """Interleave actual registered routes and preserve every failed gate/sample."""
     # Reuse the established #138-compatible runner and its full-block gates.
     from tools.benchmark_density_sources import (

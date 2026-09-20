@@ -1,5 +1,6 @@
 """Consumer-directed XC CUDA lowering through shared scalar CSE and runtime."""
 
+import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.paths import LAYOUT_VERSION, asset_path, source_hashes
@@ -16,7 +17,7 @@ class XCSchedule:
     threads: int = 128
     group_size: int = 8
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.variant not in ("baseline", "fused", "split"):
             raise ValueError("unknown XC CUDA variant")
         if type(self.threads) is not int or self.threads not in (64, 128, 256):
@@ -25,7 +26,7 @@ class XCSchedule:
             raise ValueError("XC output group must be in [1,36]")
 
 
-def emit_cuda(program, schedule=None):
+def emit_cuda(program: typing.Any, schedule: typing.Any = None) -> typing.Any:
     """Emit deterministic FP64 source and tuning metadata; no device execution."""
     schedule = schedule or XCSchedule()
     nout = len(program.outputs)

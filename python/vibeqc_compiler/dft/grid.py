@@ -9,6 +9,7 @@ correction. No empirical angular/radius tables or runtime downloads are used.
 from __future__ import annotations
 
 import json
+import typing
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -19,14 +20,19 @@ from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
 
 
-def checked_int(value, name, low=1, high=2**31 - 1):
+def checked_int(
+    value: typing.Any,
+    name: typing.Any,
+    low: typing.Any = 1,
+    high: typing.Any = 2**31 - 1,
+) -> typing.Any:
     """Reject booleans, truncation and overflow at every public size boundary."""
     if type(value) is not int or not low <= value <= high:
         raise ValueError(f"{name} must be an integer in [{low}, {high}]")
     return value
 
 
-def owned_atoms(atoms):
+def owned_atoms(atoms: typing.Any) -> typing.Any:
     """Canonicalize all coordinate storage, including user-constructed Atoms."""
     # Reuse the public atom contract only when accepting molecular input.
     from vibeqc import Atom
@@ -71,7 +77,7 @@ class GridSpec:
     units: str = "Bohr"
     ordering: str = "atom-radial-polar-azimuth"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         checked_int(self.version, "grid version", high=1)
         checked_int(self.radial_points, "radial points", high=512)
         checked_int(self.angular_polar, "polar points", high=256)
@@ -108,7 +114,13 @@ class GridSpec:
         object.__setattr__(self, "element_radii", tuple(sorted(radii)))
 
 
-def partition_weights(points, centers, *, iterations=3, coincident_tolerance=1e-12):
+def partition_weights(
+    points: typing.Any,
+    centers: typing.Any,
+    *,
+    iterations: typing.Any = 3,
+    coincident_tolerance: typing.Any = 1e-12,
+) -> typing.Any:
     """Return normalized ownership [point,atom] with stable log products.
 
     Becke's p(x)=(3x-x^3)/2 is composed ``iterations`` times. Identical centers
@@ -189,7 +201,7 @@ class MolecularGrid:
     charge: int = 0
     multiplicity: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         atoms = owned_atoms(self.atoms)
         if not isinstance(self.spec, GridSpec):
             raise TypeError("expected GridSpec")
@@ -264,7 +276,7 @@ class MolecularGrid:
             + 128 * len(angular),
         )
 
-    def _raw_tiles(self, tile_points=256):
+    def _raw_tiles(self, tile_points: typing.Any = 256) -> typing.Any:
         """Shared atomic points/measures before molecular partitioning."""
         checked_int(tile_points, "tile points")
         na = len(self.directions)
@@ -286,7 +298,7 @@ class MolecularGrid:
                 tuple(int(x) for x in owner),
             )
 
-    def tiles(self, tile_points=256):
+    def tiles(self, tile_points: typing.Any = 256) -> typing.Any:
         """Build moved points and fresh partition weights, including final tiles."""
         for raw in self._raw_tiles(tile_points):
             partition = partition_weights(
@@ -298,7 +310,7 @@ class MolecularGrid:
             weights = raw.weights * partition[np.arange(len(raw.owners)), raw.owners]
             yield GridTile(raw.begin, raw.points, immutable(weights), raw.owners)
 
-    def explicit(self, *, max_points=200_000):
+    def explicit(self, *, max_points: typing.Any = 200_000) -> typing.Any:
         """Materialize a guarded small reference grid for independent exporters."""
         checked_int(max_points, "explicit grid limit")
         if self.npoint > max_points:
@@ -334,7 +346,7 @@ class ExplicitGrid:
         _provenance_json: ClassVar[str]
         identity: ClassVar[str]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         points, weights = immutable(self.points), immutable(self.weights)
         owners = tuple(self.owners)
         if (
@@ -354,7 +366,7 @@ class ExplicitGrid:
         object.__setattr__(self, "_provenance_json", provenance)
         object.__setattr__(self, "identity", canonical_hash(self.record()))
 
-    def record(self):
+    def record(self) -> typing.Any:
         return {
             "schema": "vibeqc.explicit-grid",
             "version": 1,
@@ -364,14 +376,14 @@ class ExplicitGrid:
             "provenance": json.loads(self._provenance_json),
         }
 
-    def write(self, path):
+    def write(self, path: typing.Any) -> None:
         """Write explicit data and a content hash; no external program is needed."""
         Path(path).write_text(
             json.dumps({**self.record(), "sha256": self.identity}, indent=2) + "\n"
         )
 
     @classmethod
-    def read(cls, path):
+    def read(cls, path: typing.Any) -> typing.Any:
         """Import only versioned, hash-verified Bohr point/weight arrays."""
         data = json.loads(Path(path).read_text())
         if data["schema"] != "vibeqc.explicit-grid" or data["version"] != 1:

@@ -9,6 +9,7 @@ validated observable-bound implementations must precede such a claim.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import asdict, dataclass
 from enum import Enum
 from numbers import Real
@@ -21,7 +22,9 @@ from .profiles import canonical_hash
 SCHEMA_VERSION = 1
 
 
-def _number(value, name, *, positive=False):
+def _number(
+    value: typing.Any, name: typing.Any, *, positive: typing.Any = False
+) -> typing.Any:
     """Accept real finite values without silently coercing strings or booleans."""
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
         raise TypeError(f"{name} must be a finite real number")
@@ -33,7 +36,7 @@ def _number(value, name, *, positive=False):
     return value
 
 
-def _identity(value, name):
+def _identity(value: typing.Any, name: typing.Any) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a nonempty identity")
 
@@ -64,7 +67,7 @@ class ResolvedModel:
     metric_relative_threshold: float | None = None
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             type(self.schema_version) is not int
             or self.schema_version != SCHEMA_VERSION
@@ -144,7 +147,7 @@ class ObservableTarget:
     absolute: float = 0.0
     relative: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (self.observable, self.norm, self.unit) not in (
             ("energy", "absolute", "Eh"),
             ("forces", "max_abs", "Eh/bohr"),
@@ -179,7 +182,7 @@ class TargetAccuracy:
     scope: str = "relaxed_target"
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         values = tuple(self.observables)
         if not values or any(not isinstance(v, ObservableTarget) for v in values):
             raise ValueError("observables must contain typed accuracy requirements")
@@ -255,7 +258,7 @@ class ErrorEvidence:
     actual_reference_error: float | None = None
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             type(self.schema_version) is not int
             or self.schema_version != SCHEMA_VERSION
@@ -321,7 +324,7 @@ class AccuracyAssessment:
     evidence: tuple[ErrorEvidence, ...] = ()
     converged: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel) or not isinstance(
             self.target, TargetAccuracy
         ):
@@ -477,7 +480,9 @@ def compare_observables(
         if value.shape != reference.shape:
             raise ValueError("observable dimensions differ")
 
-        def norm(array, norm_name=requirement.norm):
+        def norm(
+            array: typing.Any, norm_name: typing.Any = requirement.norm
+        ) -> typing.Any:
             # Scaling avoids overflow when squaring large finite values.
             maximum = float(np.max(np.abs(array)))
             if not math.isfinite(maximum):

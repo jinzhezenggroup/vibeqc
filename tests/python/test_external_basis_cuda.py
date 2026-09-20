@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -22,17 +23,19 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("index", range(6))
-def test_public_imported_energy_forces_and_prepared_replays(index):
+def test_public_imported_energy_forces_and_prepared_replays(
+    index: typing.Any,
+) -> None:
     manifest, arrays = fixtures()
     case_endpoints(manifest["cases"][index], arrays, ("cuda",), 1)
 
 
-def test_imported_ragged_order_changed_geometry_and_failure_isolation():
+def test_imported_ragged_order_changed_geometry_and_failure_isolation() -> None:
     manifest, arrays = fixtures()
     ragged_endpoints(manifest, arrays, "cuda", 2)
 
 
-def test_unsupported_data_and_changed_basis_never_execute_as_old_model():
+def test_unsupported_data_and_changed_basis_never_execute_as_old_model() -> None:
     for filename, symbol, diagnostic in (
         ("cc-pvtz-fe.json", "Fe", "l=4"),
         ("def2-tzvp-au.json", "Au", "ECP"),
@@ -56,7 +59,7 @@ def test_unsupported_data_and_changed_basis_never_execute_as_old_model():
             prepared.execute()
 
 
-def test_numpy_integer_metadata_preserves_native_gpu_occupation_rejection():
+def test_numpy_integer_metadata_preserves_native_gpu_occupation_rejection() -> None:
     manifest, _ = fixtures()
     calculator = Calculator(basis=basis_for(manifest["cases"][0]), device="cuda")
     atoms = [[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))], [("H", (0, 0, 0))]]

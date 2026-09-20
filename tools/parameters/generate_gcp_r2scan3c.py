@@ -2,6 +2,7 @@
 """Generate the checked-in H-Ar r2SCAN-3c gCP C++ parameter table."""
 
 import json
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -9,12 +10,12 @@ SOURCE = ROOT / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
 OUTPUT = ROOT / "src/dft/dispersion/gcp_r2scan3c_data.hpp"
 
 
-def _number(value):
+def _number(value: typing.Any) -> typing.Any:
     value = float(value)
     return str(int(value)) if value.is_integer() else repr(value)
 
 
-def main():
+def main() -> None:
     data = json.loads(SOURCE.read_text())
     if data["schema"] != "vibeqc.gcp-r2scan3c-parameters":
         raise SystemExit("unexpected gCP parameter schema")

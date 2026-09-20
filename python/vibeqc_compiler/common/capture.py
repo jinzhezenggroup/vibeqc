@@ -40,7 +40,7 @@ class CaptureContract:
     runtime_hash: str
     unsupported_effects: tuple[str, ...] = ()
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for field, cls in (
             ("compilation", CompilationIdentity),
             ("workload", WorkloadSignature),

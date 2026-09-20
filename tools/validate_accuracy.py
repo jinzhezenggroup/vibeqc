@@ -10,6 +10,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -54,7 +55,7 @@ STRICT_ENERGY_GATE = 1e-9
 STRICT_FORCE_GATE = 1e-8
 
 
-def variants(backend):
+def variants(backend: typing.Any) -> typing.Any:
     """Change one source at a time, then coupled SCF controls, at fixed identity."""
     strict = ProbeControls()
     rows = []
@@ -106,7 +107,9 @@ def variants(backend):
     return rows
 
 
-def run(output, *, backend="cpu", names=None):
+def run(
+    output: typing.Any, *, backend: typing.Any = "cpu", names: typing.Any = None
+) -> typing.Any:
     """Write replayable, checksum-linked scientific states and all failed rows."""
     output.mkdir(parents=True, exist_ok=True)
     start = time.perf_counter()
@@ -367,7 +370,7 @@ def run(output, *, backend="cpu", names=None):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--backend", choices=("cpu", "cuda"), default="cpu")

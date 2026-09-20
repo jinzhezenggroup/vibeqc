@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,14 +33,14 @@ from vibeqc_compiler.common.timing import interleaved_selection_order
 from tools.vibeqc_validation.publication import publish
 
 
-def write(path, value):
+def write(path: typing.Any, value: typing.Any) -> None:
     """Write deterministic finite JSON without discarding float precision."""
     path.write_text(
         json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     )
 
 
-def compact_comparison(directory):
+def compact_comparison(directory: typing.Any) -> typing.Any:
     """Recompute every gate from raw workers, preserving the shared timing assessment."""
     original = json.loads((directory / "comparison.json").read_text())
     count = original["samples"]
@@ -83,7 +84,7 @@ def compact_comparison(directory):
     ):
         raise ValueError("inconsistent process scope or benchmark driver provenance")
 
-    def intern(value):
+    def intern(value: typing.Any) -> typing.Any:
         key = canonical_hash(value)
         interned[key] = value
         return key
@@ -269,7 +270,13 @@ def compact_comparison(directory):
     return compact, records, errors, timings, rows
 
 
-def validate_resources(resources, baseline, candidate, *, domain="one-electron"):
+def validate_resources(
+    resources: typing.Any,
+    baseline: typing.Any,
+    candidate: typing.Any,
+    *,
+    domain: typing.Any = "one-electron",
+) -> None:
     """Bind object measurements to the exact worker source and build contract.
 
     An exact-source kernel reconstruction is explicit when the historical linked
@@ -315,7 +322,7 @@ def validate_resources(resources, baseline, candidate, *, domain="one-electron")
             raise ValueError(f"incomplete native resource measurement: {name}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--comparison", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)

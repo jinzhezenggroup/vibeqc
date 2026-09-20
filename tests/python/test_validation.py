@@ -4,6 +4,7 @@ import copy
 import json
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -37,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = load_fixtures()
 
 
-def test_mathematical_inputs_reproduce_and_do_not_depend_on_provenance():
+def test_mathematical_inputs_reproduce_and_do_not_depend_on_provenance() -> None:
     expected = {r["inputs"]["name"]: r["inputs_hash"] for r in FIXTURES}
     for inputs in small_inputs() + molecular_inputs():
         assert mathematical_hash(inputs) == expected[inputs["name"]]
@@ -62,7 +63,7 @@ def test_mathematical_inputs_reproduce_and_do_not_depend_on_provenance():
     assert small_inputs()[0]["conventions"]["force_sign"] != "corrupted"
 
 
-def test_two_generations_have_measured_stability_and_distinct_provenance():
+def test_two_generations_have_measured_stability_and_distinct_provenance() -> None:
     stability = json.loads((REFERENCE_DIRECTORY / "stability.json").read_text())
     assert len(stability["generations"]) == len(FIXTURES)
     for row in stability["generations"]:
@@ -91,7 +92,9 @@ def test_two_generations_have_measured_stability_and_distinct_provenance():
     ],
     ids=lambda r: r["inputs"]["name"],
 )
-def test_generator_integrals_and_derivatives_against_independent_libcint(reference):
+def test_generator_integrals_and_derivatives_against_independent_libcint(
+    reference: typing.Any,
+) -> None:
     actual = evaluate_quartet(reference["inputs"])
     for key in ("eri", "gradient"):
         assert block_error(
@@ -105,7 +108,9 @@ def test_generator_integrals_and_derivatives_against_independent_libcint(referen
     [r for r in FIXTURES if r["inputs"]["kind"] == "molecule"],
     ids=lambda r: r["inputs"]["name"],
 )
-def test_small_molecular_cpu_endpoints_against_pinned_pyscf(reference):
+def test_small_molecular_cpu_endpoints_against_pinned_pyscf(
+    reference: typing.Any,
+) -> None:
     from vibeqc import Calculator
 
     inputs = reference["inputs"]
@@ -123,7 +128,7 @@ def test_small_molecular_cpu_endpoints_against_pinned_pyscf(reference):
     ]
 
 
-def test_triples_reference_and_occupations_are_nontrivial_and_explicit():
+def test_triples_reference_and_occupations_are_nontrivial_and_explicit() -> None:
     row = next(r for r in FIXTURES if r["inputs"]["name"] == "nh3")
     assert abs(row["data"]["ccsd_t"]["triples_energy"]) > 1e-7
     assert row["data"]["ccsd_t"]["amplitude_update_max"] < 1e-9
@@ -140,7 +145,9 @@ def test_triples_reference_and_occupations_are_nontrivial_and_explicit():
         ("spherical_order", "reverse"),
     ],
 )
-def test_corrupted_conventions_rejected_even_with_recomputed_input_hash(field, value):
+def test_corrupted_conventions_rejected_even_with_recomputed_input_hash(
+    field: typing.Any, value: typing.Any
+) -> None:
     row = copy.deepcopy(FIXTURES[0])
     row["inputs"]["conventions"][field] = value
     row["inputs_hash"] = mathematical_hash(row["inputs"])
@@ -148,7 +155,7 @@ def test_corrupted_conventions_rejected_even_with_recomputed_input_hash(field, v
         validate_fixture(row)
 
 
-def test_corrupted_ao_values_and_force_signs_fail_numerical_gates():
+def test_corrupted_ao_values_and_force_signs_fail_numerical_gates() -> None:
     row = next(r for r in FIXTURES if r["inputs"]["name"] == "dpss-asymmetric")
     values = np.asarray(row["data"]["eri"])
     assert not block_error(values[::-1], values, **GATES["integral_fp64"])["passed"]
@@ -160,7 +167,7 @@ def test_corrupted_ao_values_and_force_signs_fail_numerical_gates():
 
 
 @pytest.mark.parametrize("corruption", ["reference-version", "program-version", "data"])
-def test_reference_version_and_hash_corruption(corruption):
+def test_reference_version_and_hash_corruption(corruption: typing.Any) -> None:
     row = copy.deepcopy(FIXTURES[0])
     if corruption == "reference-version":
         row["schema_version"] += 1
@@ -172,7 +179,7 @@ def test_reference_version_and_hash_corruption(corruption):
         validate_fixture(row)
 
 
-def test_near_zero_errors_use_absolute_floor_and_reject_nonfinite_values():
+def test_near_zero_errors_use_absolute_floor_and_reject_nonfinite_values() -> None:
     assert block_error([1e-12], [0], **GATES["integral_fp64"])["passed"]
     assert not block_error([1e-8], [0], **GATES["integral_fp64"])["passed"]
     for bad in (np.nan, np.inf):
@@ -182,10 +189,10 @@ def test_near_zero_errors_use_absolute_floor_and_reject_nonfinite_values():
         block_error([1, 2], [1], **GATES["integral_fp64"])
 
 
-def test_finite_difference_records_every_step_and_freezes_policy():
+def test_finite_difference_records_every_step_and_freezes_policy() -> None:
     seen = []
 
-    def energy(xyz, settings):
+    def energy(xyz: typing.Any, settings: typing.Any) -> typing.Any:
         seen.append(settings.copy())
         settings["screening"] = 42
         return float(np.sum(xyz**4))
@@ -203,7 +210,7 @@ def test_finite_difference_records_every_step_and_freezes_policy():
         )
 
 
-def _samples(candidate_seconds=0.8):
+def _samples(candidate_seconds: typing.Any = 0.8) -> typing.Any:
     counter = iter(range(100))
     rows = measure_interleaved(
         lambda side: {"iterations": 2},
@@ -217,7 +224,7 @@ def _samples(candidate_seconds=0.8):
     return rows
 
 
-def test_performance_uses_existing_abba_order_and_synchronizes_every_sample():
+def test_performance_uses_existing_abba_order_and_synchronizes_every_sample() -> None:
     calls = []
     rows = measure_interleaved(
         lambda side: calls.append(side),
@@ -242,7 +249,9 @@ def test_performance_uses_existing_abba_order_and_synchronizes_every_sample():
 
 
 @pytest.mark.parametrize("corruption", ["inputs", "sync", "order", "count", "noise"])
-def test_bad_or_noisy_performance_measurements_cannot_pass(corruption):
+def test_bad_or_noisy_performance_measurements_cannot_pass(
+    corruption: typing.Any,
+) -> None:
     rows = _samples()
     if corruption == "inputs":
         rows[0]["inputs_hash"] = canonical_hash({"different": True})
@@ -258,7 +267,7 @@ def test_bad_or_noisy_performance_measurements_cannot_pass(corruption):
     assert assess_comparison(rows)["status"] != "pass"
 
 
-def _complete_record():
+def _complete_record() -> typing.Any:
     record = new_evidence(
         tier="endpoint", subject="synthetic kernel test", inputs_hash=canonical_hash({})
     )
@@ -286,7 +295,9 @@ def _complete_record():
     return record
 
 
-def test_complete_schema_roundtrip_and_existing_artifact_registration(tmp_path):
+def test_complete_schema_roundtrip_and_existing_artifact_registration(
+    tmp_path: typing.Any,
+) -> None:
     record = _complete_record()
     output = tmp_path / "result.json"
     write_evidence(output, record)
@@ -315,7 +326,9 @@ def test_complete_schema_roundtrip_and_existing_artifact_registration(tmp_path):
         "numerical",
     ],
 )
-def test_performance_pass_rejects_missing_provenance_or_evidence(field):
+def test_performance_pass_rejects_missing_provenance_or_evidence(
+    field: typing.Any,
+) -> None:
     record = _complete_record()
     if field in record["hashes"]:
         record["hashes"][field] = None
@@ -331,7 +344,7 @@ def test_performance_pass_rejects_missing_provenance_or_evidence(field):
         validate_evidence(record)
 
 
-def test_missing_gpu_status_and_backend_fallback_cannot_promote():
+def test_missing_gpu_status_and_backend_fallback_cannot_promote() -> None:
     for corrupt in ("hardware", "backend"):
         record = _complete_record()
         if corrupt == "hardware":
@@ -348,14 +361,16 @@ def test_missing_gpu_status_and_backend_fallback_cannot_promote():
         validate_evidence(record)
 
 
-def test_solver_pass_requires_iteration_history_and_residual():
+def test_solver_pass_requires_iteration_history_and_residual() -> None:
     record = _complete_record()
     record["settings"]["comparison_kind"] = "solver"
     with pytest.raises(ValueError, match="iteration"):
         validate_evidence(record)
 
 
-def test_solver_history_cannot_omit_intermediate_iterations_or_final_residuals():
+def test_solver_history_cannot_omit_intermediate_iterations_or_final_residuals() -> (
+    None
+):
     record = _complete_record()
     record["settings"].update(comparison_kind="solver", residual_limit=1e-9)
     record["solver_iterations"] = [
@@ -373,21 +388,23 @@ def test_solver_history_cannot_omit_intermediate_iterations_or_final_residuals()
 
 
 @pytest.mark.parametrize("field,value", [("peak_bytes", 8000), ("compile_seconds", 1)])
-def test_runtime_win_cannot_override_memory_or_compile_budget(field, value):
+def test_runtime_win_cannot_override_memory_or_compile_budget(
+    field: typing.Any, value: typing.Any
+) -> None:
     record = _complete_record()
     record["settings"]["promotion_limits"][field] = value
     with pytest.raises(ValueError, match="budget"):
         validate_evidence(record)
 
 
-def test_kernel_performance_requires_frozen_state_identity():
+def test_kernel_performance_requires_frozen_state_identity() -> None:
     record = _complete_record()
     record["settings"].pop("fixed_state_hash")
     with pytest.raises(ValueError, match="fixed density"):
         validate_evidence(record)
 
 
-def test_fast_compile_and_hidden_gpu_selection_cannot_promote():
+def test_fast_compile_and_hidden_gpu_selection_cannot_promote() -> None:
     record = _complete_record()
     record["settings"]["fast_compile"] = True
     with pytest.raises(ValueError, match="fast_compile"):
@@ -399,7 +416,7 @@ def test_fast_compile_and_hidden_gpu_selection_cannot_promote():
         validate_evidence(record)
 
 
-def test_tier_command_timeout_is_a_failed_artifact(tmp_path):
+def test_tier_command_timeout_is_a_failed_artifact(tmp_path: typing.Any) -> None:
     output = tmp_path / "timeout.json"
     result = subprocess.run(
         [
@@ -427,7 +444,7 @@ def test_tier_command_timeout_is_a_failed_artifact(tmp_path):
     assert "timeout" in record["stages"]["compilation"]["reason"]
 
 
-def test_capability_stages_preserve_the_existing_f_shell_matrix():
+def test_capability_stages_preserve_the_existing_f_shell_matrix() -> None:
     table = capability_table()
     assert len(table["shell_classes"]) == 55
     assert sum(r["contains_f"] for r in table["shell_classes"]) == 34
@@ -445,7 +462,9 @@ def test_capability_stages_preserve_the_existing_f_shell_matrix():
     assert fpps["stages"]["production"]["acceptance_status"] == "provisional"
 
 
-def test_hf_protocol_control_runs_all_available_workloads_and_fd(tmp_path):
+def test_hf_protocol_control_runs_all_available_workloads_and_fd(
+    tmp_path: typing.Any,
+) -> None:
     from benchmarks.validation_gate import hf_evidence
 
     record = hf_evidence(check_fd=True)
@@ -458,7 +477,9 @@ def test_hf_protocol_control_runs_all_available_workloads_and_fd(tmp_path):
     write_evidence(tmp_path / "hf.json", record)
 
 
-def test_tier_cli_records_missing_gpu_and_compilation_separately(tmp_path):
+def test_tier_cli_records_missing_gpu_and_compilation_separately(
+    tmp_path: typing.Any,
+) -> None:
     script = ROOT / "benchmarks/validation_gate.py"
     output = tmp_path / "gpu.json"
     subprocess.run(

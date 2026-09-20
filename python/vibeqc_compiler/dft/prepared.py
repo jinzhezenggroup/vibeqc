@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+import typing
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -39,20 +40,20 @@ class PreparedGrid:
 
     def __init__(
         self,
-        atoms,
-        basis="sto-3g",
+        atoms: typing.Any,
+        basis: typing.Any = "sto-3g",
         *,
-        spec=None,
-        representation="cartesian",
-        charge=0,
-        multiplicity=1,
-        backend="cpu",
-        order=1,
-        tile_points=256,
-        budget_bytes=256 << 20,
-        artifact=None,
-        device_id=0,
-    ):
+        spec: typing.Any = None,
+        representation: typing.Any = "cartesian",
+        charge: typing.Any = 0,
+        multiplicity: typing.Any = 1,
+        backend: typing.Any = "cpu",
+        order: typing.Any = 1,
+        tile_points: typing.Any = 256,
+        budget_bytes: typing.Any = 256 << 20,
+        artifact: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         spec = GridSpec() if spec is None else spec
         self._lock = threading.RLock()
         self._basis = None
@@ -125,25 +126,25 @@ class PreparedGrid:
             raise
 
     @property
-    def plan(self):
+    def plan(self) -> typing.Any:
         return self._plan
 
     @property
-    def grid(self):
+    def grid(self) -> typing.Any:
         return self._grid
 
     @property
-    def basis_identity(self):
+    def basis_identity(self) -> typing.Any:
         basis = self._basis
         if basis is None:
             raise RuntimeError("prepared grid is closed")
         return basis.identity
 
     @property
-    def nao(self):
+    def nao(self) -> typing.Any:
         return self._plan.nao
 
-    def _refresh_identity(self):
+    def _refresh_identity(self) -> None:
         basis = self._basis
         if basis is None:
             raise RuntimeError("prepared grid is closed")
@@ -158,14 +159,14 @@ class PreparedGrid:
         )
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return self._identity
 
     @property
-    def generation(self):
+    def generation(self) -> typing.Any:
         return self._generation
 
-    def reconfigure(self, **changes):
+    def reconfigure(self, **changes: typing.Any) -> None:
         """Transactionally replace changed numerical state and advance generation.
 
         ``coordinates`` moves the existing ordered atoms. To reorder/change
@@ -208,7 +209,7 @@ class PreparedGrid:
             self._execution += 1
             self._refresh_identity()
 
-    def iter_features(self, density):
+    def iter_features(self, density: typing.Any) -> typing.Any:
         """Yield bounded detached tiles; stale iterators fail after reconfiguration.
 
         Starting a new iterator invalidates any previous iterator on this plan,
@@ -261,7 +262,7 @@ class PreparedGrid:
                 tile.begin, tile.points, tile.weights, features, generation
             )
 
-    def integrate(self, density):
+    def integrate(self, density: typing.Any) -> typing.Any:
         """Stream spin electron counts and kinetic densities without renormalizing."""
         # Serialize complete integrations; a yielded low-level iterator remains
         # explicitly invalidatable at its next tile boundary.
@@ -282,7 +283,7 @@ class PreparedGrid:
                 "diagnostics": self.diagnostics(),
             }
 
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Report host construction/staging and synchronized native section costs."""
         with self._lock:
             result = {
@@ -305,7 +306,7 @@ class PreparedGrid:
                 result["cuda"] = self._cuda.metrics()
             return result
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._cuda:
                 self._cuda.close()
@@ -314,13 +315,13 @@ class PreparedGrid:
                 self._basis.close()
                 self._basis = None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()
 
@@ -333,7 +334,9 @@ class PreparedGridBatch:
     explicit even when a peer's density or geometry update fails.
     """
 
-    def __init__(self, items, *, budget_bytes=1 << 30):
+    def __init__(
+        self, items: typing.Any, *, budget_bytes: typing.Any = 1 << 30
+    ) -> None:
         checked_int(budget_bytes, "batch grid budget", high=2**63 - 1)
         self._items = []
         self._budget_bytes = budget_bytes
@@ -357,7 +360,7 @@ class PreparedGridBatch:
             self.close()
             raise
 
-    def execute(self, densities):
+    def execute(self, densities: typing.Any) -> typing.Any:
         """Isolate invalid/nonfinite density items while preserving original order."""
         with self._lock:
             if len(densities) != len(self._items):
@@ -378,7 +381,7 @@ class PreparedGridBatch:
                 result.append(record)
             return result
 
-    def reconfigure(self, index, **changes):
+    def reconfigure(self, index: typing.Any, **changes: typing.Any) -> None:
         """Update one item under the fleet budget, rebuilding ragged offsets."""
         with self._lock:
             checked_int(index, "batch index", low=0, high=len(self._items) - 1)
@@ -396,18 +399,18 @@ class PreparedGridBatch:
                 self.point_offsets.append(self.point_offsets[-1] + item.grid.npoint)
                 self.ao_offsets.append(self.ao_offsets[-1] + item.nao)
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             for item in self._items:
                 item.close()
             self._items = []
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_items"):
             self.close()

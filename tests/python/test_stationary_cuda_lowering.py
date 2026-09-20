@@ -3,11 +3,12 @@
 import os
 import subprocess
 import sys
+import typing
 
 import pytest
 
 
-def test_cuda_source_generation_is_device_and_runtime_independent():
+def test_cuda_source_generation_is_device_and_runtime_independent() -> None:
     script = """
 import sys
 class Block:
@@ -50,8 +51,8 @@ for pbe in (False,True):
 @pytest.mark.parametrize("name", ["NVCC_PREPEND_FLAGS", "NVCC_APPEND_FLAGS"])
 @pytest.mark.parametrize("flags", ["--use_fast_math", "--fmad=true", "--ftz=true"])
 def test_strict_stationary_cuda_rejects_environment_overrides(
-    monkeypatch, tmp_path, name, flags
-):
+    monkeypatch: typing.Any, tmp_path: typing.Any, name: typing.Any, flags: typing.Any
+) -> None:
     from pathlib import Path
 
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -63,7 +64,7 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
     )
     monkeypatch.setenv(name, flags)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail(
             "strict arithmetic override reached source generation or compilation"
         )
@@ -78,7 +79,9 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
     assert not cache.exists()
 
 
-def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit():
+def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit() -> (
+    None
+):
     from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
     from vibeqc_compiler.xc.geometry_cuda import emit_native_geometry_cuda
 

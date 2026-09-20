@@ -1,9 +1,13 @@
 """Small-only dense AO-to-MO oracle; never used by streaming providers."""
 
+import typing
+
 import numpy as np
 
 
-def dense_ao_to_mo(eri, coefficients, *, maximum_n=12):
+def dense_ao_to_mo(
+    eri: typing.Any, coefficients: typing.Any, *, maximum_n: typing.Any = 12
+) -> typing.Any:
     """Transform all four chemists' slots in four independently visible stages.
 
     Full N**4 AO/MO tensors are allowed only behind this explicit small-system

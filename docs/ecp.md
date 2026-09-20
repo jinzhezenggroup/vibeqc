@@ -168,14 +168,15 @@ budget, but resource estimation reports `unsupported` and `require_feasible()`
 raises. The f budget/replay gate uses a 16-AO spherical fixture; larger f
 endpoint measurements qualify numerical execution only.
 
-Direct RHF/UHF are the supported complete methods. ECP density fitting is
+Direct RHF/UHF and the bounded Python CUDA semilocal DFT path below provide
+complete first forces. ECP density fitting is
 explicitly rejected pending its own complete force/budget gates. Complete
 canonical MP2 with ECP is also rejected until its reference/provider gates are
 validated. The all-electron accuracy-model schema cannot represent an ECP
 Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
 LDA/PBE RKS/UKS energy-only calculations use the same ECP Hamiltonian, as
-described below. Complete DFT gradients remain dependent on #163 and force
-requests are rejected. No broad heavy-element validation follows from support
+described below. Public CPU DFT/ECP forces remain unsupported; CUDA force support has its own
+bounded qualification below. No broad heavy-element validation follows from support
 for the parameter format.
 
 ## Semilocal DFT energies
@@ -189,8 +190,8 @@ ordinary Gaussian AO basis; it does not reconstruct a core density or apply a
 nonlinear core correction. Atomic number still determines grid element identity.
 
 AO capability checks permit values and first spatial jets needed by LDA/GGA
-energies. They still validate ECP metadata and angular limits. Higher AO jets,
-complete nuclear forces, DF/ECP and other DFT methods do not inherit support.
+energies. They still validate ECP metadata and angular limits. Higher AO jets, DF/ECP and other DFT methods do not inherit support.
+Complete first forces use the separately qualified CUDA consumer below.
 
 ```python
 result = Calculator(method="pbe-rks", basis=basis, device="cuda").singlepoint(
@@ -410,9 +411,49 @@ and closure revoke its derivative access.
 
 This diagnostic reuses the independent CPU ECP derivative provider. It retains
 two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. It does not enable
-public DFT/ECP forces, CUDA ECP gradients, or an overall resource/performance
+public CPU DFT/ECP forces or an overall resource/performance
 capability. The first qualification is Cartesian s/p LANL2DZ-Na/STO-3G-H in
 `tests/python/test_ecp_stationary_cpu.py`, with independent full-grid-response
 PySCF gradients and multistep reconverged energy differences.
 
 See [the stationary ECP decision](../.agents/notes/implemented/architecture/2026-09-19-ecp-stationary-cpu.md).
+
+## Public CUDA semilocal ECP forces
+
+The Python `Calculator` and `PreparedBatch` support `energy` plus `forces` for
+CUDA FP64 direct LDA/PBE RKS/UKS with Cartesian or real-spherical s/p scalar
+ECP basis records.
+The default property set includes forces for these records; use
+`properties=("energy",)` to avoid derivative evaluation. CPU and higher-angular ECP records remain energy-only. The backend-neutral native C
+method registry remains conservative and does not advertise DFT forces.
+
+This route reuses the live energy owner's v5 snapshot and shared nine-source
+compiler plan. It binds the actual core counts and ECP parameters, includes
+both local/nonlocal center derivatives and effective-charge attraction/nuclear
+repulsion, and returns force = -gradient in Eh/bohr. No CPU/PySCF scientific
+fallback is used. Changed geometries acquire fresh states; a failed gradient
+publishes no force, closes its snapshot, and does not poison neighboring items.
+
+The additional staging bounds are 512 MiB device and 256 MiB host, reserved by
+the KS resource plan. Shared admission also requires at most 16 AOs, 8 atoms,
+128 primitives, 128 ECP terms, 100 million ECP quadrature pair-samples,
+2 million primitive records, 1 million XC points and 100 million grid pair
+visits. Work/byte rejection precedes derivative compilation/provider execution;
+energy preparation and final-state export occur first. A plan's byte feasibility
+does not promise scientific convergence or work admission. Budgeted batch
+`resource_diagnostics["generated_force"]` reports successful per-item work and
+bounds separately from the native SCF ledger. This includes dense host exports
+and does not claim complete residency or performance promotion.
+
+Qualification covers Cartesian and real-spherical LANL2DZ Na / STO-3G H,
+neutral RKS and +1 doublet UKS,
+with the retained 24 x 8 x 16 unpruned XC grid. It checks independent PySCF
+full-grid-response gradients, two-step reconverged energy differences, force
+sign/translation, mixed ECP/all-electron cold/warm/changed-geometry batches,
+work rejection, snapshot cleanup, failure isolation and recovery. Spherical
+records additionally pass through serialized basis loading and are compared
+with the equivalent Cartesian public energy/forces for every method. These tests
+do not qualify arbitrary elements, parameter families or larger angular domains.
+Run `VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_public_cuda.py`
+on an allocated GPU with `CUDACXX` and `VIBEQC_LIBRARY` set. See the
+[public-force decision](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cuda-forces.md).

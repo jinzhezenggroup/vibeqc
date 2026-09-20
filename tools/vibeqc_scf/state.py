@@ -5,6 +5,7 @@ occur after explicit damping. Neither stationarity nor Aufbau populations
 certify stability or the lowest electronic solution.
 """
 
+import typing
 from dataclasses import dataclass, field
 from hashlib import sha256
 
@@ -15,7 +16,7 @@ from vibeqc.profiles import canonical_hash
 from tools.vibeqc_posthf.reference import immutable
 
 
-def safeguard_policy():
+def safeguard_policy() -> typing.Any:
     """Portable version-1 acceptance policy, shared by trace/replay metadata.
 
     The native implementation is checked against the independent replay in
@@ -35,7 +36,7 @@ def safeguard_policy():
     }
 
 
-def spin_counts(model):
+def spin_counts(model: typing.Any) -> typing.Any:
     """Return electrons per matrix block and the maximum metric occupation."""
     if model.method not in ("rhf", "uhf"):
         raise ValueError("SCF state requires an RHF or UHF model")
@@ -48,7 +49,7 @@ def spin_counts(model):
     ), 1.0
 
 
-def metric_root(overlap):
+def metric_root(overlap: typing.Any) -> typing.Any:
     """Positive symmetric root; rank reduction is not silently performed."""
     eigenvalues, vectors = np.linalg.eigh(overlap)
     if eigenvalues[0] < 1e-10:
@@ -56,7 +57,13 @@ def metric_root(overlap):
     return (vectors * np.sqrt(eigenvalues)) @ vectors.T
 
 
-def validate_density(density, overlap, model, *, determinant=False):
+def validate_density(
+    density: typing.Any,
+    overlap: typing.Any,
+    model: typing.Any,
+    *,
+    determinant: typing.Any = False,
+) -> typing.Any:
     """Enforce symmetry, spin traces, PSD and upper occupations without repair."""
     counts, weight = spin_counts(model)
     n = len(overlap)
@@ -100,7 +107,7 @@ class ScfSnapshot:
     baseline: np.ndarray
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel):
             raise TypeError("snapshot requires a resolved model")
         if not isinstance(self.owner, str) or not self.owner:
@@ -142,10 +149,10 @@ class ScfSnapshot:
         object.__setattr__(self, "identity", canonical_hash(self.record()))
 
     @property
-    def residual_rms(self):
+    def residual_rms(self) -> typing.Any:
         return float(np.sqrt(np.mean(self.residual**2)))
 
-    def record(self):
+    def record(self) -> typing.Any:
         """JSON metadata/checksums; matrices are separately serialized as FP64."""
         return {
             "schema": "vibeqc.scf_snapshot",
@@ -167,7 +174,7 @@ class ScfSnapshot:
             },
         }
 
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Stationarity and occupations, with explicit unperformed state checks."""
         counts, weight = spin_counts(self.model)
         root = metric_root(self.overlap)
@@ -216,7 +223,7 @@ class DensityProposal:
     repair_seconds: float = 0.0
     repair: str = "none"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         raw = np.asarray(self.density)
         # The host proposal bridge is explicitly capped at two 12-AO blocks.
         # Reject a malformed model output before making another owned copy.
@@ -241,7 +248,7 @@ class DensityProposal:
         if not np.isfinite(self.repair_seconds) or self.repair_seconds < 0:
             raise ValueError("invalid repair timing")
 
-    def validate(self, state):
+    def validate(self, state: typing.Any) -> None:
         if self.parent_id != state.identity:
             raise ValueError("stale_state")
         if self.representation == "reset":

@@ -552,6 +552,10 @@ int main() {
                     auto_calculation != nullptr,
                 "CUDA KS automatic-precision preparation failed");
         auto auto_result = unconverged;
+        const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");
+        const std::string saved_chunk_value = saved_chunk ? saved_chunk : "";
+        require(setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
+                "cannot enable the CUDA KS chunk integration regression");
         require(
             vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
                 auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
@@ -564,6 +568,9 @@ int main() {
                     precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
                     precision.refinement_iterations >= 1U,
                 "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
+        require(saved_chunk ? setenv("VIBEQC_CUDA_KS_CHUNK", saved_chunk_value.c_str(), 1) == 0
+                            : unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
+                "cannot restore the CUDA KS chunk integration regression environment");
         vibeqc_calculation_destroy(auto_calculation);
 
         if (ks == VIBEQC_METHOD_LDA_RKS) {

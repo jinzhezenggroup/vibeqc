@@ -6,7 +6,7 @@ from vibeqc_compiler.integral.one_electron_cpu import (
 )
 
 
-def test_cpu_st_inventory_is_shared_ir_and_bounded_to_spdf():
+def test_cpu_st_inventory_is_shared_ir_and_bounded_to_spdf() -> None:
     inventory = one_electron_st_cpu_inventory()
     assert inventory["schema"] == "vibeqc.one_electron_st_cpu"
     assert inventory["version"] == 1
@@ -17,7 +17,7 @@ def test_cpu_st_inventory_is_shared_ir_and_bounded_to_spdf():
     assert len(inventory["derivatives"]) == 32
 
 
-def test_cpu_st_emitter_is_deterministic_host_code():
+def test_cpu_st_emitter_is_deterministic_host_code() -> None:
     first = emit_one_electron_st_cpu()
     second = emit_one_electron_st_cpu()
     assert first == second

@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 _BENCHMARKS_DIR = next(
@@ -33,11 +34,11 @@ from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def dump(path, value):
+def dump(path: typing.Any, value: typing.Any) -> None:
     path.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
 
 
-def main(args):
+def main(args: typing.Any) -> None:
     """Preflight the whole diagnostic arena, then persist results before gates."""
     if not os.environ.get("SLURM_JOB_ID") or args.output.exists():
         raise RuntimeError(

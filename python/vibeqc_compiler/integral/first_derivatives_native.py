@@ -4,6 +4,7 @@ This is an explicit CPU lowering, not a new recurrence or method driver. ERI
 unit cotangents use the same weighted primitive emitter as native forces.
 """
 
+import typing
 from itertools import product
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -17,7 +18,7 @@ from .weighted_eri import build_weighted_eri_kernel
 from .weighted_eri_native import emit_weighted_eri_primitive_header
 
 
-def first_component_identity(integral, indices):
+def first_component_identity(integral: typing.Any, indices: typing.Any) -> typing.Any:
     return canonical_hash(
         {
             "schema": "vibeqc.first-components.cpu.v1",
@@ -27,7 +28,7 @@ def first_component_identity(integral, indices):
     )
 
 
-def validate_first_components(integral, indices):
+def validate_first_components(integral: typing.Any, indices: typing.Any) -> None:
     """Reject unsupported semantics rather than relabel another derivative."""
     if integral.derivative is None or integral.derivative.order != 1:
         raise ValueError("first component execution requires derivative order one")
@@ -67,7 +68,9 @@ def validate_first_components(integral, indices):
         raise ValueError("first components support S/T/V and full Coulomb ERIs only")
 
 
-def emit_first_component_evaluator(integral, indices, *, backend="cpu"):
+def emit_first_component_evaluator(
+    integral: typing.Any, indices: typing.Any, *, backend: typing.Any = "cpu"
+) -> typing.Any:
     """Share existing scalar primitive evaluation between bounded consumers."""
     if backend not in ("cpu", "cuda"):
         raise ValueError("first component backend must be cpu or cuda")
@@ -118,7 +121,7 @@ def emit_first_component_evaluator(integral, indices, *, backend="cpu"):
     return source, evaluate
 
 
-def emit_first_components(integral, indices):
+def emit_first_components(integral: typing.Any, indices: typing.Any) -> typing.Any:
     """Emit a selected raw tile, retaining normalization/atom mapping outside."""
     indices = tuple(indices)
     source, evaluate = emit_first_component_evaluator(integral, indices)

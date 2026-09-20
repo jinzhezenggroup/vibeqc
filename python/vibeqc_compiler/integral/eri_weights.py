@@ -10,10 +10,13 @@ shell-center derivative also requires permuting its center slot.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 from math import fsum, isfinite, sqrt
+from typing import TYPE_CHECKING
 
 from .shell_signature import checked_index
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 Quartet = tuple[int, int, int, int]
 

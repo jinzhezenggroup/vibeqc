@@ -10,6 +10,7 @@ differentiated.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -39,7 +40,7 @@ def _positive(value: int, name: str) -> int:
     return value
 
 
-def _coefficient(value, name: str) -> Fraction:
+def _coefficient(value: typing.Any, name: str) -> Fraction:
     if not isinstance(value, Fraction):
         raise TypeError(f"{name} must be an exact Fraction")
     return value
@@ -67,7 +68,7 @@ class DensityFittingRHFResponsePlan:
     coulomb_coefficient: Fraction = RHF_COULOMB_COEFFICIENT
     exchange_coefficient: Fraction = RHF_EXCHANGE_COEFFICIENT
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _positive(self.nbf, "nbf")
         _positive(self.naux, "naux")
         _coefficient(self.coulomb_coefficient, "coulomb_coefficient")
@@ -184,7 +185,7 @@ class DensityFittingRHFResponsePlan:
             solver_contract="symmetric-df-metric-linear-solve-v1",
         )
 
-    def compile(self, *, max_elements: int = 1_000_000):
+    def compile(self, *, max_elements: int = 1_000_000) -> typing.Any:
         """Generate h/S/A/M weights through the common StationaryProblem AD."""
         return self.problem().compile(max_elements=max_elements)
 

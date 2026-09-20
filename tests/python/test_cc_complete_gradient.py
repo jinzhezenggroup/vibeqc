@@ -1,6 +1,7 @@
 """Complete small CPU RCCSD gradients, generated chains and failure boundaries."""
 
 import builtins
+import typing
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import FrozenInstanceError, replace
@@ -39,7 +40,7 @@ from tools.vibeqc_response.oracle import _expm_small, explicit_rhf_response_matr
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 
-def _source(value):
+def _source(value: typing.Any) -> typing.Any:
     try:
         return NativeSource(**source_arguments(value))
     except (OSError, FileNotFoundError) as error:
@@ -51,13 +52,13 @@ def _source(value):
 
 
 @lru_cache(maxsize=len(CASES))
-def _result(name):
+def _result(name: typing.Any) -> typing.Any:
     with _source(inputs(name)) as source:
         return complete_gradient_validation(source)
 
 
 @contextmanager
-def _prepared(name="h2"):
+def _prepared(name: typing.Any = "h2") -> typing.Any:
     options = CCSDGradientOptions()
     with _source(inputs(name)) as source:
         reference, _ = export_rhf(
@@ -67,7 +68,7 @@ def _prepared(name="h2"):
             cc = solve(reference, provider, options=options.cc_options)
             assert cc.converged
 
-            def current():
+            def current() -> typing.Any:
                 source._check_open()
                 if provider._closed:
                     raise ResponseCompatibilityError("provider closed")
@@ -81,18 +82,20 @@ def _prepared(name="h2"):
 
 
 @pytest.fixture(scope="module")
-def tiny_state():
+def tiny_state() -> typing.Any:
     with _prepared() as pair:
         yield BoundCCSDGradient(*pair)
 
 
 @pytest.fixture(scope="module")
-def water_state():
+def water_state() -> typing.Any:
     with _prepared("h2o") as pair:
         yield BoundCCSDGradient(*pair)
 
 
-def _direct_fields(h, g, rotation, o):
+def _direct_fields(
+    h: typing.Any, g: typing.Any, rotation: typing.Any, o: typing.Any
+) -> typing.Any:
     """Independent NumPy/loop primal, not the generated reverse graph."""
     h = rotation.T @ h @ rotation
     g = np.einsum("up,vq,wr,xs,uvwx->pqrs", *(rotation,) * 4, g, optimize=True)
@@ -110,7 +113,9 @@ def _direct_fields(h, g, rotation, o):
 
 
 @pytest.mark.parametrize("o,v", [(1, 2), (2, 2)])
-def test_generated_raw_hamiltonian_and_full_pullback_directions(o, v):
+def test_generated_raw_hamiltonian_and_full_pullback_directions(
+    o: typing.Any, v: typing.Any
+) -> None:
     n = o + v
     programs = build_hamiltonian_programs(o, v)
     h, g, _, _ = random_case(o, v, 152)
@@ -135,7 +140,7 @@ def test_generated_raw_hamiltonian_and_full_pullback_directions(o, v):
         for name, direction in (("bar_h", dh), ("bar_g", dg), ("bar_rotation", du))
     )
 
-    def objective(sign, step):
+    def objective(sign: typing.Any, step: typing.Any) -> typing.Any:
         values = _direct_fields(
             h + sign * step * dh, g + sign * step * dg, u + sign * step * du, o
         )
@@ -159,7 +164,7 @@ def test_generated_raw_hamiltonian_and_full_pullback_directions(o, v):
     assert not any(node.op == "gather" for node in programs.weights.live_nodes)
 
 
-def test_blocked_ao_eri_transform_matches_dense_slices():
+def test_blocked_ao_eri_transform_matches_dense_slices() -> None:
     rng = np.random.default_rng(153)
     n = 5
     c = rng.normal(size=(n, n))
@@ -191,7 +196,7 @@ def test_blocked_ao_eri_transform_matches_dense_slices():
         build_ao_eri_weight_block_program(n, (2, 0, 1, 1))
 
 
-def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied():
+def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied() -> None:
     mo = IndexSpace("all_mo", "orbital", 4)
     assert mo != IndexSpace("all_mo", "ao", 4)
     assert mo != IndexSpace("all_mo", "occupied", 4)
@@ -209,7 +214,7 @@ def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied():
         build_ao_weight_program(13)
 
 
-def test_ao_transform_preserves_ordered_contractions():
+def test_ao_transform_preserves_ordered_contractions() -> None:
     rng = np.random.default_rng(153)
     n = 4
     c = rng.normal(size=(n, n))
@@ -240,7 +245,9 @@ def test_ao_transform_preserves_ordered_contractions():
 
 
 @pytest.mark.parametrize("name", CASES)
-def test_complete_native_endpoint_matches_pinned_pyscf_gradient(name):
+def test_complete_native_endpoint_matches_pinned_pyscf_gradient(
+    name: typing.Any,
+) -> None:
     result = _result(name)
     oracle = load(name)
     np.testing.assert_allclose(
@@ -287,7 +294,7 @@ def test_complete_native_endpoint_matches_pinned_pyscf_gradient(name):
         result.integral_components["overlap"] = np.zeros_like(result.gradient)
 
 
-def _fresh_energy(value):
+def _fresh_energy(value: typing.Any) -> typing.Any:
     options = CCSDGradientOptions()
     with _source(value) as source:
         reference, _ = export_rhf(
@@ -300,7 +307,9 @@ def _fresh_energy(value):
 
 
 @pytest.mark.parametrize("name", ("h2", "h2o", "nh3", "h2_d_spherical"))
-def test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps(name):
+def test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps(
+    name: typing.Any,
+) -> None:
     result = _result(name)
     value = inputs(name)
     direction = np.random.default_rng(153).normal(size=result.gradient.shape)
@@ -324,7 +333,7 @@ def test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps(name):
     assert min(errors[1:]) < 2e-7, errors
 
 
-def test_overlap_and_orbital_omissions_are_detectable():
+def test_overlap_and_orbital_omissions_are_detectable() -> None:
     result = _result("h2o")
     oracle = np.array(load("h2o")["gradient"])
     without_overlap = result.gradient - result.integral_components["overlap"]
@@ -333,7 +342,7 @@ def test_overlap_and_orbital_omissions_are_detectable():
     assert np.max(abs(without_z - oracle)) > 1e-6
 
 
-def test_rigid_motion_covariance_and_changed_geometry():
+def test_rigid_motion_covariance_and_changed_geometry() -> None:
     name = "h2_d_spherical"
     value = inputs(name)
     result = _result(name)
@@ -355,7 +364,9 @@ def test_rigid_motion_covariance_and_changed_geometry():
     assert abs(_result("h2_shifted").total_energy - _result("h2").total_energy) > 1e-3
 
 
-def test_shared_z_operator_matches_generated_and_independent_mo_matrix(water_state):
+def test_shared_z_operator_matches_generated_and_independent_mo_matrix(
+    water_state: typing.Any,
+) -> None:
     state = water_state
     expected = explicit_rhf_response_matrix(state.operator.problem, state.provider)
     np.testing.assert_allclose(state.orbital_matrix, expected, atol=1e-10, rtol=1e-10)
@@ -397,7 +408,7 @@ def test_shared_z_operator_matches_generated_and_independent_mo_matrix(water_sta
         )
 
 
-def test_complete_gradient_capability_is_separate_from_energy_facade():
+def test_complete_gradient_capability_is_separate_from_energy_facade() -> None:
     caps = gradient_capabilities()
     assert caps.method == "rccsd" and caps.family == "coupled_cluster"
     assert caps.available and not caps.public_calculator
@@ -407,7 +418,7 @@ def test_complete_gradient_capability_is_separate_from_energy_facade():
     assert any("perturbative-(T)" in item for item in caps.restrictions)
 
 
-def test_cuda_ffi_integer_ranges_reject_python_wraparound():
+def test_cuda_ffi_integer_ranges_reject_python_wraparound() -> None:
     assert _valid_cuda_device(0)
     assert not _valid_cuda_device(2**31)
     assert _valid_size_t_budget(4096)
@@ -420,7 +431,9 @@ def test_cuda_ffi_integer_ranges_reject_python_wraparound():
         )
 
 
-def test_exact_nuclear_gradient_matches_dense_native_oracle(tiny_state):
+def test_exact_nuclear_gradient_matches_dense_native_oracle(
+    tiny_state: typing.Any,
+) -> None:
     raw = tiny_state.source.integral_derivatives(
         output_budget_bytes=tiny_state.options.max_bytes
     )["nuclear"]
@@ -431,14 +444,14 @@ def test_exact_nuclear_gradient_matches_dense_native_oracle(tiny_state):
 
 
 def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
-    tiny_state, monkeypatch
-):
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     """Exercise the GPU consumer composition with independent dense TEST oracles."""
     source = tiny_state.source
     raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
     ncoord = 3 * len(source.atoms)
 
-    def contract(field, weights):
+    def contract(field: typing.Any, weights: typing.Any) -> typing.Any:
         return np.einsum(
             "qi,i->q",
             raw[field].reshape(ncoord, -1),
@@ -449,8 +462,12 @@ def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
     calls = {"one": 0, "eri": 0}
 
     def fake_one(
-        *, overlap_weights=None, kinetic_weights=None, attraction_weights=None, **kw
-    ):
+        *,
+        overlap_weights: typing.Any = None,
+        kinetic_weights: typing.Any = None,
+        attraction_weights: typing.Any = None,
+        **kw: typing.Any,
+    ) -> typing.Any:
         assert kw["device_id"] == 0 and kw["schedule"] == 0
         calls["one"] += 1
         value = np.zeros((len(source.atoms), 3))
@@ -471,7 +488,7 @@ def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
             "stream_synchronizations": 1,
         }
 
-    def fake_eri(weights, **kw):
+    def fake_eri(weights: typing.Any, **kw: typing.Any) -> typing.Any:
         assert kw["device_id"] == 0
         calls["eri"] += 1
         return contract("eri", weights)
@@ -503,16 +520,20 @@ def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
 
 
 def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
-    tiny_state, monkeypatch
-):
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     source = tiny_state.source
     raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
     offsets = np.cumsum((0, *source.shell_sizes))
     calls = {"shell": 0}
 
     def fake_one(
-        *, overlap_weights=None, kinetic_weights=None, attraction_weights=None, **kw
-    ):
+        *,
+        overlap_weights: typing.Any = None,
+        kinetic_weights: typing.Any = None,
+        attraction_weights: typing.Any = None,
+        **kw: typing.Any,
+    ) -> typing.Any:
         value = np.zeros((len(source.atoms), 3))
         ncoord = 3 * len(source.atoms)
         if overlap_weights is not None:
@@ -545,7 +566,9 @@ def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
             "stream_synchronizations": 1,
         }
 
-    def fake_shell(indices, weights, **kw):
+    def fake_shell(
+        indices: typing.Any, weights: typing.Any, **kw: typing.Any
+    ) -> typing.Any:
         calls["shell"] += 1
         slices = tuple(slice(offsets[i], offsets[i + 1]) for i in indices)
         derivative = raw["eri"][(slice(None), *slices)]
@@ -591,7 +614,9 @@ def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
     )
 
 
-def test_source_cuda_weight_validation_precedes_native_call(tiny_state, monkeypatch):
+def test_source_cuda_weight_validation_precedes_native_call(
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     source = tiny_state.source
     monkeypatch.setattr(
         source, "_call", lambda *a, **kw: pytest.fail("native call after invalid input")
@@ -643,12 +668,14 @@ def test_source_cuda_weight_validation_precedes_native_call(tiny_state, monkeypa
         {"z_options": object()},
     ],
 )
-def test_invalid_options(changes):
+def test_invalid_options(changes: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         CCSDGradientOptions(**changes)
 
 
-def test_budget_rejects_before_hf_and_before_raw_integrals(tiny_state, monkeypatch):
+def test_budget_rejects_before_hf_and_before_raw_integrals(
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     with _source(inputs("h2")) as source:
         monkeypatch.setattr(
             module,
@@ -678,8 +705,8 @@ def test_budget_rejects_before_hf_and_before_raw_integrals(tiny_state, monkeypat
 
 
 def test_shell_streaming_combined_budget_rejects_before_integral_read(
-    tiny_state, monkeypatch
-):
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     base = replace(
         tiny_state.options,
         derivative_backend="cuda",
@@ -710,7 +737,7 @@ def test_shell_streaming_combined_budget_rejects_before_integral_read(
         )
 
 
-def test_unsupported_source_and_cpu_scope(monkeypatch):
+def test_unsupported_source_and_cpu_scope(monkeypatch: typing.Any) -> None:
     with pytest.raises(TypeError):
         complete_gradient_validation(object())
     with _source(inputs("h2")) as source:
@@ -728,7 +755,9 @@ def test_unsupported_source_and_cpu_scope(monkeypatch):
         complete_gradient_validation(source)
 
 
-def test_false_scf_and_cc_success_cannot_return_gradient(monkeypatch):
+def test_false_scf_and_cc_success_cannot_return_gradient(
+    monkeypatch: typing.Any,
+) -> None:
     with _source(inputs("h2")) as source:
         with monkeypatch.context() as m:
             m.setattr(
@@ -750,7 +779,9 @@ def test_false_scf_and_cc_success_cannot_return_gradient(monkeypatch):
                 complete_gradient_validation(source)
 
 
-def test_real_cc_and_z_nonconvergence_fail_closed(tiny_state, water_state):
+def test_real_cc_and_z_nonconvergence_fail_closed(
+    tiny_state: typing.Any, water_state: typing.Any
+) -> None:
     with _source(inputs("h2")) as source:
         options = CCSDGradientOptions(
             cc_options=replace(CCSDGradientOptions().cc_options, max_iterations=1)
@@ -765,9 +796,9 @@ def test_real_cc_and_z_nonconvergence_fail_closed(tiny_state, water_state):
 
 
 def test_false_z_report_rechecked_against_independent_equation(
-    water_state, monkeypatch
-):
-    def false(*args, **kwargs):
+    water_state: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def false(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         return replace(
             water_state.z_result,
             solution=np.zeros_like(water_state.z_result.solution),
@@ -779,7 +810,9 @@ def test_false_z_report_rechecked_against_independent_equation(
         BoundCCSDGradient(water_state.response, water_state.provider)
 
 
-def test_negative_or_near_singular_orbital_curvature_rejected(tiny_state, monkeypatch):
+def test_negative_or_near_singular_orbital_curvature_rejected(
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     original = BoundCCSDGradient._generated_orbital_action
     monkeypatch.setattr(
         BoundCCSDGradient,
@@ -791,10 +824,12 @@ def test_negative_or_near_singular_orbital_curvature_rejected(tiny_state, monkey
 
 
 @pytest.mark.parametrize("kind", ("missing", "shape", "nonfinite", "dtype"))
-def test_native_derivative_outputs_are_validated(tiny_state, monkeypatch, kind):
+def test_native_derivative_outputs_are_validated(
+    tiny_state: typing.Any, monkeypatch: typing.Any, kind: typing.Any
+) -> None:
     original = tiny_state.source.integral_derivatives
 
-    def broken(**kwargs):
+    def broken(**kwargs: typing.Any) -> typing.Any:
         values = original(**kwargs)
         if kind == "missing":
             del values["overlap"]
@@ -811,7 +846,9 @@ def test_native_derivative_outputs_are_validated(tiny_state, monkeypatch, kind):
         tiny_state.gradient()
 
 
-def test_changed_tensor_backend_and_live_provider_rejected(tiny_state, monkeypatch):
+def test_changed_tensor_backend_and_live_provider_rejected(
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     original = module.execute
     with monkeypatch.context() as m:
         m.setattr(
@@ -830,10 +867,12 @@ def test_changed_tensor_backend_and_live_provider_rejected(tiny_state, monkeypat
             tiny_state.gradient()
 
 
-def test_raw_integrals_cannot_be_swapped_under_a_cc_result(tiny_state, monkeypatch):
+def test_raw_integrals_cannot_be_swapped_under_a_cc_result(
+    tiny_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     original = tiny_state.provider.get
 
-    def wrong(block):
+    def wrong(block: typing.Any) -> typing.Any:
         result = original(block)
         return replace(result, values=result.values + 0.01)
 
@@ -842,10 +881,14 @@ def test_raw_integrals_cannot_be_swapped_under_a_cc_result(tiny_state, monkeypat
         BoundCCSDGradient(tiny_state.response, tiny_state.provider)
 
 
-def test_no_external_qc_solver_is_a_runtime_dependency(monkeypatch):
+def test_no_external_qc_solver_is_a_runtime_dependency(
+    monkeypatch: typing.Any,
+) -> None:
     original = builtins.__import__
 
-    def guarded(name, *args, **kwargs):
+    def guarded(
+        name: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         if name.split(".")[0] in ("pyscf", "torch", "cupy"):
             pytest.fail("external QC/AD runtime imported by native complete gradient")
         return original(name, *args, **kwargs)
@@ -859,7 +902,9 @@ def test_no_external_qc_solver_is_a_runtime_dependency(monkeypatch):
 @pytest.mark.parametrize(
     "kind", ("spin", "triples", "frozen", "ecp", "units", "auxiliary", "unknown")
 )
-def test_cli_input_schema_never_drops_unsupported_physics(kind):
+def test_cli_input_schema_never_drops_unsupported_physics(
+    kind: typing.Any,
+) -> None:
     value = inputs("h2")
     if kind == "spin":
         value["multiplicity"] = 3
@@ -879,7 +924,9 @@ def test_cli_input_schema_never_drops_unsupported_physics(kind):
         source_arguments(value)
 
 
-def test_cli_json_and_existing_output_are_safe(tmp_path, monkeypatch, tiny_state):
+def test_cli_json_and_existing_output_are_safe(
+    tmp_path: typing.Any, monkeypatch: typing.Any, tiny_state: typing.Any
+) -> None:
     import json
 
     from tools import run_ccsd_gradient as driver
@@ -909,7 +956,7 @@ def test_cli_json_and_existing_output_are_safe(tmp_path, monkeypatch, tiny_state
     )
     captured = {}
 
-    def fake_gradient(*args, **kwargs):
+    def fake_gradient(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         captured["options"] = kwargs["options"]
         return result
 
@@ -930,7 +977,7 @@ def test_cli_json_and_existing_output_are_safe(tmp_path, monkeypatch, tiny_state
     assert path.read_bytes() == content
 
 
-def test_closed_source_cannot_publish_a_gradient():
+def test_closed_source_cannot_publish_a_gradient() -> None:
     with _prepared() as pair:
         state = BoundCCSDGradient(*pair)
         state.source.close()

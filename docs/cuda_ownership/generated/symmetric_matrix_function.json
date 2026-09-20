@@ -1,0 +1,7 @@
+{
+  "name": "symmetric_matrix_function",
+  "outputs": [
+    "generated/generated_symmetric_matrix_function.cuh"
+  ],
+  "owner": "python/vibeqc_compiler/method/matrix_function_cuda.py"
+}

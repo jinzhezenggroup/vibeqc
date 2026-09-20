@@ -6,6 +6,7 @@ import os
 import platform
 import statistics
 import sys
+import typing
 from pathlib import Path
 from time import perf_counter
 
@@ -20,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests/python"))
 from test_ecp import fixture
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
@@ -79,7 +80,14 @@ def main():
             "timings": {},
         }
 
-        def checked(result, which, stage, elapsed, refs=refs, case=case):
+        def checked(
+            result: typing.Any,
+            which: typing.Any,
+            stage: typing.Any,
+            elapsed: typing.Any,
+            refs: typing.Any = refs,
+            case: typing.Any = case,
+        ) -> None:
             assert result.converged and result.executed_backend == "cuda"
             energy_error = abs(result.energy - refs[which][0])
             force_error = float(np.max(np.abs(result.forces - refs[which][1])))

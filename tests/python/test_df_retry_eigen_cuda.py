@@ -1,6 +1,7 @@
 """Host DIIS retries retain a qualified device eigen provider and failure limits."""
 
 import os
+import typing
 
 import pytest
 from vibeqc import Calculator
@@ -19,8 +20,13 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("route", ("single", "batch-one", "batch-four"))
 def test_diis_retry_provider_and_iteration_limit(
-    method, representation, route, water_count, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    route: typing.Any,
+    water_count: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """One iteration forces the existing compact-to-DIIS transition.
 
     Compare the explicit reference diagnostic with ordinary device execution

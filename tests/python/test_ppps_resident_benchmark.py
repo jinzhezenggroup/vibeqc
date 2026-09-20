@@ -20,7 +20,7 @@ from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
-def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
+def test_ppps_resident_benchmark_groups_contiguous_ket_tasks() -> None:
     """Keep the synthetic 1110 descriptor and independent oracle visible."""
 
     source = emit_ppps_resident_bra_benchmark_cuda(
@@ -35,7 +35,9 @@ def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
     assert "VIBEQC_FUSED_LAUNCH" not in source
 
 
-def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
+def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(
+    tmp_path: Path,
+) -> None:
     """Compile locally and schedule every real-GPU check through Slurm."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")

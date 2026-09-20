@@ -61,11 +61,16 @@ from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 program = NativeContractionProgram(
-    functional("PBE"), "response",
-    compiler=CppCompilerAdapter(Path("c++")), cache=Path(".artifacts/xc-cache"),
+    functional("PBE"),
+    "response",
+    compiler=CppCompilerAdapter(Path("c++")),
+    cache=Path(".artifacts/xc-cache"),
 )
 with PreparedXCContractions(
-    program, basis, grid, tile_points=64,
+    program,
+    basis,
+    grid,
+    tile_points=64,
     resource_budget=ResourceBudget(host_bytes=64 << 20),
 ) as prepared:
     delta_v = prepared.execute(density, delta_density=direction)["response"]

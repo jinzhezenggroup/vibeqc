@@ -1,5 +1,8 @@
 """Bounded multi-RHS and full conventional RHF Hessian assembly gates."""
 
+from __future__ import annotations
+
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +19,7 @@ from tools.vibeqc_validation.hessian_fixtures import fixture_inputs
 
 
 @pytest.fixture(scope="module")
-def h2_case():
+def h2_case() -> typing.Any:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         dense = analytic_hessian(state)["total"]
@@ -26,7 +29,9 @@ def h2_case():
         yield state, dense, directions
 
 
-def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(h2_case):
+def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(
+    h2_case: typing.Any,
+) -> None:
     state, dense, directions = h2_case
     result = rhf_hvp_many(state, directions, strategy="recycled")
     expected = np.stack(
@@ -44,12 +49,14 @@ def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(h2_cas
         assert not value.flags.writeable
 
 
-def test_hvp_many_uses_solve_many_not_single_solver(h2_case, monkeypatch):
+def test_hvp_many_uses_solve_many_not_single_solver(
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_hessian import perturbation
 
     state, dense, directions = h2_case
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("block Hessian response used the scalar solve path")
 
     monkeypatch.setattr(perturbation, "solve", forbidden)
@@ -61,7 +68,9 @@ def test_hvp_many_uses_solve_many_not_single_solver(h2_case, monkeypatch):
     assert result.response_batch.solve_result.strategy == "blocked"
 
 
-def test_full_hessian_blocked_matches_independent_dense_reference(h2_case):
+def test_full_hessian_blocked_matches_independent_dense_reference(
+    h2_case: typing.Any,
+) -> None:
     state, dense, _ = h2_case
     result = rhf_hessian(state, block_size=2, strategy="recycled")
     expected = dense.transpose(0, 2, 1, 3).reshape(6, 6)
@@ -76,12 +85,14 @@ def test_full_hessian_blocked_matches_independent_dense_reference(h2_case):
     assert diag["output_peak_bound_bytes"] == 3 * diag["output_bytes"]
 
 
-def test_block_budget_rejects_before_first_integral_work(h2_case, monkeypatch):
+def test_block_budget_rejects_before_first_integral_work(
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_hessian import block
 
     state, _, directions = h2_case
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("insufficient block budget reached provider work")
 
     monkeypatch.setattr(block, "generated_directional_first_order", forbidden)
@@ -89,12 +100,14 @@ def test_block_budget_rejects_before_first_integral_work(h2_case, monkeypatch):
         rhf_hvp_many(state, directions[:1], total_budget_bytes=1)
 
 
-def test_full_output_budget_rejects_without_partial_hessian(h2_case, monkeypatch):
+def test_full_output_budget_rejects_without_partial_hessian(
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_hessian import block
 
     state, _, _ = h2_case
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("oversized full Hessian request started a block")
 
     monkeypatch.setattr(block, "rhf_hvp_many", forbidden)
@@ -104,7 +117,7 @@ def test_full_output_budget_rejects_without_partial_hessian(h2_case, monkeypatch
 
 
 @pytest.fixture
-def assembly_only_state(monkeypatch):
+def assembly_only_state(monkeypatch: typing.Any) -> typing.Any:
     """Exercise assembly ownership without allocating a native RHF source."""
     from types import SimpleNamespace
 
@@ -117,7 +130,7 @@ def assembly_only_state(monkeypatch):
         source = SimpleNamespace(identity="test-source")
         reference = SimpleNamespace(identity="test-reference")
 
-        def validate(self):
+        def validate(self) -> typing.Any:
             pass
 
     monkeypatch.setattr(block, "NativeRHFState", AssemblyState)
@@ -125,8 +138,8 @@ def assembly_only_state(monkeypatch):
 
 
 def test_full_hessian_releases_previous_block_before_next_call(
-    assembly_only_state, monkeypatch
-):
+    assembly_only_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     import weakref
 
     from tools.vibeqc_hessian import block
@@ -136,11 +149,13 @@ def test_full_hessian_releases_previous_block_before_next_call(
     class BlockResult:
         identity = "test-block"
 
-        def __init__(self, directions):
+        def __init__(self, directions: typing.Any) -> None:
             self.diagnostics = {"complete_numeric_peak_bound_bytes": 0}
             self.values = directions.copy()
 
-    def evaluate(state, directions, **kwargs):
+    def evaluate(
+        state: typing.Any, directions: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         assert all(ref() is None for ref in previous), "previous block is still live"
         result = BlockResult(directions)
         previous.append(weakref.ref(result))
@@ -153,11 +168,11 @@ def test_full_hessian_releases_previous_block_before_next_call(
 
 
 def test_full_hessian_reserves_output_publication_before_any_block(
-    assembly_only_state, monkeypatch
-):
+    assembly_only_state: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_hessian import block
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("output publication budget was not preflighted")
 
     monkeypatch.setattr(block, "rhf_hvp_many", forbidden)
@@ -170,8 +185,8 @@ def test_full_hessian_reserves_output_publication_before_any_block(
 
 @pytest.mark.parametrize("natoms", [1, 2])
 def test_full_hessian_default_block_size_adapts_to_coordinate_count(
-    assembly_only_state, monkeypatch, natoms
-):
+    assembly_only_state: typing.Any, monkeypatch: typing.Any, natoms: typing.Any
+) -> None:
     from types import SimpleNamespace
 
     from tools.vibeqc_hessian import block
@@ -181,7 +196,9 @@ def test_full_hessian_default_block_size_adapts_to_coordinate_count(
     coordinates = 3 * natoms
     block_sizes = []
 
-    def evaluate(state, directions, **kwargs):
+    def evaluate(
+        state: typing.Any, directions: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         block_sizes.append(len(directions))
         return SimpleNamespace(
             values=directions.copy(),
@@ -198,7 +215,9 @@ def test_full_hessian_default_block_size_adapts_to_coordinate_count(
         block.rhf_hessian(state, block_size=coordinates + 1)
 
 
-def test_cuda_relaxation_budget_rejects_before_response_work(h2_case, monkeypatch):
+def test_cuda_relaxation_budget_rejects_before_response_work(
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.common.cuda_target import cuda_target_info
 
@@ -207,7 +226,7 @@ def test_cuda_relaxation_budget_rejects_before_response_work(h2_case, monkeypatc
     state, _, directions = h2_case
     compiler = CudaCompilerAdapter(Path("/bin/false"), cuda_target_info("sm_80"))
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
         raise AssertionError("CUDA relaxation budget failure reached response work")
 
     monkeypatch.setattr(block, "NativeJKBackend", forbidden)

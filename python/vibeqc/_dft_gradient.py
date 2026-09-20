@@ -4,6 +4,7 @@ This module validates method state and derivative ownership. It does not
 assemble a complete molecular gradient or enable public DFT forces.
 """
 
+import typing
 from dataclasses import dataclass, field
 from numbers import Real
 
@@ -42,7 +43,7 @@ class StationaryKsIdentity:
     fock_generation: int
     orbital_generation: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError("stationary derivatives support LDA/PBE RKS/UKS only")
         for name in (
@@ -68,7 +69,7 @@ class StationaryKsIdentity:
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
                 raise ValueError(f"stationary identity requires positive {name}")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "schema": "vibeqc.stationary-ks-state/v1",
             **{name: getattr(self, name) for name in self.__dataclass_fields__},
@@ -98,7 +99,14 @@ class StationaryKsState:
     _source: object = field(default=None, repr=False)
 
     @classmethod
-    def from_native(cls, batch, basis, grid=None, *, index=0):
+    def from_native(
+        cls,
+        batch: typing.Any,
+        basis: typing.Any,
+        grid: typing.Any = None,
+        *,
+        index: typing.Any = 0,
+    ) -> typing.Any:
         """Read the actual current #162 state and verify its AO/grid sources.
 
         CPU RKS and CUDA KS owners provide a validated handoff. Native SCF keeps
@@ -121,13 +129,13 @@ class StationaryKsState:
             raise
 
     @property
-    def grid(self):
+    def grid(self) -> typing.Any:
         """The exact native quadrature, retained independently of batch replay."""
         if self._source is None:
             raise ValueError("state has no native quadrature source")
         return self._source.grid
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.identity, StationaryKsIdentity):
             raise TypeError("stationary state requires a typed identity")
         for name in ("successful", "converged", "physical"):
@@ -161,7 +169,7 @@ class StationaryDerivativeContract:
     sign: str = "gradient"
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.state_identity, StationaryKsIdentity):
             raise TypeError("stationary derivative requires a KS state identity")
         if self.topology_policy != "stable-explicit-grid-v1":
@@ -173,16 +181,16 @@ class StationaryDerivativeContract:
         object.__setattr__(self, "identity", canonical_hash(self.to_payload()))
 
     @property
-    def spin(self):
+    def spin(self) -> typing.Any:
         method_ir, _ = resolve_ks_method(self.state_identity.method)
         return method_ir.spin
 
     @property
-    def family(self):
+    def family(self) -> typing.Any:
         _, functional = resolve_ks_method(self.state_identity.method)
         return "lda" if functional.ingredients == ("rho",) else "gga"
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "schema": "vibeqc.stationary-dft-derivative/v1",
             "state": self.state_identity.to_payload(),
@@ -194,7 +202,7 @@ class StationaryDerivativeContract:
             "force_capability": "unsupported",
         }
 
-    def validate(self, state):
+    def validate(self, state: typing.Any) -> typing.Any:
         """Require both numerical consistency and the live native #162 proof."""
         from ._ks_snapshot import NativeKsSnapshot
 
@@ -206,7 +214,7 @@ class StationaryDerivativeContract:
         state._source.validate(state)
         return state
 
-    def _validate_arrays(self, state):
+    def _validate_arrays(self, state: typing.Any) -> typing.Any:
         """Check array algebra only; this diagnostic never proves stationarity."""
         if not isinstance(state, StationaryKsState):
             raise TypeError("expected a stationary KS state")
@@ -276,7 +284,7 @@ class StableGridMotion:
     weights: np.ndarray
     topology_changed: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.topology_identity, str) or not self.topology_identity:
             raise ValueError("motion requires a topology identity")
         if type(self.topology_changed) is not bool:
@@ -292,7 +300,7 @@ class XcDirectionalComponents:
     weight: float
 
     @property
-    def total(self):
+    def total(self) -> typing.Any:
         total = self.center + self.point + self.weight
         if not np.isfinite(total):
             raise ArithmeticError("nonfinite total XC directional gradient")
@@ -315,7 +323,7 @@ class FixedDensityXcGeometry:
     partials: GeometryPartials
     force_capability: str = field(init=False, default="unsupported")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.state_identity, StationaryKsIdentity):
             raise TypeError("generated XC geometry requires a stationary identity")
         expected = {
@@ -354,7 +362,7 @@ class FixedDensityXcGeometry:
             GeometryPartials(centers=centers, points=points, weights=weights),
         )
 
-    def directional(self, motion):
+    def directional(self, motion: typing.Any) -> typing.Any:
         """Contract each generated source exactly once, preserving gradient sign."""
         if not isinstance(motion, StableGridMotion):
             raise TypeError("expected stable-grid motion")
@@ -399,20 +407,20 @@ class GeneratedXcGeometry(FixedDensityXcGeometry):
 
     state: StationaryKsState
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         contract = StationaryDerivativeContract(self.state_identity)
         contract.validate(self.state)
         if self.regularization_identity != scf_regularization_identity():
             raise ValueError("stationary regularization identity mismatch")
 
-    def directional(self, motion):
+    def directional(self, motion: typing.Any) -> typing.Any:
         """Recheck eligibility even when partials were computed before replay."""
         StationaryDerivativeContract(self.state_identity).validate(self.state)
         return super().directional(motion)
 
 
-def native_ao_geometry_identity(basis):
+def native_ao_geometry_identity(basis: typing.Any) -> typing.Any:
     """Hash the nuclear geometry owned by one exact native AO basis."""
     if not isinstance(basis, NativeAO):
         raise TypeError("geometry identity requires NativeAO")
@@ -427,7 +435,7 @@ def native_ao_geometry_identity(basis):
     )
 
 
-def _native_ao_atoms(basis):
+def _native_ao_atoms(basis: typing.Any) -> typing.Any:
     counts = [
         2 * shell.angular_momentum + 1
         if basis.representation == "real_spherical"
@@ -440,7 +448,7 @@ def _native_ao_atoms(basis):
     return atoms
 
 
-def xc_geometry_topology_identity(basis, grid):
+def xc_geometry_topology_identity(basis: typing.Any, grid: typing.Any) -> typing.Any:
     """Hash stable AO ownership and explicit grid membership, excluding motion."""
     if not isinstance(basis, NativeAO) or not isinstance(grid, ExplicitGrid):
         raise TypeError("XC topology identity requires NativeAO and ExplicitGrid")
@@ -458,7 +466,7 @@ def xc_geometry_topology_identity(basis, grid):
     )
 
 
-def xc_regularization_identity(functional):
+def xc_regularization_identity(functional: typing.Any) -> typing.Any:
     """Identify the generated functional's exact fixed numerical domain."""
     if not isinstance(functional, FunctionalSpec):
         raise TypeError("XC regularization identity requires a typed functional")
@@ -474,12 +482,12 @@ def xc_regularization_identity(functional):
 
 
 def bind_generated_xc_geometry(
-    contract,
-    state,
-    functional,
-    basis,
-    grid,
-):
+    contract: typing.Any,
+    state: typing.Any,
+    functional: typing.Any,
+    basis: typing.Any,
+    grid: typing.Any,
+) -> typing.Any:
     """Evaluate Issue #236 geometry pullbacks and bind them to method state."""
     if not isinstance(contract, StationaryDerivativeContract):
         raise TypeError("expected a stationary derivative contract")
@@ -496,12 +504,18 @@ def bind_generated_xc_geometry(
     )
 
 
-def scf_regularization_identity():
+def scf_regularization_identity() -> typing.Any:
     """Identify the exact native LDA/PBE SCF energy/first-derivative domain."""
     return canonical_hash({"scf_domain": SCF_DOMAIN})
 
 
-def _scf_domain_xc_geometry(contract, state, functional, basis, grid):
+def _scf_domain_xc_geometry(
+    contract: typing.Any,
+    state: typing.Any,
+    functional: typing.Any,
+    basis: typing.Any,
+    grid: typing.Any,
+) -> typing.Any:
     """Bind generated AO geometry pullback to the exact native SCF point model."""
     contract._validate_arrays(state)
     if not isinstance(functional, FunctionalSpec):
@@ -576,7 +590,13 @@ def _scf_domain_xc_geometry(contract, state, functional, basis, grid):
     )
 
 
-def _fixed_density_xc_geometry(contract, state, functional, basis, grid):
+def _fixed_density_xc_geometry(
+    contract: typing.Any,
+    state: typing.Any,
+    functional: typing.Any,
+    basis: typing.Any,
+    grid: typing.Any,
+) -> typing.Any:
     """Numerical diagnostic shared with the oracle tests; never authorize KS use.
 
     Only ``bind_generated_xc_geometry`` supplies the live-owner gate and returns
@@ -634,7 +654,7 @@ def _fixed_density_xc_geometry(contract, state, functional, basis, grid):
     )
 
 
-def _matrix(value, name):
+def _matrix(value: typing.Any, name: typing.Any) -> typing.Any:
     array = immutable(value)
     if np.iscomplexobj(value) or array.ndim != 2 or array.shape[0] != array.shape[1]:
         raise ValueError(f"{name} must be one real square matrix")
@@ -643,7 +663,9 @@ def _matrix(value, name):
     return array
 
 
-def _spin_matrices(value, spins, n, name):
+def _spin_matrices(
+    value: typing.Any, spins: typing.Any, n: typing.Any, name: typing.Any
+) -> typing.Any:
     array = immutable(value)
     if np.iscomplexobj(value) or array.shape != (spins, n, n):
         raise ValueError(f"{name} must contain every spin matrix")
@@ -656,7 +678,9 @@ def _spin_matrices(value, spins, n, name):
     return array
 
 
-def _spin_vectors(value, spins, n, name):
+def _spin_vectors(
+    value: typing.Any, spins: typing.Any, n: typing.Any, name: typing.Any
+) -> typing.Any:
     array = immutable(value)
     if np.iscomplexobj(value) or array.shape != (spins, n):
         raise ValueError(f"{name} must contain every spin orbital")

@@ -1,5 +1,18 @@
 """Geometry/pair compiler contracts lowered through the shared TensorIR."""
 
+from .d3 import (
+    D3_COMPILER_VERSION,
+    D3_RADII_SHA256,
+    D3_TABLE_SHA256,
+    D3CompilerSpec,
+    D3GeometryProgram,
+    D3PairTopology,
+    build_d3_geometry_program,
+    build_d3_pair_topology,
+    compile_d3_bj,
+    d3_geometry,
+)
+from .d3_execution import execute_d3_bj
 from .ir import (
     LOWERING_VERSION,
     PAIR_OWNERSHIP,
@@ -16,14 +29,25 @@ from .ir import (
 )
 
 __all__ = [
+    "D3_COMPILER_VERSION",
+    "D3_RADII_SHA256",
+    "D3_TABLE_SHA256",
     "LOWERING_VERSION",
     "PAIR_OWNERSHIP",
+    "D3CompilerSpec",
+    "D3GeometryProgram",
+    "D3PairTopology",
     "GeometryIR",
     "PairCutoff",
     "PairProgram",
     "PairTensorContext",
     "PairTopology",
+    "build_d3_geometry_program",
+    "build_d3_pair_topology",
     "build_pair_program",
+    "compile_d3_bj",
+    "d3_geometry",
+    "execute_d3_bj",
     "inverse_power_program",
     "lower_geometry",
     "pair_to_atom",

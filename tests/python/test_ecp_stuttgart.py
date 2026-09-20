@@ -6,6 +6,7 @@ does not establish coverage of other elements or ECP parameter families.
 
 import json
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -29,7 +30,9 @@ PARAMETER_SHA256 = {
 }
 
 
-def stuttgart_fixture(symbol, *, spin=0, displacement=0.0):
+def stuttgart_fixture(
+    symbol: typing.Any, *, spin: typing.Any = 0, displacement: typing.Any = 0.0
+) -> typing.Any:
     pyscf = pytest.importorskip("pyscf")
     gto = pytest.importorskip("pyscf.gto")
     z, core, bond_z = CASES[symbol]
@@ -116,7 +119,7 @@ def stuttgart_fixture(symbol, *, spin=0, displacement=0.0):
     return atoms, basis, mol
 
 
-def reference_components(mol):
+def reference_components(mol: typing.Any) -> typing.Any:
     """Libcint local/nonlocal blocks selected independently of VibeQC terms."""
     gto = pytest.importorskip("pyscf.gto")
     norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
@@ -128,14 +131,16 @@ def reference_components(mol):
     return np.array(blocks)
 
 
-def require_device(device):
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
 
 @pytest.mark.parametrize("symbol", CASES)
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_stuttgart_components_refinement_and_all_center_derivatives(symbol, device):
+def test_stuttgart_components_refinement_and_all_center_derivatives(
+    symbol: typing.Any, device: typing.Any
+) -> None:
     require_device(device)
     for displacement in (0.0, 0.37):
         atoms, basis, mol = stuttgart_fixture(symbol, displacement=displacement)
@@ -188,7 +193,9 @@ def test_stuttgart_components_refinement_and_all_center_derivatives(symbol, devi
 @pytest.mark.parametrize("symbol", CASES)
 @pytest.mark.parametrize("spin", [0, 1])
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_stuttgart_complete_hf_and_core_bookkeeping(symbol, spin, device):
+def test_stuttgart_complete_hf_and_core_bookkeeping(
+    symbol: typing.Any, spin: typing.Any, device: typing.Any
+) -> None:
     require_device(device)
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = stuttgart_fixture(symbol, spin=spin)
@@ -218,7 +225,9 @@ def test_stuttgart_complete_hf_and_core_bookkeeping(symbol, spin, device):
 @pytest.mark.parametrize("symbol", CASES)
 @pytest.mark.parametrize("spin", [0, 1])
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_stuttgart_budgeted_replay_complete_energy_difference(symbol, spin, device):
+def test_stuttgart_budgeted_replay_complete_energy_difference(
+    symbol: typing.Any, spin: typing.Any, device: typing.Any
+) -> None:
     require_device(device)
     atoms, basis, mol = stuttgart_fixture(symbol, spin=spin)
     method = "uhf" if spin else "rhf"

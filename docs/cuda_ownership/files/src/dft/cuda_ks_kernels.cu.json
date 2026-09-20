@@ -1,0 +1,14 @@
+{
+  "path": "src/dft/cuda_ks_kernels.cu",
+  "reason": "Semilocal physical Fock/energy, per-spin diagnostics and CPU-compatible virtual-projector proposal stabilization; numerical glue remains maintained and is not claimed as retired code.",
+  "regions": [
+    {
+      "start": "void assemble_fock(cudaStream_t",
+      "stop": null,
+      "role": "runtime",
+      "reason": "Host launch forwarding to the numerical component kernels."
+    }
+  ],
+  "role": "scientific",
+  "subsystem": "xc"
+}

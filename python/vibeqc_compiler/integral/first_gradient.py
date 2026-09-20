@@ -1,6 +1,9 @@
 """Compiler-owned weighted first-integral gradient contraction plans."""
 
+from __future__ import annotations
+
 import math
+import typing
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -14,6 +17,11 @@ from .first_derivatives_native import (
 from .ir_serialization import integral_to_payload
 from .weight_pullback import normalized_cartesian_components
 
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .ir import IntegralIR
+
 
 @dataclass(frozen=True)
 class FirstGradientWeight:
@@ -22,7 +30,7 @@ class FirstGradientWeight:
     matrix_slot: int
     pair: tuple[int, int]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.matrix_slot) is not int or not 0 <= self.matrix_slot < 8:
             raise ValueError("first-gradient matrix slot must be in [0,8)")
         pair = tuple(self.pair)
@@ -38,7 +46,7 @@ class FirstGradientTerm:
     weights: tuple[FirstGradientWeight, ...]
     coefficient: float = 1.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         weights = tuple(self.weights)
         if not 1 <= len(weights) <= 2 or any(
             not isinstance(weight, FirstGradientWeight) for weight in weights
@@ -54,7 +62,9 @@ class FirstGradientTerm:
         object.__setattr__(self, "coefficient", float(self.coefficient))
 
 
-def validate_first_gradient(integral, indices, terms):
+def validate_first_gradient(
+    integral: IntegralIR, indices: Sequence[int], terms: Sequence[FirstGradientTerm]
+) -> None:
     validate_first_components(integral, indices)
     if any(shell.convention != "cartesian" for shell in integral.signature.shells):
         raise ValueError("first-gradient execution requires Cartesian AO slots")
@@ -71,7 +81,9 @@ def validate_first_gradient(integral, indices, terms):
                 raise ValueError("first-gradient term uses a missing shell slot")
 
 
-def first_gradient_identity(integral, indices, terms):
+def first_gradient_identity(
+    integral: IntegralIR, indices: Sequence[int], terms: Sequence[FirstGradientTerm]
+) -> str:
     validate_first_gradient(integral, indices, terms)
     return canonical_hash(
         {
@@ -85,7 +97,13 @@ def first_gradient_identity(integral, indices, terms):
     )
 
 
-def emit_first_gradient(integral, indices, terms, *, runtime_identity):
+def emit_first_gradient(
+    integral: IntegralIR,
+    indices: Sequence[int],
+    terms: Sequence[FirstGradientTerm],
+    *,
+    runtime_identity: str,
+) -> str:
     """Generate AO-weight pullback into atomic gradients using primitive DAGs."""
     indices, terms = tuple(indices), tuple(terms)
     identity = first_gradient_identity(integral, indices, terms)
@@ -118,7 +136,7 @@ def emit_first_gradient(integral, indices, terms, *, runtime_identity):
             factors.append(f"weights[{weight.matrix_slot}*nbf*nbf+ao[{i}]*nbf+ao[{j}]]")
         product = " * ".join(f"({factor})" for factor in factors)
         writes += [
-            f"    const double term_{ordinal} = {term.coefficient.hex()} * ({product}) * radial;",
+            f"    const double term_{ordinal} = {float(term.coefficient).hex()} * ({product}) * radial;",
             f"    if (!isfinite(term_{ordinal})) {{ atomicCAS(error,0,1); return; }}",
             "    for (unsigned c=0;c<centers;++c) for (unsigned axis=0;axis<3;++axis)",
             f"      atomicAdd(output+3*mapping.atoms[c]+axis, term_{ordinal}*gradient[1+3*c+axis]);",

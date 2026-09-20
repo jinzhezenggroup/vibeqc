@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_auto_requires_rank_reference_residency_and_reservation(tmp_path):
+def test_auto_requires_rank_reference_residency_and_reservation(
+    tmp_path: typing.Any,
+) -> None:
     """Query a shape-only plan; no large tensors or SCF solve are necessary."""
     assert os.environ.get("SLURM_JOB_ID")
     root = Path(__file__).resolve().parents[2]

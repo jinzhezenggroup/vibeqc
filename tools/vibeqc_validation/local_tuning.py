@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -33,14 +34,14 @@ from .schema import canonical_hash, file_hash
 
 
 def validate_schedule(
-    name,
-    consumer,
-    schedule,
-    target,
+    name: typing.Any,
+    consumer: typing.Any,
+    schedule: typing.Any,
+    target: typing.Any,
     nvcc: Path,
     directory: Path,
     *,
-    timeout=600,
+    timeout: typing.Any = 600,
     production_source: Path | None = None,
     production_object: Path | None = None,
 ) -> dict:

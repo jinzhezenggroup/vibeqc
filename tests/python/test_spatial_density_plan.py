@@ -1,8 +1,9 @@
 """CPU-only preflight and adapter boundary gates for spatial density sources."""
 
+import typing
+
 # Imported pytest fixtures are intentionally reused as test arguments.
 # ruff: noqa: F811
-
 import pytest
 from test_spatial_execution import local_case  # noqa: F401
 from test_xc_contractions_native import native_factory  # noqa: F401
@@ -12,10 +13,12 @@ from vibeqc_compiler.dft.spatial import SpatialPolicy
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 
 
-def test_orbital_capacity_is_charged_before_cuda_allocation(local_case, monkeypatch):
+def test_orbital_capacity_is_charged_before_cuda_allocation(
+    local_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     basis, grid, _ = local_case
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("allocated CUDA before the combined orbital-capacity preflight")
 
     monkeypatch.setattr("vibeqc_compiler.dft.spatial_prepared.CudaGrid", forbidden)
@@ -31,7 +34,9 @@ def test_orbital_capacity_is_charged_before_cuda_allocation(local_case, monkeypa
         )
 
 
-def test_cpu_spatial_keeps_explicit_original_density_interface(local_case):
+def test_cpu_spatial_keeps_explicit_original_density_interface(
+    local_case: typing.Any,
+) -> None:
     basis, grid, density = local_case
     source = DensitySource(density, basis_identity=basis.identity)
     with PreparedSpatialGrid(basis, grid) as spatial:
@@ -44,7 +49,9 @@ def test_cpu_spatial_keeps_explicit_original_density_interface(local_case):
         PreparedSpatialGrid(basis, grid, orbital_capacity=(3, 2))
 
 
-def test_prepared_output_contract_preserves_legacy_spatial_topology(local_case):
+def test_prepared_output_contract_preserves_legacy_spatial_topology(
+    local_case: typing.Any,
+) -> None:
     basis, grid, _ = local_case
     policy = SpatialPolicy(region_points=4)
     with (
@@ -65,8 +72,8 @@ def test_prepared_output_contract_preserves_legacy_spatial_topology(local_case):
 
 
 def test_xc_construction_serializes_spatial_snapshot_and_replacement(
-    local_case, native_factory, monkeypatch
-):
+    local_case: typing.Any, native_factory: typing.Any, monkeypatch: typing.Any
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
     from dataclasses import replace
     from threading import Event
@@ -79,7 +86,7 @@ def test_xc_construction_serializes_spatial_snapshot_and_replacement(
     entered, release = Event(), Event()
     ao_order = DiscreteEnergyContract.ao_order.fget
 
-    def pause_after_geometry_validation(contract):
+    def pause_after_geometry_validation(contract: typing.Any) -> typing.Any:
         entered.set()
         assert release.wait(3), "constructor did not release its snapshot probe"
         return ao_order(contract)
@@ -117,8 +124,8 @@ def test_xc_construction_serializes_spatial_snapshot_and_replacement(
 
 
 def test_same_mask_cpu_replacement_invalidates_borrowed_resource_plan(
-    local_case, native_factory
-):
+    local_case: typing.Any, native_factory: typing.Any
+) -> None:
     from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
     basis, grid, density = local_case

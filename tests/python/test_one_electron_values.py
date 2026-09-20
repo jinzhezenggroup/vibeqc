@@ -4,6 +4,7 @@ import ctypes
 import math
 import shutil
 import subprocess
+import typing
 from functools import cache
 from itertools import product
 
@@ -18,7 +19,7 @@ from vibeqc_compiler.integral.one_electron_values import (
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 
-def test_generated_value_header_helpers_have_internal_linkage():
+def test_generated_value_header_helpers_have_internal_linkage() -> None:
     """Header-defined noinline device helpers must be reusable by multiple CUDA TUs."""
 
     source = emit_one_electron_values_cuda()
@@ -29,13 +30,18 @@ def test_generated_value_header_helpers_have_internal_linkage():
 
 
 @cache
-def kernel(family, angular, components, charge=2.3):
+def kernel(
+    family: typing.Any,
+    angular: typing.Any,
+    components: typing.Any,
+    charge: typing.Any = 2.3,
+) -> typing.Any:
     return build_one_electron_component_kernel(
         build_one_electron_value_ir(family, angular, charge=charge), components
     )
 
 
-def gaussian_self_norm(exponent, component):
+def gaussian_self_norm(exponent: typing.Any, component: typing.Any) -> typing.Any:
     """Closed one-dimensional even moments of an unnormalized primitive."""
     result = (math.pi / (2 * exponent)) ** 1.5
     for axis in "xyz":
@@ -46,7 +52,9 @@ def gaussian_self_norm(exponent, component):
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("angular", list(product(range(4), repeat=2)))
-def test_every_public_cartesian_component_against_pyscf(family, angular):
+def test_every_public_cartesian_component_against_pyscf(
+    family: typing.Any, angular: typing.Any
+) -> None:
     gto = pytest.importorskip("pyscf.gto")
     components = tuple(cartesian_components(l) for l in angular)
     alpha, beta = 0.8, 0.35
@@ -97,7 +105,7 @@ def test_every_public_cartesian_component_against_pyscf(family, angular):
 
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
-def test_sign_translation_and_shell_exchange(family):
+def test_sign_translation_and_shell_exchange(family: typing.Any) -> None:
     positions = np.array([[0.2, -0.3, 0.4], [-0.2, 0.5, 0.1], [0.1, -0.2, -0.4]])
     if family != "nuclear_attraction":
         positions = positions[:2]
@@ -118,7 +126,7 @@ def test_sign_translation_and_shell_exchange(family):
         assert first.integral.operator.centers == (0, 1, 2)
 
 
-def test_kinetic_raised_states_do_not_widen_public_shells():
+def test_kinetic_raised_states_do_not_widen_public_shells() -> None:
     program = kernel("kinetic", (3, 3), ("xxx", "xxx"))
     assert program.integral.signature.component_shape == (10, 10)
     assert max(state[2] for state in program.hermite_states) == 5
@@ -130,7 +138,7 @@ def test_kinetic_raised_states_do_not_widen_public_shells():
         build_one_electron_value_ir("four_center_eri", (0, 0))
 
 
-def test_interpreter_rejects_invalid_scientific_inputs():
+def test_interpreter_rejects_invalid_scientific_inputs() -> None:
     program = kernel("overlap", (0, 0), ("", ""))
     for exponents, centers in [
         ((0.0, 1.0), [(0, 0, 0)] * 2),
@@ -142,7 +150,7 @@ def test_interpreter_rejects_invalid_scientific_inputs():
 
 
 @pytest.fixture(scope="module")
-def emitted_host(tmp_path_factory):
+def emitted_host(tmp_path_factory: typing.Any) -> typing.Any:
     """Execute emitted arithmetic on CPU to catch lowering/CSE boundary errors.
 
     This is explicitly a source-lowering test. CUDA compilation, device
@@ -199,7 +207,9 @@ extern "C" void evaluate(const double* inputs, double* outputs, unsigned count) 
     return library.evaluate
 
 
-def test_emitted_arithmetic_all_pairs_and_normalized_contractions(emitted_host):
+def test_emitted_arithmetic_all_pairs_and_normalized_contractions(
+    emitted_host: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_validation.one_electron_values import one_electron_value_matrix
 
@@ -223,7 +233,7 @@ def test_emitted_arithmetic_all_pairs_and_normalized_contractions(emitted_host):
         )
 
 
-def test_one_electron_inventory_retains_operator_and_output_contracts():
+def test_one_electron_inventory_retains_operator_and_output_contracts() -> None:
     from vibeqc_compiler.integral.one_electron_cuda import (
         one_electron_program_inventory,
     )

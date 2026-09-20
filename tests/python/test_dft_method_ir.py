@@ -1,6 +1,9 @@
 """Canonical DFT MethodSpec -> MethodIR composition gates for #396."""
 
+from __future__ import annotations
+
 import json
+import typing
 from fractions import Fraction
 
 import pytest
@@ -19,7 +22,7 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 
-def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
+def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs() -> None:
     pbe = resolve_method("PBE", spin="unpolarized")
     assert len(pbe.primitives) == 1
     assert isinstance(pbe.primitives[0], SemilocalXCPrimitive)
@@ -107,7 +110,9 @@ def test_pbe_and_pbe0_resolve_to_typed_primitive_graphs():
         ),
     ],
 )
-def test_cross_code_catalog_compositions_are_explicit(name, components, exchange):
+def test_cross_code_catalog_compositions_are_explicit(
+    name: typing.Any, components: typing.Any, exchange: typing.Any
+) -> None:
     graph = resolve_method(name, spin="unpolarized")
     semilocal = graph.primitives[0]
     assert isinstance(semilocal, SemilocalXCPrimitive)
@@ -121,14 +126,14 @@ def test_cross_code_catalog_compositions_are_explicit(name, components, exchange
 
 
 @pytest.mark.parametrize("alias", ["PBE1PBE", "PBEH"])
-def test_pbe0_named_aliases_share_semantic_identity(alias):
+def test_pbe0_named_aliases_share_semantic_identity(alias: typing.Any) -> None:
     pbe0 = resolve_method("PBE0")
     named = resolve_method(alias)
     assert named.identity == pbe0.identity
     assert named.manifest_identity != pbe0.manifest_identity
 
 
-def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct():
+def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct() -> None:
     b3lyp = resolve_method("B3LYP")
     gaussian = resolve_method("B3LYPG")
     vwn5 = resolve_method("B3LYP5")
@@ -141,7 +146,9 @@ def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct():
     "canonical,alias",
     [("BHANDHLYP", "BHHLYP"), ("CAM-B3LYP", "CAMB3LYP")],
 )
-def test_cross_code_named_aliases_preserve_semantics(canonical, alias):
+def test_cross_code_named_aliases_preserve_semantics(
+    canonical: typing.Any, alias: typing.Any
+) -> None:
     reference = resolve_method(canonical)
     named = resolve_method(alias)
     assert named.identity == reference.identity
@@ -157,8 +164,8 @@ def test_cross_code_named_aliases_preserve_semantics(canonical, alias):
     ],
 )
 def test_r2scan_hybrids_scale_only_exchange_and_add_exact_exchange(
-    name, exact_exchange
-):
+    name: typing.Any, exact_exchange: typing.Any
+) -> None:
     graph = resolve_method(name)
     semilocal, exact = graph.primitives
     assert isinstance(semilocal, SemilocalXCPrimitive)
@@ -175,7 +182,9 @@ def test_r2scan_hybrids_scale_only_exchange_and_add_exact_exchange(
     "spin,reference",
     [("unpolarized", "restricted"), ("polarized", "unrestricted")],
 )
-def test_r2scan_is_one_tau_semilocal_primitive_without_exchange(spin, reference):
+def test_r2scan_is_one_tau_semilocal_primitive_without_exchange(
+    spin: typing.Any, reference: typing.Any
+) -> None:
     r2scan = resolve_method("R2SCAN", spin=spin)
     assert len(r2scan.primitives) == 1
     primitive = r2scan.primitives[0]
@@ -194,14 +203,14 @@ def test_r2scan_is_one_tau_semilocal_primitive_without_exchange(spin, reference)
     }
 
 
-def test_r2scan_catalog_extension_needs_no_new_primitive_family():
+def test_r2scan_catalog_extension_needs_no_new_primitive_family() -> None:
     r2scan = resolve_method("R2SCAN")
     pbe = resolve_method("PBE")
     assert type(r2scan.primitives[0]) is type(pbe.primitives[0])
     assert functional("R2SCAN").exact_exchange == 0
 
 
-def test_method_identity_is_semantic_while_manifest_identity_retains_name():
+def test_method_identity_is_semantic_while_manifest_identity_retains_name() -> None:
     a = MethodSpec(
         "alias-a",
         (
@@ -229,13 +238,15 @@ def test_method_identity_is_semantic_while_manifest_identity_retains_name():
     )
 
 
-def test_audited_method_catalog_is_read_only():
+def test_audited_method_catalog_is_read_only() -> None:
     with pytest.raises(TypeError):
         METHOD_CATALOG["PBE"] = MethodSpec("mutated", (("LDA_X", Fraction(1)),))
 
 
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
-def test_direct_method_ir_canonicalizes_existing_xc_specs(spin):
+def test_direct_method_ir_canonicalizes_existing_xc_specs(
+    spin: typing.Any,
+) -> None:
     """Public primitive construction shares the resolver's semantic identity."""
     catalog = functional("PBE", spin=spin)
     # FunctionalSpec preserves component order and permits inactive components.
@@ -262,7 +273,7 @@ def test_direct_method_ir_canonicalizes_existing_xc_specs(spin):
     assert catalog.components[0][0] == "GGA_X_PBE"
 
 
-def test_same_family_extension_is_data_only_and_json_serializable():
+def test_same_family_extension_is_data_only_and_json_serializable() -> None:
     custom = MethodSpec(
         "PBE-X-half",
         (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
@@ -276,7 +287,7 @@ def test_same_family_extension_is_data_only_and_json_serializable():
     assert json.loads(json.dumps(payload, sort_keys=True))["identifier"] == "PBE-X-half"
 
 
-def test_representation_does_not_hide_exchange_inside_semilocal_functional():
+def test_representation_does_not_hide_exchange_inside_semilocal_functional() -> None:
     pbe0 = resolve_method("PBE0")
     semilocal = pbe0.primitives[0].functional
     assert semilocal.exact_exchange == 0
@@ -286,12 +297,12 @@ def test_representation_does_not_hide_exchange_inside_semilocal_functional():
 
 
 @pytest.mark.parametrize("spin", ["closed", "rks", ""])
-def test_bad_spin_fails_before_graph_construction(spin):
+def test_bad_spin_fails_before_graph_construction(spin: typing.Any) -> None:
     with pytest.raises(UnsupportedMethod, match="spin mode"):
         resolve_method("PBE", spin=spin)
 
 
-def test_unknown_or_ambiguous_compositions_fail_closed():
+def test_unknown_or_ambiguous_compositions_fail_closed() -> None:
     with pytest.raises(UnsupportedMethod, match="unknown DFT method"):
         resolve_method("pbe")
     with pytest.raises(UnsupportedMethod, match="unsupported semilocal component"):
@@ -302,7 +313,7 @@ def test_unknown_or_ambiguous_compositions_fail_closed():
         MethodSpec("zero", (("GGA_X_PBE", Fraction(0)),))
 
 
-def test_exact_cancellation_is_canonical_and_cannot_make_an_empty_method():
+def test_exact_cancellation_is_canonical_and_cannot_make_an_empty_method() -> None:
     mixed = MethodSpec(
         "exchange-only-after-cancel",
         (("LDA_X", Fraction(1)), ("LDA_X", Fraction(-1))),
@@ -320,7 +331,7 @@ def test_exact_cancellation_is_canonical_and_cannot_make_an_empty_method():
         resolve_method(empty)
 
 
-def test_original_nonlocal_variants_are_versioned_and_semantically_distinct():
+def test_original_nonlocal_variants_are_versioned_and_semantically_distinct() -> None:
     vv10 = original_nonlocal_correlation("vv10")
     rvv10 = original_nonlocal_correlation("rvv10")
     assert vv10.b == Fraction("5.9")
@@ -334,7 +345,7 @@ def test_original_nonlocal_variants_are_versioned_and_semantically_distinct():
     assert payload["pair_integration"] == "full-double-integral-with-one-half-v1"
 
 
-def test_nonlocal_primitive_participates_in_method_identity_and_requirements():
+def test_nonlocal_primitive_participates_in_method_identity_and_requirements() -> None:
     vv10 = original_nonlocal_correlation("vv10")
     spec = MethodSpec(
         "PBE+VV10-test",
@@ -354,7 +365,7 @@ def test_nonlocal_primitive_participates_in_method_identity_and_requirements():
     )
 
 
-def test_nonlocal_variant_and_parameters_change_method_identity():
+def test_nonlocal_variant_and_parameters_change_method_identity() -> None:
     original = original_nonlocal_correlation("vv10")
     custom = NonlocalCorrelationSpec("vv10", Fraction("6.0"), Fraction("0.0093"))
     a = resolve_method(MethodSpec("a", (), nonlocal_correlation=original))
@@ -363,7 +374,7 @@ def test_nonlocal_variant_and_parameters_change_method_identity():
     assert a.manifest_identity != b.manifest_identity
 
 
-def test_nonlocal_method_spec_rejects_untyped_or_ambiguous_parameters():
+def test_nonlocal_method_spec_rejects_untyped_or_ambiguous_parameters() -> None:
     with pytest.raises(TypeError, match="NonlocalCorrelationSpec"):
         MethodSpec("bad-nlc", (), nonlocal_correlation="vv10")
     with pytest.raises(ValueError, match="exact Fraction"):

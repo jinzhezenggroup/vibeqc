@@ -8,12 +8,13 @@ Source generation and runtime do not depend on mpmath.
 """
 
 import argparse
+import typing
 from pathlib import Path
 
 import mpmath as mp
 
 
-def quadrature(argument, nroots):
+def quadrature(argument: typing.Any, nroots: typing.Any) -> typing.Any:
     """Construct a Jacobi matrix by high-precision Stieltjes orthogonalization.
 
     Polynomials use ascending coefficients. The validation oracle instead
@@ -26,7 +27,9 @@ def quadrature(argument, nroots):
         for k in range(2 * nroots)
     ]
 
-    def inner(first, second, shift=0):
+    def inner(
+        first: typing.Any, second: typing.Any, shift: typing.Any = 0
+    ) -> typing.Any:
         return mp.fsum(
             a * b * moments[i + j + shift]
             for i, a in enumerate(first)
@@ -57,7 +60,7 @@ def quadrature(argument, nroots):
     )
 
 
-def generate():
+def generate() -> typing.Any:
     """Return deterministic FP64 coefficients in series/degree/interval order."""
     degree = 17
     tables = {}

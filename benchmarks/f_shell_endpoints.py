@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -50,7 +51,7 @@ def release_library_identity() -> dict:
             "endpoint acceptance requires the actual sm_120 release target"
         )
 
-    def digest(path):
+    def digest(path: typing.Any) -> typing.Any:
         value = hashlib.sha256()
         with path.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -79,7 +80,9 @@ def release_library_identity() -> dict:
     }
 
 
-def inspected_basis(case, calculator, atoms) -> tuple[dict, object]:
+def inspected_basis(
+    case: typing.Any, calculator: typing.Any, atoms: typing.Any
+) -> tuple[dict, object]:
     """Inspect the loaded native and oracle shells, including contraction sizes."""
     from pyscf import gto
     from vibeqc import Atom
@@ -116,7 +119,7 @@ def inspected_basis(case, calculator, atoms) -> tuple[dict, object]:
     }, mol
 
 
-def independent_result(mol, method: str) -> dict:
+def independent_result(mol: typing.Any, method: str) -> dict:
     """Use CPU libcint SCF and all analytic force terms without density fitting."""
     from pyscf import scf
 
@@ -141,7 +144,12 @@ def independent_result(mol, method: str) -> dict:
 
 
 def run_endpoint(
-    name, batch_size, *, repeats=6, profile=False, profile_side="candidate"
+    name: typing.Any,
+    batch_size: typing.Any,
+    *,
+    repeats: typing.Any = 6,
+    profile: typing.Any = False,
+    profile_side: typing.Any = "candidate",
 ) -> dict:
     """Measure current FPPS force selection against identical non-f dispatch."""
     import cupy as cp

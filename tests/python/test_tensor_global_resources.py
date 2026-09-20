@@ -1,6 +1,7 @@
 """TensorIR alternatives must fit the whole plan before any device access."""
 
 import json
+import typing
 
 import pytest
 from vibeqc.resources import (
@@ -24,7 +25,7 @@ from vibeqc_compiler.tensor import (
 from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
 
-def fragment():
+def fragment() -> typing.Any:
     index = Index("i", IndexSpace("axis", "batch", 8192))
     x = input_tensor("x", TensorSpec((index,), role="input"))
     return Program(
@@ -35,10 +36,12 @@ def fragment():
     )
 
 
-def test_tensor_global_budget_selects_real_recompute_plan_without_device(monkeypatch):
+def test_tensor_global_budget_selects_real_recompute_plan_without_device(
+    monkeypatch: typing.Any,
+) -> None:
     import ctypes
 
-    def no_device(*args, **kwargs):
+    def no_device(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("planning must not load a device library")
 
     monkeypatch.setattr(ctypes, "CDLL", no_device)
@@ -95,7 +98,7 @@ def test_tensor_global_budget_selects_real_recompute_plan_without_device(monkeyp
     )
 
 
-def test_tensor_indivisible_minimum_is_an_infeasible_provider_request():
+def test_tensor_indivisible_minimum_is_an_infeasible_provider_request() -> None:
     choices = tensor_resource_choices(
         fragment(), cuda_target_info("sm_120"), sub_budget_bytes=1
     )
@@ -104,7 +107,7 @@ def test_tensor_indivisible_minimum_is_an_infeasible_provider_request():
     assert "provider sub-budget" in plan.diagnostic
 
 
-def test_tensor_foreign_plan_is_rejected_before_artifact_loading():
+def test_tensor_foreign_plan_is_rejected_before_artifact_loading() -> None:
     choices = tensor_resource_choices(fragment(), cuda_target_info("sm_120"))
     foreign = tensor_resource_choices(fragment(), cuda_target_info("sm_120"), device=1)
     plan = plan_resources([foreign.request], ResourceBudget())

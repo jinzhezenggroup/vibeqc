@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _root = _CompilerPath(__file__).resolve().parents[1]
@@ -80,7 +81,7 @@ CASES = {
 }
 
 
-def _serializable(value):
+def _serializable(value: typing.Any) -> typing.Any:
     if isinstance(value, np.ndarray):
         return value.tolist()
     if isinstance(value, np.generic):
@@ -92,7 +93,7 @@ def _serializable(value):
     return value
 
 
-def _evidence_case(args, name):
+def _evidence_case(args: typing.Any, name: typing.Any) -> typing.Any:
     spec = CASES[name]
     mol = build_mol(spec["atoms"], spec["basis"], charge=0, spin=0)
     start = time.perf_counter()
@@ -105,7 +106,7 @@ def _evidence_case(args, name):
     H_analytic = _converged_rhf(mol).Hessian().kernel()
     from tools.vibeqc_hessian.numerical import numerical_hessian
 
-    def gradient(coords, settings):
+    def gradient(coords: typing.Any, settings: typing.Any) -> typing.Any:
         moved = mol.copy().set_geom_(coords, unit="Bohr")
         return _converged_rhf(moved).nuc_grad_method().kernel()
 
@@ -177,7 +178,7 @@ def _evidence_case(args, name):
     return record
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     evidence = {
         "title": "issue #180: independent semi-numerical RHF Hessian oracle",
         "platform": platform.platform(),
@@ -204,7 +205,7 @@ def run(args):
     return evidence
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--case", default="h2,water", help="comma list from: " + ",".join(CASES)

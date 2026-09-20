@@ -6,6 +6,7 @@ It does not search schedules, install profiles or select a performance winner.
 
 from __future__ import annotations
 
+import typing
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
@@ -54,12 +55,12 @@ class DensityWorkload:
     device_bytes: int
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {"schema": "vibeqc.dft-density-workload.v1", **asdict(self)}
         )
 
-    def describe(self):
+    def describe(self) -> typing.Any:
         """Return detached metadata suitable for #138 evidence records."""
         return {
             **asdict(self),
@@ -96,7 +97,7 @@ class DensityCandidate:
     _delta_density: np.ndarray | None = field(repr=False, compare=False)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "schema": "vibeqc.dft-density-candidate.v1",
@@ -105,7 +106,7 @@ class DensityCandidate:
             }
         )
 
-    def describe(self):
+    def describe(self) -> typing.Any:
         """Registration is separate from numerical acceptance and promotion."""
         return {
             "identity": self.identity,
@@ -120,7 +121,7 @@ class DensityCandidate:
             },
         }
 
-    def execute(self, *, stamp: DensityStamp):
+    def execute(self, *, stamp: DensityStamp) -> typing.Any:
         """Return (XC outputs, detached execution record), with no timing filter.
 
         The owner's reentrant lock covers execution and statistics capture;
@@ -164,7 +165,13 @@ class DensityCandidate:
             }
 
 
-def density_candidates(prepared, source, *, stamp, delta_density=None):
+def density_candidates(
+    prepared: typing.Any,
+    source: typing.Any,
+    *,
+    stamp: typing.Any,
+    delta_density: typing.Any = None,
+) -> typing.Any:
     """Register D and C against identical scientific inputs and resource owners.
 
     Geometry/response C derivatives remain unavailable; their D candidate

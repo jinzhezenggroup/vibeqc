@@ -1,5 +1,6 @@
 """Staged approximate work cannot bypass original-Hamiltonian convergence."""
 
+import typing
 from dataclasses import replace
 from unittest.mock import patch
 
@@ -16,7 +17,7 @@ from tools.vibeqc_posthf.low_rank_consumers import LowRankProvider
 from tools.vibeqc_posthf.low_rank_refinement import RefinementStage, solve_refined_rhf
 
 
-def basis_for(source):
+def basis_for(source: typing.Any) -> typing.Any:
     return NativeAO(
         source.atoms,
         source.shells,
@@ -27,7 +28,9 @@ def basis_for(source):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_staged_initialization_reconverges_exact_energy_density_and_forces(name):
+def test_staged_initialization_reconverges_exact_energy_density_and_forces(
+    name: typing.Any,
+) -> None:
     source, arrays = source_for(name)
     with (
         source,
@@ -73,7 +76,9 @@ def test_staged_initialization_reconverges_exact_energy_density_and_forces(name)
                     view.jk(actual.exact.density)
 
 
-def test_refinement_rejects_target_mismatch_and_nonmonotone_stages_before_mutation():
+def test_refinement_rejects_target_mismatch_and_nonmonotone_stages_before_mutation() -> (
+    None
+):
     source, _ = source_for("h2")
     columns = CoulombColumns(source)
     with (
@@ -117,7 +122,7 @@ def test_refinement_rejects_target_mismatch_and_nonmonotone_stages_before_mutati
                 solve_refined_rhf(factor, target, [RefinementStage(0.1, 1, 1)])
 
 
-def test_invalid_stage_controls():
+def test_invalid_stage_controls() -> None:
     for controls in (
         {"threshold": -1},
         {"threshold": True},

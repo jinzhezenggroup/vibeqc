@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import argparse
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
     ScheduleKind,
 )
 from ..shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+
+if TYPE_CHECKING:
+    import argparse
+    from collections.abc import Iterable
 
 
 def _resolve_specifications(names: Iterable[str]) -> tuple[ShellClassSpec, ...]:

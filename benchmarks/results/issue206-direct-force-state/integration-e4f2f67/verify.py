@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 
 def require(condition: bool, message: str) -> None:
@@ -35,7 +36,7 @@ def main() -> None:
         require(name not in decoded, f"duplicate logical record: {name}")
         decoded[name] = data
 
-    def read(name: str):
+    def read(name: str) -> dict[str, Any]:
         return json.loads(decoded[name])
 
     candidate = read("validation/manifest.json")
