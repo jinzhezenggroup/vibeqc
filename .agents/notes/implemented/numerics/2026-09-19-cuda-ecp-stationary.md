@@ -48,3 +48,24 @@ Revisit dense staging only when a device-resident ECP source-consumer interface
 has complete endpoint/work/resource and independent numerical qualification.
 
 Refs #171, #163; CPU prerequisite #584. Public forces are a separate capability.
+
+## Qualification repair: physical ECP-RKS closure (2026-09-20)
+
+The original head could report a converged LDA ECP-RKS energy but reject the
+subsequent strict canonical derivative snapshot. The DIIS proposal passed the
+ordinary density gate without closing the unshifted physical Fock fixed point.
+Extend the existing bounded UKS final closure to ECP-RKS; retain the original
+energy/density/canonicality tolerances and four-correction bound. All-electron
+RKS and the public ECP force exclusion remain unchanged.
+
+An independent RTX 5090 / CUDA 12.9 Slurm A/B run rebuilt the changed translation
+unit and linked separate before/fixed libraries against the same remaining
+objects. The original LDA-RKS and same-core/different-ECP snapshot cases both
+failed with the verified-state numerical error. The repaired complete ECP CUDA
+suite passed all 10 cases, including analytic/finite-difference and all-electron
+regressions. Public-admission/native-state adjacent tests passed 13 cases; four
+separately gated tests remained skipped. These are correctness/diagnostic gates,
+not an end-to-end performance qualification or new public force capability.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
