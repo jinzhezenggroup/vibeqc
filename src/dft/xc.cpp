@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <limits>
 #include <stdexcept>
 
@@ -84,28 +85,34 @@ const scf::OccupiedDensityFactor* resolve_density_source(std::size_t n,
 std::array<double, 5> rks_features(const double* phi,
                                    const std::array<const double*, 3>& derivatives, std::size_t n,
                                    const std::vector<double>& density,
-                                   const scf::OccupiedDensityFactor* factor, bool need_gradient) {
+                                   const scf::OccupiedDensityFactor* factor,
+                                   unsigned ingredient_mask) {
   std::array<double, 5> features{};
+  const bool need_first = (ingredient_mask & 14U) != 0;
+  const bool need_tau = (ingredient_mask & 8U) != 0;
   if (factor) {
     for (std::size_t o = 0; o < factor->rank(); ++o) {
       double work[4]{};
       for (std::size_t mu = 0; mu < n; ++mu) {
         const double b = factor->values()[mu * factor->rank() + o];
         work[0] += phi[mu] * b;
-        if (need_gradient)
+        if (need_first)
           for (unsigned axis = 0; axis < 3; ++axis) work[axis + 1] += derivatives[axis][mu] * b;
       }
-      generated::add_features(work[0], work + 1, work, features.data(), need_gradient ? 3 : 1);
+      generated::add_features(work[0], work + 1, work, features.data(), ingredient_mask);
     }
   } else {
     for (std::size_t mu = 0; mu < n; ++mu) {
       for (std::size_t nu = 0; nu < n; ++nu) {
         const double d = density[mu * n + nu];
         features[0] += phi[mu] * d * phi[nu];
-        if (need_gradient)
+        if (need_first)
           for (unsigned axis = 0; axis < 3; ++axis)
             features[axis + 1] +=
                 (derivatives[axis][mu] * phi[nu] + phi[mu] * derivatives[axis][nu]) * d;
+        if (need_tau)
+          for (unsigned axis = 0; axis < 3; ++axis)
+            features[4] += 0.5 * derivatives[axis][mu] * d * derivatives[axis][nu];
       }
     }
   }
@@ -144,7 +151,7 @@ XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& gr
     basis.evaluate(points.data() + 3 * begin, count, 0, 0, n, ao.data(), ao.size());
     for (std::size_t point = 0; point < count; ++point) {
       const double* phi = ao.data() + point * n;
-      const double rho = rks_features(phi, {}, n, density, factor, false)[0];
+      const double rho = rks_features(phi, {}, n, density, factor, 1U)[0];
       if (!std::isfinite(rho) || rho < 0.0)
         throw std::domain_error("LDA tail-v1 requires finite nonnegative density");
       if (rho == 0.0) continue;
@@ -190,7 +197,7 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + p) * n;
       double rho[2]{}, gradient[2][3]{};
       for (unsigned spin = 0; spin < 2; ++spin) {
-        const auto features = rks_features(phi, jets, n, *densities[spin], nullptr, pbe);
+        const auto features = rks_features(phi, jets, n, *densities[spin], nullptr, pbe ? 7U : 1U);
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
@@ -230,6 +237,175 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
   return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true);
 }
 
+R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
+                                       const double tau[2]) {
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    if (!std::isfinite(rho[spin]) || !std::isfinite(tau[spin]) || rho[spin] < 0.0 ||
+        tau[spin] < 0.0)
+      throw std::domain_error("r2SCAN requires finite nonnegative rho/tau");
+    for (double component : gradient[spin])
+      if (!std::isfinite(component))
+        throw std::domain_error("r2SCAN requires finite density gradients");
+  }
+  const double total_density = rho[0] + rho[1];
+  constexpr double tail_low = 1.0e-56;
+  constexpr double tail_high = 1.0e-52;
+  if (total_density <= tail_low) return {};
+
+  double sigma[3]{};
+  generated::sigma(gradient, sigma);
+  auto raw =
+      generated::r2scan_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2], tau[0], tau[1]);
+  if (!std::isfinite(raw.energy_density)) {
+    char detail[512];
+    std::snprintf(detail, sizeof(detail),
+                  "r2SCAN nonfinite energy: rho=%.17e,%.17e tau=%.17e,%.17e "
+                  "sigma=%.17e,%.17e,%.17e",
+                  rho[0], rho[1], tau[0], tau[1], sigma[0], sigma[1], sigma[2]);
+    throw std::domain_error(detail);
+  }
+  for (double derivative : raw.feature_derivative)
+    if (!std::isfinite(derivative)) {
+      char detail[512];
+      std::snprintf(detail, sizeof(detail),
+                    "r2SCAN nonfinite derivative: rho=%.17e,%.17e tau=%.17e,%.17e "
+                    "sigma=%.17e,%.17e,%.17e",
+                    rho[0], rho[1], tau[0], tau[1], sigma[0], sigma[1], sigma[2]);
+      throw std::domain_error(detail);
+    }
+  if (total_density < tail_high) {
+    const double width = tail_high - tail_low;
+    const double x = (total_density - tail_low) / width;
+    const double x2 = x * x;
+    const double x3 = x2 * x;
+    const double scale = x3 * (10.0 + x * (-15.0 + 6.0 * x));
+    const double dscale = 30.0 * x2 * (1.0 - x) * (1.0 - x) / width;
+    const double unscaled_energy = raw.energy_density;
+    raw.energy_density *= scale;
+    raw.feature_derivative[0] = scale * raw.feature_derivative[0] + dscale * unscaled_energy;
+    raw.feature_derivative[1] = scale * raw.feature_derivative[1] + dscale * unscaled_energy;
+    for (unsigned i = 2; i < 7; ++i) raw.feature_derivative[i] *= scale;
+  }
+
+  R2scanPointValue out;
+  out.energy = raw.energy_density;
+  out.rho[0] = raw.feature_derivative[0];
+  out.rho[1] = raw.feature_derivative[1];
+  for (unsigned k = 0; k < 3; ++k) {
+    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] +
+                         raw.feature_derivative[3] * gradient[1][k];
+    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] +
+                         2.0 * raw.feature_derivative[4] * gradient[1][k];
+  }
+  // tau_s = 1/2 sum_mn D_s,mn grad(phi_m).grad(phi_n).
+  out.kinetic[0] = 0.5 * raw.feature_derivative[5];
+  out.kinetic[1] = 0.5 * raw.feature_derivative[6];
+  return out;
+}
+
+XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                const std::vector<double>& density, std::size_t tile_points,
+                                XcDensitySource source) {
+  const std::size_t n = basis.nao;
+  validate_density_matrix(basis, grid, density, tile_points);
+  XcIntegral result;
+  result.potential.assign(n * n, 0.0);
+  result.points = grid.point_count();
+  auto& record = result.density_diagnostic;
+  record.npoint = result.points;
+  record.ingredient_mask = 15U;
+  const auto* factor = resolve_density_source(n, density, source, record);
+  std::vector<double> ao;
+  const auto& points = grid.points();
+  const auto& weights = grid.weights();
+  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
+    const std::size_t count = std::min(tile_points, result.points - begin);
+    ao.resize(4 * count * n);
+    sample_xc_capacity(result, ao, count);
+    basis.evaluate(points.data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    for (std::size_t point = 0; point < count; ++point) {
+      const double* phi = ao.data() + point * n;
+      std::array<const double*, 3> jets{};
+      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
+      const auto total = rks_features(phi, jets, n, density, factor, 15U);
+      const double rho[2]{0.5 * total[0], 0.5 * total[0]};
+      const double gradient[2][3]{{0.5 * total[1], 0.5 * total[2], 0.5 * total[3]},
+                                  {0.5 * total[1], 0.5 * total[2], 0.5 * total[3]}};
+      const double tau[2]{0.5 * total[4], 0.5 * total[4]};
+      const auto xc = evaluate_r2scan_point(rho, gradient, tau);
+      const double weight = weights[begin + point];
+      result.energy += weight * xc.energy;
+      result.electrons += weight * total[0];
+      const double rho_coefficient = 0.5 * (xc.rho[0] + xc.rho[1]);
+      const double kinetic_coefficient = 0.5 * (xc.kinetic[0] + xc.kinetic[1]);
+      double gradient_coefficient[3]{};
+      for (unsigned k = 0; k < 3; ++k)
+        gradient_coefficient[k] = 0.5 * (xc.gradient[0][k] + xc.gradient[1][k]);
+      for (std::size_t mu = 0; mu < n; ++mu) {
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          double value = rho_coefficient * phi[mu] * phi[nu];
+          for (unsigned k = 0; k < 3; ++k) {
+            value += gradient_coefficient[k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+            value += kinetic_coefficient * jets[k][mu] * jets[k][nu];
+          }
+          result.potential[mu * n + nu] += weight * value;
+        }
+      }
+    }
+  }
+  if (!std::isfinite(result.energy)) throw std::runtime_error("nonfinite r2SCAN RKS energy");
+  return result;
+}
+
+SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                    const std::vector<double>& alpha_density,
+                                    const std::vector<double>& beta_density,
+                                    std::size_t tile_points) {
+  validate_density_matrix(basis, grid, alpha_density, tile_points);
+  validate_density_matrix(basis, grid, beta_density, tile_points);
+  const std::size_t n = basis.nao;
+  SpinXcIntegral result;
+  for (auto& potential : result.potential) potential.assign(n * n, 0.0);
+  result.points = grid.point_count();
+  const std::vector<double>* densities[2]{&alpha_density, &beta_density};
+  std::vector<double> ao;
+  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
+    const std::size_t count = std::min(tile_points, result.points - begin);
+    ao.resize(4 * count * n);
+    basis.evaluate(grid.points().data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    for (std::size_t point = 0; point < count; ++point) {
+      const double* phi = ao.data() + point * n;
+      std::array<const double*, 3> jets{};
+      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
+      double rho[2]{}, gradient[2][3]{}, tau[2]{};
+      for (unsigned spin = 0; spin < 2; ++spin) {
+        const auto features = rks_features(phi, jets, n, *densities[spin], nullptr, 15U);
+        rho[spin] = features[0];
+        for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
+        tau[spin] = features[4];
+      }
+      const auto xc = evaluate_r2scan_point(rho, gradient, tau);
+      const double weight = grid.weights()[begin + point];
+      result.energy += weight * xc.energy;
+      for (unsigned spin = 0; spin < 2; ++spin) {
+        result.electrons[spin] += weight * rho[spin];
+        for (std::size_t mu = 0; mu < n; ++mu) {
+          for (std::size_t nu = 0; nu < n; ++nu) {
+            double value = xc.rho[spin] * phi[mu] * phi[nu];
+            for (unsigned k = 0; k < 3; ++k) {
+              value += xc.gradient[spin][k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+              value += xc.kinetic[spin] * jets[k][mu] * jets[k][nu];
+            }
+            result.potential[spin][mu * n + nu] += weight * value;
+          }
+        }
+      }
+    }
+  }
+  if (!std::isfinite(result.energy)) throw std::runtime_error("nonfinite r2SCAN UKS energy");
+  return result;
+}
+
 XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& grid,
                                   const std::vector<double>& density, std::size_t tile_points,
                                   bool allow_tail, XcDensitySource source) {
@@ -256,7 +432,7 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double* grad_x = ao.data() + (count + point) * n;
       const double* grad_y = ao.data() + (2 * count + point) * n;
       const double* grad_z = ao.data() + (3 * count + point) * n;
-      const auto features = rks_features(phi, {grad_x, grad_y, grad_z}, n, density, factor, true);
+      const auto features = rks_features(phi, {grad_x, grad_y, grad_z}, n, density, factor, 7U);
       const double rho = features[0];
       const std::array<double, 3> gradient{features[1], features[2], features[3]};
       const double sigma =

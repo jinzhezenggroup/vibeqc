@@ -20,17 +20,19 @@ _NATIVE_KS_METHODS = {
     "pbe-rks": ("PBE", "unpolarized"),
     "lda-uks": ("LDA_XC_PW", "polarized"),
     "pbe-uks": ("PBE", "polarized"),
+    "r2scan-rks": ("R2SCAN", "unpolarized"),
+    "r2scan-uks": ("R2SCAN", "polarized"),
 }
 
 
 @dataclass(frozen=True)
 class KsOptions:
-    """A snapshotted LDA/PBE composition, quadrature, and bounded XC tile.
+    """A snapshotted supported semilocal composition, quadrature, and bounded XC tile.
 
     An absent functional resolves from the method name. RKS requires an
     unpolarized FunctionalSpec; UKS requires polarized. The only supported
-    compositions have unit LDA_X/LDA_C_PW or GGA_X_PBE/GGA_C_PBE coefficients,
-    with no exact exchange. A different model requires a new prepared owner.
+    compositions are the audited LDA, PBE, and r2SCAN catalog entries with no
+    exact exchange. A different model requires a new prepared owner.
     """
 
     functional: FunctionalSpec | None = None
@@ -59,7 +61,7 @@ class KsOptions:
 
     @property
     def ao_order(self) -> typing.Any:
-        """SCF needs the potential; only GGA composition needs first AO jets."""
+        """SCF needs the potential; GGA/meta-GGA compositions need first AO jets."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
         return int("sigma" in self.functional.ingredients)
@@ -91,7 +93,9 @@ class KsOptions:
 def resolve_ks_method(method: typing.Any) -> typing.Any:
     """Resolve one native KS name through MethodIR and project its semilocal node."""
     if method not in _NATIVE_KS_METHODS:
-        raise ValueError("KS options require a native LDA/PBE RKS/UKS method")
+        raise ValueError(
+            "KS options require a supported native semilocal RKS/UKS method"
+        )
     identifier, spin = _NATIVE_KS_METHODS[method]
     method_ir = resolve_method(identifier, spin=spin)
     if len(method_ir.primitives) != 1 or not isinstance(

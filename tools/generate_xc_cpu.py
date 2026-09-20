@@ -2,8 +2,8 @@
 
 import sys as _compiler_sys
 import types as _compiler_types
-import typing
 from pathlib import Path as _CompilerPath
+from typing import Any
 
 _compiler_root = (
     _CompilerPath(__file__).resolve().parents[1] / "python" / "vibeqc_compiler"
@@ -33,10 +33,12 @@ from vibeqc_compiler.xc.expressions import (
 from vibeqc_compiler.xc.spec import functional
 
 
-def build_roots(spec: typing.Any, outputs: typing.Any) -> typing.Any:
-    """Build first-derivative roots and their ordinary XCProgram identity."""
+def build_roots(
+    spec: Any, outputs: Any, *, production: bool = False
+) -> tuple[Any, Any, str]:
+    """Build derivative roots and the exact emitted-expression identity."""
 
-    graph, energy, variables = energy_expression(spec)
+    graph, energy, variables = energy_expression(spec, production=production)
     derivatives = {(): energy}
     for output in outputs:
         for depth in range(1, len(output) + 1):
@@ -133,6 +135,34 @@ def emit_lda_xc_pw_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_r2scan_polarized() -> str:
+    """Emit the production-domain first-feature ABI used by native MGGA KS."""
+
+    spec = functional("R2SCAN", spin="polarized")
+    outputs = ((), *((i,) for i in range(len(spec.features))))
+    graph, roots, expression_hash = build_roots(spec, outputs, production=True)
+    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    lines = [
+        "struct R2scanPolarizedValue {",
+        "  double energy_density;",
+        "  double feature_derivative[7];",
+        "};",
+        f'inline constexpr const char* kR2scanPolarizedExpressionIdentity = "{expression_hash}";',
+        "inline R2scanPolarizedValue r2scan_polarized(double rho_a, double rho_b,",
+        "                                                double sigma_aa, double sigma_ab,",
+        "                                                double sigma_bb, double tau_a,",
+        "                                                double tau_b) {",
+    ]
+    lines.extend(emitter.lines)
+    lines.append(
+        "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};"
+    )
+    lines.extend(["}", ""])
+    return "\n".join(lines)
+
+
 def emit_pbe_polarized() -> str:
     spec = functional("PBE", spin="polarized")
     outputs = ((), *((i,) for i in range(5)))
@@ -169,6 +199,7 @@ def main() -> None:
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
         + emit_pbe_polarized()
+        + emit_r2scan_polarized()
         + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",
     )

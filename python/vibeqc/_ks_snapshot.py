@@ -20,11 +20,17 @@ from .ks import SCF_DOMAIN, resolve_ks_method
 
 
 def _scf_xc_points(
-    library: typing.Any, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+    library: typing.Any,
+    functional: typing.Any,
+    rho: typing.Any,
+    gradient: typing.Any,
+    tau: typing.Any = None,
 ) -> typing.Any:
-    """Evaluate the exact native SCF point model without an AO contraction."""
-    if type(pbe) is not bool:
-        raise TypeError("SCF point evaluator requires a boolean PBE flag")
+    """Evaluate the exact native semilocal SCF point model."""
+    if type(functional) is bool:
+        functional = int(functional)
+    if type(functional) is not int or functional not in (0, 1, 2):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, or 2")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)
@@ -37,15 +43,24 @@ def _scf_xc_points(
         raise ValueError("SCF point evaluator requires rho[2,n] and gradient[2,n,3]")
     rho = np.ascontiguousarray(raw_rho, dtype=np.float64)
     gradient = np.ascontiguousarray(raw_gradient, dtype=np.float64)
-    output = np.empty((rho.shape[1], 9), dtype=np.float64)
+    if tau is None:
+        if functional == 2:
+            raise ValueError("r2SCAN point evaluation requires tau[2,n]")
+        tau = np.zeros_like(rho)
+    raw_tau = np.asarray(tau)
+    if np.iscomplexobj(raw_tau) or raw_tau.shape != rho.shape:
+        raise ValueError("SCF point evaluator requires real tau[2,n]")
+    tau = np.ascontiguousarray(raw_tau, dtype=np.float64)
+    output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
-        evaluate = library.vibeqc_xc_point_batch_v1
+        evaluate = library.vibeqc_xc_point_batch_v2
     except AttributeError as error:
         raise NotImplementedError(
-            "native library lacks the #163-A XC point bridge"
+            "native library lacks the semilocal XC point bridge v2"
         ) from error
     evaluate.argtypes = [
         ct.c_uint32,
+        ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.c_size_t,
@@ -56,9 +71,10 @@ def _scf_xc_points(
     _native.check(
         library,
         evaluate(
-            int(pbe),
+            functional,
             rho.ctypes.data_as(ct.POINTER(ct.c_double)),
             gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
+            tau.ctypes.data_as(ct.POINTER(ct.c_double)),
             rho.shape[1],
             output.ctypes.data_as(ct.POINTER(ct.c_double)),
             output.size,
@@ -67,7 +83,8 @@ def _scf_xc_points(
     return {
         "energy": immutable(output[:, 0]),
         "rho": immutable(output[:, 1:3].T),
-        "gradient": immutable(output[:, 3:].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "gradient": immutable(output[:, 3:9].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "tau": immutable(output[:, 9:11].T),
     }
 
 
@@ -197,7 +214,7 @@ class NativeKsSnapshot:
             natom,
             packed_count,
             npoint,
-            pbe,
+            functional,
             _,
             owner,
             epoch,
@@ -327,7 +344,12 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        method = ("pbe" if pbe else "lda") + ("-rks" if spins == 1 else "-uks")
+        functional_names = {0: "lda", 1: "pbe", 2: "r2scan"}
+        try:
+            family = functional_names[functional]
+        except KeyError as error:
+            raise NotImplementedError("unsupported native KS functional id") from error
+        method = family + ("-rks" if spins == 1 else "-uks")
         _, spec = resolve_ks_method(method)
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
@@ -393,11 +415,15 @@ class NativeKsSnapshot:
         )
 
     def evaluate_xc_points(
-        self, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+        self,
+        functional: typing.Any,
+        rho: typing.Any,
+        gradient: typing.Any,
+        tau: typing.Any = None,
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        values = _scf_xc_points(self._library, pbe, rho, gradient)
+        values = _scf_xc_points(self._library, functional, rho, gradient, tau)
         self.check_current()
         return values
 

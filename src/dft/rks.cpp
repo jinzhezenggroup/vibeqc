@@ -71,6 +71,12 @@ dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::Molecu
   return dft::integrate_pbe_rks_with_tail(basis, grid, density, tile, source);
 }
 
+dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                       const Matrix& density, dft::XcDensitySource source,
+                                       std::size_t tile) {
+  return dft::integrate_r2scan_rks(basis, grid, density, tile, source);
+}
+
 RksEvaluation evaluate_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                            const dft::MolecularGrid& grid, const Matrix& density,
                            RksXcEvaluator evaluate_xc, const char* method_name,
@@ -155,7 +161,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   ks.occupations = {occupied, occupied};
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  ks.ao_order = std::string_view(method_name) == "PBE" ? 1 : 0;
+  ks.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   std::shared_ptr<const OccupiedDensityFactor> factor;
@@ -346,6 +352,12 @@ ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
   return run_rks(plan, basis, grid, options, initial_density, evaluate_pbe_xc_rks, "PBE");
+}
+
+ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                         const dft::MolecularGrid& grid, const ScfOptions& options,
+                         const std::vector<double>* initial_density) {
+  return run_rks(plan, basis, grid, options, initial_density, evaluate_r2scan_xc_rks, "R2SCAN");
 }
 
 }  // namespace vibeqc::scf

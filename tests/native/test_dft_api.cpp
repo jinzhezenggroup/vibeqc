@@ -293,25 +293,14 @@ int main() {
     warm_execution_allocation_failure();
     vibeqc_method_capabilities_descriptor capabilities{
         sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0};
-    require(vibeqc_method_get_capabilities(VIBEQC_METHOD_LDA_RKS, &capabilities) ==
-                VIBEQC_STATUS_SUCCESS,
-            "LDA RKS capability query failed");
-    require(capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
-                capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
-                capabilities.available == 1 && capabilities.supports_batch == 1,
-            "LDA RKS capabilities are incorrect");
-    require(vibeqc_method_get_capabilities(VIBEQC_METHOD_PBE_RKS, &capabilities) ==
-                    VIBEQC_STATUS_SUCCESS &&
-                capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
-                capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
-                capabilities.available == 1 && capabilities.supports_batch == 1,
-            "PBE RKS capabilities are incorrect");
-    for (vibeqc_method method : {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS}) {
-      require(vibeqc_method_get_capabilities(method, &capabilities) == VIBEQC_STATUS_SUCCESS &&
+    for (vibeqc_method registered :
+         {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
+          VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS}) {
+      require(vibeqc_method_get_capabilities(registered, &capabilities) == VIBEQC_STATUS_SUCCESS &&
                   capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
                   capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
                   capabilities.available == 1 && capabilities.supports_batch == 1,
-              "UKS capabilities are incorrect");
+              "registered semilocal KS capabilities are incorrect");
     }
 
     Fixture fixture;
@@ -355,6 +344,28 @@ int main() {
     require(std::abs(result.energy - (-1.1520643753396715)) < 2.0e-12,
             "PBE RKS H2 implementation regression energy changed");
     std::cout << std::setprecision(17) << "PBE RKS H2 energy: " << result.energy << "\n";
+    vibeqc_calculation_destroy(calculation);
+
+    method = lda_method();
+    method.method = VIBEQC_METHOD_R2SCAN_RKS;
+    calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "r2SCAN RKS preparation failed");
+    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+              VIBEQC_BACKEND_CPU_REFERENCE};
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+                result.converged == 1 && std::isfinite(result.energy) &&
+                result.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE,
+            "r2SCAN RKS energy-only execution failed");
+    const double r2scan_rks_energy = result.energy;
+    result.forces = forces.data();
+    result.force_count = static_cast<uint32_t>(forces.size());
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "r2SCAN RKS force request was not rejected");
+    detail = vibeqc_context_get_last_detail(fixture.context);
+    require(detail != nullptr && std::string(detail).find("issue #164") != std::string::npos,
+            "r2SCAN force rejection omitted its #164 capability boundary");
     vibeqc_calculation_destroy(calculation);
 
     method.density_fitting_mode = VIBEQC_DENSITY_FITTING_CPU_REFERENCE;
@@ -404,7 +415,8 @@ int main() {
               "LDA RKS spin rejection omitted its closed-shell boundary");
     }
 
-    for (vibeqc_method spin_method : {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS}) {
+    for (vibeqc_method spin_method :
+         {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS}) {
       method = lda_method();
       method.method = spin_method;
       calculation = nullptr;
@@ -419,7 +431,9 @@ int main() {
                   result.converged == 1 && result.density_rms < 1.0e-9,
               "UKS singlet execution failed");
       const double expected =
-          spin_method == VIBEQC_METHOD_LDA_UKS ? -1.121017859421488 : -1.1520643753396715;
+          spin_method == VIBEQC_METHOD_LDA_UKS
+              ? -1.121017859421488
+              : (spin_method == VIBEQC_METHOD_PBE_UKS ? -1.1520643753396715 : r2scan_rks_energy);
       require(std::abs(result.energy - expected) < 2.0e-12,
               "equal-spin UKS and RKS energies disagree");
       result.forces = forces.data();
@@ -516,9 +530,10 @@ int main() {
                                               0, VIBEQC_BACKEND_CUDA};
     vibeqc_context* cuda_context = nullptr;
     if (vibeqc_context_create(&cuda_descriptor, &cuda_context) == VIBEQC_STATUS_SUCCESS) {
-      for (auto ks : {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_LDA_UKS,
-                      VIBEQC_METHOD_PBE_UKS}) {
-        const bool uks = ks == VIBEQC_METHOD_LDA_UKS || ks == VIBEQC_METHOD_PBE_UKS;
+      for (auto ks : {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
+                      VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS}) {
+        const bool uks = ks == VIBEQC_METHOD_LDA_UKS || ks == VIBEQC_METHOD_PBE_UKS ||
+                         ks == VIBEQC_METHOD_R2SCAN_UKS;
         Fixture cpu_fixture(VIBEQC_BACKEND_CPU_REFERENCE, uks ? 1 : 0, uks ? 2 : 1);
         vibeqc_system* cuda_system = Fixture::create_system(cuda_context, uks ? 1 : 0, uks ? 2 : 1);
         method = lda_method();

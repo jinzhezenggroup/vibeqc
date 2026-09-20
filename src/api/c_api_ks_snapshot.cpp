@@ -8,6 +8,7 @@
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_snapshot.hpp"
+#include "dft/xc.hpp"
 #include "dft/xc_point.hpp"
 #include "integrals/ecp.hpp"
 #include "integrals/ecp_cuda.hpp"
@@ -116,7 +117,7 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
         source.system.atoms.size(),
         source.packed_basis.size(),
         source.weights.size(),
-        identity.model.pbe,
+        identity.model.functional,
         identity.model.scf_domain_version,
         identity.model.owner,
         identity.determinant.solve_epoch,
@@ -236,6 +237,52 @@ vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, con
         output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
   }
   return VIBEQC_STATUS_SUCCESS;
+}
+
+vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t functional, const double* rho,
+                                       const double* gradient, const double* tau,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
+  constexpr std::size_t stride = 11;
+  if (functional > 2 || !rho || !gradient || !tau || !values || point_count == 0 ||
+      point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  try {
+    for (std::size_t point = 0; point < point_count; ++point) {
+      double local_rho[2]{rho[point], rho[point_count + point]};
+      double local_gradient[2][3]{};
+      double local_tau[2]{tau[point], tau[point_count + point]};
+      for (std::size_t spin = 0; spin < 2; ++spin)
+        for (std::size_t axis = 0; axis < 3; ++axis)
+          local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
+      double* output = values + stride * point;
+      if (functional < 2) {
+        const auto xc = vibeqc::dft::point::evaluate(functional == 1, local_rho, local_gradient);
+        if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+        output[0] = xc.energy;
+        output[1] = xc.rho[0];
+        output[2] = xc.rho[1];
+        for (std::size_t spin = 0; spin < 2; ++spin)
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+        output[9] = output[10] = 0.0;
+      } else {
+        const auto xc = vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
+        output[0] = xc.energy;
+        output[1] = xc.rho[0];
+        output[2] = xc.rho[1];
+        for (std::size_t spin = 0; spin < 2; ++spin)
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+        output[9] = xc.kinetic[0];
+        output[10] = xc.kinetic[1];
+      }
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  }
 }
 
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot) { delete snapshot; }
