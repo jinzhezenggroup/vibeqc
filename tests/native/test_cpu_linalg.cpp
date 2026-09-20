@@ -2,6 +2,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 #include "tensor/cpu_linalg.hpp"
@@ -13,6 +14,34 @@ using vibeqc::tensor::CpuLinalgThreadOwnership;
 
 bool close(double a, double b, double tolerance = 1.0e-12) {
   return std::abs(a - b) <= tolerance * std::max({1.0, std::abs(a), std::abs(b)});
+}
+
+bool check_zero_scaling(CpuLinalgProvider provider, CpuLinalgThreadOwnership ownership,
+                        int threads) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  const std::array<double, 4> a{1, 2, 3, 4}, b{5, 6, 7, 8};
+  for (char ta : {'N', 'T'})
+    for (char tb : {'N', 'T'}) {
+      std::array<double, 4> c{poison, poison, poison, poison};
+      vibeqc::tensor::cpu_gemm(ta, tb, 2, 2, 2, a.data(), b.data(), c.data(), 1, 0, plan);
+      for (std::size_t i = 0; i < 2; ++i)
+        for (std::size_t j = 0; j < 2; ++j) {
+          double expected = 0;
+          for (std::size_t p = 0; p < 2; ++p)
+            expected += a[ta == 'T' ? p * 2 + i : i * 2 + p] * b[tb == 'T' ? j * 2 + p : p * 2 + j];
+          if (!std::isfinite(c[i * 2 + j]) || c[i * 2 + j] != expected) return false;
+        }
+    }
+  std::array<double, 4> c{poison, poison, poison, poison}, nan{poison, poison, poison, poison};
+  vibeqc::tensor::cpu_gemm('N', 'N', 2, 2, 0, nullptr, nullptr, c.data(), 1, 0, plan);
+  if (!std::all_of(c.begin(), c.end(), [](double x) { return x == 0; })) return false;
+  c.fill(2);
+  vibeqc::tensor::cpu_gemm('N', 'N', 2, 2, 2, nan.data(), nan.data(), c.data(), 0, 3, plan);
+  if (!std::all_of(c.begin(), c.end(), [](double x) { return x == 6; })) return false;
+  c.fill(poison);
+  vibeqc::tensor::cpu_gemm('N', 'N', 2, 2, 2, nan.data(), nan.data(), c.data(), 0, 0, plan);
+  return std::all_of(c.begin(), c.end(), [](double x) { return x == 0; });
 }
 
 bool check_gemm(CpuLinalgProvider provider,
@@ -35,7 +64,7 @@ bool check_gemm(CpuLinalgProvider provider,
 
   std::array<double, 1> zero_inner{2.0};
   vibeqc::tensor::cpu_gemm('N', 'N', 1, 1, 0, nullptr, nullptr, zero_inner.data(), 1.0, 3.0, plan);
-  return close(zero_inner[0], 6.0);
+  return close(zero_inner[0], 6.0) && check_zero_scaling(provider, ownership, threads);
 }
 
 bool check_cholesky(CpuLinalgProvider provider,
