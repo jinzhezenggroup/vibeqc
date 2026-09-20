@@ -291,6 +291,57 @@ void molecular_endpoints() {
           "rejected coordinates replaced previous warm state");
 }
 
+void range_exchange_provider() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
+  system.shells = {{0, 0, {{0.8, 1.0}}}, {1, 0, {{0.6, 1.0}}}};
+  system.electron_count = 2;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "range Fock fixture failed");
+
+  constexpr double omega = 0.33;
+  const auto full = vibeqc::integrals::build_integrals(system, false, true).eri;
+  const auto lr =
+      vibeqc::integrals::build_range_eri(system, vibeqc::integrals::CoulombRange::Long, omega);
+  const auto sr =
+      vibeqc::integrals::build_range_eri(system, vibeqc::integrals::CoulombRange::Short, omega);
+  require(full.size() == lr.size() && full.size() == sr.size(), "range ERI shape mismatch");
+  for (std::size_t i = 0; i < full.size(); ++i)
+    close(sr[i] + lr[i], full[i], 2e-12, "direct SR+LR identity");
+
+  auto spec = make_hf_fock_spec(FockSpin::Restricted);
+  spec.derivative_order = 0;
+  spec.exchange = {true, -0.23, FockOperator::LongRange, omega, FockApproximation::Exact};
+  const auto resolved = resolve_fock_build(spec, FockBackend::Cpu);
+  PreparedFockPlan prepared(system, nullptr, resolved);
+  const std::vector<double> density{0.8, 0.1, 0.1, 0.6};
+  const auto actual = prepared.build(density);
+  require(actual.coulomb.size() == 4 && actual.exchange_alpha.size() == 4,
+          "range provider lost J/K output");
+
+  auto full_k_spec = spec;
+  full_k_spec.coulomb.present = false;
+  full_k_spec.exchange.op = FockOperator::FullRange;
+  full_k_spec.exchange.omega = 0.0;
+  const auto expected_k =
+      build_exact_direct_jk(resolve_fock_build(full_k_spec, FockBackend::Cpu), 2, lr, density);
+  matrix(actual.exchange_alpha, expected_k.exchange_alpha, "native LR K contraction", 2e-12);
+
+  auto changed = spec;
+  changed.exchange.omega = 0.45;
+  require(!prepared.matches(system, nullptr, resolve_fock_build(changed, FockBackend::Cpu), -1, 0),
+          "changed range omega reused prepared source");
+  PreparedFockPlan changed_plan(system, nullptr, resolve_fock_build(changed, FockBackend::Cpu));
+  const auto changed_k = changed_plan.build(density).exchange_alpha;
+  require(std::abs(changed_k[0] - actual.exchange_alpha[0]) > 1e-8,
+          "changed range omega did not change exchange");
+
+  spec.derivative_order = 1;
+  rejected([&] { (void)resolve_fock_build(spec, FockBackend::Cpu); },
+           "range-separated common Fock force was advertised by value-only slice");
+}
+
 void prepared_identity() {
   vibeqc::core::System system;
   system.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
@@ -335,6 +386,7 @@ int main() {
     combinations();
     preflight();
     molecular_endpoints();
+    range_exchange_provider();
     prepared_identity();
     std::cout << "CPU Fock providers: independent raw matrices, energy, metric response, preflight "
                  "PASS\n";
