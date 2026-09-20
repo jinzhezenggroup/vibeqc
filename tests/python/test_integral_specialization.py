@@ -132,3 +132,41 @@ def test_rys_fock_support_remains_live_after_output_pruning() -> None:
     assert fock_plan.kernel.integral.consumers == frozenset((KernelConsumer.FOCK,))
     assert fock_plan.kernel.integral.recurrence == "subset_wick"
     assert "generated_dpss_rys3_value_axis" in source
+
+
+
+def test_explicit_fock_schedule_does_not_inherit_force_rys_support() -> None:
+    """Keep an explicitly independent Fock policy independent of force Rys."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ddpp"]
+    force_schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    fock_schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=352,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=force_schedule,
+        recurrence="rys4",
+        target=cuda_target_info("sm_120"),
+    )
+
+    source = emit_shell_class_fused_cuda(
+        spec,
+        plan,
+        fock_schedule=fock_schedule,
+    )
+
+    assert "generated_ddpp_rys4_value_axis" not in source

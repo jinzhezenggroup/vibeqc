@@ -1225,6 +1225,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
+        rys_support_integral = None
         if fock_schedule is not None:
             # Force and Fock need not share an execution geometry. In
             # particular, high-component Rys4 force kernels can require a
@@ -1266,6 +1267,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 schedule=fock_schedule,
                 recurrence="subset_wick",
             )
+            rys_support_integral = plan.kernel.integral
         elif (
             plan.kernel.integral.recurrence in ("rys2", "rys3")
             and plan.schedule.kind == ScheduleKind.THREAD_TASKS
@@ -1295,19 +1297,21 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 schedule=fock_schedule,
                 recurrence="subset_wick",
             )
+            rys_support_integral = plan.kernel.integral
         else:
             fock_plan = _specialize_fock_plan(plan)
+            rys_support_integral = plan.kernel.integral
         source += _emit_shell_class_fock_cuda(
             spec,
             fock_plan,
             honor_schedule_block_threads=fock_schedule is not None,
-            rys_support_integral=plan.kernel.integral,
+            rys_support_integral=rys_support_integral,
         )
         if CAPABILITY_MIXED_FOCK in selected_capabilities:
             source += _emit_shell_class_mixed_fock_cuda(
                 spec,
                 fock_plan,
-                rys_support_integral=plan.kernel.integral,
+                rys_support_integral=rys_support_integral,
             )
     pair_unroll = (
         "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"
