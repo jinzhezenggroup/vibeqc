@@ -18,7 +18,10 @@ from tools.vibeqc_cc import PreparedCUDALambda
 from tools.vibeqc_cc.lambda_solver import BoundCCSDLambda
 from tools.vibeqc_cc.triples_cuda import TriplesTileConfig
 from tools.vibeqc_cc.triples_lambda_response import solve_corrected_lambda
-from tools.vibeqc_cc.triples_response import accumulate_tile_triples_vjp
+from tools.vibeqc_cc.triples_response import (
+    TRIPLES_RESPONSE_INPUTS,
+    accumulate_tile_triples_vjp,
+)
 from tools.vibeqc_cc.triples_response_cuda import (
     CudaTriplesResponseTiles,
     solve_corrected_lambda_cuda,
@@ -126,7 +129,7 @@ def test_cuda_reverse_tiles_match_generated_cpu_sources_and_honor_budget(
         chunk=1,
         max_bytes=17 << 20,
     )
-    selected = ("t1", "t2", "eps_o", "eps_v")
+    selected = TRIPLES_RESPONSE_INPUTS
     actual = owner.run_tiles(arrays, inputs=selected)
     expected = accumulate_tile_triples_vjp(
         snapshot.nocc,
@@ -322,7 +325,7 @@ def test_real_cuda_water_triples_response_and_corrected_lambda(
         )
         response = response_owner.run_tiles(
             _triples_arrays(prepared.bound),
-            inputs=("t1", "t2", "eps_o", "eps_v"),
+            inputs=TRIPLES_RESPONSE_INPUTS,
         )
         corrected = solve_corrected_lambda_cuda(
             prepared,
