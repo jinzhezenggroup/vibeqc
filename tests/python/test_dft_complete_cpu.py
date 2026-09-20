@@ -18,6 +18,44 @@ from vibeqc_compiler.dft import NativeAO
 
 ATOMS = [("O", (0.1, -0.1, 0.0)), ("H", (0.1, 0.2, 1.7)), ("H", (1.6, -0.2, -0.5))]
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+GRID_CONVERGENCE_GATES = {
+    "standard": {
+        "energy_hartree": 2e-6,
+        "gradient_hartree_per_bohr": 7e-5,
+        "maximum_dense_point_fraction": 0.35,
+    },
+    "tight": {
+        "energy_hartree": 1e-6,
+        "gradient_hartree_per_bohr": 2e-5,
+        "maximum_dense_point_fraction": 0.75,
+    },
+}
+
+
+def assert_production_grid_convergence(
+    accuracy: str,
+    production_points: int,
+    reference_points: int,
+    energy_error: float,
+    gradient_error: float,
+    record_property: typing.Any,
+) -> None:
+    """Bind promoted profiles to measured accuracy and point-cost envelopes."""
+    gate = GRID_CONVERGENCE_GATES[accuracy]
+    point_fraction = production_points / reference_points
+    record_property("grid_accuracy", accuracy)
+    record_property("production_points", production_points)
+    record_property("independent_reference_points", reference_points)
+    record_property("production_dense_point_fraction", point_fraction)
+    record_property("energy_error_hartree", energy_error)
+    record_property("gradient_error_hartree_per_bohr", gradient_error)
+    record_property("energy_gate_hartree", gate["energy_hartree"])
+    record_property(
+        "gradient_gate_hartree_per_bohr", gate["gradient_hartree_per_bohr"]
+    )
+    assert point_fraction < gate["maximum_dense_point_fraction"]
+    assert energy_error < gate["energy_hartree"]
+    assert gradient_error < gate["gradient_hartree_per_bohr"]
 
 
 def calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
@@ -197,17 +235,14 @@ def test_production_grid_converges_against_independent_dense_quadrature(
         production_points = len(state.grid.points)
         energy_error = abs(energy - reference_energy)
         gradient_error = float(np.max(np.abs(result.gradient - reference_gradient)))
-        record_property("grid_accuracy", accuracy)
-        record_property("production_points", production_points)
-        record_property("independent_reference_points", reference_points)
-        record_property("energy_error_hartree", energy_error)
-        record_property("gradient_error_hartree_per_bohr", gradient_error)
-        assert production_points < reference_points
-        # Initial conservative qualification bounds are tightened to measured
-        # errors after the independent qz CPU campaign below exercises all four
-        # method/profile combinations.
-        assert energy_error < 5e-4
-        assert gradient_error < 5e-3
+        assert_production_grid_convergence(
+            accuracy,
+            production_points,
+            reference_points,
+            energy_error,
+            gradient_error,
+            record_property,
+        )
 
 
 @pytest.mark.parametrize("accuracy", ["standard", "tight"])
@@ -245,14 +280,14 @@ def test_production_grid_open_shell_converges_against_independent_dense_quadratu
         production_points = len(state.grid.points)
         energy_error = abs(energy - reference_energy)
         gradient_error = float(np.max(np.abs(result.gradient - reference_gradient)))
-        record_property("grid_accuracy", accuracy)
-        record_property("production_points", production_points)
-        record_property("independent_reference_points", reference_points)
-        record_property("energy_error_hartree", energy_error)
-        record_property("gradient_error_hartree_per_bohr", gradient_error)
-        assert production_points < reference_points
-        assert energy_error < 5e-4
-        assert gradient_error < 5e-3
+        assert_production_grid_convergence(
+            accuracy,
+            production_points,
+            reference_points,
+            energy_error,
+            gradient_error,
+            record_property,
+        )
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
