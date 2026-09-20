@@ -319,6 +319,14 @@ void prepared_identity() {
   spec.coulomb.approximation = FockApproximation::DensityFitted;
   const auto mixed = resolve_fock_build(spec, FockBackend::Cpu);
   PreparedFockPlan fitted(system, &system, mixed);
+  if (!cpu_materialized_df_derivatives_requested()) {
+    const auto* fused = fitted.cpu_fitted_data();
+    require(fused && fused->raw.metric_derivative.empty() &&
+                fused->raw.three_center_derivative.empty() &&
+                fused->df_gradient_orbital.has_value() &&
+                fused->df_gradient_auxiliary.has_value(),
+            "prepared CPU DF force source materialized coordinate derivative tensors");
+  }
   require(!fitted.matches(system, &changed, mixed, -1, 0), "changed auxiliary basis accepted");
   require(!fitted.matches(system, &system, resolve_fock_build(spec, FockBackend::Cpu, 1e-12, 1e-6),
                           -1, 0),
