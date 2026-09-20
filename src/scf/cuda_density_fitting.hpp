@@ -105,6 +105,19 @@ std::size_t cuda_density_fitting_integral_source_host_peak_bytes(
 std::size_t cuda_density_fitting_integral_source_coordinate_count(
     const CudaDensityFittingIntegralSource* source) noexcept;
 
+/** Cumulative generated three-center value traffic owned by a source. */
+struct CudaDensityFittingSourceCounters {
+  std::uint64_t generated_value_bytes{};
+  std::uint64_t generated_value_tiles{};
+};
+
+CudaDensityFittingSourceCounters cuda_density_fitting_integral_source_counters(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
+/** Generated-value counters for the integral source owned by a prepared J/K plan. */
+CudaDensityFittingSourceCounters cuda_density_fitting_jk_plan_source_counters(
+    const CudaDensityFittingJkPlan* plan) noexcept;
+
 /** Validate the fixed dimensions/device associated with a source handle. */
 bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegralSource* source,
                                                   int device_id, std::size_t batch_size,

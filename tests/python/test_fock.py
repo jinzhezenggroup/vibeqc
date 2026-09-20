@@ -352,18 +352,25 @@ def test_one_electron_execution_variant_identity_is_frozen(monkeypatch):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread")
         with FockPlan(basis, device="cuda") as original:
             before = original.diagnostics
-            assert before["one_electron_value_backend"] == "cuda-generated"
+            backend = before["one_electron_value_backend"]
+            assert backend.startswith("cuda-generated:")
+            assert backend.endswith(":override")
+            provider = backend.split(":")[1]
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp")
             with FockPlan(basis, device="cuda") as generated:
                 assert original.identity == generated.identity
                 assert original.execution_identity != generated.execution_identity
                 assert original.diagnostics == before
-                assert (
-                    generated.diagnostics["one_electron_value_backend"]
-                    == "cuda-generated"
+                expected_mapping = (
+                    "pair-thread" if provider == "cumetal" else "shell-warp"
+                )
+                expected_policy = "fallback" if provider == "cumetal" else "override"
+                assert generated.diagnostics["one_electron_value_backend"] == (
+                    f"cuda-generated:{provider}:{expected_policy}"
                 )
                 assert (
-                    generated.diagnostics["one_electron_value_mapping"] == "shell-warp"
+                    generated.diagnostics["one_electron_value_mapping"]
+                    == expected_mapping
                 )
                 np.testing.assert_allclose(
                     original.evaluate(np.eye(2)).fock,
@@ -386,8 +393,12 @@ def test_retired_value_controls_cannot_restore_handwritten_dispatch(monkeypatch)
         monkeypatch.setenv("VIBEQC_DF_VALUES", "reference")
         with FockPlan(basis, spec, device="cuda") as replay:
             assert replay.execution_identity == original.execution_identity
-            assert replay.diagnostics["one_electron_value_backend"] == "cuda-generated"
-            assert replay.diagnostics["one_electron_value_mapping"] == "shell-warp"
+            backend = replay.diagnostics["one_electron_value_backend"]
+            assert backend.startswith("cuda-generated:")
+            assert backend.endswith(":auto")
+            provider = backend.split(":")[1]
+            expected_mapping = "pair-thread" if provider == "cumetal" else "shell-warp"
+            assert replay.diagnostics["one_electron_value_mapping"] == expected_mapping
             assert replay.diagnostics["df_value_backend"] == "generated_rys"
             assert original.diagnostics == before
             np.testing.assert_array_equal(

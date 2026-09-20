@@ -2,6 +2,8 @@
 
 #include <cuda_runtime_api.h>
 
+#include <atomic>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -43,6 +45,8 @@ struct CudaDensityFittingIntegralSourceImpl {
   std::size_t device_bytes{};
   std::size_t host_bytes{};
   std::size_t host_peak_bytes{};
+  std::atomic<std::uint64_t> generated_value_bytes{0};
+  std::atomic<std::uint64_t> generated_value_tiles{0};
 
   ~CudaDensityFittingIntegralSourceImpl() {
     if (device_id >= 0) (void)cudaSetDevice(device_id);

@@ -604,6 +604,11 @@ class PreparedBatch:
         ) as basis:
             state = StationaryKsState.from_native(self, basis, index=index)
             try:
+                if state._source.hamiltonian == "scalar-semilocal-ecp":
+                    raise NotImplementedError(
+                        "public CUDA DFT forces do not support ECP; "
+                        "use the explicit stationary diagnostic"
+                    )
                 result = complete_rks_cuda_gradient_diagnostic(
                     state,
                     basis,

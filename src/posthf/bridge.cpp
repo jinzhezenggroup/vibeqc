@@ -4,6 +4,7 @@
  */
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -41,6 +42,10 @@ struct PostHfRhfJkPlan {
   std::size_t naux{};
   vibeqc::scf::CudaDensityFittingIntegralSource* source{};
   vibeqc::scf::CudaDensityFittingJkPlan* plan{};
+  std::uint64_t density_h2d_bytes{};
+  std::uint64_t result_d2h_bytes{};
+  std::uint64_t executions{};
+  double endpoint_ms{};
 
   ~PostHfRhfJkPlan() {
     if (plan) vibeqc::scf::destroy_cuda_density_fitting_jk_plan(plan);
@@ -439,6 +444,7 @@ int vibeqc_posthf_rhf_jk_plan_execute_v1(void* plan, const double* density, std:
     if (!prepared || !prepared->plan || !density || !coulomb || !exchange ||
         elements != prepared->nbf * prepared->nbf)
       throw std::invalid_argument("invalid RHF J/K plan execution request");
+    const auto endpoint_begin = std::chrono::steady_clock::now();
     std::vector<double> density_vector(density, density + elements);
     std::vector<double> coulomb_vector;
     std::vector<double> exchange_vector;
@@ -451,6 +457,33 @@ int vibeqc_posthf_rhf_jk_plan_execute_v1(void* plan, const double* density, std:
       throw std::runtime_error("CUDA DF J/K output size mismatch");
     std::copy(coulomb_vector.begin(), coulomb_vector.end(), coulomb);
     std::copy(exchange_vector.begin(), exchange_vector.end(), exchange);
+    prepared->density_h2d_bytes += elements * sizeof(double);
+    prepared->result_d2h_bytes += 2U * elements * sizeof(double);
+    ++prepared->executions;
+    prepared->endpoint_ms +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - endpoint_begin)
+            .count();
+  });
+}
+
+int vibeqc_posthf_rhf_jk_plan_metrics_v1(void* plan, std::uint64_t* counters,
+                                         std::size_t counter_count, double* values,
+                                         std::size_t value_count, char* error, std::size_t size) {
+  return guarded(error, size, [&] {
+    auto* prepared = static_cast<PostHfRhfJkPlan*>(plan);
+    if (!prepared || !prepared->plan || !counters || counter_count < 7 || !values ||
+        value_count < 1)
+      throw std::invalid_argument("invalid RHF J/K plan metrics request");
+    const auto generated =
+        vibeqc::scf::cuda_density_fitting_jk_plan_source_counters(prepared->plan);
+    counters[0] = generated.generated_value_bytes;
+    counters[1] = generated.generated_value_tiles;
+    counters[2] = 0U;  // raw DF D2H
+    counters[3] = 0U;  // raw/derived DF H2D
+    counters[4] = prepared->density_h2d_bytes;
+    counters[5] = prepared->result_d2h_bytes;
+    counters[6] = prepared->executions;
+    values[0] = prepared->endpoint_ms;
   });
 }
 

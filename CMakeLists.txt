@@ -39,6 +39,9 @@ set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
     "Maximum concurrent CUDA compiler jobs in the Ninja job pool")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
     "NVCC split-compile threads for native direct kernels; 1 preserves production code generation")
+set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
+    "CUDA execution provider identity: nvidia or cumetal")
+set_property(CACHE VIBEQC_CUDA_PROVIDER PROPERTY STRINGS nvidia cumetal)
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
     "AOT profile for every target: auto, portable, sm_XX, or a named profile")
 set(VIBEQC_AOT_PROFILES "" CACHE STRING
@@ -96,6 +99,10 @@ if(NOT VIBEQC_AOT_SHARDS MATCHES "^[1-9][0-9]*$")
 endif()
 if(NOT VIBEQC_CUDA_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR "VIBEQC_CUDA_COMPILE_JOBS must be a positive integer")
+endif()
+if(NOT VIBEQC_CUDA_PROVIDER STREQUAL "nvidia"
+   AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+  message(FATAL_ERROR "VIBEQC_CUDA_PROVIDER must be nvidia or cumetal")
 endif()
 if(NOT VIBEQC_AOT_UNIT_MODE STREQUAL "stable-shards"
    AND NOT VIBEQC_AOT_UNIT_MODE STREQUAL "class")
@@ -223,6 +230,11 @@ target_include_directories(vibeqc
 )
 
 target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
+if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+  target_compile_definitions(vibeqc PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=1)
+else()
+  target_compile_definitions(vibeqc PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=0)
+endif()
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
