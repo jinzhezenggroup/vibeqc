@@ -599,10 +599,20 @@ def plan_cuda(
                 else DenseLayout(node.spec.shape, alignment=ALIGNMENT),
             )
         )
+    static_host_bytes = checked_size(
+        sum(
+            step.node.spec.size * step.node.spec.itemsize
+            for step in steps
+            if step.node.op == "constant"
+        )
+        + sum(len(_index_table_values(step.node) or ()) * 8 for step in steps),
+        "static host tensor bytes",
+    )
     host = checked_size(
         sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs)
         + sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs)
-        + (VALIDATION_BYTES if inputs else 0),
+        + (VALIDATION_BYTES if inputs else 0)
+        + static_host_bytes,
         "host tensor bytes",
     )
     needs_blas = any(
