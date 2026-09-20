@@ -21,7 +21,7 @@ EXPECTED_ABI_IDS = {
 }
 
 
-def test_public_method_generated_metadata_is_fresh():
+def test_public_method_generated_metadata_is_fresh() -> None:
     subprocess.run(
         [
             sys.executable,
@@ -33,7 +33,7 @@ def test_public_method_generated_metadata_is_fresh():
     )
 
 
-def test_public_method_abi_ids_are_explicit_and_stable():
+def test_public_method_abi_ids_are_explicit_and_stable() -> None:
     payload = json.loads(
         (ROOT / "methods/public_methods.json").read_text(encoding="utf-8")
     )
@@ -42,11 +42,11 @@ def test_public_method_abi_ids_are_explicit_and_stable():
     assert dict(_generated_methods.METHOD_NAME_TO_ID) == EXPECTED_ABI_IDS
 
 
-def test_public_method_provider_sets_are_generated():
+def test_public_method_provider_sets_are_generated() -> None:
     assert _generated_methods.HF_METHOD_IDS == frozenset({1, 2})
     assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset({6, 7, 8, 9})
 
 
-def test_native_binding_reexports_generated_method_constants():
+def test_native_binding_reexports_generated_method_constants() -> None:
     for symbol, value in _generated_methods.METHOD_CONSTANTS.items():
         assert getattr(_native, symbol) == value
