@@ -95,7 +95,11 @@ def test_switch_state_is_explicit_and_generated_gradient_is_finite_difference() 
 @pytest.mark.parametrize(
     ("before", "after", "cutoffs"),
     [
-        (49.975, 50.1, {"cn_cutoff": 25.0, "pair_cutoff": 50.0, "pair_switch_width": 0.05}),
+        (
+            49.975,
+            50.1,
+            {"cn_cutoff": 25.0, "pair_cutoff": 50.0, "pair_switch_width": 0.05},
+        ),
         (24.9, 25.1, {"cn_cutoff": 25.0, "pair_cutoff": 50.0}),
         (7.9, 8.1, {"pair_cutoff": 10.0, "pair_switch_width": 2.0}),
         (9.9, 10.1, {"pair_cutoff": 10.0}),
@@ -140,8 +144,12 @@ def test_checked_execution_handles_empty_pair_state(
     atomic_numbers: tuple[int, ...],
 ) -> None:
     spec = make_spec(
-        s6=1.0, s8=0.7875, a1=0.4289, a2=4.4407,
-        cn_cutoff=25.0, pair_cutoff=50.0,
+        s6=1.0,
+        s8=0.7875,
+        a1=0.4289,
+        a2=4.4407,
+        cn_cutoff=25.0,
+        pair_cutoff=50.0,
     )
     coordinates = np.zeros((len(atomic_numbers), 3))
     if len(atomic_numbers) == 2:
