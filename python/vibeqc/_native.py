@@ -10,6 +10,10 @@ import ctypes
 import os
 from pathlib import Path
 
+from ._generated_methods import METHOD_CONSTANTS as _METHOD_CONSTANTS
+
+globals().update(_METHOD_CONSTANTS)
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 
 ABI_VERSION = 0
