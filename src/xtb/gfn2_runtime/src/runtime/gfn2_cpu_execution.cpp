@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <limits>
@@ -72,6 +73,9 @@ constexpr std::size_t kMaximumAutomaticCpuThreads = 64u;
 void* host_aligned_allocate(std::size_t alignment, std::size_t size) {
 #if defined(_WIN32)
   return _aligned_malloc(size, alignment);
+#elif defined(__APPLE__)
+  void* ptr = nullptr;
+  return ::posix_memalign(&ptr, alignment, size) == 0 ? ptr : nullptr;
 #else
   return std::aligned_alloc(alignment, size);
 #endif
