@@ -1,7 +1,6 @@
 """Prevent new CUDA files and stale semantic anchors from escaping the ledger."""
 
 import copy
-import json
 import typing
 from pathlib import Path
 

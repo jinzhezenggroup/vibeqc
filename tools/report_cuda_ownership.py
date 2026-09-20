@@ -57,8 +57,7 @@ def load_ledger(path: Path) -> dict[str, typing.Any]:
         generated_families.append(family)
 
     files = [
-        json.loads(shard.read_text())
-        for shard in sorted(file_dir.rglob("*.json"))
+        json.loads(shard.read_text()) for shard in sorted(file_dir.rglob("*.json"))
     ]
     return {
         **ledger,
@@ -339,9 +338,7 @@ def validate_baseline(baseline: typing.Any) -> None:
 
 def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--ledger", type=Path, default=ROOT / "docs/cuda_ownership"
-    )
+    parser.add_argument("--ledger", type=Path, default=ROOT / "docs/cuda_ownership")
     parser.add_argument("--build", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--output", type=Path)
