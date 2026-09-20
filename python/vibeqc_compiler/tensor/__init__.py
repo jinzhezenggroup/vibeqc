@@ -61,6 +61,15 @@ from .precision import (
     lower_precision,
 )
 from .program import Program
+from .scf import (
+    SCF_TENSOR_VERSION,
+    density_program,
+    diis_extrapolation_program,
+    diis_gram_program,
+    energy_program,
+    fock_composition_program,
+    weighted_density_program,
+)
 from .types import Index, IndexSpace, Symmetry, TensorSpec
 
 __all__ = [
@@ -70,6 +79,7 @@ __all__ = [
     "GENERATION_VERSION",
     "PASSES",
     "PRIMITIVES",
+    "SCF_TENSOR_VERSION",
     "CastBoundary",
     "DenseLayout",
     "DotTestResult",
@@ -94,12 +104,17 @@ __all__ = [
     "cast",
     "conservative_precision_variants",
     "constant",
+    "density_program",
     "describe_precision",
+    "diis_extrapolation_program",
+    "diis_gram_program",
     "divide",
     "dot_test",
     "einsum",
+    "energy_program",
     "execute",
     "exp",
+    "fock_composition_program",
     "gather",
     "input_tensor",
     "jvp",
@@ -118,4 +133,5 @@ __all__ = [
     "transpose",
     "transpose_program",
     "vjp",
+    "weighted_density_program",
 ]
