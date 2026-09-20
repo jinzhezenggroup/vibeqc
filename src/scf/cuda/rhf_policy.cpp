@@ -283,7 +283,7 @@ bool generated_one_electron_derivatives_requested() noexcept {
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
-  if (selection == nullptr) return 1U;
+  if (selection == nullptr) return 3U;
   if (std::strcmp(selection, "serial") == 0 || std::strcmp(selection, "2") == 0) return 2U;
   if (std::strcmp(selection, "nucleus_cooperative") == 0 ||
       std::strcmp(selection, "cooperative") == 0 || std::strcmp(selection, "3") == 0)

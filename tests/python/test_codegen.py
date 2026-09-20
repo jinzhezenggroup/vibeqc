@@ -3614,7 +3614,7 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
-    assert "if (selection == nullptr) return 1U;" in selection
+    assert "if (selection == nullptr) return 3U;" in selection
     assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
     assert "return 3U;" in selection
 
