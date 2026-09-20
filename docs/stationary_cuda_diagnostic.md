@@ -164,7 +164,10 @@ No CPU ECP derivative or contraction fallback exists. The independent CPU ECP
 provider remains available for validation.
 
 This is an explicit dense host export, capped at 16 AOs, 8 atoms, 128 primitives
-and 128 ECP terms. Qualification covers Cartesian s/p LANL2DZ Na / STO-3G H for
+and 128 ECP terms. The two-grid work admission separately caps the number of
+center / unordered-AO-pair / radial-angular samples at 100,000,000 by default
+(`max_ecp_pair_samples`). This count is independent of staging batch size and is
+reported alongside the ordinary primitive/grid counters. Qualification covers Cartesian s/p LANL2DZ Na / STO-3G H for
 LDA/PBE RKS/UKS; these caps do not qualify arbitrary elements or parameter sets.
 The provider runs before the other CUDA gradient owners are allocated; its
 conservative two-grid workspace is admitted separately. Host bounds include the

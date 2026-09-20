@@ -243,6 +243,7 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
                 {"max_device_bytes": 1},
                 {"max_host_bytes": 1},
                 {"max_primitive_records": 1},
+                {"max_ecp_pair_samples": 1},
             ):
                 with pytest.raises(ValueError, match="budget"):
                     diagnostic(state, basis, compiler, **kwargs)
@@ -259,6 +260,29 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
         # Fresh transaction after a late TensorIR failure must recover.
         result = diagnostic(state, basis, compiler)
         assert np.isfinite(result.gradient).all()
+        # Reject the ECP-specific reservations before invoking its provider,
+        # even when the smaller seven-source arenas would fit.
+        with monkeypatch.context() as patch:
+            patch.setattr(NativeKsSnapshot, "ecp_derivatives", forbidden)
+            for kwargs in (
+                {"max_device_bytes": result.work["ecp_provider_workspace_bound"] - 1},
+                {"max_host_bytes": result.work["additional_host_numeric_bound"] - 1},
+            ):
+                with pytest.raises(ValueError, match="ECP.*budget"):
+                    diagnostic(state, basis, compiler, **kwargs)
+        # The exact declared work boundary is admitted; one sample less is not.
+        samples = result.work["ecp_quadrature_pair_samples"]
+        with monkeypatch.context() as patch:
+            patch.setattr(NativeKsSnapshot, "ecp_derivatives", forbidden)
+            with pytest.raises(ValueError, match="ECP.*work budget"):
+                diagnostic(state, basis, compiler, max_ecp_pair_samples=samples - 1)
+            for invalid in (0, -1, True, 1.5):
+                with pytest.raises(ValueError, match="max_ecp_pair_samples"):
+                    diagnostic(state, basis, compiler, max_ecp_pair_samples=invalid)
+        boundary = diagnostic(state, basis, compiler, max_ecp_pair_samples=samples)
+        np.testing.assert_allclose(
+            boundary.gradient, result.gradient, atol=1e-12, rtol=0
+        )
         # Old CUDA wire has no ECP records: preserve its fail-closed guard.
         source = state._source
         metadata, cores, hamiltonian = (
@@ -302,7 +326,8 @@ def test_all_electron_cuda_v3_regression(method, compiler):
         batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 3
-        result = diagnostic(state, basis, compiler)
+        result = diagnostic(state, basis, compiler, max_ecp_pair_samples=1)
+        assert result.work["ecp_quadrature_pair_samples"] == 0
         oracle = (independent_uks_gradient if spin else independent_gradient)(
             basis, state, method
         )

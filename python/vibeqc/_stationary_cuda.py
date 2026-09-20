@@ -300,6 +300,7 @@ def complete_rks_cuda_gradient_diagnostic(
     max_grid_points=1_000_000,
     max_primitive_records=2_000_000,
     max_grid_pair_visits=100_000_000,
+    max_ecp_pair_samples=100_000_000,
 ):
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
@@ -346,6 +347,7 @@ def complete_rks_cuda_gradient_diagnostic(
         (max_grid_points, "max_grid_points", 1 << 40),
         (max_primitive_records, "max_primitive_records", 1 << 40),
         (max_grid_pair_visits, "max_grid_pair_visits", 1 << 40),
+        (max_ecp_pair_samples, "max_ecp_pair_samples", 1 << 40),
     ):
         if type(value) is not int or not 1 <= value <= cap:
             raise ValueError(f"{name} must be an integer in [1,{cap}]")
@@ -425,8 +427,15 @@ def complete_rks_cuda_gradient_diagnostic(
     )
     if host_bound > max_host_bytes:
         raise ValueError("stationary additional-host byte budget exceeded")
-    ecp_workspace = 0
+    ecp_workspace = ecp_pair_samples = 0
     if ecp:
+        from vibeqc_compiler.integral.ecp_policy import (
+            COARSE_POLAR_POINTS,
+            COARSE_RADIAL_POINTS,
+            REFINED_POLAR_POINTS,
+            REFINED_RADIAL_POINTS,
+        )
+
         from .resources_hf import _ecp_workspace
 
         # Dense export/contraction is a deliberately small diagnostic domain.
@@ -437,6 +446,17 @@ def complete_rks_cuda_gradient_diagnostic(
             or len(state._source.ecp_terms) > 128
         ):
             raise ValueError("ECP diagnostic dense-export domain exceeded")
+        ecp_pair_samples = (
+            sum(core > 0 for core in state._source.ecp_cores)
+            * (n * (n + 1) // 2)
+            * 2
+            * (
+                COARSE_RADIAL_POINTS * COARSE_POLAR_POINTS**2
+                + REFINED_RADIAL_POINTS * REFINED_POLAR_POINTS**2
+            )
+        )
+        if ecp_pair_samples > max_ecp_pair_samples:
+            raise ValueError("ECP quadrature pair-sample work budget exceeded")
         ecp_workspace = _ecp_workspace(
             {
                 "atoms": na,
@@ -562,7 +582,7 @@ def complete_rks_cuda_gradient_diagnostic(
                             _SOURCE_NAMES.index(source), operator, indices, weight
                         )
                         if source == "one_electron":
-                            for a, atom in enumerate(basis.atoms):
+                            for a in range(na):
                                 sources.integral(
                                     0,
                                     "nuclear_attraction",
@@ -633,8 +653,15 @@ def complete_rks_cuda_gradient_diagnostic(
     work.update(
         ecp_provider="generated-cuda/two-grid/dense-host-export" if ecp else None,
         ecp_provider_workspace_bound=ecp_workspace,
+        ecp_state_export=(
+            "one additional live final-state read/validation before CUDA ECP export"
+            if ecp
+            else None
+        ),
         ecp_derivative_export_bytes=derivatives.nbytes if ecp else 0,
         ecp_ordered_pairs=2 * n * n if ecp else 0,
+        ecp_quadrature_pair_samples=ecp_pair_samples,
+        ecp_pair_sample_budget=max_ecp_pair_samples,
         ordered_pairs=n * n,
         ordered_quartets=n**4,
         additional_device_peak_bound=peak,
