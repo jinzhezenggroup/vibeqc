@@ -280,7 +280,9 @@ def finite_difference(
     }
 
 
-def validate(name: str, *, include_finite_difference: bool = True) -> dict[str, typing.Any]:
+def validate(
+    name: str, *, include_finite_difference: bool = True
+) -> dict[str, typing.Any]:
     record = dict(analytic_oracle(name))
     analytic = record["analytic"]
     gradient = np.asarray(analytic["gradient"])

@@ -51,7 +51,9 @@ def test_pinned_pyscf_ccsdt_oracle_has_nontrivial_triples_force(name: str) -> No
     }
 
 
-def test_complete_ccsdt_energy_matches_three_step_reconverged_finite_difference() -> None:
+def test_complete_ccsdt_energy_matches_three_step_reconverged_finite_difference() -> (
+    None
+):
     fd = finite_difference("h2o")
     assert tuple(point["step_bohr"] for point in fd["points"]) == FD_STEPS
     assert fd["fresh_displaced_geometries"] == 2 * len(FD_STEPS)
