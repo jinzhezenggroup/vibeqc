@@ -3816,7 +3816,6 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "cudaErrorNotSupported" in mask_source
 
 
-
 def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None:
     """Compile generated ssss for A/B while retaining the tuned native default."""
 
@@ -3856,6 +3855,7 @@ def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None
     assert "plan.generated_ssss_force ? 0U" in driver
     assert "std::uint64_t{1} << kSsssShellClass" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
+
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
     None
