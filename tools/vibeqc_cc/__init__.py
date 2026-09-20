@@ -39,6 +39,7 @@ from .complete_gradient import (
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts, build_program
 from .evaluate import evaluate
+from .lambda_cuda import PreparedCUDALambda
 from .lambda_equations import (
     CCSDLambdaPrograms,
     build_lambda_programs,
@@ -88,6 +89,7 @@ __all__ = [
     "CudaTriplesTiles",
     "LambdaOptions",
     "PreparedCCSD",
+    "PreparedCUDALambda",
     "PreparedRCCSDTBatch",
     "PreparedResidentCCSD",
     "RCCSDResult",
