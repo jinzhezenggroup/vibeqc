@@ -552,19 +552,27 @@ extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const 
     auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
     std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
     if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    bool uploading = false;
     try {{
         ctx.check_device();
+        if (ctx.static_ready)
+            throw std::runtime_error("tensor static data is already initialized");
         if (bytes_count != {external_static_bytes}ULL)
             throw std::runtime_error("tensor static-data size mismatch");
         if (bytes_count && !data)
             throw std::runtime_error("null tensor static-data payload");
         const auto* bytes = static_cast<const unsigned char*>(data);
-        ctx.static_ready = false;
+        uploading = true;
         {external_copies}
         cuda_check(cudaStreamSynchronize(ctx.stream));
         ctx.static_ready = true;
         return 0;
-    }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
+    }} catch (const std::exception& e) {{
+        // A queued copy still borrows data even if a later submission failed.
+        // Drain before the caller can release the bounded host payload.
+        if (uploading) cudaStreamSynchronize(ctx.stream);
+        error_text(error, size, e.what()); return 1;
+    }}
 }}
 """
     parts.append(f"""

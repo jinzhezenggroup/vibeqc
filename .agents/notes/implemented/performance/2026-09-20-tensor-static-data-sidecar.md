@@ -48,3 +48,16 @@ is claimed from source-size reduction alone.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Initialization lifetime repair
+
+The preparation-only initializer must not rewrite immutable data after success:
+resident output leases and captured execution identities do not carry an epoch
+for such a mutation. A second initialization is therefore rejected before any
+copy, retaining the valid original state. A partial upload failure drains the
+stream before returning so queued transfers cannot outlive their borrowed host
+payload. The unready state permits an explicit clean retry. Host-compiled tests
+of the actual emitted ABI inject a second-copy failure and verify this ordering;
+they use explicit transfer stubs and are not device-numerical evidence.
+
+Review update: Agent ChatGPT; Model GPT-6 Astra Pro.
