@@ -50,6 +50,10 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     for scientific in (
         "__global__ void density_product",
         "__global__ void density_features",
+        "struct DevicePointValue",
+        "__device__ inline DevicePointValue response_point",
+        "__device__ inline DevicePointValue evaluate_semilocal_point",
+        "__global__ void evaluate_points",
         "__global__ void assemble_potential",
         "__global__ void accumulate_totals",
     ):
@@ -64,6 +68,10 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     for retired in (
         "__global__ void density_product",
         "__global__ void density_features",
+        "struct DevicePointValue",
+        "__device__ inline DevicePointValue response_point",
+        "__device__ inline DevicePointValue evaluate_semilocal_point",
+        "__global__ void evaluate_points",
         "__global__ void assemble_potential",
         "__global__ void accumulate_totals",
     ):
