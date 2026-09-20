@@ -205,7 +205,9 @@ def test_prepared_xc_builds_profile_workload_from_actual_scientific_state(
         assert density.functional == "PBE"
         assert density.functional_identity == prepared.program.spec.identity
         assert density.ingredients == ("rho", "gradient", "sigma")
-        assert density.jet_outputs == ((0, 0, 0), (0, 0, 1), (0, 1, 0), (1, 0, 0))
+        # Preserve the compiler's canonical value/x/y/z jet ordering in the
+        # profile identity rather than normalizing the same domain differently.
+        assert density.jet_outputs == ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
         assert density.grid_identity == grid.identity
         assert density.screening_identity is None
         assert density.observable == "potential"
