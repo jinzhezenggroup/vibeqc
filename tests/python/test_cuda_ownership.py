@@ -74,6 +74,14 @@ def ledger_for(tmp_path: typing.Any) -> typing.Any:
     }
 
 
+def test_load_ledger_accepts_legacy_monolith(tmp_path: typing.Any) -> None:
+    """Keep historical benchmark/reproduction ledgers usable by explicit path."""
+    ledger = ledger_for(tmp_path)
+    path = tmp_path / "legacy-cuda-ownership.json"
+    path.write_text(json.dumps(ledger))
+    assert load_ledger(path) == ledger
+
+
 def test_complete_inventory_and_stale_region_fail_closed(
     tmp_path: typing.Any,
 ) -> None:
