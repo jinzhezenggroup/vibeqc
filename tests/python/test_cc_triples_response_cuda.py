@@ -325,6 +325,27 @@ def test_real_cuda_water_triples_response_and_corrected_lambda(
         _triples_arrays(cpu_bound),
         inputs=TRIPLES_RESPONSE_INPUTS,
     )
+    # Compare every actual device response block, not only the t1/t2 blocks
+    # consumed by corrected Lambda or a nonzero-denominator sanity check.
+    arrays = _triples_arrays(cpu_bound)
+    expected_sources = accumulate_tile_triples_vjp(
+        snapshot.nocc,
+        snapshot.nmo - snapshot.nocc,
+        arrays["ovvv"],
+        arrays["ovoo"],
+        arrays["ovov"],
+        arrays["fov"],
+        arrays["t1"],
+        arrays["t2"],
+        arrays["eps_o"],
+        arrays["eps_v"],
+        vir_chunk_size=1,
+        inputs=TRIPLES_RESPONSE_INPUTS,
+    )
+    for name in TRIPLES_RESPONSE_INPUTS:
+        np.testing.assert_allclose(
+            response.sources[name], expected_sources[name], atol=2e-10, rtol=2e-10
+        )
     # Do not overlap the reverse-tile arena with the persistent Lambda owner.
     with PreparedCUDALambda(
         snapshot,
