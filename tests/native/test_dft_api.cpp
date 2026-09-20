@@ -430,11 +430,10 @@ int main() {
       require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
                   result.converged == 1 && result.density_rms < 1.0e-9,
               "UKS singlet execution failed");
-      const double expected = spin_method == VIBEQC_METHOD_LDA_UKS
-                                  ? -1.121017859421488
-                                  : (spin_method == VIBEQC_METHOD_PBE_UKS
-                                         ? -1.1520643753396715
-                                         : r2scan_rks_energy);
+      const double expected =
+          spin_method == VIBEQC_METHOD_LDA_UKS
+              ? -1.121017859421488
+              : (spin_method == VIBEQC_METHOD_PBE_UKS ? -1.1520643753396715 : r2scan_rks_energy);
       require(std::abs(result.energy - expected) < 2.0e-12,
               "equal-spin UKS and RKS energies disagree");
       result.forces = forces.data();
