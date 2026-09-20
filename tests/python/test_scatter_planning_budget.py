@@ -9,10 +9,11 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    batch_schedule,
+    cuda_plan,
     input_tensor,
     scatter_add,
 )
-from vibeqc_compiler.tensor import batch_schedule, cuda_plan
 from vibeqc_compiler.tensor.batch_schedule import index_table_values
 
 
@@ -26,13 +27,15 @@ def _scatter_program(targets: int) -> Program:
 @pytest.mark.parametrize("targets", [128, 2**40])
 def test_planning_rejects_without_constructing_index_payload(targets: int) -> None:
     program = _scatter_program(targets)
-    with patch.object(
-        batch_schedule,
-        "scatter_add_inverted_table",
-        side_effect=AssertionError("payload constructed during planning"),
+    with (
+        patch.object(
+            batch_schedule,
+            "scatter_add_inverted_table",
+            side_effect=AssertionError("payload constructed during planning"),
+        ),
+        pytest.raises(ValueError, match="budget"),
     ):
-        with pytest.raises(ValueError, match="budget"):
-            cuda_plan.plan_cuda(program, cuda_target_info("sm_80"), max_bytes=256)
+        cuda_plan.plan_cuda(program, cuda_target_info("sm_80"), max_bytes=256)
 
 
 def test_exact_bound_and_metrics_do_not_rebuild_payload() -> None:
