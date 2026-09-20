@@ -131,6 +131,42 @@ void provider_and_reference() {
   const auto plan = provider.plan({2, 2, 2, 2});
   require(plan.allocation_bytes == 0 && plan.device_bytes == 0,
           "CPU provider must not claim GPU allocations");
+
+  const vibeqc::posthf::MOSlots second_slots{{{0, 1}, {1, 0}, {0, 1}, {1, 0}}};
+  vibeqc::posthf::ProviderWork sequential_work, batched_work;
+  const auto sequential_first = provider.get(slots, false, 0, nullptr, &sequential_work);
+  const auto sequential_second = provider.get(second_slots, false, 0, nullptr, &sequential_work);
+  const auto batched = provider.get_many({slots, second_slots}, false, 0, nullptr, &batched_work);
+  require(batched.size() == 2, "native MO batch output count");
+  for (std::size_t q = 0; q < sequential_first.size(); ++q)
+    require(std::abs(batched[0][q] - sequential_first[q]) < 1e-12,
+            "native MO batch first block changed values");
+  for (std::size_t q = 0; q < sequential_second.size(); ++q)
+    require(std::abs(batched[1][q] - sequential_second[q]) < 1e-12,
+            "native MO batch second block changed values");
+  require(batched_work.mo_blocks == sequential_work.mo_blocks && batched_work.mo_blocks == 2,
+          "native MO batch work did not count transformed blocks");
+  require(2 * batched_work.source_reads == sequential_work.source_reads,
+          "native MO batch did not reuse AO source reads");
+  require(2 * batched_work.source_values == sequential_work.source_values,
+          "native MO batch did not reuse AO source values");
+  require(batched_work.transform_fmas == sequential_work.transform_fmas,
+          "native MO batch changed AO-to-MO transform work");
+
+  const std::array<std::size_t, 4> batch_shape{2, 2, 2, 2};
+  require(provider.batch_capacity(batch_shape) >= 2,
+          "native MO batch capacity is unexpectedly one");
+  const auto single_request_bytes = provider.batch_bytes(batch_shape, 1);
+  vibeqc::posthf::NativeBlockProvider tight_provider(source, ref, single_request_bytes, 1);
+  require(tight_provider.batch_capacity(batch_shape) == 1,
+          "native MO batch capacity ignored the memory budget");
+  bool batch_rejected = false;
+  try {
+    (void)tight_provider.get_many({slots, second_slots});
+  } catch (const std::length_error&) {
+    batch_rejected = true;
+  }
+  require(batch_rejected, "native MO batch exceeded the memory budget");
   bool overflow = false;
   try {
     vibeqc::posthf::numeric_block_plan(1, 0, 0, {SIZE_MAX, 2, 2, 2}, {1, 1, 1, 1}, false);
@@ -148,6 +184,29 @@ void provider_and_reference() {
   const auto with_eri = vibeqc::posthf::rhf_reference_capacity(spherical, 8, true);
   require(with_eri - without_eri >= 8 * (2 * cart * cart * cart * cart + n * n * n * n),
           "CPU reference budget omitted simultaneous Cartesian/spherical tensors");
+}
+
+void conventional_energy_reuses_ao_scans() {
+  const auto system = h2();
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "batched MP2 energy reference");
+  vibeqc::posthf::RawSource source(system);
+  const auto energy =
+      vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
+  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2,
+          "batched MP2 energy request count");
+  std::size_t full_ao_values = 1;
+  for (unsigned k = 0; k < 4; ++k) full_ao_values *= hf.reference->nbf;
+  require(energy.provider_work.source_values == full_ao_values,
+          "batched MP2 energy rescanned the AO tensor");
+  require(energy.provider_work.source_reads == full_ao_values,
+          "batched MP2 energy source-read count changed unexpectedly");
 }
 
 void shell_local_weighted_eri_derivative() {
@@ -337,6 +396,7 @@ int main() {
   try {
     generated_equations();
     provider_and_reference();
+    conventional_energy_reuses_ao_scans();
     shell_local_weighted_eri_derivative();
     cuda_shell_derivative_stub_is_transactional();
     streamed_one_electron_derivative();

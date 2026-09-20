@@ -8,6 +8,7 @@ struct Energy {
   std::size_t numeric_capacity_bytes{}, tiles{};
   const char* equation_hash{};
   vibeqc_tensor::Metrics metrics;
+  posthf::ProviderWork provider_work;
   std::size_t mo_transfer_bytes{};
 };
 Energy conventional_energy(const scf::PhysicalReference& reference, const posthf::RawSource& source,
