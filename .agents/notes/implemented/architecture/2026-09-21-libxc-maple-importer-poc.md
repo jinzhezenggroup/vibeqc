@@ -131,3 +131,34 @@ The PR remains an experimental Draft pending its final integration and review.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Review correction: lexical comments and intrinsic binding
+
+Statement whitespace normalization previously flattened a Maple line comment and
+its following source line before Python AST parsing. The accepted expression
+`x # comment` followed by `+ 1` consequently lowered to `x`, silently changing the
+formula. Comment removal now precedes statement normalization and preserves line
+boundaries, nested block comments and unescaped-backslash comment continuation.
+Quoted source is preserved for the existing grammar to accept or reject; unmatched
+block delimiters fail explicitly. The source hash still covers the original bytes.
+
+Compiler-intrinsic definition names are now reserved. Previously an assignment to
+`X2S` was accepted but ignored in favor of the hard-coded intrinsic. Until rebinding
+is separately qualified, explicit rejection is safer than accepting another
+scientific definition and executing the built-in one. Existing local parameter
+binding and the pinned PBE branch are unchanged.
+
+Fifteen regression cases failed before repair; the combined comments, parser,
+importer and existing XC expression selection passes all 141 cases afterward.
+A separate 128-point spin-polarized oracle test compiles the actual ScalarCEmitter
+output into a shared library and compares both that executable and the interpreted
+imported DAG against PySCF/Libxc 7.0.0 PBE exchange energy and every first feature
+partial. It passes without a GPU or production runtime. Compiler structure checks
+cover 255 modules with zero dependency errors. These are bounded importer checks,
+not a production XC source switch or arbitrary Maple qualification.
+
+Comment semantics: Maplesoft Maple Help, `comment` (single-line and nested
+multi-line comments). Existing numerical thresholds are unchanged.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

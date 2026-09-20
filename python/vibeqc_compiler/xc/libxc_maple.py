@@ -32,7 +32,9 @@ class MapleImportError(ValueError):
 
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
-_COMMENT = re.compile(r"\(\*.*?\*\)", re.DOTALL)
+_RESERVED = frozenset(
+    ("Pi", "X2S", "gga_exchange", "sqrt", "exp", "log", "log1p", "expm1")
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,17 +83,70 @@ class MapleModule:
         return evaluator.call(name, arguments)
 
 
+def _strip_comments(source: str) -> str:
+    """Preserve line boundaries while removing Maple line/nested block comments."""
+    output: list[str] = []
+    offset = 0
+    depth = 0
+    quote: str | None = None
+    while offset < len(source):
+        char = source[offset]
+        pair = source[offset : offset + 2]
+        if depth:
+            if pair in ("(*", "*)"):
+                depth += 1 if pair == "(*" else -1
+                offset += 2
+                continue
+            if char == "\n":
+                output.append(char)
+        elif quote is not None:
+            output.append(char)
+            if char == "\\" and offset + 1 < len(source):
+                offset += 1
+                output.append(source[offset])
+            elif char == quote:
+                quote = None
+        elif pair == "(*":
+            output.append(" ")
+            depth = 1
+            offset += 2
+            continue
+        elif pair == "*)":
+            raise MapleImportError("unmatched block comment terminator")
+        elif char == "#":
+            while True:
+                end = source.find("\n", offset)
+                if end < 0:
+                    offset = len(source)
+                    break
+                line = source[offset:end]
+                backslashes = len(line) - len(line.rstrip("\\"))
+                output.append("\n")
+                offset = end + 1
+                if backslashes % 2 == 0:
+                    break
+            continue
+        else:
+            output.append(char)
+            if char in ("'", '"', "`"):
+                quote = char
+        offset += 1
+    if depth:
+        raise MapleImportError("unterminated block comment")
+    return "".join(output)
+
+
 def _preprocess(source: str, defines: frozenset[str]) -> str:
     """Select a deterministic subset of Libxc's simple conditional directives."""
 
-    source = _COMMENT.sub("", source)
+    source = _strip_comments(source)
     active = True
     stack: list[tuple[bool, bool, bool]] = []
     output: list[str] = []
     for raw_line in source.splitlines():
         line = raw_line.strip()
 
-        if not line or line.startswith("#"):
+        if not line:
             if active:
                 output.append(raw_line)
             continue
@@ -155,6 +210,10 @@ def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleMod
         name, right = (part.strip() for part in statement.split(":=", 1))
         if not _IDENTIFIER.fullmatch(name):
             raise MapleImportError(f"unsupported Maple definition name {name!r}")
+        if name in _RESERVED:
+            raise MapleImportError(
+                f"reserved Maple intrinsic cannot be redefined: {name!r}"
+            )
         if name in assignments or name in functions:
             raise MapleImportError(f"duplicate Maple definition {name!r}")
         if "->" not in right:
