@@ -147,8 +147,8 @@ class CCSDGradientOptions:
             )
         if type(
             self.one_electron_schedule
-        ) is not int or self.one_electron_schedule not in (0, 1, 2):
-            raise ValueError("one_electron_schedule must be 0, 1 or 2")
+        ) is not int or self.one_electron_schedule not in (0, 1, 2, 3):
+            raise ValueError("one_electron_schedule must be 0, 1, 2 or 3")
         if self.eri_weight_mode not in ("dense", "shell"):
             raise ValueError("eri_weight_mode must be 'dense' or 'shell'")
         if self.derivative_backend == "cpu" and self.eri_weight_mode != "dense":

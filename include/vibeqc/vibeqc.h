@@ -811,7 +811,8 @@ typedef struct vibeqc_one_electron_gradient_resources {
  * Off-diagonal ownership combines W_ij+W_ji, including nonsymmetric weights.
  * Output is a 3*Natom energy gradient in atom/xyz order; nuclear repulsion is
  * excluded. schedule=0 selects AO threads, 1 shell-pair warps, 2 serial per-system
- * diagnostics. maximum_bytes independently bounds numeric host/device staging.
+ * diagnostics, and 3 AO-pair warps with lanes owning nuclear centers. maximum_bytes
+ * independently bounds numeric host/device staging.
  * A CUDA context is required; failures do not silently fall back to CPU.
  * Optional resources must carry the current struct_size/abi_version.
  */

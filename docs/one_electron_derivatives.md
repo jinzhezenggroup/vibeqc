@@ -12,6 +12,7 @@ VIBEQC_ONE_ELECTRON_DERIVATIVES=reference your-command
 
 # Generated diagnostic schedules.
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=thread your-command
+VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=nucleus_cooperative your-command
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial your-command
 ```
 
@@ -19,9 +20,11 @@ The retained `reference` route uses the cooperative native force consumer (or
 the previous DF derivative-tensor route where applicable). The old scalar
 native force family and `VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
 `thread` owns triangular AO pairs by thread; `shell_warp` assigns a shell
-pair to a warp whose lanes own AO components; `serial` is a deterministic
-diagnostic mapping with one owner per system. None of these switches changes
-the value implementation selected by `VIBEQC_ONE_ELECTRON_VALUES`.
+pair to a warp whose lanes own AO components; `nucleus_cooperative` assigns an
+AO pair to a warp whose lanes own one nuclear center per tile and share the
+primitive-pair geometry; `serial` is a deterministic diagnostic mapping with
+one owner per system. None of these switches changes the value implementation
+selected by `VIBEQC_ONE_ELECTRON_VALUES`.
 
 ## Mathematical and weight contract
 
