@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <mutex>
+#include <numeric>
 #include <stdexcept>
 
 #ifndef VIBEQC_HAS_OPENBLAS
@@ -80,6 +81,65 @@ int scalar_cholesky_lower(double* matrix, std::size_t n) {
   return 0;
 }
 
+CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::size_t n) {
+  std::vector<double> vectors(matrix.size(), 0.0);
+  for (std::size_t item = 0; item < n; ++item) vectors[item * n + item] = 1.0;
+  constexpr std::size_t maximum_sweeps = 100;
+  bool converged = n == 1;
+  for (std::size_t sweep = 0; sweep < maximum_sweeps && !converged; ++sweep) {
+    double matrix_scale = 0.0;
+    for (double value : matrix) matrix_scale = std::max(matrix_scale, std::abs(value));
+    if (matrix_scale == 0.0) {
+      converged = true;
+      break;
+    }
+    const double tolerance = 1.0e-14 * matrix_scale;
+    for (std::size_t p = 0; p < n; ++p) {
+      for (std::size_t q = p + 1; q < n; ++q) {
+        const double apq = matrix[p * n + q];
+        if (std::abs(apq) <= tolerance) continue;
+        const double app = matrix[p * n + p], aqq = matrix[q * n + q];
+        const double angle = 0.5 * std::atan2(2.0 * apq, aqq - app);
+        const double cosine = std::cos(angle), sine = std::sin(angle);
+        for (std::size_t k = 0; k < n; ++k) {
+          if (k == p || k == q) continue;
+          const double mkp = matrix[k * n + p], mkq = matrix[k * n + q];
+          matrix[k * n + p] = matrix[p * n + k] = cosine * mkp - sine * mkq;
+          matrix[k * n + q] = matrix[q * n + k] = sine * mkp + cosine * mkq;
+        }
+        matrix[p * n + p] = cosine * cosine * app - 2.0 * sine * cosine * apq + sine * sine * aqq;
+        matrix[q * n + q] = sine * sine * app + 2.0 * sine * cosine * apq + cosine * cosine * aqq;
+        matrix[p * n + q] = matrix[q * n + p] = 0.0;
+        for (std::size_t row = 0; row < n; ++row) {
+          const double vkp = vectors[row * n + p], vkq = vectors[row * n + q];
+          vectors[row * n + p] = cosine * vkp - sine * vkq;
+          vectors[row * n + q] = sine * vkp + cosine * vkq;
+        }
+      }
+    }
+    double largest_off_diagonal = 0.0;
+    for (std::size_t row = 0; row < n; ++row)
+      for (std::size_t column = row + 1; column < n; ++column)
+        largest_off_diagonal = std::max(largest_off_diagonal, std::abs(matrix[row * n + column]));
+    converged = largest_off_diagonal <= tolerance;
+  }
+  if (!converged) throw std::runtime_error("CPU symmetric eigensolver did not converge");
+  std::vector<std::size_t> order(n);
+  std::iota(order.begin(), order.end(), 0);
+  std::sort(order.begin(), order.end(),
+            [&](std::size_t a, std::size_t b) { return matrix[a * n + a] < matrix[b * n + b]; });
+  CpuSymmetricEigenResult result;
+  result.values.resize(n);
+  result.vectors.resize(matrix.size());
+  for (std::size_t column = 0; column < n; ++column) {
+    const std::size_t source = order[column];
+    result.values[column] = matrix[source * n + source];
+    for (std::size_t row = 0; row < n; ++row)
+      result.vectors[row * n + column] = vectors[row * n + source];
+  }
+  return result;
+}
+
 #if VIBEQC_HAS_OPENBLAS
 [[maybe_unused]] void openblas_set_local_threads(int threads) {
 #if VIBEQC_OPENBLAS_HAS_LOCAL_THREADS
@@ -147,8 +207,10 @@ class OpenBlasThreadGuard {
           "OpenBLAS build lacks thread-local control; use provider-parallel ownership");
     global_lock_ = std::unique_lock<std::mutex>(openblas_global_thread_mutex());
     previous_ = openblas_get_global_threads();
-    openblas_set_global_threads(plan.provider_threads);
-    global_ = true;
+    if (previous_ != plan.provider_threads) {
+      openblas_set_global_threads(plan.provider_threads);
+      global_changed_ = true;
+    }
 #else
     (void)plan;
     throw std::runtime_error("OpenBLAS provider lacks runtime thread control");
@@ -158,13 +220,13 @@ class OpenBlasThreadGuard {
   OpenBlasThreadGuard& operator=(const OpenBlasThreadGuard&) = delete;
   ~OpenBlasThreadGuard() {
     if (local_) openblas_set_local_threads(previous_);
-    if (global_) openblas_set_global_threads(previous_);
+    if (global_changed_) openblas_set_global_threads(previous_);
   }
 
  private:
   int previous_{1};
   bool local_{};
-  bool global_{};
+  bool global_changed_{};
   std::unique_lock<std::mutex> global_lock_;
 };
 
@@ -200,6 +262,33 @@ int openblas_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& 
   return static_cast<int>(
       LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', static_cast<int>(n), matrix, static_cast<int>(n)));
 #endif
+#else
+  (void)matrix;
+  (void)n;
+  (void)plan;
+  throw std::runtime_error("OpenBLAS provider was built without LAPACKE");
+#endif
+}
+
+CpuSymmetricEigenResult openblas_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                                 const CpuLinalgPlan& plan) {
+#if VIBEQC_OPENBLAS_HAS_LAPACKE
+  if (n > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    throw std::length_error("OpenBLAS eigensolver dimension exceeds int range");
+  std::vector<double> values(n);
+  OpenBlasThreadGuard guard(plan);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  const int info =
+      static_cast<int>(scipy_LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'V', 'L', static_cast<int>(n),
+                                            matrix.data(), static_cast<int>(n), values.data()));
+#else
+  const int info =
+      static_cast<int>(LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'V', 'L', static_cast<int>(n),
+                                      matrix.data(), static_cast<int>(n), values.data()));
+#endif
+  if (info < 0) throw std::invalid_argument("OpenBLAS symmetric eigensolver rejected an argument");
+  if (info > 0) throw std::runtime_error("OpenBLAS symmetric eigensolver did not converge");
+  return {std::move(values), std::move(matrix)};
 #else
   (void)matrix;
   (void)n;
@@ -310,6 +399,22 @@ int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan)
   (void)resolve_cpu_linalg_provider(plan, true);
 #endif
   return scalar_cholesky_lower(matrix, n);
+}
+
+CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                            const CpuLinalgPlan& plan) {
+  validate_plan(plan);
+  if (!n || n > std::numeric_limits<std::size_t>::max() / n || matrix.size() != n * n)
+    throw std::invalid_argument("CPU symmetric eigensolver dimensions are inconsistent");
+  if (!std::all_of(matrix.begin(), matrix.end(), [](double x) { return std::isfinite(x); }))
+    throw std::invalid_argument("CPU symmetric eigensolver requires finite input");
+#if VIBEQC_HAS_OPENBLAS
+  if (resolve_cpu_linalg_provider(plan, true) == CpuLinalgProvider::openblas)
+    return openblas_symmetric_eigen(std::move(matrix), n, plan);
+#else
+  (void)resolve_cpu_linalg_provider(plan, true);
+#endif
+  return scalar_symmetric_eigen(std::move(matrix), n);
 }
 
 }  // namespace vibeqc::tensor

@@ -12,6 +12,7 @@
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
 #include "scf/df_streamed_k_policy.hpp"
+#include "tensor/cpu_linalg.hpp"
 #include "tensor/symmetric_matrix_function.hpp"
 
 namespace vibeqc::scf {
@@ -19,90 +20,14 @@ namespace {
 
 std::size_t index(std::size_t row, std::size_t column, std::size_t n) { return row * n + column; }
 
-struct EigenResult {
-  std::vector<double> values;
-  std::vector<double> vectors;
-};
+using EigenResult = tensor::CpuSymmetricEigenResult;
 
-// A cyclic Jacobi solve keeps the CPU oracle dependency-free while avoiding
-// the O(n^4) search cost of choosing the largest pivot before every rotation.
-// Production device factorization will use cuSOLVER instead of this routine.
 EigenResult symmetric_eigen(std::vector<double> matrix, std::size_t n) {
-  std::vector<double> vectors(matrix.size(), 0.0);
-  for (std::size_t item = 0; item < n; ++item) {
-    vectors[index(item, item, n)] = 1.0;
-  }
-  constexpr std::size_t maximum_sweeps = 100;
-  bool converged = n == 1;
-  for (std::size_t sweep = 0; sweep < maximum_sweeps && !converged; ++sweep) {
-    double matrix_scale = 0.0;
-    for (double value : matrix) {
-      matrix_scale = std::max(matrix_scale, std::abs(value));
-    }
-    if (matrix_scale == 0.0) {
-      converged = true;
-      break;
-    }
-    const double tolerance = 1.0e-14 * matrix_scale;
-    for (std::size_t p = 0; p < n; ++p) {
-      for (std::size_t q = p + 1; q < n; ++q) {
-        const double apq = matrix[index(p, q, n)];
-        if (std::abs(apq) <= tolerance) continue;
-
-        const double app = matrix[index(p, p, n)];
-        const double aqq = matrix[index(q, q, n)];
-        const double angle = 0.5 * std::atan2(2.0 * apq, aqq - app);
-        const double cosine = std::cos(angle);
-        const double sine = std::sin(angle);
-        for (std::size_t k = 0; k < n; ++k) {
-          if (k == p || k == q) continue;
-          const double mkp = matrix[index(k, p, n)];
-          const double mkq = matrix[index(k, q, n)];
-          matrix[index(k, p, n)] = matrix[index(p, k, n)] = cosine * mkp - sine * mkq;
-          matrix[index(k, q, n)] = matrix[index(q, k, n)] = sine * mkp + cosine * mkq;
-        }
-        matrix[index(p, p, n)] =
-            cosine * cosine * app - 2.0 * sine * cosine * apq + sine * sine * aqq;
-        matrix[index(q, q, n)] =
-            sine * sine * app + 2.0 * sine * cosine * apq + cosine * cosine * aqq;
-        matrix[index(p, q, n)] = matrix[index(q, p, n)] = 0.0;
-        for (std::size_t row = 0; row < n; ++row) {
-          const double vkp = vectors[index(row, p, n)];
-          const double vkq = vectors[index(row, q, n)];
-          vectors[index(row, p, n)] = cosine * vkp - sine * vkq;
-          vectors[index(row, q, n)] = sine * vkp + cosine * vkq;
-        }
-      }
-    }
-    double largest_off_diagonal = 0.0;
-    for (std::size_t row = 0; row < n; ++row) {
-      for (std::size_t column = row + 1; column < n; ++column) {
-        largest_off_diagonal =
-            std::max(largest_off_diagonal, std::abs(matrix[index(row, column, n)]));
-      }
-    }
-    converged = largest_off_diagonal <= tolerance;
-  }
-  if (!converged) {
-    throw std::runtime_error("Coulomb metric eigensolver did not converge");
-  }
-
-  std::vector<std::size_t> order(n);
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
-    return matrix[index(a, a, n)] < matrix[index(b, b, n)];
-  });
-  EigenResult result;
-  result.values.resize(n);
-  result.vectors.resize(matrix.size());
-  for (std::size_t column = 0; column < n; ++column) {
-    const std::size_t source = order[column];
-    result.values[column] = matrix[index(source, source, n)];
-    for (std::size_t row = 0; row < n; ++row) {
-      result.vectors[index(row, column, n)] = vectors[index(row, source, n)];
-    }
-  }
-  return result;
+  // Current endpoint evidence keeps the metric eigensolve on the deterministic
+  // scalar schedule; dense response products below may still use the external provider.
+  const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::scalar,
+                                   tensor::CpuLinalgThreadOwnership::task_parallel, 1};
+  return tensor::cpu_symmetric_eigen(std::move(matrix), n, plan);
 }
 
 bool checked_multiply(std::size_t first, std::size_t second, std::size_t& product) {

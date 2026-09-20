@@ -58,14 +58,14 @@ function(vibeqc_configure_cpu_linalg target)
       set(_global_thread_probe
           "#include <cblas.h>\nint main(){int n=scipy_openblas_get_num_threads();scipy_openblas_set_num_threads(n);return 0;}")
       set(_lapack_probe
-          "#include <lapacke.h>\nint main(){double a[1]={1};return scipy_LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',1,a,1);}")
+          "#include <lapacke.h>\nint main(){double a[1]={1},w[1];int x=scipy_LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',1,a,1);return x+scipy_LAPACKE_dsyevd(LAPACK_ROW_MAJOR,'V','L',1,a,1,w);}")
     else()
       set(_thread_probe
           "#include <cblas.h>\nint main(){return openblas_set_num_threads_local(1);}")
       set(_global_thread_probe
           "#include <cblas.h>\nint main(){int n=openblas_get_num_threads();openblas_set_num_threads(n);return 0;}")
       set(_lapack_probe
-          "#include <lapacke.h>\nint main(){double a[1]={1};return LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',1,a,1);}")
+          "#include <lapacke.h>\nint main(){double a[1]={1},w[1];int x=LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',1,a,1);return x+LAPACKE_dsyevd(LAPACK_ROW_MAJOR,'V','L',1,a,1,w);}")
     endif()
     # Capability results depend on the selected provider, not merely the build
     # directory. Re-probe if callers switch OpenBLAS implementations in place.

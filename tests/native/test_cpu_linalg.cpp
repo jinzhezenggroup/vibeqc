@@ -52,10 +52,30 @@ bool check_cholesky(CpuLinalgProvider provider,
   std::array<double, 4> bad{1, 2, 2, 1};
   return vibeqc::tensor::cpu_cholesky_lower(bad.data(), 2, plan) == 2;
 }
+bool check_eigen(CpuLinalgProvider provider,
+                 CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+                 int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  auto result = vibeqc::tensor::cpu_symmetric_eigen({2.0, 1.0, 1.0, 2.0}, 2, plan);
+  if (result.values.size() != 2 || result.vectors.size() != 4 || !close(result.values[0], 1.0) ||
+      !close(result.values[1], 3.0))
+    return false;
+  for (std::size_t i = 0; i < 2; ++i) {
+    for (std::size_t j = 0; j < 2; ++j) {
+      double reconstructed = 0.0;
+      for (std::size_t k = 0; k < 2; ++k)
+        reconstructed += result.vectors[i * 2 + k] * result.values[k] * result.vectors[j * 2 + k];
+      if (!close(reconstructed, i == j ? 2.0 : 1.0, 2.0e-12)) return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 int main() {
-  if (!check_gemm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar)) {
+  if (!check_gemm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
+      !check_eigen(CpuLinalgProvider::scalar)) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }
@@ -82,8 +102,9 @@ int main() {
       return 4;
     }
     if ((local || global) && vibeqc::tensor::cpu_openblas_lapack_built() &&
-        !check_cholesky(CpuLinalgProvider::openblas, ownership)) {
-      std::cerr << "OpenBLAS Cholesky failed\n";
+        (!check_cholesky(CpuLinalgProvider::openblas, ownership) ||
+         !check_eigen(CpuLinalgProvider::openblas, ownership))) {
+      std::cerr << "OpenBLAS LAPACK provider failed\n";
       return 5;
     }
   }

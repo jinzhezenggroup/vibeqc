@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 namespace vibeqc::tensor {
 
@@ -26,6 +27,11 @@ struct CpuLinalgDiagnostic {
   bool global_thread_control{};
 };
 
+struct CpuSymmetricEigenResult {
+  std::vector<double> values;
+  std::vector<double> vectors;  // row-major matrix, eigenvectors in columns
+};
+
 [[nodiscard]] bool cpu_openblas_built() noexcept;
 [[nodiscard]] bool cpu_openblas_lapack_built() noexcept;
 [[nodiscard]] bool cpu_openblas_local_thread_control_built() noexcept;
@@ -43,6 +49,8 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
  * 0 on success, j>0 when the leading minor of order j is not positive definite.
  */
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan = {});
+[[nodiscard]] CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                                          const CpuLinalgPlan& plan = {});
 
 }  // namespace vibeqc::tensor
 

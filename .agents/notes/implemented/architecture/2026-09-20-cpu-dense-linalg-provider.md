@@ -15,8 +15,10 @@ scientific code to one vendor library and make threading/oversubscription policy
 Introduce `vibeqc::tensor::CpuLinalgPlan` and a native CPU dense-linear-algebra provider
 boundary under `src/tensor`.
 
-The first vertical slice keeps the CMake build default on `scalar` pending matched endpoint
-evidence; `openblas` and discovery-based `auto` are explicit build choices.
+The first vertical slice keeps the CMake build default on `scalar`. A matched endpoint
+promotion audit was performed and **rejected default OpenBLAS promotion**: complete CPU DF
+energy+force endpoints through a 96-dimensional metric did not improve. `openblas` and
+discovery-based `auto` therefore remain explicit build choices.
 
 It provides:
 - row-major FP64 GEMM;
@@ -127,5 +129,54 @@ mode, while automatic task-parallel execution remains conservative.
 - #633
 
 ---
+Agent: ChatGPT
+Model: GPT-5.6 Sol
+
+## Endpoint promotion audit — 2026-09-20
+
+After adding OpenBLAS `dsyevd`, the dense provider was tested on complete CPU
+`Calculator(device="cpu", density_fitting="cpu")` energy+force endpoints. Measurements
+were pinned to CPU 47 with `taskset`; `OPENBLAS_NUM_THREADS=1` and `OMP_NUM_THREADS=1`.
+Slurm isolation was attempted first, but the single-node partition queued the job for
+priority, so the paired fixed-core measurements below are retained as the available
+endpoint evidence.
+
+The first all-OpenBLAS policy regressed the endpoints. Avoiding redundant global
+thread-count set/restore calls reduced but did not remove the regression. Keeping the
+DF metric eigensolve on the scalar schedule while allowing OpenBLAS for matrix-function
+GEMMs still did not beat the scalar endpoint:
+
+| endpoint | metric dimension | scalar median/best | OpenBLAS/mixed | result |
+|---|---:|---:|---:|---:|
+| water/def2-SVP, 5 repeats | 24 | 1.16695 s | 1.17540 s | 0.7% slower |
+| water/def2-TZVP, 3 repeats | 43 | 17.2492 s | 17.6209 s | 2.2% slower |
+| water tetramer/def2-SVP, 1 paired run | 96 | 111.191 s | 112.258 s | 1.0% slower |
+
+All compared endpoints converged in the same number of SCF iterations. The final mixed
+policy restored the scalar eigensolver and produced identical energies for the 24- and
+43-dimensional cases to the printed precision; the 96-dimensional case also matched
+energy and iteration count, with force norms agreeing to ~2e-11 absolute.
+
+The isolated complete metric-factor + inverse-square-root-response consumer does show
+a real dense-LA benefit. With one OpenBLAS thread and the scalar eigensolver retained,
+representative best-of-five measurements were:
+
+| metric dimension | scalar | OpenBLAS GEMM response |
+|---:|---:|---:|
+| 16 | 0.218 ms | 0.212 ms |
+| 32 | 1.576 ms | 1.471 ms |
+| 64 | 8.408 ms | 7.690 ms |
+| 128 | 87.752 ms | 77.827 ms |
+
+Therefore the production/build default remains `scalar`. Explicit OpenBLAS/`auto` builds
+retain the provider, but the matrix-function consumer conservatively avoids the external
+provider below dimension 128. Dimension 128 is an opt-in lower bound supported by local
+consumer evidence, **not** a default-promotion claim; #471 should replace this static bound
+with workload/endpoint-aware tuning before broad activation.
+
+The OpenBLAS `dsyevd` capability is retained behind the provider API, but DF metric
+factorization remains on the scalar eigensolver because the complete endpoint evidence did
+not justify switching it.
+
 Agent: ChatGPT
 Model: GPT-5.6 Sol

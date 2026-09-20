@@ -85,10 +85,17 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
     for (std::size_t j = 0; j < n; ++j)
       symmetric[index(i, j, n)] = 0.5 * response[index(i, j, n)] + 0.5 * response[index(j, i, n)];
 
-  // Dense products use the common CPU provider boundary. The independent
-  // SCF reference linear algebra remains structurally separate.
-  cpu_gemm('N', 'N', n, n, n, symmetric.data(), eigenvectors.data(), temp.data());
-  cpu_gemm('T', 'N', n, n, n, eigenvectors.data(), temp.data(), transformed.data());
+  // Complete endpoint measurements reject external-provider promotion through n=96.
+  // The isolated full metric-response consumer first shows a clear benefit at n=128;
+  // keep this conservative opt-in bound until #471 supplies endpoint-aware tuning.
+  constexpr std::size_t kExternalDenseMinimum = 128;
+  const bool use_external = n >= kExternalDenseMinimum;
+  const CpuLinalgPlan plan{use_external ? CpuLinalgProvider::automatic : CpuLinalgProvider::scalar,
+                           use_external ? CpuLinalgThreadOwnership::provider_parallel
+                                        : CpuLinalgThreadOwnership::task_parallel,
+                           1};
+  cpu_gemm('N', 'N', n, n, n, symmetric.data(), eigenvectors.data(), temp.data(), 1.0, 0.0, plan);
+  cpu_gemm('T', 'N', n, n, n, eigenvectors.data(), temp.data(), transformed.data(), 1.0, 0.0, plan);
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = 0; j < n; ++j)
       transformed[index(i, j, n)] =
@@ -98,8 +105,8 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
   std::fill(temp.begin(), temp.end(), 0.0);
   std::vector<double> result(elements, 0.0);
   // result = Q transformed Q^T.
-  cpu_gemm('N', 'N', n, n, n, eigenvectors.data(), transformed.data(), temp.data());
-  cpu_gemm('N', 'T', n, n, n, temp.data(), eigenvectors.data(), result.data());
+  cpu_gemm('N', 'N', n, n, n, eigenvectors.data(), transformed.data(), temp.data(), 1.0, 0.0, plan);
+  cpu_gemm('N', 'T', n, n, n, temp.data(), eigenvectors.data(), result.data(), 1.0, 0.0, plan);
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = i + 1; j < n; ++j)
       result[index(i, j, n)] = result[index(j, i, n)] =
