@@ -23,6 +23,7 @@ from tools.vibeqc_cc.triples_response_cuda import (
     CudaTriplesResponseTiles,
     solve_corrected_lambda_cuda,
 )
+from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 
 class _Plan:
@@ -252,7 +253,7 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
             source_identity=result.source_identity,
             provenance=result.provenance,
         )
-        with pytest.raises(Exception, match="another CC state"):
+        with pytest.raises(ResponseCompatibilityError, match="another CC state"):
             solve_corrected_lambda_cuda(
                 prepared,
                 baseline,
@@ -270,7 +271,9 @@ _REAL = os.environ.get("VIBEQC_CC_TRIPLES_RESPONSE_CUDA_TEST") == "1"
 def test_real_cuda_water_triples_response_and_corrected_lambda(
     tmp_path: Path,
 ) -> None:
-    assert os.environ.get("SLURM_JOB_ID"), "CUDA triples response qualification requires Slurm"
+    assert os.environ.get("SLURM_JOB_ID"), (
+        "CUDA triples response qualification requires Slurm"
+    )
     snapshot, cc = _cc_state("h2o")
     cpu_bound = BoundCCSDLambda(snapshot, cc)
     cpu_baseline = cpu_bound.solve(reference_identity=snapshot.identity)
