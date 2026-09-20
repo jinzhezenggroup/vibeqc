@@ -188,9 +188,7 @@ def test_batch_schedule_counts_outer_ragged_work() -> None:
     orbital = _index("orbital_outer", "orbital", 5)
     component = _index("component_outer", "component", 2)
     values = input_tensor("values", TensorSpec((orbital, component), role="input"))
-    program = Program(
-        {"out": scatter_add(values, 0, (0, 0, 1, 2, 2), shell)}
-    )
+    program = Program({"out": scatter_add(values, 0, (0, 0, 1, 2, 2), shell)})
     schedule = plan_cuda(program, TARGET).batch_schedule
     scatter = schedule.ragged_steps[0]
     assert scatter.scan_work == 30
