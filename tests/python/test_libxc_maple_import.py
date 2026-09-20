@@ -273,14 +273,18 @@ def test_imported_pbe_c_matches_pinned_independent_libxc_oracle(
         graph, roots, _ = _imported_pbe_c_unpolarized()
         names = ("rho", "sigma", "tau")
 
-    actual = np.asarray(
-        evaluate_array_graph(
-            graph,
-            roots,
-            dict(zip(names, features, strict=True)),
-        ),
-        dtype=float,
+    evaluated = evaluate_array_graph(
+        graph,
+        roots,
+        dict(zip(names, features, strict=True)),
     )
+    # The shared array evaluator deliberately keeps constant roots scalar;
+    # broadcast those exact-zero derivative roots to the fixture lane shape
+    # before stacking the complete E/vxc/fxc contract.
+    actual = np.stack(
+        [np.broadcast_to(value, expected.shape[1:]) for value in evaluated],
+        axis=0,
+    ).astype(float, copy=False)
     report = block_error(
         actual,
         expected,
