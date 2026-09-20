@@ -9,6 +9,7 @@
 
 #include "vibeqc/vibeqc.h"
 
+// clang-format off
 namespace vibeqc::methods::generated {
 
 enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Dft };
@@ -50,5 +51,6 @@ inline constexpr const MethodManifestEntry* find_method(
 }
 
 }  // namespace vibeqc::methods::generated
+// clang-format on
 
 #endif
