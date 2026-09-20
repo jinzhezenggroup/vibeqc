@@ -6,6 +6,7 @@ snapshots. Export is explicit and may transfer the final CUDA matrices.
 """
 
 import ctypes as ct
+import threading
 import typing
 from hashlib import sha256
 from types import MappingProxyType
@@ -321,7 +322,22 @@ class NativeKsSnapshot:
         else:
             self.ecp_cores = (0,) * natom
             self.ecp_terms = ()
-            self.hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
+            # Legacy CUDA v1/v3 do not carry Hamiltonian records. Only the
+            # live native proof may promote them to all-electron; absence of
+            # an ECP suffix alone is insufficient provenance for CPKS.
+            hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
+            proof = getattr(self._library, "vibeqc_ks_snapshot_hamiltonian_v1", None)
+            if self.backend == "cuda" and proof is not None:
+                proof.argtypes = [ct.c_void_p, ct.c_void_p, ct.POINTER(ct.c_uint32)]
+                proof.restype = ct.c_int
+                kind = ct.c_uint32()
+                _native.check(
+                    self._library,
+                    proof(self._batch._batch, self._handle, ct.byref(kind)),
+                )
+                if kind.value == 0:
+                    hamiltonian = "all-electron"
+            self.hamiltonian = hamiltonian
         self.coefficients = (
             tuple(take((3,))) if self.metadata[0] in (6, 7) else (1.0, 1.0, 0.0)
         )
@@ -495,6 +511,14 @@ class NativeKsSnapshot:
             pbe, rho, gradient, delta_rho, delta_gradient, spins=1
         )
 
+    def prepare_cuda_response(
+        self, *, tile_points: int, budget_bytes: int
+    ) -> typing.Any:
+        """Copy this live state's exact sources into a bounded CUDA XC owner."""
+        return _NativeCudaXCPlan(
+            self, tile_points=tile_points, budget_bytes=budget_bytes
+        )
+
     def evaluate_uks_response_points(
         self,
         pbe: bool,
@@ -646,4 +670,163 @@ class NativeKsSnapshot:
 
     def __del__(self) -> None:
         if hasattr(self, "_handle"):
+            self.close()
+
+
+class _NativeCudaXCPlan:
+    """Owned XC arena/stream with native token checks before publication.
+
+    Only density directions and final AO matrices cross the host/device seam.
+    AO values, base/directional features, point derivatives and assembly execute
+    on device. Preparation retains the native reference density once.
+    """
+
+    def __init__(
+        self, snapshot: NativeKsSnapshot, *, tile_points: int, budget_bytes: int
+    ) -> None:
+        self._lock = threading.RLock()
+        self._handle = ct.c_void_p()
+        self.snapshot = snapshot
+        self._library = lib = snapshot._library
+        snapshot.check_current()
+        if snapshot.backend != "cuda" or snapshot.hamiltonian != "all-electron":
+            raise NotImplementedError(
+                "CUDA response requires a proven all-electron CUDA state"
+            )
+        if type(tile_points) is not int or not 0 < tile_points < 2**31:
+            raise ValueError("CUDA response tile_points must be a positive int32")
+        if type(budget_bytes) is not int or not 0 < budget_bytes < 2**64:
+            raise ValueError("CUDA response budget must be a positive uint64")
+        pointer = ct.POINTER(ct.c_double)
+        signatures = {
+            "create": [
+                ct.c_void_p,
+                ct.c_void_p,
+                ct.c_size_t,
+                ct.c_size_t,
+                ct.POINTER(ct.c_void_p),
+            ],
+            "apply": [
+                ct.c_void_p,
+                ct.c_void_p,
+                pointer,
+                ct.c_size_t,
+                pointer,
+                ct.c_size_t,
+            ],
+            "diagnostic": [ct.c_void_p, ct.POINTER(ct.c_uint64), ct.c_size_t],
+            "destroy": [ct.c_void_p],
+        }
+        for name, signature in signatures.items():
+            function = getattr(lib, f"vibeqc_ks_xc_response_{name}_v1")
+            function.argtypes = signature
+            function.restype = None if name == "destroy" else ct.c_int
+        try:
+            self._check(
+                lib.vibeqc_ks_xc_response_create_v1(
+                    snapshot._batch._batch,
+                    snapshot._handle,
+                    tile_points,
+                    budget_bytes,
+                    ct.byref(self._handle),
+                )
+            )
+            self.shape = (
+                snapshot.metadata[2],
+                snapshot.metadata[1],
+                snapshot.metadata[1],
+            )
+            self.identity = canonical_hash(
+                {
+                    "owner": "native-cuda-xc-response/v1",
+                    "state": snapshot._identity.to_payload(),
+                    "tile_points": tile_points,
+                    "device": snapshot.metadata[12],
+                    "device_bytes": self.diagnostics["device_bytes"],
+                }
+            )
+        except BaseException:
+            self.close()
+            raise
+
+    def _check(self, status: int) -> None:
+        if status == 7:
+            raise MemoryError("native CUDA XC response device budget exhausted")
+        _native.check(self._library, status, context=self.snapshot._batch._context)
+
+    def _ensure_open(self) -> None:
+        if not self._handle:
+            raise RuntimeError("native CUDA XC response owner is closed")
+        self.snapshot.check_current()
+
+    @property
+    def diagnostics(self) -> dict:
+        """Actual native arena/transfer counters; no inferred PCIe byte counts."""
+        with self._lock:
+            self._ensure_open()
+            values = (ct.c_uint64 * 12)()
+            self._check(
+                self._library.vibeqc_ks_xc_response_diagnostic_v1(
+                    self._handle, values, 12
+                )
+            )
+            return dict(
+                zip(
+                    (
+                        "device_bytes",
+                        "setup_h2d_bytes",
+                        "action_h2d_bytes",
+                        "d2h_bytes",
+                        "synchronizations",
+                        "enqueues",
+                        "spins",
+                        "nbf",
+                        "grid_points",
+                        "preparation_export_d2h_bytes",
+                        "preparation_export_reads",
+                        "preparation_export_synchronizations",
+                    ),
+                    map(int, values),
+                    strict=True,
+                )
+            )
+
+    def apply(self, direction: typing.Any) -> np.ndarray:
+        """Publish only a complete finite AO response for the still-live state."""
+        raw = np.asarray(direction)
+        if (
+            raw.shape != self.shape
+            or np.iscomplexobj(raw)
+            or not np.isfinite(raw).all()
+        ):
+            raise ValueError("CUDA XC response requires finite real spin AO directions")
+        values = np.array(raw, dtype=np.float64, order="C", copy=True)
+        output = np.empty_like(values)
+        pointer = ct.POINTER(ct.c_double)
+        with self._lock:
+            self._ensure_open()
+            self._check(
+                self._library.vibeqc_ks_xc_response_apply_v1(
+                    self.snapshot._batch._batch,
+                    self._handle,
+                    values.ctypes.data_as(pointer),
+                    values.size,
+                    output.ctypes.data_as(pointer),
+                    output.size,
+                )
+            )
+            self._ensure_open()
+            if not np.isfinite(output).all():
+                raise ArithmeticError("nonfinite CUDA XC response")
+        return immutable(output)
+
+    def close(self) -> None:
+        """Destroy this arena/stream while preserving the borrowed native state."""
+        with self._lock:
+            if self._handle:
+                self._library.vibeqc_ks_xc_response_destroy_v1(self._handle)
+                self._handle = ct.c_void_p()
+
+    def __del__(self) -> None:
+        if hasattr(self, "_lock"):
             self.close()

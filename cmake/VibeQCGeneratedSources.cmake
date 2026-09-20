@@ -53,6 +53,17 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
+  set(VIBEQC_SCF_ARRAY_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_scf_array_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_scf_array_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_array_native.py"
+    OUTPUTS "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
+    COMMENT "Generating Array frontend SCF CPU tensor helpers")
+
   file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
   set(VIBEQC_RCCSD_CPU_HEADER

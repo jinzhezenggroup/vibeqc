@@ -2,6 +2,12 @@
 
 #include "dft/xc_point.hpp"
 
+#if defined(__CUDACC__)
+#define VIBEQC_XC_RESPONSE_HD __host__ __device__
+#else
+#define VIBEQC_XC_RESPONSE_HD
+#endif
+
 namespace vibeqc::dft::point::detail {
 
 /** Directional derivative of the existing point jet. This differentiates the
@@ -10,34 +16,36 @@ namespace vibeqc::dft::point::detail {
 struct ResponseJet : Jet {
   static constexpr bool second_order = true;
   Jet tangent;
-  ResponseJet(double x = 0.0) : Jet(x) {}
-  ResponseJet(const Jet& x, const Jet& dx) : Jet(x), tangent(dx) {}
-  const Jet& base() const { return *this; }
-  static ResponseJet variable(double x, unsigned index, double direction) {
+  VIBEQC_XC_RESPONSE_HD ResponseJet(double x = 0.0) : Jet(x) {}
+  VIBEQC_XC_RESPONSE_HD ResponseJet(const Jet& x, const Jet& dx) : Jet(x), tangent(dx) {}
+  VIBEQC_XC_RESPONSE_HD const Jet& base() const { return *this; }
+  VIBEQC_XC_RESPONSE_HD static ResponseJet variable(double x, unsigned index, double direction) {
     return {Jet::variable(x, index), Jet(direction)};
   }
-  friend ResponseJet operator+(const ResponseJet& a, const ResponseJet& b) {
+  VIBEQC_XC_RESPONSE_HD friend ResponseJet operator+(const ResponseJet& a, const ResponseJet& b) {
     return {a.base() + b.base(), a.tangent + b.tangent};
   }
-  friend ResponseJet operator-(const ResponseJet& a, const ResponseJet& b) {
+  VIBEQC_XC_RESPONSE_HD friend ResponseJet operator-(const ResponseJet& a, const ResponseJet& b) {
     return {a.base() - b.base(), a.tangent - b.tangent};
   }
-  friend ResponseJet operator-(const ResponseJet& a) { return ResponseJet(0.0) - a; }
-  friend ResponseJet operator*(const ResponseJet& a, const ResponseJet& b) {
+  VIBEQC_XC_RESPONSE_HD friend ResponseJet operator-(const ResponseJet& a) {
+    return ResponseJet(0.0) - a;
+  }
+  VIBEQC_XC_RESPONSE_HD friend ResponseJet operator*(const ResponseJet& a, const ResponseJet& b) {
     return {a.base() * b.base(), a.tangent * b.base() + a.base() * b.tangent};
   }
-  friend ResponseJet operator/(const ResponseJet& a, const ResponseJet& b) {
+  VIBEQC_XC_RESPONSE_HD friend ResponseJet operator/(const ResponseJet& a, const ResponseJet& b) {
     const Jet value = a.base() / b.base();
     return {value, (a.tangent - value * b.tangent) / b.base()};
   }
 };
-inline ResponseJet power(const ResponseJet& x, double p) {
+VIBEQC_XC_RESPONSE_HD inline ResponseJet power(const ResponseJet& x, double p) {
   return {power(x.base(), p), p * power(x.base(), p - 1.0) * x.tangent};
 }
-inline ResponseJet log1p(const ResponseJet& x) {
+VIBEQC_XC_RESPONSE_HD inline ResponseJet log1p(const ResponseJet& x) {
   return {log1p(x.base()), x.tangent / (1.0 + x.base())};
 }
-inline ResponseJet expm1(const ResponseJet& x) {
+VIBEQC_XC_RESPONSE_HD inline ResponseJet expm1(const ResponseJet& x) {
   Jet slope(::exp(x.v));
   for (unsigned i = 0; i < 8; ++i) slope.d[i] = slope.v * x.d[i];
   return {expm1(x.base()), slope * x.tangent};
@@ -50,8 +58,10 @@ namespace vibeqc::dft::point {
  * An empty spin admits only zero density/gradient direction: orbital rotations
  * preserve that empty block, whereas its normal exchange Hessian is singular.
  * Numerical density/gradient scales remain fixed in both differentiation passes. */
-inline Value unrestricted_response(bool pbe, const double rho[2], const double gradient[2][3],
-                                   const double delta_rho[2], const double delta_gradient[2][3]) {
+VIBEQC_XC_RESPONSE_HD inline Value unrestricted_response(bool pbe, const double rho[2],
+                                                         const double gradient[2][3],
+                                                         const double delta_rho[2],
+                                                         const double delta_gradient[2][3]) {
   Value out;
   bool zero_direction = true;
   for (unsigned s = 0; s < 2; ++s) {
@@ -118,8 +128,9 @@ inline Value unrestricted_response(bool pbe, const double rho[2], const double g
 /** Restricted total-density directional derivative of physical XC potential.
  * Only equal-spin RKS is qualified. Vacuum is allowed only with zero direction;
  * an undefined or nonrepresentable coefficient rejects the entire action. */
-inline Value restricted_response(bool pbe, double rho, const double gradient[3], double delta_rho,
-                                 const double delta_gradient[3]) {
+VIBEQC_XC_RESPONSE_HD inline Value restricted_response(bool pbe, double rho,
+                                                       const double gradient[3], double delta_rho,
+                                                       const double delta_gradient[3]) {
   Value out;
   if (!detail::finite(rho) || rho < 0.0 || !detail::finite(delta_rho)) out.valid = false;
   for (unsigned k = 0; k < 3; ++k)
@@ -171,3 +182,5 @@ inline Value restricted_response(bool pbe, double rho, const double gradient[3],
   return out;
 }
 }  // namespace vibeqc::dft::point
+
+#undef VIBEQC_XC_RESPONSE_HD

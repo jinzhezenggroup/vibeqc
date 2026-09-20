@@ -7,9 +7,9 @@ matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
 layer (including `export_uhf`), host-orchestrated spin CUDA exact/DF J/K, and
-the native CPU LDA/PBE RKS/UKS CPKS handoffs are delivered. Native CUDA CPKS
-and remaining performance acceptance stay open
-under `#179`.
+the native CPU/CUDA LDA/PBE RKS/UKS CPKS handoffs are delivered. Resident
+blocked/multi-RHS execution and complete endpoint performance acceptance remain
+open under `#179`.
 
 This internal tooling is not a new public electronic-structure method. It
 consumes the converged native HF/KS endpoints rather than implementing SCF.
@@ -128,7 +128,7 @@ matching `PreparedXCContractions` response owner selects bounded native CPU
 execution through `prepared=...`, with its shared numeric resource plan.
 
 `NativeRKSResponse.from_native(batch, basis, grid=None, index=0)` connects the
-actual successful native CPU LDA/PBE RKS state to this same operator and solver.
+actual successful native CPU or CUDA LDA/PBE RKS state to this same operator and solver.
 The optional explicit grid must exactly match the native points, weights and
 owners. The optional `functional` must match the canonical SCF composition.
 The adapter exports the native canonical orbitals, physical Fock, overlap,
@@ -162,9 +162,10 @@ geometry), failed replay, batch closure and response closure revoke old solves
 and recycle spaces. Changed functional, grid, basis, provider or state are
 rejected before publication.
 
-These handoffs qualify all-electron CPU LDA/PBE RKS and UKS. CUDA CPKS, DF,
+These handoffs qualify all-electron CPU/CUDA LDA/PBE RKS and UKS. DF CPKS,
 ECP, exact/range-separated exchange, and meta-GGA response remain unsupported.
-AO/MO transforms, XC tiling and Krylov orchestration are host-side. Existing
+AO/MO transforms and Krylov orchestration are host-side; CPU XC uses host tiles
+and CUDA XC executes AO evaluation through response assembly on device. Existing
 solver workspace accounting is not a complete endpoint memory/performance
 claim; the native kernel does not yet qualify implicit-response resource binding.
 `tests/python/test_response_native_rks.py` checks independent libcint/Libxc
@@ -177,7 +178,7 @@ LDA/PBE H2 solves. See [point acceptance](xc_scf_domain.md#executable-evidence)
 for the fixture generator and cancellation-aware numerical gate.
 
 `NativeUKSResponse.from_native` uses the same arguments and lifetime contract
-for the actual native CPU LDA/PBE UKS state. It preserves both canonical spin
+for the actual native CPU/CUDA LDA/PBE UKS state. It preserves both canonical spin
 frames and occupations. The existing spin reference/layout contract carries
 an explicit `algorithm="UKS"` tag and functional/grid identities; the UHF
 operator rejects this reference. `UKSResponseOperator` changes only the shared
@@ -198,6 +199,49 @@ spin densities, true residuals, transpose identities, multi-RHS/recycling and
 lease/domain negatives. `vibeqc_uks_response_tests` checks 48 independent
 high-precision point directions, spin permutations and the private batch ABI.
 See [the spin binding decision](../.agents/notes/implemented/numerics/2026-09-20-native-uks-cpks.md).
+
+### Native CUDA CPKS
+
+The same `from_native` entry points select CUDA J/XC actions when the borrowed
+batch is a CUDA KS owner. A live native proof must establish that both ECP terms
+and atom core counts are absent. Legacy libraries without this proof remain
+unsupported for CUDA CPKS. Method, exact packed basis/quadrature, canonical spin
+frames, physical residual and revocable native token are bound as on CPU.
+
+The Coulomb adapter requests only J from the existing unrestricted `FockPlan`;
+no unused K contraction is performed. XC extends the existing `CudaXcPlan` with
+a directional feature panel, reusing its AO evaluator, density contractions,
+point policy and potential assembler. The CPU and GPU point differentials use
+the same `xc_point_response.hpp` formulas. Preparation copies the native state's
+actual reference density, packed basis, points and weights. It does not regenerate
+the quadrature or rerun SCF. Actions upload a signed AO density direction and
+download the completed AO response; AO values and point features stay on device.
+Invalid directions/domains reject publication and the next action resets the arena.
+
+`device_budget_bytes` (default 128 MiB) bounds retained response XC and Coulomb
+allocations together: XC is admitted first, and Coulomb receives the remaining
+budget. `response.diagnostics` separates device J/XC from host transforms and
+Krylov, reports both owners' retained bytes, and exposes native XC setup/action
+transfer and synchronization counters. For each successful XC action with `s`
+spin channels and `n` AOs, H2D is `8*s*n*n` bytes and D2H is `8*s*n*n + 28`
+bytes (matrix plus three scalars and a status), with two explicit fences. Initial
+snapshot export and the second native source export during XC preparation are
+reported separately. Coulomb statistics report host payload, not measured PCIe
+traffic. Borrowed SCF/eigensolver storage, preparation temporaries, host arrays
+and solver workspace, CUDA context and library-private memory are outside the
+retained response budget. This is not a fully resident CPKS solve or a complete
+endpoint memory/performance guarantee.
+
+With `VIBEQC_RESPONSE_CUDA_TEST=1` under an explicit Slurm GPU allocation,
+`tests/python/test_response_native_cuda.py` reuses the independent CPU-tier
+libcint/Libxc, finite-rotation and reconverged-perturbation assertions on real
+CUDA LDA/PBE water RKS and LiH+ UKS states. Tests forbid CPU AO/XC/J fallbacks and
+SCF reruns during actions. They also cover empty-spin tangent directions,
+resource rejection, preparation/export counters, legacy-proof/method/ECP gates
+and lifetime revocation. `vibeqc_xc_response_cuda_tests` runs all 30 restricted
+and 48 unrestricted independent high-precision point directions on device with
+the unchanged CPU-tier numerical gates. See
+[the CUDA CPKS decision](../.agents/notes/implemented/numerics/2026-09-20-native-cuda-cpks.md).
 
 ## #153 interface
 
