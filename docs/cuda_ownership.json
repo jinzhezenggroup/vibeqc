@@ -106,6 +106,14 @@
       "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
     },
     {
+      "name": "xc_gradient",
+      "outputs": [
+        "generated/generated_xc_gradient.cu"
+      ],
+      "owner": "python/vibeqc_compiler/xc/geometry_cuda.py",
+      "scope": "Build-time LDA/PBE XC gradient lowering, including compiler-emitted AO translation pullbacks and Becke normalized-product adjoint composition. Native CUDA headers retain allocation, stream, ABI and bounded runtime ownership."
+    },
+    {
       "name": "df_policies",
       "outputs": [
         "generated/generated_df_policy.cuh",
@@ -522,13 +530,6 @@
       "subsystem": "d4_dispersion",
       "reason": "Pinned EEQ2019 charge solve/coordinate response and complete D4 chain-rule CPU/device qualification mathematics. Independent DFT-D4 4.2.0 oracle fixtures and real-device tests validate it; retained as a bounded oracle, not a performance-promoted production kernel.",
       "regions": []
-    },
-    {
-      "path": "src/dft/grid_response_adjoint.hpp",
-      "role": "scientific",
-      "subsystem": "xc",
-      "regions": [],
-      "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue."
     },
     {
       "path": "src/dft/grid_task_view.cuh",

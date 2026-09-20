@@ -7,7 +7,7 @@ from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
-from .grid_native import emit_grid_partials
+from .grid_native import emit_grid_adjoint, emit_grid_partials
 
 
 def emit_geometry_cuda(*, pbe: typing.Any, iterations: typing.Any = 3) -> typing.Any:
@@ -33,7 +33,7 @@ def emit_geometry_cuda(*, pbe: typing.Any, iterations: typing.Any = 3) -> typing
         shifts.append("{" + ",".join(map(str, row)) + "}")
     return "\n".join(
         [
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             emit_grid_partials(iterations, device=True),
             f"constexpr bool stationary_pbe = {'true' if pbe else 'false'};",
             f"constexpr unsigned stationary_jets = {len(domain)};",
@@ -336,7 +336,7 @@ void enqueue_gradient(
             "#include <array>",
             "#include <cstdint>",
             '#include "dft/cuda_xc.hpp"',
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             '#include "dft/xc_point.hpp"',
             '#include "tensor/cuda_runtime.cuh"',
             emit_grid_policy().replace(
