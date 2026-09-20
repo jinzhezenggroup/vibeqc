@@ -53,7 +53,13 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
     assert result.converged and np.isfinite(result.forces).all()
     with (
         calc.prepare_batch([atoms], charges=[spin], multiplicities=[spin + 1]) as batch,
-        NativeAO(atoms, basis=record, charge=spin, multiplicity=spin + 1) as basis,
+        NativeAO(
+            atoms,
+            basis=record,
+            representation=representation,
+            charge=spin,
+            multiplicity=spin + 1,
+        ) as basis,
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0]
         assert energy.forces is None
