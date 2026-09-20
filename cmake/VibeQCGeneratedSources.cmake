@@ -4,6 +4,20 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_METHOD_PARAMETERS_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_method_parameters.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_method_parameters_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_method_parameters.py"
+    OUTPUTS "${VIBEQC_METHOD_PARAMETERS_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/method_parameters.json"
+    ARGS
+      --source "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/method_parameters.json"
+      --cpp-output "${VIBEQC_METHOD_PARAMETERS_HEADER}"
+    COMMENT "Generating audited method parameter constants")
+
   set(VIBEQC_D3_DATA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/d3_data.hpp")
   vibeqc_register_generated_sources(
