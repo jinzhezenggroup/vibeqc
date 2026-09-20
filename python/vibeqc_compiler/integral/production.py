@@ -37,7 +37,8 @@ from .cuda_target import (
 )
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
-from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class\nfrom .specialize import specialize_integral_ir
+from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
+from .specialize import specialize_integral_ir
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence

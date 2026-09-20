@@ -21,7 +21,8 @@ from ..fused_schedule import (
     build_fused_shell_plan,
 )
 from ..ir import KernelConsumer
-from ..specialize import specialize_integral_ir\nfrom ..shell_spec import (
+from ..specialize import specialize_integral_ir
+from ..shell_spec import (
     DPPP_SPEC,
     ShellClassSpec,
     cartesian_components,
@@ -1224,7 +1225,6 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
-        fock_plan = _specialize_fock_plan(plan)
         if fock_schedule is not None:
             # Force and Fock need not share an execution geometry. In
             # particular, high-component Rys4 force kernels can require a
@@ -1295,6 +1295,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 schedule=fock_schedule,
                 recurrence="subset_wick",
             )
+        else:
+            fock_plan = _specialize_fock_plan(plan)
         source += _emit_shell_class_fock_cuda(
             spec,
             fock_plan,

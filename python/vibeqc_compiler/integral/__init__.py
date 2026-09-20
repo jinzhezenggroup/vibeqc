@@ -138,7 +138,8 @@ from .rys import (
 from .rys import (
     boys_values as rys_boys_values,
 )
-from .specialize import specialize_integral_ir\nfrom .shell_class import (
+from .specialize import specialize_integral_ir
+from .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
     PackedForceGeometryAlgebra,
