@@ -80,6 +80,7 @@ wheel.py-api = "py3"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
 "external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
+"external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
 
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
