@@ -96,7 +96,6 @@ from vibeqc_compiler.integral import (
     schedule_candidates,
     supports_component_lane_rys,
 )
-from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 from vibeqc_compiler.integral.autotune import (
     StaticAlgebraModel,
     _analysis_roots,
@@ -168,6 +167,7 @@ from vibeqc_compiler.integral.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
@@ -3895,7 +3895,9 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
     assert "SsssWeightedGradient" not in types_source
-    assert "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
+    assert (
+        "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
+    )
     assert "contract_two_electron_force_ssss_task" in low_order_source
     assert "generated_weighted_eri::ssss_force" in low_order_source
     assert "generated_math" not in low_order_source

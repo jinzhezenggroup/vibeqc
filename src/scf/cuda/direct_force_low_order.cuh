@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <weighted_eri.cuh>
 
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
@@ -17,7 +18,6 @@
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/packed_basis.hpp"
-#include <weighted_eri.cuh>
 
 // Retained direct force low order contraction helpers.
 // Borrow immutable metadata and density/output views; host plans own lifetime.
@@ -60,9 +60,9 @@ contracted_eri_cartesian_source_ssss_generated_weighted_gradient(
           first_pair.product_center.y - second_pair.product_center.y,
           first_pair.product_center.z - second_pair.product_center.z,
       };
-      boys_values<1>(geometry.rho * distance_squared(first_pair.product_center,
-                                                     second_pair.product_center),
-                     geometry.boys);
+      boys_values<1>(
+          geometry.rho * distance_squared(first_pair.product_center, second_pair.product_center),
+          geometry.boys);
 #pragma unroll
       for (unsigned axis = 0; axis < 3; ++axis) {
         geometry.difference[axis] = vec_axis(difference, axis);
@@ -89,7 +89,8 @@ contracted_eri_cartesian_source_ssss_generated_weighted_gradient(
 template <bool Unrestricted>
 __device__ __forceinline__ void contract_two_electron_force_ssss_task(
     const DeviceBatch& batch, ActiveShellQuartetTile task, double screening_tolerance,
-    const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces) {
+    const double* schwarz_bounds, const double* density, const std::uint8_t* active,
+    double* forces) {
   // Every s shell contains one Cartesian AO, so a valid ssss shell quartet
   // occupies exactly the first compact tile and needs no AO-pair decoding.
   if (task.tile != 0U) return;
