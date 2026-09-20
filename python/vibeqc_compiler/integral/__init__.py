@@ -138,7 +138,7 @@ from .rys import (
 from .rys import (
     boys_values as rys_boys_values,
 )
-from .shell_class import (
+from .specialize import specialize_integral_ir\nfrom .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
     PackedForceGeometryAlgebra,
@@ -330,7 +330,7 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
-    "stable_aot_shard_slot",
+    "specialize_integral_ir",\n    "stable_aot_shard_slot",
     "supports_component_lane_rys",
     "tuning_schedule_candidates",
     "unsupported_block_response",

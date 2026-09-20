@@ -21,7 +21,7 @@ from ..fused_schedule import (
     build_fused_shell_plan,
 )
 from ..ir import KernelConsumer
-from ..shell_spec import (
+from ..specialize import specialize_integral_ir\nfrom ..shell_spec import (
     DPPP_SPEC,
     ShellClassSpec,
     cartesian_components,
@@ -53,6 +53,38 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from ..cuda_target import CudaTargetInfo
+
+
+def _specialize_fock_plan(
+    plan: FusedShellPlan,
+    *,
+    schedule: ScheduleIR | None = None,
+    recurrence: str | None = None,
+) -> FusedShellPlan:
+    """Derive a value-only HF plan from a possibly derivative-bearing plan."""
+
+    integral = plan.kernel.integral
+    selected_recurrence = recurrence
+    if (
+        selected_recurrence is None
+        and KernelConsumer.FORCE in integral.consumers
+        and integral.recurrence.startswith("rys")
+    ):
+        # Current direct Fock production lowering is subset/Wick. A Rys
+        # recurrence on the enclosing plan is a force implementation choice,
+        # not a reason to retain derivative intent in the value consumer.
+        selected_recurrence = "subset_wick"
+    fock_integral = specialize_integral_ir(
+        integral,
+        consumers=(KernelConsumer.FOCK,),
+        recurrence=selected_recurrence,
+    )
+    return build_fused_shell_plan(
+        plan.spec,
+        schedule=plan.schedule if schedule is None else schedule,
+        target=plan.kernel.target,
+        integral=fock_integral,
+    )
 
 
 def emit_shell_class_fused_cuda(
@@ -1192,18 +1224,16 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
-        fock_plan = plan
+        fock_plan = _specialize_fock_plan(plan)
         if fock_schedule is not None:
             # Force and Fock need not share an execution geometry. In
             # particular, high-component Rys4 force kernels can require a
             # cooperative mapping while the accepted value path remains a
             # compact tiled worker. Keep its subset/Wick recurrence explicit.
-            fock_plan = build_fused_shell_plan(
-                spec,
-                consumers=(KernelConsumer.FOCK,),
+            fock_plan = _specialize_fock_plan(
+                plan,
                 schedule=fock_schedule,
                 recurrence="subset_wick",
-                target=plan.kernel.target,
             )
         elif plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
             plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
@@ -1231,12 +1261,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 ),
                 warp_size=plan.schedule.warp_size,
             )
-            fock_plan = build_fused_shell_plan(
-                spec,
-                consumers=tuple(plan.kernel.integral.consumers),
+            fock_plan = _specialize_fock_plan(
+                plan,
                 schedule=fock_schedule,
-                recurrence=plan.kernel.integral.recurrence,
-                target=plan.kernel.target,
+                recurrence="subset_wick",
             )
         elif (
             plan.kernel.integral.recurrence in ("rys2", "rys3")
@@ -1262,12 +1290,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 unroll_pair_terms=plan.schedule.unroll_pair_terms,
                 warp_size=plan.schedule.warp_size,
             )
-            fock_plan = build_fused_shell_plan(
-                spec,
-                consumers=tuple(plan.kernel.integral.consumers),
+            fock_plan = _specialize_fock_plan(
+                plan,
                 schedule=fock_schedule,
-                recurrence=plan.kernel.integral.recurrence,
-                target=plan.kernel.target,
+                recurrence="subset_wick",
             )
         source += _emit_shell_class_fock_cuda(
             spec,
