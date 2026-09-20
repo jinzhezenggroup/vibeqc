@@ -8,6 +8,11 @@ and allocator overhead are excluded; this is not a process RSS bound.
 
 import typing
 
+from vibeqc_compiler.integral.ecp_policy import (
+    REFINED_POLAR_POINTS,
+    REFINED_RADIAL_POINTS,
+)
+
 from .basis import BasisSet
 from .resources import checked_bytes
 
@@ -53,13 +58,13 @@ def cpu_force_inventory(
     packed = 3 * a + 2 * p + 16 * n
     snapshot_values = 256 + 8 * a + 20 * n * n + 8 * n + packed
     snapshot_values += 6 * grid_points + 5 * ecp_terms
-    # CPU ECP provider uses its independent fixed 224/44 refined grid.
+    # CPU ECP provider consumes the shared generated refined-grid policy.
     # Both value/derivative grids coexist; one radial shell owns AO samples.
-    sphere = 2 * 44**2
+    sphere = 2 * REFINED_POLAR_POINTS**2
     ecp = (
         32 * n * n * (1 + 3 * a)
         + 32 * n * (sphere + 16)
-        + 384 * (sphere + 224 + n + p + ecp_terms)
+        + 384 * (sphere + REFINED_RADIAL_POINTS + n + p + ecp_terms)
         + 4096
         if ecp_terms
         else 0

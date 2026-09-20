@@ -62,6 +62,35 @@ def _feeds() -> dict[str, np.ndarray]:
     }
 
 
+def _heterogeneous_batch_program() -> tuple[Program, dict[str, np.ndarray]]:
+    # Two systems are concatenated into one program: (2 shells, 3 orbitals,
+    # 2 atoms) + (3 shells, 5 orbitals, 3 atoms). No host per-system loop is
+    # required by the generated CUDA executor.
+    shell = _index("batch_shell", "shell", 5)
+    orbital = _index("batch_orbital", "orbital", 8)
+    atom = _index("batch_atom", "atom", 5)
+    shell_values = input_tensor(
+        "shell_values", TensorSpec((shell,), role="input", differentiable=True)
+    )
+    orbital_values = input_tensor(
+        "orbital_values", TensorSpec((orbital,), role="input", differentiable=True)
+    )
+    orbital_to_shell = (0, 0, 1, 2, 3, 3, 4, 4)
+    atom_offsets = (0, 2, 3, 5, 6, 8)
+    program = Program(
+        {
+            "gathered": indexed_gather(shell_values, 0, orbital_to_shell, orbital),
+            "scattered": scatter_add(orbital_values, 0, orbital_to_shell, shell),
+            "segmented": segment_sum(orbital_values, 0, atom_offsets, atom),
+        }
+    )
+    feeds = {
+        "shell_values": np.array([2.0, 3.0, 5.0, 7.0, 11.0]),
+        "orbital_values": np.array([1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0]),
+    }
+    return program, feeds
+
+
 def test_ragged_interpreter_roundtrip_and_empty_segment() -> None:
     program = _program()
     result = execute(program, _feeds()).outputs
@@ -125,9 +154,38 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     plan = plan_cuda(_program(), TARGET, schedule=TensorSchedule())
     source = emit_cuda(plan)
     assert len(plan.index_tables) == 3
+    assert plan.index_table_bytes == 3 * 256
+    assert plan.accumulation_workspace_bytes == 0
+    assert plan.ragged_resources == {
+        "index_table_bytes": 3 * 256,
+        "accumulation_workspace_bytes": 0,
+        "included_in_arena_bytes": True,
+    }
+    first_materialized = min(step.offset for step in plan.steps if step.offset >= 0)
+    assert first_materialized >= plan.index_table_bytes
     assert "index_data_" in source
     assert "reinterpret_cast<const I*>" in source
     assert "for (I r =" in source
+
+
+def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:
+    shell = _index("shell", "shell", 3)
+    orbital = _index("orbital", "orbital", 5)
+    values = input_tensor(
+        "shell_values", TensorSpec((shell,), role="input", differentiable=True)
+    )
+    baseline = Program(
+        {
+            "gathered": indexed_gather(values, 0, (0, 0, 1, 2, 2), orbital),
+        }
+    )
+    changed = Program(
+        {
+            "gathered": indexed_gather(values, 0, (0, 1, 1, 2, 2), orbital),
+        }
+    )
+    assert baseline.logical_hash != changed.logical_hash
+    assert plan_cuda(baseline, TARGET).identity != plan_cuda(changed, TARGET).identity
 
 
 @pytest.mark.skipif(
@@ -146,5 +204,25 @@ def test_ragged_cuda_matches_interpreter(tmp_path: Path) -> None:
     expected = execute(program, _feeds()).outputs
     with PreparedCuda(plan, compile_cuda(plan, compiler, Path(tmp_path))) as prepared:
         actual = prepared.execute(_feeds()).outputs
+    for name in expected:
+        np.testing.assert_allclose(actual[name], expected[name], atol=1e-14, rtol=0)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_TENSOR_CUDA_TEST") != "1",
+    reason="requires explicit allocated-GPU opt-in",
+)
+def test_heterogeneous_ragged_batch_cuda_matches_interpreter(tmp_path: Path) -> None:
+    nvcc = find_nvcc()
+    if nvcc is None:
+        pytest.fail("VIBEQC_TENSOR_CUDA_TEST requires a CUDA compiler")
+    compiler = CudaCompilerAdapter(
+        nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
+    )
+    program, feeds = _heterogeneous_batch_program()
+    plan = plan_cuda(program, compiler.target, schedule=TensorSchedule())
+    expected = execute(program, feeds).outputs
+    with PreparedCuda(plan, compile_cuda(plan, compiler, Path(tmp_path))) as prepared:
+        actual = prepared.execute(feeds).outputs
     for name in expected:
         np.testing.assert_allclose(actual[name], expected[name], atol=1e-14, rtol=0)

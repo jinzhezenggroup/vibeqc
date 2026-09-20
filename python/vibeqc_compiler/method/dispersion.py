@@ -8,8 +8,12 @@ from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
 
-D3_TABLE_SHA256 = "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e"
-D3_RADII_SHA256 = "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+from . import _generated_parameters as _parameters
+
+D3_TABLE_SHA256 = _parameters.D3_TABLE_SHA256
+D3_RADII_SHA256 = _parameters.D3_RADII_SHA256
+D3_BJ_PARAMETER_SETS = _parameters.D3_BJ_PARAMETER_SETS
+D4_PARAMETER_SETS = _parameters.D4_PARAMETER_SETS
 
 
 @dataclass(frozen=True)
@@ -139,18 +143,7 @@ class D4Spec:
 
 def r2scan3c_d4_eeq() -> D4Spec:
     """Exact pinned D4 part of r2SCAN-3c; the electronic method is separate."""
-    return D4Spec(
-        s6=1.0,
-        s8=0.0,
-        s9=2.0,
-        a1=0.42,
-        a2=5.65,
-        ga=2.0,
-        gc=1.0,
-        profile="r2scan3c",
-        table_sha256="d1691a6cf08748e7c35a340f78824a4a8da1813b0ca32d1074c346bfb3874871",
-        charge_parameter_sha256="02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a",
-    )
+    return D4Spec(**_parameters.d4_parameters("r2SCAN-3c"))
 
 
 @dataclass(frozen=True)
@@ -185,23 +178,9 @@ class DispersionCorrectionPrimitive:
 
 def pbe_d3_bj_spec() -> typing.Any:
     """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
-    return D3Spec(
-        s6=1.0,
-        s8=0.7875,
-        a1=0.4289,
-        a2=4.4407,
-        table_sha256=D3_TABLE_SHA256,
-        radii_sha256=D3_RADII_SHA256,
-    )
+    return D3Spec(**_parameters.d3_parameters("PBE-D3(BJ)"))
 
 
 def pbe0_d3_bj_spec() -> typing.Any:
     """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
-    return D3Spec(
-        s6=1.0,
-        s8=1.2177,
-        a1=0.4145,
-        a2=4.8593,
-        table_sha256=D3_TABLE_SHA256,
-        radii_sha256=D3_RADII_SHA256,
-    )
+    return D3Spec(**_parameters.d3_parameters("PBE0-D3(BJ)"))

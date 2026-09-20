@@ -272,6 +272,13 @@ class Mp2PreparedBatch final : public PreparedBatch {
     return results;
   }
 
+  std::optional<vibeqc_correlation_diagnostic> correlation_diagnostic(
+      std::size_t index) const override {
+    if (index >= owners_.size())
+      throw std::invalid_argument("correlation diagnostic batch index is out of range");
+    return owners_[index]->correlation_diagnostic();
+  }
+
   void clear_warm_starts() override {
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "MP2 batch does not support warm starts");
   }

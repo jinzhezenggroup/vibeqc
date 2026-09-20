@@ -12,6 +12,7 @@ fractional occupations without adding scientific branches.
 
 from __future__ import annotations
 
+import typing
 from fractions import Fraction
 from typing import Literal
 
@@ -22,6 +23,7 @@ from .types import Index, IndexSpace, TensorSpec
 SCF_TENSOR_VERSION = 1
 Reference = Literal["restricted", "unrestricted"]
 ExactCoefficient = int | str | Fraction
+TensorValue = typing.TypeVar("TensorValue")
 
 
 def _positive(value: int, name: str) -> int:
@@ -60,14 +62,14 @@ def _orbital_spaces(
     )
 
 
-def density_program(
+def density_input_specs(
     batch_size: int,
     nbf: int,
     *,
     spin_count: int = 1,
     orbital_count: int | None = None,
-) -> Program:
-    """Build D[b,s,p,q] = sum_i occ[b,s,i] C[b,s,p,i] C[b,s,q,i]."""
+) -> dict[str, TensorSpec]:
+    """Return the canonical typed inputs for SCF density construction."""
     orbital_count = nbf if orbital_count is None else orbital_count
     batch, spin, ao, orbital = _orbital_spaces(
         batch_size, spin_count, nbf, orbital_count
@@ -78,9 +80,80 @@ def density_program(
         Index("p", ao),
         Index("i", orbital),
     )
-    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
-    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
-    density = einsum("bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients)
+    return {
+        "coefficients": TensorSpec((b, s, p, i), role="input"),
+        "occupations": TensorSpec((b, s, i), role="input"),
+    }
+
+
+def weighted_density_input_specs(
+    batch_size: int,
+    nbf: int,
+    *,
+    spin_count: int = 1,
+    orbital_count: int | None = None,
+) -> dict[str, TensorSpec]:
+    """Return canonical typed inputs for energy-weighted density construction."""
+    specs = density_input_specs(
+        batch_size,
+        nbf,
+        spin_count=spin_count,
+        orbital_count=orbital_count,
+    )
+    return {
+        **specs,
+        "orbital_energies": TensorSpec(
+            specs["occupations"].indices,
+            role="input",
+        ),
+    }
+
+
+def density_expression(
+    coefficients: TensorValue,
+    occupations: TensorValue,
+    *,
+    contract: typing.Callable[..., TensorValue],
+) -> TensorValue:
+    """Single-source SCF density equation, independent of graph-construction frontend."""
+    return contract(
+        "bspi,bsi,bsqi->bspq",
+        coefficients,
+        occupations,
+        coefficients,
+    )
+
+
+def weighted_density_expression(
+    coefficients: TensorValue,
+    occupations: TensorValue,
+    orbital_energies: TensorValue,
+    *,
+    contract: typing.Callable[..., TensorValue],
+    multiply_values: typing.Callable[[TensorValue, TensorValue], TensorValue],
+) -> TensorValue:
+    """Single-source energy-weighted density equation for TensorIR/frontends."""
+    weights = multiply_values(occupations, orbital_energies)
+    return contract("bspi,bsi,bsqi->bspq", coefficients, weights, coefficients)
+
+
+def density_program(
+    batch_size: int,
+    nbf: int,
+    *,
+    spin_count: int = 1,
+    orbital_count: int | None = None,
+) -> Program:
+    """Build D[b,s,p,q] = sum_i occ[b,s,i] C[b,s,p,i] C[b,s,q,i]."""
+    specs = density_input_specs(
+        batch_size,
+        nbf,
+        spin_count=spin_count,
+        orbital_count=orbital_count,
+    )
+    coefficients = input_tensor("coefficients", specs["coefficients"])
+    occupations = input_tensor("occupations", specs["occupations"])
+    density = density_expression(coefficients, occupations, contract=einsum)
     return Program(
         {"density": density},
         provenance={
@@ -99,24 +172,21 @@ def weighted_density_program(
     orbital_count: int | None = None,
 ) -> Program:
     """Build W[b,s,p,q] = sum_i occ_i eps_i C[p,i] C[q,i]."""
-    orbital_count = nbf if orbital_count is None else orbital_count
-    batch, spin, ao, orbital = _orbital_spaces(
-        batch_size, spin_count, nbf, orbital_count
+    specs = weighted_density_input_specs(
+        batch_size,
+        nbf,
+        spin_count=spin_count,
+        orbital_count=orbital_count,
     )
-    b, s, p, i = (
-        Index("b", batch),
-        Index("s", spin),
-        Index("p", ao),
-        Index("i", orbital),
-    )
-    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
-    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
-    orbital_energies = input_tensor(
-        "orbital_energies", TensorSpec((b, s, i), role="input")
-    )
-    weights = multiply(occupations, orbital_energies)
-    weighted_density = einsum(
-        "bspi,bsi,bsqi->bspq", coefficients, weights, coefficients
+    coefficients = input_tensor("coefficients", specs["coefficients"])
+    occupations = input_tensor("occupations", specs["occupations"])
+    orbital_energies = input_tensor("orbital_energies", specs["orbital_energies"])
+    weighted_density = weighted_density_expression(
+        coefficients,
+        occupations,
+        orbital_energies,
+        contract=einsum,
+        multiply_values=multiply,
     )
     return Program(
         {"weighted_density": weighted_density},

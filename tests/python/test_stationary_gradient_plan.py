@@ -144,6 +144,23 @@ def test_generated_weights_and_all_coordinate_components_have_independent_oracle
     np.testing.assert_array_equal(execute(replay, feeds).outputs["gradient"], gradient)
 
 
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_tau_semilocal_method_reuses_stationary_source_inventory(
+    spin: typing.Any,
+) -> None:
+    """r2SCAN adds an ingredient, not a second stationary source equation stack."""
+    pbe = plan(spin, "PBE")
+    r2scan = plan(spin, "R2SCAN")
+    assert r2scan.source_names == pbe.source_names
+    assert r2scan.spin_blocks == pbe.spin_blocks
+    assert r2scan.identity != pbe.identity
+    assert "tau" in r2scan.method.requirements["ingredients"]
+    for source in ("one_electron", "coulomb", "overlap_pulay"):
+        block = r2scan.integral_block(source, terms=3)
+        assert block.source == source
+        assert block.plan_identity == r2scan.identity
+
+
 def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:
     feeds, integrals = fixture("coulomb", 2)
     uks = plan("polarized").integral_block(

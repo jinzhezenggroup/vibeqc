@@ -180,7 +180,21 @@ struct PreparedFockPlan::Impl {
     }
     diagnostic.nbf = one_electron().nbf;
     diagnostic.ncoord = system.atoms.size() * 3;
-    const auto available = budget ? budget : kDefaultDeviceBudget;
+    DfResourceEnvelope df_resource{};
+    DfBudgetWorkload df_workload{};
+    if (has_df) {
+#if VIBEQC_HAS_CUDA
+      const auto memory = cuda_density_fitting_memory_info(device);
+      df_resource = {memory.free_bytes, memory.total_bytes, memory.available};
+#endif
+      df_workload = {diagnostic.nbf, molecule::ao_count(*auxiliary), system.atoms.size(), 1U, 0U,
+                     derivatives};
+    }
+    const auto resolved_df =
+        has_df ? resolve_df_budget(df_workload, df_resource, budget) : DfResolvedBudget{};
+    const auto available =
+        has_df ? resolved_df.total_bytes : (budget ? budget : kDefaultDeviceBudget);
+    if (has_df && !resolved_df.feasible) throw std::bad_alloc();
     diagnostic.device_budget_bytes = available;
     if (has_exact) {
       const auto direct_budget = has_df ? available / 2 : available;
@@ -194,18 +208,20 @@ struct PreparedFockPlan::Impl {
       diagnostic.device_bytes = diagnostic.direct.device_bytes;
     }
     if (has_df) {
-      const auto remainder = available - diagnostic.device_bytes;
-      const auto plan_budget = remainder / 2;
-      if (!plan_budget) throw std::bad_alloc();
+      const auto resolved = resolve_df_subbudget(df_workload, resolved_df, diagnostic.device_bytes);
+      const auto plan_budget = resolved.value_bytes;
+      if (!resolved.feasible || !plan_budget || (derivatives && !resolved.response_bytes))
+        throw std::bad_alloc();
       auto& data = *fitted;
       data.raw.nbf = diagnostic.nbf;
       data.raw.naux = molecule::ao_count(*auxiliary);
       data.raw.ncoord = diagnostic.ncoord;
       data.metric_relative_threshold = strategy.metric_relative_threshold;
+      data.resolved_budget = resolved;
       data.df_gradient_orbital = system;
       data.df_gradient_auxiliary = *auxiliary;
       data.df_gradient_mapping = diagnostic.variant.df_derivative_mapping;
-      data.df_gradient_budget = remainder - plan_budget;
+      data.df_gradient_budget = resolved.response_bytes;
       data.value_storage = diagnostic.variant.df_pair_storage;
       // Fixed-density/composed Fock APIs have no occupied-rank promise. An
       // explicit packed owner reserves bounded panels and accepts arbitrary D.
@@ -215,7 +231,7 @@ struct PreparedFockPlan::Impl {
                    : plan_density_fitting_tiles(1, n, a, n, plan_budget, fixed, true);
       };
       // Reuse the existing tile planner before and after source metadata is
-      // known. Half the available allowance is reserved for response staging.
+      // known. Value/response ownership comes from the shared DF resource policy.
       (void)plan_values(data.raw.nbf, data.raw.naux, df_source_bytes(system, *auxiliary));
       CudaDensityFittingIntegralSource* raw_source{};
       std::vector<double> metrics;
@@ -238,8 +254,18 @@ struct PreparedFockPlan::Impl {
                   tiles.stores_full_three_center, tiles.value_storage),
               detail);
       cuda_df.reset(raw_plan);
-      if (!diagnostic.fitted.empty())
+      if (!diagnostic.fitted.empty()) {
+        for (auto& item : diagnostic.fitted) {
+          item.resolved_value_budget_bytes = resolved.value_bytes;
+          item.resolved_response_budget_bytes = resolved.response_bytes;
+          item.resolved_headroom_bytes = resolved.reserved_headroom_bytes;
+          item.observed_free_device_bytes = resolved.observed_free_bytes;
+          item.observed_total_device_bytes = resolved.observed_total_bytes;
+          item.resource_policy_version = DfResolvedBudget::policy_version;
+          item.resource_probe_live = resolved.live_resource;
+        }
         diagnostic.device_bytes += diagnostic.fitted[0].device_resident_bytes;
+      }
     }
     auto provider = [&](const FockTermSpec& term) -> std::optional<CudaFockProviderView> {
       if (!term.present) return {};

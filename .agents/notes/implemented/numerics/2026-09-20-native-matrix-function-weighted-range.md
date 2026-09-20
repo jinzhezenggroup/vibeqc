@@ -57,3 +57,11 @@ Refs #466, #181, #193; PR #657.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Integration with concurrent repair
+
+A parallel native/CUDA repair reached master while this PR was under review.
+The final integration reuses that canonical seeded-exponent implementation,
+rather than retaining two equivalent helpers. All eight independent dyadic
+scalar/projector cases added here remain regression gates on the combined tree.
+Neither discarded-mode motion nor ordinary-scale arithmetic is removed.

@@ -44,6 +44,8 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
   vibeqc_native_test(vibeqc_ecp_projector_tests tests/native/test_ecp_projector.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_ecp_capability_tests tests/native/test_ecp_capabilities.cpp)
+  vibeqc_native_test(vibeqc_ecp_cpu_tests tests/native/test_ecp_cpu.cpp)
+  target_sources(vibeqc_ecp_cpu_tests PRIVATE tests/native/ecp_reference.cpp)
   add_dependencies(vibeqc_ecp_projector_tests vibeqc_ecp_codegen)
   target_include_directories(vibeqc_ecp_projector_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
   vibeqc_native_test(vibeqc_fock_provider_tests tests/native/test_fock_provider.cpp)
@@ -105,18 +107,36 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_d4_eeq_tests tests/native/test_d4_eeq.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_gcp_r2scan3c_tests tests/native/test_gcp_r2scan3c.cpp NO_VIBEQC)
+  foreach(_vibeqc_parameter_test IN ITEMS
+          vibeqc_d4_reference_tests vibeqc_d4_eeq_tests vibeqc_gcp_r2scan3c_tests)
+    add_dependencies(${_vibeqc_parameter_test} vibeqc_method_parameters_codegen)
+    target_include_directories(
+      ${_vibeqc_parameter_test} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  endforeach()
   vibeqc_native_test(vibeqc_xc_point_tests tests/native/test_xc_point.cpp NO_VIBEQC)
   target_compile_definitions(vibeqc_xc_point_tests PRIVATE
+    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  vibeqc_native_test(vibeqc_rks_response_tests tests/native/test_rks_response.cpp)
+  target_compile_definitions(vibeqc_rks_response_tests PRIVATE
+    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  vibeqc_native_test(vibeqc_uks_response_tests tests/native/test_uks_response.cpp)
+  target_compile_definitions(vibeqc_uks_response_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)
     vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
                        NO_VIBEQC SKIP_77)
+    add_dependencies(vibeqc_d4_reference_cuda_tests vibeqc_method_parameters_codegen)
+    target_include_directories(
+      vibeqc_d4_reference_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d4_reference_cuda_tests PROPERTIES CUDA_STANDARD 20)
 
     vibeqc_native_test(vibeqc_d4_eeq_cuda_tests tests/native/test_d4_eeq_cuda.cu
                        NO_VIBEQC SKIP_77)
+    add_dependencies(vibeqc_d4_eeq_cuda_tests vibeqc_method_parameters_codegen)
+    target_include_directories(
+      vibeqc_d4_eeq_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d4_eeq_cuda_tests PROPERTIES CUDA_STANDARD 20)
 
     vibeqc_native_test(vibeqc_xc_point_cuda_tests tests/native/test_xc_point_cuda.cu

@@ -215,6 +215,11 @@ class PreparedBatch {
     (void)index;
     return std::nullopt;
   }
+  [[nodiscard]] virtual std::optional<vibeqc_correlation_diagnostic> correlation_diagnostic(
+      std::size_t index) const {
+    (void)index;
+    return std::nullopt;
+  }
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;
   [[nodiscard]] virtual std::optional<DirectPppsQueueProfile> last_direct_ppps_queue_profile()

@@ -56,9 +56,13 @@ production ownership baseline, not a claim of pair-parallel performance.
 
 ## Data provenance and validation
 
-No xTBloom or simple-dftd3 runtime dependency is added. Build-time generation
-verifies the pinned xTBloom-derived table and covalent-radius SHA-256 values and
-emits only the compact production data needed by the native evaluator. The
+No xTBloom or simple-dftd3 runtime dependency is added. Method-level D3/D4/gCP
+coefficients have one editable source in
+`python/vibeqc_compiler/method/method_parameters.json`; codegen emits the
+Python MethodIR constants and native/CUDA `constexpr` accessors, so calculation
+paths do not parse configuration files at runtime. Build-time generation also
+verifies the pinned xTBloom-derived D3 table and covalent-radius SHA-256 values
+and emits only the compact production data needed by the native evaluator. The
 runtime rejects a MethodIR whose recorded data identity differs from those
 compiled tables.
 

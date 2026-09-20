@@ -52,7 +52,7 @@ differentiate basis centers analytically before emitting device arithmetic.
 projection reductions and local/nonlocal pair contractions. Radial expressions
 include the volume measure (`r^2` cancels the operator's `r^-2`); bilinear
 derivatives are differentiated from the value expression. The same generated
-C++ header runs in native host tests and the production CUDA adapter.
+C++ header runs in native host tests and both production CPU/CUDA adapters.
 ECP-center derivatives use generated `dC = -(dA+dB)` after the angular
 reduction and before physical atom accumulation, including coincident A/B/C
 cases. Value-only calls do not read derivative slots.
@@ -62,9 +62,11 @@ AOs and 44 polar points; larger domains retain one layer. Each AO pair
 accumulates layers in ascending radial order. This matches the preceding
 production path's one-layer launches on the same stream; the old internal
 kernel's unused multi-layer thread mapping is not the ordering contract.
-The independent `src/integrals/ecp.cpp` CPU implementation remains the public
-CPU fallback and a numerical oracle; it intentionally does not call these
-generated contractions. The compiler also owns ECP-centered node displacement,
+The CPU adapter in `src/integrals/ecp.cpp` calls the same generated arithmetic.
+It prepares radial potentials once per center/layer, skips zero-potential layers,
+and reuses projected AO jets across triangular pairs. The original independent
+CPU algorithm is retained in `tests/native/ecp_reference.cpp`, linked only into
+the native qualification executable. Production does not call that oracle. The compiler also owns ECP-centered node displacement,
 normalized AO primitive/component accumulation, local/nonlocal hcore addition
 and the full AO fixed-weight derivative contraction with the energy-to-force
 sign. The CUDA adapter supplies total RHF/UHF density without an extra occupancy
@@ -89,8 +91,8 @@ scatter, shared basis expansion metadata and failure handling. It is classified
 as runtime after the scientific operations and convergence admission have moved
 to generated helpers. This is an ownership reclassification of retained adapter
 code, not deletion of the adapter or of hundreds of scientific code lines. The
-independent CPU `ecp.cpp` implementation and its convergence policy remain an
-explicit oracle/fallback. See the [ownership audit](../.agents/notes/implemented/architecture/2026-09-19-ecp-generated-policy.md).
+independent CPU implementation and its convergence policy remain a test oracle;
+the production CPU provider now consumes the generated policy. See the [ownership audit](../.agents/notes/implemented/architecture/2026-09-19-ecp-generated-policy.md).
 
 Orbital f uses the existing Gaussian DAG, generated component normalization and
 molecular real-spherical expansion. The compiler-owned orbital limit also
@@ -409,7 +411,7 @@ density weights and the complete nine-source reduction. The private snapshot
 binds the exact ECP terms/core counts from the energy owner; replay, replacement
 and closure revoke its derivative access.
 
-This diagnostic reuses the independent CPU ECP derivative provider. It retains
+This diagnostic reuses the generated CPU ECP derivative provider. It retains
 two dense atom/xyz/AO-pair arrays, then contracts AO-pair tiles. The public CPU
 wrapper below additionally enforces numeric capacity and lifecycle gates.
 Work admission precedes derivative compilation and ECP execution,
@@ -445,11 +447,11 @@ required for the shared generated consumers; `VIBEQC_STATIONARY_CACHE` selects
 their cache.
 
 The same nine-source stationary plan supplies force = -gradient. CPU ECP
-derivatives explicitly come from `checked_ecp_integrals`, the independent
-native CPU two-grid provider already used by CPU ECP energies. It checks
+derivatives explicitly come from `checked_ecp_integrals`, the generated
+native CPU two-grid provider also used by CPU ECP energies. It checks
 160/32 against 224/44 quadrature, preserving the energy/derivative convergence
-gates. This is an explicit production provider contract, not a generated-ECP
-or PySCF implementation. Compiler-owned projector retirement remains open.
+gates. The provider consumes the same compiler-owned mathematics as CUDA;
+the independent CPU algorithm is retained only as a test oracle.
 
 The KS planner reserves a 256 MiB additional host staging cap per serialized
 force consumer. A conservative inventory covers AO/snapshot copies, both ECP
@@ -512,3 +514,22 @@ do not qualify arbitrary elements, parameter families or larger angular domains.
 Run `VIBEQC_ECP_CUDA_TEST=1 python -m pytest tests/python/test_ecp_public_cuda.py`
 on an allocated GPU with `CUDACXX` and `VIBEQC_LIBRARY` set. See the
 [public-force decision](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cuda-forces.md).
+
+## CPU generated-provider qualification
+
+`vibeqc_ecp_cpu_tests` compares the complete generated provider with the retained
+independent CPU algorithm, including separate local/nonlocal values and every
+physical-center derivative. Its mixed three-center fixtures cover Cartesian and
+real-spherical s/p/d/f AOs, powers 0..4, signed multiexponent channels through f,
+a basis-free ECP center, coincident basis/ECP centers, nonsymmetric weights,
+two-step independent energy differences, geometry replay, both checked grids,
+invalid/nonfinite inputs and recovery. An 80-AO case checks the same single-layer
+schedule beyond the small stationary-force domain. Existing Python Libcint/HF/DFT
+and stationary-gradient tests qualify complete consumers independently.
+
+CPU production and the test oracle retain FP64 and the same ordered radial,
+angular, primitive and per-channel reductions. AO metadata uses fixed generated
+component records; grid/AO/projection storage remains bounded by one radial
+layer. Dense derivative outputs retain their documented layout. No force
+capability or physical ECP family is enlarged by this ownership change. See the
+[CPU ownership decision](../.agents/notes/implemented/architecture/2026-09-20-ecp-generated-cpu.md).

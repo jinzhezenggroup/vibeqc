@@ -43,9 +43,10 @@ struct FockPreparationDiagnostic {
  * duplicated preparation in SCF and fixed-density endpoints. It is not
  * concurrently reentrant because CUDA scratch and streams are shared.
  *
- * A positive device budget bounds explicit provider buffers; zero selects
- * the same 256 MiB allowance as the independent CUDA SCF route. CPU storage
- * retains its existing reference representation and outer resource policy.
+ * A positive device budget bounds explicit provider buffers and is never
+ * enlarged. For DF-backed CUDA owners, zero resolves through the shared
+ * workload/device-aware DF policy; exact-only CUDA owners keep their existing
+ * allowance. CPU storage retains its reference representation and outer policy.
  */
 class PreparedFockPlan {
  public:

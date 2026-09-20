@@ -39,6 +39,12 @@
       ]
     },
     {
+      "root": "tools/vibeqc_cc",
+      "patterns": [
+        "*.py"
+      ]
+    },
+    {
       "root": "cmake/3rdparty/implib",
       "patterns": [
         "*"
@@ -56,6 +62,7 @@
     "cmake/VibeQCSourceIdentity.cmake",
     "cmake/3rdparty/implib_manifest.json",
     "tools/generate_cuda_implib.py",
+    "tools/generate_method_parameters.py",
     "tools/generate_shell_kernels.py",
     "tools/generate_ecp_kernels.py",
     "tools/generate_df_kernels.py",
@@ -63,6 +70,7 @@
     "tools/generate_one_electron_kernels.py",
     "tools/generate_grid_kernels.py",
     "tools/generate_mp2_native.py",
+    "tools/generate_rccsd_native.py",
     "tools/generate_xc_cpu.py",
     "tools/generate_xc_gradient_cuda.py",
     "tools/vibeqc_posthf/plan_spec.py"

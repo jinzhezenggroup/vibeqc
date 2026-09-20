@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
 _HF_METHODS = _method_manifest.HF_METHOD_IDS
+_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, _native.METHOD_RCCSD))
 
 
 @dataclass(frozen=True)
@@ -109,6 +110,57 @@ class CorrelationResult:
     response_operator_hash: str
     measured_response_workspace_peak_bytes: int
     response_workspace_allocation_count: int
+    ccsd_iterations: int
+    ccsd_diis_restarts: int
+    ccsd_correlation_energy: float
+    ccsd_energy_change: float
+    ccsd_singles_residual_max: float
+    ccsd_doubles_residual_max: float
+    ccsd_replay_singles_residual_max: float
+    ccsd_replay_doubles_residual_max: float
+    ccsd_setup_h2d_bytes: int
+    ccsd_scalar_d2h_bytes: int
+    ccsd_amplitude_d2h_bytes: int
+    ccsd_synchronizations: int
+    ccsd_replay_equation_hash: str
+
+
+def _read_correlation_result(
+    library: ctypes.CDLL,
+    owner: ctypes.c_void_p,
+    *,
+    index: int | None = None,
+    context: ctypes.c_void_p | None = None,
+) -> CorrelationResult | None:
+    name = (
+        "vibeqc_calculation_get_correlation_diagnostic"
+        if index is None
+        else "vibeqc_batch_get_correlation_diagnostic"
+    )
+    getter = getattr(library, name, None)
+    if getter is None:
+        return None
+    diag = _native.CorrelationDiagnostic()
+    diag.struct_size = ctypes.sizeof(diag)
+    diag.abi_version = _native.ABI_VERSION
+    args = (
+        (owner, ctypes.byref(diag))
+        if index is None
+        else (owner, index, ctypes.byref(diag))
+    )
+    status = getter(*args)
+    if status == _native.STATUS_NOT_IMPLEMENTED:
+        return None
+    _native.check(library, status, context=context)
+    values = {
+        name: getattr(diag, name)
+        for name, _ in diag._fields_
+        if name not in ("struct_size", "abi_version")
+    }
+    values["mo_host_staging"] = bool(values["mo_host_staging"])
+    for key in ("equation_hash", "response_operator_hash", "ccsd_replay_equation_hash"):
+        values[key] = values[key].decode("ascii")
+    return CorrelationResult(**values)
 
 
 @dataclass(frozen=True)
@@ -326,6 +378,14 @@ class Calculator:
         density_fitting_memory_budget_bytes: int = 0,
         correlation_memory_budget_bytes: int = 0,
         mp2_denominator_threshold: float = 1e-10,
+        ccsd_max_iterations: int = 100,
+        ccsd_diis_history: int = 6,
+        ccsd_energy_tolerance: float = 1e-11,
+        ccsd_residual_tolerance: float = 1e-9,
+        ccsd_denominator_threshold: float = 1e-10,
+        ccsd_damping: float = 0.0,
+        ccsd_level_shift: float = 0.0,
+        ccsd_frozen_core: int = 0,
         max_iterations: int = 100,
         energy_tolerance: float = 1.0e-10,
         density_tolerance: float = 1.0e-8,
@@ -433,22 +493,23 @@ class Calculator:
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
             raise ValueError("ks_options requires a supported semilocal RKS/UKS method")
-        if self._method == _native.METHOD_MP2:
+        if self._method in _CORRELATED_METHODS:
             if target_accuracy is not None:
                 raise NotImplementedError(
-                    "target_accuracy is not implemented for canonical MP2"
+                    "target_accuracy is not implemented for canonical correlated methods"
                 )
             if resource_budget is not None:
                 raise NotImplementedError(
-                    "resource_budget planning is not implemented for canonical MP2"
+                    "resource_budget planning is not implemented for canonical correlated methods"
                 )
-        if self._method == _native.METHOD_MP2:
             for name, value in (
                 ("max_iterations", max_iterations),
                 ("diis_history", diis_history),
             ):
                 if type(value) is not int or not 1 <= value <= 2**32 - 1:
-                    raise ValueError(f"{name} must be a positive uint32 for MP2")
+                    raise ValueError(
+                        f"{name} must be a positive uint32 for canonical correlated methods"
+                    )
         if (
             type(correlation_memory_budget_bytes) is not int
             or not 0 <= correlation_memory_budget_bytes < 2**63
@@ -458,8 +519,52 @@ class Calculator:
             )
         if not np.isfinite(mp2_denominator_threshold) or mp2_denominator_threshold <= 0:
             raise ValueError("mp2_denominator_threshold must be finite and positive")
+        if self._method == _native.METHOD_RCCSD:
+            for name, value in (
+                ("ccsd_max_iterations", ccsd_max_iterations),
+                ("ccsd_diis_history", ccsd_diis_history),
+            ):
+                if type(value) is not int or not 0 <= value <= 2**32 - 1:
+                    raise ValueError(f"{name} must be a non-negative uint32 for RCCSD")
+            if ccsd_max_iterations == 0:
+                raise ValueError("ccsd_max_iterations must be positive for RCCSD")
+            if ccsd_diis_history == 1 or ccsd_diis_history > 20:
+                raise ValueError("ccsd_diis_history must be 0 or 2..20 for RCCSD")
+            for name, value, upper in (
+                ("ccsd_energy_tolerance", ccsd_energy_tolerance, 1e-8),
+                ("ccsd_residual_tolerance", ccsd_residual_tolerance, 1e-9),
+            ):
+                if not np.isfinite(value) or not 0.0 < value <= upper:
+                    raise ValueError(
+                        f"{name} must be finite, positive, and <= {upper:g}"
+                    )
+            if (
+                not np.isfinite(ccsd_denominator_threshold)
+                or ccsd_denominator_threshold <= 0.0
+            ):
+                raise ValueError(
+                    "ccsd_denominator_threshold must be finite and positive"
+                )
+            if not np.isfinite(ccsd_damping) or not 0.0 <= ccsd_damping < 1.0:
+                raise ValueError("ccsd_damping must be finite and in [0, 1)")
+            if not np.isfinite(ccsd_level_shift) or ccsd_level_shift < 0.0:
+                raise ValueError("ccsd_level_shift must be finite and non-negative")
+            if type(ccsd_frozen_core) is not int or ccsd_frozen_core < 0:
+                raise ValueError("ccsd_frozen_core must be a non-negative integer")
+            if ccsd_frozen_core:
+                raise NotImplementedError(
+                    "native RCCSD frozen-core references are not implemented"
+                )
         self._correlation_memory_budget_bytes = correlation_memory_budget_bytes
         self._mp2_denominator_threshold = float(mp2_denominator_threshold)
+        self._ccsd_max_iterations = int(ccsd_max_iterations)
+        self._ccsd_diis_history = int(ccsd_diis_history)
+        self._ccsd_energy_tolerance = float(ccsd_energy_tolerance)
+        self._ccsd_residual_tolerance = float(ccsd_residual_tolerance)
+        self._ccsd_denominator_threshold = float(ccsd_denominator_threshold)
+        self._ccsd_damping = float(ccsd_damping)
+        self._ccsd_level_shift = float(ccsd_level_shift)
+        self._ccsd_frozen_core = int(ccsd_frozen_core)
         self._basis = basis
         self._auxiliary_basis = auxiliary_basis
         self._density_fitting_mode = density_fitting_mode
@@ -481,11 +586,13 @@ class Calculator:
         self._density_tolerance = float(density_tolerance)
         self._diis_history = int(diis_history)
         if screening_tolerance is None:
-            screening_tolerance = 0.0 if self._method == _native.METHOD_MP2 else 1e-12
+            screening_tolerance = 0.0 if self._method in _CORRELATED_METHODS else 1e-12
         self._screening_tolerance = float(screening_tolerance)
-        if self._method == _native.METHOD_MP2:
+        if self._method in _CORRELATED_METHODS:
             if self._screening_tolerance != 0:
-                raise ValueError("canonical MP2 requires screening_tolerance=0")
+                raise ValueError(
+                    "canonical correlated methods require screening_tolerance=0"
+                )
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
         precision_modes = {
@@ -497,10 +604,10 @@ class Calculator:
         except KeyError as error:
             raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
-            self._method == _native.METHOD_MP2
+            self._method in _CORRELATED_METHODS
             and self._precision_mode != _native.PRECISION_FP64
         ):
-            raise ValueError("canonical MP2 requires precision='fp64'")
+            raise ValueError("canonical correlated methods require precision='fp64'")
         if (
             self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
             and self._precision_mode != _native.PRECISION_FP64
@@ -563,6 +670,15 @@ class Calculator:
                 supported_properties=self._capabilities.supported_properties
                 | {"forces"},
             )
+        if self._method == _native.METHOD_RCCSD:
+            if density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "native RCCSD density fitting is not implemented"
+                )
+            if auxiliary_basis is not None:
+                raise ValueError(
+                    "conventional RCCSD does not accept an auxiliary basis"
+                )
         if self._capabilities.family == "density_functional":
             if (
                 self._precision_mode == _native.PRECISION_AUTO
@@ -648,6 +764,15 @@ class Calculator:
             from .ks import native_ks_options
 
             descriptor.ks_options = ctypes.pointer(native_ks_options(self._ks_options))
+        if self._method == _native.METHOD_RCCSD:
+            descriptor.ccsd_max_iterations = self._ccsd_max_iterations
+            descriptor.ccsd_diis_history = self._ccsd_diis_history
+            descriptor.ccsd_energy_tolerance = self._ccsd_energy_tolerance
+            descriptor.ccsd_residual_tolerance = self._ccsd_residual_tolerance
+            descriptor.ccsd_denominator_threshold = self._ccsd_denominator_threshold
+            descriptor.ccsd_damping = self._ccsd_damping
+            descriptor.ccsd_level_shift = self._ccsd_level_shift
+            descriptor.ccsd_frozen_core = self._ccsd_frozen_core
         return descriptor
 
     def _precision_provenance(
@@ -767,6 +892,21 @@ class Calculator:
                         "mp2_denominator_threshold": self._mp2_denominator_threshold,
                     }
                     if self._method == _native.METHOD_MP2
+                    else {}
+                ),
+                **(
+                    {
+                        "correlation_memory_budget_bytes": self._correlation_memory_budget_bytes,
+                        "ccsd_max_iterations": self._ccsd_max_iterations,
+                        "ccsd_diis_history": self._ccsd_diis_history,
+                        "ccsd_energy_tolerance": self._ccsd_energy_tolerance,
+                        "ccsd_residual_tolerance": self._ccsd_residual_tolerance,
+                        "ccsd_denominator_threshold": self._ccsd_denominator_threshold,
+                        "ccsd_damping": self._ccsd_damping,
+                        "ccsd_level_shift": self._ccsd_level_shift,
+                        "ccsd_frozen_core": self._ccsd_frozen_core,
+                    }
+                    if self._method == _native.METHOD_RCCSD
                     else {}
                 ),
                 "density_fitting": self._density_fitting_mode,
@@ -1407,28 +1547,11 @@ class Calculator:
                 if force_storage is not None
                 else None
             )
-            correlation = None
-            if self._method == _native.METHOD_MP2:
-                diag = _native.CorrelationDiagnostic()
-                diag.struct_size = ctypes.sizeof(diag)
-                diag.abi_version = _native.ABI_VERSION
-                _native.check(
-                    self._library,
-                    self._library.vibeqc_calculation_get_correlation_diagnostic(
-                        calculation, ctypes.byref(diag)
-                    ),
-                )
-                values = {
-                    name: getattr(diag, name)
-                    for name, _ in diag._fields_
-                    if name not in ("struct_size", "abi_version")
-                }
-                values["mo_host_staging"] = bool(values["mo_host_staging"])
-                values["equation_hash"] = values["equation_hash"].decode("ascii")
-                values["response_operator_hash"] = values[
-                    "response_operator_hash"
-                ].decode("ascii")
-                correlation = CorrelationResult(**values)
+            correlation = (
+                _read_correlation_result(self._library, calculation, context=context)
+                if self._method in _CORRELATED_METHODS
+                else None
+            )
             physical_residual_rms = None
             scf_getter = getattr(
                 self._library, "vibeqc_calculation_get_scf_diagnostic", None

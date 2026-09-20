@@ -9,42 +9,51 @@ namespace vibeqc::tensor {
 namespace {
 std::size_t index(std::size_t row, std::size_t column, std::size_t n) { return row * n + column; }
 
-double weighted_quotient(double value, double a, double b, double c) {
-  // Preserve the ordinary coefficient-first result. Only coefficients outside
-  // the normal range need joint exponent arithmetic with the response seed.
-  const double divided = 1.0 / a / b / c;
-  if (std::isnormal(divided)) return value * divided;
-  if (value == 0.0) return value;
-  int ev = 0, ea = 0, eb = 0, ec = 0;
-  double mantissa = std::frexp(value, &ev);
-  mantissa /= std::frexp(a, &ea);
-  mantissa /= std::frexp(b, &eb);
-  mantissa /= std::frexp(c, &ec);
-  return std::scalbn(mantissa, ev - ea - eb - ec);
+double function_value(double value, bool retained, SymmetricMatrixFunction function) {
+  if (!retained) return 0.0;
+  if (!(value > 0.0)) throw std::invalid_argument("retained spectral value must be positive");
+  return function == SymmetricMatrixFunction::pseudoinverse ? 1.0 / value : 1.0 / std::sqrt(value);
 }
 
-double weighted_divided_difference(double seed, double left, double right, bool keep_left,
-                                   bool keep_right, SymmetricMatrixFunction function,
-                                   double resolution) {
+double divided_difference(double left, double right, bool keep_left, bool keep_right,
+                          SymmetricMatrixFunction function, double resolution) {
   if (!keep_left && !keep_right) return 0.0;
   if (keep_left && keep_right) {
     if (!(left > 0.0) || !(right > 0.0))
       throw std::invalid_argument("retained spectral value must be positive");
-    if (function == SymmetricMatrixFunction::pseudoinverse)
-      return weighted_quotient(-seed, left, right, 1.0);
+    if (function == SymmetricMatrixFunction::pseudoinverse) return -1.0 / left / right;
     const double sl = std::sqrt(left), sr = std::sqrt(right);
-    return weighted_quotient(-seed, sl, sr, sl + sr);
+    return -1.0 / sl / sr / (sl + sr);
   }
   const double gap = left - right;
   if (std::abs(gap) <= resolution)
     throw std::runtime_error("retained/discarded spectral subspaces are unresolved");
-  const double retained_value = keep_left ? left : right;
-  if (!(retained_value > 0.0))
-    throw std::invalid_argument("retained spectral value must be positive");
-  const double scale = function == SymmetricMatrixFunction::pseudoinverse
-                           ? retained_value
-                           : std::sqrt(retained_value);
-  return weighted_quotient(keep_left ? seed : -seed, scale, gap, 1.0);
+  return (function_value(left, keep_left, function) - function_value(right, keep_right, function)) /
+         gap;
+}
+// Evaluate a seeded product without materializing an unrepresentable coefficient.
+double scaled_response(double seed, double a, double b, double c) {
+  if (seed == 0.0) return seed;
+  int es = 0, ea = 0, eb = 0, ec = 0;
+  const double ms = std::frexp(seed, &es), ma = std::frexp(a, &ea);
+  const double mb = std::frexp(b, &eb), mc = std::frexp(c, &ec);
+  return std::scalbn(((ms / ma) / mb) / mc, es - ea - eb - ec);
+}
+double weighted_difference(double seed, double left, double right, bool kl, bool kr,
+                           SymmetricMatrixFunction function, double resolution) {
+  const double coefficient = divided_difference(left, right, kl, kr, function, resolution);
+  if (seed == 0.0 || (!kl && !kr)) return 0.0;
+  if (std::isnormal(coefficient)) return seed * coefficient;
+  if (kl && kr) {
+    if (function == SymmetricMatrixFunction::pseudoinverse)
+      return scaled_response(-seed, left, right, 1.0);
+    const double sl = std::sqrt(left), sr = std::sqrt(right);
+    return scaled_response(-seed, sl, sr, sl + sr);
+  }
+  const double kept = kl ? left : right;
+  const double denominator =
+      function == SymmetricMatrixFunction::pseudoinverse ? kept : std::sqrt(kept);
+  return scaled_response(kl ? seed : -seed, denominator, left - right, 1.0);
 }
 }  // namespace
 
@@ -84,8 +93,8 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
       for (std::size_t k = 0; k < n; ++k)
         transformed[index(i, j, n)] += eigenvectors[index(k, i, n)] * temp[index(k, j, n)];
       transformed[index(i, j, n)] =
-          weighted_divided_difference(transformed[index(i, j, n)], eigenvalues[i], eigenvalues[j],
-                                      retained[i] != 0, retained[j] != 0, function, resolution);
+          weighted_difference(transformed[index(i, j, n)], eigenvalues[i], eigenvalues[j],
+                              retained[i] != 0, retained[j] != 0, function, resolution);
     }
 
   std::fill(temp.begin(), temp.end(), 0.0);

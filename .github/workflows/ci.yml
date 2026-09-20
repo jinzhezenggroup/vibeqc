@@ -386,6 +386,7 @@ jobs:
           # expensive enough to earn an explicit shard.
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
+            tests/python/test_cc_triples_response.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
@@ -413,6 +414,7 @@ jobs:
             posthf)
               test_targets=(
                 tests/python/test_cc_complete_gradient.py
+                tests/python/test_cc_triples_response.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
                 tests/python/test_ecp_public_cpu.py

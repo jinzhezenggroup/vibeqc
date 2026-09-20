@@ -158,13 +158,7 @@ class FixedDensityXCDerivativeKernel:
         response = np.zeros((nspin, self.basis.nao, self.basis.nao))
         for tile in _tiles(self.grid, self.tile_points):
             jets = self.basis.evaluate(tile.points, self._contraction.contract.ao_order)
-            values = self._contraction.evaluate(
-                jets,
-                density,
-                tile.weights,
-                delta_density=direction,
-            )
-            response += values["response"]
+            response += self._response_tile(jets, density, direction, tile.weights)
             self.statistics["tiles"] += 1
         self.statistics["actions"] += 1
         self.statistics["seconds"] += perf_counter() - started
@@ -175,6 +169,18 @@ class FixedDensityXCDerivativeKernel:
             4 * self.basis.nao * self.basis.nao * 8,
         )
         return immutable(response)
+
+    def _response_tile(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        direction: typing.Any,
+        weights: typing.Any,
+    ) -> typing.Any:
+        """Default interior-domain chain; native SCF adapters bind their point model."""
+        return self._contraction.evaluate(
+            jets, density, weights, delta_density=direction
+        )["response"]
 
     def apply(self, delta_density: typing.Any) -> typing.Any:
         """Restricted solver adapter: total-D directions split equally by spin."""
@@ -194,9 +200,21 @@ class FixedDensityXCDerivativeKernel:
             raise ValueError("XC kernel/reference functional mismatch")
         if reference.grid_identity != self.grid_identity:
             raise ValueError("XC kernel/reference grid mismatch")
-        expected = (reference.coefficients * reference.occupations) @ (
-            reference.coefficients.T
-        )
+        if getattr(reference, "algorithm", None) == "UKS":
+            expected = np.stack(
+                [
+                    (
+                        getattr(reference, f"coefficients_{spin}")
+                        * getattr(reference, f"occupations_{spin}")
+                    )
+                    @ getattr(reference, f"coefficients_{spin}").T
+                    for spin in ("alpha", "beta")
+                ]
+            )
+        else:
+            expected = (reference.coefficients * reference.occupations) @ (
+                reference.coefficients.T
+            )
         expected_spins = spin_densities(expected, self.basis.nao)
         actual_spins = spin_densities(self.reference_density, self.basis.nao)
         error = float(np.max(np.abs(expected_spins - actual_spins)))

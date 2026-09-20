@@ -1,5 +1,8 @@
 """Qualification of the fixed-state GFN2 electronic TensorIR slice (#505)."""
 
+import os
+from pathlib import Path
+
 import numpy as np
 import pytest
 from vibeqc_compiler.method import (
@@ -284,3 +287,90 @@ def test_primal_and_generated_sdq_adjoint_lower_through_cuda_tensorir() -> None:
         )
         assert "tensor_create" in source
         assert "tensor_run" in source
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_GFN2_CUDA_TEST") != "1",
+    reason="requires explicit allocated-GPU opt-in",
+)
+def test_gfn2_electronic_primal_and_vjp_execute_on_cuda(tmp_path: Path) -> None:
+    from vibeqc.profiles import find_nvcc
+    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
+    from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+
+    nvcc = find_nvcc()
+    if nvcc is None:
+        pytest.fail("VIBEQC_GFN2_CUDA_TEST requires a CUDA compiler")
+    compiler = CudaCompilerAdapter(
+        nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
+    )
+
+    topology = _topology()
+    compiled = build_gfn2_electronic_program("GFN2-xTB", topology)
+    feeds = _restricted_feeds()
+    programs = (
+        (compiled.program, feeds),
+        (
+            compiled.integral_vjp().program,
+            {
+                **feeds,
+                "bar_hamiltonian": np.linspace(
+                    -0.4, 0.7, compiled.topology.matrix_count
+                ),
+            },
+        ),
+    )
+    for index, (program, program_feeds) in enumerate(programs):
+        plan = plan_cuda(program, compiler.target)
+        expected = execute(program, program_feeds).outputs
+        cache = tmp_path / f"electronic-{index}"
+        cache.mkdir()
+        with PreparedCuda(plan, compile_cuda(plan, compiler, cache)) as prepared:
+            actual = prepared.execute(program_feeds).outputs
+        assert actual.keys() == expected.keys()
+        for name in expected:
+            np.testing.assert_allclose(actual[name], expected[name], rtol=0, atol=2e-14)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_GFN2_CUDA_TEST") != "1",
+    reason="requires explicit allocated-GPU opt-in",
+)
+def test_gfn2_unrestricted_two_system_batch_executes_on_cuda(tmp_path: Path) -> None:
+    from vibeqc.profiles import find_nvcc
+    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
+    from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+
+    nvcc = find_nvcc()
+    if nvcc is None:
+        pytest.fail("VIBEQC_GFN2_CUDA_TEST requires a CUDA compiler")
+    compiler = CudaCompilerAdapter(
+        nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
+    )
+    topology = _topology()
+    compiled = build_gfn2_electronic_program(
+        "GFN2-xTB", topology, reference="unrestricted"
+    )
+    feeds = {
+        **_restricted_feeds(),
+        "shell_magnetization_potential": np.array([-0.06, 0.02, -0.04, 0.01]),
+        "atomic_dipole_magnetization_potential": np.linspace(
+            -0.025, 0.035, topology.atom_count * 3
+        ).reshape(topology.atom_count, 3),
+        "atomic_quadrupole_magnetization_potential": np.linspace(
+            0.018, -0.022, topology.atom_count * 6
+        ).reshape(topology.atom_count, 6),
+    }
+    plan = plan_cuda(compiled.program, compiler.target)
+    expected = execute(compiled.program, feeds).outputs
+    cache = tmp_path / "unrestricted"
+    cache.mkdir()
+    with PreparedCuda(plan, compile_cuda(plan, compiler, cache)) as prepared:
+        actual = prepared.execute(feeds).outputs
+    assert actual.keys() == expected.keys()
+    for name in expected:
+        np.testing.assert_allclose(actual[name], expected[name], rtol=0, atol=2e-14)

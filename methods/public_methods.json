@@ -125,6 +125,17 @@
         "energy"
       ],
       "supports_batch": true
+    },
+    {
+      "name": "rccsd",
+      "symbol": "RCCSD",
+      "abi_id": 12,
+      "family": "coupled_cluster",
+      "provider": "rccsd",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
     }
   ]
 }

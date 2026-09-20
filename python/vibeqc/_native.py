@@ -216,6 +216,14 @@ class MethodDescriptor(ctypes.Structure):
         ("correlation_memory_budget_bytes", ctypes.c_uint64),
         ("mp2_denominator_threshold", ctypes.c_double),
         ("ks_options", ctypes.POINTER(KsOptionsDescriptor)),
+        ("ccsd_max_iterations", ctypes.c_uint32),
+        ("ccsd_diis_history", ctypes.c_uint32),
+        ("ccsd_energy_tolerance", ctypes.c_double),
+        ("ccsd_residual_tolerance", ctypes.c_double),
+        ("ccsd_denominator_threshold", ctypes.c_double),
+        ("ccsd_damping", ctypes.c_double),
+        ("ccsd_level_shift", ctypes.c_double),
+        ("ccsd_frozen_core", ctypes.c_uint32),
     ]
 
 
@@ -263,6 +271,19 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("response_operator_hash", ctypes.c_char * 65),
         ("measured_response_workspace_peak_bytes", ctypes.c_uint64),
         ("response_workspace_allocation_count", ctypes.c_uint64),
+        ("ccsd_iterations", ctypes.c_uint64),
+        ("ccsd_diis_restarts", ctypes.c_uint64),
+        ("ccsd_correlation_energy", ctypes.c_double),
+        ("ccsd_energy_change", ctypes.c_double),
+        ("ccsd_singles_residual_max", ctypes.c_double),
+        ("ccsd_doubles_residual_max", ctypes.c_double),
+        ("ccsd_replay_singles_residual_max", ctypes.c_double),
+        ("ccsd_replay_doubles_residual_max", ctypes.c_double),
+        ("ccsd_setup_h2d_bytes", ctypes.c_uint64),
+        ("ccsd_scalar_d2h_bytes", ctypes.c_uint64),
+        ("ccsd_amplitude_d2h_bytes", ctypes.c_uint64),
+        ("ccsd_synchronizations", ctypes.c_uint64),
+        ("ccsd_replay_equation_hash", ctypes.c_char * 65),
     ]
 
 
@@ -818,15 +839,20 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         # that exported only the pre-#193 alias.
         if not hasattr(library, "vibeqc_context_get_last_detail"):
             library.vibeqc_context_get_last_detail = detail_getter
-    correlation_diagnostic = getattr(
-        library, "vibeqc_calculation_get_correlation_diagnostic", None
-    )
-    if correlation_diagnostic is not None:
-        correlation_diagnostic.argtypes = [
-            ctypes.c_void_p,
-            ctypes.POINTER(CorrelationDiagnostic),
-        ]
-        correlation_diagnostic.restype = ctypes.c_int
+    for name, prefix in (
+        ("vibeqc_calculation_get_correlation_diagnostic", [ctypes.c_void_p]),
+        (
+            "vibeqc_batch_get_correlation_diagnostic",
+            [ctypes.c_void_p, ctypes.c_uint32],
+        ),
+    ):
+        correlation_diagnostic = getattr(library, name, None)
+        if correlation_diagnostic is not None:
+            correlation_diagnostic.argtypes = [
+                *prefix,
+                ctypes.POINTER(CorrelationDiagnostic),
+            ]
+            correlation_diagnostic.restype = ctypes.c_int
     # Keep the pre-#193 name available when an older native library exports it.
     legacy_last_error = getattr(library, "vibeqc_context_last_error", None)
     if legacy_last_error is not None:

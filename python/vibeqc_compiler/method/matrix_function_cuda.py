@@ -28,18 +28,18 @@ def emit_symmetric_matrix_function_vjp_cuda() -> str:
 
 namespace vibeqc::tensor {{
 namespace detail {{
-static __device__ double weighted_quotient(double value, double a, double b, double c) {{
-  // Preserve the ordinary coefficient-first result. Only coefficients outside
-  // the normal range need joint exponent arithmetic with the response seed.
-  const double divided = 1.0 / a / b / c;
-  if ((isfinite(divided) && fabs(divided) >= 0x1p-1022)) return value * divided;
-  if (value == 0.0) return value;
-  int ev = 0, ea = 0, eb = 0, ec = 0;
-  double mantissa = frexp(value, &ev);
-  mantissa /= frexp(a, &ea);
-  mantissa /= frexp(b, &eb);
-  mantissa /= frexp(c, &ec);
-  return scalbn(mantissa, ev - ea - eb - ec);
+// Evaluate a seeded product without materializing an unrepresentable coefficient.
+static __device__ double scaled_response(double seed, double a, double b, double c) {{
+  if (seed == 0.0) return seed;
+  int es=0, ea=0, eb=0, ec=0;
+  const double ms=frexp(seed,&es), ma=frexp(a,&ea);
+  const double mb=frexp(b,&eb), mc=frexp(c,&ec);
+  return scalbn(((ms/ma)/mb)/mc, es-ea-eb-ec);
+}}
+static __device__ double matrix_function_value(
+    double eigenvalue, bool retained, unsigned function) {{
+  if (!retained) return 0.0;
+  return function == 0 ? 1.0 / sqrt(eigenvalue) : 1.0 / eigenvalue;
 }}
 
 static __global__ void symmetric_matrix_function_vjp_stage(
@@ -62,19 +62,32 @@ static __global__ void symmetric_matrix_function_vjp_stage(
     const double li = eigenvalues[i], lj = eigenvalues[j];
     const double cutoff = relative_threshold * eigenvalues[n - 1];
     const bool ki = li > cutoff, kj = lj > cutoff;
+    double divided = 0.0;
     if (ki && kj) {{
       if (function == 0) {{
         const double si = sqrt(li), sj = sqrt(lj);
-        value = weighted_quotient(-value, si, sj, si + sj);
+        divided = -1.0 / si / sj / (si + sj);
       }} else {{
-        value = weighted_quotient(-value, li, lj, 1.0);
+        divided = -1.0 / li / lj;
       }}
     }} else if (ki != kj) {{
-      const double kept = ki ? li : lj;
-      const double scale = function == 0 ? sqrt(kept) : kept;
-      value = weighted_quotient(ki ? value : -value, scale, li - lj, 1.0);
-    }} else {{
+      const double fi = matrix_function_value(li, ki, function);
+      const double fj = matrix_function_value(lj, kj, function);
+      divided = (fi - fj) / (li - lj);
+    }}
+    if (value == 0.0 || (!ki && !kj)) {{
       value = 0.0;
+    }} else if (isfinite(divided) && fabs(divided) >= 0x1p-1022) {{
+      value *= divided;
+    }} else if (ki && kj) {{
+      if (function == 0) {{
+        const double si=sqrt(li), sj=sqrt(lj);
+        value=scaled_response(-value,si,sj,si+sj);
+      }} else value=scaled_response(-value,li,lj,1.0);
+    }} else {{
+      const double kept=ki?li:lj;
+      const double denominator=function==0?sqrt(kept):kept;
+      value=scaled_response(ki?value:-value,denominator,li-lj,1.0);
     }}
   }}
   output[ij] = value;

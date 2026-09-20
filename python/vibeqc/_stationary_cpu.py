@@ -23,6 +23,12 @@ from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.integral.ecp_policy import (
+    COARSE_POLAR_POINTS,
+    COARSE_RADIAL_POINTS,
+    REFINED_POLAR_POINTS,
+    REFINED_RADIAL_POINTS,
+)
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cpu
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -220,9 +226,8 @@ def _admit_work(
 ) -> dict[str, int]:
     """Metadata-only admission; no derivative compiler, provider or allocations.
 
-    Counts describe semantic loops, not FLOPs or timing. CPU's independent ECP
-    provider owns its own fixed grid policy in checked_ecp_integrals; keep its
-    bound independent of the generated CUDA policy (tested against that source).
+    Counts describe semantic loops, not FLOPs or timing. CPU and CUDA now consume
+    the same compiler-owned ECP grid policy; count both complete provider grids.
     """
     if any(shell.angular_momentum > 1 for shell in basis.shells):
         raise NotImplementedError(
@@ -266,7 +271,10 @@ def _admit_work(
             sum(core > 0 for core in state._source.ecp_cores)
             * (n * (n + 1) // 2)
             * 2
-            * (160 * 32**2 + 224 * 44**2)
+            * (
+                COARSE_RADIAL_POINTS * COARSE_POLAR_POINTS**2
+                + REFINED_RADIAL_POINTS * REFINED_POLAR_POINTS**2
+            )
         )
         if ecp_samples > max_ecp_pair_samples:
             raise ValueError("ECP quadrature pair-sample work budget exceeded")
@@ -309,7 +317,7 @@ def complete_rks_gradient_diagnostic(
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
     Admitted domain: direct real FP64 integer RKS/UKS, canonical
-    LDA or PBE, s/p AOs, native unpruned version-one grid, distinct nuclei and no
+    LDA, PBE or r2SCAN, s/p AOs, native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -326,8 +334,8 @@ def complete_rks_gradient_diagnostic(
     two-grid bound, including radial shells the provider may skip.
     Scalar-ECP CPU snapshots additionally bind effective ionic charges and two
     residual derivative sources to the actual energy owner. Their existing
-    independent CPU provider materializes 2*3*natom*nao**2 derivative elements;
-    this provider remains independent native CPU scientific code. The public
+    generated CPU provider materializes 2*3*natom*nao**2 derivative elements;
+    this provider shares compiler-owned mathematics with CUDA. The public
     CPU wrapper explicitly selects it and reserves the extra numeric capacity;
     no PySCF callback is involved. max_host_bytes requires compiled execution
     and covers snapshot/export plus bounded numeric staging, excluding Python,
@@ -461,7 +469,7 @@ def complete_rks_gradient_diagnostic(
     if state._source.hamiltonian == "scalar-semilocal-ecp":
         derivatives = state._source.ecp_derivatives()
         work["ecp_derivative_bytes"] = derivatives.nbytes
-        # The existing independent CPU ECP provider includes both AO-center
+        # The generated CPU ECP provider includes both AO-center
         # and ECP-center motion. TensorIR generates spin-summed weights and
         # contracts bounded AO-pair tiles; no separate force formula lives here.
         for k, source in enumerate(("ecp_local", "ecp_nonlocal")):
@@ -502,7 +510,7 @@ def complete_rks_gradient_diagnostic(
         else None
     )
     ao_atoms = _native_ao_atoms(basis)
-    pbe = contract.family == "gga"
+    functional_code = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
     for begin in range(0, len(grid.points), tile_points):
         end = min(begin + tile_points, len(grid.points))
         points, weights, atoms = (
@@ -513,9 +521,10 @@ def complete_rks_gradient_diagnostic(
         jets = basis.evaluate(points, program.contract.ao_order)
         features = program.features(jets, density)
         coefficients = state._source.evaluate_xc_points(
-            pbe,
+            functional_code,
             features["rho"],
             features.get("gradient", np.zeros((2, end - begin, 3))),
+            features.get("tau"),
         )
         partials = program.geometry_from_cartesian_coefficients(
             jets,
@@ -523,7 +532,8 @@ def complete_rks_gradient_diagnostic(
             weights,
             coefficients["energy"],
             coefficients["rho"],
-            coefficients["gradient"] if pbe else None,
+            coefficients["gradient"] if contract.family != "lda" else None,
+            coefficients["kinetic"] if contract.family == "mgga" else None,
             ao_atoms=ao_atoms,
             natom=natom,
         )

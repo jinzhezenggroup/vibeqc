@@ -96,3 +96,7 @@ The prior [AO/weight ownership decision](2026-09-16-ecp-ao-weight-consumers.md)
 and [host-grid decision](2026-09-17-ecp-host-grid.md) retain their historical
 scope and measurements; this audit supersedes their conservative mixed-adapter
 classification after moving the remaining convergence predicate.
+
+The subsequent [CPU provider decision](2026-09-20-ecp-generated-cpu.md) replaces
+the production CPU fallback with generated arithmetic and retains this
+independent implementation in the native test oracle.

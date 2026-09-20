@@ -84,7 +84,9 @@ def _scf_xc_points(
         "energy": immutable(output[:, 0]),
         "rho": immutable(output[:, 1:3].T),
         "gradient": immutable(output[:, 3:9].reshape(-1, 2, 3).transpose(1, 0, 2)),
-        "tau": immutable(output[:, 9:11].T),
+        # Native r2SCAN publishes the AO kinetic coefficient vtau/2, not
+        # the raw feature derivative dE/dtau.
+        "kinetic": immutable(output[:, 9:11].T),
     }
 
 
@@ -427,11 +429,133 @@ class NativeKsSnapshot:
         self.check_current()
         return values
 
+    def energy(self) -> float:
+        """Read the verified energy under this snapshot's current-owner lease."""
+        self.check_current()
+        read = self._library.vibeqc_ks_snapshot_energy_v1
+        read.argtypes = [ct.c_void_p, ct.c_void_p, ct.POINTER(ct.c_double)]
+        read.restype = ct.c_int
+        value = ct.c_double()
+        _native.check(
+            self._library, read(self._batch._batch, self._handle, ct.byref(value))
+        )
+        self.check_current()
+        return value.value
+
+    def evaluate_rks_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+    ) -> typing.Any:
+        """Differentiate the exact SCF point potential in a restricted direction.
+
+        Inputs use total density and Cartesian gradient, with no sigma division
+        or low-density clipping. This CPU bridge does not qualify UKS or CUDA.
+        """
+        return self._evaluate_response_points(
+            pbe, rho, gradient, delta_rho, delta_gradient, spins=1
+        )
+
+    def evaluate_uks_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+    ) -> typing.Any:
+        """Return both spin potentials for a physical UKS density direction.
+
+        Spin-major inputs preserve cross-spin correlation. Empty spins require
+        zero directions; the singular exchange Hessian normal to that boundary
+        is never silently regularized. This bridge executes on CPU only.
+        """
+        return self._evaluate_response_points(
+            pbe, rho, gradient, delta_rho, delta_gradient, spins=2
+        )
+
+    def _evaluate_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+        *,
+        spins: int,
+    ) -> typing.Any:
+        """Common checked CPU wire protocol for restricted and spin directions."""
+        self.check_current()
+        if self.backend != "cpu" or self.metadata[2] != spins:
+            raise NotImplementedError(
+                "native point response requires matching CPU spin state"
+            )
+        # The snapshot's functional wire code is not a boolean: newer SCF
+        # methods (for example r2SCAN=2) must never be interpreted as PBE.
+        if self.metadata[6] not in (0, 1):
+            raise NotImplementedError("native point response supports LDA/PBE only")
+        if type(pbe) is not bool or pbe != bool(self.metadata[6]):
+            raise ValueError("native response functional mismatch")
+        values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]
+        n = values[0].size // spins
+        rho_shape = (n,) if spins == 1 else (2, n)
+        gradient_shape = (*rho_shape, 3)
+        if n == 0 or any(
+            x.shape != shape or np.iscomplexobj(x) or not np.isfinite(x).all()
+            for x, shape in zip(
+                values,
+                (rho_shape, gradient_shape, rho_shape, gradient_shape),
+                strict=True,
+            )
+        ):
+            raise ValueError(
+                "point response requires finite density and Cartesian gradient spin arrays"
+            )
+        values = [np.ascontiguousarray(x, dtype=np.float64) for x in values]
+        output = np.empty((n, 4 * spins), dtype=np.float64)
+        evaluate = (
+            self._library.vibeqc_xc_rks_response_batch_v1
+            if spins == 1
+            else self._library.vibeqc_xc_uks_response_batch_v1
+        )
+        pointer = ct.POINTER(ct.c_double)
+        evaluate.argtypes = [
+            ct.c_uint32,
+            pointer,
+            pointer,
+            pointer,
+            pointer,
+            ct.c_size_t,
+            pointer,
+            ct.c_size_t,
+        ]
+        evaluate.restype = ct.c_int
+        _native.check(
+            self._library,
+            evaluate(
+                int(pbe),
+                *(x.ctypes.data_as(pointer) for x in values),
+                n,
+                output.ctypes.data_as(pointer),
+                output.size,
+            ),
+        )
+        self.check_current()
+        return {
+            "rho": immutable(output[:, :spins].T),
+            "gradient": immutable(
+                output[:, spins:].reshape(n, spins, 3).transpose(1, 0, 2)
+            ),
+        }
+
     def ecp_derivatives(self) -> typing.Any:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
-        Materializes two atom/xyz/AO-pair arrays. CUDA uses only generated CUDA
-        ECP derivatives; CPU explicitly uses checked native two-grid ECP.
+        Materializes two atom/xyz/AO-pair arrays. CPU and CUDA execute shared
+        generated ECP mathematics with checked two-grid admission.
         Public wrappers admit and reserve this dense export before execution.
         """
         self.check_current()

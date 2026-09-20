@@ -5,10 +5,7 @@ the nonredundant orbital solves to #179 solve_many. It never substitutes a
 partial/diagonal Hessian when a full output cannot fit its declared budget.
 """
 
-from __future__ import annotations
-
 import time
-import typing
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -25,7 +22,11 @@ from tools.vibeqc_response import (
     RHFResponseOperator,
 )
 
-from .analytic import nuclear_hvp, provider_hvp_components
+from .analytic import (
+    _checked_second_hvp_options,
+    nuclear_hvp,
+    provider_hvp_components,
+)
 from .first_order import (
     generated_directional_first_order,
     generated_rhf_relaxation_contraction,
@@ -53,11 +54,11 @@ class RHFHVPBlockResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self) -> typing.Any:
+    def diagnostics(self) -> dict[str, object]:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self) -> typing.Any:
+    def components(self) -> dict[str, np.ndarray]:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -76,11 +77,11 @@ class RHFHessianResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self) -> typing.Any:
+    def diagnostics(self) -> dict[str, object]:
         return deepcopy(self._diagnostics)
 
 
-def _checked_directions(directions: typing.Any, natoms: typing.Any) -> typing.Any:
+def _checked_directions(directions: np.ndarray, natoms: int) -> np.ndarray:
     values = np.asarray(directions)
     if (
         values.ndim != 3
@@ -96,13 +97,13 @@ def _checked_directions(directions: typing.Any, natoms: typing.Any) -> typing.An
     return result
 
 
-def _checked_budget(value: typing.Any, name: typing.Any) -> typing.Any:
+def _checked_budget(value: int, name: str) -> int:
     if type(value) is not int or not 0 < value < 2**63:
         raise ValueError(f"{name} must be a positive int64 byte count")
     return value
 
 
-def _block_persistent_bound(state: typing.Any, nrhs: typing.Any) -> typing.Any:
+def _block_persistent_bound(state: NativeRHFState, nrhs: int) -> dict[str, int]:
     """Conservative numeric storage retained outside solve_many workspace."""
     nmo, nocc = state.nbf, state.nocc
     nvir = nmo - nocc
@@ -144,28 +145,32 @@ def _block_persistent_bound(state: typing.Any, nrhs: typing.Any) -> typing.Any:
 
 
 def rhf_hvp_many(
-    state: typing.Any,
-    directions: typing.Any,
+    state: NativeRHFState,
+    directions: np.ndarray,
     *,
-    strategy: typing.Any = "recycled",
-    total_budget_bytes: typing.Any = 128 << 20,
-    jk_backend: typing.Any = "cpu",
-    device_id: typing.Any = 0,
-    device_budget_bytes: typing.Any = 64 << 20,
-    solver_options: typing.Any = None,
-    first_backend: typing.Any = "cpu",
-    first_compiler: typing.Any = None,
-    first_budget_bytes: typing.Any = 64 << 20,
+    strategy: str = "recycled",
+    total_budget_bytes: int = 128 << 20,
+    jk_backend: str = "cpu",
+    device_id: int = 0,
+    device_budget_bytes: int = 64 << 20,
+    solver_options: object = None,
+    first_backend: str = "cpu",
+    first_compiler: object = None,
+    first_budget_bytes: int = 64 << 20,
+    second_backend: str = "cpu",
+    second_compiler: object = None,
+    second_budget_bytes: int = 64 << 20,
     relaxation_backend: str = "cpu",
-    relaxation_compiler: typing.Any = None,
+    relaxation_compiler: object = None,
     relaxation_budget_bytes: int = 64 << 20,
-) -> typing.Any:
+) -> RHFHVPBlockResult:
     """Apply the complete conventional RHF Hessian to a bounded direction block.
 
     First-integral sources are generated independently per direction, while one
     shared response operator and one #179 solve_many call own the orbital solve.
     Second-integral HVPs and relaxation contractions remain directional and are
-    assembled only after all response solutions converge.
+    assembled only after all response solutions converge. The #178 HVP provider
+    may execute on CPU or CUDA independently of response and relaxation.
 
     total_budget_bytes is a conservative numeric live-storage bound for this
     block. It includes retained first/prepared matrices, published response and
@@ -179,6 +184,9 @@ def rhf_hvp_many(
     total_budget_bytes = _checked_budget(total_budget_bytes, "total_budget_bytes")
     device_budget_bytes = _checked_budget(device_budget_bytes, "device_budget_bytes")
     first_budget_bytes = _checked_budget(first_budget_bytes, "first_budget_bytes")
+    _checked_second_hvp_options(
+        second_backend, second_compiler, device_id, second_budget_bytes
+    )
     if strategy not in ("sequential", "blocked", "recycled"):
         raise ValueError("strategy must be sequential, blocked or recycled")
     if jk_backend not in ("cpu", "cuda"):
@@ -321,10 +329,23 @@ def rhf_hvp_many(
     relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
-    second_items = [provider_hvp_components(state, vector) for vector in vectors]
-    core = np.stack([item["core"] for item in second_items])
-    pulay = np.stack([item["pulay"] for item in second_items])
-    two_electron = np.stack([item["two_electron"] for item in second_items])
+    second_items = [
+        provider_hvp_components(
+            state,
+            vector,
+            backend=second_backend,
+            compiler=second_compiler,
+            device_id=device_id,
+            budget_bytes=second_budget_bytes,
+            return_diagnostics=True,
+        )
+        for vector in vectors
+    ]
+    second_components = [item[0] for item in second_items]
+    second_diagnostics = [item[1] for item in second_items]
+    core = np.stack([item["core"] for item in second_components])
+    pulay = np.stack([item["pulay"] for item in second_components])
+    two_electron = np.stack([item["two_electron"] for item in second_components])
     second_seconds = time.perf_counter() - second_started
 
     nuclear_started = time.perf_counter()
@@ -343,7 +364,18 @@ def rhf_hvp_many(
     relaxation_phase_bound = storage["total"] + (
         0 if relaxation_storage is None else relaxation_storage["numeric_peak_bytes"]
     )
-    actual_bound = max(response_phase_bound, relaxation_phase_bound)
+    second_host_peak = max(
+        (item["peak_host_bytes"] for item in second_diagnostics), default=0
+    )
+    second_device_peak = max(
+        (item["peak_device_bytes"] for item in second_diagnostics), default=0
+    )
+    second_phase_bound = storage["total"] + second_host_peak + second_device_peak
+    if second_phase_bound > total_budget_bytes:
+        raise ValueError(
+            "HVP block plus second-integral provider storage exceeds total_budget_bytes"
+        )
+    actual_bound = max(response_phase_bound, relaxation_phase_bound, second_phase_bound)
     first_programs = (
         tuple(
             sorted(
@@ -372,6 +404,16 @@ def rhf_hvp_many(
             "jk_backend": jk_backend,
             "first_backend": first_backend,
             "first_programs": first_programs,
+            "second_backend": second_backend,
+            "second_programs": tuple(
+                sorted(
+                    {
+                        program
+                        for diagnostic in second_diagnostics
+                        for program in diagnostic["program_identities"]
+                    }
+                )
+            ),
             "relaxation_backend": relaxation_backend,
             "relaxation_programs": (
                 tuple(
@@ -402,11 +444,15 @@ def rhf_hvp_many(
         "relaxation_numeric_bound": deepcopy(relaxation_storage),
         "response_phase_numeric_bound_bytes": response_phase_bound,
         "relaxation_phase_numeric_bound_bytes": relaxation_phase_bound,
+        "second_integral_phase_numeric_bound_bytes": second_phase_bound,
         "complete_numeric_peak_bound_bytes": actual_bound,
         "total_budget_bytes": total_budget_bytes,
         "solver_options": asdict(bounded_options),
         "jk_backend": jk_backend,
         "first_backend": first_backend,
+        "second_backend": second_backend,
+        "second_integral_budget_bytes": second_budget_bytes,
+        "second_integral_provider": deepcopy(second_diagnostics),
         "relaxation_backend": relaxation_backend,
         "relaxation_provider": deepcopy(relaxation_diagnostics),
         "execution_residency": (
@@ -414,6 +460,7 @@ def rhf_hvp_many(
             if jk_backend == "cuda"
             or first_backend == "cuda"
             or relaxation_backend == "cuda"
+            or second_backend == "cuda"
             else "host"
         ),
         "jk_statistics": jk_statistics,
@@ -452,13 +499,13 @@ def rhf_hvp_many(
 
 
 def rhf_hessian(
-    state: typing.Any,
+    state: NativeRHFState,
     *,
-    block_size: typing.Any = None,
-    strategy: typing.Any = "recycled",
-    total_budget_bytes: typing.Any = 128 << 20,
-    **hvp_kwargs: typing.Any,
-) -> typing.Any:
+    block_size: int | None = None,
+    strategy: str = "recycled",
+    total_budget_bytes: int = 128 << 20,
+    **hvp_kwargs: object,
+) -> RHFHessianResult:
     """Assemble the raw full Cartesian RHF Hessian in bounded direction blocks.
 
     Columns are independent canonical atom/xyz unit directions. The output is

@@ -1,9 +1,11 @@
 # Experimental CUDA RCCSD validation solver
 
-This is a preparatory validation helper for #149, not completion of its B or
-C acceptance slices. The required resident T/R iteration, native method
-registration and supported homogeneous prepared batches remain open. The A slice (fixed-amplitude kernel parity) is `rccsd_gpu.md`; the
-scientific B/C CPU baseline is `rccsd_bc.md`. The physical equations, inputs,
+This document records the historical ordinary-stream validation helper that
+preceded #149 B/C. Resident T/R iteration was later delivered by #555, and the
+native `VIBEQC_METHOD_RCCSD` owner plus homogeneous prepared batches are now
+implemented by #149 C. The A slice (fixed-amplitude kernel parity) and current
+production boundary are summarized in `rccsd_gpu.md`; the scientific CPU
+baseline is `rccsd_bc.md`. The physical equations, inputs,
 denominators and final acceptance are exactly #148's — the code described here
 only changes which backend evaluates the residual, and how energy-only
 single points and batches are exposed.
@@ -64,21 +66,21 @@ explicit `CudaCompilerAdapter` and cache — CUDA is never implicit.
 
 `tools.vibeqc_cc.api` exposes:
 
-- `method_capabilities("rccsd")` → energy-only, `supports_batch=False`;
+- `method_capabilities("rccsd")` at this historical helper tier → energy-only,
+  `supports_batch=False`; the native slice C registry now reports batch support;
 - `energy(snapshot, provider, backend="cpu"|"cuda", ...)` → single point,
   force requests raise `NotImplementedError`;
 - `batch_energy(problems, ...)` → independent per-item states; one item's
   failure is captured as an `error` item and never corrupts a neighbor;
   heterogeneous system shapes run independently without padding.
 
-The native C-ABI registry (`VIBEQC_METHOD_*`) is deliberately unchanged: there
-is no `VIBEQC_METHOD_RCCSD` identifier, and no native C++ CC solver or resident
-executor exists yet. These remain required work under #149; this helper does
-not add a new dependency to that issue. The
-reserved `VIBEQC_METHOD_RCCSD_T` stays unavailable. Registering ABI methods or
-a native ragged `supports_batch` without the resident interface would advertise
-capabilities that do not exist, so this slice exposes the method at the same
-Python facade tier as the #148 `solve` entry point and documents that boundary.
+At the time this helper was introduced, the native C-ABI registry deliberately
+had no `VIBEQC_METHOD_RCCSD`; that historical boundary is why this module never
+claimed native execution. Slice C subsequently adds an independent additive
+RCCSD identifier and a native resident solver/owner. The reserved
+`VIBEQC_METHOD_RCCSD_T` remains unavailable until a separate native (T) owner is
+promoted. This ordinary-stream module remains an independent validation backend,
+not the production registry implementation.
 
 ## Validation status
 

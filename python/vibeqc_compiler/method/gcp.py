@@ -8,6 +8,8 @@ import typing
 from dataclasses import dataclass
 from typing import ClassVar
 
+from ._generated_parameters import gcp_parameters
+
 GCP_SPEC_VERSION = "gcp-spec-v1"
 
 
@@ -113,23 +115,7 @@ class GCPSpec:
 
 def r2scan3c_gcp() -> typing.Any:
     """Exact def2-mTZVPP gCP profile used by r2SCAN-3c, scoped to H-Ar."""
-
-    return GCPSpec(
-        basis="def2-mTZVPP",
-        sigma=1.0,
-        eta=1.315,
-        eta_spec=1.15,
-        alpha=0.9410,
-        beta=1.4636,
-        damping_scale=4.0,
-        damping_exponent=6.0,
-        parameter_sha256="3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
-        implementation_sha256="c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
-        vdw_radii_sha256="3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
-        data_sha256="c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2",
-        source_revision="41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
-        supported_atomic_numbers=tuple(range(1, 19)),
-    )
+    return GCPSpec(**gcp_parameters("r2SCAN-3c"))
 
 
 @dataclass(frozen=True)
