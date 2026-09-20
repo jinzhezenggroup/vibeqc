@@ -353,3 +353,57 @@ def test_older_native_library_cannot_silently_ignore_custom_options(
     with pytest.raises(NotImplementedError, match="model options"):
         Calculator(method="pbe-rks", ks_options=KsOptions(grid=CUSTOM))
     assert Calculator(method="pbe-rks").singlepoint(H2).converged
+
+
+@pytest.mark.parametrize(
+    "method",
+    (
+        "lda-rks",
+        "lda-uks",
+        "pbe-rks",
+        "pbe-uks",
+        "pbe0-rks",
+        "pbe0-uks",
+        "r2scan-rks",
+        "r2scan-uks",
+    ),
+)
+def test_resolved_ks_options_preserve_catalog_identity(method: str) -> None:
+    first = resolve_ks_options(method, KsOptions(grid=CUSTOM, tile_points=31))
+    second = resolve_ks_options(method, first)
+    assert second == first
+    assert second.identity == first.identity
+    assert second.method_ir is first.method_ir
+    assert second.functional is first.functional
+
+
+@pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
+def test_budgeted_custom_hybrid_preserves_resolved_methodir(spin: str) -> None:
+    method = "pbe-rks" if spin == "unpolarized" else "pbe-uks"
+    graph = resolve_method(
+        MethodSpec(
+            "PBE50-budgeted",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        spin=spin,
+    )
+    options = KsOptions(composition=graph, grid=CUSTOM, tile_points=31)
+    resolved = resolve_ks_options(method, options)
+    again = resolve_ks_options(method, resolved)
+    assert again.identity == resolved.identity
+    assert again.method_ir is graph
+    assert again.coefficients == (0.5, 1.0, -0.25 if spin == "unpolarized" else -0.5)
+    assert (
+        estimate_ks_resources([H2], method=method, ks_options=options).identity
+        == estimate_ks_resources([H2], method=method, ks_options=again).identity
+    )
+    charge, multiplicity = (0, 1) if spin == "unpolarized" else (1, 2)
+    ordinary = Calculator(method=method, ks_options=options).singlepoint(
+        H2, charge=charge, multiplicity=multiplicity
+    )
+    budgeted = Calculator(
+        method=method, ks_options=options, resource_budget=ResourceBudget()
+    ).singlepoint(H2, charge=charge, multiplicity=multiplicity)
+    assert ordinary.converged and budgeted.converged
+    assert budgeted.energy == pytest.approx(ordinary.energy, abs=2e-12)

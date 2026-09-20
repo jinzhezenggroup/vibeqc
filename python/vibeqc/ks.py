@@ -218,8 +218,11 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
         raise TypeError("ks_options must be KsOptions")
 
     method_ir = named_ir
-    if options.composition is not None:
-        method_ir = options.composition
+    # Calculator passes its resolved options to resource planning. Keep that
+    # graph authoritative: rebinding the descriptive selector loses custom K.
+    composition = options.composition or options._method_ir
+    if composition is not None:
+        method_ir = composition
         selected = _native_semilocal(method_ir)
         # The native selector chooses only the ingredient/spin family; all
         # scientific coefficients remain explicit in the supplied MethodIR.
@@ -232,7 +235,13 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                 "KS composition/spin disagrees with native family selector"
             )
         ks_coefficients(method_ir)
-        resolved = selected
+        # Preserve the independent catalog projection's declaration order and
+        # identity when options have already been resolved.
+        resolved = selected if options.functional is None else options.functional
+        if SemilocalXCPrimitive(resolved).semantic_payload() != (
+            SemilocalXCPrimitive(selected).semantic_payload()
+        ):
+            raise ValueError("resolved KS functional disagrees with its MethodIR")
     else:
         resolved = expected if options.functional is None else options.functional
         if (

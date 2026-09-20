@@ -14,7 +14,7 @@ from typing import Self
 import numpy as np
 
 from . import _native
-from .calculator import Atom, Calculator
+from .calculator import Atom, Calculator, _read_correlation_result
 from .ks_diagnostics import (
     KsDiagnostic,
     KsTransportDiagnostic,
@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from .accuracy import AccuracyAssessment
+    from .calculator import CorrelationResult
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class BatchItemResult:
     # Physical commutator at the returned density; absent for unsupported methods.
     physical_residual_rms: float | None = None
     ks_diagnostic: KsDiagnostic | None = None
+    correlation: CorrelationResult | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -504,7 +506,8 @@ class PreparedBatch:
                     prepare(),
                     context=(
                         self._context
-                        if calculator._method == _native.METHOD_MP2
+                        if calculator._method
+                        in (_native.METHOD_MP2, _native.METHOD_RCCSD)
                         else None
                     ),
                 )
@@ -928,6 +931,14 @@ class PreparedBatch:
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            correlation = None
+            if self._calculator._method in (_native.METHOD_MP2, _native.METHOD_RCCSD):
+                correlation = _read_correlation_result(
+                    self._library,
+                    self._batch,
+                    index=index,
+                    context=self._context,
+                )
             accuracy = None
             if succeeded and self._calculator._target_accuracy is not None:
                 atoms = self._systems[index]
@@ -963,6 +974,7 @@ class PreparedBatch:
                     ks_diagnostic=read_ks_diagnostic(self._library, self._batch, index)
                     if self._calculator._ks_options is not None
                     else None,
+                    correlation=correlation,
                     executed_backend={
                         _native.BACKEND_CPU_REFERENCE: "cpu_reference",
                         _native.BACKEND_CUDA: "cuda",

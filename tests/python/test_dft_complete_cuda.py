@@ -243,6 +243,104 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
         )
 
 
+@pytest.mark.parametrize(
+    ("method", "charge", "multiplicity"),
+    [("r2scan-rks", 0, 1), ("r2scan-uks", 1, 2)],
+)
+def test_complete_cuda_r2scan_independent_analytic(
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    compiler: typing.Any,
+) -> None:
+    """Qualify the generated tau geometry path against independent PySCF/libxc."""
+    from test_dft_complete_cpu import (
+        ATOMS,
+        independent_semilocal_total_gradient,
+    )
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    pytest.importorskip(
+        "pyscf", reason="independent r2SCAN analytic reference requires PySCF"
+    )
+    calc = _calculator(method)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state.identity.method == method
+        result = _diagnostic(
+            state,
+            basis,
+            compiler,
+            tile_points=137,
+            primitive_tile=29,
+            integral_terms=17,
+        )
+        reference_energy, reference = independent_semilocal_total_gradient(
+            basis, state, method
+        )
+        energy_error = abs(energy - reference_energy)
+        gradient_error = float(np.max(np.abs(result.gradient - reference)))
+        _evidence(
+            f"water-{method}-tau",
+            {
+                "energy_error": energy_error,
+                "analytic_max_error": gradient_error,
+                "work": dict(result.work),
+                "slurm_job": os.environ["SLURM_JOB_ID"],
+            },
+        )
+        assert energy_error < 2e-8
+        np.testing.assert_allclose(result.gradient, reference, atol=2e-6, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-9, rtol=0)
+        assert result.work["xc_points"] == len(state.grid.points)
+        assert result.execution.startswith("cuda-seven-source/")
+
+
+def test_cuda_r2scan_reconverged_directional_finite_difference(
+    compiler: typing.Any,
+) -> None:
+    """Detect a missing or duplicated vtau/2 contribution after full SCF relaxation."""
+    from test_dft_complete_cpu import ATOMS
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    calc = _calculator("r2scan-rks")
+    xyz = np.asarray([position for _, position in ATOMS], dtype=np.float64)
+    direction = np.array(
+        [[0.13, -0.07, 0.11], [-0.05, 0.17, 0.03], [0.09, 0.02, -0.14]]
+    )
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        batch.execute(strict=True)
+        state = StationaryKsState.from_native(batch, basis)
+        result = _diagnostic(state, basis, compiler)
+        estimates = []
+        for step in (3e-4, 1e-4):
+            values = []
+            for sign in (1, -1):
+                moved = [
+                    (atom[0], position)
+                    for atom, position in zip(
+                        ATOMS, xyz + sign * step * direction, strict=True
+                    )
+                ]
+                values.append(calc.singlepoint(moved, properties=("energy",)).energy)
+            estimates.append((values[0] - values[1]) / (2 * step))
+        actual = float(np.sum(result.gradient * direction))
+        _evidence(
+            "fd-r2scan-rks-tau",
+            {"steps": [3e-4, 1e-4], "estimates": estimates, "analytic": actual},
+        )
+        assert abs(estimates[-1] - estimates[-2]) < 2e-6
+        assert abs(estimates[-1] - actual) < 2e-6
+
+
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_cuda_reconverged_finite_differences_and_replay(
     method: typing.Any, compiler: typing.Any

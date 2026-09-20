@@ -53,6 +53,18 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
+  file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
+  set(VIBEQC_RCCSD_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsd_cpu.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_rccsd_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    OUTPUTS "${VIBEQC_RCCSD_CPU_HEADER}"
+    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS} ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --cpu-header "${VIBEQC_RCCSD_CPU_HEADER}")
+
   set(VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_hf_response_contract.hpp")
   vibeqc_register_generated_sources(
@@ -250,6 +262,17 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_XC_GRADIENT_SOURCE}"
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_GRADIENT_SOURCE}")
+
+  set(VIBEQC_RCCSD_CUDA_SOURCE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsd_cuda.cu")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_rccsd_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    OUTPUTS "${VIBEQC_RCCSD_CUDA_SOURCE}"
+    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS} ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --cuda-source "${VIBEQC_RCCSD_CUDA_SOURCE}")
 
   set(VIBEQC_MP2_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")

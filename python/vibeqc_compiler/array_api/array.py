@@ -94,3 +94,8 @@ class VibeArray:
 
     def __pos__(self) -> VibeArray:
         return self
+
+    def __getitem__(self, key: object) -> VibeArray:
+        from . import namespace
+
+        return namespace._getitem(self, key)

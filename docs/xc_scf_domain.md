@@ -129,8 +129,13 @@ in a total-density/Cartesian-gradient direction. Correlation uses a directional
 derivative of the existing point jet; exchange differentiates the shared
 potential formulas. Both numerical scales stay fixed through differentiation.
 The zero-total-gradient branch retains the PBE second derivative even though
-its first gradient coefficient is zero. Only equal-spin RKS directions are
-qualified, so this does not imply an unrestricted spin-endpoint Hessian.
+its first gradient coefficient is zero. The UKS consumer seeds
+independent spin directions through the same correlation jet and exchange
+potentials. At an empty spin, only zero density/gradient directions are
+admissible; the other spin may vary. No finite full spin-endpoint Hessian is
+claimed. At positive-density zero-gradient points where rho^(4/3) underflows,
+the exchange reduced-gradient direction uses (gradient/rho)/cbrt(rho), retaining
+finite directional coefficients without constructing an infinite Hessian.
 Exact vacuum requires a zero direction, and nonrepresentable directional
 coefficients reject the action. The interior diagnostic domain is unchanged.
 
@@ -165,6 +170,18 @@ references. This admits FP64 roundoff when PBE gradient terms cancel while
 retaining relative acceptance for tiny nonzero tail responses. The same target
 checks ABI layout/domain errors, exact zero directions, and native snapshot
 energy equality and revocation after same-geometry replay.
+
+`tests/data/xc/uks_response.tsv` and
+`tools/generate_xc_uks_response_references.py` provide 48 independent spin
+directions from the original 450-digit energy oracle. The native
+`vibeqc_uks_response_tests` target covers both spin potentials, densities down
+to `1e-280`, empty/near-empty spin fractions, both sides of the PBE C2 spin
+connection and exchange/correlation branches, opposing gradients, and zero
+gradients whose rho^(4/3) underflows. Empty-spin energy derivatives are
+one-sided with extra working precision; the response direction preserves the
+empty spin. The per-component gate is `3e-10*abs(reference)` plus 64 machine
+epsilons times independent `abs(delta_X)+abs(delta_C)` and 8 minimum subnormals.
+The target also verifies spin permutation, batched layout and domain errors.
 
 `vibeqc_dft_tests` retains the #214 identical-grid oracle and adds unequal
 spin directional tests, isolated symmetric off-diagonal perturbations,

@@ -37,7 +37,7 @@ from .spec import (
 )
 from .typecheck import BackendCapability, verify_method_ir
 
-VERSION = "stationary-gradient-plan-v1"
+VERSION = "stationary-gradient-plan-v2"
 SCF_POINT_MODEL = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 
 _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
@@ -45,7 +45,7 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
     ("float64",),
     ("unpolarized", "polarized"),
     (1,),
-    ("rho", "sigma"),
+    ("rho", "sigma", "tau"),
     ("semilocal-xc", "full-range-exchange"),
 )
 

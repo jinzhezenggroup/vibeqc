@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -18,6 +19,7 @@ from vibeqc_compiler.tensor import execute
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
     from numpy.typing import ArrayLike
     from vibeqc_compiler.geometry import Gfn2ShortRangeProgram
@@ -451,3 +453,57 @@ def test_gfn2_integration_preserves_existing_d3_and_scf_history_contracts() -> N
     assert callable(geometry.compile_d3_bj)
     assert callable(geometry.execute_d3_bj)
     assert Index("step", IndexSpace("diis_history", "history", 2)).extent == 2
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_GFN2_CUDA_TEST") != "1",
+    reason="requires explicit allocated-GPU opt-in",
+)
+def test_gfn2_geometry_primal_and_vjps_execute_on_cuda(tmp_path: Path) -> None:
+    from vibeqc.profiles import find_nvcc
+    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
+    from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+
+    nvcc = find_nvcc()
+    if nvcc is None:
+        pytest.fail("VIBEQC_GFN2_CUDA_TEST requires a CUDA compiler")
+    compiler = CudaCompilerAdapter(
+        nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
+    )
+
+    geometry = gfn2_geometry((1, 6, 8))
+    coordinates = np.array(
+        [[0.0, 0.0, 0.0], [2.0, 0.2, 0.0], [-1.0, 2.1, 0.4]],
+        dtype=np.float64,
+    )
+    topology = build_gfn2_pair_topology(geometry, coordinates)
+    compiled = build_gfn2_short_range_program(geometry, topology)
+    programs = (
+        (compiled.program, {"coordinates": coordinates}),
+        (
+            compiled.coordinate_vjp("coordination").program,
+            {
+                "coordinates": coordinates,
+                "bar_coordination": np.array([0.3, -0.2, 0.5]),
+            },
+        ),
+        (
+            compiled.coordinate_vjp("repulsion_energy").program,
+            {
+                "coordinates": coordinates,
+                "bar_repulsion_energy": np.array(1.0),
+            },
+        ),
+    )
+    for index, (program, feeds) in enumerate(programs):
+        plan = plan_cuda(program, compiler.target)
+        expected = execute(program, feeds).outputs
+        cache = tmp_path / f"geometry-{index}"
+        cache.mkdir()
+        with PreparedCuda(plan, compile_cuda(plan, compiler, cache)) as prepared:
+            actual = prepared.execute(feeds).outputs
+        assert actual.keys() == expected.keys()
+        for name in expected:
+            np.testing.assert_allclose(actual[name], expected[name], rtol=0, atol=5e-13)

@@ -1,11 +1,13 @@
 """CUDA execution owner for generated RCCSD Lambda actions.
 
-The scientific equations remain owned by lambda_equations. This module prepares
-shared and expanded primal/RHS/transpose TensorIR programs under one explicit
-host/device resource plan, then reuses #179's host GMRES control. It does not
-claim a device-resident Krylov loop or a public force capability.
+The scientific equations remain owned by lambda_equations. Shared/expanded
+primal, RHS and transpose TensorIR programs are planned under one explicit
+host/device budget. The repeated shared J^T action keeps the bound CC inputs
+resident on device while #179's checked GMRES remains the host controller.
+This is not a device-resident Krylov loop or a public force capability.
 
 Rationale: .agents/notes/implemented/architecture/2026-09-20-generated-cuda-lambda-owner.md
+Resident phase/transfer contract: .agents/notes/implemented/architecture/2026-09-20-resident-lambda-actions.md
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from vibeqc_compiler.common.resources import (
     plan_resources,
 )
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident
 from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
 from tools.vibeqc_response.implicit import (
@@ -38,15 +41,22 @@ from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
 
 
 class PreparedCUDALambda:
-    """Prepare and execute generated Lambda actions on one CUDA device.
+    """Own generated CUDA Lambda actions with a resident repeated J^T stage.
 
-    The CC/reference snapshot and solver contract are first bound by the
-    existing CPU oracle. All Lambda RHS/J^T actions and both final stationarity
-    checks then execute through generated CUDA plans with no CPU scientific
-    fallback. The GMRES iteration remains the shared host controller.
+    The existing CPU consumer first verifies the immutable reference/CC state
+    and solver contract. The two primal checks execute on generated CUDA in
+    phase 0. Phase 1 releases those owners, prepares RHS/final-check programs,
+    and retains the shared transpose program with its CC/Fock/integral inputs
+    on device across all GMRES actions. Only the changing Lambda cotangent and
+    resulting T cotangent cross the host boundary per action.
+
+    GMRES itself remains the shared #179 host implementation. Provenance and
+    transfer counters therefore distinguish resident *action state* from a
+    fully device-resident Krylov solver.
     """
 
-    backend = "cuda-fp64-ordinary-stream"
+    backend = "cuda-fp64-resident-actions"
+    ordinary_stage_backend = "cuda-fp64-ordinary-stream"
 
     def __init__(
         self,
@@ -87,7 +97,10 @@ class PreparedCUDALambda:
         self._closed = True
         self._session = None
         self.last_metrics: dict[str, typing.Any] = {}
-        self.execution_metrics: dict[str, dict[str, int]] = {}
+        self.execution_metrics: dict[str, dict[str, typing.Any]] = {}
+        self._resident_initial_h2d_bytes = 0
+        self._resident_action_input_bytes = 0
+        self._resident_action_output_bytes = 0
 
         programs = {
             "shared_primal": self.bound.programs.primal,
@@ -97,21 +110,27 @@ class PreparedCUDALambda:
             "independent_rhs": self.bound.independent.energy_vjp.program,
             "independent_transpose": self.bound.independent.residual_vjp.program,
         }
+        self._program_hashes = {
+            name: program.logical_hash for name, program in programs.items()
+        }
         limits = budget.limits()
         sub_budget = min(limits["host"], limits["device"])
         if sub_budget <= 0:
             raise ImplicitSolveError("CUDA Lambda budget leaves no tensor capacity")
-        choices = {
-            name: tensor_resource_choices(
+
+        choices = {}
+        for name, program in programs.items():
+            phase = 0 if name.endswith("_primal") else 1
+            choices[name] = tensor_resource_choices(
                 program,
                 compiler.target,
                 name=name,
+                first_phase=phase,
+                last_phase=phase,
                 device=device,
                 sub_budget_bytes=sub_budget,
                 allow_recompute=False,
             )
-            for name, program in programs.items()
-        }
         effective_budget = replace(
             budget,
             host_reserve_bytes=(
@@ -122,31 +141,60 @@ class PreparedCUDALambda:
             [choice.request for choice in choices.values()], effective_budget
         ).require_feasible()
         self.resource_plan = admission
-        self._session = ResourceSession(
-            admission,
-            {
-                name: choice.factory(compiler, cache, device=device)
-                for name, choice in choices.items()
-            },
-        )
+
+        factories = {}
+        for name, choice in choices.items():
+            if name != "shared_transpose":
+                factories[name] = choice.factory(compiler, cache, device=device)
+                continue
+
+            def prepare_resident(
+                resource_plan: typing.Any,
+                *,
+                _choice: typing.Any = choice,
+                _name: str = name,
+            ) -> PreparedResident:
+                plan = _choice.selected(resource_plan)
+                artifact = compile_resident(plan, compiler, cache)
+                return PreparedResident(
+                    plan,
+                    artifact,
+                    device=device,
+                    resource_plan=resource_plan,
+                    resource_owner=_name,
+                )
+
+            factories[name] = prepare_resident
+
+        self._session = ResourceSession(admission, factories)
         try:
             self._session.advance(0)
             self.resource_plan = self._session.plan
+            self._closed = False
+            self._validate_primal_cuda(cc_result)
+            self._session.advance(1)
+            self.resource_plan = self._session.plan
+            self._prepare_resident_transpose()
             self.identity = canonical_hash(
                 {
                     "bound_equations": self.bound.equation_identity,
                     "reference": self.bound.reference_identity,
                     "cc_state": self.bound.cc_state_identity,
                     "solver": dict(self.bound._solver_contract),
+                    "programs": self._program_hashes,
                     "resources": self.resource_plan.identity,
-                    "providers": {
-                        name: self._session.provider(name).identity for name in programs
+                    "live_providers": {
+                        name: self._session.provider(name).identity
+                        for name in (
+                            "shared_rhs",
+                            "shared_transpose",
+                            "independent_rhs",
+                            "independent_transpose",
+                        )
                     },
                     "backend": self.backend,
                 }
             )
-            self._closed = False
-            self._validate_primal_cuda(cc_result)
         except BaseException:
             self._session.close()
             self._closed = True
@@ -163,23 +211,14 @@ class PreparedCUDALambda:
             raise RuntimeError("CUDA Lambda owner is closed")
         self.bound._assert_current(reference_identity)
 
-    def _execute(
-        self,
-        stage: str,
-        extra: typing.Mapping[str, typing.Any] | None = None,
-    ) -> typing.Mapping[str, np.ndarray]:
-        self._assert_current(self.bound.reference_identity)
-        result = self._session.provider(stage).execute(
-            {**self.bound.feeds, **({} if extra is None else dict(extra))}
-        )
-        if result.backend != self.backend:
-            raise ResponseCompatibilityError(
-                "CUDA Lambda tensor backend changed; no CPU fallback allowed"
-            )
-        self.last_metrics[stage] = dict(result.metrics)
+    def _record_ordinary_metrics(
+        self, stage: str, metrics: typing.Mapping[str, typing.Any]
+    ) -> None:
+        self.last_metrics[stage] = dict(metrics)
         counters = self.execution_metrics.setdefault(
             stage,
             {
+                "mode": "ordinary-stream",
                 "calls": 0,
                 "observed_host_to_device_bytes": 0,
                 "observed_device_to_host_bytes": 0,
@@ -189,19 +228,34 @@ class PreparedCUDALambda:
         )
         counters["calls"] += 1
         counters["observed_host_to_device_bytes"] += int(
-            result.metrics.get("observed_host_to_device_bytes", 0)
+            metrics.get("observed_host_to_device_bytes", 0)
         )
         counters["observed_device_to_host_bytes"] += int(
-            result.metrics.get("observed_device_to_host_bytes", 0)
+            metrics.get("observed_device_to_host_bytes", 0)
         )
         counters["peak_tracked_device_bytes"] = max(
-            counters["peak_tracked_device_bytes"],
-            int(result.metrics.get("tracked_device_bytes", 0)),
+            int(counters["peak_tracked_device_bytes"]),
+            int(metrics.get("tracked_device_bytes", 0)),
         )
         counters["peak_tracked_host_bytes"] = max(
-            counters["peak_tracked_host_bytes"],
-            int(result.metrics.get("tracked_host_bytes", 0)),
+            int(counters["peak_tracked_host_bytes"]),
+            int(metrics.get("tracked_host_bytes", 0)),
         )
+
+    def _execute(
+        self,
+        stage: str,
+        extra: typing.Mapping[str, typing.Any] | None = None,
+    ) -> typing.Mapping[str, np.ndarray]:
+        self._assert_current(self.bound.reference_identity)
+        result = self._session.provider(stage).execute(
+            {**self.bound.feeds, **({} if extra is None else dict(extra))}
+        )
+        if result.backend != self.ordinary_stage_backend:
+            raise ResponseCompatibilityError(
+                "CUDA Lambda tensor backend changed; no CPU fallback allowed"
+            )
+        self._record_ordinary_metrics(stage, result.metrics)
         self._assert_current(self.bound.reference_identity)
         return result.outputs
 
@@ -234,6 +288,57 @@ class PreparedCUDALambda:
                     "shared/expanded CUDA CC primal replay disagrees"
                 )
 
+    def _prepare_resident_transpose(self) -> None:
+        resident = self._session.provider("shared_transpose")
+        if not isinstance(resident, PreparedResident):
+            raise TypeError(
+                "shared Lambda transpose must use the resident TensorIR owner"
+            )
+        l1 = np.zeros(self.bound.layouts[0].spec.shape, dtype=np.float64)
+        l2 = np.zeros(self.bound.layouts[1].spec.shape, dtype=np.float64)
+        resident.upload(
+            {
+                **self.bound.feeds,
+                "bar_singles_residual": l1,
+                "bar_doubles_residual": l2,
+            }
+        )
+        self._resident_initial_h2d_bytes = int(resident.transfers["h2d_bytes"])
+        self._resident_action_input_bytes = int(l1.nbytes + l2.nbytes)
+        outputs = dict(resident.plan.outputs)
+        self._resident_action_output_bytes = sum(
+            resident.plan.steps[outputs[name]].node.spec.size
+            * resident.plan.steps[outputs[name]].node.spec.itemsize
+            for name in ("bar_t1", "bar_t2")
+        )
+        self._record_resident_metrics(resident)
+
+    def _record_resident_metrics(self, resident: PreparedResident) -> None:
+        transfers = resident.transfers
+        calls = int(transfers["runs"])
+        dynamic_h2d = int(transfers["h2d_bytes"]) - self._resident_initial_h2d_bytes
+        expected_h2d = calls * self._resident_action_input_bytes
+        expected_d2h = calls * (4 + self._resident_action_output_bytes)
+        if dynamic_h2d != expected_h2d:
+            raise RuntimeError(
+                "resident Lambda action re-uploaded static scientific inputs"
+            )
+        if int(transfers["d2h_bytes"]) != expected_d2h:
+            raise RuntimeError("resident Lambda action transfer accounting drifted")
+        self.execution_metrics["shared_transpose"] = {
+            "mode": "resident-static-cc-feeds",
+            "calls": calls,
+            "initial_static_h2d_bytes": self._resident_initial_h2d_bytes,
+            "dynamic_h2d_bytes_total": dynamic_h2d,
+            "dynamic_h2d_bytes_per_call": self._resident_action_input_bytes,
+            "output_tensor_d2h_bytes_per_call": self._resident_action_output_bytes,
+            "observed_host_to_device_bytes": int(transfers["h2d_bytes"]),
+            "observed_device_to_host_bytes": int(transfers["d2h_bytes"]),
+            "synchronizations": int(transfers["synchronizations"]),
+            "planned_device_arena_bytes": int(resident.plan.allocation_bytes),
+            "planned_provider_bytes": int(resident.plan.provider_bytes),
+        }
+
     def _rhs(self, prefix: str) -> np.ndarray:
         out = self._execute(
             f"{prefix}_rhs", {"bar_correlation_energy": np.asarray(-1.0)}
@@ -242,7 +347,28 @@ class PreparedCUDALambda:
             (out["bar_t1"], out["bar_t2"])
         )
 
+    def _resident_transpose(self, vector: np.ndarray) -> np.ndarray:
+        resident = self._session.provider("shared_transpose")
+        if not isinstance(resident, PreparedResident):
+            raise TypeError("shared Lambda transpose resident owner changed")
+        l1, l2 = self.bound._unpack(vector / self.bound.sqrt_weights)
+        resident.upload(
+            {
+                "bar_singles_residual": np.ascontiguousarray(l1, dtype=np.float64),
+                "bar_doubles_residual": np.ascontiguousarray(l2, dtype=np.float64),
+            }
+        )
+        leases, metrics = resident.run()
+        bar_t1 = resident.download(leases["bar_t1"])
+        bar_t2 = resident.download(leases["bar_t2"])
+        self.last_metrics["shared_transpose"] = dict(metrics)
+        self._record_resident_metrics(resident)
+        self._assert_current(self.bound.reference_identity)
+        return self.bound.sqrt_weights * self.bound._pack((bar_t1, bar_t2))
+
     def _transpose(self, prefix: str, vector: np.ndarray) -> np.ndarray:
+        if prefix == "shared":
+            return self._resident_transpose(vector)
         l1, l2 = self.bound._unpack(vector / self.bound.sqrt_weights)
         out = self._execute(
             f"{prefix}_transpose",
@@ -253,7 +379,7 @@ class PreparedCUDALambda:
         )
 
     def solve(self, *, reference_identity: str) -> CCSDLambdaResult:
-        """Solve Lambda with generated CUDA actions and independent GPU replay."""
+        """Solve Lambda with resident generated J^T actions and GPU replay."""
         with self.bound._lock:
             self._assert_current(reference_identity)
             owner = self
@@ -324,8 +450,10 @@ class PreparedCUDALambda:
                             else "detached-immutable-snapshot"
                         ),
                         "scope": (
-                            "generated CUDA amplitude response with host-controlled "
-                            "GMRES; no resident Krylov, RDM or nuclear-force capability"
+                            "generated CUDA amplitude response; CC/Fock/integral "
+                            "feeds stay resident for repeated shared J^T actions; "
+                            "GMRES remains host-controlled; no device Krylov, RDM "
+                            "or nuclear-force capability"
                         ),
                     }
                 ),
