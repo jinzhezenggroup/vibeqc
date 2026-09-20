@@ -659,7 +659,7 @@ def test_source_cuda_weight_validation_precedes_native_call(
         {"device_id": True},
         {"derivative_stage_budget_bytes": 0},
         {"derivative_stage_budget_bytes": True},
-        {"one_electron_schedule": 3},
+        {"one_electron_schedule": 4},
         {"one_electron_schedule": False},
         {"eri_weight_mode": "packed"},
         {"eri_weight_mode": "shell"},
@@ -671,6 +671,11 @@ def test_source_cuda_weight_validation_precedes_native_call(
 def test_invalid_options(changes: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         CCSDGradientOptions(**changes)
+
+
+def test_nucleus_cooperative_one_electron_schedule_is_valid() -> None:
+    options = CCSDGradientOptions(one_electron_schedule=3)
+    assert options.one_electron_schedule == 3
 
 
 def test_budget_rejects_before_hf_and_before_raw_integrals(

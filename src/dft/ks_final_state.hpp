@@ -25,6 +25,8 @@ struct KsModelIdentity {
   // determinant's resolved Fock backend is authoritative, never inferred here.
   int device{};
   std::uint64_t owner{};
+  double semilocal_exchange_scale{1.0};
+  double semilocal_correlation_scale{1.0};
   bool operator==(const KsModelIdentity&) const = default;
 };
 

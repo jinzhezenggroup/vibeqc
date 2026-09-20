@@ -516,20 +516,20 @@ def save_checkpoint(
                 "converged": True,
             }
             for name, array in (("density", density), ("coordinates", coordinates)):
-                array = np.ascontiguousarray(array, dtype="<f8")
-                if not np.isfinite(array).all():
+                normalized_array = np.ascontiguousarray(array, dtype="<f8")
+                if not np.isfinite(normalized_array).all():
                     raise CheckpointError("nonfinite retained state")
-                data = memoryview(array).cast("B")
+                data = memoryview(normalized_array).cast("B")
                 blobs.append(
                     {
                         "name": f"{name}_{index}",
-                        "shape": list(array.shape),
+                        "shape": list(normalized_array.shape),
                         "offset": offset,
                         "bytes": data.nbytes,
                         "sha256": hashlib.sha256(data).hexdigest(),
                     }
                 )
-                arrays.append(array)
+                arrays.append(normalized_array)
                 offset += data.nbytes
         items.append(item)
     manifest = CheckpointManifest(tuple(items), tuple(blobs))

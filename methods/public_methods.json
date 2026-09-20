@@ -138,6 +138,28 @@
       "supports_batch": true
     },
     {
+      "name": "pbe0-rks",
+      "symbol": "PBE0_RKS",
+      "abi_id": 13,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe0-uks",
+      "symbol": "PBE0_UKS",
+      "abi_id": 14,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
       "name": "gfn2-xtb",
       "symbol": "GFN2_XTB",
       "abi_id": 15,
