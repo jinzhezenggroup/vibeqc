@@ -85,6 +85,13 @@ def _solve(
             raise RuntimeError("independent PySCF RCCSD failed")
 
         eris = coupled.ao2mo(mf.mo_coeff)
+        fock_mo = np.asarray(eris.fock, dtype=np.float64)
+        canonical_offdiag = fock_mo - np.diag(np.diag(fock_mo))
+        canonical_offdiag_max = float(np.max(np.abs(canonical_offdiag)))
+        if canonical_offdiag_max > 1.0e-9:
+            raise RuntimeError(
+                "PySCF CCSD(T) gradient oracle requires canonical RHF orbitals"
+            )
         triples_energy = float(
             ccsd_t.kernel(
                 coupled,
@@ -101,6 +108,7 @@ def _solve(
             "total_energy": total_energy,
             "scf_converged": bool(mf.converged),
             "ccsd_converged": bool(coupled.converged),
+            "canonical_fock_offdiag_max": canonical_offdiag_max,
         }
         if not gradients:
             return result
