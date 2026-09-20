@@ -29,7 +29,7 @@ from vibeqc_compiler.tensor.cuda_execute import (
     compile_cuda,
     tensor_static_data,
 )
-from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_plan import VALIDATION_BYTES, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.interpreter import execute
 
 TARGET = cuda_target_info("sm_120")
@@ -177,11 +177,11 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "tensor_static_initialize" not in source
     assert "static const I" not in external
     assert "tensor_static_initialize" in external
-    assert (
-        plan.host_bytes
-        >= plan.static_data_bytes
-        == len(tensor_static_data(plan))
-        == 144
+    assert plan.static_data_bytes == len(tensor_static_data(plan)) == 144
+    input_bytes = sum(plan.steps[i].node.spec.size * 8 for i in plan.inputs)
+    output_bytes = sum(plan.steps[i].node.spec.size * 8 for _, i in plan.outputs)
+    assert plan.host_bytes == (
+        input_bytes + VALIDATION_BYTES + max(output_bytes, plan.static_data_bytes)
     )
 
 
