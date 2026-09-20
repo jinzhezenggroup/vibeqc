@@ -13,7 +13,6 @@ from itertools import product
 from pathlib import Path
 
 import numpy as np
-from typing_extensions import Self
 
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -33,6 +32,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Sequence
 
     from numpy.typing import ArrayLike
+    from typing_extensions import Self
 
     from .ir import IntegralIR
 
