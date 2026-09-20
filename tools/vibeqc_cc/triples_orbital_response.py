@@ -14,9 +14,9 @@ from types import MappingProxyType
 
 import numpy as np
 
-from tools.vibeqc_response import ResponseGMRES
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
+    ResponseGMRES,
     _immutable,
     checked_transpose_solve,
 )
