@@ -833,7 +833,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
-    plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();
     plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
     plan.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
@@ -3651,12 +3650,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           unrestricted ? total_weighted_density : weighted_density, active, forces);
     }
   }
-  // Compile the generated ssss force consumer so complete endpoint A/B runs
-  // can select it without rebuilding the library, but keep the tuned native
-  // route as the production default until #356's endpoint gate passes.
+  // ssss force mathematics is compiler-owned, but executes on the already-qualified
+  // native scheduler. Keep the standalone generated task consumer out of the
+  // production queue because materializing a second task stream regresses endpoints.
+  const std::uint64_t ssss_shell_class_mask = std::uint64_t{1} << kSsssShellClass;
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask &
-      ~(plan.generated_ssss_force ? 0U : (std::uint64_t{1} << kSsssShellClass));
+      ~ssss_shell_class_mask;
   // Fock-only AOT entries (currently psss) are deliberately not added to the
   // force queue. The force dispatcher is a separate registry and returns
   // ``cudaErrorNotSupported`` for classes without a validated force consumer.
