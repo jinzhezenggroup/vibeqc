@@ -24,8 +24,10 @@ outside this module.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 import numpy as np
 from vibeqc_compiler.tensor import execute, optimize, transpose_program
