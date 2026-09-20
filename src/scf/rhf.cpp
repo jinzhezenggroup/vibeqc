@@ -479,7 +479,6 @@ Matrix generated_one_electron_hf_gradient(const DensityFittingScfData& data, con
 }
 
 /** Form DF weights and contract before entering any legacy fallback guard. */
-/** Form DF weights and contract before entering any legacy fallback guard. */
 Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFittingJkPlan* plan,
                                 std::size_t system, const Matrix& density,
                                 const Matrix* beta = nullptr,
