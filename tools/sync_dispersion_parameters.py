@@ -275,13 +275,24 @@ def build_catalog(
     return payload
 
 
+def _canonical_json_numbers(value: Any) -> Any:
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [_canonical_json_numbers(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _canonical_json_numbers(item) for key, item in value.items()}
+    return value
+
+
 def render_catalog(
     source_manifest: Path = SOURCE_MANIFEST,
     overrides_path: Path = OVERRIDES,
 ) -> str:
-    return json.dumps(
-        build_catalog(source_manifest, overrides_path), indent=2, ensure_ascii=False
-    ) + "\n"
+    payload = _canonical_json_numbers(
+        build_catalog(source_manifest, overrides_path)
+    )
+    return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
 
 def main() -> None:
