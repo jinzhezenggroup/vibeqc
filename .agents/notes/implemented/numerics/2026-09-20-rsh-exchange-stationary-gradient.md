@@ -82,3 +82,20 @@ than only its schedule.
 ---
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Integration with the full-range stationary owner
+
+The master integration preserves the existing full-range `exact_exchange`
+primitive and its `fock_coefficient(spin)/2` weighting alongside the separately
+named SR/LR sources. A sole range primitive is not a global exchange primitive;
+class-based lookup prevents a two-node MethodIR from being misclassified.
+Non-RSH source order, payload and block identities remain exactly those of the
+existing stationary owner. Only a plan with range-exchange primitives acquires
+the range-specific v3 schema and fixed-omega convention.
+
+A direct comparison against the master implementation checks 16 combinations
+of LDA/PBE/r2SCAN/PBE0, RKS/UKS and all-electron/ECP envelopes, including generated
+block identities. Four permanent single-SR/LR spin cases protect the distinction.
+These are plan/algebra checks, not new native RSH molecular-force qualification.
+
+Integration review: Agent ChatGPT; Model GPT-6 Astra Pro.

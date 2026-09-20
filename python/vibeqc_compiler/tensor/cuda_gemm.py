@@ -118,9 +118,10 @@ class GemmContract:
         ):
             if type(value) is not int or not 0 <= value < self.extent(labels):
                 raise ValueError("matrix coordinate is outside its label group")
+            remaining = value
             for label in reversed(labels):
-                coordinates[label] = value % self.extents[label]
-                value //= self.extents[label]
+                coordinates[label] = remaining % self.extents[label]
+                remaining //= self.extents[label]
         return tuple(
             tuple(coordinates[i] for i in labels)
             for labels in (self.a_labels, self.b_labels, self.output_labels)

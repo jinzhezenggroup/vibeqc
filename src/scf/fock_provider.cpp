@@ -63,6 +63,11 @@ void CpuFockProviderView::validate(const ResolvedFockBuild& strategy) const {
     finite(raw.metric);
     finite(raw.three_center);
     finite(b.values);
+    if (!b.auxiliary_major_values.empty()) {
+      require(b.auxiliary_major_values.size() == tensor,
+              "DF Fock provider Q-major cache shape mismatch");
+      finite(b.auxiliary_major_values);
+    }
     if (strategy.spec.derivative_order) {
       require(raw.metric_derivative.size() == product(ncoord(), metric) &&
                   raw.three_center_derivative.size() == product(ncoord(), tensor),

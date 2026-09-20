@@ -171,13 +171,14 @@ def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner() ->
     atoms, record, _ = fixture(representation="cartesian")
     changed = []
     for element in record.elements:
+        changed_element = element
         if element.ecp_core_electrons:
             potentials = json.loads(element.ecp_data)
             potentials[0]["coefficients"][0][0] = str(
                 float(potentials[0]["coefficients"][0][0]) * 1.01
             )
-            element = replace(element, ecp_data=json.dumps(potentials))
-        changed.append(element)
+            changed_element = replace(element, ecp_data=json.dumps(potentials))
+        changed.append(changed_element)
     other_record = replace(record, elements=tuple(changed))
     options = {
         "method": "lda-rks",

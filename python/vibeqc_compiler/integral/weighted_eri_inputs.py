@@ -97,11 +97,11 @@ class WeightedEriPrimitiveStream:
                 yield self._record(1, (1, *([0] * 11)), exponents, positions, weights)
             else:
                 for angular, weight in self.components:
-                    weight *= coefficient
-                    if not math.isfinite(weight):
+                    scaled_weight = weight * coefficient
+                    if not math.isfinite(scaled_weight):
                         raise ValueError("primitive contraction weight overflow")
                     yield self._record(
-                        0, angular, exponents, positions, (weight, 0.0, 0.0)
+                        0, angular, exponents, positions, (scaled_weight, 0.0, 0.0)
                     )
 
 

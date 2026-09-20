@@ -62,7 +62,7 @@ def test_arbitrary_nonsymmetric_weights_raw_fused_and_bounded_schedules(
         "aoij,oij->a", derivative.reshape(6, 3, *values.shape[1:]), weights
     ).reshape(2, 3)
     outputs = []
-    for schedule in (0, 1, 2):
+    for schedule in (0, 1, 2, 3):
         actual, resources = execute_gradient(
             calculator,
             atoms,
@@ -123,7 +123,7 @@ def test_generated_derivatives_preserve_complete_scf_forces(
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "reference")
     reference = run_case(monkeypatch, mapping="thread", **options)
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
-    for mapping in ("thread", "shell_warp"):
+    for mapping in ("thread", "shell_warp", "nucleus_cooperative"):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
         actual = run_case(monkeypatch, mapping="thread", **options)
         for left, right in zip(reference, actual):
@@ -155,6 +155,7 @@ def test_derivative_selectors_on_reused_plan_match_fresh_execution(
         for selection, mapping in (
             ("generated", "thread"),
             ("generated", "shell_warp"),
+            ("generated", "nucleus_cooperative"),
             ("reference", "thread"),
         ):
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", selection)
@@ -196,7 +197,7 @@ def test_generated_target_forces_against_independent_pyscf(
     assert reference.converged
     forces = -reference.nuc_grad_method().kernel()
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
-    for mapping in ("thread", "shell_warp"):
+    for mapping in ("thread", "shell_warp", "nucleus_cooperative"):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
         result = Calculator(
             device="cuda",
@@ -234,6 +235,7 @@ def test_failed_item_does_not_contaminate_generated_neighbor(
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     other = [("He", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     calc = Calculator(device="cuda", max_iterations=3)
@@ -262,6 +264,7 @@ def test_screened_target_energy_force_domain(
     """
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.2, 0.7))]
     options = {
         "device": "cuda",

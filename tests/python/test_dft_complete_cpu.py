@@ -8,6 +8,7 @@ generated derivative graphs under test. Public DFT force capabilities stay off.
 import ctypes as ct
 import typing
 from dataclasses import replace
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -25,6 +26,7 @@ from vibeqc import (
 from vibeqc._dft_gradient import StationaryDerivativeContract, StationaryKsState
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.method import MethodSpec, resolve_method
 
 ATOMS = [("O", (0.1, -0.1, 0.0)), ("H", (0.1, 0.2, 1.7)), ("H", (1.6, -0.2, -0.5))]
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
@@ -103,10 +105,11 @@ def assert_production_grid_convergence(
 
 
 def calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    options = kwargs.pop("ks_options", KsOptions(grid=GRID))
     return Calculator(
         method=method,
         device="cpu",
-        ks_options=KsOptions(grid=GRID),
+        ks_options=options,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
         **kwargs,
@@ -808,6 +811,201 @@ def test_complete_open_shell_uks_analytic_and_reconverged_fd(
         np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
 
 
+def independent_global_hybrid_gradient(
+    basis: typing.Any, state: typing.Any, method: typing.Any, xc: typing.Any = "PBE0"
+) -> typing.Any:
+    """Independent PySCF global-hybrid SCF plus full moving-grid analytic gradient."""
+    from pyscf import dft, gto, lib
+    from pyscf.data.elements import ELEMENTS
+
+    lib.num_threads(1)
+    labels = [f"{ELEMENTS[a.atomic_number]}{i}" for i, a in enumerate(basis.atoms)]
+    shells = {label: [] for label in labels}
+    for shell in basis.shells:
+        shells[labels[shell.atom_index]].append(
+            [
+                shell.angular_momentum,
+                *[(p.exponent, p.coefficient) for p in shell.primitives],
+            ]
+        )
+    uks = method.endswith("-uks")
+    mol = gto.M(
+        atom=[(label, a.position) for label, a in zip(labels, basis.atoms)],
+        basis=shells,
+        unit="Bohr",
+        cart=True,
+        charge=basis.charge,
+        spin=basis.multiplicity - 1,
+        verbose=0,
+    )
+    mf = dft.UKS(mol) if uks else dft.RKS(mol)
+    mf.xc = xc
+    mf.grids.coords = np.array(state.grid.points)
+    mf.grids.weights = np.array(state.grid.weights)
+    mf.grids.radii_adjust = None
+    owners = np.asarray(state.grid.owners)
+    tab = {
+        mol.atom_symbol(a): (
+            np.array(state.grid.points[owners == a] - mol.atom_coord(a)),
+            np.array(state._source.atomic_weights[owners == a]),
+        )
+        for a in range(mol.natm)
+    }
+    mf.grids.gen_atomic_grids = lambda *args, **kwargs: tab
+    mf.small_rho_cutoff = 0
+    mf.conv_tol, mf.conv_tol_grad, mf.max_cycle = 1e-13, 1e-10, 200
+    energy = mf.kernel()
+    assert mf.converged
+    gradient = mf.nuc_grad_method()
+    gradient.grid_response = True
+    return energy, gradient.kernel()
+
+
+@pytest.mark.parametrize("execution", ["reference", "native"])
+@pytest.mark.parametrize(
+    "method,charge,multiplicity,coefficients",
+    [
+        ("pbe0-rks", 0, 1, (0.75, 1.0, -0.125)),
+        ("pbe0-uks", 1, 2, (0.75, 1.0, -0.25)),
+    ],
+)
+def test_pbe0_global_hybrid_complete_gradient_matches_independent_pyscf(
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    coefficients: typing.Any,
+    execution: typing.Any,
+) -> None:
+    """#165: one MethodIR graph controls XC, K, SCF and the K derivative."""
+    pytest.importorskip("pyscf", reason="independent PBE0 gradient requires PySCF")
+    calc = calculator(method, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state.identity.method == method
+        assert state._source.metadata[0] == 6
+        assert state._source.coefficients == coefficients
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/165-pbe0-tests",
+            execution=execution,
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference = independent_global_hybrid_gradient(
+            basis, state, method
+        )
+        assert energy == pytest.approx(reference_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
+        assert tuple(result.components) == (
+            "one_electron",
+            "coulomb",
+            "exact_exchange",
+            "xc_ao",
+            "xc_grid",
+            "xc_weight",
+            "overlap_pulay",
+            "nuclear",
+        )
+        assert np.max(np.abs(result.components["exact_exchange"])) > 1e-4
+        assert (
+            np.max(
+                np.abs(
+                    result.gradient
+                    - 2 * result.components["exact_exchange"]
+                    - reference
+                )
+            )
+            > 1e-4
+        )
+        if execution == "native":
+            xyz = np.asarray([position for _, position in ATOMS])
+            direction = np.array(
+                [[0.13, -0.07, 0.11], [-0.05, 0.17, 0.03], [0.09, 0.02, -0.14]]
+            )
+            estimates = []
+            for step in (3e-4, 1e-4):
+                energies = []
+                for sign in (1, -1):
+                    moved = [
+                        (atom[0], position)
+                        for atom, position in zip(
+                            ATOMS, xyz + sign * step * direction, strict=True
+                        )
+                    ]
+                    energies.append(
+                        calc.singlepoint(
+                            moved,
+                            charge=charge,
+                            multiplicity=multiplicity,
+                            properties=("energy",),
+                        ).energy
+                    )
+                estimates.append((energies[0] - energies[1]) / (2 * step))
+            actual = float(np.sum(result.gradient * direction))
+            assert abs(estimates[-1] - estimates[-2]) < 1e-6
+            assert abs(estimates[-1] - actual) < 1e-6
+        # #163 still owns public DFT force endpoint qualification.
+        assert method_capabilities(method).supported_properties == frozenset({"energy"})
+        with pytest.raises(ValueError, match="does not support properties"):
+            calc.singlepoint(
+                ATOMS,
+                charge=charge,
+                multiplicity=multiplicity,
+                properties=("energy", "forces"),
+            )
+
+
+def test_second_global_hybrid_composition_reuses_same_scf_and_gradient_path() -> None:
+    """#396 extension gate: PBE50 is data-only after the common hybrid primitive."""
+    pytest.importorskip("pyscf", reason="independent hybrid gradient requires PySCF")
+    method_ir = resolve_method(
+        MethodSpec(
+            "PBE50-extension-test",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        spin="unpolarized",
+    )
+    calc = calculator(
+        "pbe-rks",
+        ks_options=KsOptions(grid=GRID, composition=method_ir),
+        max_iterations=200,
+    )
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state._source.method_ir.identity == method_ir.identity
+        assert state._source.coefficients == (0.5, 1.0, -0.25)
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/165-pbe50-extension-test",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference = independent_global_hybrid_gradient(
+            basis,
+            state,
+            "pbe-rks",
+            xc="0.5*HF + 0.5*PBE, PBE",
+        )
+        assert energy == pytest.approx(reference_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
+        assert "exact_exchange" in result.components
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
+
+
 def product_coordinates() -> typing.Any:
     return ((a, axis) for a in range(3) for axis in range(3))
 
@@ -964,6 +1162,7 @@ class BlockOracle(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, BlockOracle())
 from vibeqc import Calculator, GridSpec, KsOptions
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.method import MethodSpec, resolve_method
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 atoms = [('H', (.1, .2, -.6)), ('H', (.2, -.1, .8))]

@@ -40,7 +40,16 @@ std::uint64_t next_cpu_ks_owner() {
 
 bool is_uks(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_R2SCAN_UKS;
+         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS;
+}
+
+bool is_pbe_family(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS ||
+         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
+}
+
+bool is_pbe0(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
 }
 
 bool is_r2scan(vibeqc_method method) noexcept {
@@ -49,19 +58,20 @@ bool is_r2scan(vibeqc_method method) noexcept {
 
 bool is_supported_dft(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
+         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
 }
 
 std::uint32_t functional_code(vibeqc_method method) {
   if (is_r2scan(method)) return 2U;
-  if (method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS) return 1U;
+  if (is_pbe_family(method)) return 1U;
   if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
   throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
 }
 
-const char* functional_name(vibeqc_method method) {
+const char* display_method_name(vibeqc_method method) noexcept {
+  if (is_pbe0(method)) return "PBE0";
   if (is_r2scan(method)) return "R2SCAN";
-  return functional_code(method) == 1U ? "PBE" : "LDA";
+  return is_pbe_family(method) ? "PBE" : "LDA";
 }
 
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
@@ -113,6 +123,48 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
+  bool composition_seen = false;
+  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
+                    sizeof(descriptor.ks_options)) &&
+      descriptor.ks_options) {
+    const auto& input = *descriptor.ks_options;
+    constexpr auto prefix = offsetof(vibeqc_ks_options, composition_version);
+    if (input.struct_size < prefix || input.abi_version != VIBEQC_ABI_VERSION)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
+    if (input.struct_size > prefix && input.struct_size < sizeof(vibeqc_ks_options))
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS composition suffix");
+    if (input.struct_size >= sizeof(vibeqc_ks_options)) {
+      if (input.composition_version > 1)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
+      if (input.composition_version == 1) {
+        composition_seen = true;
+        const auto x = input.semilocal_exchange_scale;
+        const auto c = input.semilocal_correlation_scale;
+        const auto k = input.fock_exchange_coefficient;
+        if (!std::isfinite(x) || !std::isfinite(c) || !std::isfinite(k) || x < 0 || c < 0 || k > 0)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
+        const bool changed = x != 1 || c != 1 || k != 0;
+        const bool pbe = is_pbe_family(descriptor.method);
+        if (changed && (!pbe || backend == VIBEQC_BACKEND_CUDA))
+          throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                            "scaled/global-hybrid KS requires CPU PBE components");
+        options.semilocal_exchange_scale = x;
+        options.semilocal_correlation_scale = c;
+        fock.exchange.present = k != 0;
+        fock.exchange.coefficient = k;
+      }
+    }
+  }
+  if (is_pbe0(descriptor.method)) {
+    if (!composition_seen)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "PBE0 requires explicit resolved KS composition v2");
+    const double expected_k = is_uks(descriptor.method) ? -0.25 : -0.125;
+    if (options.semilocal_exchange_scale != 0.75 || options.semilocal_correlation_scale != 1.0 ||
+        !fock.exchange.present || fock.exchange.coefficient != expected_k)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "PBE0 resolved composition does not match its audited manifest");
+  }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
       options.screening_tolerance);
@@ -133,7 +185,8 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
       !descriptor.ks_options)
     return grid;
   const auto& input = *descriptor.ks_options;
-  if (input.struct_size < sizeof(vibeqc_ks_options) || input.abi_version != VIBEQC_ABI_VERSION)
+  if (input.struct_size < offsetof(vibeqc_ks_options, composition_version) ||
+      input.abi_version != VIBEQC_ABI_VERSION)
     throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
   if (input.scf_domain_version != 1)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS tail/spin domain policy");
@@ -384,7 +437,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
 
   Result execute(bool compute_forces) override {
     invalidate_final_state();
-    const char* method_name = functional_name(method_);
+    const char* method_name = display_method_name(method_);
     if (compute_forces) {
       const char* issue = is_r2scan(method_) ? "#164" : "#163";
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -420,11 +473,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
     scf::ScfResult native;
     if (method_ == VIBEQC_METHOD_R2SCAN_UKS)
       native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
-    else if (method_ == VIBEQC_METHOD_LDA_UKS || method_ == VIBEQC_METHOD_PBE_UKS)
-      native = scf::run_uks(fock_, basis_, grid_, options_, method_ == VIBEQC_METHOD_PBE_UKS, seed);
     else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
       native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
-    else if (method_ == VIBEQC_METHOD_PBE_RKS)
+    else if (is_uks(method_))
+      native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
+    else if (is_pbe_family(method_))
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
       native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
@@ -456,8 +509,16 @@ class KsPreparedCalculation final : public PreparedCalculation {
       dft::KsFinalStateIdentity identity;
       identity.determinant = {
           {cpu_owner_, 1, 1, 1}, cpu_epoch_, fock_.strategy(), std::move(occupied)};
-      identity.model = {1,     1,  grid_.spec(), options_.xc_tile_points, functional_code(method_),
-                        spins, -1, cpu_owner_};
+      identity.model = {1,
+                        1,
+                        grid_.spec(),
+                        options_.xc_tile_points,
+                        functional_code(method_),
+                        spins,
+                        -1,
+                        cpu_owner_,
+                        options_.semilocal_exchange_scale,
+                        options_.semilocal_correlation_scale};
       dft::KsPhysicalState physical{identity,
                                     true,
                                     std::move(densities),
@@ -907,7 +968,7 @@ vibeqc_status validate_dft_system(vibeqc_method method, const core::System& syst
     detail = "requested DFT method is reserved but not implemented";
     return VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
-  const char* functional = functional_name(method);
+  const char* functional = display_method_name(method);
   if (!is_uks(method)) {
     if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
       return VIBEQC_STATUS_SUCCESS;

@@ -183,15 +183,33 @@ def test_grid_policy_capability_boundaries_fail_closed() -> None:
         GridPolicy("turbo").resolve("pbe-rks")
 
 
-def test_method_ir_capability_gate_rejects_non_semilocal_graph(
+def test_named_pbe_selector_cannot_silently_change_to_hybrid(
     monkeypatch: typing.Any,
 ) -> None:
     import vibeqc.ks as ks_module
 
     hybrid = resolve_method("PBE0", spin="unpolarized")
     monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: hybrid)
-    with pytest.raises(NotImplementedError, match="exactly one supported semilocal"):
+    with pytest.raises(RuntimeError, match="disagrees with native KS selector"):
         ks_module.resolve_ks_options("pbe-rks")
+
+
+@pytest.mark.parametrize(
+    "method,spin,coefficients",
+    (
+        ("pbe0-rks", "unpolarized", (0.75, 1.0, -0.125)),
+        ("pbe0-uks", "polarized", (0.75, 1.0, -0.25)),
+    ),
+)
+def test_pbe0_named_selector_resolves_common_methodir_composition(
+    method: typing.Any, spin: typing.Any, coefficients: typing.Any
+) -> None:
+    options = resolve_ks_options(method, KsOptions(grid=CUSTOM))
+    assert options.method_ir.identifier == "PBE0"
+    assert options.method_ir.spin == spin
+    assert options.coefficients == coefficients
+    assert options.requires_composition_v2
+    assert len(options.method_ir.primitives) == 2
 
 
 @pytest.mark.parametrize(
@@ -300,6 +318,29 @@ def test_unsupported_compositions_and_policy_fail_before_native_load(
         KsOptions(scf_domain="unversioned-clipping")
     with pytest.raises(ValueError, match="RKS/UKS"):
         Calculator(method="rhf", ks_options=KsOptions())
+
+
+@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
+def test_unqualified_hybrid_default_grid_fails_closed(method: str) -> None:
+    with pytest.raises(NotImplementedError, match="explicit GridSpec"):
+        resolve_ks_options(method)
+
+
+def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> None:
+    from vibeqc import _native
+
+    pure = resolve_ks_options("pbe-rks")
+    hybrid = resolve_ks_options("pbe0-rks", KsOptions(grid=CUSTOM))
+    old = native_ks_options(pure, version=1)
+    new = native_ks_options(hybrid, version=2)
+    assert old.struct_size == _native.KsOptionsDescriptor.composition_version.offset
+    assert new.struct_size > old.struct_size
+    assert new.composition_version == 1
+    assert (
+        new.semilocal_exchange_scale,
+        new.semilocal_correlation_scale,
+        new.fock_exchange_coefficient,
+    ) == (0.75, 1.0, -0.125)
 
 
 def test_custom_model_changes_plan_identity_without_materializing_grid(
@@ -414,6 +455,26 @@ def test_custom_native_grid_matches_independent_scf_and_budget(
             batch.execute(strict=True)
 
 
+def test_older_native_library_cannot_claim_pbe0_without_composition_v2(
+    monkeypatch: typing.Any,
+) -> None:
+    from vibeqc import _native
+
+    library = _native.load_library(device="cpu")
+
+    class VersionOne:
+        argtypes = None
+        restype = None
+
+        def __call__(self) -> typing.Any:
+            return 1
+
+    monkeypatch.setattr(library, "vibeqc_ks_options_version", VersionOne())
+    monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
+    with pytest.raises(NotImplementedError, match="composition options v2"):
+        Calculator(method="pbe0-rks", ks_options=KsOptions(grid=CUSTOM))
+
+
 def test_older_native_library_cannot_silently_ignore_custom_options(
     monkeypatch: typing.Any,
 ) -> None:
@@ -425,3 +486,68 @@ def test_older_native_library_cannot_silently_ignore_custom_options(
     with pytest.raises(NotImplementedError, match="model options"):
         Calculator(method="pbe-rks", ks_options=KsOptions(grid=CUSTOM))
     assert Calculator(method="pbe-rks").singlepoint(H2).converged
+
+
+@pytest.mark.parametrize(
+    "method",
+    (
+        "lda-rks",
+        "lda-uks",
+        "pbe-rks",
+        "pbe-uks",
+        "pbe0-rks",
+        "pbe0-uks",
+        "r2scan-rks",
+        "r2scan-uks",
+    ),
+)
+def test_resolved_ks_options_preserve_catalog_identity(method: str) -> None:
+    first = resolve_ks_options(method, KsOptions(grid=CUSTOM, tile_points=31))
+    second = resolve_ks_options(method, first)
+    assert second == first
+    assert second.identity == first.identity
+    assert second.method_ir is first.method_ir
+    assert second.functional is first.functional
+
+
+@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
+def test_named_hybrid_resource_planning_preserves_explicit_grid(method: str) -> None:
+    options = KsOptions(grid=CUSTOM, tile_points=31)
+    resolved = resolve_ks_options(method, options)
+    assert resolved.requires_composition_v2
+    assert (
+        estimate_ks_resources([H2], method=method, ks_options=options).identity
+        == estimate_ks_resources([H2], method=method, ks_options=resolved).identity
+    )
+
+
+@pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
+def test_budgeted_custom_hybrid_preserves_resolved_methodir(spin: str) -> None:
+    method = "pbe-rks" if spin == "unpolarized" else "pbe-uks"
+    graph = resolve_method(
+        MethodSpec(
+            "PBE50-budgeted",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        spin=spin,
+    )
+    options = KsOptions(composition=graph, grid=CUSTOM, tile_points=31)
+    resolved = resolve_ks_options(method, options)
+    again = resolve_ks_options(method, resolved)
+    assert again.identity == resolved.identity
+    assert again.method_ir is graph
+    assert again.coefficients == (0.5, 1.0, -0.25 if spin == "unpolarized" else -0.5)
+    assert (
+        estimate_ks_resources([H2], method=method, ks_options=options).identity
+        == estimate_ks_resources([H2], method=method, ks_options=again).identity
+    )
+    charge, multiplicity = (0, 1) if spin == "unpolarized" else (1, 2)
+    ordinary = Calculator(method=method, ks_options=options).singlepoint(
+        H2, charge=charge, multiplicity=multiplicity
+    )
+    budgeted = Calculator(
+        method=method, ks_options=options, resource_budget=ResourceBudget()
+    ).singlepoint(H2, charge=charge, multiplicity=multiplicity)
+    assert ordinary.converged and budgeted.converged
+    assert budgeted.energy == pytest.approx(ordinary.energy, abs=2e-12)

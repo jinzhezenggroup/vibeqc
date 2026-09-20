@@ -5,8 +5,10 @@ Native SCF has its own audited tail/spin domain, distinct from the compiler's
 interior-only reference contract. Unsupported compositions fail before prepare.
 """
 
+import math
 import typing
 from dataclasses import asdict, dataclass, field, replace
+from fractions import Fraction
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.grid import (
@@ -15,7 +17,12 @@ from vibeqc_compiler.dft.grid import (
     checked_int,
     grid_policy_provenance,
 )
-from vibeqc_compiler.method import MethodIR, SemilocalXCPrimitive, resolve_method
+from vibeqc_compiler.method import (
+    ExactExchangePrimitive,
+    MethodIR,
+    SemilocalXCPrimitive,
+    resolve_method,
+)
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
@@ -25,6 +32,8 @@ _NATIVE_KS_METHODS = {
     "pbe-rks": ("PBE", "unpolarized"),
     "lda-uks": ("LDA_XC_PW", "polarized"),
     "pbe-uks": ("PBE", "polarized"),
+    "pbe0-rks": ("PBE0", "unpolarized"),
+    "pbe0-uks": ("PBE0", "polarized"),
     "r2scan-rks": ("R2SCAN", "unpolarized"),
     "r2scan-uks": ("R2SCAN", "polarized"),
 }
@@ -32,15 +41,17 @@ _NATIVE_KS_METHODS = {
 
 @dataclass(frozen=True)
 class KsOptions:
-    """A snapshotted supported semilocal composition, quadrature, and bounded XC tile.
+    """A snapshotted native KS composition, quadrature, and bounded XC tile.
 
-    An absent functional resolves from the method name. RKS requires an
-    unpolarized FunctionalSpec; UKS requires polarized. The only supported
-    compositions are the audited LDA, PBE, and r2SCAN catalog entries with no
-    exact exchange. A different model requires a new prepared owner.
+    RKS requires unpolarized MethodIR semantics; UKS requires polarized. Native
+    execution accepts audited LDA/PBE/r2SCAN semilocal families. CPU PBE-family
+    compositions also accept explicit MethodIR-owned full-range exact exchange.
+    CUDA hybrids and unsupported primitive families fail closed. A different
+    model requires a new prepared owner.
     """
 
     functional: FunctionalSpec | None = None
+    composition: MethodIR | None = None
     grid: GridSpec | None = None
     grid_accuracy: str = "standard"
     tile_points: int = 256
@@ -52,6 +63,10 @@ class KsOptions:
             self.functional, FunctionalSpec
         ):
             raise TypeError("KS functional must be a FunctionalSpec")
+        if self.composition is not None and not isinstance(self.composition, MethodIR):
+            raise TypeError("KS composition must be a resolved MethodIR")
+        if self.functional is not None and self.composition is not None:
+            raise ValueError("provide KS functional or composition, not both")
         if self.grid is not None and not isinstance(self.grid, GridSpec):
             raise TypeError("KS grid must be a GridSpec or None")
         if self.grid_accuracy not in ("standard", "tight"):
@@ -66,6 +81,15 @@ class KsOptions:
         if self._method_ir is None:
             raise ValueError("resolve KS options against a method first")
         return self._method_ir
+
+    @property
+    def coefficients(self) -> typing.Any:
+        """Resolved (semilocal X, semilocal C, raw Fock K) coefficients."""
+        return ks_coefficients(self.method_ir)
+
+    @property
+    def requires_composition_v2(self) -> bool:
+        return self.coefficients != (1.0, 1.0, 0.0)
 
     @property
     def ao_order(self) -> typing.Any:
@@ -101,57 +125,148 @@ class KsOptions:
         return canonical_hash(self.to_payload())
 
 
-def resolve_ks_method(method: typing.Any) -> typing.Any:
-    """Resolve one native KS name through MethodIR and project its semilocal node."""
-    if method not in _NATIVE_KS_METHODS:
-        raise ValueError(
-            "KS options require a supported native semilocal RKS/UKS method"
-        )
-    identifier, spin = _NATIVE_KS_METHODS[method]
-    method_ir = resolve_method(identifier, spin=spin)
-    if len(method_ir.primitives) != 1 or not isinstance(
-        method_ir.primitives[0], SemilocalXCPrimitive
+def _native_components(method_ir: typing.Any) -> typing.Any:
+    """Select supported primitive families by type, not by a method alias."""
+    semilocal = tuple(
+        primitive
+        for primitive in method_ir.primitives
+        if type(primitive) is SemilocalXCPrimitive
+    )
+    exchange = tuple(
+        primitive
+        for primitive in method_ir.primitives
+        if type(primitive) is ExactExchangePrimitive
+    )
+    if (
+        len(semilocal) != 1
+        or len(exchange) > 1
+        or len(semilocal) + len(exchange) != len(method_ir.primitives)
     ):
         raise NotImplementedError(
-            "native KS requires exactly one supported semilocal XC primitive"
+            "native KS requires one semilocal XC primitive plus optional full-range exchange"
         )
-    # MethodIR canonicalizes component order for semantic/cache identity, while
-    # the established native KS FunctionalSpec identity retains audited declaration
-    # order. Compare both compositions in canonical form before returning the
-    # catalog representation; overwriting the node's components would hide changed
-    # coefficients or missing terms. Bind the catalog to the requested native
-    # selector, whose fixed kernels cannot execute a different family or spin.
-    runtime_functional = functional(identifier, spin=spin)
-    if (
-        method_ir.primitives[0].semantic_payload()
-        != SemilocalXCPrimitive(runtime_functional).semantic_payload()
+    return semilocal[0].functional, exchange[0] if exchange else None
+
+
+def _native_semilocal(method_ir: typing.Any) -> typing.Any:
+    return _native_components(method_ir)[0]
+
+
+def ks_coefficients(method_ir: typing.Any) -> typing.Any:
+    """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
+    if not isinstance(method_ir, MethodIR):
+        raise TypeError("KS coefficients require a resolved MethodIR")
+    spec, exact_exchange = _native_components(method_ir)
+    components = dict(spec.components)
+    if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
+        exchange_scale = components.get("GGA_X_PBE", Fraction(0))
+        correlation_scale = components.get("GGA_C_PBE", Fraction(0))
+    elif (
+        components
+        in (
+            {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)},
+            {"MGGA_X_R2SCAN": Fraction(1), "MGGA_C_R2SCAN": Fraction(1)},
+        )
+        and len(method_ir.primitives) == 1
     ):
-        raise RuntimeError(
-            "MethodIR semilocal node disagrees with native KS XC catalog"
-        )
-    return method_ir, runtime_functional
+        exchange_scale = correlation_scale = Fraction(1)
+    else:
+        raise NotImplementedError("unsupported native KS semilocal composition")
+    fock_exchange = (
+        exact_exchange.fock_coefficient(method_ir.spin)
+        if exact_exchange is not None
+        else Fraction(0)
+    )
+    values = tuple(
+        float(value) for value in (exchange_scale, correlation_scale, fock_exchange)
+    )
+    if (
+        not all(math.isfinite(value) for value in values)
+        or exchange_scale < 0
+        or correlation_scale < 0
+    ):
+        raise NotImplementedError("native KS composition coefficients are invalid")
+    return values
+
+
+def resolve_ks_method(method: typing.Any) -> typing.Any:
+    """Resolve a named native KS selector through canonical MethodIR."""
+    if method not in _NATIVE_KS_METHODS:
+        raise ValueError("KS options require a supported native RKS/UKS method")
+    identifier, spin = _NATIVE_KS_METHODS[method]
+    method_ir = resolve_method(identifier, spin=spin)
+    semilocal = _native_semilocal(method_ir)
+
+    # Pure LDA/PBE selectors retain the independent catalog projection gate.
+    if identifier != "PBE0":
+        if len(method_ir.primitives) != 1:
+            raise RuntimeError("MethodIR composition disagrees with native KS selector")
+        runtime_functional = functional(identifier, spin=spin)
+        if SemilocalXCPrimitive(semilocal).semantic_payload() != (
+            SemilocalXCPrimitive(runtime_functional).semantic_payload()
+        ):
+            raise RuntimeError(
+                "MethodIR semilocal node disagrees with native KS XC catalog"
+            )
+        return method_ir, runtime_functional
+
+    # PBE0 is an audited manifest whose semilocal/exchange coefficients are
+    # checked structurally, not by a PBE0-specific arithmetic path.
+    if ks_coefficients(method_ir) != (
+        0.75,
+        1.0,
+        -0.125 if spin == "unpolarized" else -0.25,
+    ):
+        raise RuntimeError("PBE0 MethodIR disagrees with its native composition")
+    return method_ir, semilocal
 
 
 def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing.Any:
     """Validate a MethodIR-resolved model before resource/native allocation."""
-    method_ir, expected = resolve_ks_method(method)
+    named_ir, expected = resolve_ks_method(method)
     options = KsOptions() if options is None else options
     if not isinstance(options, KsOptions):
         raise TypeError("ks_options must be KsOptions")
-    resolved = expected if options.functional is None else options.functional
-    # Identifiers are descriptive; only audited component/parameter identity
-    # determines supported mathematics. Zero or modified terms are not ignored.
-    if (
-        resolved.spin != expected.spin
-        or resolved.version != expected.version
-        or sorted(resolved.components) != sorted(expected.components)
-        or resolved.exact_exchange
-        or resolved.range_omega
-        or resolved.long_range_exchange
-    ):
-        raise NotImplementedError(
-            "KS FunctionalSpec does not match the method's supported composition/spin"
-        )
+
+    method_ir = named_ir
+    # Calculator passes its resolved options to resource planning. Keep that
+    # graph authoritative: rebinding the descriptive selector loses custom K.
+    composition = options.composition or options._method_ir
+    if composition is not None:
+        method_ir = composition
+        selected = _native_semilocal(method_ir)
+        # The native selector chooses only the ingredient/spin family; all
+        # scientific coefficients remain explicit in the supplied MethodIR.
+        if (
+            method_ir.spin != named_ir.spin
+            or selected.spin != expected.spin
+            or selected.ingredients != expected.ingredients
+        ):
+            raise NotImplementedError(
+                "KS composition/spin disagrees with native family selector"
+            )
+        ks_coefficients(method_ir)
+        # Preserve the independent catalog projection's declaration order and
+        # identity when options have already been resolved.
+        resolved = selected if options.functional is None else options.functional
+        if SemilocalXCPrimitive(resolved).semantic_payload() != (
+            SemilocalXCPrimitive(selected).semantic_payload()
+        ):
+            raise ValueError("resolved KS functional disagrees with its MethodIR")
+    else:
+        resolved = expected if options.functional is None else options.functional
+        if (
+            resolved.spin != expected.spin
+            or resolved.version != expected.version
+            or sorted(resolved.components) != sorted(expected.components)
+            or resolved.exact_exchange
+            or resolved.range_omega
+            or resolved.long_range_exchange
+        ):
+            raise NotImplementedError(
+                "KS FunctionalSpec does not match the method's supported composition/spin"
+            )
+
     grid = options.grid
     if grid is None:
         if method in ("r2scan-rks", "r2scan-uks"):
@@ -162,14 +277,18 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                     "r2SCAN grid accuracy profiles require an explicit GridSpec"
                 )
             grid = GridSpec()
+        elif ks_coefficients(method_ir)[2] != 0.0:
+            raise NotImplementedError(
+                "global-hybrid grid policy requires an explicit GridSpec"
+            )
         else:
             grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
-    result = replace(options, functional=resolved, grid=grid)
+    result = replace(options, functional=resolved, composition=None, grid=grid)
     object.__setattr__(result, "_method_ir", method_ir)
     return result
 
 
-def native_ks_options(options: typing.Any) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -184,8 +303,15 @@ def native_ks_options(options: typing.Any) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
+    if version not in (1, 2):
+        raise ValueError("native KS options version must be 1 or 2")
+    size = (
+        _native.KsOptionsDescriptor.composition_version.offset
+        if version == 1
+        else ctypes.sizeof(_native.KsOptionsDescriptor)
+    )
     return _native.KsOptionsDescriptor(
-        ctypes.sizeof(_native.KsOptionsDescriptor),
+        size,
         _native.ABI_VERSION,
         1,
         grid.version,
@@ -197,4 +323,7 @@ def native_ks_options(options: typing.Any) -> typing.Any:
         options.tile_points,
         radii,
         119 if radii is not None else 0,
+        0,
+        1,
+        *options.coefficients,
     )

@@ -4,14 +4,18 @@ VibeQC uses the compiler-owned generated CUDA consumer for first nuclear
 derivatives of overlap S, kinetic T and nuclear attraction V as the production
 default. It accepts arbitrary external weights, and the Direct/DF RHF/UHF
 adapters use that same contract. The qualified default schedule is
-`shell_warp`.
+`nucleus_cooperative`; `shell_warp` remains an explicit control. The
+[nucleus-cooperative promotion decision](../.agents/notes/implemented/performance/2026-09-20-generated-nucleus-cooperative-one-electron-default.md)
+records the matched endpoint and holdout evidence for this default.
 
 ```bash
 # Explicit retained native exception for comparison or a documented workload.
 VIBEQC_ONE_ELECTRON_DERIVATIVES=reference your-command
 
-# Generated diagnostic schedules.
+# Explicit generated schedules (nucleus_cooperative is also the default).
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=thread your-command
+VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=shell_warp your-command
+VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=nucleus_cooperative your-command
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial your-command
 ```
 
@@ -19,9 +23,11 @@ The retained `reference` route uses the cooperative native force consumer (or
 the previous DF derivative-tensor route where applicable). The old scalar
 native force family and `VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
 `thread` owns triangular AO pairs by thread; `shell_warp` assigns a shell
-pair to a warp whose lanes own AO components; `serial` is a deterministic
-diagnostic mapping with one owner per system. None of these switches changes
-the value implementation selected by `VIBEQC_ONE_ELECTRON_VALUES`.
+pair to a warp whose lanes own AO components; `nucleus_cooperative` assigns an
+AO pair to a warp whose lanes own one nuclear center per tile and share the
+primitive-pair geometry; `serial` is a deterministic diagnostic mapping with
+one owner per system. None of these switches changes the value implementation
+selected by `VIBEQC_ONE_ELECTRON_VALUES`.
 
 ## Mathematical and weight contract
 
@@ -138,7 +144,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
 ```
 
 The GPU tests compare arbitrary nonsymmetric-weight raw dot products with all
-three fused schedules, check deterministic replay and bounded output transfers,
+four fused schedules, check deterministic replay and bounded output transfers,
 and exercise Direct/DF RHF/UHF in Cartesian/spherical representations on cold,
 warm and changed geometries. They also check selector transitions on reused
 plans, independent analytic target forces, rigid transformations and failed
@@ -213,7 +219,10 @@ complete process host high-water is not claimed. Resource-budgeted runs omit
 optional iteration-history profiling, while retaining final residuals and
 iteration counts.
 
-The generated shell-warp implementation is the production default after #357.
+The generated shell-warp implementation became the production default after
+#357; its archived measurements below remain bound to that earlier selection.
+The current nucleus-cooperative default is qualified separately by the linked
+#670 promotion decision, not by relabeling these historical measurements.
 The archived endpoint evidence is deliberately not rewritten: resident DF
 unchanged replay measured 4.586 / 5.429 ms (reference / generated), and Direct
 sdf18 changed geometry measured 36.667 / 39.352 ms. Those cases justify keeping
