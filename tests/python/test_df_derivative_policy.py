@@ -89,9 +89,7 @@ def test_work_model_boundaries_and_unknown_architecture(
         for v in (0, 1)
         for arch in (80, 89, 100, 120, 121)
     ]
-    for (n, a, op, ap, rank, v, arch), selected in zip(
-        rows, policy(rows), strict=True
-    ):
+    for (n, a, op, ap, rank, v, arch), selected in zip(rows, policy(rows), strict=True):
         assert selected == (
             int(arch == 120 and n * n * a >= 2**18),
             int(arch == 120 and v and op * op * ap >= 2**22),

@@ -58,13 +58,11 @@ constexpr bool df_signature_packets_preferred(std::size_t orbital_primitives,
  * policy.  Correctness, provenance, resident storage and one-term RHF gates
  * remain with the response owner; unknown architectures stay unpromoted.
  */
-constexpr bool df_packed_response_preferred(std::size_t nbf, std::size_t naux,
-                                            std::size_t rank,
+constexpr bool df_packed_response_preferred(std::size_t nbf, std::size_t naux, std::size_t rank,
                                             unsigned architecture) noexcept {
   const auto profile = df_derivative_profile(architecture);
   return rank > 0 && nbf >= 4 && rank <= nbf / 4 &&
-         df_derivative_work_at_least(nbf, nbf, naux,
-                                     profile.minimum_packed_response_weights);
+         df_derivative_work_at_least(nbf, nbf, naux, profile.minimum_packed_response_weights);
 }
 
 }  // namespace vibeqc::scf
