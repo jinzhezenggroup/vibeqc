@@ -369,7 +369,7 @@
     "sto-3g-ho.json": "19720c4b49afc7e153d5929908fa493f76cca0c2c2dcb7c68152b1a6ac01b375",
     "synthetic-fe-h.json": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
   },
-  "generator_sha256": "925bd2cea85b7bfa7651693260b1211a5751969ca7a4bf223bc24e13d8d90665",
+  "generator_sha256": "87807c788ca6cf421ed7a9514d97058e78fadfbdefbb60a2cdadb37d568ab4b3",
   "license": "BSD-3-Clause",
   "numpy": "2.4.6",
   "pyscf": "2.14.0",

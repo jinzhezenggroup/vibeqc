@@ -4,8 +4,8 @@ SCF state, AO jets, XC point coefficients and generated integral derivatives
 execute natively. The explicit native selector also compiles TensorIR weights/
 reduction, local AO pullbacks and Becke adjoints from their existing graphs.
 Python orchestration and NumPy BLAS/map reductions remain host boundaries.
-The reference selector retains interpreter execution for A/B diagnostics; neither
-selector enables public Calculator forces or global resource qualification.
+The reference selector retains interpreter execution for A/B diagnostics. The
+public CPU ECP wrapper selects native execution with additional byte admission.
 """
 
 import ctypes as ct
@@ -304,6 +304,7 @@ def complete_rks_gradient_diagnostic(
     max_grid_points: int = 1_000_000,
     max_grid_pair_visits: int = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
+    max_host_bytes: int | None = None,
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
@@ -319,15 +320,18 @@ def complete_rks_gradient_diagnostic(
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
     Both retain Python primitive enumeration/scatter and NumPy XC BLAS/maps;
-    neither establishes an overall endpoint/SCF memory budget. Semantic work
+    neither alone establishes an overall endpoint/SCF memory budget. Semantic work
     budgets reject before derivative compilation or provider execution, after
     the caller's SCF and snapshot export. ECP pair-samples are a conservative
     two-grid bound, including radial shells the provider may skip.
     Scalar-ECP CPU snapshots additionally bind effective ionic charges and two
     residual derivative sources to the actual energy owner. Their existing
     independent CPU provider materializes 2*3*natom*nao**2 derivative elements;
-    this is an explicit diagnostic, not generated native ECP production or a
-    public/budget-qualified DFT force capability.
+    this provider remains independent native CPU scientific code. The public
+    CPU wrapper explicitly selects it and reserves the extra numeric capacity;
+    no PySCF callback is involved. max_host_bytes requires compiled execution
+    and covers snapshot/export plus bounded numeric staging, excluding Python,
+    compiler, loaded-code and opaque BLAS/runtime storage.
     """
     if execution not in ("reference", "native"):
         raise ValueError("execution must be reference or native")
@@ -361,6 +365,28 @@ def complete_rks_gradient_diagnostic(
         max_grid_pair_visits,
         max_ecp_pair_samples,
     )
+    if max_host_bytes is not None:
+        from ._cpu_force_resources import cpu_force_inventory
+
+        if execution != "native":
+            raise ValueError("CPU host budget requires the compiled native consumer")
+        if type(max_host_bytes) is not int or not 1 <= max_host_bytes <= 1 << 40:
+            raise ValueError("max_host_bytes must be an integer in [1,1099511627776]")
+        inventory = cpu_force_inventory(
+            basis,
+            grid_points=len(state.grid.points),
+            ecp_terms=len(state._source.ecp_terms),
+            tile_points=tile_points,
+            primitive_tile=primitive_tile,
+            integral_terms=integral_terms,
+        )
+        host_bound = sum(inventory.values())
+        if host_bound > max_host_bytes:
+            raise ValueError("CPU force additional-host byte budget exceeded")
+        work.update(
+            additional_host_numeric_bound=host_bound,
+            additional_host_budget=max_host_bytes,
+        )
     method, functional = resolve_ks_method(state.identity.method)
     plan = StationaryGradientPlan(
         method,

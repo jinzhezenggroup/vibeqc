@@ -38,6 +38,7 @@ extern "C" void ks_cuda_fail_next_runtime_for_test_v1() { fail_next_ks_runtime =
 namespace vibeqc::dft {
 namespace {
 using namespace scf::cuda_execution;
+constexpr unsigned kMaximumFinalCorrections = 4;
 constexpr unsigned kCudaKsChunkCapacity = 2;
 void check(cudaError_t status) {
   if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
@@ -147,7 +148,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
   bool warm_updates{true}, device_chunk_mode{};
   bool stabilize_occupations{}, final_closure{};
-  unsigned final_corrections{};
+  bool mixed_j{}, strict_refinement{}, pending_mixed_j{}, mixed_j_executed{};
+  unsigned final_corrections{}, refinement_iterations{};
   bool pbe{}, final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
@@ -196,12 +198,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
           "CUDA KS requires the prepared conventional Coulomb-only strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
-        (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64))
-      throw std::invalid_argument("CUDA KS supports FP64 density-matrix energy execution only");
+        (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
+         *options.precision_mode != VIBEQC_PRECISION_AUTO))
+      throw std::invalid_argument("CUDA KS received an unsupported execution policy");
+    mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
         !std::isfinite(options.density_tolerance) || options.energy_tolerance <= 0.0 ||
         options.density_tolerance <= 0.0 || options.diis_history > 64)
-      throw std::invalid_argument("invalid CUDA KS convergence or DIIS controls");
+      throw std::invalid_argument("invalid CUDA KS convergence, DIIS or precision controls");
     if (!provider.matches_system(grid.system()) ||
         basis.packed != AoBasis(provider.system()).packed)
       throw std::invalid_argument(
@@ -235,7 +239,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     resource.state_device_bytes = partition(n, spins, history, nullptr);
     resource.xc_device_bytes = cuda_xc_layout(basis, grid, pbe, spins == 2, tile).device_bytes;
     resource.provider_device_bytes = provider.diagnostic().device_bytes;
-    output.dft_diagnostic.history.reserve(options.max_iterations);
+    const auto diagnostic_iterations =
+        mixed_j ? sum(product(options.max_iterations, 2U), kMaximumFinalCorrections)
+                : options.max_iterations;
+    output.dft_diagnostic.history.reserve(diagnostic_iterations);
     resource.retained_host_numeric_bytes =
         (orthogonalizer.capacity() + cold_density.capacity()) * sizeof(double) +
         output.dft_diagnostic.history.capacity() * sizeof(ScfIteration);
@@ -319,12 +326,18 @@ struct CudaKsPlan::Impl : KsStateStorage {
     is_failed = false;
     stabilize_occupations = false;
     final_closure = false;
+    strict_refinement = false;
+    pending_mixed_j = false;
+    mixed_j_executed = false;
     final_corrections = 0;
+    refinement_iterations = 0;
+    output.precision.requested_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
     pending_iterations = 0;
-    // The bounded device-control prototype is qualified only for direct
-    // all-electron RKS. UKS keeps occupation/final-closure host control, and
-    // ECP RKS keeps the strict physical final closure required by #586.
-    device_chunk_mode = spins == 1 && provider.system().ecp_terms.empty() &&
+    // The bounded device-control prototype is qualified only for strict-FP64
+    // direct all-electron RKS. AUTO must stay on the legacy host-controlled
+    // path so its FP32 mixed-J stage and independent FP64 refinement cannot be
+    // bypassed by an opt-in two-iteration device chunk.
+    device_chunk_mode = !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
                         configured_chunk_width() == kCudaKsChunkCapacity;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
@@ -540,10 +553,17 @@ struct CudaKsPlan::Impl : KsStateStorage {
     is_pending = true;  // Any partial CUDA submission is drained on failure.
     try {
       std::string detail;
-      check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density,
-                                               spins == 2 ? density + matrix : nullptr, matrix, j,
-                                               nullptr, nullptr, jk_error, detail),
-            detail);
+      pending_mixed_j = mixed_j && !strict_refinement;
+      const auto jk_status = pending_mixed_j ? scf::enqueue_cuda_direct_jk_device_mixed_j(
+                                                   direct, provider.strategy().spec, density,
+                                                   spins == 2 ? density + matrix : nullptr, matrix,
+                                                   j, nullptr, nullptr, jk_error, detail)
+                                             : scf::enqueue_cuda_direct_jk_device(
+                                                   direct, provider.strategy().spec, density,
+                                                   spins == 2 ? density + matrix : nullptr, matrix,
+                                                   j, nullptr, nullptr, jk_error, detail);
+      check(jk_status, detail);
+      mixed_j_executed = mixed_j_executed || pending_mixed_j;
       xc->enqueue(density, elements, ++generation);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
@@ -645,6 +665,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
     pending_iterations = 0;
     ++output.iterations;
     ++output.fock_builds;
+    if (mixed_j_executed && !pending_mixed_j) ++refinement_iterations;
+    output.precision.requested_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
+    output.precision.effective_bits = mixed_j_executed ? 32U : 64U;
+    output.precision.strict_refinement_applied = mixed_j_executed && refinement_iterations > 0;
+    output.precision.refinement_iterations = refinement_iterations;
     auto& diagnostic = output.dft_diagnostic;
     diagnostic.components = {provider.one_electron().nuclear_repulsion, physical.one_electron,
                              physical.hartree, physical.xc};
@@ -664,6 +689,20 @@ struct CudaKsPlan::Impl : KsStateStorage {
     for (unsigned s = 0; s < 2; ++s)
       if (std::abs(physical.electrons[s] - occupations[s]) > 1e-8) is_failed = true;
     if (is_failed) {
+      if (pending_mixed_j) {
+        // Any failed low-precision attempt retries the same density with the
+        // strict target operator. Do not publish or cache the failed proposal.
+        strict_refinement = true;
+        stabilize_occupations = false;
+        final_closure = false;
+        final_corrections = 0;
+        is_failed = false;
+        is_active = true;
+        check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
+        check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
+        previous_energy = std::numeric_limits<double>::infinity();
+        return true;
+      }
       is_active = false;
       return false;
     }
@@ -679,9 +718,22 @@ struct CudaKsPlan::Impl : KsStateStorage {
                            output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
                            physical.residual < std::min(1e-9, options.density_tolerance);
-    constexpr unsigned maximum_final_corrections = 4;
     const bool strict_final_closure = spins == 2 || !provider.system().ecp_terms.empty();
-    if (strict_final_closure && converged && !final_closure) {
+    const bool mixed_stage = mixed_j && !strict_refinement;
+    const bool enter_strict_refinement =
+        mixed_stage && (converged || output.iterations >= options.max_iterations);
+    if (enter_strict_refinement) {
+      // AUTO may use FP32 only as an iterative accelerator. Reset nonlinear
+      // history and give refinement its own full budget for the FP64 target.
+      strict_refinement = true;
+      final_closure = false;
+      final_corrections = 0;
+      stabilize_occupations = false;
+      output.converged = false;
+      is_active = true;
+      check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
+      check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
+    } else if (strict_final_closure && converged && !final_closure) {
       // A DIIS proposal can satisfy the ordinary SCF density-change gate while
       // the canonical density of the unshifted physical Fock is microscopically
       // outside the derivative-state tolerance. UKS already requires this closure;
@@ -694,10 +746,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
     } else if (final_closure) {
       ++final_corrections;
       output.converged = converged;
-      is_active = !output.converged && final_corrections < maximum_final_corrections;
+      is_active = !output.converged && final_corrections < kMaximumFinalCorrections;
     } else {
       output.converged = converged;
-      is_active = !output.converged && output.iterations < options.max_iterations;
+      const bool refinement_budget = strict_refinement && mixed_j
+                                         ? refinement_iterations < options.max_iterations
+                                         : output.iterations < options.max_iterations;
+      is_active = !output.converged && refinement_budget;
     }
     try {
       if (output.converged && warm_updates) {

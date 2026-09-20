@@ -628,9 +628,14 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
         self._capabilities = method_capabilities(self._method_name)
+        from ._cpu_force_resources import qualified_basis
+
         if (
             self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
+            and (
+                self._device_name == "cuda"
+                or (self._device_name == "cpu" and qualified_basis(self._basis))
+            )
             and not (
                 isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
@@ -642,10 +647,9 @@ class Calculator:
             )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
-            # #163 C2 is a Python public capability layered on the native KS
-            # prepared owner plus the compiler-owned CUDA gradient consumer.
-            # Keep the backend-neutral C registry conservative: CPU/native-C
-            # callers do not inherit a force capability they cannot execute.
+            # Python public capability layered on the native KS prepared owner
+            # plus the backend's compiled stationary gradient consumer.
+            # Keep the backend-neutral C registry conservative.
             # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
@@ -664,8 +668,13 @@ class Calculator:
                     "conventional RCCSD does not accept an auxiliary basis"
                 )
         if self._capabilities.family == "density_functional":
-            if self._precision_mode != _native.PRECISION_FP64:
-                raise NotImplementedError("DFT supports explicit FP64 precision only")
+            if (
+                self._precision_mode == _native.PRECISION_AUTO
+                and self._device_name != "cuda"
+            ):
+                raise NotImplementedError(
+                    "DFT automatic precision currently requires CUDA"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError("DFT supports conventional Coulomb only")
             if auxiliary_basis is not None:
@@ -1186,6 +1195,10 @@ class Calculator:
                 method=self._method_name,
                 basis=self._basis,
                 backend=self._device_name,
+                precision={
+                    _native.PRECISION_FP64: "fp64",
+                    _native.PRECISION_AUTO: "auto",
+                }[self._precision_mode],
                 basis_representation=self._representation_name,
                 diis_history=self._diis_history,
                 max_iterations=self._max_iterations,
@@ -1380,11 +1393,7 @@ class Calculator:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
-        if (
-            compute_forces
-            and self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
-        ):
+        if compute_forces and self._capabilities.family == "density_functional":
             # Reuse the prepared-batch owner because the stationary snapshot ABI
             # is intentionally tied to a live native owner.  This avoids a second
             # scientific implementation in the single-system path.

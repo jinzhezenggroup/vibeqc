@@ -7,6 +7,7 @@ generation use the committed references and do not import/download PySCF.
 import argparse
 import json
 import platform
+import typing
 from copy import deepcopy
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from tools.generate_validation_references import molecular_data, pyscf_molecule
 from tools.vibeqc_numerics.fixtures import FAMILIES, accuracy_suite
 
 
-def generate(path):
+def generate(path: Path) -> dict[str, typing.Any]:
     import pyscf
     from pyscf import scf
     from threadpoolctl import threadpool_limits
