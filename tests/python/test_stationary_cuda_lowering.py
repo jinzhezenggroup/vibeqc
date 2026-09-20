@@ -31,14 +31,20 @@ assert primitive == emit_first_derivative_cuda(requests)
 cpu=emit_first_derivative_cpu(requests)
 assert '__device__' not in cpu
 assert 'vibeqc_first_derivative_cpu' in cpu
-for pbe in (False,True):
-    s=emit_stationary_cuda(primitive,pbe=pbe)
+for functional in (0,1,2):
+    s=emit_stationary_cuda(primitive,functional=functional)
     assert 'vibeqc_first_derivative_cpu' not in s
     assert '__device__ bool first_derivative' in s
     assert 'stationary_gradient_cuda.cuh' in s
     assert 'ao_pullback' in s
     assert 'local_becke' in s
-    assert s == emit_stationary_cuda(primitive,pbe=pbe)
+    assert f'stationary_functional = {functional}' in s
+    assert s == emit_stationary_cuda(primitive,functional=functional)
+r2scan=emit_stationary_cuda(primitive,functional=2)
+assert 'stationary_coefficients = 5' in r2scan
+assert 'tau[0]' in r2scan and 'kinetic[0]' in r2scan
+assert emit_stationary_cuda(primitive,pbe=False) == emit_stationary_cuda(primitive,functional=0)
+assert emit_stationary_cuda(primitive,pbe=True) == emit_stationary_cuda(primitive,functional=1)
 """
     subprocess.run(
         [sys.executable, "-c", script],
