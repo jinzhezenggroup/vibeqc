@@ -32,8 +32,8 @@ def _scf_xc_points(
     """Evaluate the exact native semilocal SCF point model."""
     if type(functional) is bool:
         functional = int(functional)
-    if type(functional) is not int or functional not in (0, 1, 2):
-        raise TypeError("SCF point evaluator requires functional code 0, 1, or 2")
+    if type(functional) is not int or functional not in (0, 1, 2, 3):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, 2, or 3")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)

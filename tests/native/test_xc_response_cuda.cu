@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -82,6 +83,72 @@ void independent_points(bool unrestricted) {
   std::cout << count << " independent CUDA " << (unrestricted ? "UKS" : "RKS")
             << " point directions passed\n";
 }
+/** Device admission agrees with the SCF reference domain. The independent
+ * linear-response invariant is exact zero for an exact zero direction; no CPU
+ * response implementation supplies the expected values. */
+void vacuum_reference_domain() {
+  using vibeqc::runtime::cuda_resource_check;
+  vibeqc::runtime::OwnedCudaBuffer<Input> input(0, 1);
+  vibeqc::runtime::OwnedCudaBuffer<vibeqc::dft::point::Value> output(0, 1);
+  unsigned count = 0;
+  const auto check = [&](const Input& in, bool valid) {
+    cuda_resource_check(cudaMemcpy(input.get(), &in, sizeof(in), cudaMemcpyHostToDevice));
+    evaluate<<<1, 1>>>(input.get(), output.get());
+    cuda_resource_check(cudaGetLastError());
+    vibeqc::dft::point::Value value;
+    cuda_resource_check(cudaMemcpy(&value, output.get(), sizeof(value), cudaMemcpyDeviceToHost));
+    if (value.valid != valid) throw std::runtime_error("device vacuum reference domain mismatch");
+    if (valid) {
+      for (unsigned s = 0; s < 2; ++s) {
+        if (value.rho[s] != 0.0) throw std::runtime_error("nonzero device vacuum density response");
+        for (double x : value.gradient[s])
+          if (x != 0.0) throw std::runtime_error("nonzero device vacuum gradient response");
+      }
+    }
+    ++count;
+  };
+  for (bool unrestricted : {false, true}) {
+    for (bool pbe : {false, true}) {
+      for (unsigned s = 0; s < (unrestricted ? 2U : 1U); ++s) {
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          for (double residue : {std::numeric_limits<double>::denorm_min(),
+                                 -std::numeric_limits<double>::denorm_min(),
+                                 std::nextafter(std::numeric_limits<double>::min(), 0.0),
+                                 -std::nextafter(std::numeric_limits<double>::min(), 0.0)}) {
+            Input in{};
+            in.unrestricted = unrestricted;
+            in.pbe = pbe;
+            // Match the physical per-spin SCF reference in both input layouts.
+            in.gradient[s][axis] = (unrestricted ? 1.0 : 2.0) * residue;
+            check(in, true);
+            in.gradient[s][axis] = 0.0;
+            in.delta_gradient[s][axis] = residue;
+            check(in, false);  // A nonzero empty-spin tangent is still undefined.
+          }
+          for (double normal :
+               {std::numeric_limits<double>::min(), -std::numeric_limits<double>::min()}) {
+            Input in{};
+            in.unrestricted = unrestricted;
+            in.pbe = pbe;
+            in.gradient[s][axis] = (unrestricted ? 1.0 : 2.0) * normal;
+            check(in, false);
+          }
+          if (!unrestricted) {
+            // Halfway totals round to a normal spin component and remain invalid.
+            const double boundary = 2.0 * std::numeric_limits<double>::min();
+            for (double sign : {-1.0, 1.0}) {
+              Input in{};
+              in.pbe = pbe;
+              in.gradient[0][axis] = sign * std::nextafter(boundary, 0.0);
+              check(in, false);
+            }
+          }
+        }
+      }
+    }
+  }
+  std::cout << count << " CUDA vacuum reference/tangent domain checks passed\n";
+}
 }  // namespace
 
 int main() {
@@ -90,6 +157,7 @@ int main() {
   try {
     independent_points(false);
     independent_points(true);
+    vacuum_reference_domain();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

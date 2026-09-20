@@ -147,6 +147,57 @@ def build_hamiltonian_programs(nocc: int, nvir: int) -> CCSDHamiltonianPrograms:
     return CCSDHamiltonianPrograms(primal, reverse, weights, orbital_jvp, nocc, nvir)
 
 
+def build_fock_weight_program(nocc: int, nvir: int) -> Program:
+    """Generate raw h/g/metric/orbital weights from a full-Fock cotangent.
+
+    This is the upstream response needed when a post-HF model depends directly
+    on canonical orbital energies. The caller supplies ``bar_fock`` in the
+    complete MO basis, normally with only diagonal entries populated from
+    dE/d eps_p. Reverse differentiation reuses the exact raw-Hamiltonian primal
+    used by the CCSD gradient chain, so density response and basis rotation are
+    not reconstructed by handwritten derivative formulae.
+
+    The returned overlap and occupied-virtual orbital RHS use the same metric
+    transport and rotation convention as ``build_hamiltonian_programs``.
+    This program alone does not solve the RHF response equations or establish a
+    complete nuclear gradient.
+    """
+    parent = build_hamiltonian_programs(nocc, nvir)
+    reverse = transpose_program(
+        parent.primal,
+        ("fock",),
+        inputs=("h", "g", "rotation"),
+    )
+    gradient = reverse.program.outputs["bar_rotation"]
+    stationarity = add(gradient, transpose(gradient, (1, 0)), coefficients=(1, -1))
+    overlap = add(
+        gradient,
+        transpose(gradient, (1, 0)),
+        coefficients=(Fraction(-1, 4), Fraction(-1, 4)),
+    )
+    n = nocc + nvir
+    return Program(
+        {
+            "hcore": reverse.program.outputs["bar_h"],
+            "eri": reverse.program.outputs["bar_g"],
+            "overlap": overlap,
+            "rotation_gradient": gradient,
+            "stationarity": stationarity,
+            "orbital_rhs": add(
+                slice_tensor(stationarity, ((0, nocc), (nocc, n))),
+                coefficients=(-1,),
+            ),
+        },
+        provenance={
+            "hamiltonian_primal": parent.primal.logical_hash,
+            "fock_pullback": reverse.derivative_hash,
+            "scope": "direct canonical-orbital-energy response",
+            "overlap_rule": "symmetric metric transport dU=-dS/2",
+            "orbital_rule": "K_ia=x_ia; K_ai=-x_ia; A z=-dL/dx",
+        },
+    )
+
+
 def build_ao_weight_program(n: int) -> Program:
     """Generate staged MO -> AO cotangent transforms (no new AD formula)."""
     if type(n) is not int or not 2 <= n <= 12:

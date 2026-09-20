@@ -43,9 +43,8 @@ directory, plus `LICENSES/dftd4-COPYING.txt` and
 `LICENSES/dftd4-COPYING.LESSER.txt`. The retained mctc-lib constant/provenance
 record has its Apache-2.0 notice in `LICENSES/mctc-lib-LICENSE.txt`.
 
-This migration imports no xTB Hamiltonian, SCC runtime, Fortran runtime, or
-external dispersion library into VibeQC. Independent upstream tools are only
-used to generate test fixtures.
+This DFT-D4 qualification migration itself imports no xTB Hamiltonian or SCC
+runtime; independent upstream tools are used to generate its test fixtures.
 
 ## Pinned dispersion parameter catalogs
 
@@ -85,3 +84,26 @@ the upstream GPL/LGPL license texts are retained in
 dependency is added. The embedded MB16-43/06 qualification geometry is from
 mstore commit `a9070de01ad67e0539edc87c29ab048a60381a74` under Apache-2.0;
 see `LICENSES/mstore-Apache-2.0.txt`.
+
+## xTBloom GFN2-xTB runtime bootstrap
+
+VibeQC issue #560 embeds a reviewed source snapshot of xTBloom commit
+`5a67cc59ace94c8296e873503b2ae1298e7c2861` under
+`src/xtb/gfn2_runtime/` to provide the first production GFN2-xTB runtime:
+intrinsic-basis integrals, H0, ES2/ES3/AES2, generalized eigensolution,
+occupations, Mulliken/multipole state, SCC mixing, repulsion, self-consistent
+D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles only the required common/GFN2/CPU-runtime sources into
+`libvibeqc`; the former broad xTBloom subproject is not restored, and an
+installed xTBloom library or executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional CUDA/MKL
+permission, full third-party notices, and retained license texts ship with the
+source/wheel legal material.
+
+Linux wheels use xTBloom's reviewed private `scipy-openblas32==0.3.34.0.0`
+LP64 LAPACKE/CBLAS provider boundary. A tiny sibling shim gives auditwheel one
+content-qualified dependency edge; repair vendors and collision-renames the
+OpenBLAS cohort into the VibeQC wheel. `scipy-openblas32` is a build input only,
+not an end-user Python runtime dependency.
+
+This is a transitional scientific owner: compiler-generated GFN2 pieces from
+#504/#505 are intended to replace duplicated handwritten equations after
+independent qualification, while the VibeQC-owned SCC/runtime boundary remains.

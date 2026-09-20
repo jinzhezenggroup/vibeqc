@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d3_atm.hpp",
+  "role": "oracle",
+  "subsystem": "d3_dispersion",
+  "reason": "Standalone CPU/device D3(BJ)-ATM qualification reference with analytic three-body geometry, smooth-cutoff, and coordination-number response derivatives. This maintained scientific arithmetic is checked against independent simple-dftd3 fixtures; the production D3 runtime still rejects nonzero s9.",
+  "regions": []
+}

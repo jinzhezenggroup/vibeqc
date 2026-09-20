@@ -12,8 +12,11 @@ import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.ao import NativeAO
-from vibeqc_compiler.dft.grid import ExplicitGrid
+from vibeqc_compiler.dft.grid import ExplicitGrid, MolecularGrid, checked_int
+from vibeqc_compiler.dft.nonlocal_integration import NonlocalGeometry
+from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
 from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
+from vibeqc_compiler.xc.grid_response import grid_response_tiles
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 from .ks import SCF_DOMAIN, resolve_ks_method
@@ -459,6 +462,56 @@ def _native_ao_atoms(basis: typing.Any) -> typing.Any:
     if atoms.shape != (basis.nao,):
         raise ValueError("native AO ownership is inconsistent with the basis")
     return atoms
+
+
+def resolve_nonlocal_nuclear_sources(
+    geometry: typing.Any,
+    basis: typing.Any,
+    grid: typing.Any,
+    density: typing.Any,
+    *,
+    primitive: NonlocalCorrelationPrimitive,
+    tile_points: typing.Any = 256,
+) -> dict[str, np.ndarray]:
+    """Resolve the three VV10 sources on one validated physical grid branch."""
+    if not isinstance(geometry, NonlocalGeometry):
+        raise TypeError("expected NonlocalGeometry")
+    if not isinstance(grid, MolecularGrid):
+        raise TypeError("nonlocal stationary sources require MolecularGrid")
+    checked_int(tile_points, "nonlocal grid-response tile points")
+    if not isinstance(primitive, NonlocalCorrelationPrimitive):
+        raise TypeError(
+            "nonlocal stationary sources require the current nonlocal primitive"
+        )
+    explicit = geometry.validate_replay(
+        basis, grid, density, spec=primitive.spec, coefficient=primitive.coefficient
+    )
+    owners = np.asarray(explicit.owners)
+    point = np.zeros_like(geometry.centers)
+    np.add.at(point, owners, geometry.points)
+
+    weight = np.zeros_like(geometry.centers)
+    direction = np.zeros_like(geometry.centers)
+    for atom in range(len(geometry.centers)):
+        for axis in range(3):
+            direction.fill(0.0)
+            direction[atom, axis] = 1.0
+            offset = 0
+            value = 0.0
+            for tile in grid_response_tiles(grid, direction, tile_points=tile_points):
+                stop = offset + len(tile.weight_motion)
+                value += float(
+                    np.dot(geometry.weights[offset:stop], tile.weight_motion)
+                )
+                offset = stop
+            if offset != len(geometry.weights):
+                raise ValueError("nonlocal grid-response coverage mismatch")
+            weight[atom, axis] = value
+    return {
+        "nonlocal_ao": immutable(geometry.centers),
+        "nonlocal_grid": immutable(point),
+        "nonlocal_weight": immutable(weight),
+    }
 
 
 def xc_geometry_topology_identity(basis: typing.Any, grid: typing.Any) -> typing.Any:

@@ -44,9 +44,13 @@ first spatial derivatives. Neither computes tau or higher jets.
 ## Stable positive-density algebra
 
 The evaluator does not clip rho or sigma and has no positive density floor.
-It rejects negative/nonfinite densities, nonfinite gradients, a nonzero
-gradient in an exactly empty spin, and any unrepresentable output. Exact
-vacuum has zero energy and potential coefficients. Positive-density
+It rejects negative/nonfinite densities, nonfinite gradients, a normal nonzero
+gradient in an exactly empty spin, and any unrepresentable output. When AO
+contractions round density to zero, subnormal reference gradient components
+(`abs(gradient) < DBL_MIN`) retain the existing SCF vacuum admission. SCF and
+RKS/UKS response share this reference check. RKS takes total gradients and
+checks their rounded equal-spin halves; the cutoff applies per spin, including
+rounding at its boundary. Exact vacuum has zero energy and potential coefficients. Positive-density
 underflow of a final energy follows ordinary FP64 arithmetic; density
 derivatives are evaluated independently and are retained when representable.
 
@@ -136,8 +140,12 @@ admissible; the other spin may vary. No finite full spin-endpoint Hessian is
 claimed. At positive-density zero-gradient points where rho^(4/3) underflows,
 the exchange reduced-gradient direction uses (gradient/rho)/cbrt(rho), retaining
 finite directional coefficients without constructing an infinite Hessian.
-Exact vacuum requires a zero direction, and nonrepresentable directional
-coefficients reject the action. The interior diagnostic domain is unchanged.
+Exact vacuum requires a zero direction, including when a valid reference
+contains subnormal gradient residues. The empty-spin tangent still requires
+exactly zero density and gradient components; the reference admission does
+not extend its tangent domain. Nonrepresentable directional coefficients reject
+the action. The interior diagnostic domain is unchanged. See the
+[shared vacuum reference decision](../.agents/notes/implemented/numerics/2026-09-20-cpks-vacuum-reference-admission.md).
 
 Libxc has its own low-density and spin-boundary screening conventions.
 Therefore exact endpoint comparisons use the independently differentiated

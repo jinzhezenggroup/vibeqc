@@ -1,5 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=1.0.3", "numpy>=1.24"]
+# GFN2 wheel CMake resolves this reviewed provider inside PEP 517 isolation.
+requires = ["scikit-build-core>=1.0.3", "numpy>=1.24", "scipy-openblas32==0.3.34.0.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -103,7 +104,8 @@ test-command = "python -c 'import ctypes; from vibeqc import _native; from vibeq
 # libraries are not build inputs: VibeQC's wheel-mode Implib.so trampolines
 # compile from nvcc headers and resolve the separately installed providers only
 # at runtime, matching xTBloom's provider-free build boundary.
-before-build = "bash {package}/python/ci/install-ccache.sh"
+# Keep a second provider environment alive for the later auditwheel repair.
+before-build = "bash {package}/python/ci/prepare-wheel-build.sh"
 repair-wheel-command = "bash {package}/python/ci/repair-wheel.sh {dest_dir} {wheel}"
 
 [tool.coverage.run]
@@ -145,8 +147,8 @@ ignore = ["ANN401", "S101", "S603", "S607"]
 "tools/vibeqc_validation/retention.py" = ["S314"]
 
 # Python compiler type checking with Astral ty.
-# Files in the override contain pre-existing type debt as of 2026-09-19.
-# Keep their diagnostics visible as warnings and remove entries as they become clean.
+# Files in the override contain remaining pre-existing type debt as of 2026-09-20.
+# Diagnostics stay visible as warnings; clean files must return to normal strict checking.
 
 [tool.ty.environment]
 root = ["python"]
@@ -165,7 +167,6 @@ include = [
   "python/vibeqc_compiler/integral/batch_benchmark.py",
   "python/vibeqc_compiler/integral/blocks.py",
   "python/vibeqc_compiler/integral/capabilities.py",
-  "python/vibeqc_compiler/integral/cuda_schedule.py",
   "python/vibeqc_compiler/integral/df_derivatives.py",
   "python/vibeqc_compiler/integral/df_rys_shell.py",
   "python/vibeqc_compiler/integral/df_shell_derivatives.py",
@@ -180,7 +181,6 @@ include = [
   "python/vibeqc_compiler/integral/rys.py",
   "python/vibeqc_compiler/integral/second_derivatives.py",
   "python/vibeqc_compiler/integral/second_derivatives_execute.py",
-  "python/vibeqc_compiler/integral/second_derivatives_inputs.py",
   "python/vibeqc_compiler/integral/shell_class.py",
   "python/vibeqc_compiler/integral/tuning/analysis.py",
   "python/vibeqc_compiler/integral/tuning/cli.py",
@@ -192,11 +192,9 @@ include = [
   "python/vibeqc_compiler/tensor/ad_program.py",
   "python/vibeqc_compiler/tensor/autodiff.py",
   "python/vibeqc_compiler/tensor/cuda_emit.py",
-  "python/vibeqc_compiler/tensor/cuda_execute.py",
   "python/vibeqc_compiler/tensor/cuda_plan.py",
   "python/vibeqc_compiler/tensor/cuda_resident.py",
   "python/vibeqc_compiler/tensor/cuda_tune.py",
-  "python/vibeqc_compiler/tensor/ir.py",
   "python/vibeqc_compiler/xc/prepared.py",
 ]
 

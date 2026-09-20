@@ -99,7 +99,7 @@ def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
     lines = []
     for angular in product(range(4), repeat=2):
         lines += [
-            f"__device__ __noinline__ GradientAxis {name}_x_{angular[0]}{angular[1]}({arguments}) {{",
+            f"static __device__ __noinline__ GradientAxis {name}_x_{angular[0]}{angular[1]}({arguments}) {{",
             "  switch (component) {",
         ]
         for index, components in enumerate(

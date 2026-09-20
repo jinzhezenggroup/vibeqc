@@ -423,6 +423,7 @@ def _solve_single(
     preconditioner: typing.Any = None,
     collect_basis: typing.Any = True,
     resident_recycle: typing.Any = None,
+    solution_consumer: typing.Any = None,
 ) -> typing.Any:
     """Restarted GMRES with one control flow and pluggable vector residency."""
     b_host = np.asarray(rhs, dtype=np.float64)
@@ -502,6 +503,8 @@ def _solve_single(
         basis: typing.Any,
         rhs_norm: typing.Any,
     ) -> typing.Any:
+        if converged and solution_consumer is not None:
+            solution_consumer(engine, solution)
         result = SolveResult(
             immutable(engine.to_host(solution)),
             converged,
@@ -947,12 +950,19 @@ def solve(
     preconditioner: typing.Any = None,
     raise_on_failure: typing.Any = False,
     collect_basis: typing.Any = True,
+    solution_consumer: typing.Any = None,
 ) -> typing.Any:
-    """Solve one RHS with bounded true-residual GMRES."""
+    """Solve one RHS with bounded true-residual GMRES.
+
+    solution_consumer runs synchronously on the converged engine-native
+    solution before host publication and must not retain engine-owned leases.
+    """
     # A live reference lease must hold even when a zero RHS skips all actions.
     validate_current = getattr(operator, "validate_current", lambda: None)
     validate_current()
     options = GMRESOptions() if options is None else options
+    if solution_consumer is not None and not callable(solution_consumer):
+        raise TypeError("solution_consumer must be callable")
     b = np.asarray(rhs)
     if (
         b.shape != (operator.dimension,)
@@ -1031,6 +1041,7 @@ def solve(
                 collect_basis=collect_basis
                 or (recycle is not None and not resident_recycle),
                 resident_recycle=recycle if resident_recycle else None,
+                solution_consumer=solution_consumer,
             )
         validate_current()
         if recycle is not None and result.converged and not resident_recycle:
@@ -1109,6 +1120,7 @@ def _block_solve(
     options: typing.Any,
     *,
     collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
 ) -> typing.Any:
     """One block-Arnoldi algorithm with host or resident vector storage.
 
@@ -1123,6 +1135,13 @@ def _block_solve(
     # nonsingular.
     b_host = np.asarray(rhs, dtype=np.float64)
     n, nrhs = b_host.shape
+    consumers = (
+        (None,) * nrhs if solution_consumers is None else tuple(solution_consumers)
+    )
+    if len(consumers) != nrhs or any(
+        consumer is not None and not callable(consumer) for consumer in consumers
+    ):
+        raise ValueError("block solution_consumers must match RHS columns")
     engine = getattr(operator, "_krylov_engine", None) or _HostKrylovEngine(n)
     if engine.dimension != n:
         raise ValueError("Krylov vector engine dimension mismatch")
@@ -1173,9 +1192,12 @@ def _block_solve(
             norm = rhs_norms[column]
             target = max(options.atol, options.rtol * norm)
             converged = norm <= target
+            solution = engine.zeros()
+            if converged and consumers[column] is not None:
+                consumers[column](engine, solution)
             results.append(
                 SolveResult(
-                    immutable(np.zeros(n)),
+                    immutable(engine.to_host(solution)),
                     converged,
                     norm,
                     _relative_residual(norm, norm),
@@ -1294,6 +1316,8 @@ def _block_solve(
             reason = "breakdown"
         else:
             reason = "max_iterations"
+        if converged and consumers[column] is not None:
+            consumers[column](engine, solution[column])
         results.append(
             SolveResult(
                 immutable(engine.to_host(solution[column])),
@@ -1325,6 +1349,7 @@ def _solve_many_impl(
     preconditioner: typing.Any = None,
     raise_on_failure: typing.Any = False,
     collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
 ) -> typing.Any:
     """Compare sequential, blocked and recycled multi-RHS response solves."""
     validate_current = getattr(operator, "validate_current", lambda: None)
@@ -1338,6 +1363,15 @@ def _solve_many_impl(
         )
     options = GMRESOptions() if options is None else options
     values = operator.problem.validate_rhs(rhs)
+    consumers = (
+        (None,) * values.shape[1]
+        if solution_consumers is None
+        else tuple(solution_consumers)
+    )
+    if len(consumers) != values.shape[1] or any(
+        consumer is not None and not callable(consumer) for consumer in consumers
+    ):
+        raise ValueError("solution_consumers must match the multi-RHS column count")
     started = time.perf_counter()
     # validate_rhs publishes an owned immutable array for real ResponseProblems.
     # Charge it even when a test/custom operator happens to return a view.
@@ -1362,6 +1396,7 @@ def _solve_many_impl(
                 values,
                 replace(options, max_workspace_bytes=available),
                 collect_basis=collect_basis,
+                solution_consumers=consumers,
             )
         answer = MultiRHSResult(
             tuple(results),
@@ -1422,6 +1457,7 @@ def _solve_many_impl(
                 recycle=recycle if use_recycle else None,
                 preconditioner=preconditioner,
                 collect_basis=collect_basis,
+                solution_consumer=consumers[column],
             )
             peak = max(peak, retained + result.workspace_bytes)
             results.append(result)
@@ -1457,6 +1493,7 @@ def solve_many(
     preconditioner: typing.Any = None,
     raise_on_failure: typing.Any = False,
     collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
 ) -> typing.Any:
     """Solve multiple RHS with one shared algorithm and explicit publication.
 
@@ -1482,6 +1519,7 @@ def solve_many(
             preconditioner=preconditioner,
             raise_on_failure=raise_on_failure,
             collect_basis=collect_basis,
+            solution_consumers=solution_consumers,
         )
     finally:
         if owned_recycle:

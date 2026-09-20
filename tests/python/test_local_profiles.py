@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from vibeqc import profiles
 from vibeqc.autotune import endpoint_gate, rank_hotspots, read_xyz
+from vibeqc_compiler.dft.xc_schedule import HOST_UNFUSED, GridXcScientificIdentity
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
@@ -287,6 +288,116 @@ def test_automatic_selection_and_corruption_fall_back(
     selected, diagnostic = profiles.select_library(base)
     assert selected is base and diagnostic["source"] == "portable"
     assert "artifact hash" in diagnostic["rejected"][0]
+
+
+def test_optional_dft_schedule_reuses_profile_bundle_with_strict_workload_identity(
+    bundle: typing.Any, probe: typing.Any
+) -> None:
+    workload = GridXcScientificIdentity(
+        architecture="sm_120",
+        functional="PBE",
+        functional_identity="f" * 64,
+        ingredients=("rho", "gradient", "sigma"),
+        jet_outputs=((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)),
+        grid_identity="g" * 64,
+        grid_model="GridSpec-v2",
+        screening_identity="m" * 64,
+        precision="fp64",
+        spin="polarized",
+        observable="potential",
+        density_route="density_matrix",
+        source_identity=probe["source_identity"],
+    ).to_payload()
+    schedule = HOST_UNFUSED.resolved(256).to_payload()
+    workload_hash = profiles.canonical_hash(workload)
+    schedule_hash = profiles.canonical_hash(schedule)
+    winner = {
+        "workload": workload,
+        "workload_hash": workload_hash,
+        "schedule": schedule,
+        "schedule_hash": schedule_hash,
+        "source_hash": "d" * 64,
+        "gates": {
+            name: "pass"
+            for name in (
+                "legality",
+                "resources",
+                "numerical",
+                "performance",
+                "endpoint",
+            )
+        },
+    }
+    evidence_path = bundle / "evidence.json"
+    evidence = json.loads(evidence_path.read_text())
+    evidence["dft_schedules"] = [
+        {
+            "accepted": True,
+            "workload_hash": workload_hash,
+            "schedule_hash": schedule_hash,
+            "legality": {"legal": True, "schedule_hash": schedule_hash},
+            "resources": {
+                "passed": True,
+                "schedule_hash": schedule_hash,
+                "source_hash": "d" * 64,
+            },
+            "numerical": {
+                "passed": True,
+                "independent_reference": "pyscf/libxc fixture",
+                "schedule_hash": schedule_hash,
+                "source_hash": "d" * 64,
+            },
+            "endpoint": {
+                "passed": True,
+                "complete_energy_force": True,
+                "scientific_identity": workload_hash,
+                "baseline_schedule_hash": "b" * 64,
+                "candidate_schedule_hash": schedule_hash,
+                "candidate_source_hash": "d" * 64,
+                "interleaved": True,
+                "synchronized": True,
+                "baseline": [{"pair_id": i} for i in range(5)],
+                "candidate": [{"pair_id": i} for i in range(5)],
+            },
+        }
+    ]
+    profiles.atomic_json(evidence_path, evidence)
+    profile_path = bundle / "profile.json"
+    profile = json.loads(profile_path.read_text())
+    profile["dft_schedules"] = [winner]
+    profile["artifacts"]["evidence.json"] = profiles.file_hash(evidence_path)
+    profiles.atomic_json(profile_path, profile)
+
+    validated = profiles.validate_bundle(bundle, probe)
+    assert validated["dft_schedules"][0]["schedule_hash"] == schedule_hash
+    diagnostics = {"source": "local", "dft_schedules": validated["dft_schedules"]}
+    assert profiles.select_dft_schedule(diagnostics, workload) == schedule
+    incompatible = copy.deepcopy(workload)
+    incompatible["grid_identity"] = "e" * 64
+    assert profiles.select_dft_schedule(diagnostics, incompatible) is None
+
+    evidence["dft_schedules"][0]["endpoint"]["complete_energy_force"] = False
+    profiles.atomic_json(evidence_path, evidence)
+    profile["artifacts"]["evidence.json"] = profiles.file_hash(evidence_path)
+    profiles.atomic_json(profile_path, profile)
+    with pytest.raises(ValueError, match="DFT winner lacks matching"):
+        profiles.validate_bundle(bundle, probe)
+
+    evidence["dft_schedules"][0]["endpoint"]["complete_energy_force"] = True
+    evidence["dft_schedules"][0]["endpoint"]["candidate_schedule_hash"] = "c" * 64
+    profiles.atomic_json(evidence_path, evidence)
+    profile["artifacts"]["evidence.json"] = profiles.file_hash(evidence_path)
+    profiles.atomic_json(profile_path, profile)
+    with pytest.raises(ValueError, match="DFT winner lacks matching"):
+        profiles.validate_bundle(bundle, probe)
+
+    evidence["dft_schedules"][0]["endpoint"]["candidate_schedule_hash"] = schedule_hash
+    evidence["dft_schedules"][0]["numerical"]["source_hash"] = "c" * 64
+    profiles.atomic_json(evidence_path, evidence)
+    profile["artifacts"]["evidence.json"] = profiles.file_hash(evidence_path)
+    profiles.atomic_json(profile_path, profile)
+    with pytest.raises(ValueError, match="DFT winner lacks matching"):
+        profiles.validate_bundle(bundle, probe)
 
 
 def test_hotspots_are_measured_bounded_and_ignore_absent_f_work() -> None:

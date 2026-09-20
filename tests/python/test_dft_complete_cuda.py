@@ -179,6 +179,12 @@ def test_complete_cuda_independent_analytic(
         np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
         assert result.work["launches"] > 0
+        assert result.work["tensor_executions"] == 1
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert result.work["xc_points"] == len(state.grid.points)
         assert (
             result.work["additional_device_peak_bound"]
@@ -259,6 +265,12 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
         np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
         assert result.work["xc_points"] == len(state.grid.points)
+        assert result.work["tensor_executions"] == 1
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert (
             result.work["additional_device_peak_bound"]
             <= result.work["additional_device_budget"]
@@ -479,15 +491,26 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
     from vibeqc_compiler.integral.first_derivative_native import (
         emit_first_derivative_cuda,
     )
+    from vibeqc_compiler.method import resolve_method
     from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
+    from vibeqc_compiler.method.stationary_gradient import (
+        SCF_POINT_MODEL,
+        StationaryGradientPlan,
+        StationaryMeanField,
+    )
 
     atoms = [("H", (0.0, 0.0, 0.0)), ("H", (1.0, 0.0, 0.0)), ("H", (2.0, 0.0, 0.0))]
     cache = Path(os.environ["VIBEQC_STATIONARY_CACHE"])
     with NativeAO(atoms, multiplicity=2) as basis:
         _, _, _, requests = _layout(basis)
+        plan = StationaryGradientPlan(
+            resolve_method("LDA_XC_PW", spin="unpolarized"),
+            StationaryMeanField(SCF_POINT_MODEL),
+        )
         artifact = compile_stationary_cuda(
             emit_first_derivative_cuda(requests),
             pbe=False,
+            plan=plan,
             iterations=3,
             compiler=compiler,
             cache=cache,
@@ -523,7 +546,9 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
         ):
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            density = np.eye(3)[None, :, :]
+            weighted_density = np.zeros_like(density)
+            sources.reset(1e-12, density, weighted_density)
             ao.set_density(np.eye(3))
             # Single exact-zero factor, saturated products, vacuum tail and an
             # empty tile. Points deliberately avoid center collisions.
@@ -555,7 +580,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             with pytest.raises(RuntimeError, match="reset"):
                 sources._call("stationary_finish", sources.handle, _ptr(out), out.size)
             np.testing.assert_array_equal(out, 42.0)
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             with ao.xc_task(points, np.arange(3), "LDA_XC_PW") as task:
                 sources.geometry(task, owners, np.ones(3), np.ones(3), pbe=False)
             for k, v in sources.finish().items():
@@ -564,7 +589,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             # is copied, and reset clears previous successful accumulation.
             records = np.ones((2, 26))
             records[-1, -1] = np.nan
-            maps = np.zeros((2, 4), dtype=np.int64)
+            maps = np.zeros((2, 8), dtype=np.int64)
             with pytest.raises(RuntimeError, match="invalid stationary CUDA"):
                 sources._call(
                     "stationary_records",
@@ -577,7 +602,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
                 )
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             assert all(np.all(v == 0) for v in sources.finish().values())
             _evidence("source-failure-zero-tail-recovery", sources.metrics())
 
@@ -627,7 +652,14 @@ def test_cuda_late_owner_replay_and_geometry_replacement(
 
 @pytest.mark.parametrize(
     ("method", "charge", "multiplicity"),
-    [("lda-rks", 0, 1), ("pbe-rks", 0, 1), ("lda-uks", 1, 2), ("pbe-uks", 1, 2)],
+    [
+        ("lda-rks", 0, 1),
+        ("pbe-rks", 0, 1),
+        ("r2scan-rks", 0, 1),
+        ("lda-uks", 1, 2),
+        ("pbe-uks", 1, 2),
+        ("r2scan-uks", 1, 2),
+    ],
 )
 def test_public_cuda_calculator_forces_match_independent_gradient(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any
@@ -636,6 +668,7 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     from test_dft_complete_cpu import (
         ATOMS,
         independent_gradient,
+        independent_semilocal_total_gradient,
         independent_uks_gradient,
     )
     from vibeqc._dft_gradient import StationaryKsState
@@ -656,7 +689,11 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
-        if method.endswith("uks"):
+        if method.startswith("r2scan-"):
+            ref_energy, gradient = independent_semilocal_total_gradient(
+                basis, state, method
+            )
+        elif method.endswith("uks"):
             ref_energy, gradient = independent_uks_gradient(basis, state, method)
         else:
             ref_energy, gradient, _ = independent_gradient(basis, state, method)
@@ -664,6 +701,92 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     assert public.energy == pytest.approx(ref_energy, abs=2e-9)
     assert energy == pytest.approx(ref_energy, abs=2e-9)
     np.testing.assert_allclose(public.forces, -gradient, atol=1e-7, rtol=0)
+
+
+def test_public_cuda_prepared_force_replay_retains_execution(
+    monkeypatch: typing.Any,
+) -> None:
+    """#663: warm and moved force replays reuse every generated CUDA owner."""
+    import vibeqc._stationary_cuda as stationary
+    from test_dft_complete_cpu import ATOMS
+
+    calc = _calculator("pbe-rks")
+    xyz = np.asarray([position for _, position in ATOMS], dtype=np.float64)
+    moved = xyz.copy()
+    moved[1, 0] += 2.0e-3
+    with calc.prepare_batch([ATOMS], warm_start=True) as batch:
+        first = batch.execute(strict=True, properties=("energy", "forces"))
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
+        identity = owner.identity
+        resident = (
+            id(owner.sources),
+            id(owner.grid),
+            tuple((name, id(value)) for name, value in sorted(owner.tensors.items())),
+        )
+        assert owner._executions == 1
+        assert not first.items[0].forces is None
+
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+            raise AssertionError("warm force replay rebuilt generated CUDA execution")
+
+        with monkeypatch.context() as patch:
+            for name in (
+                "emit_first_derivative_cuda",
+                "compile_stationary_cuda",
+                "compile_grid",
+                "compile_cuda",
+                "_CudaSources",
+                "CudaGrid",
+                "PreparedCuda",
+            ):
+                patch.setattr(stationary, name, forbidden)
+
+            second = batch.execute(strict=True, properties=("energy", "forces"))
+            np.testing.assert_allclose(
+                second.items[0].forces, first.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner.identity == identity
+            assert resident == (
+                id(owner.sources),
+                id(owner.grid),
+                tuple(
+                    (name, id(value)) for name, value in sorted(owner.tensors.items())
+                ),
+            )
+
+            changed = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert not np.array_equal(changed.items[0].forces, first.items[0].forces)
+            assert owner._geometry_rebinds == 1
+            assert owner._executions == 3
+
+            finish = owner.sources.finish
+            calls = 0
+
+            def fail_once() -> typing.Any:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise RuntimeError("injected prepared force failure")
+                return finish()
+
+            patch.setattr(owner.sources, "finish", fail_once)
+            failed = batch.execute(
+                coordinates=(moved,), properties=("energy", "forces")
+            )
+            assert not failed.items[0].succeeded
+            assert owner._failed
+            recovered = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert recovered.items[0].succeeded
+            np.testing.assert_allclose(
+                recovered.items[0].forces, changed.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner._geometry_rebinds == 2
+            assert not owner._failed
 
 
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
@@ -680,6 +803,9 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         )
         assert all(item.forces is not None for item in first.items)
         assert not np.array_equal(first.items[0].forces, first.items[1].forces)
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
+        assert owner._executions == 2
 
         malformed = np.asarray([0.0, 1.0])
         isolated = batch.execute(
@@ -690,6 +816,8 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         assert isolated.items[1].succeeded
         assert isolated.items[1].forces is not None
         assert np.isfinite(isolated.items[1].forces).all()
+        assert batch._stationary_cuda_execution is owner
+        assert owner._executions == 3
 
 
 def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> None:

@@ -157,3 +157,58 @@ int main() {
         check=True,
     )
     subprocess.run([str(output)], check=True)
+
+
+def test_live_auto_budget_can_retain_large_values_without_widening_caps(
+    tmp_path: Path,
+) -> None:
+    """The no-probe safety ceiling must not force roomy devices to stream."""
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    source = tmp_path / "resident_budget.cpp"
+    source.write_text(r"""
+#include "scf/df_preparation_budget.hpp"
+int main() {
+  using namespace vibeqc::scf;
+  const DfResourceEnvelope roomy{30ULL<<30,32ULL<<30,true};
+  for (bool forces : {false,true}) {
+    const DfBudgetWorkload shape{768,768,96,1,6,forces};
+    const auto live = resolve_df_budget(shape,roomy,0);
+    const auto fallback = resolve_df_budget(shape,{},0);
+    const auto tensor = 768ULL*768ULL*768ULL*sizeof(double);
+    if (!live.feasible || live.value_bytes < 4*tensor) return 1;
+    if (live.total_bytes != live.value_bytes+live.response_bytes) return 2;
+    const auto available = roomy.free_bytes-live.reserved_headroom_bytes;
+    if (live.total_bytes > available-available/4) return 3;
+    if (fallback.total_bytes > (1ULL<<30)) return 4;
+    if (fallback != resolve_df_budget(shape,{},0)) return 5;
+    for (std::size_t cap : {std::size_t(1),std::size_t(32ULL<<20),
+                            std::size_t(1ULL<<30),std::size_t(2ULL<<30)}) {
+      const auto bounded = resolve_df_budget(shape,roomy,cap);
+      if (bounded.total_bytes != cap) return 6;
+      if (bounded.value_bytes+bounded.response_bytes != cap) return 7;
+    }
+    const auto tight = resolve_df_budget(shape,{400ULL<<20,8ULL<<30,true},0);
+    if (tight.total_bytes != (150ULL<<20)) return 8;
+  }
+  const auto huge = std::numeric_limits<std::size_t>::max();
+  const auto saturated = resolve_df_budget({huge,huge,huge,huge,12,true},roomy,0);
+  if (!saturated.feasible || saturated.total_bytes > roomy.free_bytes) return 9;
+  if (saturated.value_bytes+saturated.response_bytes != saturated.total_bytes) return 10;
+}
+""")
+    executable = tmp_path / "resident_budget"
+    root = Path(__file__).resolve().parents[2]
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)
