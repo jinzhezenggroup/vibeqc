@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-import vibeqc_compiler.integral.production as production
+from vibeqc_compiler.integral import production
 from vibeqc_compiler.integral.production import (
     _streaming_fock_internal_signature,
     _streaming_fock_launch_parameter_declaration,
@@ -40,10 +40,7 @@ def test_signature_manifest_drives_declaration_and_forwarding_order() -> None:
     )
 
     assert signature.names == ("input", "output")
-    assert signature.parameter_list() == (
-        "    const void* input,\n"
-        "    double* output"
-    )
+    assert signature.parameter_list() == ("    const void* input,\n    double* output")
     assert signature.argument_list() == "input, output"
     assert signature.argument_list(wrapper=True) == "typed_input, output"
     assert signature.without("input").names == ("output",)
@@ -99,7 +96,9 @@ def test_mixed_streaming_fock_retains_live_precision_arguments() -> None:
     assert "fp32_work_count" in source
 
 
-def test_component_lane_signature_keeps_internal_head_name_and_wrapper_adapter() -> None:
+def test_component_lane_signature_keeps_internal_head_name_and_wrapper_adapter() -> (
+    None
+):
     selection = _selection("ddpp")
     signature = _streaming_fock_internal_signature(selection)
 

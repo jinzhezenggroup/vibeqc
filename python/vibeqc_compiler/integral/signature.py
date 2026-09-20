@@ -58,9 +58,7 @@ class GeneratedKernelSignature:
     def identity(self) -> tuple[tuple[str, str], ...]:
         """Return a deterministic type/name identity for artifact provenance."""
 
-        return tuple(
-            (argument.c_type, argument.name) for argument in self.arguments
-        )
+        return tuple((argument.c_type, argument.name) for argument in self.arguments)
 
     def without(self, *dead_names: str) -> GeneratedKernelSignature:
         """Remove proven-dead arguments, rejecting stale pruning requests."""
@@ -100,8 +98,6 @@ class GeneratedKernelSignature:
             raise ValueError(f"unknown generated argument replacements: {names}")
         values = []
         for argument in self.arguments:
-            value = (
-                argument.forwarded_expression() if wrapper else argument.name
-            )
+            value = argument.forwarded_expression() if wrapper else argument.name
             values.append(replacements.get(argument.name, value))
         return ", ".join(values)

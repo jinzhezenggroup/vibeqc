@@ -1164,9 +1164,7 @@ def _streaming_fock_internal_signature(
                 "primitive_pairs",
                 "typed_primitive_pairs",
             ),
-            GeneratedKernelArgument(
-                "const std::int64_t*", "primitive_pair_offsets"
-            ),
+            GeneratedKernelArgument("const std::int64_t*", "primitive_pair_offsets"),
             GeneratedKernelArgument("const double*", "ao_coefficients"),
             GeneratedKernelArgument(
                 f"const Generated{class_name}Vec3*",
@@ -1857,9 +1855,9 @@ def _streaming_fock_launch_wrapper(
 
     spec = selection.spec
     class_name = spec.name[0].upper() + spec.name[1:]
-    internal_arguments = _streaming_fock_internal_signature(
-        selection
-    ).argument_list(wrapper=True)
+    internal_arguments = _streaming_fock_internal_signature(selection).argument_list(
+        wrapper=True
+    )
     return f"""
 extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_streaming_fock"}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
