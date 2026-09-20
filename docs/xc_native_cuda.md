@@ -48,11 +48,14 @@ per spin; PBE retains value and three ordinary spatial derivatives. Neither
 requests tau, D times derivative-AO panels, or higher AO jets.
 
 The sequence is AO -> D times AO -> density/gradient -> shared point energy
-and Cartesian potential coefficients -> weighted E/V reductions. The point
-evaluator differentiates the same stable energy used by the CPU consumer; no
-separate singular sigma chain rule or CPU XC call is inserted. Matrix assembly
-applies weights once, retains both differentiated AO legs, and does not double
-the scalar term. All symmetric matrix cross terms are retained.
+and Cartesian potential coefficients -> weighted E/V reductions. The AO
+traversal plus dense D*AO, density-feature, symmetric-potential and scalar-total
+contraction kernels are emitted by `vibeqc_compiler.dft.ao_cuda`; the resident
+header owns validation, point-domain adaptation and launch/runtime scheduling.
+The point evaluator differentiates the same stable energy used by the CPU
+consumer; no separate singular sigma chain rule or CPU XC call is inserted.
+Matrix assembly applies weights once, retains both differentiated AO legs, and
+does not double the scalar term. All symmetric matrix cross terms are retained.
 
 RKS input is the total density. The point layer receives half in each spin and
 the returned single potential uses the corresponding total-density chain rule.
