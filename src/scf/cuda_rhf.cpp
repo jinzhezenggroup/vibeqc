@@ -3452,21 +3452,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           unrestricted ? total_weighted_density : weighted_density, active, forces);
     }
   }
-  const std::uint64_t explicit_generated_force_shell_class_mask =
+  std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask;
-  // Fock-only AOT entries (currently ssss/psss) are deliberately not added
-  // to the force queue.  The force dispatcher is a separate registry and
-  // returns ``cudaErrorNotSupported`` for classes without a validated force
-  // consumer.  Keep these classes on the exact handwritten low-order page
-  // kernel below until an independently validated generated force entry is
-  // promoted.
+  // Compile the generated ssss force consumer so complete endpoint A/B runs
+  // can select it without rebuilding the library, but keep the tuned native
+  // route as the production default until #356's endpoint gate passes.
+  if (!cuda_policy::generated_ssss_force_requested()) {
+    explicit_generated_force_shell_class_mask &= ~(std::uint64_t{1} << kSsssShellClass);
+  }
+  // Fock-only AOT entries (currently psss) are deliberately not added to the
+  // force queue. The force dispatcher is a separate registry and returns
+  // ``cudaErrorNotSupported`` for classes without a validated force consumer.
   const bool bounded_resident_psss_force_enabled =
       bounded_direct_streaming && plan.resident_psss_task_count != 0U &&
       plan.resident_psss_bra_primitive_pairs != 0U &&
       plan.resident_psss_bra_primitive_pairs <= kResidentPsssMaximumBraPrimitivePairs;
   const std::uint64_t bounded_native_paged_force_shell_class_mask =
       (bounded_direct_streaming
-           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask
+           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask &
+                 ~explicit_generated_force_shell_class_mask
            : 0U) &
       ~(bounded_resident_psss_force_enabled ? (std::uint64_t{1} << kPsssShellClass) : 0U);
   const std::uint64_t selected_force_shell_class_mask =
