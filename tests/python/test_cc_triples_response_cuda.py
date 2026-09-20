@@ -247,6 +247,7 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
             nvir=result.nvir + 1,
             vir_chunk_size=result.vir_chunk_size,
             peak_device_bytes=result.peak_device_bytes,
+            input_identity=result.input_identity,
             source_identity=result.source_identity,
             provenance=result.provenance,
         )
@@ -255,6 +256,25 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
                 prepared,
                 baseline,
                 forged,
+                reference_identity=snapshot.identity,
+            )
+
+        wrong_inputs = type(result)(
+            sources=result.sources,
+            inputs=result.inputs,
+            nocc=result.nocc,
+            nvir=result.nvir,
+            vir_chunk_size=result.vir_chunk_size,
+            peak_device_bytes=result.peak_device_bytes,
+            input_identity="forged-input-state",
+            source_identity=result.source_identity,
+            provenance=result.provenance,
+        )
+        with pytest.raises(ResponseCompatibilityError, match="inputs belong"):
+            solve_corrected_lambda_cuda(
+                prepared,
+                baseline,
+                wrong_inputs,
                 reference_identity=snapshot.identity,
             )
 
