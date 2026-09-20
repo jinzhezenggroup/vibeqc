@@ -72,11 +72,10 @@ def density_program(
     batch, spin, ao, orbital = _orbital_spaces(
         batch_size, spin_count, nbf, orbital_count
     )
-    b, s, p, q, i = (
+    b, s, p, i = (
         Index("b", batch),
         Index("s", spin),
         Index("p", ao),
-        Index("q", ao),
         Index("i", orbital),
     )
     coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
@@ -104,11 +103,10 @@ def weighted_density_program(
     batch, spin, ao, orbital = _orbital_spaces(
         batch_size, spin_count, nbf, orbital_count
     )
-    b, s, p, q, i = (
+    b, s, p, i = (
         Index("b", batch),
         Index("s", spin),
         Index("p", ao),
-        Index("q", ao),
         Index("i", orbital),
     )
     coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
