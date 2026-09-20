@@ -78,6 +78,7 @@ wheel.py-api = "py3"
 "src/scf/cuda_weighted_eri.hpp" = "vibeqc_compiler/assets/src/scf/cuda_weighted_eri.hpp"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
+"include/vibeqc/generated_method_ids.h" = "vibeqc_compiler/assets/include/vibeqc/generated_method_ids.h"
 "external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
 "external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
 

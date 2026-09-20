@@ -16,6 +16,7 @@ from vibeqc_compiler.tensor import (
     Program,
     TensorSpec,
     add,
+    conservative_precision_variants,
     cuda_tune,
     einsum,
     input_tensor,
@@ -532,7 +533,10 @@ def test_tuner_bounds_actual_compiles_and_emits_guarded_endpoint_profiles(
     (profile,) = result.evidence["selected_profiles"]
     assert profile["profile"]["artifact_key"] == result.artifact.metadata["key"]
     assert profile["profile"]["schedule_hash"] == canonical_hash(
-        asdict(result.plan.schedule)
+        {
+            "schedule": asdict(result.plan.schedule),
+            "precision_schedule": result.plan.precision_schedule.identity,
+        }
     )
     assert any(
         p["feature"] == "input_layout"
@@ -543,6 +547,38 @@ def test_tuner_bounds_actual_compiles_and_emits_guarded_endpoint_profiles(
     assert row["resource_calibration"]["compiled_max_registers_per_thread"] == 32
     assert row["compile_calibration"]["source_bytes_proxy"] > 0
     assert "cache/load" in row["compile_calibration"]["scope"]
+
+
+def test_precision_variant_uses_existing_tuner_and_specialization_identity(
+    tmp_path: typing.Any, fake_cuda: typing.Any
+) -> None:
+    program = vector_program()
+    baseline = plan_cuda(program, TARGET)
+    variants = conservative_precision_variants(program)
+    assert len(variants) == 2
+    mixed = variants[1]
+    result = cuda_tune.tune_cuda(
+        baseline,
+        None,
+        [{"x": np.linspace(-1, 1, 65)}],
+        tmp_path,
+        repeats=5,
+        schedules=[TensorSchedule()],
+        precision_programs=[mixed],
+        search_limits=TensorSearchLimits(
+            maximum_candidates=1,
+            maximum_compilations=1,
+        ),
+    )
+    assert result.plan.program.logical_hash == mixed.logical_hash
+    assert result.plan.precision == "typed-fp32-fp64"
+    (domain,) = result.evidence["selected_profiles"]
+    assert domain["profile"]["identity"]["scientific_hash"] == program.logical_hash
+    features = dict(domain["workload"]["features"])
+    assert features["equation"] == program.logical_hash
+    assert features["precision_schedule"] == result.plan.precision_schedule.identity
+    assert features["math_mode"] == "ieee-rn-no-tf32"
+    assert features["strict_audit_dtype"] == "float64"
 
 
 def test_default_search_reuses_existing_cache_and_never_compiles_duplicates(
@@ -646,6 +682,19 @@ def test_promotion_profiles_use_shared_selector_and_reject_unmeasured_layout(
         assert decision.selected == fallback
         assert any(
             feature in reason for reason in decision.evaluations[0].promotion_failures
+        )
+    for feature in ("precision_schedule", "math_mode", "strict_audit_dtype"):
+        changed = replace(
+            workload,
+            features=tuple(
+                (key, "unqualified" if key == feature else value)
+                for key, value in workload.features
+            ),
+        )
+        decision = select_specialization(workload=changed, **options)
+        assert decision.status == "unsupported"
+        assert any(
+            feature in reason for reason in decision.evaluations[0].eligibility_failures
         )
     missing_target = replace(target, features=())
     assert (
