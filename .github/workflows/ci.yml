@@ -168,12 +168,13 @@ jobs:
           cmake --preset cuda-release-sm120
           -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
+          -DVIBEQC_CUDA_COMPILE_JOBS=3
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       - name: Compile production CUDA and runtime CTest
         run: >-
           cmake --build --preset cuda-release-sm120
-          --target vibeqc_cuda_runtime_tests --parallel 2
+          --target vibeqc_cuda_runtime_tests --parallel 3
       - name: Check Fock and proposal preflight without a GPU
         env:
           CUDA_VISIBLE_DEVICES: ""
@@ -382,12 +383,36 @@ jobs:
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-0-Au]'
               --deselect
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
+              # Keep one response-functional variant on routine CI; the
+              # alternate LDA reconverged response remains in nightly/manual.
+              --deselect
+              'tests/python/test_response_native_rks.py::test_complete_solve_and_reconverged_density_response[lda-rks]'
+              --deselect
+              'tests/python/test_response_native_uks.py::test_solve_reconverged_spin_densities_and_recycling[lda-uks]'
+              # Standard production-grid RKS/UKS endpoints remain routine.
+              # The tighter-profile duplicates are qualification coverage.
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[lda-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[pbe-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[lda-uks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
+              # Full reconverged SPD ECP finite differences each cost about
+              # nine minutes on hosted runners. Keep the lighter complete
+              # ECP force contracts on every PR and the exhaustive pair nightly.
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
           # 26-minute critical path by separating the known numerical/codegen
           # tails. New test files land in core automatically until they become
           # expensive enough to earn an explicit shard.
+          dist_mode=loadfile
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
@@ -414,6 +439,9 @@ jobs:
           )
           case "${{ matrix.shard }}" in
             core)
+              # Core contains many independent long calls spread across files.
+              # Work stealing avoids a single long file pinning the job tail.
+              dist_mode=worksteal
               test_targets=(tests/python)
               for path in "${slow_paths[@]}"; do
                 extra_args+=(--ignore="${path}")
@@ -464,7 +492,7 @@ jobs:
               ;;
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
-            -n 4 --dist=loadfile --durations=25 \
+            -n 4 --dist="$dist_mode" --durations=25 \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
