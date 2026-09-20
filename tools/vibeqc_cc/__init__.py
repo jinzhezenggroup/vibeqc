@@ -67,6 +67,7 @@ from .triples_lambda_response import (
     CorrectedLambdaResult,
     solve_corrected_lambda,
 )
+from .triples_orbital_response import BoundCCSDTOrbitalResponse
 from .triples_response import (
     TRIPLES_RESPONSE_INPUTS,
     accumulate_tile_triples_vjp,
@@ -93,6 +94,7 @@ __all__ = [
     "BoundCCSDLambda",
     "BoundCCSDResponse",
     "BoundCCSDTResponse",
+    "BoundCCSDTOrbitalResponse",
     "CCSDGradientCapabilities",
     "CCSDGradientOptions",
     "CCSDGradientResult",
