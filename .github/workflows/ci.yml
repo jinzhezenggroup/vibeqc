@@ -391,11 +391,13 @@ jobs:
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
+            tests/python/test_cc_triples_response_cuda.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
             tests/python/test_ecp_spd_cartesian_cpu.py
             tests/python/test_ecp_spd_spherical_cpu.py
+            tests/python/test_ecp_stuttgart_dft.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -421,6 +423,7 @@ jobs:
               test_targets=(
                 tests/python/test_cc_complete_gradient.py
                 tests/python/test_cc_triples_response.py
+                tests/python/test_cc_triples_response_cuda.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
                 tests/python/test_ecp_f.py
@@ -441,6 +444,7 @@ jobs:
                 tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_spd_cartesian_cpu.py
                 tests/python/test_ecp_spd_spherical_cpu.py
+                tests/python/test_ecp_stuttgart_dft.py
               )
               ;;
             compiler-heavy)
