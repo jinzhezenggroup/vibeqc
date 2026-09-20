@@ -209,6 +209,10 @@ jobs:
           python3 tools/validate_xc.py --tier cuda-compile
           --functionals PBE --nvcc "$CUDACXX"
           --cache build/xc-cache --output build/xc-compile
+      - name: Compile generated r2SCAN stationary CUDA consumer
+        run: >-
+          python3 tools/validate_stationary_cuda_compile.py
+          --nvcc "$CUDACXX" --cache build/stationary-cuda-compile
       - name: Preserve generated XC resource reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
