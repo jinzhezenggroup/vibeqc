@@ -32,6 +32,7 @@ from vibeqc_compiler.tensor import (
 from .spec import (
     ExactExchangePrimitive,
     MethodIR,
+    RangeSeparatedExchangePrimitive,
     SemilocalXCPrimitive,
     UnsupportedMethod,
 )
@@ -46,7 +47,12 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
     ("unpolarized", "polarized"),
     (1,),
     ("rho", "sigma", "tau"),
-    ("semilocal-xc", "full-range-exchange"),
+    (
+        "semilocal-xc",
+        "full-range-exchange",
+        "short-range-exchange",
+        "long-range-exchange",
+    ),
 )
 
 
@@ -101,6 +107,10 @@ _SOURCES = (
     GradientSource("nuclear", "nuclear_repulsion", ("nuclear_center",)),
 )
 _INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+_RANGE_EXCHANGE_SOURCE = {
+    "short-range": "exchange_short_range",
+    "long-range": "exchange_long_range",
+}
 _ECP_SOURCES = (
     GradientSource("ecp_local", "ecp_local_residual", ("ao_center", "ecp_center")),
     GradientSource(
@@ -173,7 +183,7 @@ class IntegralGradientBlock:
 
 @dataclass(frozen=True)
 class StationaryGradientPlan:
-    """One semilocal mathematical plan shared by future native lowerings.
+    """One stationary plan for semilocal and range-exchange MethodIR sources.
 
     Construction represents a complete inventory, not complete executable
     geometric providers. Integral contractions and the final reduction are
@@ -191,13 +201,23 @@ class StationaryGradientPlan:
             raise TypeError(
                 "stationary gradient requires an explicit mean-field envelope"
             )
+        semilocal = tuple(
+            primitive
+            for primitive in self.method.primitives
+            if isinstance(primitive, SemilocalXCPrimitive)
+        )
+        ranges = tuple(
+            primitive
+            for primitive in self.method.primitives
+            if isinstance(primitive, RangeSeparatedExchangePrimitive)
+        )
+        full = tuple(
+            p for p in self.method.primitives if isinstance(p, ExactExchangePrimitive)
+        )
         if (
-            len(self.method.primitives) not in (1, 2)
-            or type(self.method.primitives[0]) is not SemilocalXCPrimitive
-            or (
-                len(self.method.primitives) == 2
-                and type(self.method.primitives[1]) is not ExactExchangePrimitive
-            )
+            len(semilocal) != 1
+            or len(full) > 1
+            or len(semilocal) + len(ranges) + len(full) != len(self.method.primitives)
         ):
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
@@ -209,30 +229,72 @@ class StationaryGradientPlan:
             derivative_order=1,
         )
         required = {"energy-density", "feature-gradient"}
-        if not required <= set(self.method.primitives[0].derivative_capabilities):
+        if not required <= set(semilocal[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")
         if (
             self.exchange is not None
             and "eri-first-derivative" not in self.exchange.derivative_capabilities
         ):
             raise UnsupportedMethod("required exchange ERI derivative is unavailable")
+        if any(
+            "nuclear-gradient" not in primitive.derivative_capabilities
+            for primitive in ranges
+        ):
+            raise UnsupportedMethod(
+                "required range-exchange nuclear derivative is unavailable"
+            )
 
     @property
     def exchange(self) -> typing.Any:
-        """Optional full-range primitive; its coefficient owns all K weights."""
-        return self.method.primitives[1] if len(self.method.primitives) == 2 else None
+        """Full-range exchange only; a single SR/LR node is not a global hybrid."""
+        return next(
+            (
+                p
+                for p in self.method.primitives
+                if isinstance(p, ExactExchangePrimitive)
+            ),
+            None,
+        )
+
+    @property
+    def range_exchange_primitives(self) -> typing.Any:
+        """Return the canonical SR/LR exchange nodes owned by MethodIR."""
+        return tuple(
+            primitive
+            for primitive in self.method.primitives
+            if isinstance(primitive, RangeSeparatedExchangePrimitive)
+        )
+
+    @property
+    def range_exchange_sources(self) -> typing.Any:
+        return tuple(
+            GradientSource(
+                _RANGE_EXCHANGE_SOURCE[primitive.operator],
+                primitive.operator + "-exchange",
+                ("all_eri_centers",),
+            )
+            for primitive in self.range_exchange_primitives
+        )
+
+    def range_exchange_primitive(self, source: typing.Any) -> typing.Any:
+        """Resolve one source to its exact MethodIR coefficient/operator/omega."""
+        for primitive in self.range_exchange_primitives:
+            if _RANGE_EXCHANGE_SOURCE[primitive.operator] == source:
+                return primitive
+        raise ValueError("source is not a range-exchange gradient primitive")
 
     @property
     def sources(self) -> typing.Any:
+        base = (*_SOURCES[:2], *self.range_exchange_sources, *_SOURCES[2:])
         sources = (
             (
-                replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
+                replace(base[0], primitive="kinetic_effective_charge_attraction"),
                 *_ECP_SOURCES,
-                *_SOURCES[1:-1],
-                replace(_SOURCES[-1], primitive="effective_charge_nuclear_repulsion"),
+                *base[1:-1],
+                replace(base[-1], primitive="effective_charge_nuclear_repulsion"),
             )
             if self.mean_field.hamiltonian == "scalar-semilocal-ecp"
-            else _SOURCES
+            else base
         )
         if self.exchange is None:
             return sources
@@ -251,7 +313,7 @@ class StationaryGradientPlan:
         return 2 if self.method.spin == "polarized" else 1
 
     def to_payload(self) -> typing.Any:
-        return {
+        payload = {
             "schema": VERSION
             if self.exchange is None
             else "stationary-gradient-plan-v2/global-hybrid",
@@ -263,6 +325,14 @@ class StationaryGradientPlan:
             "integral_layout": "full ordered tuples; no implicit symmetry factors",
             "xc_coefficients": "already applied inside the resolved semilocal primitive",
         }
+
+        if self.range_exchange_primitives:
+            payload["schema"] = "stationary-gradient-plan-v3/range-separated-hybrid"
+            payload["range_exchange"] = (
+                "ordered (i,k|j,l); density pairs (i,j)*(k,l); "
+                "RKS -a/4, UKS same-spin -a/2; omega held fixed"
+            )
+        return payload
 
     @property
     def identity(self) -> typing.Any:
@@ -290,7 +360,6 @@ class StationaryGradientPlan:
 
         L_h = sum_t D_total[t] h[t]
         L_J = 1/2 sum_t D_total_left[t] D_total_right[t] (ab|cd)[t]
-        L_K = cK/2 sum_st D_s[a,c] D_s[b,d] (ab|cd)[t]
         L_S = -sum_t W_total[t] S[t]
 
         In the J block each t denotes an ordered quartet: left/right densities
@@ -299,7 +368,10 @@ class StationaryGradientPlan:
         Only I is differentiated. D/W must come from a validated stationary
         owner when a later native endpoint binds the plan.
         """
-        if (
+        range_primitive = None
+        if source in tuple(s.name for s in self.range_exchange_sources):
+            range_primitive = self.range_exchange_primitive(source)
+        elif (
             source
             not in (
                 *_INTEGRAL_SOURCES,
@@ -320,27 +392,38 @@ class StationaryGradientPlan:
         q = Index("q", IndexSpace("coordinate_block", "batch", coordinates))
         integrals = _input("integrals", (t,), differentiable=True)
         left_name = "weighted_density" if source == "overlap_pulay" else "density_left"
-        spin_left = _input(left_name, (s, t))
-        left = reduce_sum(spin_left, (0,))
+        left_input = _input(left_name, (s, t))
         if source == "exact_exchange":
-            # Providers bind (ac)/(bd) for the ordered (ab|cd) derivative.
-            # Contract spin before reducing: total-density weights introduce
-            # spurious alpha/beta exchange and the RKS occupation factor differs.
             energy = einsum(
                 "st,st,t->",
-                spin_left,
+                left_input,
                 _input("density_right", (s, t)),
                 integrals,
                 coefficient=self.exchange.fock_coefficient(self.method.spin) / 2,
             )
-        elif source == "coulomb":
-            right = reduce_sum(_input("density_right", (s, t)), (0,))
+        elif range_primitive is not None:
+            # For an ordered exchange quartet (i,k|j,l), callers bind the two
+            # density inputs to (i,j) and (k,l). RKS total density carries
+            # occupation two; UKS keeps alpha/beta separate and has no cross-spin
+            # exchange. These are the same coefficients as fixed-density Fock:
+            # Ex_RKS=-a/4 DD(ik|jl), Ex_UKS=-a/2 sum_s D_sD_s(ik|jl).
+            right = _input("density_right", (s, t))
+            factor = -range_primitive.coefficient * (
+                Fraction(1, 2) if self.spin_blocks == 2 else Fraction(1, 4)
+            )
             energy = einsum(
-                "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)
+                "st,st,t->", left_input, right, integrals, coefficient=factor
             )
         else:
-            factor = -1 if source == "overlap_pulay" else 1
-            energy = einsum("t,t->", left, integrals, coefficient=factor)
+            left = reduce_sum(left_input, (0,))
+            if source == "coulomb":
+                right = reduce_sum(_input("density_right", (s, t)), (0,))
+                energy = einsum(
+                    "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)
+                )
+            else:
+                factor = -1 if source == "overlap_pulay" else 1
+                energy = einsum("t,t->", left, integrals, coefficient=factor)
         provenance = {"stationary_plan": self.identity, "source": source}
         objective = Program({"energy": energy}, provenance=provenance)
         weight = _unit_seeded_weight(objective)

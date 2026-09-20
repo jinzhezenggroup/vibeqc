@@ -224,6 +224,141 @@ def test_tau_semilocal_method_reuses_stationary_source_inventory(
         assert block.plan_identity == r2scan.identity
 
 
+@pytest.mark.parametrize(
+    "source,coefficient",
+    [
+        ("exchange_short_range", Fraction(19, 100)),
+        ("exchange_long_range", Fraction(65, 100)),
+    ],
+)
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_rsh_exchange_gradient_uses_methodir_coefficient_and_same_spin_density(
+    source: typing.Any, coefficient: typing.Any, spin: typing.Any
+) -> None:
+    p = plan(spin, "CAM-B3LYP")
+    primitive = p.range_exchange_primitive(source)
+    assert primitive.coefficient == coefficient
+    assert primitive.omega == Fraction(33, 100)
+    assert primitive.operator.replace("-", "_") in source
+    assert source in p.source_names
+
+    rng = np.random.default_rng(167)
+    terms, coordinates = 19, 6
+    left = rng.normal(size=(p.spin_blocks, terms))
+    right = rng.normal(size=(p.spin_blocks, terms))
+    derivatives = rng.normal(size=(terms, coordinates))
+    integrals = rng.normal(size=terms)
+    feeds = {
+        "density_left": left,
+        "density_right": right,
+        "integral_derivatives": derivatives,
+    }
+    factor = -float(coefficient) * (0.5 if p.spin_blocks == 2 else 0.25)
+    expected_weights = factor * np.sum(left * right, axis=0)
+
+    block = p.integral_block(source, terms=terms, coordinates=coordinates)
+    np.testing.assert_allclose(
+        execute(block.weights, feeds).outputs["weights"],
+        expected_weights,
+        atol=2e-14,
+        rtol=2e-14,
+    )
+    np.testing.assert_allclose(
+        execute(block.contraction, feeds).outputs["gradient"],
+        expected_weights @ derivatives,
+        atol=2e-13,
+        rtol=2e-13,
+    )
+    expected_energy = float(expected_weights @ integrals)
+    assert execute(block.objective, {**feeds, "integrals": integrals}).outputs[
+        "energy"
+    ] == pytest.approx(expected_energy, abs=2e-13)
+
+    # Three displaced-integral steps independently check the analytic derivative.
+    for step in (1e-3, 2e-4, 4e-5):
+        finite = np.array(
+            [
+                (
+                    float(expected_weights @ (integrals + step * derivatives[:, q]))
+                    - float(expected_weights @ (integrals - step * derivatives[:, q]))
+                )
+                / (2 * step)
+                for q in range(coordinates)
+            ]
+        )
+        np.testing.assert_allclose(
+            execute(block.contraction, feeds).outputs["gradient"],
+            finite,
+            atol=4e-9,
+            rtol=4e-10,
+        )
+
+    if p.spin_blocks == 2:
+        # Summing spins before forming exchange would introduce forbidden
+        # alpha-beta cross terms.
+        wrong = factor * left.sum(axis=0) * right.sum(axis=0)
+        assert not np.allclose(expected_weights, wrong)
+
+
+def test_rsh_gradient_inventory_and_identity_bind_operator_and_omega() -> None:
+    p = plan(method="CAM-B3LYP")
+    assert p.source_names == (
+        "one_electron",
+        "coulomb",
+        "exchange_short_range",
+        "exchange_long_range",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    assert tuple(source.primitive for source in p.range_exchange_sources) == (
+        "short-range-exchange",
+        "long-range-exchange",
+    )
+    assert all(
+        "nuclear-gradient" in primitive.derivative_capabilities
+        for primitive in p.range_exchange_primitives
+    )
+
+    from vibeqc_compiler.method.spec import METHOD_CATALOG
+
+    changed_spec = replace(
+        METHOD_CATALOG["CAM-B3LYP"],
+        identifier="CAM-B3LYP-omega-test",
+        range_omega=Fraction(2, 5),
+    )
+    changed = plan(method=changed_spec)
+    assert changed.identity != p.identity
+    for source in ("exchange_short_range", "exchange_long_range"):
+        assert changed.range_exchange_primitive(source).omega == Fraction(2, 5)
+        assert (
+            changed.integral_block(source, terms=3).identity
+            != p.integral_block(source, terms=3).identity
+        )
+    with pytest.raises(ValueError, match="range-exchange"):
+        p.range_exchange_primitive("exchange_full_range")
+
+
+def test_rsh_reduction_requires_both_exchange_components() -> None:
+    p = plan(method="CAM-B3LYP")
+    components = {
+        name: np.full((2, 3), index + 1.0) for index, name in enumerate(p.source_names)
+    }
+    expected = sum(components.values(), np.zeros((2, 3)))
+    np.testing.assert_array_equal(
+        p.reduce_diagnostic(components, atoms=2),
+        expected,
+    )
+    for source in ("exchange_short_range", "exchange_long_range"):
+        with pytest.raises(ValueError, match="coverage"):
+            p.reduce_diagnostic(
+                {name: value for name, value in components.items() if name != source},
+                atoms=2,
+            )
+
+
 def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:
     feeds, integrals = fixture("coulomb", 2)
     uks = plan("polarized").integral_block(
@@ -398,6 +533,11 @@ def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_i
         p.integral_block(source, terms=5).contraction
         for source in ("one_electron", "coulomb", "overlap_pulay")
     ]
+    rsh = plan("polarized", "CAM-B3LYP")
+    programs.extend(
+        rsh.integral_block(source, terms=5).contraction
+        for source in ("exchange_short_range", "exchange_long_range")
+    )
     programs.append(p.reduction_program(atoms=2))
     hybrid = plan("polarized", method="PBE0")
     programs.append(hybrid.integral_block("exact_exchange", terms=5).contraction)
@@ -465,6 +605,10 @@ from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 p = StationaryGradientPlan(resolve_method('PBE'), StationaryMeanField('interior-v1'))
 for source in ('one_electron', 'coulomb', 'overlap_pulay'):
     block = p.integral_block(source, terms=2)
+    assert emit_cuda(plan_cuda(block.contraction, cuda_target_info('sm_80')))
+rsh = StationaryGradientPlan(resolve_method('CAM-B3LYP'), StationaryMeanField('interior-v1'))
+for source in ('exchange_short_range', 'exchange_long_range'):
+    block = rsh.integral_block(source, terms=2)
     assert emit_cuda(plan_cuda(block.contraction, cuda_target_info('sm_80')))
 assert p.reduction_program(atoms=1).logical_hash
 """

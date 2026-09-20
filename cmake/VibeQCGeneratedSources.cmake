@@ -50,7 +50,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
     OUTPUTS "${VIBEQC_DF_VALUE_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS
       --cpu
       --output "${VIBEQC_DF_VALUE_CPU_HEADER}")
@@ -63,7 +62,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
     OUTPUTS "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS
       --derivatives
       --cpu
