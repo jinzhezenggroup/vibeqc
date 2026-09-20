@@ -456,6 +456,16 @@ The primitive work bound includes each public spherical AO's Cartesian
 components. Compilation caches retain source/header/toolchain/binary checks
 on every load. The existing s/p execution route remains available unchanged.
 
+The d-shell consumer enumerates component and primitive products in a bounded
+native runtime using a compiler-owned dispatch table. It reuses the generated
+derivative kernels and the existing primitive tile, preserves ordered weights,
+and publishes derivatives/work only after successful contraction. The private
+diagnostic selector `component_execution="python"` retains the original bounded
+enumerator for explicit comparisons; numerical failures do not silently retry.
+The host inventory includes immutable label/dispatch arrays and their construction
+copies. This changes execution orchestration, not the mathematical kernel count
+or the first-call compilation cost.
+
 The same nine-source stationary plan supplies force = -gradient. CPU ECP
 derivatives explicitly come from `checked_ecp_integrals`, the generated
 native CPU two-grid provider also used by CPU ECP energies. It checks
@@ -487,10 +497,15 @@ for arbitrary ECP families or a performance promotion.
 The d-shell cases reuse these gates from `test_ecp_spd_cartesian_cpu.py` and
 `test_ecp_spd_spherical_cpu.py`. CI runs all three files in the `ecp-forces`
 shard, with separate representation workers and the same 20-minute job cap.
+Paired endpoint tests compare Python and native enumeration on the same runner,
+including cold prepared batches, warm replay, changed geometry and failure
+recovery at the exact planned budget. Their shared compiler cache is already
+populated; these cold-batch timings do not measure cold compilation.
 
 See [the CPU public-force contract](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cpu-forces.md).
 The [s/p/d scheduling decision](../.agents/notes/implemented/performance/2026-09-20-spd-cpu-derivative-schedule.md)
 records component normalization, work accounting and compilation bounds.
+See also the [native enumeration decision](../.agents/notes/implemented/performance/2026-09-20-cpu-component-streaming.md).
 
 ## Public CUDA semilocal ECP forces
 

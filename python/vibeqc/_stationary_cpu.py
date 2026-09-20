@@ -316,6 +316,7 @@ def complete_rks_gradient_diagnostic(
     primitive_tile: typing.Any = 128,
     compiler: typing.Any = None,
     execution: typing.Any = "reference",
+    component_execution: str = "native",
     max_primitive_records: int = 2_000_000,
     max_grid_points: int = 1_000_000,
     max_grid_pair_visits: int = 100_000_000,
@@ -335,7 +336,9 @@ def complete_rks_gradient_diagnostic(
     The native state already retains its full discrete grid and dense SCF data.
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
-    Both retain Python primitive enumeration/scatter and NumPy XC BLAS/maps;
+    s/p/d component enumeration uses a bounded native consumer; the private
+    component_execution="python" selector retains the ordered baseline.
+    Both retain Python AO enumeration/scatter and NumPy XC BLAS/maps;
     neither alone establishes an overall endpoint/SCF memory budget. Semantic work
     budgets reject before derivative compilation or provider execution, after
     the caller's SCF and snapshot export. ECP pair-samples are a conservative
@@ -351,6 +354,8 @@ def complete_rks_gradient_diagnostic(
     """
     if execution not in ("reference", "native"):
         raise ValueError("execution must be reference or native")
+    if component_execution not in ("native", "python"):
+        raise ValueError("component_execution must be native or python")
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if state._source.backend != "cpu":
@@ -418,9 +423,16 @@ def complete_rks_gradient_diagnostic(
         raise TypeError("the CPU diagnostic requires an explicit C++ compiler adapter")
     if any(shell.angular_momentum == 2 for shell in basis.shells):
         from ._stationary_cpu_components import ComponentPrimitiveExecutor
+        from ._stationary_cpu_streaming import CompiledComponentExecutor
 
-        native = ComponentPrimitiveExecutor(basis, cache, primitive_tile, compiler)
+        executor = (
+            CompiledComponentExecutor
+            if component_execution == "native"
+            else ComponentPrimitiveExecutor
+        )
+        native = executor(basis, cache, primitive_tile, compiler)
         work.update(native.compilation_work)
+        work["component_execution"] = component_execution
     else:
         native = _PrimitiveExecutor(basis, cache, primitive_tile, compiler)
     natom, n = basis.natom, basis.nao
