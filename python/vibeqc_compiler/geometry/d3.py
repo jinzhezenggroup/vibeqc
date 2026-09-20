@@ -10,10 +10,8 @@ from __future__ import annotations
 import functools
 import hashlib
 import math
-from collections.abc import Iterable
+import typing
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Protocol
 
 import numpy as np
 
@@ -52,7 +50,7 @@ D3_MINIMUM_DISTANCE_SQUARED = 1.0e-12
 D3_REFERENCE_SLOTS = 7
 
 
-class D3SpecLike(Protocol):
+class D3SpecLike(typing.Protocol):
     """Structural boundary for MethodIR's D3Spec without geometry -> method imports."""
 
     s6: float
@@ -187,7 +185,7 @@ class _D3Tables:
     reference_c6: tuple[float, ...]
 
 
-def _sha256(path: Path) -> str:
+def _sha256(path: typing.Any) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -306,7 +304,7 @@ class D3PairTopology:
 
 
 def d3_geometry(
-    elements: Iterable[int],
+    elements: typing.Iterable[int],
     spec: D3SpecLike | D3CompilerSpec,
     *,
     coordinate_name: str = "coordinates",
@@ -440,7 +438,7 @@ def build_d3_pair_topology(
 
 def _pair_constant(
     context: PairTensorContext,
-    values: Iterable[float],
+    values: typing.Iterable[float],
 ) -> Node:
     encoded = tuple(repr(float(value)) for value in values)
     if len(encoded) != len(context.topology.pairs):
@@ -455,7 +453,7 @@ def _pair_constant(
     )
 
 
-def _atom_constant(node: Node, values: Iterable[float]) -> Node:
+def _atom_constant(node: Node, values: typing.Iterable[float]) -> Node:
     encoded = tuple(repr(float(value)) for value in values)
     if len(encoded) != node.spec.size:
         raise ValueError("D3 atom constant length disagrees with geometry")
@@ -795,7 +793,7 @@ def build_d3_geometry_program(
 
 def compile_d3_bj(
     spec: D3SpecLike | D3CompilerSpec,
-    elements: Iterable[int],
+    elements: typing.Iterable[int],
     coordinates: object,
     *,
     coordinate_name: str = "coordinates",
