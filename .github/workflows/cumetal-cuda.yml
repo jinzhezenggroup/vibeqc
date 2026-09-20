@@ -401,16 +401,25 @@ jobs:
           run: .venv/bin/python -m pytest benchmarks/test_cumetal_fp32_codspeed.py --codspeed -q
 
       - name: Run CodSpeed real VibeQC CuMetal endpoint suite
+        id: real_endpoints
         uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          CUMETAL_ROOT: /tmp/cumetal-install
+          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py --codspeed -q
+
+      - name: Diagnose failed real CuMetal endpoints
+        if: ${{ failure() && steps.real_endpoints.outcome == 'failure' }}
         env:
           CUMETAL_ROOT: /tmp/cumetal-install
           DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
           VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
           CUMETAL_DEBUG_REGISTRATION: "1"
           CUMETAL_DEBUG_LAUNCH: "1"
-        with:
-          mode: walltime
-          run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py --codspeed -q
+        run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py -q
 
   upload-test-results:
     name: Upload CUDA test results

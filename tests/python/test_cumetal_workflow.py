@@ -40,3 +40,20 @@ def test_cumetal_toolkit_version_rewrites_match_literal_dots() -> None:
             timeout=10,
         )
         assert result.stdout == expected, f"invalid toolkit rewrite: {expression}"
+
+
+def test_real_endpoint_benchmarks_do_not_enable_per_launch_logging() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    measured = workflow.split(
+        "- name: Run CodSpeed real VibeQC CuMetal endpoint suite", 1
+    )[1]
+    measured = measured.split("\n      - name:", 1)[0]
+    assert "CUMETAL_DEBUG_REGISTRATION" not in measured
+    assert "CUMETAL_DEBUG_LAUNCH" not in measured
+    diagnostics = workflow.split("- name: Diagnose failed real CuMetal endpoints", 1)[1]
+    diagnostics = diagnostics.split("\n      - name:", 1)[0]
+    assert "failure()" in diagnostics
+    assert "steps.real_endpoints.outcome == 'failure'" in diagnostics
+    assert 'CUMETAL_DEBUG_REGISTRATION: "1"' in diagnostics
+    assert 'CUMETAL_DEBUG_LAUNCH: "1"' in diagnostics
+    assert "--codspeed" not in diagnostics
