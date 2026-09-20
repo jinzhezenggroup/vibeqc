@@ -1022,13 +1022,16 @@ cudaError_t contract_cuda_df_response_weights(
     return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume, packed_pairs,
                                       auxiliary_shell_offsets, packed_block_rows);
+  // A validated resident fitted reader takes precedence even for a full-width
+  // panel. Capacity is not permission to discard immutable forward values and
+  // regenerate raw integrals. Borrowed/raw and rank-truncated routes stay below.
+  if (metric.full_rank && !borrowed && read_fitted)
+    return contract_full_rank_panels(n, a, terms, densities, tile, workspace, stream, blas,
+                                     serial_metric_dot, blas_products, read_fitted, consume);
   if (metric.full_rank && (borrowed || tile == a))
     return contract_full_rank_response(n, a, terms, densities, metric, tile, workspace, stream,
                                        blas, serial_metric_dot, blas_products, read_values, consume,
                                        borrowed, raw_host);
-  if (metric.full_rank && read_fitted)
-    return contract_full_rank_panels(n, a, terms, densities, tile, workspace, stream, blas,
-                                     serial_metric_dot, blas_products, read_fitted, consume);
   if (borrowed)
     return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *borrowed, raw_host, consume);

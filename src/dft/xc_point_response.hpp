@@ -70,8 +70,8 @@ VIBEQC_XC_RESPONSE_HD inline Value unrestricted_response(bool pbe, const double 
       out.valid = false;
     zero_direction = zero_direction && delta_rho[s] == 0.0;
     for (unsigned k = 0; k < 3; ++k) {
-      if (!detail::finite(gradient[s][k]) || !detail::finite(delta_gradient[s][k]) ||
-          (rho[s] == 0.0 && (gradient[s][k] != 0.0 || delta_gradient[s][k] != 0.0)))
+      if (!detail::valid_gradient_component(rho[s], gradient[s][k]) ||
+          !detail::finite(delta_gradient[s][k]) || (rho[s] == 0.0 && delta_gradient[s][k] != 0.0))
         out.valid = false;
       zero_direction = zero_direction && delta_gradient[s][k] == 0.0;
     }
@@ -133,12 +133,16 @@ VIBEQC_XC_RESPONSE_HD inline Value restricted_response(bool pbe, double rho,
                                                        const double delta_gradient[3]) {
   Value out;
   if (!detail::finite(rho) || rho < 0.0 || !detail::finite(delta_rho)) out.valid = false;
+  // RKS gradients are totals; SCF's vacuum admission sees the rounded equal-spin
+  // gradient. A doubled cutoff would incorrectly accept halfway rounding ties.
   for (unsigned k = 0; k < 3; ++k)
-    if (!detail::finite(gradient[k]) || !detail::finite(delta_gradient[k])) out.valid = false;
+    if (!detail::valid_gradient_component(rho, gradient[k] / 2.0) ||
+        !detail::finite(delta_gradient[k]))
+      out.valid = false;
   if (rho == 0.0) {
     if (delta_rho != 0.0) out.valid = false;
     for (unsigned k = 0; k < 3; ++k)
-      if (gradient[k] != 0.0 || delta_gradient[k] != 0.0) out.valid = false;
+      if (delta_gradient[k] != 0.0) out.valid = false;
     return out;
   }
   // Zero is an exact direction even where an unused point Hessian would

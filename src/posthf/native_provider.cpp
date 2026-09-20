@@ -32,6 +32,13 @@ NativeBlockProvider::NativeBlockProvider(const RawSource& source,
   if (!tile_[0]) throw std::invalid_argument("empty native AO source");
 }
 
+std::size_t NativeBlockProvider::common_host_bytes() const {
+  std::size_t tile_elements = 1;
+  for (const auto extent : tile_) tile_elements = checked_mul(tile_elements, extent);
+  return checked_add(checked_add(checked_add(reference_bytes_, source_bytes_), 8388608ULL),
+                     checked_mul(32ULL, tile_elements));
+}
+
 NumericBlockPlan NativeBlockProvider::plan(const std::array<std::size_t, 4>& shape,
                                            bool cuda) const {
   for (auto n : shape)
@@ -44,36 +51,99 @@ NumericBlockPlan NativeBlockProvider::plan(const std::array<std::size_t, 4>& sha
   return p;
 }
 
-std::vector<double> NativeBlockProvider::get(const MOSlots& slots, bool cuda, int device,
-                                             vibeqc_tensor::Metrics* metrics) const {
-  std::array<std::size_t, 4> shape{};
-  for (unsigned k = 0; k < 4; ++k) shape[k] = slots[k].size();
+std::size_t NativeBlockProvider::batch_bytes(const std::array<std::size_t, 4>& shape,
+                                             std::size_t requests, bool cuda) const {
+  if (!requests) return common_host_bytes();
   const auto p = plan(shape, cuda);
-  std::array<std::vector<double>, 4> c;
-  for (unsigned k = 0; k < 4; ++k) {
-    c[k].resize(ref_.nbf * shape[k]);
-    for (std::size_t mo = 0; mo < shape[k]; ++mo) {
-      const auto column = slots[k][mo];
-      if (column != padded_mo && column >= ref_.nbf)
-        throw std::invalid_argument("native MO index out of range");
-      if (column == padded_mo) continue;
-      if (std::find(slots[k].begin(), slots[k].begin() + mo, column) != slots[k].begin() + mo)
-        throw std::invalid_argument("native MO slots require unique real columns");
-      for (std::size_t mu = 0; mu < ref_.nbf; ++mu) {
-        const auto value = ref_.coefficients[mu * ref_.nbf + column];
-        if (!std::isfinite(value)) throw std::invalid_argument("nonfinite MO coefficient");
-        c[k][mu * shape[k] + mo] = value;
+  const auto common = common_host_bytes();
+  if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
+  const auto per_request = checked_add(p.host_bytes - common, p.device_bytes);
+  return checked_add(common, checked_mul(requests, per_request));
+}
+
+std::size_t NativeBlockProvider::batch_capacity(const std::array<std::size_t, 4>& shape,
+                                                bool cuda) const {
+  const auto p = plan(shape, cuda);
+  const auto common = common_host_bytes();
+  if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
+  const auto per_request = checked_add(p.host_bytes - common, p.device_bytes);
+  if (!per_request || budget_ <= common) return 0;
+  return (budget_ - common) / per_request;
+}
+
+std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector<MOSlots>& requests,
+                                                               bool cuda, int device,
+                                                               vibeqc_tensor::Metrics* metrics,
+                                                               ProviderWork* work) const {
+  if (requests.empty()) return {};
+
+  std::vector<std::array<std::size_t, 4>> shapes;
+  std::vector<NumericBlockPlan> plans;
+  shapes.reserve(requests.size());
+  plans.reserve(requests.size());
+  auto batch_memory = common_host_bytes();
+  for (const auto& slots : requests) {
+    std::array<std::size_t, 4> shape{};
+    for (unsigned k = 0; k < 4; ++k) shape[k] = slots[k].size();
+    const auto p = plan(shape, cuda);
+    const auto common = common_host_bytes();
+    if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
+    batch_memory = checked_add(batch_memory, checked_add(p.host_bytes - common, p.device_bytes));
+    shapes.push_back(shape);
+    plans.push_back(p);
+  }
+  if (batch_memory > budget_) throw std::length_error("native MO batch exceeds memory budget");
+
+  struct State {
+    std::array<std::size_t, 4> shape{};
+    NumericBlockPlan plan{};
+    std::array<std::vector<double>, 4> coefficients;
+    std::vector<double> output;
+    std::vector<double> first;
+    std::vector<double> second;
+  };
+  std::vector<State> states;
+  states.reserve(requests.size());
+  for (std::size_t request = 0; request < requests.size(); ++request) {
+    State state;
+    state.shape = shapes[request];
+    state.plan = plans[request];
+    const auto& slots = requests[request];
+    for (unsigned k = 0; k < 4; ++k) {
+      auto& c = state.coefficients[k];
+      c.resize(ref_.nbf * state.shape[k]);
+      for (std::size_t mo = 0; mo < state.shape[k]; ++mo) {
+        const auto column = slots[k][mo];
+        if (column != padded_mo && column >= ref_.nbf)
+          throw std::invalid_argument("native MO index out of range");
+        if (column == padded_mo) continue;
+        if (std::find(slots[k].begin(), slots[k].begin() + mo, column) != slots[k].begin() + mo)
+          throw std::invalid_argument("native MO slots require unique real columns");
+        for (std::size_t mu = 0; mu < ref_.nbf; ++mu) {
+          const auto value = ref_.coefficients[mu * ref_.nbf + column];
+          if (!std::isfinite(value)) throw std::invalid_argument("nonfinite MO coefficient");
+          c[mu * state.shape[k] + mo] = value;
+        }
       }
     }
+    state.output.assign(state.plan.output_elements, 0.0);
+    if (!cuda) {
+      state.first.resize(state.plan.stage_elements);
+      state.second.resize(state.plan.stage_elements);
+    }
+    states.push_back(std::move(state));
   }
-  struct DeviceBlock {
-    void* pointer{};
-    ~DeviceBlock() {
+
+  struct DeviceBlocks {
+    std::vector<void*> pointers;
+    ~DeviceBlocks() {
 #if VIBEQC_HAS_CUDA
-      if (pointer) posthf_cuda_destroy_v1(pointer);
+      for (auto* pointer : pointers)
+        if (pointer) posthf_cuda_destroy_v1(pointer);
 #endif
     }
-  } device_block;
+  } device_blocks;
+  device_blocks.pointers.resize(requests.size());
 #if VIBEQC_HAS_CUDA
   char error[2048]{};
   auto check = [&](int status) {
@@ -83,18 +153,26 @@ std::vector<double> NativeBlockProvider::get(const MOSlots& slots, bool cuda, in
 #endif
   if (cuda) {
 #if VIBEQC_HAS_CUDA
-    std::vector<double> panels;
-    panels.reserve(p.coefficient_elements);
-    for (const auto& panel : c) panels.insert(panels.end(), panel.begin(), panel.end());
-    check(posthf_cuda_create_v1(device, ref_.nbf, shape.data(), tile_.data(), panels.data(),
-                                p.allocation_bytes, &device_block.pointer, error, sizeof(error)));
+    for (std::size_t request = 0; request < states.size(); ++request) {
+      const auto& state = states[request];
+      std::vector<double> panels;
+      panels.reserve(state.plan.coefficient_elements);
+      for (const auto& panel : state.coefficients)
+        panels.insert(panels.end(), panel.begin(), panel.end());
+      check(posthf_cuda_create_v1(device, ref_.nbf, state.shape.data(), tile_.data(), panels.data(),
+                                  state.plan.allocation_bytes, &device_blocks.pointers[request],
+                                  error, sizeof(error)));
+    }
 #else
     (void)device;
     throw std::runtime_error("CUDA MO provider is not compiled");
 #endif
   }
-  std::vector<double> output(p.output_elements, 0), first(p.stage_elements),
-      second(cuda ? 0 : p.stage_elements);
+
+  std::size_t raw_elements = 1;
+  for (const auto extent : tile_) raw_elements = checked_mul(raw_elements, extent);
+  std::vector<double> raw(raw_elements);
+  if (work) work->mo_blocks = checked_add(work->mo_blocks, requests.size());
   for (std::size_t u = 0; u < ref_.nbf; u += tile_[0])
     for (std::size_t v = 0; v < ref_.nbf; v += tile_[1])
       for (std::size_t w = 0; w < ref_.nbf; w += tile_[2])
@@ -104,56 +182,109 @@ std::vector<double> NativeBlockProvider::get(const MOSlots& slots, bool cuda, in
           std::size_t elements = 1;
           for (unsigned k = 0; k < 4; ++k) {
             current[k] = std::min(tile_[k], ref_.nbf - begin[k]);
-            elements *= current[k];
+            elements = checked_mul(elements, current[k]);
           }
-          source_.read(RawSource::Operator::eri, begin, current, first.data(), elements);
+          source_.read(RawSource::Operator::eri, begin, current, raw.data(), elements);
+          if (work) {
+            work->source_reads = checked_add(work->source_reads, 1);
+            work->source_values = checked_add(work->source_values, elements);
+            for (const auto& state : states) {
+              auto work_shape = current;
+              auto work_elements = elements;
+              for (unsigned k = 0; k < 4; ++k) {
+                const auto ao = work_shape[0];
+                const auto rest = work_elements / ao;
+                const auto columns = state.shape[k];
+                work->transform_fmas =
+                    checked_add(work->transform_fmas, checked_mul(checked_mul(rest, ao), columns));
+                work_elements = checked_mul(rest, columns);
+                for (unsigned j = 0; j < 3; ++j) work_shape[j] = work_shape[j + 1];
+                work_shape[3] = columns;
+              }
+            }
+          }
           if (cuda) {
 #if VIBEQC_HAS_CUDA
-            check(posthf_cuda_add_v1(device_block.pointer, first.data(), begin.data(),
-                                     current.data(), error, sizeof(error)));
+            for (auto* pointer : device_blocks.pointers)
+              check(posthf_cuda_add_v1(pointer, raw.data(), begin.data(), current.data(), error,
+                                       sizeof(error)));
 #endif
             continue;
           }
-          for (unsigned k = 0; k < 4; ++k) {
-            const auto ao = current[0], rest = elements / ao, columns = shape[k];
-            std::fill_n(second.begin(), rest * columns, 0.0);
-            // Identical cyclic order to CG10 transform_tile and cuBLAS:
-            // input[AO,rest]^T @ C[AO,MO] -> output[rest,MO].
-            for (std::size_t r = 0; r < rest; ++r)
-              for (std::size_t a = 0; a < ao; ++a)
-                for (std::size_t m = 0; m < columns; ++m)
-                  second[r * columns + m] +=
-                      first[a * rest + r] * c[k][(begin[k] + a) * columns + m];
-            elements = rest * columns;
-            for (unsigned j = 0; j < 3; ++j) current[j] = current[j + 1];
-            current[3] = columns;
-            first.swap(second);
-          }
-          for (std::size_t q = 0; q < output.size(); ++q) {
-            output[q] += first[q];
-            if (!std::isfinite(output[q]))
-              throw std::runtime_error("nonfinite native MO transformation");
+
+          for (auto& state : states) {
+            auto transformed_shape = current;
+            auto transformed_elements = elements;
+            const double* input = raw.data();
+            bool write_first = true;
+            for (unsigned k = 0; k < 4; ++k) {
+              auto& output = write_first ? state.first : state.second;
+              const auto ao = transformed_shape[0];
+              const auto rest = transformed_elements / ao;
+              const auto columns = state.shape[k];
+              std::fill_n(output.begin(), rest * columns, 0.0);
+              // Identical cyclic order to CG10 transform_tile and cuBLAS:
+              // input[AO,rest]^T @ C[AO,MO] -> output[rest,MO].
+              for (std::size_t r = 0; r < rest; ++r)
+                for (std::size_t a = 0; a < ao; ++a)
+                  for (std::size_t m = 0; m < columns; ++m)
+                    output[r * columns + m] +=
+                        input[a * rest + r] * state.coefficients[k][(begin[k] + a) * columns + m];
+              transformed_elements = rest * columns;
+              for (unsigned j = 0; j < 3; ++j) transformed_shape[j] = transformed_shape[j + 1];
+              transformed_shape[3] = columns;
+              input = output.data();
+              write_first = !write_first;
+            }
+            for (std::size_t q = 0; q < state.output.size(); ++q) {
+              state.output[q] += input[q];
+              if (!std::isfinite(state.output[q]))
+                throw std::runtime_error("nonfinite native MO transformation");
+            }
           }
         }
+
   if (cuda) {
 #if VIBEQC_HAS_CUDA
-    check(posthf_cuda_download_v1(device_block.pointer, output.data(), output.size(), error,
-                                  sizeof(error)));
+    std::size_t batch_owned = 0, batch_retained = 0;
+    for (std::size_t request = 0; request < states.size(); ++request) {
+      auto& state = states[request];
+      check(posthf_cuda_download_v1(device_blocks.pointers[request], state.output.data(),
+                                    state.output.size(), error, sizeof(error)));
+      if (metrics) {
+        vibeqc_tensor::Metrics measured;
+        check(posthf_cuda_metrics_v1(device_blocks.pointers[request], &measured, error,
+                                     sizeof(error)));
+        batch_owned = checked_add(batch_owned, measured.owned_device_bytes);
+        batch_retained = checked_add(batch_retained, measured.provider_retained_bytes);
+        metrics->input_ms += measured.input_ms;
+        metrics->output_ms += measured.output_ms;
+        metrics->library_ms += measured.library_ms;
+        metrics->kernel_ms += measured.kernel_ms;
+      }
+    }
     if (metrics) {
-      vibeqc_tensor::Metrics m;
-      check(posthf_cuda_metrics_v1(device_block.pointer, &m, error, sizeof(error)));
-      metrics->owned_device_bytes = std::max(metrics->owned_device_bytes, m.owned_device_bytes);
-      metrics->provider_retained_bytes =
-          std::max(metrics->provider_retained_bytes, m.provider_retained_bytes);
-      metrics->input_ms += m.input_ms;
-      metrics->output_ms += m.output_ms;
-      metrics->library_ms += m.library_ms;
-      metrics->kernel_ms += m.kernel_ms;
+      metrics->owned_device_bytes =
+          std::max<decltype(metrics->owned_device_bytes)>(metrics->owned_device_bytes, batch_owned);
+      metrics->provider_retained_bytes = std::max<decltype(metrics->provider_retained_bytes)>(
+          metrics->provider_retained_bytes, batch_retained);
     }
 #else
     (void)metrics;
 #endif
   }
-  return output;
+
+  std::vector<std::vector<double>> outputs;
+  outputs.reserve(states.size());
+  for (auto& state : states) outputs.push_back(std::move(state.output));
+  return outputs;
+}
+
+std::vector<double> NativeBlockProvider::get(const MOSlots& slots, bool cuda, int device,
+                                             vibeqc_tensor::Metrics* metrics,
+                                             ProviderWork* work) const {
+  std::vector<MOSlots> requests{slots};
+  auto outputs = get_many(requests, cuda, device, metrics, work);
+  return std::move(outputs.front());
 }
 }  // namespace vibeqc::posthf

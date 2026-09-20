@@ -1,17 +1,19 @@
 {
   "owner": "d4_dispersion",
-  "current_default": "Internal bounded molecular complete EEQ-D4 qualification on CPU/CUDA for standard and r2SCAN-3c profiles; no public production DFT-D4 endpoint.",
+  "current_default": "Internal bounded molecular D4 qualification with a block-cooperative fixed-charge CUDA scheduler plus complete EEQ-D4 CPU/CUDA correctness endpoints; no public production DFT-D4 endpoint.",
   "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
-  "missing_capability": "Production provider/runtime integration, compiler-generated derivative execution, scalable GPU scheduling/performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
-  "retirement_condition": "Retain as a qualification reference or retire after common compiler primitives reproduce independently validated complete D4 derivatives; no per-functional handwritten production kernels.",
+  "missing_capability": "Production provider/runtime integration, parallel EEQ charge/response scheduling, compiler-generated derivative execution, endpoint performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
+  "retirement_condition": "Retain the scalar path as the numerical oracle and the cooperative scheduler as a bounded native runtime until common compiler primitives reproduce independently validated complete D4 derivatives and production endpoint performance; no per-functional handwritten kernels.",
   "evidence": [
     "docs/d4_reference.md",
     "tests/data/d4/oracle_manifest.json",
     "tests/data/d4/eeq_oracle_manifest.json",
     "tests/native/test_d4_eeq.cpp",
     "tests/native/test_d4_eeq_cuda.cu",
+    "tests/native/test_d4_schedule_cuda.cu",
     ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
-    ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md"
+    ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md",
+    ".agents/notes/implemented/performance/2026-09-20-d4-cuda-scheduling.md"
   ],
-  "status": "oracle"
+  "status": "partial"
 }

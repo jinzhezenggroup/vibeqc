@@ -165,6 +165,13 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(
     header = emit_one_electron_derivatives_cuda().replace(
         "#include <cuda_runtime.h>", ""
     )
+    assert (
+        "static __device__ __noinline__ GradientAxis overlap_kinetic_gradient_x_00"
+        in header
+    )
+    assert (
+        "static __device__ __noinline__ GradientAxis attraction_gradient_x_00" in header
+    )
     source = (
         "#define __device__\n#define __forceinline__ inline\n#define __noinline__\n"
         + header

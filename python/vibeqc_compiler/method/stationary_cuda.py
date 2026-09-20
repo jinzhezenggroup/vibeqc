@@ -10,6 +10,7 @@ Rationale: .agents/notes/implemented/architecture/2026-09-20-stationary-cuda-emi
 
 import os
 import typing
+from fractions import Fraction
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -19,9 +20,150 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.source_cache import cache_source
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
+from .stationary_gradient import StationaryGradientPlan
+
+STATIONARY_RUNTIME_SOURCE_NAMES = (
+    "one_electron",
+    "coulomb",
+    "xc_ao",
+    "xc_grid",
+    "xc_weight",
+    "overlap_pulay",
+    "nuclear",
+)
+_FUSED_WEIGHT_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+
+
+def _fraction(value: typing.Any) -> Fraction:
+    if isinstance(value, Fraction):
+        return value
+    if type(value) is int:
+        return Fraction(value, 1)
+    if (
+        isinstance(value, tuple)
+        and len(value) == 2
+        and all(type(v) is int for v in value)
+    ):
+        return Fraction(*value)
+    raise TypeError("stationary CUDA weight lowering requires exact rational constants")
+
+
+def _literal(value: typing.Any) -> str:
+    value = _fraction(value)
+    if value.denominator == 1:
+        return f"{value.numerator}.0"
+    return f"({value.numerator}.0/{value.denominator}.0)"
+
+
+def _weight_expression(
+    plan: StationaryGradientPlan, source: str
+) -> tuple[str, str, int]:
+    """Lower generated one-term TensorIR weight to a scalar CUDA expression."""
+    block = plan.integral_block(source, terms=1)
+    program = block.weights
+    values: dict[typing.Any, str | tuple[str, ...]] = {}
+    arity = 0
+    bindings = {
+        "density_left": ("density", 0, 1),
+        "density_right": ("density", 2, 3),
+        "weighted_density": ("weighted_density", 0, 1),
+    }
+    for node in program.live_nodes:
+        if node.op == "input":
+            name = node.attrs["name"]
+            if name not in bindings or node.spec.shape != (plan.spin_blocks, 1):
+                raise ValueError("unsupported stationary CUDA weight input contract")
+            pointer, left, right = bindings[name]
+            arity = max(arity, left + 1, right + 1)
+            values[node] = tuple(
+                f"{pointer}[{spin} * n * n + size_t(ao[{left}]) * n + size_t(ao[{right}])]"
+                for spin in range(plan.spin_blocks)
+            )
+        elif node.op == "constant":
+            raw = node.attrs["values"]
+            if node.spec.shape or len(raw) != 1:
+                raise ValueError(
+                    "stationary CUDA weight lowering requires scalar constants"
+                )
+            values[node] = _literal(raw[0])
+        elif node.op == "reduce":
+            operand = values[node.inputs[0]]
+            if node.attrs["axes"] != (0,) or not isinstance(operand, tuple):
+                raise ValueError("unsupported stationary CUDA weight reduction")
+            values[node] = "(" + " + ".join(operand) + ")"
+        elif node.op == "einsum":
+            operands = [values[item] for item in node.inputs]
+            if node.spec.shape != (1,) or any(
+                not isinstance(item, str) for item in operands
+            ):
+                raise ValueError("unsupported stationary CUDA weight einsum")
+            coefficient = _fraction(node.attrs["coefficient"])
+            factors = [typing.cast("str", item) for item in operands]
+            if coefficient != 1:
+                factors.insert(0, _literal(coefficient))
+            values[node] = "(" + " * ".join(factors) + ")"
+        else:
+            raise ValueError(f"unsupported stationary CUDA weight op: {node.op}")
+    output = values[program.outputs["weights"]]
+    if not isinstance(output, str):
+        raise TypeError("stationary CUDA weight output did not lower to a scalar")
+    return output, program.logical_hash, arity
+
+
+def emit_stationary_weight_cuda(plan: typing.Any) -> str:
+    """Emit pointwise device weights directly from StationaryGradientPlan TensorIR."""
+    if not isinstance(plan, StationaryGradientPlan):
+        raise TypeError(
+            "stationary CUDA weight lowering requires StationaryGradientPlan"
+        )
+    functions = [
+        "namespace vibeqc_stationary_cuda {",
+        f"// stationary-plan: {plan.identity}",
+        f"constexpr unsigned stationary_nuclear_source = {STATIONARY_RUNTIME_SOURCE_NAMES.index('nuclear')};",
+    ]
+    dispatch: list[str] = []
+    for source in _FUSED_WEIGHT_SOURCES:
+        expression, identity, arity = _weight_expression(plan, source)
+        symbol = f"stationary_weight_{source}"
+        functions.extend(
+            (
+                f"// stationary-weight-program-{source}: {identity}",
+                f"__device__ inline double {symbol}(const double* density, const double* weighted_density, size_t n, const int64_t* ao) {{",
+                f"  return {expression};",
+                "}",
+            )
+        )
+        slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(source)
+        checks = " || ".join(
+            f"ao[{i}] < 0 || ao[{i}] >= int64_t(n)" for i in range(arity)
+        )
+        dispatch.extend(
+            (
+                f"    case {slot}:",
+                f"      if ({checks}) return false;",
+                f"      value = {symbol}(density, weighted_density, n, ao);",
+                "      return isfinite(value);",
+            )
+        )
+    functions.extend(
+        (
+            "__device__ inline bool stationary_source_weight(unsigned source, const double* density, const double* weighted_density, size_t n, const int64_t* ao, double& value) {",
+            "  switch (source) {",
+            *dispatch,
+            "    default: return false;",
+            "  }",
+            "}",
+            "}  // namespace vibeqc_stationary_cuda",
+            "",
+        )
+    )
+    return "\n".join(functions)
+
+
 _STATIONARY_SCIENTIFIC_KERNELS = r"""namespace vibeqc_stationary_cuda {
-__global__ void primitive_kernel(unsigned kind, const double* records, size_t count, double* output,
-                                 int* error) {
+__global__ void primitive_kernel(unsigned kind, unsigned source, const double* records,
+                                 const int64_t* maps, size_t count, const double* density,
+                                 const double* weighted_density, size_t n, double* output, int* error) {
   for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count; i += blockDim.x * gridDim.x) {
     const double* r = records + record_stride * i;
     double v[12]{};
@@ -39,9 +181,16 @@ __global__ void primitive_kernel(unsigned kind, const double* records, size_t co
       atomicExch(error, 1);
       return;
     }
-    // Normalization and the plan's already generated source weight are
-    // contracted on device, once per primitive; no host derivative tensor.
-    double weight = r[24] * r[25];
+    double source_weight = 1.0;
+    if (source != stationary_nuclear_source &&
+        !stationary_source_weight(source, density, weighted_density, n,
+                                  maps + map_stride * i + 4, source_weight)) {
+      atomicExch(error, 1);
+      return;
+    }
+    // Normalization and the generated plan weight are contracted on device,
+    // once per primitive; no host source-weight tensor exists.
+    double weight = source_weight * r[25];
     for (size_t j = 0; j < 4; ++j) weight *= r[16 + j] * r[20 + j];
     for (size_t j = 0; j < 12; ++j) output[12 * i + j] = finite(weight * v[j], error, 0);
   }
@@ -56,7 +205,7 @@ __global__ void primitive_reduce(const double* input, const int64_t* maps, size_
   double sum = 0;
   for (size_t i = 0; i < count; ++i)
     for (size_t center = 0; center < 4; ++center) {
-      const auto atom = maps[4 * i + center];
+      const auto atom = maps[map_stride * i + center];
       if (atom < -1 || atom >= int64_t(na)) {
         atomicExch(error, 1);
         return;
@@ -157,9 +306,9 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
 """
 
 
-def emit_stationary_scientific_kernels() -> str:
+def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
     """Emit bounded primitive and XC geometry contractions for the runtime owner."""
-    return _STATIONARY_SCIENTIFIC_KERNELS
+    return emit_stationary_weight_cuda(plan) + _STATIONARY_SCIENTIFIC_KERNELS
 
 
 def emit_stationary_cuda(
@@ -167,6 +316,7 @@ def emit_stationary_cuda(
     *,
     functional: typing.Any = None,
     pbe: typing.Any = None,
+    plan: typing.Any,
     iterations: typing.Any = 3,
 ) -> typing.Any:
     """Compose explicit primitive lowering and shared XC geometric lowering.
@@ -174,11 +324,16 @@ def emit_stationary_cuda(
     ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
     New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
     """
+    if not isinstance(plan, StationaryGradientPlan):
+        raise TypeError("stationary CUDA requires StationaryGradientPlan")
     return (
         primitive_source
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
+        + "namespace vibeqc_stationary_cuda {\n"
+        + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
+        + "}\n"
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
-        + emit_stationary_scientific_kernels()
+        + emit_stationary_scientific_kernels(plan)
     )
 
 
@@ -187,6 +342,7 @@ def compile_stationary_cuda(
     *,
     functional: typing.Any = None,
     pbe: typing.Any = None,
+    plan: typing.Any,
     iterations: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
@@ -197,7 +353,11 @@ def compile_stationary_cuda(
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
     source = emit_stationary_cuda(
-        primitive_source, functional=functional, pbe=pbe, iterations=iterations
+        primitive_source,
+        functional=functional,
+        pbe=pbe,
+        plan=plan,
+        iterations=iterations,
     )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)

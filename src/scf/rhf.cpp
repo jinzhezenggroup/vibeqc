@@ -254,17 +254,15 @@ void bind_generated_one_electron(DensityFittingScfData& data, const core::System
 
 void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
                        const core::System& auxiliary, int device) {
+  if (!data.raw.metric_derivative.empty() || !data.raw.three_center_derivative.empty()) return;
+  data.df_gradient_orbital = orbital;
+  data.df_gradient_auxiliary = auxiliary;
 #if VIBEQC_HAS_CUDA
   if (device >= 0) {
-    data.df_gradient_orbital = orbital;
-    data.df_gradient_auxiliary = auxiliary;
     data.df_gradient_mapping = cuda_policy::df_derivative_mapping_requested();
     data.df_gradient_budget = data.resolved_budget.response_bytes;
   }
 #else
-  (void)data;
-  (void)orbital;
-  (void)auxiliary;
   (void)device;
 #endif
 }
@@ -387,14 +385,22 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     data.raw = integrals::transform_density_fitting_integrals(cartesian, system, auxiliary_system);
   } else {
     data.one_electron = integrals::build_integrals(system, include_derivatives, false);
-    data.raw =
-        integrals::build_density_fitting_integrals(system, auxiliary_system, include_derivatives);
+    const bool materialize_df_derivatives =
+        include_derivatives && cpu_materialized_df_derivatives_requested();
+    data.raw = integrals::build_density_fitting_integrals(system, auxiliary_system,
+                                                          materialize_df_derivatives);
+    if (include_derivatives && !materialize_df_derivatives)
+      data.raw.ncoord = system.atoms.size() * 3U;
   }
 #else
   (void)cuda_device_id;
   data.one_electron = integrals::build_integrals(system, include_derivatives, false);
-  data.raw =
-      integrals::build_density_fitting_integrals(system, auxiliary_system, include_derivatives);
+  const bool materialize_df_derivatives =
+      include_derivatives && cpu_materialized_df_derivatives_requested();
+  data.raw = integrals::build_density_fitting_integrals(system, auxiliary_system,
+                                                        materialize_df_derivatives);
+  if (include_derivatives && !materialize_df_derivatives)
+    data.raw.ncoord = system.atoms.size() * 3U;
 #endif
   const auto resolved_budget = data.resolved_budget;
   data = assemble_density_fitting_data(std::move(data.one_electron), std::move(data.raw),
@@ -478,10 +484,22 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
                                 const Matrix* beta = nullptr,
                                 const CudaDfFinalStateToken* final_state = nullptr) {
   Matrix gradient;
-#if VIBEQC_HAS_CUDA
   if (!data.df_gradient_orbital) return gradient;
-  if (!plan || !data.df_gradient_auxiliary)
-    throw std::runtime_error("generated DF response has no matching CUDA plan or geometry");
+  if (!data.df_gradient_auxiliary)
+    throw std::runtime_error("generated DF response has no matching geometry");
+  if (!plan) {
+    if (beta) {
+      return build_density_fitting_uhf_weighted_gradient(
+                 *data.df_gradient_orbital, *data.df_gradient_auxiliary, data.raw, density, *beta,
+                 data.metric_relative_threshold)
+          .derivative;
+    }
+    return build_density_fitting_rhf_weighted_gradient(*data.df_gradient_orbital,
+                                                       *data.df_gradient_auxiliary, data.raw,
+                                                       density, data.metric_relative_threshold)
+        .derivative;
+  }
+#if VIBEQC_HAS_CUDA
   const auto spin_staging_bytes = beta ? density.size() * sizeof(double) : 0U;
   if (spin_staging_bytes >= data.df_gradient_budget) throw std::bad_alloc();
   Matrix total;
@@ -503,16 +521,12 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
   if (status != VIBEQC_STATUS_SUCCESS || gradient.size() != data.raw.ncoord)
     throw std::runtime_error(detail.empty() ? "generated DF response failed" : detail);
 #else
-  (void)data;
-  (void)plan;
   (void)system;
-  (void)density;
-  (void)beta;
   (void)final_state;
+  throw std::runtime_error("CUDA DF response requested in a CPU-only build");
 #endif
   return gradient;
 }
-
 /** Translate the checked ordinary adapter into the synchronous setup/final
  * operation. Provider errors propagate; none requests a reference retry. */
 EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
@@ -810,7 +824,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   const Matrix generated_one_electron = generated_one_electron_hf_gradient(data, density, weighted);
   const Matrix generated_df =
       generated_df_hf_gradient(data, cuda_plan, cuda_system, density, nullptr, &response_token);
-  if (cuda_plan != nullptr) {
+  if (!generated_df.empty()) {
     if (generated_df.size() != data.raw.ncoord)
       throw std::runtime_error("generated DF response has invalid coordinate dimensions");
     result.forces.assign(data.raw.ncoord, 0.0);
@@ -837,11 +851,11 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   } else {
     if (!generated_one_electron.empty()) {
       throw std::runtime_error(
-          "CUDA DF response failed with generated one-electron gradients selected");
+          "generated DF response fell back with generated one-electron gradients selected");
     }
     if (data.raw.three_center.empty()) {
       throw std::runtime_error(
-          "CUDA DF source-backed force response failed after tensor storage was released");
+          "DF fused response failed after derivative tensor storage was released");
     }
     result.forces = build_density_fitting_rhf_forces(data.one_electron, data.raw, density, weighted,
                                                      options.density_fitting_relative_threshold);
@@ -950,7 +964,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
       data, alpha_density, alpha_weighted, &beta_density, &beta_weighted);
   const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density,
                                                        &beta_density, &response_token);
-  if (cuda_plan != nullptr) {
+  if (!generated_df.empty()) {
     if (generated_df.size() != data.raw.ncoord)
       throw std::runtime_error("generated DF response has invalid coordinate dimensions");
     result.forces.assign(data.raw.ncoord, 0.0);
@@ -979,11 +993,11 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   } else {
     if (!generated_one_electron.empty()) {
       throw std::runtime_error(
-          "CUDA DF response failed with generated one-electron gradients selected");
+          "generated DF response fell back with generated one-electron gradients selected");
     }
     if (data.raw.three_center.empty()) {
       throw std::runtime_error(
-          "CUDA DF source-backed force response failed after tensor storage was released");
+          "DF fused response failed after derivative tensor storage was released");
     }
     result.forces = build_density_fitting_uhf_forces(data.one_electron, data.raw, alpha_density,
                                                      beta_density, alpha_weighted, beta_weighted,

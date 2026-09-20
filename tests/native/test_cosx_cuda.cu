@@ -157,6 +157,28 @@ int main() {
                 "CUDA COSX staging allocated a global point-by-AO^2 ESP tensor");
     }
 
+    const std::size_t derivative_points = std::min<std::size_t>(5, grid.point_count());
+    const std::vector<double> derivative_xyz(grid.points().begin(),
+                                             grid.points().begin() + 3 * derivative_points);
+    const std::vector<double> derivative_weights(grid.weights().begin(),
+                                                 grid.weights().begin() + derivative_points);
+    const auto cpu_point_derivative = vibeqc::dft::build_cosx_point_derivative_reference(
+        system, derivative_xyz, derivative_weights, density,
+        vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+    std::vector<double> first_point_derivative;
+    for (std::size_t tile : {std::size_t(1), std::size_t(3), derivative_points}) {
+      const auto gpu_point_derivative = vibeqc::dft::cuda_cosx_point_derivative_reference(
+          system, derivative_xyz, derivative_weights, density,
+          vibeqc::dft::CosxDensityConvention::rhf_spin_summed, tile, device);
+      require(max_error(gpu_point_derivative, cpu_point_derivative.point_gradient) < 3.0e-11,
+              "bounded CUDA COSX point derivative differs from the CPU analytic oracle");
+      if (first_point_derivative.empty())
+        first_point_derivative = gpu_point_derivative;
+      else
+        require(max_error(gpu_point_derivative, first_point_derivative) < 3.0e-11,
+                "CUDA COSX point derivative changed with tile partition");
+    }
+
     std::vector<double> half_density = density;
     for (double& value : half_density) value *= 0.5;
     vibeqc::dft::CudaCosxStagingPlan spin_plan(system, grid.points(), grid.weights(), 7, device);
@@ -185,6 +207,19 @@ int main() {
                   max_error(high_gpu.exchange, high_cpu.exchange) < 2.0e-11 &&
                   std::abs(high_gpu.exchange_energy - high_cpu.exchange_energy) < 2.0e-11,
               "native CUDA COSX spherical d/f expansion differs from the CPU oracle");
+      const std::size_t high_derivative_points = std::min<std::size_t>(2, high_grid.point_count());
+      const std::vector<double> high_derivative_xyz(
+          high_grid.points().begin(), high_grid.points().begin() + 3 * high_derivative_points);
+      const std::vector<double> high_derivative_weights(
+          high_grid.weights().begin(), high_grid.weights().begin() + high_derivative_points);
+      const auto high_cpu_point = vibeqc::dft::build_cosx_point_derivative_reference(
+          high, high_derivative_xyz, high_derivative_weights, high_density,
+          vibeqc::dft::CosxDensityConvention::spin_resolved);
+      const auto high_gpu_point = vibeqc::dft::cuda_cosx_point_derivative_reference(
+          high, high_derivative_xyz, high_derivative_weights, high_density,
+          vibeqc::dft::CosxDensityConvention::spin_resolved, high_derivative_points, device);
+      require(max_error(high_gpu_point, high_cpu_point.point_gradient) < 2.0e-10,
+              "native CUDA COSX spherical d/f point derivative differs from the CPU oracle");
     }
 
     bool bad_density = false;

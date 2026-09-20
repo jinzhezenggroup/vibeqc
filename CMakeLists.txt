@@ -74,11 +74,21 @@ elseif(NOT VIBEQC_COMPILER_CACHE STREQUAL "off"
   endif()
 endif()
 if(_vibeqc_compiler_cache)
+  get_filename_component(_vibeqc_compiler_cache_name
+                         "${_vibeqc_compiler_cache}" NAME)
+  set(_vibeqc_compiler_cache_launcher "${_vibeqc_compiler_cache}")
+  if(_vibeqc_compiler_cache_name STREQUAL "ccache")
+    # Generated CUDA/AOT sources live below the build tree. Without a stable
+    # base directory, their absolute paths make byte-identical objects miss
+    # when the same source is rebuilt in another worktree or build directory.
+    set(_vibeqc_compiler_cache_launcher
+        "${CMAKE_COMMAND};-E;env;CCACHE_BASEDIR=${CMAKE_BINARY_DIR};${_vibeqc_compiler_cache}")
+  endif()
   if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   if(NOT CMAKE_CUDA_COMPILER_LAUNCHER)
-    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   message(STATUS "VibeQC compiler cache: ${_vibeqc_compiler_cache}")
 endif()

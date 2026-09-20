@@ -12,7 +12,14 @@ from math import prod
 
 from .cuda_dtype import scalar_type
 from .cuda_gemm import gemm_contract
-from .cuda_plan import ALIGNMENT, TensorPlan, _index_table_values, aligned, strides
+from .cuda_plan import (
+    ALIGNMENT,
+    TensorPlan,
+    _index_table_values,
+    aligned,
+    static_data_slices,
+    strides,
+)
 from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
@@ -69,12 +76,30 @@ def _read(
     return f"{_name(prefix, f'read_{operand}')}(p, {index}, error)"
 
 
+def _value_precision(plan: typing.Any, i: int) -> typing.Any:
+    return plan.precision_by_node[plan.steps[i].node]
+
+
+def _convert(value: str, source: typing.Any, target: typing.Any) -> str:
+    if source.dtype == target.dtype:
+        return value
+    if source.dtype == "float64" and target.dtype == "float32":
+        return f"__double2float_rn({value})"
+    if source.dtype == "float32" and target.dtype == "float64":
+        return f"static_cast<double>({value})"
+    raise ValueError("unsupported TensorIR CUDA precision conversion")
+
+
 def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
     scalar = scalar_type(node.spec.dtype)
+    precision = _value_precision(plan, i)
+    accumulator = scalar_type(precision.accumulation_dtype)
     ty, add, mul = scalar.ctype, scalar.intrinsic("add"), scalar.intrinsic("mul")
+    acc_ty = accumulator.ctype
+    acc_add = accumulator.intrinsic("add")
     shape = node.spec.shape
     c = [_coordinate("z", shape, axis) for axis in range(len(shape))]
     reduction_pragma = (
@@ -86,14 +111,8 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         child = args[0]
         source = scalar_type(plan.steps[child].node.spec.dtype)
         value = _read(child, "z", prefix)
-        if source.dtype == "float64" and scalar.dtype == "float32":
-            converted = f"__double2float_rn({value})"
-        elif source.dtype == "float32" and scalar.dtype == "float64":
-            # FP32 -> FP64 is exact. Keep the boundary explicit instead of
-            # relying on arithmetic promotion in a neighboring primitive.
-            converted = f"static_cast<double>({value})"
-        else:
-            converted = value
+        # FP32 -> FP64 is exact; FP64 -> FP32 is explicit RN conversion.
+        converted = _convert(value, source, scalar)
         return f"return finite({converted}, error, {i});"
     if node.op == "add":
         lines = [f"{ty} value = {scalar.zero};"]
@@ -147,10 +166,13 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         term = values[0]
         for value in values[1:]:
             term = f"{mul}({term}, {value})"
-        return f"""{ty} value = {scalar.zero};
+        accumulated_term = _convert(term, scalar, accumulator)
+        narrowed = _convert(f"finite(value, error, {i})", accumulator, scalar)
+        scaled = f"{mul}({narrowed}, {scalar.literal(a['coefficient'])})"
+        return f"""{acc_ty} value = {accumulator.zero};
 {reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = {add}(value, {term});
-return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])}), error, {i});"""
+    value = {acc_add}(value, {accumulated_term});
+return finite({scaled}, error, {i});"""
     child = args[0]
     source_shape = plan.steps[child].node.spec.shape
     if node.op == "reshape":
@@ -212,10 +234,14 @@ return finite(value, error, {i});"""
             else:
                 source.append(c[cursor])
                 cursor += 1
-        return f"""{ty} value = {scalar.zero};
+        contribution = _convert(
+            _read(child, _flat(source, source_shape), prefix), scalar, accumulator
+        )
+        result = _convert("value", accumulator, scalar)
+        return f"""{acc_ty} value = {accumulator.zero};
 {reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
-return finite(value, error, {i});"""
+    value = {acc_add}(value, {contribution});
+return finite({result}, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
     return f"return {_read(child, index, prefix)};"
@@ -401,7 +427,9 @@ for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
 }}"""
 
 
-def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
+def emit_cuda(
+    plan: TensorPlan, symbol_prefix: str = "", *, embed_static_data: bool = True
+) -> str:
     """Return standalone C++17 CUDA source with an optional symbol prefix.
 
     A prefix places the generated ABI in a unique namespace and prefixes all
@@ -446,14 +474,14 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         node = step.node
         scalar = scalar_type(node.spec.dtype)
         ty = scalar.ctype
-        if node.op == "constant" and node.spec.size:
+        if embed_static_data and node.op == "constant" and node.spec.size:
             values = ", ".join(scalar.literal(pair) for pair in node.attrs["values"])
             parts.append(f"static const {ty} {prefix}constant_{i}[] = {{{values}}};")
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         table_values = _index_table_values(node)
-        if table_values:
+        if embed_static_data and table_values:
             values = ", ".join(_integer(v) for v in table_values)
             parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
             initialize.append(
@@ -527,6 +555,45 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         plan,
         'std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1)',
     )
+    external_slices = () if embed_static_data else static_data_slices(plan)
+    external_static_bytes = sum(item[4] for item in external_slices)
+    external_copies = " ".join(
+        f"cuda_check(cudaMemcpyAsync(ctx.arena + {arena_offset}, bytes + {payload_offset}, {size_bytes}ULL, cudaMemcpyHostToDevice, ctx.stream));"
+        for _, _, arena_offset, payload_offset, size_bytes in external_slices
+    )
+    static_abi = ""
+    if not embed_static_data:
+        static_abi = f"""
+extern "C" size_t {_name(prefix, "tensor_static_bytes")}() {{ return {external_static_bytes}ULL; }}
+extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const void* data, size_t bytes_count,
+                          char* error, size_t size) {{
+    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
+    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
+    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    bool uploading = false;
+    try {{
+        ctx.check_device();
+        if (ctx.static_ready)
+            throw std::runtime_error("tensor static data is already initialized");
+        if (bytes_count != {external_static_bytes}ULL)
+            throw std::runtime_error("tensor static-data size mismatch");
+        if (bytes_count && !data)
+            throw std::runtime_error("null tensor static-data payload");
+        const auto* bytes = static_cast<const unsigned char*>(data);
+        uploading = true;
+        {external_copies}
+        cuda_check(cudaStreamSynchronize(ctx.stream));
+        ctx.static_ready = true;
+        return 0;
+    }} catch (const std::exception& e) {{
+        // A queued copy still borrows data even if a later submission failed.
+        // Drain before the caller can release the bounded host payload.
+        if (uploading) cudaStreamSynchronize(ctx.stream);
+        error_text(error, size, e.what()); return 1;
+    }}
+}}
+"""
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
@@ -539,6 +606,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
                      {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
         vibeqc::runtime::CudaDeviceScope guard(device, cuda_check);
         {math_mode}
+        {"ctx->static_ready = false;" if not embed_static_data else ""}
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
         *result = static_cast<Context*>(ctx.release());
@@ -550,6 +618,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<GraphContext*>(static_cast<Context*>(pointer)); }}
+{static_abi}
 static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* inputs, void* const* outputs,
                           int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
                           char* graph_reason, size_t graph_reason_size, char* error, size_t size) {{
@@ -559,6 +628,7 @@ static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* 
     if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
     try {{
         ctx.check_device();
+        if (!ctx.static_ready) throw std::runtime_error("tensor static data is not initialized");
         if (!result || !inputs || !outputs) throw std::runtime_error("null tensor execution arguments");
         Metrics metrics;
         metrics.owned_device_bytes = ctx.metrics.owned_device_bytes;

@@ -716,7 +716,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    if (device_metric && schedule == 0 && (!source || packed_raw) &&
+    if (device_metric && schedule == 0 && (!source || packed_raw || whitened) &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
@@ -1095,17 +1095,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("raw_value_owner_identity",
                                            borrowed->resident_raw.owner_identity);
       }
-      // A bounded fitted-panel route reads the whitened owner instead. Merely
+      // Every fitted-panel route, including one full-width panel, reads the
+      // whitened owner instead. Merely
       // receiving a packed raw view does not establish any raw-value traffic.
-      if (packed_raw && (borrowed || !whitened || tile == a)) {
+      if (packed_raw && (borrowed || !whitened)) {
         runtime::cuda_trace::trace_counter("raw_packed_value_reused_bytes",
                                            packed_raw->pair_count * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
-      if (whitened && !borrowed && tile < a) {
+      if (whitened && !borrowed) {
         // The forward plan already owns this immutable tensor. Reading it is
         // an explicit borrow, not extra response allocation or raw regeneration.
+        // Full-width panels must use the same reader: falling back to raw A
+        // would regenerate every Q solely because more scratch is available.
         const auto bytes = whitened->pair_count * a * sizeof(double);
         arena.stats.borrowed_device_bytes += bytes;
         runtime::cuda_trace::trace_counter("response_borrowed_whitened_bytes", bytes);
