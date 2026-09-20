@@ -3,6 +3,8 @@
 The numerical parameter subset is derived from xTBloom commit 2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3,
 whose GFN2 export is pinned to tblite. Production VibeQC does not import or
 call xTBloom at runtime.
+
+Rationale: .agents/notes/implemented/numerics/2026-09-20-gfn2-geometry-compiler-contract.md
 """
 
 from __future__ import annotations
