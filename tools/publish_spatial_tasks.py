@@ -8,6 +8,7 @@ import math
 import re
 import statistics
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,14 +26,14 @@ from vibeqc_compiler.common.resources import ResourcePlan
 from tools.vibeqc_validation.publication import publish
 
 
-def write(path, value):
+def write(path: typing.Any, value: typing.Any) -> None:
     """Retain full float precision and deterministic finite JSON."""
     path.write_text(
         json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     )
 
 
-def validate_run(run, *, dense_only=False):
+def validate_run(run: typing.Any, *, dense_only: typing.Any = False) -> typing.Any:
     """Reject partial inventories, stale resource accounting and failed numerical gates."""
     if (
         run["schema"] != "vibeqc.spatial-task-benchmark.v1"
@@ -164,7 +165,7 @@ def validate_run(run, *, dense_only=False):
     return run
 
 
-def summarize(run):
+def summarize(run: typing.Any) -> typing.Any:
     """Summarize complete measurements without promoting a different scientific mask."""
     rows = []
     for row in run["cases"]:
@@ -205,7 +206,7 @@ def summarize(run):
     }
 
 
-def dense_comparison(directory):
+def dense_comparison(directory: typing.Any) -> typing.Any:
     """Descriptive historical dense sweep: three ABBA process blocks, five samples each.
 
     This grouped design is retained as measured; it is not relabeled as fifteen
@@ -278,7 +279,7 @@ def dense_comparison(directory):
     }, rows
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)

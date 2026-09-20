@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_cuda_df_matrix_free_rhf_response_matches_explicit_and_solves():
+def test_cuda_df_matrix_free_rhf_response_matches_explicit_and_solves() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     meta, arrays = load_fixture("h2")
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:
@@ -95,7 +95,7 @@ def test_cuda_df_matrix_free_rhf_response_matches_explicit_and_solves():
                 source._read("three_center_eri", (0, 0, 0), (1, 1, 1))
 
 
-def test_cuda_df_reprepared_response_keeps_source_available():
+def test_cuda_df_reprepared_response_keeps_source_available() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     meta, arrays = load_fixture("h2")
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:

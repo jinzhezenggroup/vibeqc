@@ -8,6 +8,7 @@ PBE0 here does not make hybrid KS execution available automatically.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from types import MappingProxyType
@@ -46,13 +47,13 @@ class UnsupportedMethod(ValueError):
     """The requested method composition cannot be represented by this IR."""
 
 
-def _require_fraction(value, label):
+def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
     if not isinstance(value, Fraction):
         raise UnsupportedMethod(f"{label} requires an exact Fraction coefficient")
     return value
 
 
-def _canonical_components(components):
+def _canonical_components(components: typing.Any) -> typing.Any:
     totals = {}
     for name, coefficient in components:
         totals[name] = totals.get(name, Fraction(0)) + coefficient
@@ -85,7 +86,7 @@ class MethodSpec:
     basis: BasisBinding | None = None
     gcp: GCPSpec | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.strip():
             raise UnsupportedMethod("method requires a non-empty identifier")
         if self.version != METHOD_CATALOG_VERSION:
@@ -150,7 +151,7 @@ class MethodSpec:
         ):
             raise UnsupportedMethod("method composition cannot be empty")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "identifier": self.identifier,
             "version": self.version,
@@ -184,7 +185,7 @@ class SemilocalXCPrimitive:
     functional: FunctionalSpec
     kind: ClassVar[str] = "semilocal_xc"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.functional, FunctionalSpec):
             raise TypeError("semilocal primitive requires FunctionalSpec")
         if any(
@@ -206,10 +207,10 @@ class SemilocalXCPrimitive:
             )
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         return ("energy-density", "feature-gradient", "feature-hessian")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         functional = self.functional.to_payload()
         # The functional identifier is descriptive.  MethodIR semantic identity is
         # determined by audited expressions, coefficients, spin and provenance.
@@ -220,7 +221,7 @@ class SemilocalXCPrimitive:
             "derivative_capabilities": self.derivative_capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             **self.semantic_payload(),
             "functional_identifier": self.functional.identifier,
@@ -236,7 +237,7 @@ class RangeSeparatedExchangePrimitive:
     operator: str
     kind: ClassVar[str] = "range_separated_exchange"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _require_fraction(self.coefficient, "range-separated exchange")
         _require_fraction(self.omega, "range omega")
         if self.coefficient <= 0 or self.omega <= 0:
@@ -249,10 +250,10 @@ class RangeSeparatedExchangePrimitive:
             )
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         return ("energy", "fock")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "kind": self.kind,
             "operator": self.operator,
@@ -262,7 +263,7 @@ class RangeSeparatedExchangePrimitive:
             "derivative_capabilities": self.derivative_capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()
 
 
@@ -274,7 +275,7 @@ class ExactExchangePrimitive:
     operator: str = FULL_RANGE
     kind: ClassVar[str] = "exact_exchange"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _require_fraction(self.coefficient, "exact exchange")
         if self.coefficient <= 0:
             raise UnsupportedMethod(
@@ -286,11 +287,11 @@ class ExactExchangePrimitive:
             )
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         # These are representation/provider requests, not public method guarantees.
         return ("energy", "fock")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "kind": self.kind,
             "operator": self.operator,
@@ -298,7 +299,7 @@ class ExactExchangePrimitive:
             "derivative_capabilities": self.derivative_capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()
 
 
@@ -328,7 +329,7 @@ class MethodIR:
     basis: BasisBinding | None = None
     version: str = METHOD_IR_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.strip():
             raise UnsupportedMethod("MethodIR requires a non-empty identifier")
         if self.spin not in _SPINS:
@@ -398,10 +399,10 @@ class MethodIR:
                 )
 
     @property
-    def reference(self):
+    def reference(self) -> typing.Any:
         return "unrestricted" if self.spin == "polarized" else "restricted"
 
-    def preflight_atomic_numbers(self, atomic_numbers):
+    def preflight_atomic_numbers(self, atomic_numbers: typing.Any) -> typing.Any:
         """Reject unsupported chemistry before lowering or correction execution."""
 
         values = tuple(atomic_numbers)
@@ -428,7 +429,7 @@ class MethodIR:
         return values
 
     @property
-    def requirements(self):
+    def requirements(self) -> typing.Any:
         ingredients = set()
         operators = []
         for primitive in self.primitives:
@@ -461,7 +462,7 @@ class MethodIR:
             result["basis"] = self.basis.to_payload()
         return result
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "version": self.version,
             "spin": self.spin,
@@ -472,7 +473,7 @@ class MethodIR:
             ],
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "identifier": self.identifier,
             **self.semantic_payload(),
@@ -481,11 +482,11 @@ class MethodIR:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.semantic_payload())
 
     @property
-    def manifest_identity(self):
+    def manifest_identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
@@ -751,7 +752,9 @@ METHOD_CATALOG = MappingProxyType(
 )
 
 
-def resolve_method(method, *, spin="unpolarized"):
+def resolve_method(
+    method: typing.Any, *, spin: typing.Any = "unpolarized"
+) -> typing.Any:
     """Resolve an audited name or explicit ``MethodSpec`` into canonical MethodIR."""
     if spin not in _SPINS:
         raise UnsupportedMethod(f"unsupported spin mode {spin!r}")
@@ -775,7 +778,7 @@ def resolve_method(method, *, spin="unpolarized"):
     )
 
 
-def _method_primitives(spec, spin):
+def _method_primitives(spec: typing.Any, spin: typing.Any) -> typing.Any:
     """One construction path shared by resolution and canonical graph validation."""
     components = _canonical_components(spec.semilocal_components)
     primitives: list[MethodPrimitive] = []

@@ -6,6 +6,8 @@ translation invariance recovers the third center after each reduction.
 The native adapter owns scheduling, storage and physical-atom scatter.
 """
 
+import typing
+
 from .ecp import emit_ecp_ao_cuda
 from .ecp_grid import emit_ecp_grid_cpp
 from .ecp_policy import emit_ecp_policy_cpp
@@ -15,7 +17,7 @@ from .ir import ECP_MAX_PROJECTOR_ANGULAR, EcpRadialTerm
 from .scalar_c import ScalarCEmitter
 
 
-def radial_roots(power):
+def radial_roots(power: typing.Any) -> typing.Any:
     """Weighted residual radial integrand, including the volume measure."""
     EcpRadialTerm(-1, power, 1.0, 1.0)  # Reuse the operator domain contract.
     graph = Graph()
@@ -30,7 +32,7 @@ def radial_roots(power):
     )
 
 
-def pair_roots():
+def pair_roots() -> typing.Any:
     """Value and A/B center jets from the same bilinear expression."""
     graph = Graph()
     a, b, weight = (graph.variable(name) for name in ("a0", "b0", "weight"))
@@ -43,7 +45,13 @@ def pair_roots():
     )
 
 
-def _emit(graph, roots, variables=None, *, accumulate=False):
+def _emit(
+    graph: typing.Any,
+    roots: typing.Any,
+    variables: typing.Any = None,
+    *,
+    accumulate: typing.Any = False,
+) -> typing.Any:
     emitter = ScalarCEmitter(graph, variables or {})
     emitter.emit(roots)
     op = "+=" if accumulate else "="
@@ -52,7 +60,9 @@ def _emit(graph, roots, variables=None, *, accumulate=False):
     ]
 
 
-def _scalar_function(name, arguments, expression):
+def _scalar_function(
+    name: typing.Any, arguments: typing.Any, expression: typing.Any
+) -> typing.Any:
     """Lower small consumer expressions through the shared scalar algebra."""
     graph = Graph()
     root = expression(*(graph.variable(arg) for arg in arguments))
@@ -68,7 +78,7 @@ def _scalar_function(name, arguments, expression):
     ]
 
 
-def _emit_ao_consumer():
+def _emit_ao_consumer() -> typing.Any:
     """Contract normalized Cartesian components without changing loop order."""
     lines = _scalar_function(
         "ecp_node_displacement",
@@ -105,7 +115,7 @@ def _emit_ao_consumer():
     return lines
 
 
-def _emit_weighted_consumer():
+def _emit_weighted_consumer() -> typing.Any:
     """Full AO contraction: arbitrary real weights, no occupancy multiplier."""
     lines = _scalar_function(
         "ecp_add_operator",
@@ -132,7 +142,7 @@ def _emit_weighted_consumer():
     return lines
 
 
-def emit_ecp_quadrature_cpp():
+def emit_ecp_quadrature_cpp() -> typing.Any:
     """Emit the validated s/p/d/f projector and powers 0..4 domain.
 
     Type parameters expose only scalar term/node/jet records. They do not

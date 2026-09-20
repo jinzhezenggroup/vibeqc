@@ -62,7 +62,7 @@ CANDIDATE_CONTROLS = (
 )
 
 
-def main():
+def main() -> None:
     """Require source/binary agreement and fresh artifacts before any GPU work."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aos", type=int, choices=CASES, default=384)
@@ -224,7 +224,7 @@ def main():
     payload["source_patch_sha256"] = hashlib.sha256(patch).hexdigest()
     cudart = ctypes.CDLL("libcudart.so.12") if args.nsys else None
 
-    def save():
+    def save() -> None:
         (args.output / "result.json").write_text(json.dumps(payload, indent=2) + "\n")
 
     save()

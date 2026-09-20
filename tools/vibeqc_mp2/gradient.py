@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -72,15 +73,15 @@ class MP2ResponseResult:
     operator_identity: str
 
     @property
-    def solution(self):
+    def solution(self) -> typing.Any:
         return self.solve_result.solution
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return self.solve_result.converged
 
     @property
-    def residual_norm(self):
+    def residual_norm(self) -> typing.Any:
         return self.solve_result.residual_norm
 
 
@@ -109,7 +110,9 @@ class MP2RILagrangianWeights:
     operator_identity: str
 
 
-def tile_energy_adjoint(feeds, *, max_bytes=None):
+def tile_energy_adjoint(
+    feeds: typing.Any, *, max_bytes: typing.Any = None
+) -> typing.Any:
     """Differentiate total OS+SS energy without differentiating solver history.
 
     ``g`` is ``(ia|jb)`` and ``x`` is ``(ib|ja)`` in the exact tile layout
@@ -149,8 +152,13 @@ def tile_energy_adjoint(feeds, *, max_bytes=None):
 
 
 def canonical_energy_adjoint(
-    integrals_iajb, orbital_energies, occupied, *, reference_identity, hamiltonian_id
-):
+    integrals_iajb: typing.Any,
+    orbital_energies: typing.Any,
+    occupied: typing.Any,
+    *,
+    reference_identity: typing.Any,
+    hamiltonian_id: typing.Any,
+) -> typing.Any:
     """Return full canonical MP2 VJP weights with repeated feeds accumulated.
 
     The exchange feed is a transposed read of the same physical ``(ia|jb)``
@@ -194,7 +202,9 @@ def canonical_energy_adjoint(
     )
 
 
-def _rotation_gradient(one, two, h, eri):
+def _rotation_gradient(
+    one: typing.Any, two: typing.Any, h: typing.Any, eri: typing.Any
+) -> typing.Any:
     result = np.einsum("pq,tq->tp", one, h, optimize=True)
     result += np.einsum("pq,pt->tq", one, h, optimize=True)
     result += np.einsum("pqrs,tqrs->tp", two, eri, optimize=True)
@@ -204,7 +214,9 @@ def _rotation_gradient(one, two, h, eri):
     return result
 
 
-def _rotation_gradient_streamed(one, two, h, provider):
+def _rotation_gradient_streamed(
+    one: typing.Any, two: typing.Any, h: typing.Any, provider: typing.Any
+) -> typing.Any:
     """Contract the generalized-Fock rotation gradient without a full MO ERI."""
 
     from tools.vibeqc_posthf.conventions import MOBlock
@@ -219,7 +231,7 @@ def _rotation_gradient_streamed(one, two, h, provider):
     result += np.einsum("pq,pt->tq", one, h, optimize=True)
     orbitals = tuple(range(n))
 
-    def read(slots):
+    def read(slots: typing.Any) -> typing.Any:
         block = provider.get(MOBlock(slots)).to_host()
         value = np.asarray(block, dtype=np.float64)
         provider.clear()
@@ -243,7 +255,13 @@ def _rotation_gradient_streamed(one, two, h, provider):
     return result
 
 
-def canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, occupied):
+def canonical_orbital_rhs_streamed(
+    reference: typing.Any,
+    hcore_mo: typing.Any,
+    provider: typing.Any,
+    adjoint: typing.Any,
+    occupied: typing.Any,
+) -> typing.Any:
     """Build the canonical MP2 response RHS from bounded provider blocks."""
 
     h = np.asarray(hcore_mo, dtype=np.float64)
@@ -283,7 +301,9 @@ def canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, occup
     )
     energies = reference.orbital_energies
 
-    def add_negative_fock_multiplier(row, column, value):
+    def add_negative_fock_multiplier(
+        row: typing.Any, column: typing.Any, value: typing.Any
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -317,7 +337,9 @@ def canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, occup
     )
 
 
-def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
+def canonical_orbital_rhs(
+    hcore_mo: typing.Any, eri_mo: typing.Any, adjoint: typing.Any, occupied: typing.Any
+) -> typing.Any:
     """Differentiate the MP2 correlation Lagrangian under MO rotations.
 
     Orbital-energy cotangents multiply the diagonal of the RHF Fock matrix.
@@ -377,7 +399,9 @@ def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
         raise ValueError("MP2 orbital RHS requires a canonical RHF Fock matrix")
     energies = np.diag(fock)
 
-    def add_negative_fock_multiplier(row, column, value):
+    def add_negative_fock_multiplier(
+        row: typing.Any, column: typing.Any, value: typing.Any
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -411,7 +435,13 @@ def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
     )
 
 
-def solve_canonical_orbital_response(reference, backend, orbital_rhs, *, options=None):
+def solve_canonical_orbital_response(
+    reference: typing.Any,
+    backend: typing.Any,
+    orbital_rhs: typing.Any,
+    *,
+    options: typing.Any = None,
+) -> typing.Any:
     """Solve the MP2 Z-vector with the shared bounded RHF response layer."""
 
     if not isinstance(orbital_rhs, MP2OrbitalRHS):
@@ -448,7 +478,13 @@ def solve_canonical_orbital_response(reference, backend, orbital_rhs, *, options
     )
 
 
-def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
+def canonical_lagrangian_weights(
+    hcore_mo: typing.Any,
+    eri_mo: typing.Any,
+    adjoint: typing.Any,
+    response: typing.Any,
+    occupied: typing.Any,
+) -> typing.Any:
     """Combine HF, MP2 and Z-vector terms into relaxed MO derivative weights."""
 
     orbital = canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied)
@@ -468,7 +504,9 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
     one = np.array(orbital.one_electron, copy=True)
     two = np.array(orbital.two_electron, copy=True)
 
-    def add_negative_fock_multiplier(row, column, value):
+    def add_negative_fock_multiplier(
+        row: typing.Any, column: typing.Any, value: typing.Any
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -497,8 +535,13 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
 
 
 def canonical_lagrangian_weights_streamed(
-    reference, hcore_mo, provider, adjoint, response, occupied
-):
+    reference: typing.Any,
+    hcore_mo: typing.Any,
+    provider: typing.Any,
+    adjoint: typing.Any,
+    response: typing.Any,
+    occupied: typing.Any,
+) -> typing.Any:
     """Assemble relaxed weights while streaming every MO-ERI contraction."""
 
     orbital = canonical_orbital_rhs_streamed(
@@ -521,7 +564,9 @@ def canonical_lagrangian_weights_streamed(
     one = np.array(orbital.one_electron, copy=True)
     two = np.array(orbital.two_electron, copy=True)
 
-    def add_negative_fock_multiplier(row, column, value):
+    def add_negative_fock_multiplier(
+        row: typing.Any, column: typing.Any, value: typing.Any
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -549,7 +594,12 @@ def canonical_lagrangian_weights_streamed(
     )
 
 
-def ao_lagrangian_weights(reference, weights, *, output_budget_bytes=None):
+def ao_lagrangian_weights(
+    reference: typing.Any,
+    weights: typing.Any,
+    *,
+    output_budget_bytes: typing.Any = None,
+) -> typing.Any:
     """Back-transform relaxed MO weights without changing derivative factors."""
 
     if not isinstance(weights, MP2LagrangianWeights):
@@ -588,15 +638,15 @@ def ao_lagrangian_weights(reference, weights, *, output_budget_bytes=None):
 
 
 def fused_cuda_conventional_molecular_gradient(
-    reference,
-    source,
-    weights,
-    orbital_calculator,
+    reference: typing.Any,
+    source: typing.Any,
+    weights: typing.Any,
+    orbital_calculator: typing.Any,
     *,
-    weight_output_budget_bytes=256 << 20,
-    consumer_maximum_bytes=128 << 20,
-    device_id=0,
-):
+    weight_output_budget_bytes: typing.Any = 256 << 20,
+    consumer_maximum_bytes: typing.Any = 128 << 20,
+    device_id: typing.Any = 0,
+) -> typing.Any:
     """Contract conventional weights through the #141/#144 CUDA consumers.
 
     The dense MO two-electron cotangent remains an explicit migration boundary.
@@ -725,8 +775,12 @@ def fused_cuda_conventional_molecular_gradient(
 
 
 def dense_molecular_gradient_oracle(
-    reference, source, weights, *, output_budget_bytes=256 << 20
-):
+    reference: typing.Any,
+    source: typing.Any,
+    weights: typing.Any,
+    *,
+    output_budget_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Contract the private <=12-AO derivative oracle for validation only."""
 
     ao = ao_lagrangian_weights(reference, weights)
@@ -746,7 +800,9 @@ def dense_molecular_gradient_oracle(
     return immutable(gradient.reshape(len(source.atoms), 3))
 
 
-def _inverse_sqrt_metric_response(metric, response, relative_threshold):
+def _inverse_sqrt_metric_response(
+    metric: typing.Any, response: typing.Any, relative_threshold: typing.Any
+) -> typing.Any:
     """Apply the self-adjoint fixed-rank Frechet derivative of M**(-1/2)."""
 
     matrix = np.asarray(metric, dtype=np.float64)
@@ -787,8 +843,13 @@ def _inverse_sqrt_metric_response(metric, response, relative_threshold):
 
 
 def dense_ri_lagrangian_weights_oracle(
-    reference, source, metric_factor, weights, *, output_budget_bytes=256 << 20
-):
+    reference: typing.Any,
+    source: typing.Any,
+    metric_factor: typing.Any,
+    weights: typing.Any,
+    *,
+    output_budget_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Reverse the relaxed RI Lagrangian to raw A/M weights for validation."""
 
     if not isinstance(weights, MP2LagrangianWeights):
@@ -846,8 +907,13 @@ def dense_ri_lagrangian_weights_oracle(
 
 
 def dense_ri_molecular_gradient_oracle(
-    reference, source, metric_factor, weights, *, output_budget_bytes=256 << 20
-):
+    reference: typing.Any,
+    source: typing.Any,
+    metric_factor: typing.Any,
+    weights: typing.Any,
+    *,
+    output_budget_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Contract the private dense RI derivative oracle for validation only."""
 
     ao = dense_ri_lagrangian_weights_oracle(
@@ -870,7 +936,7 @@ def dense_ri_molecular_gradient_oracle(
     return immutable(gradient.reshape(len(source.atoms), 3))
 
 
-def _nuclear_repulsion_gradient(atoms):
+def _nuclear_repulsion_gradient(atoms: typing.Any) -> typing.Any:
     """Analytic nuclear-repulsion gradient in Hartree/Bohr."""
 
     numbers = np.asarray([atom.atomic_number for atom in atoms], dtype=np.float64)
@@ -888,7 +954,12 @@ def _nuclear_repulsion_gradient(atoms):
     return immutable(gradient)
 
 
-def _ri_gradient_tile_ranges(nbf, naux, a_tile_elements, metric_tile_elements):
+def _ri_gradient_tile_ranges(
+    nbf: typing.Any,
+    naux: typing.Any,
+    a_tile_elements: typing.Any,
+    metric_tile_elements: typing.Any,
+) -> typing.Any:
     """Plan complete nonoverlapping A P-slabs and flat metric chunks."""
 
     if (
@@ -920,19 +991,19 @@ def _ri_gradient_tile_ranges(nbf, naux, a_tile_elements, metric_tile_elements):
 
 
 def fused_cuda_ri_molecular_gradient(
-    reference,
-    source,
-    metric_factor,
-    weights,
-    orbital_calculator,
-    auxiliary_calculator,
+    reference: typing.Any,
+    source: typing.Any,
+    metric_factor: typing.Any,
+    weights: typing.Any,
+    orbital_calculator: typing.Any,
+    auxiliary_calculator: typing.Any,
     *,
-    weight_output_budget_bytes=128 << 20,
-    consumer_maximum_bytes=128 << 20,
-    maximum_tile_elements=0,
-    maximum_metric_tile_elements=0,
-    device_id=0,
-):
+    weight_output_budget_bytes: typing.Any = 128 << 20,
+    consumer_maximum_bytes: typing.Any = 128 << 20,
+    maximum_tile_elements: typing.Any = 0,
+    maximum_metric_tile_elements: typing.Any = 0,
+    device_id: typing.Any = 0,
+) -> typing.Any:
     """Contract relaxed RI weights through the #141/#143 CUDA consumers.
 
     This path forms dense A/M cotangents but never forms nuclear-coordinate

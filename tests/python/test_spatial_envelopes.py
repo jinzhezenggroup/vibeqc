@@ -1,5 +1,7 @@
 """Pre-evaluation bounds checked against the independent native AO evaluator."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc import Primitive, Shell
@@ -9,7 +11,7 @@ from vibeqc_compiler.dft.envelopes import ao_region_envelopes, derivative_domain
 
 
 @pytest.fixture(params=["cartesian", "spherical"])
-def basis(request):
+def basis(request: typing.Any) -> typing.Any:
     shells = tuple(
         Shell(atom, angular, (Primitive(exponent, 1.0), Primitive(2 * exponent, -0.2)))
         for atom, exponent in ((0, 0.03), (1, 40.0))
@@ -23,7 +25,9 @@ def basis(request):
         yield result
 
 
-def test_contracted_derivative_bounds_cover_corners_and_interior(basis):
+def test_contracted_derivative_bounds_cover_corners_and_interior(
+    basis: typing.Any,
+) -> None:
     rng = np.random.default_rng(234)
     corners = np.array([(x, y, z) for x in (0, 1) for y in (0, 1) for z in (0, 1)])
     for center, width in (
@@ -43,7 +47,7 @@ def test_contracted_derivative_bounds_cover_corners_and_interior(basis):
             envelope.setflags(write=True)
 
 
-def test_value_node_does_not_hide_requested_derivative():
+def test_value_node_does_not_hide_requested_derivative() -> None:
     with NativeAO(
         [("He", (0, 0, 0))], basis=(Shell(0, 1, (Primitive(0.5, 1.0),)),)
     ) as basis:
@@ -57,7 +61,7 @@ def test_value_node_does_not_hide_requested_derivative():
         assert np.max(bound[:, 0]) > 1e-12
 
 
-def test_requested_domain_and_nested_regions(basis):
+def test_requested_domain_and_nested_regions(basis: typing.Any) -> None:
     domain = ((0, 1, 1), (0, 0, 0))
     assert derivative_domain(domain) == ((0, 0, 0), (0, 1, 1))
     inner = ao_region_envelopes(basis, [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]], domain)
@@ -69,7 +73,7 @@ def test_requested_domain_and_nested_regions(basis):
     np.testing.assert_array_equal(inner, full[[0, jet_indices(3).index((0, 1, 1))]])
 
 
-def test_extreme_boxes_fail_conservatively_without_nan(basis):
+def test_extreme_boxes_fail_conservatively_without_nan(basis: typing.Any) -> None:
     bound = ao_region_envelopes(basis, [[-1e308] * 3, [1e308] * 3], jet_indices(3))
     assert not np.isnan(bound).any()
     assert np.all(np.max(bound, axis=0) > 1e-12)
@@ -86,7 +90,7 @@ def test_extreme_boxes_fail_conservatively_without_nan(basis):
         ((0, 0, 0), (0, 0, 0)),
     ],
 )
-def test_unsupported_derivative_requests_fail(domain):
+def test_unsupported_derivative_requests_fail(domain: typing.Any) -> None:
     with pytest.raises(ValueError):
         derivative_domain(domain)
 
@@ -95,6 +99,6 @@ def test_unsupported_derivative_requests_fail(domain):
     "bounds",
     [[[1, 0, 0], [0, 1, 1]], [[0, 0, 0], [np.inf, 1, 1]], [[0, 0, 0], [np.nan, 1, 1]]],
 )
-def test_invalid_regions_fail(basis, bounds):
+def test_invalid_regions_fail(basis: typing.Any, bounds: typing.Any) -> None:
     with pytest.raises(ValueError):
         ao_region_envelopes(basis, bounds)

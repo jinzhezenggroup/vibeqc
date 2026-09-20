@@ -1,6 +1,7 @@
 """RSH scalar operations and MethodIR survive shared meta-GGA/VV10 integration."""
 
 import math
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -16,7 +17,9 @@ from vibeqc_compiler.method import (
 
 
 @pytest.mark.parametrize("operation", ["atan", "asinh", "erf"])
-def test_rsh_unary_works_inside_lazy_piecewise_and_iterative_graph(operation):
+def test_rsh_unary_works_inside_lazy_piecewise_and_iterative_graph(
+    operation: typing.Any,
+) -> None:
     graph = Graph()
     x = graph.variable("x")
     unary = graph.transcendental_unary(operation, x)
@@ -34,8 +37,8 @@ def test_rsh_unary_works_inside_lazy_piecewise_and_iterative_graph(operation):
 
 @pytest.mark.parametrize("with_dispersion", [False, True])
 def test_range_exchange_and_nonlocal_correlation_are_canonically_composable(
-    with_dispersion,
-):
+    with_dispersion: typing.Any,
+) -> None:
     from vibeqc_compiler.method import r2scan3c_d4_eeq
 
     spec = replace(

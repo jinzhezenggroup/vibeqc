@@ -4,6 +4,7 @@ import ast
 import gzip
 import hashlib
 import json
+import typing
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -18,7 +19,9 @@ BUNDLE = (
 )
 
 
-def restore_workers(directory, *, one_case=False, bundle=BUNDLE):
+def restore_workers(
+    directory: typing.Any, *, one_case: typing.Any = False, bundle: typing.Any = BUNDLE
+) -> typing.Any:
     """Reconstruct original workers solely from permanent retained records."""
     compact = json.loads((bundle / "samples.json").read_text())
     records = compact["records"]
@@ -55,8 +58,11 @@ def restore_workers(directory, *, one_case=False, bundle=BUNDLE):
     [(BUNDLE, 20, 8), (BUNDLE.parent / "df", 18, 9)],
 )
 def test_retained_workers_round_trip_and_recompute_all_gates(
-    tmp_path, bundle, cases, error_blocks
-):
+    tmp_path: typing.Any,
+    bundle: typing.Any,
+    cases: typing.Any,
+    error_blocks: typing.Any,
+) -> None:
     original = restore_workers(tmp_path, bundle=bundle)
     compact, _, errors, _, rows = compact_comparison(tmp_path)
     assert compact == original
@@ -81,7 +87,9 @@ def test_retained_workers_round_trip_and_recompute_all_gates(
         ("fast_compile", "provenance"),
     ],
 )
-def test_accepted_summary_cannot_hide_corrupted_worker(tmp_path, corruption, match):
+def test_accepted_summary_cannot_hide_corrupted_worker(
+    tmp_path: typing.Any, corruption: typing.Any, match: typing.Any
+) -> None:
     restore_workers(tmp_path, one_case=True)
     for index in range(5):
         path = tmp_path / f"candidate-{index}.json"
@@ -111,7 +119,7 @@ def test_accepted_summary_cannot_hide_corrupted_worker(tmp_path, corruption, mat
 
 
 @pytest.mark.parametrize("bundle", [BUNDLE, BUNDLE.parent / "df"])
-def test_published_checksums_and_decision(bundle):
+def test_published_checksums_and_decision(bundle: typing.Any) -> None:
     manifest = json.loads((bundle / "publication.json").read_text())
     files = {e["path"]: (bundle / e["path"]).read_bytes() for e in manifest["files"]}
     validate_publication(manifest, files)
@@ -135,8 +143,12 @@ def test_published_checksums_and_decision(bundle):
     ],
 )
 def test_resources_must_match_the_measured_workers(
-    tmp_path, field, bundle, resource_name, domain
-):
+    tmp_path: typing.Any,
+    field: typing.Any,
+    bundle: typing.Any,
+    resource_name: typing.Any,
+    domain: typing.Any,
+) -> None:
     compact = restore_workers(tmp_path, one_case=True, bundle=bundle)
     workers = {
         row["selection"]: compact["records"][row["provenance"]]
@@ -153,7 +165,7 @@ def test_resources_must_match_the_measured_workers(
         )
 
 
-def test_final_df_validation_is_bound_to_the_endpoint_library():
+def test_final_df_validation_is_bound_to_the_endpoint_library() -> None:
     """Recheck retained integration/oracle evidence independently of its archiver."""
     bundle = BUNDLE.parent / "df"
     manifest = json.loads((bundle / "validation-files.json").read_text())
@@ -212,7 +224,9 @@ def test_final_df_validation_is_bound_to_the_endpoint_library():
         assert validation["sanitizers"][name]["tests_passed"] == 3
 
 
-def test_rejected_inventory_run_is_lossless_and_still_fails_raw_gates(tmp_path):
+def test_rejected_inventory_run_is_lossless_and_still_fails_raw_gates(
+    tmp_path: typing.Any,
+) -> None:
     """Retain the failed complete matrix even after the paired matrix passes."""
     bundle = BUNDLE.parent / "df"
     manifest = json.loads((bundle / "rejected-inventory-run.json").read_text())
@@ -258,7 +272,9 @@ def test_rejected_inventory_run_is_lossless_and_still_fails_raw_gates(tmp_path):
         compact_comparison(tmp_path)
 
 
-def test_final_df_archive_reconstructs_all_original_case_process_bytes(tmp_path):
+def test_final_df_archive_reconstructs_all_original_case_process_bytes(
+    tmp_path: typing.Any,
+) -> None:
     """Bind the lossless aggregate to all 180 immutable measurement processes."""
     bundle = BUNDLE.parent / "df"
     restore_workers(tmp_path, bundle=bundle)
@@ -286,7 +302,7 @@ def test_final_df_archive_reconstructs_all_original_case_process_bytes(tmp_path)
         assert hashlib.sha256(data).hexdigest() == row["sha256"]
 
 
-def test_checkpoint_diagnosis_retains_failed_trials_and_exact_assertions():
+def test_checkpoint_diagnosis_retains_failed_trials_and_exact_assertions() -> None:
     """The deterministic test setup must preserve the original bitwise gates."""
     bundle = BUNDLE.parent / "df"
     manifest = json.loads(
@@ -319,7 +335,7 @@ def test_checkpoint_diagnosis_retains_failed_trials_and_exact_assertions():
             else:
                 assert summary["failures"] > 0
 
-    def body(text):
+    def body(text: typing.Any) -> typing.Any:
         return next(
             node.body
             for node in ast.parse(text).body
@@ -343,7 +359,7 @@ def test_checkpoint_diagnosis_retains_failed_trials_and_exact_assertions():
     assert [ast.dump(node) for node in current[1:]] == [ast.dump(node) for node in old]
 
 
-def synthetic_df_workers(directory):
+def synthetic_df_workers(directory: typing.Any) -> None:
     """Extend reconstructed fixtures solely to exercise the publication schema.
 
     These CPU-only test inputs are never published as measured DF evidence.
@@ -366,7 +382,9 @@ def synthetic_df_workers(directory):
             write(path, run)
 
 
-def test_df_publication_retains_and_gates_energy_only_calls(tmp_path):
+def test_df_publication_retains_and_gates_energy_only_calls(
+    tmp_path: typing.Any,
+) -> None:
     synthetic_df_workers(tmp_path)
     compact, _, errors, timings, rows = compact_comparison(tmp_path)
     assert len(errors) == 10 * (4 * 2 + 1)
@@ -393,7 +411,9 @@ def test_df_publication_retains_and_gates_energy_only_calls(tmp_path):
         ("iterations", "energy-only residual/count"),
     ],
 )
-def test_df_summary_cannot_hide_energy_only_failure(tmp_path, corruption, match):
+def test_df_summary_cannot_hide_energy_only_failure(
+    tmp_path: typing.Any, corruption: typing.Any, match: typing.Any
+) -> None:
     synthetic_df_workers(tmp_path)
     for index in range(5):
         path = tmp_path / f"candidate-{index}.json"
@@ -419,8 +439,8 @@ def test_df_summary_cannot_hide_energy_only_failure(tmp_path, corruption, match)
 
 @pytest.mark.parametrize("corruption", ["process_scope", "benchmark_driver_sha256"])
 def test_paired_publication_retains_and_checks_measurement_contract(
-    tmp_path, corruption
-):
+    tmp_path: typing.Any, corruption: typing.Any
+) -> None:
     synthetic_df_workers(tmp_path)
     for path in tmp_path.glob("*-*.json"):
         run = json.loads(path.read_text())

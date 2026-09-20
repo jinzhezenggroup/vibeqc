@@ -7,6 +7,7 @@ fixed-input reference is not a native prepared SCF or GPU memory-budget API.
 
 from __future__ import annotations
 
+import typing
 from copy import copy
 from dataclasses import asdict, dataclass
 from hashlib import sha256
@@ -36,7 +37,7 @@ class DensityStamp:
     layout: str
     role: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("basis_identity", "density_identity"):
             value = getattr(self, name)
             if (
@@ -53,7 +54,7 @@ class DensityStamp:
             raise ValueError("density role must be state or response")
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Hash all state metadata; equal shapes never establish compatibility."""
         return canonical_hash({"schema": "vibeqc.density-source.v1", **asdict(self)})
 
@@ -79,13 +80,13 @@ class DensitySource:
 
     def __init__(
         self,
-        density,
+        density: typing.Any,
         *,
-        basis_identity,
-        basis_generation=0,
-        density_generation=0,
-        role="state",
-    ):
+        basis_identity: typing.Any,
+        basis_generation: typing.Any = 0,
+        density_generation: typing.Any = 0,
+        role: typing.Any = "state",
+    ) -> None:
         raw = np.asarray(density)
         if raw.ndim not in (2, 3) or raw.shape[-1] == 0:
             raise ValueError("density must contain a nonempty square AO matrix")
@@ -110,7 +111,15 @@ class DensitySource:
         object.__setattr__(self, "stamp", stamp)
         self._set_validation(None, None, None, "missing_orbitals", "density_only", None)
 
-    def _set_validation(self, c, occ, identity, reason, status, error):
+    def _set_validation(
+        self,
+        c: typing.Any,
+        occ: typing.Any,
+        identity: typing.Any,
+        reason: typing.Any,
+        status: typing.Any,
+        error: typing.Any,
+    ) -> None:
         # Called only while creating a detached result. Rejected candidates must
         # clear any previously accepted factor, not reuse it accidentally.
         for key, value in zip(
@@ -128,11 +137,18 @@ class DensitySource:
             object.__setattr__(self, key, value)
 
     @property
-    def source_kind(self):
+    def source_kind(self) -> typing.Any:
         """Available CPU route; this does not assert a performance winner."""
         return "orbitals" if self.coefficients is not None else "density_matrix"
 
-    def with_orbitals(self, coefficients, occupations, *, stamp, validation_rows=64):
+    def with_orbitals(
+        self,
+        coefficients: typing.Any,
+        occupations: typing.Any,
+        *,
+        stamp: typing.Any,
+        validation_rows: typing.Any = 64,
+    ) -> typing.Any:
         """Check an external candidate once, retaining D on any validity failure.
 
         The candidate's stamp must identify this exact density and generation.
@@ -192,7 +208,15 @@ class DensitySource:
         result._set_validation(c, occ, identity, None, "validated_external", maximum)
         return result
 
-    def features(self, jets, *, stamp, route="auto", ao_ids=None, ingredients=None):
+    def features(
+        self,
+        jets: typing.Any,
+        *,
+        stamp: typing.Any,
+        route: typing.Any = "auto",
+        ao_ids: typing.Any = None,
+        ingredients: typing.Any = None,
+    ) -> typing.Any:
         """Evaluate one CPU tile after an O(1) current-state stamp check.
 
         Supply the current consumer stamp; a stale source raises because even

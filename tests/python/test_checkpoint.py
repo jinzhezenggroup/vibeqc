@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -25,11 +26,15 @@ HE = [("He", (0.0, 0.0, 0.0))]
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def calc(**kwargs):
+def calc(**kwargs: typing.Any) -> typing.Any:
     return Calculator(device=DEVICE, **kwargs)
 
 
-def rewrite(path, mutate_manifest=lambda doc: None, mutate_arrays=lambda arrays: None):
+def rewrite(
+    path: typing.Any,
+    mutate_manifest: typing.Any = lambda doc: None,
+    mutate_arrays: typing.Any = lambda arrays: None,
+) -> None:
     """Generate semantically bad yet checksum-correct files to reach validators."""
     manifest, arrays, _ = _read(path, 1 << 20)
     doc = manifest.to_dict()
@@ -53,7 +58,9 @@ def rewrite(path, mutate_manifest=lambda doc: None, mutate_arrays=lambda arrays:
     )
 
 
-def save(path, systems=None, **kwargs):
+def save(
+    path: typing.Any, systems: typing.Any = None, **kwargs: typing.Any
+) -> typing.Any:
     with calc(**kwargs).prepare_batch(systems or [H2]) as batch:
         result = batch.execute()
         batch.save_checkpoint(path)
@@ -63,8 +70,12 @@ def save(path, systems=None, **kwargs):
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
 @pytest.mark.parametrize("fitted", [False, True])
 def test_fresh_process_restart_and_independent_reference(
-    tmp_path, method, charge, multiplicity, fitted
-):
+    tmp_path: typing.Any,
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    fitted: typing.Any,
+) -> None:
     checkpoint = tmp_path / "hf.vqcp"
     options = {
         "method": method,
@@ -128,8 +139,8 @@ with Calculator(**options).prepare_batch(systems,charges=[charge],multiplicities
 
 @pytest.mark.parametrize("method,multiplicities", [("rhf", [1]), ("uhf", [1])])
 def test_changed_geometry_is_explicit_warm_start_and_rechecks_target(
-    tmp_path, method, multiplicities
-):
+    tmp_path: typing.Any, method: typing.Any, multiplicities: typing.Any
+) -> None:
     path = tmp_path / "state"
     with calc(method=method).prepare_batch(
         [H2], multiplicities=multiplicities
@@ -153,7 +164,9 @@ def test_changed_geometry_is_explicit_warm_start_and_rechecks_target(
         assert target.checkpoint_diagnostics["target_results"][0]["converged"]
 
 
-def test_frozen_source_geometry_and_controls_survive_reexport(tmp_path):
+def test_frozen_source_geometry_and_controls_survive_reexport(
+    tmp_path: typing.Any,
+) -> None:
     path, again = tmp_path / "source", tmp_path / "again"
     with calc().prepare_batch([H2]) as source:
         source.execute(strict=True)
@@ -182,7 +195,9 @@ def test_frozen_source_geometry_and_controls_survive_reexport(tmp_path):
         )
 
 
-def test_failed_slots_order_and_partial_compatibility(tmp_path):
+def test_failed_slots_order_and_partial_compatibility(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "batch"
     save(path, [H2, HE])
     with calc().prepare_batch([H2, H2]) as target:
@@ -218,7 +233,9 @@ def test_failed_slots_order_and_partial_compatibility(tmp_path):
         ({"density_fitting": DEVICE}, "method/core/spin/provider"),
     ],
 )
-def test_incompatible_scientific_models(tmp_path, options, pattern):
+def test_incompatible_scientific_models(
+    tmp_path: typing.Any, options: typing.Any, pattern: typing.Any
+) -> None:
     path = tmp_path / "state"
     save(path)
     with (
@@ -231,7 +248,9 @@ def test_incompatible_scientific_models(tmp_path, options, pattern):
 @pytest.mark.parametrize(
     "damage", ["header", "manifest", "truncate", "blob", "trailing"]
 )
-def test_corruption_never_partially_changes_live_seeds(tmp_path, damage):
+def test_corruption_never_partially_changes_live_seeds(
+    tmp_path: typing.Any, damage: typing.Any
+) -> None:
     path, before, after = (tmp_path / p for p in ("state", "before", "after"))
     save(path, [H2, HE])
     data = bytearray(path.read_bytes())
@@ -259,7 +278,9 @@ def test_corruption_never_partially_changes_live_seeds(tmp_path, damage):
     "field,value",
     [("schema_version", 99), ("array_format", "native"), ("amplitudes", {})],
 )
-def test_unknown_required_contracts_rejected(tmp_path, field, value):
+def test_unknown_required_contracts_rejected(
+    tmp_path: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     path = tmp_path / "state"
     save(path)
     rewrite(path, lambda doc: doc.update({field: value}))
@@ -276,11 +297,13 @@ def test_unknown_required_contracts_rejected(tmp_path, field, value):
         ("negative_occupation", "occupation_bounds"),
     ],
 )
-def test_semantically_invalid_density_rejected_atomically(tmp_path, fault, pattern):
+def test_semantically_invalid_density_rejected_atomically(
+    tmp_path: typing.Any, fault: typing.Any, pattern: typing.Any
+) -> None:
     path, before, after = (tmp_path / p for p in ("state", "before", "after"))
     save(path, [HE, H2])
 
-    def damage(arrays):
+    def damage(arrays: typing.Any) -> None:
         density = arrays["density_1"][0]
         if fault == "nan":
             density[0, 0] = np.nan
@@ -304,7 +327,9 @@ def test_semantically_invalid_density_rejected_atomically(tmp_path, fault, patte
         assert before.read_bytes() == after.read_bytes()
 
 
-def test_manifest_dimensions_provider_spin_geometry_and_checksums(tmp_path):
+def test_manifest_dimensions_provider_spin_geometry_and_checksums(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "state"
     cases = [
         lambda d: d["blobs"][0].update(bytes=2**63),
@@ -330,12 +355,14 @@ def test_manifest_dimensions_provider_spin_geometry_and_checksums(tmp_path):
         target.load_checkpoint(path)
 
 
-def test_atomic_publish_failure_preserves_old_file(tmp_path, monkeypatch):
+def test_atomic_publish_failure_preserves_old_file(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     path = tmp_path / "state"
     save(path)
     original = path.read_bytes()
 
-    def interrupted(*args):
+    def interrupted(*args: typing.Any) -> typing.Any:
         raise OSError("interrupted before publish")
 
     monkeypatch.setattr(os, "replace", interrupted)
@@ -348,7 +375,9 @@ def test_atomic_publish_failure_preserves_old_file(tmp_path, monkeypatch):
     inspect_checkpoint(path)
 
 
-def test_size_limits_resource_headroom_and_disabled_warm_starts(tmp_path):
+def test_size_limits_resource_headroom_and_disabled_warm_starts(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "state"
     save(path)
     with (
@@ -371,7 +400,9 @@ def test_size_limits_resource_headroom_and_disabled_warm_starts(tmp_path):
         assert target.execute(strict=True).items[0].restart_origin == "cold"
 
 
-def test_native_abi_checks_dimensions_before_allocation(tmp_path):
+def test_native_abi_checks_dimensions_before_allocation(
+    tmp_path: typing.Any,
+) -> None:
     with calc().prepare_batch([H2]) as batch:
         state = _native.HfWarmState(
             struct_size=ctypes.sizeof(_native.HfWarmState),
@@ -392,8 +423,8 @@ def test_native_abi_checks_dimensions_before_allocation(tmp_path):
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("angular", [2, 3])
 def test_custom_higher_angular_basis_roundtrip_and_gauge_independent_seed(
-    tmp_path, representation, angular
-):
+    tmp_path: typing.Any, representation: typing.Any, angular: typing.Any
+) -> None:
     from vibeqc import Primitive, Shell
 
     path = tmp_path / "custom"
@@ -423,13 +454,15 @@ def test_custom_higher_angular_basis_roundtrip_and_gauge_independent_seed(
     )
 
 
-def test_source_convergence_metadata_cannot_bypass_target_solve(tmp_path):
+def test_source_convergence_metadata_cannot_bypass_target_solve(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "state"
     save(path)
 
     # A valid, deliberately nonstationary density with the correct metric trace.
     # Source convergence/energy are provenance only, even when checksum-correct.
-    def nonstationary(arrays):
+    def nonstationary(arrays: typing.Any) -> None:
         arrays["density_0"][0] = np.diag([2.0, 0.0])
 
     rewrite(
@@ -446,7 +479,9 @@ def test_source_convergence_metadata_cannot_bypass_target_solve(tmp_path):
         assert result.energy != -100 and result.iterations > 1
 
 
-def test_no_checkpoint_cold_run_remains_available_after_clear(tmp_path, monkeypatch):
+def test_no_checkpoint_cold_run_remains_available_after_clear(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     # This check deliberately requires bitwise equality. The ordinary CUDA
     # one-electron response uses FP64 atomics with an unspecified addition
     # order, so select its existing serial generated schedule for this check.
@@ -470,7 +505,9 @@ def test_no_checkpoint_cold_run_remains_available_after_clear(tmp_path, monkeypa
     DEVICE != "cuda", reason="real-GPU cross-backend test runs under Slurm"
 )
 @pytest.mark.parametrize("fitted", [False, True])
-def test_backend_independent_cpu_cuda_restart_both_directions(tmp_path, fitted):
+def test_backend_independent_cpu_cuda_restart_both_directions(
+    tmp_path: typing.Any, fitted: typing.Any
+) -> None:
     path = tmp_path / "state"
     for source_device, target_device in (("cpu", "cuda"), ("cuda", "cpu")):
         for method, charge, mult in (("rhf", 0, 1), ("uhf", 1, 2)):
@@ -498,7 +535,7 @@ def test_backend_independent_cpu_cuda_restart_both_directions(tmp_path, fitted):
             np.testing.assert_allclose(warm.forces, cold.forces, atol=1e-8, rtol=0)
 
 
-def test_uhf_spin_identity_and_source_spin_trace(tmp_path):
+def test_uhf_spin_identity_and_source_spin_trace(tmp_path: typing.Any) -> None:
     path = tmp_path / "spin"
     with calc(method="uhf").prepare_batch(
         [H2], charges=[1], multiplicities=[2]
@@ -525,7 +562,7 @@ def test_uhf_spin_identity_and_source_spin_trace(tmp_path):
         target.load_checkpoint(path)
 
 
-def test_duplicate_json_keys_are_rejected(tmp_path):
+def test_duplicate_json_keys_are_rejected(tmp_path: typing.Any) -> None:
     path = tmp_path / "state"
     save(path)
     data = path.read_bytes()
@@ -543,7 +580,9 @@ def test_duplicate_json_keys_are_rejected(tmp_path):
         inspect_checkpoint(path)
 
 
-def test_checkpoint_respects_a_feasible_current_resource_plan(tmp_path):
+def test_checkpoint_respects_a_feasible_current_resource_plan(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "state"
     expected = save(path).items[0]
     budget = ResourceBudget(host_bytes=64 << 20, device_bytes=128 << 20)
@@ -566,8 +605,8 @@ def test_checkpoint_respects_a_feasible_current_resource_plan(tmp_path):
     ],
 )
 def test_runtime_numerical_policy_changes_require_explicit_warm_restart(
-    tmp_path, monkeypatch, variable
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any, variable: typing.Any
+) -> None:
     path = tmp_path / "state"
     monkeypatch.delenv(variable, raising=False)
     save(path)
@@ -584,7 +623,9 @@ def test_runtime_numerical_policy_changes_require_explicit_warm_restart(
 
 
 @pytest.mark.parametrize("value", [None, "auto", "rys", "polynomial"])
-def test_retired_control_keeps_checkpoint_source_provenance(tmp_path, value):
+def test_retired_control_keeps_checkpoint_source_provenance(
+    tmp_path: typing.Any, value: typing.Any
+) -> None:
     """Retirement accepts old seeds without relabeling their numerical policy."""
     variable = "VIBEQC_DF_SHELL_MATH_000"
     path = tmp_path / "older-state"
@@ -612,8 +653,8 @@ def test_retired_control_keeps_checkpoint_source_provenance(tmp_path, value):
 
 
 def test_retired_environment_control_does_not_change_checkpoint_identity(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     variable = "VIBEQC_DF_SHELL_MATH_000"
     path = tmp_path / "state"
     monkeypatch.delenv(variable, raising=False)
@@ -629,14 +670,16 @@ def test_retired_environment_control_does_not_change_checkpoint_identity(
     assert variable not in source["controls"]["runtime_policy"]
 
 
-def test_older_checkpoint_without_new_df_controls_keeps_source_provenance(tmp_path):
+def test_older_checkpoint_without_new_df_controls_keeps_source_provenance(
+    tmp_path: typing.Any,
+) -> None:
     """Adding execution controls must not make valid historical seeds corrupt."""
     from vibeqc.resources_hf import _CUDA_SCHEDULE_EXTENSION_VARIABLES
 
     path = tmp_path / "older-state"
     expected = save(path).items[0]
 
-    def remove_extensions(document):
+    def remove_extensions(document: typing.Any) -> None:
         policy = document["items"][0]["controls"]["runtime_policy"]
         for name in _CUDA_SCHEDULE_EXTENSION_VARIABLES:
             del policy[name]

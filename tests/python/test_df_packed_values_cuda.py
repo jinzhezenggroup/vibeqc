@@ -1,6 +1,7 @@
 """Exact value packing must survive high-level preparation and cache replay."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -26,16 +27,16 @@ pytestmark = pytest.mark.skipif(
     ],
 )
 def test_packed_preparation_replay_and_representation_replacement(
-    monkeypatch,
-    tmp_path,
-    batch_size,
-    budget,
-    method,
-    multiplicity,
-    representation,
-    auxiliary,
-    oh,
-):
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    batch_size: typing.Any,
+    budget: typing.Any,
+    method: typing.Any,
+    multiplicity: typing.Any,
+    representation: typing.Any,
+    auxiliary: typing.Any,
+    oh: typing.Any,
+) -> None:
     """Independent forces, unequal auxiliaries, empty spin and changed geometry.
 
     Reuse one prepared Python owner while changing the value representation.
@@ -143,7 +144,9 @@ def test_packed_preparation_replay_and_representation_replacement(
                 assert not packed_setup, "dense cache replay retained a packed owner"
 
 
-def test_packed_global_ledger_and_raw_reuse_ablation(monkeypatch, tmp_path):
+def test_packed_global_ledger_and_raw_reuse_ablation(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """Charge live packed owners and reject a changed admitted representation.
 
     Raw-reuse off exercises bounded source regeneration through the same value
@@ -206,8 +209,8 @@ def test_packed_global_ledger_and_raw_reuse_ablation(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
 def test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback(
-    monkeypatch, spin
-):
+    monkeypatch: typing.Any, spin: typing.Any
+) -> None:
     """Unknown-rank Fock inputs retain exact bounded K and frozen provenance."""
     from vibeqc.fock import FockBuildSpec, FockPlan
     from vibeqc_compiler.dft import NativeAO

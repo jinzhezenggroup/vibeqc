@@ -4,13 +4,16 @@
 # v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Audited Libxc 7.0 extended GGA/hybrid scalar expressions."""
 
+from __future__ import annotations
+
 import math
+import typing
 from fractions import Fraction as F
 
-from vibeqc_compiler.integral.expr import Graph
+from vibeqc_compiler.integral.expr import Expr, Graph
 
 
-def energy_expression(spec):
+def energy_expression(spec: typing.Any) -> typing.Any:
     """Return the range-separated semilocal energy DAG and feature variables."""
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
@@ -30,10 +33,10 @@ def energy_expression(spec):
     rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
 
-    def lda_exchange():
+    def lda_exchange() -> Expr:
         return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
 
-    def pw91_exchange():
+    def pw91_exchange() -> Expr:
         x2s = 1 / (2 * (6 * math.pi**2) ** (1 / 3))
         a = F("0.19645")
         b = F("7.7956")
@@ -54,7 +57,7 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def pw92_epsilon():
+    def pw92_epsilon() -> Expr:
         parameters = {
             "a": ("0.031091", "0.015545", "0.016887"),
             "alpha": ("0.21370", "0.20548", "0.11125"),
@@ -83,10 +86,10 @@ def energy_expression(spec):
         g0, g1, gm = values
         return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
 
-    def pw92_correlation():
+    def pw92_correlation() -> Expr:
         return n * pw92_epsilon()
 
-    def pw91_correlation():
+    def pw91_correlation() -> Expr:
         epsilon = pw92_epsilon()
         phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
         phi3 = phi.pow(3)
@@ -126,7 +129,7 @@ def energy_expression(spec):
         )
         return n * (epsilon + h0 + h1)
 
-    def pz_epsilon():
+    def pz_epsilon() -> Expr:
         gamma = (F("-0.1423"), F("-0.0843"))
         beta1 = (F("1.0529"), F("1.3981"))
         beta2 = (F("0.3334"), F("0.2611"))
@@ -135,7 +138,7 @@ def energy_expression(spec):
         c = (F("0.0020"), F("0.0007"))
         d = (F("-0.0116"), F("-0.0048"))
 
-        def ec(index):
+        def ec(index: int) -> Expr:
             low = gamma[index] / (1 + beta1[index] * rs.pow(0.5) + beta2[index] * rs)
             high = (
                 a[index] * graph.stable_unary("log", rs)
@@ -149,10 +152,10 @@ def energy_expression(spec):
         e0, e1 = ec(0), ec(1)
         return e0 + (e1 - e0) * fz
 
-    def pz_correlation():
+    def pz_correlation() -> Expr:
         return n * pz_epsilon()
 
-    def p86_correlation():
+    def p86_correlation() -> Expr:
         epsilon = pz_epsilon()
         total_sigma = saa + 2 * sab + sbb
         xt2 = total_sigma * n.pow(-8 / 3)
@@ -176,7 +179,7 @@ def energy_expression(spec):
         h = x1_sq * graph.exponential(-mphi) * cc / dd
         return n * (epsilon + h)
 
-    def b88_enhancement(density, sigma):
+    def b88_enhancement(density: typing.Any, sigma: typing.Any) -> Expr:
         beta_b88 = F("0.0042")
         gamma_b88 = F(6)
         x2 = sigma * density.pow(-8 / 3)
@@ -185,7 +188,7 @@ def energy_expression(spec):
             1 + gamma_b88 * beta_b88 * x * graph.transcendental_unary("asinh", x)
         )
 
-    def b88_exchange(short_range=False):
+    def b88_exchange(short_range: typing.Any = False) -> Expr:
         terms = []
         omega = spec.range_omega
         for density, sigma in ((ra, saa), (rb, sbb)):
@@ -207,14 +210,14 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def vwn_correlation():
+    def vwn_correlation() -> Expr:
         # VWN5 parameters in Hartree, matching Libxc 7.0 lda_c_vwn.mpl.
         av = (F("0.0310907"), F("0.01554535"), -1 / (6 * math.pi**2))
         bv = (F("3.72744"), F("7.06042"), F("1.13107"))
         cv = (F("12.9352"), F("18.0578"), F("13.0045"))
         x0v = (F("-0.10498"), F("-0.32500"), F("-0.0047584"))
 
-        def aux(index):
+        def aux(index: typing.Any) -> Expr:
             aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
             q = math.sqrt(float(4 * cc - bb * bb))
             root = rs.pow(0.5)
@@ -235,7 +238,7 @@ def energy_expression(spec):
         epsilon = g0 + gm * fz * (1 - z.pow(4)) / fpp + (g1 - g0) * fz * z.pow(4)
         return n * epsilon
 
-    def vwn_rpa_correlation():
+    def vwn_rpa_correlation() -> Expr:
         # Libxc 7.0 LDA_C_VWN_RPA (ID 8): the RPA parameterization and
         # two-endpoint spin interpolation used by its canonical B3LYP.
         av = (F("0.0310907"), F("0.01554535"))
@@ -243,7 +246,7 @@ def energy_expression(spec):
         cv = (F("42.7198"), F("101.578"))
         x0v = (F("-0.409286"), F("-0.743294"))
 
-        def aux(index):
+        def aux(index: int) -> Expr:
             aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
             q = math.sqrt(float(4 * cc - bb * bb))
             root = rs.pow(0.5)
@@ -262,7 +265,7 @@ def energy_expression(spec):
         epsilon = aux(0) * (1 - fz) + aux(1) * fz
         return n * epsilon
 
-    def lyp_correlation():
+    def lyp_correlation() -> Expr:
         a_lyp = F("0.04918")
         b_lyp = F("0.132")
         c_lyp = F("0.2533")

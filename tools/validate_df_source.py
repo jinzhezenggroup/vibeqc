@@ -7,6 +7,7 @@ the probe links the exact production native library under test.
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -31,7 +32,9 @@ from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def fixture_systems(representation, *, long_contractions=False):
+def fixture_systems(
+    representation: typing.Any, *, long_contractions: typing.Any = False
+) -> typing.Any:
     """Two same-size systems with different geometry and primitive offsets."""
     angular = range(2 if long_contractions else 4)
     atoms = len(angular)
@@ -83,7 +86,7 @@ def fixture_systems(representation, *, long_contractions=False):
     return systems
 
 
-def write_input(path, systems):
+def write_input(path: typing.Any, systems: typing.Any) -> None:
     """Serialize physical shell inputs, before either implementation normalizes."""
     representation = int(systems[0][0]["basis_representation"] == "spherical")
     if any(o["basis_representation"] != a["basis_representation"] for o, a in systems):
@@ -115,7 +118,7 @@ def write_input(path, systems):
     path.write_text("\n".join(rows) + "\n")
 
 
-def references(systems, *, derivatives=False):
+def references(systems: typing.Any, *, derivatives: typing.Any = False) -> typing.Any:
     """Raw libcint values and an independently ordered dense RI contraction."""
     result = {key: [] for key in ("metric", "raw", "j", "k", "uj", "ka", "kb")}
     diagnostics = []
@@ -160,7 +163,7 @@ def references(systems, *, derivatives=False):
     return {key: np.asarray(value) for key, value in result.items()}, diagnostics
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--derivatives", action="store_true")

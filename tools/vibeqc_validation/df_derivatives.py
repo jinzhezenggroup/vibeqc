@@ -1,5 +1,6 @@
 """Independent normalized libcint dM/dA blocks with mathematical center axes."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,7 +14,7 @@ from .df_values import DFValueFixture, make_df_value_fixture
 class DFDerivativeFixture(DFValueFixture):
     """Raw layout is (center,xyz,AO...) and retains every mathematical center."""
 
-    def contract(self, primitive_values):
+    def contract(self, primitive_values: typing.Any) -> typing.Any:
         count = len(self.inputs["shells"])
         shape = self.reference.shape[2:]
         return (
@@ -23,7 +24,7 @@ class DFDerivativeFixture(DFValueFixture):
             .reshape(count, 3, *shape)
         )
 
-    def spherical(self, values):
+    def spherical(self, values: typing.Any) -> typing.Any:
         for axis, matrix in enumerate(self.projections):
             values = np.moveaxis(
                 np.tensordot(matrix.T, values, axes=(1, axis + 2)), 0, axis + 2
@@ -32,8 +33,11 @@ class DFDerivativeFixture(DFValueFixture):
 
 
 def make_df_derivative_fixture(
-    angular, *, variant="asymmetric", primitive_lengths=None
-):
+    angular: typing.Any,
+    *,
+    variant: typing.Any = "asymmetric",
+    primitive_lengths: typing.Any = None,
+) -> typing.Any:
     """Differentiate all real libcint Gaussian centers with independent signs."""
     value = make_df_value_fixture(
         angular, variant=variant, primitive_lengths=primitive_lengths

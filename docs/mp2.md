@@ -10,14 +10,18 @@ replacement is implied by the numerical qualification.
 ```python
 from vibeqc import Calculator
 
-calc = Calculator(method="mp2", basis="sto-3g", device="cuda",
-                  correlation_memory_budget_bytes=256 * 1024**2)
+calc = Calculator(
+    method="mp2",
+    basis="sto-3g",
+    device="cuda",
+    correlation_memory_budget_bytes=256 * 1024**2,
+)
 result = calc.singlepoint(
     [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
     properties=("energy", "forces"),
 )
-print(result.energy)       # total RHF + MP2 correlation, Hartree
-print(result.forces)       # Hartree/Bohr; force = -gradient
+print(result.energy)  # total RHF + MP2 correlation, Hartree
+print(result.forces)  # Hartree/Bohr; force = -gradient
 print(result.correlation)  # OS/SS, reference, denominator, memory and transfers
 ```
 
@@ -25,9 +29,13 @@ RI-MP2 is selected explicitly. The auxiliary basis is part of the Hamiltonian;
 when omitted, the orbital basis is used as the auxiliary basis.
 
 ```python
-ri = Calculator(method="mp2", basis="sto-3g", device="cuda",
-                density_fitting="auto",
-                density_fitting_relative_threshold=1e-10)
+ri = Calculator(
+    method="mp2",
+    basis="sto-3g",
+    device="cuda",
+    density_fitting="auto",
+    density_fitting_relative_threshold=1e-10,
+)
 result = ri.singlepoint(
     [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
     properties=("energy",),

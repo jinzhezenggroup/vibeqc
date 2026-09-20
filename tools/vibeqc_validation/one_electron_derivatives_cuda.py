@@ -1,9 +1,11 @@
 """Raw derivative CUDA fixture and host-emittable arithmetic evaluation body."""
 
+import typing
+
 from .raw_values_cuda import emit_raw_value_driver
 
 
-def derivative_evaluation_body():
+def derivative_evaluation_body() -> typing.Any:
     """Write 27 channels with explicit zero external-center S/T derivatives."""
     return r"""
   const auto pair = one::make_pair(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
@@ -23,7 +25,7 @@ def derivative_evaluation_body():
 """
 
 
-def emit_one_electron_derivative_driver(architecture):
+def emit_one_electron_derivative_driver(architecture: typing.Any) -> typing.Any:
     """Run the same raw binary protocol/resource adapter as the value gate."""
     kernel = (
         r"""

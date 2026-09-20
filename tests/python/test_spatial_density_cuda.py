@@ -2,9 +2,9 @@
 
 # Imported pytest fixtures are intentionally reused as test arguments.
 # ruff: noqa: F811
-
 import os
 import shutil
+import typing
 from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
@@ -29,7 +29,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def owner(basis, grid, artifact, **kwargs):
+def owner(
+    basis: typing.Any, grid: typing.Any, artifact: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     """Use point and orbital tails with strict local through-f AO supports."""
     return PreparedSpatialGrid(
         basis,
@@ -47,7 +49,14 @@ def owner(basis, grid, artifact, **kwargs):
     )
 
 
-def masked_reference(basis, grid, density, tasks, name, spin):
+def masked_reference(
+    basis: typing.Any,
+    grid: typing.Any,
+    density: typing.Any,
+    tasks: typing.Any,
+    name: typing.Any,
+    spin: typing.Any,
+) -> typing.Any:
     """Independent global-AO CPU contraction with omitted jets set to zero.
 
     Keeping global D and output matrices detects incorrect local gathering or
@@ -76,11 +85,11 @@ def masked_reference(basis, grid, density, tasks, name, spin):
 @pytest.mark.parametrize("screening", ["off", "absolute_ao_jet"])
 @pytest.mark.parametrize("empty_spin", [False, True])
 def test_spatial_current_features_match_masked_global_d(
-    artifact,
-    local_case,
-    screening,
-    empty_spin,
-):
+    artifact: typing.Any,
+    local_case: typing.Any,
+    screening: typing.Any,
+    empty_spin: typing.Any,
+) -> None:
     basis, grid, _ = local_case
     counts = (basis.nao + 3, 0 if empty_spin else 5)
     source = factors(basis, counts)
@@ -125,14 +134,14 @@ def test_spatial_current_features_match_masked_global_d(
 )
 @pytest.mark.parametrize("cap", [128 << 20, 256 << 20])
 def test_spatial_xc_current_routes_and_two_budgets(
-    artifact,
-    local_case,
-    name,
-    ingredients,
-    spin,
-    layout,
-    cap,
-):
+    artifact: typing.Any,
+    local_case: typing.Any,
+    name: typing.Any,
+    ingredients: typing.Any,
+    spin: typing.Any,
+    layout: typing.Any,
+    cap: typing.Any,
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     if layout == "total":
@@ -202,7 +211,9 @@ def test_spatial_xc_current_routes_and_two_budgets(
                 endpoint.execute(source, stamp=source.stamp)
 
 
-def test_spatial_native_cuda_rejects_potential_at_vacuum(artifact, local_case):
+def test_spatial_native_cuda_rejects_potential_at_vacuum(
+    artifact: typing.Any, local_case: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = DensitySource(
         np.zeros((2, basis.nao, basis.nao)), basis_identity=basis.identity
@@ -226,8 +237,8 @@ def test_spatial_native_cuda_rejects_potential_at_vacuum(artifact, local_case):
     "ingredients", [("rho", "gradient"), ("rho", "gradient", "sigma")]
 )
 def test_spatial_native_cuda_requires_complete_canonical_spec(
-    artifact, local_case, ingredients
-):
+    artifact: typing.Any, local_case: typing.Any, ingredients: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     canonical = functional("PBE", spin="polarized")
@@ -258,8 +269,8 @@ def test_spatial_native_cuda_requires_complete_canonical_spec(
 
 
 def test_spatial_unpolarized_cuda_rejects_unequal_orbital_features(
-    artifact, local_case
-):
+    artifact: typing.Any, local_case: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, basis.nao + 3))
     density = np.stack((source.density[0], source.density[0]))
@@ -285,9 +296,9 @@ def test_spatial_unpolarized_cuda_rejects_unequal_orbital_features(
 
 
 def test_spatial_source_lifetime_fallback_and_device_leases(
-    artifact,
-    local_case,
-):
+    artifact: typing.Any,
+    local_case: typing.Any,
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     with owner(basis, grid, artifact) as spatial:
@@ -337,7 +348,9 @@ def test_spatial_source_lifetime_fallback_and_device_leases(
             next(spatial.iter_features(source, stamp=source.stamp))
 
 
-def test_spatial_empty_masks_and_pruned_abi(artifact, local_case):
+def test_spatial_empty_masks_and_pruned_abi(
+    artifact: typing.Any, local_case: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 0))
     far = replace(grid, points=grid.points + 100)
@@ -369,7 +382,9 @@ def test_spatial_empty_masks_and_pruned_abi(artifact, local_case):
             )
 
 
-def test_spatial_density_direction_tracks_current_factors(artifact, local_case):
+def test_spatial_density_direction_tracks_current_factors(
+    artifact: typing.Any, local_case: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     rng = np.random.default_rng(299)
@@ -422,8 +437,8 @@ def test_spatial_density_direction_tracks_current_factors(artifact, local_case):
 
 
 def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
-    artifact, local_case, monkeypatch
-):
+    artifact: typing.Any, local_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (7, 5))
     with owner(basis, grid, artifact, orbital_capacity=(2, 2)) as spatial:
@@ -441,7 +456,7 @@ def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
             next(spatial.iter_features(source, stamp=source.stamp, route="orbitals"))
         native_call = spatial._cuda._call
 
-        def fail_upload(name, *args):
+        def fail_upload(name: typing.Any, *args: typing.Any) -> typing.Any:
             if name == "grid_cuda_source_v1":
                 raise RuntimeError("injected source transport failure")
             return native_call(name, *args)
@@ -457,8 +472,8 @@ def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
 
 
 def test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock(
-    artifact, local_case
-):
+    artifact: typing.Any, local_case: typing.Any
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     basis, grid, _ = local_case

@@ -1,5 +1,7 @@
 """Complete conventional RHF HVP assembly and directional acceptance gates."""
 
+import typing
+
 import numpy as np
 import pytest
 
@@ -16,7 +18,7 @@ from tools.vibeqc_validation.hessian_fixtures import fixture_inputs
 
 
 @pytest.fixture(scope="module")
-def h2_case():
+def h2_case() -> typing.Any:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         rng = np.random.default_rng(1803)
@@ -33,14 +35,18 @@ def h2_case():
         yield state, v, u, relaxation
 
 
-def test_directional_relaxation_equals_dense_cphf_contraction(h2_case):
+def test_directional_relaxation_equals_dense_cphf_contraction(
+    h2_case: typing.Any,
+) -> None:
     state, v, _, actual = h2_case
     dense = cphf_relaxation(state)
     expected = np.einsum("abxy,by->ax", dense, v)
     np.testing.assert_allclose(actual, expected, atol=3e-10, rtol=2e-10)
 
 
-def test_complete_hvp_matches_independent_dense_assembly_by_component(h2_case):
+def test_complete_hvp_matches_independent_dense_assembly_by_component(
+    h2_case: typing.Any,
+) -> None:
     state, v, _, _ = h2_case
     actual = rhf_hvp(state, v)
     dense = analytic_hessian(state)
@@ -72,7 +78,9 @@ def test_complete_hvp_matches_independent_dense_assembly_by_component(h2_case):
         assert not value.flags.writeable
 
 
-def test_hvp_bilinear_symmetry_without_posthoc_symmetrization(h2_case):
+def test_hvp_bilinear_symmetry_without_posthoc_symmetrization(
+    h2_case: typing.Any,
+) -> None:
     state, v, u, _ = h2_case
     hv = rhf_hvp(state, v).value
     hu = rhf_hvp(state, u).value
@@ -81,7 +89,9 @@ def test_hvp_bilinear_symmetry_without_posthoc_symmetrization(h2_case):
     assert abs(left - right) < 2e-9
 
 
-def test_hvp_matches_three_step_reconverged_gradient_difference(h2_case):
+def test_hvp_matches_three_step_reconverged_gradient_difference(
+    h2_case: typing.Any,
+) -> None:
     from vibeqc import Calculator
 
     state, v, _, _ = h2_case
@@ -115,7 +125,7 @@ def test_hvp_matches_three_step_reconverged_gradient_difference(h2_case):
     assert errors[-1] < max(0.2 * errors[0], 1e-7), errors
 
 
-def test_relaxation_is_required_for_complete_hvp(h2_case):
+def test_relaxation_is_required_for_complete_hvp(h2_case: typing.Any) -> None:
     state, v, _, _ = h2_case
     result = rhf_hvp(state, v)
     frozen = result.nuclear + result.core + result.pulay + result.two_electron
@@ -126,13 +136,13 @@ def test_relaxation_is_required_for_complete_hvp(h2_case):
 
 
 def test_hvp_path_does_not_materialize_dense_hessian_or_coordinate_sources(
-    h2_case, monkeypatch
-):
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_hessian import analytic, first_order
 
     state, v, _, _ = h2_case
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("matrix-free HVP used a dense/all-coordinate path")
 
     monkeypatch.setattr(analytic, "_scatter", forbidden)

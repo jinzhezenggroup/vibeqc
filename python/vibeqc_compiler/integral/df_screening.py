@@ -6,6 +6,7 @@ response weight and normalized primitive coefficients. Higher angular classes
 retain strict evaluation until separately derived bounds are available.
 """
 
+import typing
 from fractions import Fraction
 
 from .cuda import CudaEmitter
@@ -14,7 +15,7 @@ from .df_rys_shell import build_df_rys_sss_ir
 from .expr import Graph, Node
 
 
-def sss_force_bound_ir():
+def sss_force_bound_ir() -> typing.Any:
     """Apply the triangle inequality to all six independent derivative channels.
 
     For nonnegative T, F0(T)<=1 and F1(T)/F0(T)<=1/3. Replacing each signed
@@ -54,7 +55,7 @@ def sss_force_bound_ir():
     return graph, 2 * graph.sum(cloned[value.identifier] for value in outputs)
 
 
-def emit_sss_force_screening_cuda():
+def emit_sss_force_screening_cuda() -> typing.Any:
     """Emit the cheap Gaussian geometry and bound before Boys/root evaluation."""
     geometry = emit_df_geometry_cuda(
         "prepare_screen_geometry", moments="(void)total; (void)work;"

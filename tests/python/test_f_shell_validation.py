@@ -4,6 +4,7 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -53,7 +54,9 @@ EXPECTED_CLASSES = {
 
 
 @pytest.mark.parametrize("name", f_shell.F_SHELL_CLASSES)
-def test_all_34_classes_emit_complete_deterministic_first_derivative_sources(name):
+def test_all_34_classes_emit_complete_deterministic_first_derivative_sources(
+    name: typing.Any,
+) -> None:
     audit, source = f_shell.source_audit(name)
     repeated, repeated_source = f_shell.source_audit(name)
     assert audit == repeated
@@ -70,7 +73,7 @@ def test_all_34_classes_emit_complete_deterministic_first_derivative_sources(nam
         assert driver.count(symbol) == 2  # Declaration plus host kernel table.
 
 
-def test_catalog_separates_manifest_selection_from_unmeasured_acceptance():
+def test_catalog_separates_manifest_selection_from_unmeasured_acceptance() -> None:
     assert set(f_shell.F_SHELL_CLASSES) == EXPECTED_CLASSES
     report = f_shell.catalog()
     assert len(report["rows"]) == 34
@@ -91,13 +94,15 @@ def test_catalog_separates_manifest_selection_from_unmeasured_acceptance():
 
 
 def test_compile_cache_checks_toolchain_objects_and_resource_records(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     calls = []
     version = ["test CUDA 12.9"]
     monkeypatch.setattr(f_shell, "_tool_version", lambda tool: version[0])
 
-    def compile_fake(self, source, output):
+    def compile_fake(
+        self: typing.Any, source: typing.Any, output: typing.Any
+    ) -> typing.Any:
         calls.append(source)
         output.write_bytes(b"test-only object")
         log = "\n".join(
@@ -110,7 +115,7 @@ def test_compile_cache_checks_toolchain_objects_and_resource_records(
 
     monkeypatch.setattr(f_shell.CudaCompilerAdapter, "compile", compile_fake)
 
-    def inspect_fake(command, **kwargs):
+    def inspect_fake(command: typing.Any, **kwargs: typing.Any) -> typing.Any:
         if "--extract-elf" in command:
             (Path(kwargs["cwd"]) / "kernel.sm_120.cubin").write_bytes(b"test cubin")
         resources = "\n".join(
@@ -142,11 +147,13 @@ def test_compile_cache_checks_toolchain_objects_and_resource_records(
 
 
 def test_missing_resource_rows_fail_even_when_compilation_returns_success(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(f_shell, "_tool_version", lambda tool: "test only")
 
-    def compile_fake(self, source, output):
+    def compile_fake(
+        self: typing.Any, source: typing.Any, output: typing.Any
+    ) -> typing.Any:
         output.write_bytes(b"test object")
         return CudaCompileResult(0, False, 0.01, "", "no resource records")
 
@@ -165,7 +172,7 @@ def test_missing_resource_rows_fail_even_when_compilation_returns_success(
     assert report["rows"][0]["resources"]["status"] == "fail"
 
 
-def test_loop_contractions_match_full_tensor_jk_and_energy_derivatives():
+def test_loop_contractions_match_full_tensor_jk_and_energy_derivatives() -> None:
     rng = np.random.default_rng(135)
     eri = np.array([[[[0.7]]]])
     derivative = rng.normal(size=(4, 3, 1, 1, 1, 1))
@@ -197,7 +204,9 @@ def test_loop_contractions_match_full_tensor_jk_and_energy_derivatives():
     np.testing.assert_allclose(result["rhf_force"].sum(axis=0), 0, atol=1e-14)
 
 
-def test_numerical_driver_checks_fixture_sizes_and_uses_no_gpu_visibility_override():
+def test_numerical_driver_checks_fixture_sizes_and_uses_no_gpu_visibility_override() -> (
+    None
+):
     source = emit_numerical_driver("ffff")
     assert "invalid bounded fixture dimensions" in source
     assert "active_blocks_per_sm" in source
@@ -207,7 +216,7 @@ def test_numerical_driver_checks_fixture_sizes_and_uses_no_gpu_visibility_overri
     assert "unrestricted" in source and "persistent_args" in source
 
 
-def test_source_cli_help_and_small_report(tmp_path):
+def test_source_cli_help_and_small_report(tmp_path: typing.Any) -> None:
     import sys
 
     script = Path(__file__).resolve().parents[2] / "tools/validate_f_shells.py"
@@ -238,7 +247,9 @@ def test_source_cli_help_and_small_report(tmp_path):
     assert report["rows"][0]["numerical"]["status"] == "not-run"
 
 
-def test_generated_ff_value_pair_terms_include_all_wick_matchings(tmp_path):
+def test_generated_ff_value_pair_terms_include_all_wick_matchings(
+    tmp_path: typing.Any,
+) -> None:
     """Execute the emitted coefficient routine on CPU against Gaussian moments.
 
     This directly guards the f/f omission: six equal axes at zero shift have
@@ -259,7 +270,7 @@ def test_generated_ff_value_pair_terms_include_all_wick_matchings(tmp_path):
     shifts = np.array([0.17, -0.31, 0.23, 0.41, -0.11, 0.07])
     variance = 0.63
 
-    def moment(remaining, axes):
+    def moment(remaining: typing.Any, axes: typing.Any) -> typing.Any:
         # Condition on the first factor: its mean leaves the smaller moment;
         # pairing it with every equal-axis factor contributes the covariance.
         if not remaining:
@@ -311,7 +322,9 @@ def test_generated_ff_value_pair_terms_include_all_wick_matchings(tmp_path):
     )
 
 
-def test_measured_device_time_preserves_mixed_class_uncertainty(tmp_path):
+def test_measured_device_time_preserves_mixed_class_uncertainty(
+    tmp_path: typing.Any,
+) -> None:
     import sqlite3
 
     path = Path(__file__).resolve().parents[2] / "benchmarks/f_shell_device_time.py"
@@ -348,7 +361,9 @@ def test_measured_device_time_preserves_mixed_class_uncertainty(tmp_path):
         module.summarize([])
 
 
-def test_ffff_force_wick_coefficients_do_not_overflow_before_division(tmp_path):
+def test_ffff_force_wick_coefficients_do_not_overflow_before_division(
+    tmp_path: typing.Any,
+) -> None:
     """Check emitted integer arithmetic through the highest first-force order."""
     import math
 

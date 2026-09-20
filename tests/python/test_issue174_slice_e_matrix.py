@@ -1,5 +1,6 @@
 """Hardware-free checks of the precision benchmark's sampling and evidence protocol."""
 
+import typing
 from collections import Counter
 from types import SimpleNamespace
 
@@ -13,7 +14,7 @@ MOVED = matrix._displaced_atoms(BASE, 0.05)
 CASE = SimpleNamespace(charge=0, multiplicity=1)
 
 
-def arguments():
+def arguments() -> typing.Any:
     return SimpleNamespace(
         modes=("fp64", "auto"),
         tolerances=(1e-6,),
@@ -28,7 +29,7 @@ def arguments():
     )
 
 
-def result(**updates):
+def result(**updates: typing.Any) -> typing.Any:
     values = {
         "energy": -1.0,
         "forces": np.zeros((2, 3)),
@@ -42,21 +43,23 @@ def result(**updates):
     return SimpleNamespace(**(values | updates))
 
 
-def references():
+def references() -> typing.Any:
     return {
         label: {"result": result(), "model": object()} for label in ("base", "moved")
     }
 
 
 @pytest.fixture
-def measurement(monkeypatch):
+def measurement(monkeypatch: typing.Any) -> typing.Any:
     """Keep tests on the measurement protocol without initializing CUDA."""
     monkeypatch.setattr(matrix, "_synchronize", lambda backend: None)
     monkeypatch.setattr(matrix, "_evidence", lambda *args: {"status": "observed_met"})
     return arguments()
 
 
-def test_singlepoint_samples_are_cold_and_balanced(measurement, monkeypatch):
+def test_singlepoint_samples_are_cold_and_balanced(
+    measurement: typing.Any, monkeypatch: typing.Any
+) -> None:
     refs = references()
     calls = []
     monkeypatch.setattr(
@@ -65,8 +68,10 @@ def test_singlepoint_samples_are_cold_and_balanced(measurement, monkeypatch):
         lambda case, args, atoms, **kw: refs["base" if atoms == BASE else "moved"],
     )
 
-    def calculator(case, args, *, precision, **kw):
-        def singlepoint(atoms, **kw):
+    def calculator(
+        case: typing.Any, args: typing.Any, *, precision: typing.Any, **kw: typing.Any
+    ) -> typing.Any:
+        def singlepoint(atoms: typing.Any, **kw: typing.Any) -> typing.Any:
             calls.append((precision, atoms))
             return result()
 
@@ -85,22 +90,24 @@ def test_singlepoint_samples_are_cold_and_balanced(measurement, monkeypatch):
     assert {row["samples"] for row in matrix._summarize(rows)} == {measurement.repeats}
 
 
-def install_batches(monkeypatch, *, fail_warm=False):
+def install_batches(
+    monkeypatch: typing.Any, *, fail_warm: typing.Any = False
+) -> typing.Any:
     """Expose persistent state transitions and closure of each prepared plan."""
     plans, calls = [], []
 
     class Batch:
-        def __init__(self, systems, mode):
+        def __init__(self, systems: typing.Any, mode: typing.Any) -> None:
             self.systems, self.mode, self.step, self.closed = systems, mode, 0, False
             plans.append(self)
 
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *exc):
+        def __exit__(self, *exc: object) -> None:
             self.closed = True
 
-        def execute(self, coordinates, *, strict):
+        def execute(self, coordinates: typing.Any, *, strict: typing.Any) -> typing.Any:
             assert strict is False
             calls.append((len(self.systems), self.step, self.mode))
             if self.step == 2:
@@ -128,8 +135,12 @@ def install_batches(monkeypatch, *, fail_warm=False):
             self.step += 1
             return SimpleNamespace(items=items)
 
-    def calculator(case, args, *, precision, **kw):
-        def prepare(systems, *, warm_start, **kw):
+    def calculator(
+        case: typing.Any, args: typing.Any, *, precision: typing.Any, **kw: typing.Any
+    ) -> typing.Any:
+        def prepare(
+            systems: typing.Any, *, warm_start: typing.Any, **kw: typing.Any
+        ) -> typing.Any:
             assert warm_start is True
             return Batch(systems, precision)
 
@@ -139,7 +150,9 @@ def install_batches(monkeypatch, *, fail_warm=False):
     return plans, calls
 
 
-def test_batch_states_repeat_and_interleave_each_policy(measurement, monkeypatch):
+def test_batch_states_repeat_and_interleave_each_policy(
+    measurement: typing.Any, monkeypatch: typing.Any
+) -> None:
     plans, calls = install_batches(monkeypatch)
     rows = matrix._batch_matrix(
         "h2", CASE, BASE, MOVED, references(), measurement, None
@@ -171,7 +184,9 @@ def test_batch_states_repeat_and_interleave_each_policy(measurement, monkeypatch
     assert {row["batch_size"] for row in matrix._summarize_batch(rows)} == {1, 4}
 
 
-def test_later_batch_failure_preserves_cold_measurement(measurement, monkeypatch):
+def test_later_batch_failure_preserves_cold_measurement(
+    measurement: typing.Any, monkeypatch: typing.Any
+) -> None:
     plans, _ = install_batches(monkeypatch, fail_warm=True)
     rows = matrix._batch_matrix(
         "h2", CASE, BASE, MOVED, references(), measurement, None
@@ -182,7 +197,9 @@ def test_later_batch_failure_preserves_cold_measurement(measurement, monkeypatch
 
 
 @pytest.mark.parametrize("reference_result", [None, result(converged=False)])
-def test_invalid_reference_cannot_produce_batch_accuracy(measurement, reference_result):
+def test_invalid_reference_cannot_produce_batch_accuracy(
+    measurement: typing.Any, reference_result: typing.Any
+) -> None:
     item = result(
         index=0,
         status_message="success",
@@ -200,8 +217,10 @@ def test_invalid_reference_cannot_produce_batch_accuracy(measurement, reference_
     assert "accuracy" not in rows[0]
 
 
-def test_failed_strict_reference_is_retained(measurement, monkeypatch):
-    def singlepoint(*args, **kw):
+def test_failed_strict_reference_is_retained(
+    measurement: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def singlepoint(*args: typing.Any, **kw: typing.Any) -> typing.Any:
         raise RuntimeError("reference did not converge")
 
     monkeypatch.setattr(

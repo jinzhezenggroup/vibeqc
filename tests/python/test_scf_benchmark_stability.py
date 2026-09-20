@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing
+
 import pytest
 
 from benchmarks.check_scf_benchmark_stability import stability_summary
@@ -40,14 +42,16 @@ def test_stable_but_unmatched_branches_are_inconclusive() -> None:
 
 
 @pytest.mark.parametrize("bad", [True, 3.5, "3", -1, None])
-def test_invalid_iteration_counts_cannot_collapse_to_a_shared_branch(bad):
+def test_invalid_iteration_counts_cannot_collapse_to_a_shared_branch(
+    bad: typing.Any,
+) -> None:
     payload = _payload([3, 3], [3, 3])
     payload["vibeqc"]["warm_samples"][0]["convergence"][0]["iterations"] = bad
     with pytest.raises(ValueError, match="nonnegative integers"):
         stability_summary(payload)
 
 
-def test_empty_system_records_do_not_form_a_valid_empty_branch():
+def test_empty_system_records_do_not_form_a_valid_empty_branch() -> None:
     payload = _payload([3, 3], [3, 3])
     for engine in payload.values():
         for sample in engine["warm_samples"]:
@@ -57,7 +61,9 @@ def test_empty_system_records_do_not_form_a_valid_empty_branch():
 
 
 @pytest.mark.parametrize("converged", [False, None, 1])
-def test_unconverged_or_unconfirmed_samples_are_diagnostic_only(converged):
+def test_unconverged_or_unconfirmed_samples_are_diagnostic_only(
+    converged: typing.Any,
+) -> None:
     payload = _payload([3, 3], [3, 3])
     row = payload["vibeqc"]["warm_samples"][0]["convergence"][0]
     row["converged"] = converged
@@ -67,7 +73,7 @@ def test_unconverged_or_unconfirmed_samples_are_diagnostic_only(converged):
     assert any("confirmed convergence" in reason for reason in summary["reasons"])
 
 
-def test_one_observation_cannot_establish_repeat_stability():
+def test_one_observation_cannot_establish_repeat_stability() -> None:
     summary = stability_summary(_payload([3], [3]))
     assert not summary["headline_cross_engine_ratio_valid"]
     assert (

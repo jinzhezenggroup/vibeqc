@@ -1,6 +1,7 @@
 """Real automatic derivative admission retains full independent HF forces."""
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -32,8 +33,14 @@ pytestmark = pytest.mark.skipif(
     ],
 )
 def test_automatic_derivative_route_cold_warm_and_moved(
-    case_name, practical, batch_size, shell, packet, monkeypatch, tmp_path
-):
+    case_name: typing.Any,
+    practical: typing.Any,
+    batch_size: typing.Any,
+    shell: typing.Any,
+    packet: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """No forced shell/candidate control can stand in for the public auto path."""
     from pyscf import gto, scf
 

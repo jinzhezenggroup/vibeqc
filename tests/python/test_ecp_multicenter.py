@@ -1,6 +1,7 @@
 """Mixed LANL2DZ Na / Stuttgart RLC K: two physical ECP centers."""
 
 import json
+import typing
 
 import numpy as np
 import pytest
@@ -18,7 +19,9 @@ from vibeqc.ecp import ecp_integrals, resolve_ecp
 from vibeqc.profiles import canonical_hash
 
 
-def multicenter_fixture(*, spin=0, reverse=False, displacement=0.0):
+def multicenter_fixture(
+    *, spin: typing.Any = 0, reverse: typing.Any = False, displacement: typing.Any = 0.0
+) -> typing.Any:
     pyscf = pytest.importorskip("pyscf")
     gto = pytest.importorskip("pyscf.gto")
     families = {"Na": "lanl2dz", "K": "stuttgart-dz"}
@@ -90,7 +93,7 @@ def multicenter_fixture(*, spin=0, reverse=False, displacement=0.0):
     return atoms, basis, mol
 
 
-def center_components(mol, center):
+def center_components(mol: typing.Any, center: typing.Any) -> typing.Any:
     """Select one Libcint operator center while retaining every orbital center."""
     gto = pytest.importorskip("pyscf.gto")
     selected = mol.copy()
@@ -98,7 +101,9 @@ def center_components(mol, center):
     return reference_components(selected)
 
 
-def calculator(basis, device, spin, **kwargs):
+def calculator(
+    basis: typing.Any, device: typing.Any, spin: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     return Calculator(
         basis=basis,
         device=device,
@@ -110,7 +115,9 @@ def calculator(basis, device, spin, **kwargs):
     )
 
 
-def endpoint(device, spin, reverse=False):
+def endpoint(
+    device: typing.Any, spin: typing.Any, reverse: typing.Any = False
+) -> typing.Any:
     require_device(device)
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = multicenter_fixture(spin=spin, reverse=reverse)
@@ -146,7 +153,9 @@ def endpoint(device, spin, reverse=False):
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("displacement", [0.0, 0.37])
-def test_mixed_centers_raw_derivatives_and_operator_partition(device, displacement):
+def test_mixed_centers_raw_derivatives_and_operator_partition(
+    device: typing.Any, displacement: typing.Any
+) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture(displacement=displacement)
     raw = ecp_integrals(atoms, basis, device=device)
@@ -195,7 +204,7 @@ def test_mixed_centers_raw_derivatives_and_operator_partition(device, displaceme
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_mixed_centers_atom_and_ao_permutation(device):
+def test_mixed_centers_atom_and_ao_permutation(device: typing.Any) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture()
     reverse_atoms, reverse_basis, reverse_mol = multicenter_fixture(reverse=True)
@@ -222,7 +231,9 @@ def test_mixed_centers_atom_and_ao_permutation(device):
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("spin", [0, 1])
-def test_mixed_centers_complete_hf_permutation(device, spin):
+def test_mixed_centers_complete_hf_permutation(
+    device: typing.Any, spin: typing.Any
+) -> None:
     first = endpoint(device, spin)
     reverse = endpoint(device, spin, reverse=True)
     np.testing.assert_allclose(first[3].energy, reverse[3].energy, atol=2e-10, rtol=0)
@@ -233,7 +244,9 @@ def test_mixed_centers_complete_hf_permutation(device, spin):
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("spin", [0, 1])
-def test_mixed_centers_budgeted_replay_and_complete_difference(device, spin):
+def test_mixed_centers_budgeted_replay_and_complete_difference(
+    device: typing.Any, spin: typing.Any
+) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture(spin=spin)
     plan = (

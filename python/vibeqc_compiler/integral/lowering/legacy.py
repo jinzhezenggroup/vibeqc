@@ -5,8 +5,8 @@ kernel definition is maintained for the old entry-point names."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
     ScheduleIR,
@@ -28,6 +28,9 @@ from .common import _specialize_dppp_identifiers
 from .dispatch import emit_shell_class_fused_cuda
 from .force_resident import _emit_ppps_resident_bra_rys3_force_consumer_cuda
 from .shared import _COMPONENT_COUNT, DpppComponent
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 # These compatibility wrappers predate explicit target plumbing. Keep their
 # historical source identity isolated here instead of letting generic APIs

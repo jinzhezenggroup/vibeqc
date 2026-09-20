@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +42,7 @@ from benchmarks._cases import benchmark_cases
 from benchmarks.df_policy_endpoint import CASES
 
 
-def source_identity(generated):
+def source_identity(generated: typing.Any) -> typing.Any:
     """Conservatively bind both compiler and transitive native template inputs."""
     digest = hashlib.sha256()
     for base in (ROOT / "python/vibeqc_compiler", ROOT / "src", generated):
@@ -52,7 +53,9 @@ def source_identity(generated):
     return digest.hexdigest()
 
 
-def write_workloads(path, profiles, *, angular=LOW_ANGULAR_CLASSES):
+def write_workloads(
+    path: typing.Any, profiles: typing.Any, *, angular: typing.Any = LOW_ANGULAR_CLASSES
+) -> None:
     """Serialize real geometries/bases and the ledger's precise panel domain.
 
     Only ordinary basis metadata is imported from the runtime package. This is
@@ -91,7 +94,7 @@ def write_workloads(path, profiles, *, angular=LOW_ANGULAR_CLASSES):
     path.write_text("\n".join(lines) + "\n")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, action="append", required=True)
     parser.add_argument(

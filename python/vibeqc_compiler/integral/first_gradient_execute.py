@@ -1,10 +1,13 @@
 """Explicit CUDA compilation and one resident weighted-gradient accumulator."""
 
+from __future__ import annotations
+
 import ctypes as ct
 import math
 import os
 import tempfile
 import threading
+import typing
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -19,8 +22,19 @@ from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.resources import byte_product, checked_bytes
 
-from .first_gradient import emit_first_gradient, first_gradient_identity
-from .ir import IntegralIR
+from .first_gradient import (
+    FirstGradientTerm,
+    emit_first_gradient,
+    first_gradient_identity,
+)
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from numpy.typing import ArrayLike
+    from typing_extensions import Self
+
+    from .ir import IntegralIR
 
 _HEADERS = (
     "src/integrals/first_gradient_runtime.cuh",
@@ -47,7 +61,7 @@ class CompiledFirstGradient:
     runtime_identity: str
     target: tuple
 
-    def validate(self, *, check_binary=True):
+    def validate(self, *, check_binary: bool = True) -> None:
         if (
             first_gradient_identity(self.integral, self.component_indices, self.terms)
             != self.program_identity
@@ -66,7 +80,14 @@ class CompiledFirstGradient:
             raise ValueError("first-gradient artifact native identity mismatch")
 
 
-def compile_first_gradient(integral, compiler, cache, *, component_indices, terms):
+def compile_first_gradient(
+    integral: IntegralIR,
+    compiler: CudaCompilerAdapter,
+    cache: str | os.PathLike[str],
+    *,
+    component_indices: Sequence[int],
+    terms: Sequence[FirstGradientTerm],
+) -> CompiledFirstGradient:
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError(
             "first-gradient device lowering requires an explicit CUDA compiler"
@@ -125,11 +146,11 @@ class _Mapping(ct.Structure):
     _fields_ = [("offsets", ct.c_size_t * 4), ("atoms", ct.c_size_t * 4)]
 
 
-def _pointer(array):
+def _pointer(array: np.ndarray) -> typing.Any:
     return array.ctypes.data_as(_DOUBLE)
 
 
-def _bind(artifact):
+def _bind(artifact: CompiledFirstGradient) -> ct.CDLL:
     artifact.validate()
     lib = ct.CDLL(str(artifact.native.library))
     for name, expected in (
@@ -165,7 +186,9 @@ def _bind(artifact):
     return lib
 
 
-def first_gradient_storage(nbf, natoms, weight_slots, capacity):
+def first_gradient_storage(
+    nbf: int, natoms: int, weight_slots: int, capacity: int
+) -> dict[str, int]:
     for value in (nbf, natoms, weight_slots, capacity):
         if type(value) is not int or value < 1:
             raise ValueError("first-gradient dimensions must be positive integers")
@@ -188,7 +211,7 @@ def first_gradient_storage(nbf, natoms, weight_slots, capacity):
     }
 
 
-def _array(value, shape, name):
+def _array(value: ArrayLike, shape: tuple[int, ...], name: str) -> typing.Any:
     array = np.asarray(value)
     if (
         array.shape != shape
@@ -207,15 +230,15 @@ class FirstGradientAccumulator:
 
     def __init__(
         self,
-        artifact,
+        artifact: CompiledFirstGradient,
         *,
-        nbf,
-        natoms,
-        weight_slots,
-        capacity=128,
-        device_id=0,
-        budget_bytes=64 << 20,
-    ):
+        nbf: int,
+        natoms: int,
+        weight_slots: int,
+        capacity: int = 128,
+        device_id: int = 0,
+        budget_bytes: int = 64 << 20,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._failed = True
@@ -263,7 +286,7 @@ class FirstGradientAccumulator:
             "gradient_downloads": 0,
         }
 
-    def _call(self, library, name, *args):
+    def _call(self, library: ct.CDLL, name: str, *args: typing.Any) -> None:
         detail = ct.create_string_buffer(2048)
         status = getattr(library, f"vibeqc_first_gradient_{name}_v1")(
             *args, detail, len(detail)
@@ -273,11 +296,11 @@ class FirstGradientAccumulator:
                 status, RuntimeError
             )(detail.value.decode())
 
-    def _ensure_open(self):
+    def _ensure_open(self) -> None:
         if not self._handle:
             raise RuntimeError("first-gradient accumulator is closed")
 
-    def reset(self, weights):
+    def reset(self, weights: ArrayLike) -> None:
         with self._lock:
             self._ensure_open()
             self._failed = True
@@ -296,7 +319,15 @@ class FirstGradientAccumulator:
             self.statistics["weight_uploads"] += 1
             self._failed = False
 
-    def append_shell(self, artifact, primitives, centers, *, offsets, atoms):
+    def append_shell(
+        self,
+        artifact: CompiledFirstGradient,
+        primitives: Sequence[Sequence[tuple[float, float]]],
+        centers: ArrayLike,
+        *,
+        offsets: Sequence[int],
+        atoms: Sequence[int],
+    ) -> None:
         with self._lock:
             self._ensure_open()
             if self._failed:
@@ -356,7 +387,7 @@ class FirstGradientAccumulator:
             self.records[:, 4 : 4 + nc * 3] = coords.ravel()
             count = 0
 
-            def flush():
+            def flush() -> None:
                 self._call(
                     library,
                     "append",
@@ -380,7 +411,7 @@ class FirstGradientAccumulator:
                 flush()
             self._failed = False
 
-    def finish(self):
+    def finish(self) -> np.ndarray:
         with self._lock:
             self._ensure_open()
             if self._failed:
@@ -400,20 +431,20 @@ class FirstGradientAccumulator:
             self._failed = False
             return immutable(output)
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._handle:
                 with _PREPARATION_LOCK:
                     self._library.vibeqc_first_gradient_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self._ensure_open()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

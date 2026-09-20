@@ -4,6 +4,7 @@ import ctypes
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,7 @@ from vibeqc_compiler.integral.range_separation import CoulombKernel, reference_m
 
 
 @pytest.fixture(scope="module", params=("cpu", "cuda"))
-def native_moments(request, tmp_path_factory):
+def native_moments(request: typing.Any, tmp_path_factory: typing.Any) -> typing.Any:
     """Compile identical host/device arithmetic; CUDA execution is opt-in Slurm."""
     pytest.importorskip("scipy")
     cuda = request.param == "cuda"
@@ -95,7 +96,9 @@ extern "C" int evaluate(unsigned order, double t, double rho, unsigned range,
 
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 @pytest.mark.parametrize("rho", [1e-12, 0.73, 1e12])
-def test_native_moments_resolve_limits_and_separate_parts(native_moments, family, rho):
+def test_native_moments_resolve_limits_and_separate_parts(
+    native_moments: typing.Any, family: typing.Any, rho: typing.Any
+) -> None:
     """All orders retain relative accuracy, including tiny positive SR values."""
     tag = 1 if family == "long_range" else 2
     for omega in (0, 1e-12, 0.2, 1, 1e6, 1e150):
@@ -115,7 +118,9 @@ def test_native_moments_resolve_limits_and_separate_parts(native_moments, family
             assert np.all(actual[:14] >= 0)
 
 
-def test_native_moment_controls_fail_without_touching_output(native_moments):
+def test_native_moment_controls_fail_without_touching_output(
+    native_moments: typing.Any,
+) -> None:
     cases = [
         (14, 1, 1, 1, 0.5),
         (0, float("nan"), 1, 1, 0.5),
@@ -135,7 +140,9 @@ def test_native_moment_controls_fail_without_touching_output(native_moments):
         np.testing.assert_array_equal(actual[:14], 123)
 
 
-def test_native_moments_derivative_chain_and_complement(native_moments):
+def test_native_moments_derivative_chain_and_complement(
+    native_moments: typing.Any,
+) -> None:
     values = []
     for tag in (0, 1, 2):
         omega = 0 if tag == 0 else 0.8

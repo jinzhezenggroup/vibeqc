@@ -1,5 +1,6 @@
 """Same-approximation contractions before independent exact-target comparisons."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -19,7 +20,7 @@ from tools.vibeqc_posthf.mp2 import restricted_mp2
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def dense_approximation(factor):
+def dense_approximation(factor: typing.Any) -> typing.Any:
     """Independent tiny tensor reconstruction from physical symmetric factors."""
     matrices = [
         factor.space.unpack(factor.factor_tile(i, 1)[0]) for i in range(factor.rank)
@@ -31,7 +32,9 @@ def dense_approximation(factor):
 
 @pytest.mark.parametrize("spins", [1, 2])
 @pytest.mark.parametrize("rank", [0, 1, 4, 6])
-def test_raw_jk_matches_same_approximation_with_exact_spin_factors(spins, rank):
+def test_raw_jk_matches_same_approximation_with_exact_spin_factors(
+    spins: typing.Any, rank: typing.Any
+) -> None:
     rng = np.random.default_rng(190)
     seed = rng.normal(size=(6, 6))
     factor = IncrementalCholesky(DenseColumns(seed @ seed.T, 3), rank_capacity=6)
@@ -54,7 +57,7 @@ def test_raw_jk_matches_same_approximation_with_exact_spin_factors(spins, rank):
         provider.jk(density[0] if spins == 1 else density)
 
 
-def test_shared_consumer_budget_preflight_and_generation_invalidation():
+def test_shared_consumer_budget_preflight_and_generation_invalidation() -> None:
     factor = IncrementalCholesky(DenseColumns(np.eye(3), 2), rank_capacity=3)
     factor.refine(0, maximum_rank=1)
     provider = LowRankProvider(factor)
@@ -73,7 +76,9 @@ def test_shared_consumer_budget_preflight_and_generation_invalidation():
         provider.snapshot = None
 
 
-def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity():
+def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity() -> (
+    None
+):
     source, arrays = source_for("water")
     metadata, _ = load_fixture("water")
     snapshot = fixture_snapshot(metadata, arrays)
@@ -132,8 +137,8 @@ def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity()
 
 @pytest.mark.parametrize("charge,multiplicity", [(2, 1), (0, 3)])
 def test_mo_reference_rejects_changed_electronic_ensemble_at_identical_ao_topology(
-    charge, multiplicity
-):
+    charge: typing.Any, multiplicity: typing.Any
+) -> None:
     original, arrays = source_for("water")
     metadata, _ = load_fixture("water")
     snapshot = fixture_snapshot(metadata, arrays)
@@ -163,7 +168,9 @@ def test_mo_reference_rejects_changed_electronic_ensemble_at_identical_ao_topolo
             assert factor.rank == 0
 
 
-def test_fixed_density_accuracy_evidence_cannot_certify_the_exact_relaxed_target():
+def test_fixed_density_accuracy_evidence_cannot_certify_the_exact_relaxed_target() -> (
+    None
+):
     source, arrays = source_for("h2")
     metadata, _ = load_fixture("h2")
     snapshot = fixture_snapshot(metadata, arrays)

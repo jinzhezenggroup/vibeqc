@@ -1,6 +1,7 @@
 """Local-space gauges/ranks must preserve the audited restricted MP2 model."""
 
 import json
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from tools.vibeqc_local_cc.spaces import (
 from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
 
 
-def fixture(name="water"):
+def fixture(name: typing.Any = "water") -> typing.Any:
     metadata, arrays = load_fixture(name)
     snapshot = fixture_snapshot(metadata, arrays)
     ao_atoms = []
@@ -34,7 +35,9 @@ def fixture(name="water"):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_localization_matches_independent_pyscf_objective_and_occupied_metric(name):
+def test_localization_matches_independent_pyscf_objective_and_occupied_metric(
+    name: typing.Any,
+) -> None:
     snapshot, ao_atoms, metadata, _ = fixture(name)
     record = json.loads(
         (Path(__file__).parents[1] / "reference_data/local-spaces/pm.json").read_text()
@@ -69,7 +72,9 @@ def test_localization_matches_independent_pyscf_objective_and_occupied_metric(na
         local.rotation.setflags(write=True)
 
 
-def test_alternative_occupied_gauges_and_atom_permutations_preserve_pm_objective():
+def test_alternative_occupied_gauges_and_atom_permutations_preserve_pm_objective() -> (
+    None
+):
     s, atoms, _, _ = fixture()
     rng = np.random.default_rng(182)
     rotation, _ = np.linalg.qr(rng.normal(size=(s.nocc, s.nocc)))
@@ -85,7 +90,7 @@ def test_alternative_occupied_gauges_and_atom_permutations_preserve_pm_objective
     )
 
 
-def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces():
+def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces() -> None:
     s, atoms, _, _ = fixture()
     with pytest.raises(RuntimeError, match="localization failed"):
         localize_occupied(s, atoms, max_sweeps=1, tolerance=1e-14)
@@ -105,7 +110,9 @@ def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces():
         replace(s, algorithm="UHF")
 
 
-def test_projected_aos_remove_occupied_components_and_report_duplicate_rank_loss():
+def test_projected_aos_remove_occupied_components_and_report_duplicate_rank_loss() -> (
+    None
+):
     s, _, _, _ = fixture()
     domain = projected_virtual_space(s)
     duplicate = projected_virtual_space(s, list(range(s.nmo)) * 2)
@@ -126,7 +133,7 @@ def test_projected_aos_remove_occupied_components_and_report_duplicate_rank_loss
         projected_virtual_space(s, budget_bytes=1)
 
 
-def test_pair_density_spin_factors_and_degenerate_cluster_policy():
+def test_pair_density_spin_factors_and_degenerate_cluster_policy() -> None:
     rng = np.random.default_rng(182)
     t = rng.normal(size=(4, 4))
     tilde = 2 * t - t.T
@@ -144,7 +151,7 @@ def test_pair_density_spin_factors_and_degenerate_cluster_policy():
     assert selected.all()
 
 
-def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection():
+def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection() -> None:
     s, atoms, _, _ = fixture("lih")
     local = localize_occupied(s, atoms)
     domain = projected_virtual_space(s)
@@ -170,7 +177,9 @@ def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection():
         space.overlap(replace(space, reference_id="changed"))
 
 
-def test_mulliken_charge_jacobi_gradient_matches_independent_finite_difference():
+def test_mulliken_charge_jacobi_gradient_matches_independent_finite_difference() -> (
+    None
+):
     s, atoms, _, _ = fixture()
     operators = population_operators(s, atoms)
     p, q = 0, 1
@@ -178,7 +187,7 @@ def test_mulliken_charge_jacobi_gradient_matches_independent_finite_difference()
         operators[:, p, q] * (operators[:, p, p] - operators[:, q, q])
     )
 
-    def objective(theta):
+    def objective(theta: typing.Any) -> typing.Any:
         u = np.eye(s.nocc)
         u[np.ix_([p, q], [p, q])] = [
             [np.cos(theta), -np.sin(theta)],

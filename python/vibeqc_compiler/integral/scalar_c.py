@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from fractions import Fraction
+from typing import TYPE_CHECKING
 
-from .expr import Coefficient, Expr, Graph, MaterializationPlan
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
 
 def format_constant(value: Coefficient) -> str:

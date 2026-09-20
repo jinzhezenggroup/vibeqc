@@ -147,10 +147,12 @@ Coordinates are in Bohr, energies in Hartree, and forces in Hartree/Bohr.
 from vibeqc import Calculator
 
 calc = Calculator(method="rhf", basis="sto-3g", device="cuda")
-result = calc.singlepoint([
-    ("H", (0.0, 0.0, -0.7)),
-    ("H", (0.0, 0.0, 0.7)),
-])
+result = calc.singlepoint(
+    [
+        ("H", (0.0, 0.0, -0.7)),
+        ("H", (0.0, 0.0, 0.7)),
+    ]
+)
 
 print(result.energy)
 print(result.forces)

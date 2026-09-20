@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import time
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,7 @@ from tools.vibeqc_validation.one_electron_gradient import (
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def main():
+def main() -> None:
     """Hold nonsymmetric S/T/V weights fixed across every measured mapping."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=("sp8", "sdf18-direct"), default="sp8")
@@ -85,7 +86,7 @@ def main():
     records = []
     for schedule in (0, 1, 2):
 
-        def execute(schedule=schedule):
+        def execute(schedule: typing.Any = schedule) -> typing.Any:
             return execute_gradient(
                 calc,
                 case.atoms,

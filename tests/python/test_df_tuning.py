@@ -2,6 +2,7 @@
 
 import copy
 import math
+import typing
 
 import pytest
 from vibeqc_compiler.integral.df_tuning.emission import emit_candidate
@@ -14,7 +15,7 @@ from vibeqc_compiler.integral.df_tuning.policy import (
 from vibeqc_compiler.integral.tuning.process import _runtime_environment
 
 
-def fixture():
+def fixture() -> typing.Any:
     work = {
         "shell_tasks": 20,
         "active_shell_tasks": 20,
@@ -46,11 +47,11 @@ def fixture():
     return {"384": copy.deepcopy(profile), "768": copy.deepcopy(profile)}, rows
 
 
-def rank(profiles, rows):
+def rank(profiles: typing.Any, rows: typing.Any) -> typing.Any:
     return rank_profiles(profiles, rows, baselines={"000": "000:polynomial:compact"})
 
 
-def test_available_trials_and_identity():
+def test_available_trials_and_identity() -> None:
     trials = enumerate_trials()
     assert len(trials) == 42
     assert len({t.key for t in trials}) == len(trials)
@@ -75,7 +76,7 @@ def test_available_trials_and_identity():
     assert "prepare_geometry" not in source
 
 
-def test_profiles_remain_separate_and_conflicts_block_combination():
+def test_profiles_remain_separate_and_conflicts_block_combination() -> None:
     profiles, rows = fixture()
     result = rank(profiles, rows)
     assert result["proposed_mapping"] == {"000": "000:rys:compact"}
@@ -91,7 +92,7 @@ def test_profiles_remain_separate_and_conflicts_block_combination():
     }
 
 
-def test_explicit_high_angular_campaign_preserves_both_profiles():
+def test_explicit_high_angular_campaign_preserves_both_profiles() -> None:
     """A hot-class campaign must not silently discard classes outside the old seven."""
     profiles, rows = fixture()
     for payload in profiles.values():
@@ -121,7 +122,7 @@ def test_explicit_high_angular_campaign_preserves_both_profiles():
 @pytest.mark.parametrize(
     "fault", ["missing", "work", "numeric", "compile", "nan", "repeats"]
 )
-def test_bad_signature_rejects_whole_candidate(fault):
+def test_bad_signature_rejects_whole_candidate(fault: typing.Any) -> None:
     profiles, rows = fixture()
     for row in rows[:]:
         if ":rys:" not in row["candidate"]:
@@ -141,7 +142,7 @@ def test_bad_signature_rejects_whole_candidate(fault):
     assert rank(profiles, rows)["proposed_mapping"] == {"000": "000:polynomial:compact"}
 
 
-def test_missing_baseline_cannot_select_a_winner():
+def test_missing_baseline_cannot_select_a_winner() -> None:
     profiles, rows = fixture()
     rows = [r for r in rows if r["candidate"] != "000:polynomial:compact"]
     result = rank(profiles, rows)
@@ -149,7 +150,7 @@ def test_missing_baseline_cannot_select_a_winner():
     assert result["conflicts"]
 
 
-def test_profile_frequency_validation_and_duplicate_rows():
+def test_profile_frequency_validation_and_duplicate_rows() -> None:
     profiles, rows = fixture()
     with pytest.raises(ValueError, match="duplicate"):
         rank(profiles, rows + [rows[0]])
@@ -158,7 +159,9 @@ def test_profile_frequency_validation_and_duplicate_rows():
         read_profile(profiles["384"])
 
 
-def test_runtime_preserves_scheduler_visibility(monkeypatch, tmp_path):
+def test_runtime_preserves_scheduler_visibility(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     for value in ("", "0", "GPU-unique-token"):
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", value)
         assert (
@@ -166,7 +169,9 @@ def test_runtime_preserves_scheduler_visibility(monkeypatch, tmp_path):
         )
 
 
-def test_manifests_require_complete_independent_qualification(tmp_path):
+def test_manifests_require_complete_independent_qualification(
+    tmp_path: typing.Any,
+) -> None:
     """A partial numerical run cannot turn on either automatic production policy."""
     import copy
     import json
@@ -192,7 +197,7 @@ def test_manifests_require_complete_independent_qualification(tmp_path):
             load(path)
 
 
-def campaign_manifest():
+def campaign_manifest() -> typing.Any:
     """Keep the already-promoted SSS choice in both synthetic comparison arms."""
     baseline = {
         "qualified": True,
@@ -222,7 +227,9 @@ def campaign_manifest():
 
 
 @pytest.mark.parametrize("promoted", [False, True])
-def test_compiled_campaign_selection_preserves_qualified_baseline(tmp_path, promoted):
+def test_compiled_campaign_selection_preserves_qualified_baseline(
+    tmp_path: typing.Any, promoted: typing.Any
+) -> None:
     """Promotion removes the comparison arm without changing candidate math."""
     import json
     import shutil
@@ -261,7 +268,9 @@ static_assert(!DfProductionPolicy<1,1,1>::select(120,true).available);
 @pytest.mark.parametrize(
     "fault", ["baseline", "candidate", "nested", "evidence", "math"]
 )
-def test_campaign_baseline_requires_qualified_independent_evidence(tmp_path, fault):
+def test_campaign_baseline_requires_qualified_independent_evidence(
+    tmp_path: typing.Any, fault: typing.Any
+) -> None:
     import json
 
     from vibeqc_compiler.integral.df_tuning.manifest import load_manifest
@@ -285,7 +294,7 @@ def test_campaign_baseline_requires_qualified_independent_evidence(tmp_path, fau
         load_manifest(path)
 
 
-def test_value_identity_and_profile_disagreements():
+def test_value_identity_and_profile_disagreements() -> None:
     """Class scoring retains both workloads and excludes incomplete/changed work."""
     import copy
 

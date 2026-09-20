@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import statistics
+import typing
 from dataclasses import asdict, dataclass
 from itertools import product
 
@@ -38,7 +39,7 @@ class DfDerivativeTrial:
     lowering: str
     variant: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.angular, tuple)
             or len(self.angular) != 3
@@ -54,23 +55,29 @@ class DfDerivativeTrial:
             raise ValueError("unsupported DF derivative schedule")
 
     @property
-    def class_name(self):
+    def class_name(self) -> typing.Any:
         return "".join(map(str, self.angular))
 
     @property
-    def key(self):
+    def key(self) -> typing.Any:
         return f"{self.class_name}:{self.lowering}:{SCHEDULES[self.variant]}"
 
     @property
-    def symbol(self):
+    def symbol(self) -> typing.Any:
         return "df_" + self.key.replace(":", "_")
 
     @property
-    def block_threads(self):
+    def block_threads(self) -> typing.Any:
         schedule = shell_schedule(self.angular, self.variant)
         return schedule.component_lanes * schedule.triples_per_block
 
-    def artifact_key(self, *, generator_sha256, architecture, toolchain):
+    def artifact_key(
+        self,
+        *,
+        generator_sha256: typing.Any,
+        architecture: typing.Any,
+        toolchain: typing.Any,
+    ) -> typing.Any:
         """Bind a trial to generated/runtime source, target and actual compiler."""
         if not all(
             isinstance(x, str) and x
@@ -87,7 +94,7 @@ class DfDerivativeTrial:
         return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def enumerate_trials(angular=LOW_ANGULAR_CLASSES):
+def enumerate_trials(angular: typing.Any = LOW_ANGULAR_CLASSES) -> typing.Any:
     """Enumerate every available lowering/schedule without invented Rys entries."""
     return tuple(
         DfDerivativeTrial(tuple(a), lowering, variant)
@@ -98,7 +105,9 @@ def enumerate_trials(angular=LOW_ANGULAR_CLASSES):
     )
 
 
-def read_profile(payload, *, angular=LOW_ANGULAR_CLASSES):
+def read_profile(
+    payload: typing.Any, *, angular: typing.Any = LOW_ANGULAR_CLASSES
+) -> typing.Any:
     """Read the #398 ledger, preserving exact signature frequencies and work.
 
     A signature may have fewer active than visited tasks. Both counts are kept;
@@ -147,8 +156,13 @@ def read_profile(payload, *, angular=LOW_ANGULAR_CLASSES):
 
 
 def rank_profiles(
-    profiles, results, *, baselines, minimum_gain=0.03, angular=LOW_ANGULAR_CLASSES
-):
+    profiles: typing.Any,
+    results: typing.Any,
+    *,
+    baselines: typing.Any,
+    minimum_gain: typing.Any = 0.03,
+    angular: typing.Any = LOW_ANGULAR_CLASSES,
+) -> typing.Any:
     """Select one trial per class only when all retained profiles agree.
 
     Each result covers one complete real signature workload. Timings are raw

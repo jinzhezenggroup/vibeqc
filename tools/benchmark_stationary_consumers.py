@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import time
+import typing
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -29,7 +30,7 @@ SYSTEMS = {
 }
 
 
-def benchmark(cache, repeats):
+def benchmark(cache: typing.Any, repeats: typing.Any) -> typing.Any:
     records, summaries, warmups = [], [], []
     grid = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
     for name, atoms in SYSTEMS.items():
@@ -47,7 +48,13 @@ def benchmark(cache, repeats):
                 for mode in ("reference", "native")
             }
 
-            def run(mode, coords, *, atoms=atoms, batches=batches):
+            def run(
+                mode: typing.Any,
+                coords: typing.Any,
+                *,
+                atoms: typing.Any = atoms,
+                batches: typing.Any = batches,
+            ) -> typing.Any:
                 moved = [(a[0], p) for a, p in zip(atoms, coords, strict=True)]
                 start = time.perf_counter()
                 item = batches[mode].execute(coordinates=[coords], strict=True).items[0]
@@ -141,7 +148,7 @@ def benchmark(cache, repeats):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cache", type=Path, default=Path(".cache/stationary-consumers")

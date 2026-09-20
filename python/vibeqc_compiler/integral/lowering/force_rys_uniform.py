@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..cuda_schedule import (
     ScheduleKind,
-)
-from ..fused_schedule import (
-    FusedShellPlan,
 )
 from ..rys import (
     build_rys_force_program,
@@ -15,10 +14,15 @@ from ..rys import (
     emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
 )
-from ..shell_spec import (
-    ShellClassSpec,
-)
 from .common import _emitted_component_names, _generic_task_component_setup
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def _emit_rys_uniform_warp_force_consumer_cuda(

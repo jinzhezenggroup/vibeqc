@@ -7,6 +7,7 @@ to check exact input/output stability on the recorded dependency stack.
 import argparse
 import json
 import platform
+import typing
 from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,7 +21,7 @@ from tools.vibeqc_validation.schema import canonical_hash, file_hash
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def generate(*, full=False):
+def generate(*, full: typing.Any = False) -> typing.Any:
     import pyscf
     import scipy
     from pyscf.cc import rccsd, rintermediates
@@ -139,7 +140,7 @@ def generate(*, full=False):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--compare", type=Path)

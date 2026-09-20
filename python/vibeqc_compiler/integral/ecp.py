@@ -1,5 +1,6 @@
 """ECP operator IR and generated Gaussian center-derivative quadrature kernels."""
 
+import typing
 from dataclasses import replace
 
 from .blocks import RawBlock, TensorLayout, WeightDescriptor, WeightedDerivative
@@ -16,7 +17,13 @@ from .shell_signature import BasisShell, CenterBinding, ShellSignature
 from .shell_spec import cartesian_components
 
 
-def build_ecp_ir(angular, terms, *, derivatives=False, weighted=False):
+def build_ecp_ir(
+    angular: typing.Any,
+    terms: typing.Any,
+    *,
+    derivatives: typing.Any = False,
+    weighted: typing.Any = False,
+) -> typing.Any:
     """Preserve A/B/C and generic weighted semantics before atom mapping."""
     if len(angular) != 2:
         raise ValueError("ECP requires two orbital shell slots")
@@ -57,7 +64,7 @@ def build_ecp_ir(angular, terms, *, derivatives=False, weighted=False):
     )
 
 
-def gaussian_roots(component):
+def gaussian_roots(component: typing.Any) -> typing.Any:
     """Differentiate AO centers symbolically before emitting device arithmetic."""
     graph = Graph()
     xyz = [graph.variable(a) for a in "xyz"]
@@ -69,7 +76,7 @@ def gaussian_roots(component):
     return graph, (value, *(-graph.differentiate(value, x) for x in xyz))
 
 
-def emit_ecp_ao_cuda():
+def emit_ecp_ao_cuda() -> typing.Any:
     """Specialize all validated Cartesian components; no runtime AD."""
     lines = [
         "#pragma once",
