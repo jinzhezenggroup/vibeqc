@@ -39,8 +39,6 @@ def main() -> None:
     parser.add_argument("--df-production-manifest", type=Path)
     parser.add_argument("--shell-units-directory", type=Path)
     args = parser.parse_args()
-    if args.cpu and not args.derivatives:
-        parser.error("--cpu requires --derivatives")
     if (args.schedule_output or args.shell_output) and not args.derivatives:
         parser.error("--schedule-output/--shell-output require --derivatives")
     if args.shell_units_directory and not (args.derivatives and args.shell_output):
@@ -57,8 +55,14 @@ def main() -> None:
         emitter = emit_df_derivatives_cpu if args.cpu else emit_df_derivatives_cuda
         inventory = df_derivative_inventory
     else:
-        emitter, inventory = emit_df_values_cuda, df_program_inventory
-    if not args.derivatives:
+        if args.cpu:
+            from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
+
+            emitter = emit_df_values_cpu
+        else:
+            emitter = emit_df_values_cuda
+        inventory = df_program_inventory
+    if not args.derivatives and not args.cpu:
         from vibeqc_compiler.integral.df_value_candidates import (
             emit_df_value_candidates_cuda,
         )

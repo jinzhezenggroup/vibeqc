@@ -41,6 +41,10 @@ struct DensityFittingThreeCenter {
   // The auxiliary dimension remains uncompressed so fixed-topology device
   // plans can preserve their indexing after dependent directions are removed.
   std::vector<double> values;
+  // Optional provider-oriented cache: Q-major [Q][mu][nu]. Production CPU
+  // preparation materializes it only when the external dense-LA provider will
+  // use it, so repeated SCF exchange builds do not repack the immutable tensor.
+  std::vector<double> auxiliary_major_values;
 };
 
 /** Immutable integral state shared by all iterations of a DF SCF solve. */

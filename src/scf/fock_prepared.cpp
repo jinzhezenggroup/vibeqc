@@ -334,7 +334,8 @@ std::size_t PreparedFockPlan::cpu_observation_capacity() const noexcept {
                                                      fitted->raw.metric, fitted->raw.three_center,
                                                      fitted->raw.metric_derivative,
                                                      fitted->raw.three_center_derivative,
-                                                     fitted->three_center.values))
+                                                     fitted->three_center.values,
+                                                     fitted->three_center.auxiliary_major_values))
                 : orbital;
 }
 const FockPreparationDiagnostic& PreparedFockPlan::diagnostic() const noexcept {

@@ -43,6 +43,19 @@ macro(vibeqc_register_host_generated_sources target)
       ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --cpu-st-output "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}")
 
+  set(VIBEQC_DF_VALUE_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_values_cpu.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_values_cpu_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+    OUTPUTS "${VIBEQC_DF_VALUE_CPU_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS
+      --cpu
+      --output "${VIBEQC_DF_VALUE_CPU_HEADER}")
+
   set(VIBEQC_DF_DERIVATIVE_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives_cpu.hpp")
   vibeqc_register_generated_sources(

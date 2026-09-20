@@ -71,10 +71,14 @@ std::size_t three_center_index(std::size_t mu, std::size_t nu, std::size_t auxil
 void validate_three_center(const DensityFittingThreeCenter& three_center) {
   const std::size_t expected = checked_three_center_elements(three_center.nbf, three_center.naux);
   if (three_center.values.size() != expected || three_center.effective_rank == 0 ||
-      three_center.effective_rank > three_center.naux) {
+      three_center.effective_rank > three_center.naux ||
+      (!three_center.auxiliary_major_values.empty() &&
+       three_center.auxiliary_major_values.size() != expected)) {
     throw std::invalid_argument("orthonormalized DF three-center tensor is inconsistent");
   }
   require_finite(three_center.values, "orthonormalized DF three-center entries must be finite");
+  require_finite(three_center.auxiliary_major_values,
+                 "orthonormalized DF provider cache entries must be finite");
 }
 
 void validate_density(const std::vector<double>& density, std::size_t matrix_elements) {
@@ -88,7 +92,31 @@ std::vector<double> build_coulomb(const DensityFittingThreeCenter& three_center,
                                   const std::vector<double>& density) {
   const std::size_t nbf = three_center.nbf;
   const std::size_t naux = three_center.naux;
+  const std::size_t pairs = nbf * nbf;
   std::vector<double> auxiliary_density(naux, 0.0);
+  std::vector<double> coulomb(pairs, 0.0);
+
+  constexpr std::size_t kDenseCoulombMinimum = 16;
+  if (nbf >= kDenseCoulombMinimum && tensor::cpu_openblas_built()) {
+    std::vector<double> temporary_auxiliary_major;
+    const double* b = three_center.auxiliary_major_values.data();
+    if (three_center.auxiliary_major_values.empty()) {
+      temporary_auxiliary_major.resize(naux * pairs);
+      for (std::size_t pair = 0; pair < pairs; ++pair)
+        for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary)
+          temporary_auxiliary_major[auxiliary * pairs + pair] =
+              three_center.values[pair * naux + auxiliary];
+      b = temporary_auxiliary_major.data();
+    }
+    const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::automatic,
+                                     tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
+    tensor::cpu_gemm('N', 'N', naux, 1, pairs, b, density.data(), auxiliary_density.data(), 1.0,
+                     0.0, plan);
+    tensor::cpu_gemm('T', 'N', pairs, 1, naux, b, auxiliary_density.data(), coulomb.data(), 1.0,
+                     0.0, plan);
+    return coulomb;
+  }
+
   for (std::size_t mu = 0; mu < nbf; ++mu) {
     for (std::size_t nu = 0; nu < nbf; ++nu) {
       const double density_value = density[index(mu, nu, nbf)];
@@ -98,8 +126,6 @@ std::vector<double> build_coulomb(const DensityFittingThreeCenter& three_center,
       }
     }
   }
-
-  std::vector<double> coulomb(nbf * nbf, 0.0);
   for (std::size_t mu = 0; mu < nbf; ++mu) {
     for (std::size_t nu = 0; nu < nbf; ++nu) {
       double value = 0.0;
@@ -128,36 +154,41 @@ std::vector<double> build_exchange(const DensityFittingThreeCenter& three_center
   std::vector<double> exchange(nbf * nbf, 0.0);
   std::vector<double> transformed_density(nbf * nbf, 0.0);
 
-  // B is stored AO-pair-major, so one B_Q matrix is strided. Pack every Q once
-  // per Fock build, then let the dense-LA provider own the two O(N^3) contractions.
-  // Keep tiny matrices on the historical loop where packing/dispatch dominates.
+  // B is stored AO-pair-major, so one B_Q matrix is strided. A prepared
+  // provider retains the Q-major copy once; direct/oracle callers can still
+  // create a bounded temporary without changing the public tensor contract.
   constexpr std::size_t kDenseExchangeMinimum = 16;
   const bool use_dense_provider = nbf >= kDenseExchangeMinimum && tensor::cpu_openblas_built();
-  std::vector<double> auxiliary_major;
+  std::vector<double> temporary_auxiliary_major;
+  const double* auxiliary_major = nullptr;
   tensor::CpuLinalgPlan dense_plan;
   if (use_dense_provider) {
-    auxiliary_major.resize(naux * nbf * nbf);
-    for (std::size_t mu = 0; mu < nbf; ++mu)
-      for (std::size_t nu = 0; nu < nbf; ++nu)
-        for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary)
-          auxiliary_major[auxiliary * nbf * nbf + index(mu, nu, nbf)] =
-              three_center.values[three_center_index(mu, nu, auxiliary, nbf, naux)];
+    if (!three_center.auxiliary_major_values.empty()) {
+      auxiliary_major = three_center.auxiliary_major_values.data();
+    } else {
+      temporary_auxiliary_major.resize(naux * nbf * nbf);
+      for (std::size_t mu = 0; mu < nbf; ++mu)
+        for (std::size_t nu = 0; nu < nbf; ++nu)
+          for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary)
+            temporary_auxiliary_major[auxiliary * nbf * nbf + index(mu, nu, nbf)] =
+                three_center.values[three_center_index(mu, nu, auxiliary, nbf, naux)];
+      auxiliary_major = temporary_auxiliary_major.data();
+    }
     dense_plan = {tensor::CpuLinalgProvider::automatic,
                   tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
   }
 
   for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
     if (use_dense_provider) {
-      const double* bq = auxiliary_major.data() + auxiliary * nbf * nbf;
-      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(), transformed_density.data(), 1.0,
-                       0.0, dense_plan);
-      tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, transformed_density.data(), bq, exchange.data(),
-                       1.0, 1.0, dense_plan);
+      const double* bq = auxiliary_major + auxiliary * nbf * nbf;
+      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(),
+                       transformed_density.data(), 1.0, 0.0, dense_plan);
+      tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, transformed_density.data(), bq,
+                       exchange.data(), 1.0, 1.0, dense_plan);
       continue;
     }
 
     std::fill(transformed_density.begin(), transformed_density.end(), 0.0);
-    // For each Q, form B_Q D and then (B_Q D) B_Q^T.
     for (std::size_t mu = 0; mu < nbf; ++mu) {
       for (std::size_t lambda = 0; lambda < nbf; ++lambda) {
         double value = 0.0;
@@ -629,17 +660,36 @@ DensityFittingThreeCenter orthonormalize_density_fitting_three_center(
       metric_factor.effective_rank,
       std::vector<double>(tensor_elements, 0.0),
   };
-  for (std::size_t mu = 0; mu < nbf; ++mu) {
-    for (std::size_t nu = 0; nu < nbf; ++nu) {
-      for (std::size_t target = 0; target < naux; ++target) {
-        double value = 0.0;
-        for (std::size_t source = 0; source < naux; ++source) {
-          value += three_center[three_center_index(mu, nu, source, nbf, naux)] *
-                   metric_factor.inverse_square_root[index(source, target, naux)];
+  constexpr std::size_t kDenseTransformMinimum = 16;
+  if (nbf >= kDenseTransformMinimum && tensor::cpu_openblas_built()) {
+    const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::automatic,
+                                     tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
+    tensor::cpu_gemm('N', 'N', nbf * nbf, naux, naux, three_center.data(),
+                     metric_factor.inverse_square_root.data(), result.values.data(), 1.0, 0.0,
+                     plan);
+  } else {
+    for (std::size_t mu = 0; mu < nbf; ++mu) {
+      for (std::size_t nu = 0; nu < nbf; ++nu) {
+        for (std::size_t target = 0; target < naux; ++target) {
+          double value = 0.0;
+          for (std::size_t source = 0; source < naux; ++source) {
+            value += three_center[three_center_index(mu, nu, source, nbf, naux)] *
+                     metric_factor.inverse_square_root[index(source, target, naux)];
+          }
+          result.values[three_center_index(mu, nu, target, nbf, naux)] = value;
         }
-        result.values[three_center_index(mu, nu, target, nbf, naux)] = value;
       }
     }
+  }
+
+  constexpr std::size_t kPersistentDenseExchangeMinimum = 16;
+  if (nbf >= kPersistentDenseExchangeMinimum && tensor::cpu_openblas_built()) {
+    result.auxiliary_major_values.resize(tensor_elements);
+    for (std::size_t mu = 0; mu < nbf; ++mu)
+      for (std::size_t nu = 0; nu < nbf; ++nu)
+        for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary)
+          result.auxiliary_major_values[auxiliary * nbf * nbf + index(mu, nu, nbf)] =
+              result.values[three_center_index(mu, nu, auxiliary, nbf, naux)];
   }
   return result;
 }

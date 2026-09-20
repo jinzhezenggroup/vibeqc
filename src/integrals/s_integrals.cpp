@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "generated_df_derivatives_cpu.hpp"
+#include "integrals/generated_df_cpu.hpp"
 #include "generated_one_electron_st_cpu.hpp"
 #include "integrals/ecp.hpp"
 #include "molecule/basis.hpp"
@@ -647,15 +647,16 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
   const std::vector<AoView> orbital_aos = expand_cartesian_aos(orbital_system);
   const std::vector<AoView> auxiliary_aos = expand_cartesian_aos(auxiliary_system);
 
-  const bool generated_derivatives =
-      include_derivatives &&
+  const bool generated_supported =
       std::all_of(orbital_aos.begin(), orbital_aos.end(),
                   [](const AoView& ao) { return ao.shell->angular_momentum <= 3; }) &&
       std::all_of(auxiliary_aos.begin(), auxiliary_aos.end(),
                   [](const AoView& ao) { return ao.shell->angular_momentum <= 3; });
+  const bool generated_derivatives = include_derivatives && generated_supported;
+  const bool generated_values = !include_derivatives && generated_supported;
   if (generated_derivatives) {
-    using GeneratedAngular = scf::generated_df_derivatives::Angular;
-    using GeneratedVec3 = scf::generated_df_derivatives::Vec3;
+    using GeneratedAngular = generated_df_cpu::Angular;
+    using GeneratedVec3 = generated_df_cpu::Vec3;
     auto center = [&](std::size_t atom) {
       const auto& r = orbital_system.atoms[atom].position;
       return GeneratedVec3{r[0], r[1], r[2]};
@@ -686,7 +687,7 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
           for (const auto& second_primitive : second.shell->primitives) {
             const double weight =
                 component_factor * first_primitive.coefficient * second_primitive.coefficient;
-            const auto response = scf::generated_df_derivatives::metric(
+            const auto response = generated_df_cpu::metric_derivative(
                 first_primitive.exponent, first_center, angular(first.angular),
                 second_primitive.exponent, second_center, angular(second.angular));
             cartesian.metric[item] += weight * response.value;
@@ -721,7 +722,7 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
                 const double weight = component_factor * first_primitive.coefficient *
                                       second_primitive.coefficient *
                                       auxiliary_primitive.coefficient;
-                const auto response = scf::generated_df_derivatives::three_center(
+                const auto response = generated_df_cpu::three_center_derivative(
                     first_primitive.exponent, first_center, angular(first.angular),
                     second_primitive.exponent, second_center, angular(second.angular),
                     auxiliary_primitive.exponent, auxiliary_center, angular(auxiliary.angular));
@@ -732,6 +733,73 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
                         second.shell->atom_index, weight, response.second);
                 scatter(cartesian.three_center_derivative, tensor_size, item,
                         auxiliary.shell->atom_index, weight, response.third);
+              }
+            }
+          }
+        }
+      }
+    }
+  } else if (generated_values) {
+    using GeneratedAngular = generated_df_cpu::Angular;
+    using GeneratedVec3 = generated_df_cpu::Vec3;
+    auto center = [&](std::size_t atom) {
+      const auto& r = orbital_system.atoms[atom].position;
+      return GeneratedVec3{r[0], r[1], r[2]};
+    };
+    auto angular = [](const molecule::CartesianComponent& a) {
+      return GeneratedAngular{a[0], a[1], a[2]};
+    };
+
+    const std::size_t metric_size = cartesian.naux * cartesian.naux;
+    cartesian.metric.assign(metric_size, 0.0);
+    for (std::size_t p = 0; p < cartesian.naux; ++p) {
+      const AoView& first = auxiliary_aos[p];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t q = 0; q < cartesian.naux; ++q) {
+        const AoView& second = auxiliary_aos[q];
+        const auto second_center = center(second.shell->atom_index);
+        const std::size_t item = matrix_index(p, q, cartesian.naux);
+        const double component_factor =
+            first.component_normalization * second.component_normalization;
+        for (const auto& first_primitive : first.shell->primitives) {
+          for (const auto& second_primitive : second.shell->primitives) {
+            const double weight =
+                component_factor * first_primitive.coefficient * second_primitive.coefficient;
+            cartesian.metric[item] +=
+                weight * generated_df_cpu::metric_value(
+                             first_primitive.exponent, first_center, angular(first.angular),
+                             second_primitive.exponent, second_center, angular(second.angular));
+          }
+        }
+      }
+    }
+
+    const std::size_t tensor_size = cartesian.nbf * cartesian.nbf * cartesian.naux;
+    cartesian.three_center.assign(tensor_size, 0.0);
+    for (std::size_t i = 0; i < cartesian.nbf; ++i) {
+      const AoView& first = orbital_aos[i];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t j = 0; j < cartesian.nbf; ++j) {
+        const AoView& second = orbital_aos[j];
+        const auto second_center = center(second.shell->atom_index);
+        for (std::size_t p = 0; p < cartesian.naux; ++p) {
+          const AoView& auxiliary = auxiliary_aos[p];
+          const auto auxiliary_center = center(auxiliary.shell->atom_index);
+          const std::size_t item = three_center_index(i, j, p, cartesian.nbf, cartesian.naux);
+          const double component_factor = first.component_normalization *
+                                          second.component_normalization *
+                                          auxiliary.component_normalization;
+          for (const auto& first_primitive : first.shell->primitives) {
+            for (const auto& second_primitive : second.shell->primitives) {
+              for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
+                const double weight = component_factor * first_primitive.coefficient *
+                                      second_primitive.coefficient * auxiliary_primitive.coefficient;
+                cartesian.three_center[item] +=
+                    weight * generated_df_cpu::three_center_value(
+                                 first_primitive.exponent, first_center, angular(first.angular),
+                                 second_primitive.exponent, second_center, angular(second.angular),
+                                 auxiliary_primitive.exponent, auxiliary_center,
+                                 angular(auxiliary.angular));
               }
             }
           }

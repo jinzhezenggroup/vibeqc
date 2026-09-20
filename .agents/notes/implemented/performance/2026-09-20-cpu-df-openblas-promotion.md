@@ -90,3 +90,46 @@ OpenBLAS is now a justified automatic build-time provider when available, rather
 ---
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+
+## Follow-up hotspot removal: generated CPU DF values
+
+After derivative codegen removed the force-side Jet bottleneck, profiling exposed an
+asymmetry: CPU energy-only DF still used the legacy generic value evaluator, so
+water/def2-TZVP energy-only (~1.36 s) was slower than the energy+force path (~0.48 s).
+
+The same compiler-owned DF value IR and Rys tables now have a host C++ lowering for
+production s/p/d/f values. Unsupported higher-angular cases retain the legacy fallback.
+Generated value/derivative headers are isolated behind `integrals/generated_df_cpu.cpp`
+so ordinary `s_integrals.cpp` edits do not recompile the large generated Rys tables.
+
+The prepared DF owner also retains an optional Q-major orthonormalized tensor when
+OpenBLAS is available. RI-J, RI-K, and the metric three-center transform use the common
+dense-LA boundary; direct/oracle callers retain bounded temporary/scalar fallbacks.
+
+Pinned node3 energy-only measurements (CPU 47, one BLAS/OMP thread):
+
+| endpoint | prior OpenBLAS | generated-value OpenBLAS | speedup |
+|---|---:|---:|---:|
+| water/def2-SVP RHF | 0.14371 s | 0.01863 s | 7.71x |
+| water/def2-TZVP RHF | 1.36270 s | 0.11006 s | 12.38x |
+
+The no-BLAS scalar build also improves to 0.02441 s (SVP) and 0.18011 s (TZVP),
+confirming that host codegen, not BLAS alone, removes the dominant value-side cost.
+
+Persistent Q-major reuse plus RI-J/metric-transform lowering is a smaller but consistent
+follow-up: the 96-AO water-tetramer complete energy+force endpoint improved from about
+8.91 s to 8.80 s, while smaller force endpoints moved only at sub-percent scale.
+
+Local qualification completed before GitHub handoff:
+- scalar/OpenBLAS DF native tests pass;
+- CPU value/derivative emitter host-only checks pass (5 selected tests);
+- generated-value endpoint energies retain the same SCF iteration counts and agree with
+  generated-derivative endpoints at normal FP64 roundoff.
+
+Final full-repository CI is delegated to GitHub because the node3 remote-command monthly
+quota was exhausted during the last local qualification pass.
+
+---
+Agent: ChatGPT
+Model: GPT-5.6 Sol

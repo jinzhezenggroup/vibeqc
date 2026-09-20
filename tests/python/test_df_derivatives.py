@@ -15,6 +15,7 @@ from vibeqc_compiler.integral.df_derivatives import (
     evaluate_df_derivative,
 )
 from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cpu
+from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
 from vibeqc_compiler.integral.df_values import (
     build_df_component_kernel,
     build_df_value_ir,
@@ -36,6 +37,15 @@ def test_cpu_derivative_lowering_is_host_only() -> None:
     assert "__device__" not in source
     assert "__forceinline__" not in source
     assert "VIBEQC_GENERATED_DF_DERIVATIVES_CPU_HPP" in source
+
+
+def test_cpu_value_lowering_is_host_only() -> None:
+    source = emit_df_values_cpu()
+    assert "generated_df" in source
+    assert "cuda_runtime" not in source
+    assert "__device__" not in source
+    assert "__forceinline__" not in source
+    assert "VIBEQC_GENERATED_DF_VALUES_CPU_HPP" in source
 
 
 @pytest.mark.parametrize("angular", SIGNATURES)
