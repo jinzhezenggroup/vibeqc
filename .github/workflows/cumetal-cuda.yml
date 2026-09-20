@@ -406,6 +406,8 @@ jobs:
           CUMETAL_ROOT: /tmp/cumetal-install
           DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
           VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
+          CUMETAL_DEBUG_REGISTRATION: "1"
+          CUMETAL_DEBUG_LAUNCH: "1"
         with:
           mode: walltime
           run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py --codspeed -q
