@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes as ct
 import threading
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +16,7 @@ from .reference import immutable
 from .sources import _DOUBLE, _SIZE, pointer
 
 
-def compile_cuda(compiler, cache):
+def compile_cuda(compiler: typing.Any, cache: typing.Any) -> typing.Any:
     """Build the bounded transform through the shared native-runtime cache."""
     root = Path(__file__).resolve().parents[2]
     return compile_runtime(
@@ -39,7 +40,14 @@ class CudaTransform:
     explicit copy. Ordinary streams are used; no CUDA graph support is claimed.
     """
 
-    def __init__(self, artifact, plan, coefficients, *, device_id=0):
+    def __init__(
+        self,
+        artifact: typing.Any,
+        plan: typing.Any,
+        coefficients: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self.plan = plan
@@ -105,16 +113,16 @@ class CudaTransform:
             )
         self.device_id = device_id
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("CUDA MO block is closed")
 
-    def add(self, tile, offsets):
+    def add(self, tile: typing.Any, offsets: typing.Any) -> None:
         """Accumulate one AO shell tile after four device-only transformations."""
         with self._lock:
             self._check_open()
@@ -133,11 +141,11 @@ class CudaTransform:
             )
 
     @property
-    def device_pointer(self):
+    def device_pointer(self) -> typing.Any:
         self._check_open()
         return self._library.posthf_cuda_pointer_v1(self._handle)
 
-    def to_host(self):
+    def to_host(self) -> typing.Any:
         """Return an immutable detached FP64 block; account transfers separately."""
         with self._lock:
             self._check_open()
@@ -145,7 +153,7 @@ class CudaTransform:
             self._call("posthf_cuda_download_v1", self._handle, pointer(out), out.size)
             return immutable(out)
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         """Measured owned allocations and synchronized section timings."""
         with self._lock:
             self._check_open()
@@ -160,12 +168,12 @@ class CudaTransform:
                 "cublas_version": versions[2],
             }
 
-    def close(self):
+    def close(self) -> None:
         with self._lock, _PREPARATION_LOCK:
             if self._handle:
                 self._library.posthf_cuda_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

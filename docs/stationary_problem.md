@@ -41,19 +41,28 @@ linear solves in the tests are independent analytic oracles, not production code
 ```python
 import numpy as np
 from vibeqc_compiler.method.stationary import (
-    ParameterSource, StationaryProblem, StationaryState,
+    ParameterSource,
+    StationaryProblem,
+    StationaryState,
 )
 from vibeqc_compiler.tensor import (
-    Program, TensorSpec, add, execute, input_tensor, multiply,
+    Program,
+    TensorSpec,
+    add,
+    execute,
+    input_tensor,
+    multiply,
 )
 
 spec = TensorSpec(role="parameter", differentiable=True)
 x, q = input_tensor("x", spec), input_tensor("q", spec)
 problem = StationaryProblem(
-    equations=Program({
-        "energy": add(multiply(multiply(x, x), x), q, coefficients=(1, 2)),
-        "residual": add(multiply(x, x), q, coefficients=(1, -1)),
-    }),
+    equations=Program(
+        {
+            "energy": add(multiply(multiply(x, x), x), q, coefficients=(1, 2)),
+            "residual": add(multiply(x, x), q, coefficients=(1, -1)),
+        }
+    ),
     objective="energy",
     states=(StationaryState("x", "residual", "scalar-x-v1", "positive-root-v1"),),
     sources=(ParameterSource("q", "external-q-field-v1"),),
@@ -65,13 +74,16 @@ q_value = 2.3
 x_value = np.sqrt(q_value)
 # Analytic toy adjoint, not a general solver: (2*x)*lambda = -3*x*x.
 multiplier = -1.5 * x_value
-result = execute(plan.partials, {
-    "x": np.asarray(x_value),
-    "q": np.asarray(q_value),
-    plan.multiplier_inputs["x"]: np.asarray(multiplier),
-}).outputs
+result = execute(
+    plan.partials,
+    {
+        "x": np.asarray(x_value),
+        "q": np.asarray(q_value),
+        plan.multiplier_inputs["x"]: np.asarray(multiplier),
+    },
+).outputs
 assert abs(result[plan.stationarity_outputs["x"]]) < 1e-12
-assert abs(result[plan.weight_outputs["q"]] - (2 + 1.5*x_value)) < 1e-12
+assert abs(result[plan.weight_outputs["q"]] - (2 + 1.5 * x_value)) < 1e-12
 ```
 
 The example's fully re-solved objective is `q**1.5 + 2*q`, providing a separate

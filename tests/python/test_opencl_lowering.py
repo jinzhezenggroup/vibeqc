@@ -1,5 +1,6 @@
 """Semantic lowering gates require no OpenCL SDK or accelerator."""
 
+import typing
 from dataclasses import replace
 
 import pytest
@@ -20,7 +21,7 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from tools.vibeqc_validation.schema import canonical_hash
 
 
-def integral_program():
+def integral_program() -> typing.Any:
     """Use the existing (p_x|p_y) auxiliary Coulomb expression unchanged."""
     integral = build_df_value_ir("coulomb_metric", (1, 1))
     kernel = build_df_component_kernel(integral, ("x", "y"))
@@ -43,7 +44,7 @@ def integral_program():
     )
 
 
-def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic():
+def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> None:
     kernel = integral_program()
     emitters = [emitter(kernel.graph, {}) for emitter in (CudaEmitter, ScalarCEmitter)]
     for emitter in emitters:
@@ -62,7 +63,7 @@ def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic():
     assert "if (item >= count) return" in first
 
 
-def test_missing_scientific_inputs_or_injected_identifiers_are_rejected():
+def test_missing_scientific_inputs_or_injected_identifiers_are_rejected() -> None:
     kernel = integral_program()
     with pytest.raises(ValueError, match="no primitive ABI column"):
         replace(kernel, inputs=kernel.inputs[:-1])

@@ -9,6 +9,7 @@ schema used by the gradient fixtures; --case selects a retained small example.
 
 import argparse
 import json
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
@@ -20,7 +21,7 @@ from tools.vibeqc_cc.complete_gradient import (
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def record(result, options):
+def record(result: typing.Any, options: typing.Any) -> typing.Any:
     return {
         "schema": "vibeqc.ccsd.complete_gradient_validation",
         "schema_version": 1,
@@ -68,7 +69,7 @@ def record(result, options):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument("--case", choices=CASES)

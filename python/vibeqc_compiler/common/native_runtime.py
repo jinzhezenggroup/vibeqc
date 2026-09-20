@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
@@ -21,7 +22,15 @@ from vibeqc_compiler.common.provenance import (
 )
 
 
-def compile_runtime(compiler, cache, source, *, headers=(), libraries=(), options=None):
+def compile_runtime(
+    compiler: typing.Any,
+    cache: typing.Any,
+    source: typing.Any,
+    *,
+    headers: typing.Any = (),
+    libraries: typing.Any = (),
+    options: typing.Any = None,
+) -> typing.Any:
     """Hash-verified native runtime cache using explicit CPU or CUDA adapters.
 
     Callers supply scientific source/header and library identities explicitly.

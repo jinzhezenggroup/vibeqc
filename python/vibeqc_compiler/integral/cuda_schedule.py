@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 from math import comb
+from typing import TYPE_CHECKING
 
 from .backend import TargetScheduleShape
-from .cuda_target import CudaTargetInfo
 from .expr import (
     AlgebraForm,
     AlgebraFusion,
@@ -16,6 +16,9 @@ from .expr import (
 )
 from .ir import IntegralIR, OperatorFamily
 from .shell_spec import ShellClassSpec
+
+if TYPE_CHECKING:
+    from .cuda_target import CudaTargetInfo
 
 
 class ScheduleKind(str, Enum):

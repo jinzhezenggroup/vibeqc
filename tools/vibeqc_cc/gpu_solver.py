@@ -21,6 +21,7 @@ a hidden resident acceleration, and it must not be advertised as such.
 from __future__ import annotations
 
 import time
+import typing
 from contextlib import ExitStack
 from dataclasses import asdict, fields
 from hashlib import sha256
@@ -51,17 +52,17 @@ class PreparedGPUSolver:
 
     def __init__(
         self,
-        snapshot,
-        provider,
-        compiler,
-        cache,
+        snapshot: typing.Any,
+        provider: typing.Any,
+        compiler: typing.Any,
+        cache: typing.Any,
         *,
-        options=None,
-        t1=None,
-        t2=None,
-        device=0,
-        provider_peak_bytes=0,
-    ):
+        options: typing.Any = None,
+        t1: typing.Any = None,
+        t2: typing.Any = None,
+        device: typing.Any = 0,
+        provider_peak_bytes: typing.Any = 0,
+    ) -> None:
         if not isinstance(compiler, CudaCompilerAdapter):
             raise TypeError("GPU RCCSD requires a CudaCompilerAdapter")
         if not isinstance(cache, Path):
@@ -106,7 +107,7 @@ class PreparedGPUSolver:
         # allowance; the plan reservation charges the future resident path.
 
     @staticmethod
-    def _transfer_accounting(primary, replay):
+    def _transfer_accounting(primary: typing.Any, replay: typing.Any) -> typing.Any:
         """Per-evaluation transfer sizes and successful execution counters.
 
         The host reads only ``correlation_energy`` and the two residual
@@ -117,7 +118,7 @@ class PreparedGPUSolver:
         subset, so this is a conservative upper bound, not an undercount.
         """
 
-        def tensor_bytes(node):
+        def tensor_bytes(node: typing.Any) -> typing.Any:
             return node.spec.size * node.spec.itemsize
 
         inputs = sum(
@@ -148,36 +149,38 @@ class PreparedGPUSolver:
     # Delegate the shared CPU preparation surface so the control law is one code
     # path regardless of backend.
     @property
-    def options_(self):
+    def options_(self) -> typing.Any:
         return self.cpu.options
 
     @property
-    def initial(self):
+    def initial(self) -> typing.Any:
         return self.cpu.initial
 
     @property
-    def layouts(self):
+    def layouts(self) -> typing.Any:
         return self.cpu.layouts
 
     @property
-    def denominators(self):
+    def denominators(self) -> typing.Any:
         return self.cpu.denominators
 
     @property
-    def integral_hash(self):
+    def integral_hash(self) -> typing.Any:
         return self.cpu.integral_hash
 
     @property
-    def logical_required_bytes(self):
+    def logical_required_bytes(self) -> typing.Any:
         return self.cpu.logical_required_bytes
 
-    def pack(self, t1, t2):
+    def pack(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         return self.cpu.pack(t1, t2)
 
-    def unpack(self, vector):
+    def unpack(self, vector: typing.Any) -> typing.Any:
         return self.cpu.unpack(vector)
 
-    def evaluate(self, t1, t2, *, independent=False):
+    def evaluate(
+        self, t1: typing.Any, t2: typing.Any, *, independent: typing.Any = False
+    ) -> typing.Any:
         """Physical energy/R1/R2 (+ Jacobi proposal) on the primary or replay DAG."""
         provider = self.cpu.provider
         provider.source._check_open()
@@ -213,29 +216,29 @@ class PreparedGPUSolver:
                 raise FloatingPointError(str(error)) from error
             raise
 
-    def close(self):
+    def close(self) -> None:
         self.primary.close()
         self.replay.close()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()
 
 
 def solve_gpu(
-    snapshot,
-    provider,
+    snapshot: typing.Any,
+    provider: typing.Any,
     *,
-    compiler,
-    cache,
-    options=None,
-    t1=None,
-    t2=None,
-    device=0,
-    provider_peak_bytes=0,
-):
+    compiler: typing.Any,
+    cache: typing.Any,
+    options: typing.Any = None,
+    t1: typing.Any = None,
+    t2: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+) -> typing.Any:
     """Solve conventional RCCSD with the physical equations evaluated on CUDA.
 
     The control law (MP2-like guess, damped shifted-denominator Jacobi, host

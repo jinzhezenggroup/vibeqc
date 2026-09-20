@@ -1,6 +1,7 @@
 """Native rectangular overlaps against pinned independent libcint fixtures."""
 
 import json
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -15,10 +16,12 @@ REFERENCES = json.loads(
 
 
 @pytest.mark.parametrize("fixture", REFERENCES["overlap"])
-def test_rectangular_spdf_blocks_and_transpose_match_libcint(fixture):
+def test_rectangular_spdf_blocks_and_transpose_match_libcint(
+    fixture: typing.Any,
+) -> None:
     inputs = fixture["inputs"]
 
-    def shells(records):
+    def shells(records: typing.Any) -> typing.Any:
         return [
             Shell(
                 s["atom_index"],
@@ -46,7 +49,7 @@ def test_rectangular_spdf_blocks_and_transpose_match_libcint(fixture):
     np.testing.assert_allclose(transpose.T, actual, atol=1e-13)
 
 
-def test_overlap_budget_is_checked_before_native_evaluation():
+def test_overlap_budget_is_checked_before_native_evaluation() -> None:
     calc = Calculator()
     with pytest.raises(MemoryError, match="maximum_bytes"):
         cross_overlap(
@@ -54,7 +57,7 @@ def test_overlap_budget_is_checked_before_native_evaluation():
         )
 
 
-def test_diffuse_gaussian_near_duplicates_have_reproducible_projection_rank():
+def test_diffuse_gaussian_near_duplicates_have_reproducible_projection_rank() -> None:
     """A real diffuse Gaussian null mode must be discarded before transport."""
     atoms = [("He", (0, 0, 0))]
     source = Calculator(basis=[Shell(0, 0, (Primitive(0.02, 1.0),))])

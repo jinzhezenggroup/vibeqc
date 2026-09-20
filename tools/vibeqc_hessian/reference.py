@@ -11,6 +11,8 @@ The dense reference is deliberately bounded to 18 AOs and four atoms.
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 from pyscf import gto, scf
 
@@ -18,7 +20,9 @@ _H1 = 1e-5  # 1st-derivative integral step
 _H2 = 3e-4  # 2nd-derivative integral step (tunable; see module docstring)
 
 
-def build_mol(atoms, basis, charge=0, spin=0):
+def build_mol(
+    atoms: typing.Any, basis: typing.Any, charge: typing.Any = 0, spin: typing.Any = 0
+) -> typing.Any:
     """Build a PySCF mol in Bohr / cartesian from VibeQC-style atoms+basis.
 
     ``atoms`` is a list of (Z, [x, y, z]); ``basis`` maps an element tag to a
@@ -40,7 +44,7 @@ def build_mol(atoms, basis, charge=0, spin=0):
     )
 
 
-def _mol_at(mol0, coords):
+def _mol_at(mol0: typing.Any, coords: typing.Any) -> typing.Any:
     """Rebuild ``mol0``'s geometry with new cartesian coordinates (Bohr)."""
     atom = [
         [mol0.atom_symbol(i), list(map(float, row))] for i, row in enumerate(coords)
@@ -56,13 +60,13 @@ def _mol_at(mol0, coords):
     )
 
 
-def _validate_step(step):
+def _validate_step(step: typing.Any) -> None:
     """Reject invalid difference steps before rebuilding any molecules."""
     if not np.isfinite(step) or step <= 0:
         raise ValueError("finite-difference step must be finite and positive")
 
 
-def _validate_molecule(mol):
+def _validate_molecule(mol: typing.Any) -> None:
     """Keep this dense all-electron RHF oracle within its qualified domain."""
     if (
         not mol.cart
@@ -76,7 +80,7 @@ def _validate_molecule(mol):
         raise ValueError("reference is bounded to 18 AOs and four atoms")
 
 
-def _converged_rhf(mol):
+def _converged_rhf(mol: typing.Any) -> typing.Any:
     """Use the same tight SCF policy at every displaced reference geometry."""
     mf = scf.RHF(mol)
     mf.conv_tol = 1e-13
@@ -91,7 +95,9 @@ def _converged_rhf(mol):
 class System:
     """Converged RHF state + coordinate FD derivatives of every integral."""
 
-    def __init__(self, mol, h1=_H1, h2=_H2):
+    def __init__(
+        self, mol: typing.Any, h1: typing.Any = _H1, h2: typing.Any = _H2
+    ) -> None:
         _validate_molecule(mol)
         _validate_step(h1)
         _validate_step(h2)
@@ -118,17 +124,17 @@ class System:
         self.occ = np.arange(self.nocc)
         self.virt = np.arange(self.nocc, self.nmo)
 
-    def _h_ao(self, c):
+    def _h_ao(self, c: typing.Any) -> typing.Any:
         m = _mol_at(self.mol, c)
         return m.intor("int1e_kin_cart") + m.intor("int1e_nuc")
 
-    def _s_ao(self, c):
+    def _s_ao(self, c: typing.Any) -> typing.Any:
         return _mol_at(self.mol, c).intor("int1e_ovlp_cart")
 
-    def _eri(self, c):
+    def _eri(self, c: typing.Any) -> typing.Any:
         return _mol_at(self.mol, c).intor("int2e_cart", aosym=1)
 
-    def _enuc(self, c):
+    def _enuc(self, c: typing.Any) -> typing.Any:
         c = np.asarray(c)
         e = 0.0
         for a in range(self.nat):
@@ -136,7 +142,7 @@ class System:
                 e += self.Z[a] * self.Z[b] / np.linalg.norm(c[a] - c[b])
         return e
 
-    def _d1(self, F, i):
+    def _d1(self, F: typing.Any, i: typing.Any) -> typing.Any:
         h = self.h1_
         b = self.coords
         cp = b.copy()
@@ -145,7 +151,7 @@ class System:
         cm.flat[i] -= h
         return (F(cp) - F(cm)) / (2 * h)
 
-    def _d2(self, F, i, j):
+    def _d2(self, F: typing.Any, i: typing.Any, j: typing.Any) -> typing.Any:
         h = self.h
         b = self.coords
         if i == j:
@@ -168,13 +174,13 @@ class System:
         c4.flat[j] -= h
         return (F(c1) - F(c2) - F(c3) + F(c4)) / (4 * h**2)
 
-    def _sym(self, d):
+    def _sym(self, d: typing.Any) -> typing.Any:
         for i in range(self.nd):
             for j in range(i):
                 d[(i, j)] = d[(j, i)]
         return d
 
-    def derive(self):
+    def derive(self) -> None:
         """Materialize finite-difference integral derivatives at the fixed state."""
         nd = self.nd
         self.h1 = {i: self._d1(self._h_ao, i) for i in range(nd)}
@@ -205,27 +211,29 @@ class System:
             }
         )
 
-    def Wof(self, eri, P):
+    def Wof(self, eri: typing.Any, P: typing.Any) -> typing.Any:
         return _wof(eri, P)
 
 
-def _wof(eri, P):
+def _wof(eri: typing.Any, P: typing.Any) -> typing.Any:
     return np.einsum("mnls,ls->mn", eri, P) - 0.5 * np.einsum("mlns,ls->mn", eri, P)
 
 
-def _s2_block(s, ia, ja):
+def _s2_block(s: typing.Any, ia: typing.Any, ja: typing.Any) -> typing.Any:
     return np.array(
         [[s.S2[(ia * 3 + x, ja * 3 + y)] for y in range(3)] for x in range(3)]
     )
 
 
-def _h2_block(s, ia, ja):
+def _h2_block(s: typing.Any, ia: typing.Any, ja: typing.Any) -> typing.Any:
     return np.array(
         [[s.h2[(ia * 3 + x, ja * 3 + y)] for y in range(3)] for x in range(3)]
     )
 
 
-def _eri2_block(s, ia, ja, W2):
+def _eri2_block(
+    s: typing.Any, ia: typing.Any, ja: typing.Any, W2: typing.Any
+) -> typing.Any:
     return np.array(
         [
             [
@@ -237,13 +245,13 @@ def _eri2_block(s, ia, ja, W2):
     )
 
 
-def _en2_block(s, ia, ja):
+def _en2_block(s: typing.Any, ia: typing.Any, ja: typing.Any) -> typing.Any:
     return np.array(
         [[s.En2[(ia * 3 + x, ja * 3 + y)] for y in range(3)] for x in range(3)]
     )
 
 
-def h1ao(s):
+def h1ao(s: typing.Any) -> typing.Any:
     C = s.C
     P0 = s.P0
     nat = s.nat
@@ -256,7 +264,7 @@ def h1ao(s):
     return H
 
 
-def _first_order_mo1_e1(s, h1ao):
+def _first_order_mo1_e1(s: typing.Any, h1ao: typing.Any) -> typing.Any:
     """AO-space mo1[ia][x] (nbf, nocc) and mo_e1[ia][x] (nocc, nocc).
 
     Independent dense solve in the full (nmo, nocc) space. The occupied
@@ -289,7 +297,7 @@ def _first_order_mo1_e1(s, h1ao):
             mo1base[virt, :] = -hs0[virt, :] * e_ai
             mo1base[occ, :] = -s1_mo[occ, :] * 0.5
 
-            def F(mo1):
+            def F(mo1: typing.Any) -> typing.Any:
                 dm = C @ (2 * mo1) @ mocc.T
                 dm = dm + dm.T
                 v = C.T @ _wof(s.ERI, dm) @ mocc
@@ -324,7 +332,7 @@ def _first_order_mo1_e1(s, h1ao):
     return mo1s, e1s
 
 
-def _first_order_mo1_e1_vir_only(s, h1ao):
+def _first_order_mo1_e1_vir_only(s: typing.Any, h1ao: typing.Any) -> typing.Any:
     """Equivalent dense solve on the nonredundant virtual/occupied block.
 
     The occupied response is known from the metric gauge. Eliminating it from
@@ -357,7 +365,7 @@ def _first_order_mo1_e1_vir_only(s, h1ao):
             mo1base[virt, :] = -hs0[virt, :] * e_ai
             mo1base[occ, :] = -s1_mo[occ, :] * 0.5
 
-            def F(mo1):
+            def F(mo1: typing.Any) -> typing.Any:
                 dm = C @ (2 * mo1) @ mocc.T
                 dm = dm + dm.T
                 v = C.T @ _wof(s.ERI, dm) @ mocc
@@ -400,14 +408,14 @@ def _first_order_mo1_e1_vir_only(s, h1ao):
 
 
 def hessian_total(
-    s,
-    with_relax=True,
-    with_pulay=True,
-    with_2e=True,
-    with_nuc=True,
-    with_core=True,
-    mo1e1_fn=_first_order_mo1_e1,
-):
+    s: typing.Any,
+    with_relax: typing.Any = True,
+    with_pulay: typing.Any = True,
+    with_2e: typing.Any = True,
+    with_nuc: typing.Any = True,
+    with_core: typing.Any = True,
+    mo1e1_fn: typing.Any = _first_order_mo1_e1,
+) -> typing.Any:
     """Semi-numerical reference Hessian, shaped (nat, nat, 3, 3).
 
     Returns the full Hessian; component isolation is available by toggling the
@@ -463,7 +471,7 @@ def hessian_total(
     return H
 
 
-def hessian_components(s):
+def hessian_components(s: typing.Any) -> typing.Any:
     """Return each component separately for negative-case isolation.
 
     Keys: nuclear, core, pulay, two_electron, relaxation. Their sum equals
@@ -513,17 +521,17 @@ def hessian_components(s):
     }
 
 
-def fd_hessian(mol, h=1e-4):
+def fd_hessian(mol: typing.Any, h: typing.Any = 1e-4) -> typing.Any:
     """Total-energy FD Hessian (central), shaped (nat, nat, 3, 3)."""
     _validate_molecule(mol)
     _validate_step(h)
     nat = mol.natm
     nd = 3 * nat
 
-    def mol_at(c):
+    def mol_at(c: typing.Any) -> typing.Any:
         return _mol_at(mol, c)
 
-    def E(m):
+    def E(m: typing.Any) -> typing.Any:
         return _converged_rhf(m).e_tot
 
     c0 = np.array(mol.atom_coords())

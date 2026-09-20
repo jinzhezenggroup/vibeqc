@@ -1,6 +1,7 @@
 """Compile-time experimental raw-value mapping; promotion requires endpoint evidence."""
 
 import json
+import typing
 from pathlib import Path
 
 from ..df_value_candidates import VALUE_CLASSES
@@ -8,7 +9,7 @@ from ..df_value_candidates import VALUE_CLASSES
 VALUE_MANIFEST = Path(__file__).resolve().parents[1] / "production_df_values.json"
 
 
-def load_value_manifest(path=VALUE_MANIFEST):
+def load_value_manifest(path: typing.Any = VALUE_MANIFEST) -> typing.Any:
     """Validate an explicit bounded architecture/class policy without device probing."""
     payload = json.loads(Path(path).read_text())
     if payload.get("schema_version") != 1 or payload.get("architecture") != "sm_120":

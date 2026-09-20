@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import ClassVar
@@ -12,7 +13,7 @@ from vibeqc_compiler.common.nonlocal_correlation import (
 )
 
 
-def _require_fraction(value, label):
+def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
     if not isinstance(value, Fraction):
         raise UnsupportedNonlocalCorrelation(
             f"{label} requires an exact Fraction parameter"
@@ -28,7 +29,7 @@ class NonlocalCorrelationPrimitive:
     coefficient: Fraction = Fraction(1)
     kind: ClassVar[str] = "nonlocal_correlation"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.spec, NonlocalCorrelationSpec):
             raise TypeError("nonlocal primitive requires NonlocalCorrelationSpec")
         _require_fraction(self.coefficient, "nonlocal-correlation coefficient")
@@ -38,15 +39,15 @@ class NonlocalCorrelationPrimitive:
             )
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         # Energy and the self-consistent KS/Fock potential share one definition.
         return ("energy", "ks-potential")
 
     @property
-    def required_ingredients(self):
+    def required_ingredients(self) -> typing.Any:
         return ("rho", "sigma")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "kind": self.kind,
             "coefficient": str(self.coefficient),
@@ -55,5 +56,5 @@ class NonlocalCorrelationPrimitive:
             "required_ingredients": self.required_ingredients,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()

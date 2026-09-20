@@ -1,5 +1,6 @@
 """CPKS feature-kernel action and fail-closed public DFT boundaries."""
 
+import typing
 from dataclasses import replace
 from fractions import Fraction
 
@@ -20,7 +21,7 @@ from tools.vibeqc_response import (
 )
 
 
-def test_fixed_density_xc_hessian_matches_potential_finite_difference():
+def test_fixed_density_xc_hessian_matches_potential_finite_difference() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     density = arrays["density_total"]
@@ -46,7 +47,7 @@ def test_fixed_density_xc_hessian_matches_potential_finite_difference():
         assert kernel.statistics["tiles"] > 0
 
 
-def test_polarized_fixed_density_xc_response_averages_spin_potentials():
+def test_polarized_fixed_density_xc_response_averages_spin_potentials() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="polarized")
     density = arrays["density_total"]
@@ -68,7 +69,7 @@ def test_polarized_fixed_density_xc_response_averages_spin_potentials():
             np.testing.assert_allclose(actual, expected, atol=3e-7, rtol=3e-8)
 
 
-def test_fixed_density_xc_kernel_rejects_wrong_reference_density():
+def test_fixed_density_xc_kernel_rejects_wrong_reference_density() -> None:
     meta, _arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -94,7 +95,7 @@ def test_fixed_density_xc_kernel_rejects_wrong_reference_density():
             wrong.validate_reference(ks)
 
 
-def test_fixed_density_xc_kernel_rejects_exact_exchange_and_stale_grid():
+def test_fixed_density_xc_kernel_rejects_exact_exchange_and_stale_grid() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -114,21 +115,27 @@ def test_fixed_density_xc_kernel_rejects_exact_exchange_and_stale_grid():
 class _LinearXCDerivativeKernel:
     """Synthetic symmetric kernel for CPKS plumbing tests, not a DFT model."""
 
-    def __init__(self, basis_identity, grid_identity, functional_identity, scale=0.3):
+    def __init__(
+        self,
+        basis_identity: typing.Any,
+        grid_identity: typing.Any,
+        functional_identity: typing.Any,
+        scale: typing.Any = 0.3,
+    ) -> None:
         self.basis_identity = basis_identity
         self.grid_identity = grid_identity
         self.functional_identity = functional_identity
         self.scale = float(scale)
         self.identity = f"linear-test-{scale}"
 
-    def apply(self, delta_density):
+    def apply(self, delta_density: typing.Any) -> typing.Any:
         return self.scale * np.asarray(delta_density)
 
-    def apply_transpose(self, delta_density):
+    def apply_transpose(self, delta_density: typing.Any) -> typing.Any:
         return self.apply(delta_density)
 
 
-def test_cpks_operator_action_and_solve_with_synthetic_ks_reference():
+def test_cpks_operator_action_and_solve_with_synthetic_ks_reference() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     ks = replace(
@@ -165,7 +172,7 @@ def test_cpks_operator_action_and_solve_with_synthetic_ks_reference():
     assert result.residual_norm < 1e-11
 
 
-def test_cpks_requires_matching_kernel_identities_and_ks_reference():
+def test_cpks_requires_matching_kernel_identities_and_ks_reference() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(np.zeros((reference.nmo,) * 4))

@@ -20,10 +20,12 @@ import re
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 try:
     from benchmarks._retention import raw_output_path

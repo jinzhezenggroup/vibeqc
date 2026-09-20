@@ -1,13 +1,21 @@
 """Private native accounting for accepted prepared resource requests."""
 
 import ctypes
+import typing
 
 from .resources import ResourceAllocationError, _account
 
 
 def observe_method_call(
-    library, plan, ledger, callback, *, owner, phase="observation", previous=None
-):
+    library: typing.Any,
+    plan: typing.Any,
+    ledger: typing.Any,
+    callback: typing.Any,
+    *,
+    owner: typing.Any,
+    phase: typing.Any = "observation",
+    previous: typing.Any = None,
+) -> typing.Any:
     """Bind the same prepared owner around setup and each synchronous replay.
 
     Preparation can allocate persistent scientific buffers. Its evidence must
@@ -20,7 +28,7 @@ def observe_method_call(
     diagnostics = dict(previous or {})
     diagnostics.update(plan=plan.to_dict(), owner=owner, phase=phase)
 
-    def evidence():
+    def evidence() -> typing.Any:
         record = observed.to_dict()
         if owner == "ks":
             record["cuda_scope"] = (
@@ -47,7 +55,9 @@ def observe_method_call(
     return status, diagnostics
 
 
-def check_resource_status(library, status, diagnostics):
+def check_resource_status(
+    library: typing.Any, status: typing.Any, diagnostics: typing.Any
+) -> None:
     """Keep resource evidence on failed native calls without guessing OOM space.
 
     CPU allocation failures are host failures. For CUDA, only an actual ledger
@@ -96,7 +106,9 @@ class NativeDeviceLedger:
     Each ledger belongs to one prepared request on one visible CUDA device.
     """
 
-    def __init__(self, library, plan, *, owner="hf"):
+    def __init__(
+        self, library: typing.Any, plan: typing.Any, *, owner: typing.Any = "hf"
+    ) -> None:
         plan.require_feasible()
         self.owner = owner
         request = next(r for r in plan.requests if r.name == owner)
@@ -141,7 +153,7 @@ class NativeDeviceLedger:
         if not self.handle:
             raise MemoryError("could not allocate native resource ledger metadata")
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         """Read owned capacities without inferring physical GPU free memory."""
         if not self.handle:
             raise RuntimeError("native resource ledger is closed")
@@ -159,12 +171,12 @@ class NativeDeviceLedger:
             "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations",
         }
 
-    def close(self):
+    def close(self) -> None:
         """Release the observation handle; any live native buffers keep charges."""
         if self.handle:
             self.library.vibeqc_resource_ledger_destroy_v1(self.handle)
             self.handle = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         if getattr(self, "handle", None):
             self.close()

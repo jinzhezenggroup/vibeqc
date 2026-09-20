@@ -1,6 +1,7 @@
 """Resident ownership teardown is testable without allocating a CUDA device."""
 
 import ctypes as ct
+import typing
 from types import SimpleNamespace
 from weakref import WeakValueDictionary
 
@@ -9,7 +10,7 @@ import pytest
 from tools.vibeqc_response.resident_cuda import CudaResidentRHFResponse
 
 
-def _owner():
+def _owner() -> typing.Any:
     destroyed = []
     owner = CudaResidentRHFResponse.__new__(CudaResidentRHFResponse)
     owner._lib = SimpleNamespace(
@@ -27,7 +28,9 @@ def _owner():
 
 
 @pytest.mark.parametrize("error_type", [MemoryError, ValueError, RuntimeError])
-def test_exception_teardown_preserves_error_and_destroys_native_owner(error_type):
+def test_exception_teardown_preserves_error_and_destroys_native_owner(
+    error_type: typing.Any,
+) -> None:
     owner, destroyed = _owner()
     original = error_type("injected solver failure")
     with pytest.raises(error_type) as captured, owner:
@@ -45,7 +48,7 @@ def test_exception_teardown_preserves_error_and_destroys_native_owner(error_type
     assert destroyed == [123]
 
 
-def test_normal_close_still_rejects_live_vector_leases():
+def test_normal_close_still_rejects_live_vector_leases() -> None:
     owner, destroyed = _owner()
     vector = owner._allocate()
     with pytest.raises(RuntimeError, match="live vectors"):
@@ -58,7 +61,9 @@ def test_normal_close_still_rejects_live_vector_leases():
 
 @pytest.mark.parametrize("kind", ["foreign", "released", "reused"])
 @pytest.mark.parametrize("operation", ["copy", "norm", "to_host"])
-def test_native_access_rejects_invalid_vector_leases(kind, operation, monkeypatch):
+def test_native_access_rejects_invalid_vector_leases(
+    kind: typing.Any, operation: typing.Any, monkeypatch: typing.Any
+) -> None:
     owner, _ = _owner()
     owner.dimension = 1
     origin = _owner()[0] if kind == "foreign" else owner
@@ -70,7 +75,7 @@ def test_native_access_rejects_invalid_vector_leases(kind, operation, monkeypatc
             replacement = owner._allocate()
             assert replacement.slot == value.slot
 
-    def forbidden(*args):
+    def forbidden(*args: typing.Any) -> None:
         pytest.fail("invalid vector lease reached the native ABI")
 
     monkeypatch.setattr(owner, "_call", forbidden)
@@ -83,15 +88,15 @@ def test_native_access_rejects_invalid_vector_leases(kind, operation, monkeypatc
     value.release()
 
 
-def test_native_access_rejects_closed_borrowed_backend():
+def test_native_access_rejects_closed_borrowed_backend() -> None:
     import threading
 
     owner, _ = _owner()
 
-    def closed():
+    def closed() -> typing.Any:
         raise RuntimeError("CUDA direct response backend is closed")
 
-    def forbidden(*args):
+    def forbidden(*args: typing.Any) -> None:
         pytest.fail("closed borrowed backend reached the native ABI")
 
     owner._backend = SimpleNamespace(_lock=threading.RLock(), _ensure_open=closed)
@@ -102,8 +107,8 @@ def test_native_access_rejects_closed_borrowed_backend():
 
 @pytest.mark.parametrize("raises", [False, True])
 def test_solver_releases_temporaries_even_when_a_profiler_retains_them(
-    monkeypatch, raises
-):
+    monkeypatch: typing.Any, raises: typing.Any
+) -> None:
     import numpy as np
 
     from tools.vibeqc_response import krylov
@@ -112,7 +117,7 @@ def test_solver_releases_temporaries_even_when_a_profiler_retains_them(
     owner.dimension = 1
     retained = []
 
-    def retaining_solver(*args, **kwargs):
+    def retaining_solver(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         retained.append(owner._allocate())
         if raises:
             raise RuntimeError("retained solver frame")

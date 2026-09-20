@@ -1,6 +1,7 @@
 """Opt-in local-dense CUDA parity and borrowed-buffer lifetime gates."""
 
 import os
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -23,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def artifact():
+def artifact() -> typing.Any:
     compiler = find_nvcc()
     assert compiler is not None, "opt-in CUDA validation requires a configured NVCC"
     return compile_cuda(
@@ -32,7 +33,10 @@ def artifact():
     )
 
 
-def test_selected_cuda_jets_and_complete_density(artifact, local_case):  # noqa: F811
+def test_selected_cuda_jets_and_complete_density(
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     basis, grid, density = local_case
     full = basis.evaluate(grid.points[:7], order=3)
     with CudaGrid(
@@ -57,7 +61,10 @@ def test_selected_cuda_jets_and_complete_density(artifact, local_case):  # noqa:
                 )
 
 
-def test_device_lease_scatter_multiple_maps_and_expiry(artifact, local_case):  # noqa: F811
+def test_device_lease_scatter_multiple_maps_and_expiry(
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     basis, grid, density = local_case
     expected = np.zeros_like(density)
     rng = np.random.default_rng(2342)
@@ -86,9 +93,9 @@ def test_device_lease_scatter_multiple_maps_and_expiry(artifact, local_case):  #
 
 
 def test_prepared_cuda_fixed_masks_budgets_and_partial_device_iteration(
-    artifact,
-    local_case,  # noqa: F811
-):
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     basis, grid, density = local_case
     policy = SpatialPolicy(region_points=3, screening="absolute_ao_jet", cutoff=1e-8)
     for budget in (160 << 20, 256 << 20):
@@ -122,9 +129,9 @@ def test_prepared_cuda_fixed_masks_budgets_and_partial_device_iteration(
 
 
 def test_repeated_device_executions_start_fresh_with_default_scatter(
-    artifact,
-    local_case,  # noqa: F811
-):
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     """An unchanged density is still a new potential-assembly execution."""
     basis, grid, density = local_case
     with PreparedSpatialGrid(
@@ -151,7 +158,10 @@ def test_repeated_device_executions_start_fresh_with_default_scatter(
                     np.testing.assert_allclose(actual, expected, atol=1e-12, rtol=1e-12)
 
 
-def test_active_prepared_lease_rejects_other_threads_promptly(artifact, local_case):  # noqa: F811
+def test_active_prepared_lease_rejects_other_threads_promptly(
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     basis, grid, density = local_case
     with (
         ThreadPoolExecutor(max_workers=1) as pool,
@@ -176,7 +186,10 @@ def test_active_prepared_lease_rejects_other_threads_promptly(artifact, local_ca
                 future.result(timeout=3)
 
 
-def test_failed_scatter_can_retry_after_reset(artifact, local_case):  # noqa: F811
+def test_failed_scatter_can_retry_after_reset(
+    artifact: typing.Any,
+    local_case: typing.Any,  # noqa: F811
+) -> None:
     basis, grid, density = local_case
     ids = np.arange(2)
     with CudaGrid(basis, artifact, active_ao_capacity=2, tile_points=2) as cuda:

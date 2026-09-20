@@ -2,6 +2,7 @@
 
 import copy
 import json
+import typing
 
 import pytest
 
@@ -14,7 +15,7 @@ from benchmarks.df_component_ledger import (
 
 
 @pytest.fixture
-def record():
+def record() -> typing.Any:
     """One root with a nested generation region and a disjoint contraction."""
     return {
         "schema": "vibeqc.df_trace",
@@ -58,7 +59,9 @@ def record():
     }
 
 
-def test_exclusive_times_conserve_root_without_double_counting(record):
+def test_exclusive_times_conserve_root_without_double_counting(
+    record: typing.Any,
+) -> None:
     summary = aggregate([record])["groups"][0]
     assert summary["gpu_exclusive_ms"] == {
         "ri_j": 3,
@@ -74,7 +77,9 @@ def test_exclusive_times_conserve_root_without_double_counting(record):
     assert summary["repeated_tile_productions"] == 1
 
 
-def test_capture_counts_stay_separate_from_executed_work(record):
+def test_capture_counts_stay_separate_from_executed_work(
+    record: typing.Any,
+) -> None:
     capture = copy.deepcopy(record)
     capture.update(execution="graph_capture", profiler_event_count=0)
     for region in capture["regions"]:
@@ -103,20 +108,24 @@ def test_capture_counts_stay_separate_from_executed_work(record):
         ("regions", []),
     ],
 )
-def test_reject_invalid_or_incomplete_records(record, field, value):
+def test_reject_invalid_or_incomplete_records(
+    record: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     record[field] = value
     with pytest.raises(ValueError):
         validate_record(record)
 
 
 @pytest.mark.parametrize("parent", [-1, 2, 3, 99])
-def test_reject_invalid_hierarchy(record, parent):
+def test_reject_invalid_hierarchy(record: typing.Any, parent: typing.Any) -> None:
     record["regions"][2]["parent"] = parent
     with pytest.raises(ValueError, match="parent"):
         validate_record(record)
 
 
-def test_reject_closed_parent_and_parent_timing_overrun(record):
+def test_reject_closed_parent_and_parent_timing_overrun(
+    record: typing.Any,
+) -> None:
     record["regions"].append({"name": "late", "parent": 1, "host_ms": 0, "gpu_ms": 0})
     record["profiler_event_count"] += 2
     with pytest.raises(ValueError, match="hierarchy"):
@@ -131,19 +140,23 @@ def test_reject_closed_parent_and_parent_timing_overrun(record):
 @pytest.mark.parametrize(
     "field,value", [("gpu_ms", None), ("gpu_ms", float("inf")), ("host_ms", -1)]
 )
-def test_reject_missing_or_nonfinite_timing(record, field, value):
+def test_reject_missing_or_nonfinite_timing(
+    record: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     record["regions"][1][field] = value
     with pytest.raises(ValueError):
         validate_record(record)
 
 
-def test_reject_capture_with_execution_timings(record):
+def test_reject_capture_with_execution_timings(record: typing.Any) -> None:
     record.update(execution="graph_capture", profiler_event_count=0)
     with pytest.raises(ValueError, match="capture"):
         validate_record(record)
 
 
-def test_reject_counter_disagreement_and_duplicate_tiles(record):
+def test_reject_counter_disagreement_and_duplicate_tiles(
+    record: typing.Any,
+) -> None:
     record["counters"]["transformed_value_bytes"] = 48
     with pytest.raises(ValueError, match="totals disagree"):
         validate_record(record)
@@ -157,13 +170,17 @@ def test_reject_counter_disagreement_and_duplicate_tiles(record):
     "field,value",
     [("system", 1), ("pair_count", 10), ("auxiliary_begin", 4), ("productions", 0)],
 )
-def test_reject_out_of_bounds_or_empty_tile(record, field, value):
+def test_reject_out_of_bounds_or_empty_tile(
+    record: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     record["tiles"][0][field] = value
     with pytest.raises(ValueError):
         validate_record(record)
 
 
-def test_raw_trace_requires_complete_records_and_unique_ids(record, tmp_path):
+def test_raw_trace_requires_complete_records_and_unique_ids(
+    record: typing.Any, tmp_path: typing.Any
+) -> None:
     path = tmp_path / "trace.jsonl"
     path.write_text("")
     with pytest.raises(ValueError, match="incomplete"):
@@ -179,20 +196,20 @@ def test_raw_trace_requires_complete_records_and_unique_ids(record, tmp_path):
         read_trace(path)
 
 
-def test_scratch_sum_is_not_peak_memory(record):
+def test_scratch_sum_is_not_peak_memory(record: typing.Any) -> None:
     record["counters"]["response_scratch_bytes"] = 80
     summary = aggregate([record, record])["groups"][0]
     assert summary["counter_sums"]["response_scratch_bytes"] == 160
     assert summary["counter_maxima"]["response_scratch_bytes"] == 80
 
 
-def test_batch_member_uses_absolute_source_index(record):
+def test_batch_member_uses_absolute_source_index(record: typing.Any) -> None:
     record["system_offset"] = 3
     record["tiles"][0]["system"] = 3
     validate_record(record)
 
 
-def test_force_attribution_retains_unclassified_time(record):
+def test_force_attribution_retains_unclassified_time(record: typing.Any) -> None:
     records = []
     for operation in ("force_response", "one_electron_response"):
         root = copy.deepcopy(record)

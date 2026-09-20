@@ -9,6 +9,7 @@ produces different C cannot hit an old integral cache, even with a reused ID.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass, field
 from hashlib import sha256
 
@@ -57,7 +58,7 @@ class ReferenceSnapshot:
     identity: str = field(init=False)
     diagnostics: tuple[tuple[str, float], ...] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.algorithm not in ("RHF", "KS") or self.precision != "float64":
             raise ValueError("only real FP64 RHF/KS references are supported")
         if self.algorithm == "KS":
@@ -190,15 +191,15 @@ class ReferenceSnapshot:
         object.__setattr__(self, "identity", canonical_hash(metadata))
 
     @property
-    def nmo(self):
+    def nmo(self) -> typing.Any:
         return len(self.orbital_energies)
 
     @property
-    def nocc(self):
+    def nocc(self) -> typing.Any:
         return self.electron_count // 2
 
     @property
-    def numeric_bytes(self):
+    def numeric_bytes(self) -> typing.Any:
         return sum(
             getattr(self, name).nbytes
             for name in (
@@ -212,5 +213,5 @@ class ReferenceSnapshot:
         )
 
     @property
-    def ownership(self):
+    def ownership(self) -> typing.Any:
         return "snapshot-owned immutable host arrays"

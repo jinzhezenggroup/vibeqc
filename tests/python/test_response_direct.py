@@ -1,5 +1,6 @@
 """CPU-only adapter contracts; fake plans never count as GPU numerical evidence."""
 
+import typing
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -17,7 +18,7 @@ from tools.vibeqc_response import CudaDirectJKBackend, direct_cuda
 
 
 @pytest.fixture
-def source():
+def source() -> typing.Any:
     meta, _ = load_fixture("h2")
     args = source_arguments(meta)
     args.pop("auxiliary_basis")
@@ -26,27 +27,29 @@ def source():
 
 
 @pytest.fixture
-def fake_provider(monkeypatch, source):
+def fake_provider(monkeypatch: typing.Any, source: typing.Any) -> typing.Any:
     plans = []
 
     class AO:
-        def __init__(self, atoms, **kwargs):
+        def __init__(self, atoms: typing.Any, **kwargs: typing.Any) -> None:
             assert atoms == source.atoms
             assert kwargs["basis"] == source.shells
             assert kwargs["representation"] == source.representation
             self.nao = source.nbf
 
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *_):
+        def __exit__(self, *_: object) -> None:
             pass
 
     class Plan:
         identity = "fake-mathematical-plan"
         execution_identity = "fake-device-plan"
 
-        def __init__(self, basis, spec, **kwargs):
+        def __init__(
+            self, basis: typing.Any, spec: typing.Any, **kwargs: typing.Any
+        ) -> None:
             assert kwargs["device"] == "cuda"
             assert kwargs["screening_tolerance"] == 0
             assert spec.derivative_order == 0
@@ -65,7 +68,7 @@ def fake_provider(monkeypatch, source):
             self.override = None
             plans.append(self)
 
-        def evaluate(self, d, *, derivative):
+        def evaluate(self, d: typing.Any, *, derivative: typing.Any) -> typing.Any:
             assert not derivative and not self.closed
             assert d.dtype == np.float64
             if self.fail:
@@ -79,7 +82,7 @@ def fake_provider(monkeypatch, source):
                 setattr(result, *self.override)
             return result
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     monkeypatch.setattr(direct_cuda, "NativeAO", AO)
@@ -98,13 +101,17 @@ def fake_provider(monkeypatch, source):
         {"device_budget_bytes": 2**64},
     ],
 )
-def test_invalid_controls_fail_before_provider_creation(source, fake_provider, kwargs):
+def test_invalid_controls_fail_before_provider_creation(
+    source: typing.Any, fake_provider: typing.Any, kwargs: typing.Any
+) -> None:
     with pytest.raises(ValueError):
         CudaDirectJKBackend(source, **kwargs)
     assert not fake_provider
 
 
-def test_raw_signed_density_and_detached_provenance(source, fake_provider):
+def test_raw_signed_density_and_detached_provenance(
+    source: typing.Any, fake_provider: typing.Any
+) -> None:
     d = np.array([[-2, 0.2], [0.2, 1]], dtype=np.float32)
     with CudaDirectJKBackend(source) as backend:
         j, k = backend.coulomb_exchange(d)
@@ -141,8 +148,8 @@ def test_raw_signed_density_and_detached_provenance(source, fake_provider):
     ],
 )
 def test_reference_binding_does_not_accept_matching_dimensions_only(
-    source, fake_provider, field, value
-):
+    source: typing.Any, fake_provider: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     names = (
@@ -171,7 +178,9 @@ def test_reference_binding_does_not_accept_matching_dimensions_only(
         np.eye(2, dtype=complex),
     ],
 )
-def test_invalid_density_does_not_count_or_poison_actions(source, fake_provider, bad):
+def test_invalid_density_does_not_count_or_poison_actions(
+    source: typing.Any, fake_provider: typing.Any, bad: typing.Any
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         with pytest.raises(ValueError):
             backend.coulomb_exchange(bad)
@@ -180,7 +189,9 @@ def test_invalid_density_does_not_count_or_poison_actions(source, fake_provider,
         assert backend.statistics["actions"] == 1
 
 
-def test_failure_is_not_replaced_with_cpu_and_replay_is_clean(source, fake_provider):
+def test_failure_is_not_replaced_with_cpu_and_replay_is_clean(
+    source: typing.Any, fake_provider: typing.Any
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         plan = fake_provider[0]
         plan.fail = True
@@ -196,7 +207,9 @@ def test_failure_is_not_replaced_with_cpu_and_replay_is_clean(source, fake_provi
 @pytest.mark.parametrize(
     "bad", [None, np.eye(3), np.eye(2, dtype=np.float32), np.full((2, 2), np.nan)]
 )
-def test_incomplete_results_fail_without_publishing_success(source, fake_provider, bad):
+def test_incomplete_results_fail_without_publishing_success(
+    source: typing.Any, fake_provider: typing.Any, bad: typing.Any
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         fake_provider[0].override = ("exchange", bad)
         with pytest.raises(RuntimeError, match="invalid J/K"):
@@ -206,7 +219,9 @@ def test_incomplete_results_fail_without_publishing_success(source, fake_provide
         backend.coulomb_exchange(np.eye(2))
 
 
-def test_source_close_and_mutation_invalidate_prepared_adapter(source, fake_provider):
+def test_source_close_and_mutation_invalidate_prepared_adapter(
+    source: typing.Any, fake_provider: typing.Any
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         with pytest.raises(AttributeError, match="immutable"):
             source.geometry_hash = "different"
@@ -218,11 +233,11 @@ def test_source_close_and_mutation_invalidate_prepared_adapter(source, fake_prov
 
 
 def test_cpu_or_altered_provider_is_rejected_and_closed(
-    source, fake_provider, monkeypatch
-):
+    source: typing.Any, fake_provider: typing.Any, monkeypatch: typing.Any
+) -> None:
     constructor = direct_cuda.FockPlan
 
-    def changed(*args, **kwargs):
+    def changed(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         plan = constructor(*args, **kwargs)
         plan.diagnostics["backend"] = "cpu"
         return plan
@@ -234,9 +249,9 @@ def test_cpu_or_altered_provider_is_rejected_and_closed(
 
 
 def test_provider_creation_failure_is_not_suppressed(
-    source, fake_provider, monkeypatch
-):
-    def unavailable(*args, **kwargs):
+    source: typing.Any, fake_provider: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def unavailable(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise NotImplementedError("CUDA unavailable sentinel")
 
     monkeypatch.setattr(direct_cuda, "FockPlan", unavailable)

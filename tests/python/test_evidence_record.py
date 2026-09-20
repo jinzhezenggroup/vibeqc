@@ -1,6 +1,7 @@
 """Partitioned storage must preserve scientific values and reject corrupt parts."""
 
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from tools.vibeqc_validation.record import decode_record, load_record
 from tools.vibeqc_validation.retention import digest
 
 
-def test_migrated_records_match_original_scientific_values():
+def test_migrated_records_match_original_scientific_values() -> None:
     """Compare all reconstructed values with hashes taken before migration."""
     root = Path(__file__).resolve().parents[2]
     audit = json.loads(
@@ -23,7 +24,7 @@ def test_migrated_records_match_original_scientific_values():
         assert digest(canonical) == entry["canonical_sha256"]
 
 
-def record(part):
+def record(part: typing.Any) -> typing.Any:
     return {
         "schema": "example",
         "record_parts": {
@@ -34,7 +35,7 @@ def record(part):
     }
 
 
-def test_parts_restore_order_and_float_precision(tmp_path):
+def test_parts_restore_order_and_float_precision(tmp_path: typing.Any) -> None:
     values = [{"seconds": 0.12345678901234567}, {"seconds": 1e-14}]
     part = json.dumps(values).encode()
     main = json.dumps(record(part)).encode()
@@ -50,7 +51,7 @@ def test_parts_restore_order_and_float_precision(tmp_path):
 @pytest.mark.parametrize(
     "damage", ["bytes", "missing", "overwrite", "duplicate", "traversal", "type"]
 )
-def test_corrupt_parts_fail(damage):
+def test_corrupt_parts_fail(damage: typing.Any) -> None:
     part = b"[1.25, 0.5]"
     main = record(part)
     files = {"water.json": part}
@@ -73,7 +74,7 @@ def test_corrupt_parts_fail(damage):
         decode_record(json.dumps(main).encode(), files)
 
 
-def test_part_symlink_cannot_escape_directory(tmp_path):
+def test_part_symlink_cannot_escape_directory(tmp_path: typing.Any) -> None:
     outside = tmp_path / "outside.json"
     outside.write_bytes(b"[]")
     directory = tmp_path / "publication"

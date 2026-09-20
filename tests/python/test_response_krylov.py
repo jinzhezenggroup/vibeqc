@@ -1,5 +1,6 @@
 """Bounded GMRES, block solves, recycling and explicit failure semantics."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -24,7 +25,7 @@ from tools.vibeqc_response.problem import ResponseProblem
 class _MatrixOperator:
     """Small standalone operator with the public response-operator contract."""
 
-    def __init__(self, matrix, dimension):
+    def __init__(self, matrix: typing.Any, dimension: typing.Any) -> None:
         self.matrix = np.asarray(matrix, dtype=float)
         self.dimension = dimension
         self.problem = type(
@@ -37,7 +38,7 @@ class _MatrixOperator:
         )()
         self.statistics = {"actions": 0}
 
-    def _validate_rhs(self, values):
+    def _validate_rhs(self, values: typing.Any) -> typing.Any:
         value = np.asarray(values, dtype=float)
         if value.ndim == 1:
             value = value[:, None]
@@ -45,15 +46,15 @@ class _MatrixOperator:
             raise ValueError("invalid synthetic RHS")
         return value
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         self.statistics["actions"] += 1
         return self.matrix @ np.asarray(vector, dtype=float)
 
-    def apply_transpose(self, vector):
+    def apply_transpose(self, vector: typing.Any) -> typing.Any:
         return self.matrix.T @ np.asarray(vector, dtype=float)
 
 
-def _synthetic_operator(size=12, seed=179):
+def _synthetic_operator(size: typing.Any = 12, seed: typing.Any = 179) -> typing.Any:
     diagonal = np.linspace(1.0, 4.0, size)
     matrix = np.diag(diagonal)
     matrix[0, 1] = 0.2
@@ -61,7 +62,7 @@ def _synthetic_operator(size=12, seed=179):
     return _MatrixOperator(matrix, size)
 
 
-def test_gmres_true_residual_and_dot_identity():
+def test_gmres_true_residual_and_dot_identity() -> None:
     operator = _synthetic_operator()
     rhs = np.linspace(-1.0, 1.0, operator.dimension)
     result = solve(
@@ -82,7 +83,7 @@ def test_gmres_true_residual_and_dot_identity():
     assert abs(lhs - rhs_dot) < 1e-12
 
 
-def test_deliberate_nonconvergence_and_singular_operator_do_not_claim_success():
+def test_deliberate_nonconvergence_and_singular_operator_do_not_claim_success() -> None:
     operator = _synthetic_operator()
     rhs = np.ones(operator.dimension)
     result = solve(
@@ -108,7 +109,7 @@ def test_deliberate_nonconvergence_and_singular_operator_do_not_claim_success():
         failed.require_converged()
 
 
-def test_workspace_limit_is_reported_before_operator_application():
+def test_workspace_limit_is_reported_before_operator_application() -> None:
     operator = _synthetic_operator()
     result = solve(
         operator,
@@ -124,7 +125,7 @@ def test_workspace_limit_is_reported_before_operator_application():
     assert operator.statistics["actions"] == 0
 
 
-def test_diagonal_preconditioner_is_separate_and_rejects_zero_denominator():
+def test_diagonal_preconditioner_is_separate_and_rejects_zero_denominator() -> None:
     operator = _synthetic_operator()
     diagonal = np.diag(operator.matrix)
     preconditioner = DiagonalPreconditioner(diagonal)
@@ -147,7 +148,7 @@ def test_diagonal_preconditioner_is_separate_and_rejects_zero_denominator():
         )
 
 
-def test_failed_solve_does_not_poison_recycle_space():
+def test_failed_solve_does_not_poison_recycle_space() -> None:
     singular = _MatrixOperator(np.zeros((4, 4)), 4)
     space = KrylovRecycleSpace(singular.problem, max_vectors=2)
     result = solve(
@@ -160,7 +161,7 @@ def test_failed_solve_does_not_poison_recycle_space():
     assert space._vectors == []
 
 
-def test_block_solver_preserves_tiny_nonzero_rhs_and_indefinite_operator():
+def test_block_solver_preserves_tiny_nonzero_rhs_and_indefinite_operator() -> None:
     tiny = _MatrixOperator(np.eye(2), 2)
     rhs = np.array([1e-13, 0.0])
     result = solve_many(
@@ -182,7 +183,9 @@ def test_block_solver_preserves_tiny_nonzero_rhs_and_indefinite_operator():
     assert result.results[0].residual_norm < 1e-12
 
 
-def test_block_workspace_preflight_accounts_for_initial_basis_and_retained_results():
+def test_block_workspace_preflight_accounts_for_initial_basis_and_retained_results() -> (
+    None
+):
     operator = _MatrixOperator(np.eye(100), 100)
     result = solve_many(
         operator,
@@ -199,7 +202,7 @@ def test_block_workspace_preflight_accounts_for_initial_basis_and_retained_resul
     assert all(item.reason == "workspace_limit" for item in result.results)
 
 
-def test_sequential_workspace_budget_charges_retained_results():
+def test_sequential_workspace_budget_charges_retained_results() -> None:
     operator = _MatrixOperator(np.eye(4), 4)
     rhs = np.column_stack((np.ones(4), np.arange(1.0, 5.0)))
     options = GMRESOptions(rtol=1e-12, restart=2, max_iterations=4)
@@ -217,7 +220,7 @@ def test_sequential_workspace_budget_charges_retained_results():
     assert result.peak_workspace_bytes >= single.workspace_bytes
 
 
-def test_recycled_workspace_budget_sums_results_recycle_and_projection():
+def test_recycled_workspace_budget_sums_results_recycle_and_projection() -> None:
     operator = _MatrixOperator(np.eye(4), 4)
     rhs = np.column_stack((np.ones(4), np.arange(1.0, 5.0)))
     options = GMRESOptions(rtol=1e-12, restart=2, max_iterations=4)
@@ -253,7 +256,7 @@ def test_recycled_workspace_budget_sums_results_recycle_and_projection():
     assert result.operator_actions == result.results[0].operator_actions
 
 
-def test_relative_residual_is_relative_for_sub_unit_rhs_norms():
+def test_relative_residual_is_relative_for_sub_unit_rhs_norms() -> None:
     singular = _MatrixOperator(np.zeros((2, 2)), 2)
     rhs = np.array([1e-13, 0.0])
     scalar = solve(
@@ -274,7 +277,7 @@ def test_relative_residual_is_relative_for_sub_unit_rhs_norms():
     assert blocked.results[1].relative_residual == 0.0
 
 
-def test_zero_rhs_relative_residual_convention():
+def test_zero_rhs_relative_residual_convention() -> None:
     identity = _MatrixOperator(np.eye(2), 2)
     exact = solve(identity, np.zeros(2))
     assert exact.converged
@@ -289,7 +292,7 @@ def test_zero_rhs_relative_residual_convention():
     assert nonzero_residual.relative_residual == float("inf")
 
 
-def test_true_residual_checkpoint_at_restart_and_iteration_limit():
+def test_true_residual_checkpoint_at_restart_and_iteration_limit() -> None:
     operator = _MatrixOperator(np.diag([1.0, 2.0]), 2)
     result = solve(
         operator,
@@ -305,7 +308,7 @@ def test_true_residual_checkpoint_at_restart_and_iteration_limit():
     assert result.residual_norm < 1e-11
 
 
-def test_transport_validates_destination_dimension_and_storage_bound():
+def test_transport_validates_destination_dimension_and_storage_bound() -> None:
     source = _MatrixOperator(np.eye(1), 1)
     destination = _MatrixOperator(np.eye(2), 2)
     destination.problem.dimension = 2
@@ -317,7 +320,7 @@ def test_transport_validates_destination_dimension_and_storage_bound():
         space.transport(destination.problem, lambda _: np.array([1.0]))
 
 
-def test_near_degenerate_reference_is_diagnosed_without_clamping():
+def test_near_degenerate_reference_is_diagnosed_without_clamping() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     energies = reference.orbital_energies.copy()
@@ -361,7 +364,7 @@ def test_near_degenerate_reference_is_diagnosed_without_clamping():
         problem.require_stable()
 
 
-def test_multi_rhs_strategies_and_rank_deficient_rhs():
+def test_multi_rhs_strategies_and_rank_deficient_rhs() -> None:
     operator = _synthetic_operator()
     rng = np.random.default_rng(179)
     rhs = rng.normal(size=(operator.dimension, 3))
@@ -401,7 +404,7 @@ def test_multi_rhs_strategies_and_rank_deficient_rhs():
     )
 
 
-def test_stale_recycle_space_fails_closed_and_explicit_transport_works():
+def test_stale_recycle_space_fails_closed_and_explicit_transport_works() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -425,13 +428,15 @@ def test_stale_recycle_space_fails_closed_and_explicit_transport_works():
     transported.assert_compatible(changed)
 
 
-def test_direct_recycling_rejects_storage_before_projection(monkeypatch):
+def test_direct_recycling_rejects_storage_before_projection(
+    monkeypatch: typing.Any,
+) -> None:
     """The scalar API must enforce the same reservation as solve_many."""
     operator = _MatrixOperator(np.eye(100), 100)
     space = KrylovRecycleSpace(operator.problem, max_vectors=100)
     space._vectors = [column.copy() for column in np.eye(100)]
 
-    def unexpected_projection(*args):
+    def unexpected_projection(*args: typing.Any) -> None:
         pytest.fail("projection ran before the recycle storage preflight")
 
     monkeypatch.setattr(space, "initial_guess", unexpected_projection)
@@ -447,7 +452,9 @@ def test_direct_recycling_rejects_storage_before_projection(monkeypatch):
     assert operator.statistics["actions"] == 0
 
 
-def test_recycle_replacement_is_reserved_before_solving(monkeypatch):
+def test_recycle_replacement_is_reserved_before_solving(
+    monkeypatch: typing.Any,
+) -> None:
     """An empty recycle space still needs capacity to publish its replacement."""
     operator = _MatrixOperator(np.eye(100), 100)
     rhs = np.ones(100)
@@ -467,7 +474,7 @@ def test_recycle_replacement_is_reserved_before_solving(monkeypatch):
 
 
 @pytest.mark.parametrize("strategy", ["sequential", "blocked", "recycled"])
-def test_successful_peak_fits_exact_budget(strategy):
+def test_successful_peak_fits_exact_budget(strategy: typing.Any) -> None:
     operator = _MatrixOperator(np.diag([1.0, 2.0, 3.0, 4.0]), 4)
     rhs = np.column_stack((np.ones(4), np.arange(1.0, 5.0)))
     options = GMRESOptions(restart=4, max_iterations=8)
@@ -494,7 +501,7 @@ def test_successful_peak_fits_exact_budget(strategy):
     assert any(result.reason == "workspace_limit" for result in below.results)
 
 
-def test_sequential_peak_counts_current_result_once():
+def test_sequential_peak_counts_current_result_once() -> None:
     operator = _MatrixOperator(np.eye(100), 100)
     rhs = np.ones((100, 1))
     options = GMRESOptions(restart=1, max_iterations=1)
@@ -508,7 +515,9 @@ def test_sequential_peak_counts_current_result_once():
 
 
 @pytest.mark.parametrize("scale", [1e-200, 1e200])
-def test_true_residual_norm_does_not_underflow_or_overflow(scale):
+def test_true_residual_norm_does_not_underflow_or_overflow(
+    scale: typing.Any,
+) -> None:
     """A finite nonzero RHS cannot be accepted with the initial zero solution."""
     operator = _MatrixOperator(np.eye(2), 2)
     rhs = np.array([scale, 0.0])
@@ -529,55 +538,64 @@ def test_true_residual_norm_does_not_underflow_or_overflow(scale):
             )
 
 
-def test_unrepresentable_rhs_norm_is_rejected():
+def test_unrepresentable_rhs_norm_is_rejected() -> None:
     with pytest.raises(ValueError, match="norm overflows"):
         solve(_MatrixOperator(np.eye(2), 2), np.full(2, np.finfo(float).max))
 
 
-def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver():
+def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> None:
     class Wrapped:
-        def __init__(self, values):
+        def __init__(self, values: typing.Any) -> None:
             self.values = np.asarray(values, dtype=float).copy()
 
     class Engine:
         resident = True
 
-        def __init__(self, matrix):
+        def __init__(self, matrix: typing.Any) -> None:
             self.matrix = matrix
             self.dimension = matrix.shape[0]
             self.applies = 0
 
-        def reset(self):
+        def reset(self) -> typing.Any:
             pass
 
-        def from_host(self, value):
+        def from_host(self, value: typing.Any) -> typing.Any:
             return Wrapped(value)
 
-        def zeros(self):
+        def zeros(self) -> typing.Any:
             return Wrapped(np.zeros(self.dimension))
 
-        def copy(self, value):
+        def copy(self, value: typing.Any) -> typing.Any:
             return Wrapped(value.values)
 
-        def scale(self, value, alpha):
+        def scale(self, value: typing.Any, alpha: typing.Any) -> typing.Any:
             return Wrapped(alpha * value.values)
 
-        def subtract(self, left, right):
+        def subtract(self, left: typing.Any, right: typing.Any) -> typing.Any:
             return Wrapped(left.values - right.values)
 
-        def norm(self, value):
+        def norm(self, value: typing.Any) -> typing.Any:
             return float(np.linalg.norm(value.values))
 
-        def apply(self, operator, value):
+        def apply(self, operator: typing.Any, value: typing.Any) -> typing.Any:
             del operator
             self.applies += 1
             return Wrapped(self.matrix @ value.values)
 
-        def precondition(self, preconditioner, value):
+        def precondition(
+            self, preconditioner: typing.Any, value: typing.Any
+        ) -> typing.Any:
             assert preconditioner is None
             return self.copy(value)
 
-        def orthogonalize(self, basis, value, *, reorthogonalize, tolerance):
+        def orthogonalize(
+            self,
+            basis: typing.Any,
+            value: typing.Any,
+            *,
+            reorthogonalize: typing.Any,
+            tolerance: typing.Any,
+        ) -> typing.Any:
             work = value.values.copy()
             coefficients = np.zeros(len(basis))
             for _ in range(reorthogonalize):
@@ -590,17 +608,23 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver():
                     break
             return Wrapped(work), coefficients, float(np.linalg.norm(work))
 
-        def combination(self, base, basis, coefficients, preconditioner):
+        def combination(
+            self,
+            base: typing.Any,
+            basis: typing.Any,
+            coefficients: typing.Any,
+            preconditioner: typing.Any,
+        ) -> typing.Any:
             assert preconditioner is None
             out = base.values.copy()
             for coefficient, vector in zip(coefficients, basis, strict=True):
                 out += coefficient * vector.values
             return Wrapped(out)
 
-        def to_host(self, value):
+        def to_host(self, value: typing.Any) -> typing.Any:
             return value.values.copy()
 
-        def stack_host(self, values):
+        def stack_host(self, values: typing.Any) -> typing.Any:
             return (
                 np.column_stack([value.values for value in values])
                 if values
@@ -611,7 +635,7 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver():
     engine = Engine(operator.matrix)
     operator._krylov_engine = engine
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("resident engine fell back to operator.apply")
 
     operator.apply = forbidden

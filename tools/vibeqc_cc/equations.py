@@ -1,5 +1,6 @@
 """Lower the audited spatial inventory into the existing typed TensorIR."""
 
+import typing
 from collections import defaultdict
 
 from vibeqc_compiler.tensor import (
@@ -22,7 +23,7 @@ VERSION = 1
 BLOCKS = ("ovov", "ovvo", "oovv", "ovvv", "ovoo")
 
 
-def amplitude_specs(nocc, nvir):
+def amplitude_specs(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     """Dense spatial coordinates; doubles have only simultaneous pair exchange."""
     if any(type(n) is not int or n < 1 for n in (nocc, nvir)):
         raise ValueError("RCCSD requires nonempty occupied and virtual spaces")
@@ -40,12 +41,12 @@ def amplitude_specs(nocc, nvir):
     )
 
 
-def amplitude_layouts(nocc, nvir):
+def amplitude_layouts(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     """Reuse #145 orbit ordering and multiplicity-weighted dense inner product."""
     return tuple(PackedLayout.from_spec(s) for s in amplitude_specs(nocc, nvir))
 
 
-def build_program(nocc, nvir):
+def build_program(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     """Unfactorized reference DAG with every term and homogeneous group exposed."""
     s1, s2 = amplitude_specs(nocc, nvir)
     spaces = {"o": s1.indices[0].space, "v": s1.indices[1].space}

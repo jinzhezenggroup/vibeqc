@@ -10,6 +10,7 @@ import shutil
 import statistics
 import tempfile
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -46,7 +47,7 @@ def _angular(value: str) -> tuple[int, int, int, int]:
     )
 
 
-def _native_function(artifact):
+def _native_function(artifact: typing.Any) -> typing.Any:
     owner = ctypes.CDLL(str(artifact.native.library))
     function = owner.vibeqc_first_sum_cpu_lane_v1
     function.argtypes = [
@@ -60,7 +61,9 @@ def _native_function(artifact):
     return owner, function
 
 
-def _median_ms(function, records, output, samples):
+def _median_ms(
+    function: typing.Any, records: typing.Any, output: typing.Any, samples: typing.Any
+) -> typing.Any:
     for _ in range(10):
         assert (
             function(
@@ -89,7 +92,7 @@ def _median_ms(function, records, output, samples):
     return statistics.median(values)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--shell", type=_angular, default=_angular("fdps"))
     parser.add_argument("--records", type=int, default=2048)

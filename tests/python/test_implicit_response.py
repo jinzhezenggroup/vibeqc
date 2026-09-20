@@ -5,6 +5,8 @@ production response backend. The only declared equation is the *primal*
 linearized RHF stationarity action. The compiler derives its transpose/source.
 """
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.method import ImplicitSolveSpec
@@ -46,14 +48,18 @@ from tools.vibeqc_response.implicit import (
 )
 
 
-def _rhf_equation(reference, arrays, problem):
+def _rhf_equation(
+    reference: typing.Any, arrays: typing.Any, problem: typing.Any
+) -> typing.Any:
     ao = IndexSpace("ao", "ao", reference.nmo)
     occ = IndexSpace("occupied", "occupied", reference.nocc)
     virt = IndexSpace("virtual", "virtual", reference.nmo - reference.nocc)
     p, q, r, s = (Index(name, ao) for name in "pqrs")
     i, a = Index("i", occ), Index("a", virt)
 
-    def tensor(name, indices, differentiable=False):
+    def tensor(
+        name: typing.Any, indices: typing.Any, differentiable: typing.Any = False
+    ) -> typing.Any:
         return input_tensor(
             name,
             TensorSpec(tuple(indices), role="parameter", differentiable=differentiable),
@@ -94,7 +100,9 @@ def _rhf_equation(reference, arrays, problem):
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_generated_implicit_response_matches_existing_physical_mp2_zvector(name):
+def test_generated_implicit_response_matches_existing_physical_mp2_zvector(
+    name: typing.Any,
+) -> None:
     metadata, arrays = load_fixture(name)
     reference = fixture_snapshot(metadata, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -160,7 +168,9 @@ def test_generated_implicit_response_matches_existing_physical_mp2_zvector(name)
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_native_response_operator_is_bound_to_generated_implicit_vjp(name):
+def test_native_response_operator_is_bound_to_generated_implicit_vjp(
+    name: typing.Any,
+) -> None:
     metadata, arrays = load_fixture(name)
     reference = fixture_snapshot(metadata, arrays)
     try:
@@ -255,7 +265,7 @@ def test_native_response_operator_is_bound_to_generated_implicit_vjp(name):
             bound.vjp(-rhs.response_rhs, reference_identity=reference.identity)
 
 
-def test_response_operator_binding_rejects_wrong_operator_identity():
+def test_response_operator_binding_rejects_wrong_operator_identity() -> None:
     metadata, arrays = load_fixture("h2")
     reference = fixture_snapshot(metadata, arrays)
     dense = DenseAOResponseBackend(arrays["ao"])
@@ -279,7 +289,7 @@ def test_response_operator_binding_rejects_wrong_operator_identity():
             )
 
 
-def test_response_operator_device_resources_require_joint_budget():
+def test_response_operator_device_resources_require_joint_budget() -> None:
     metadata, arrays = load_fixture("h2")
     reference = fixture_snapshot(metadata, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -336,7 +346,7 @@ def test_response_operator_device_resources_require_joint_budget():
         )
 
 
-def test_response_binding_rejects_cpks_even_with_declared_resources():
+def test_response_binding_rejects_cpks_even_with_declared_resources() -> None:
     from dataclasses import replace
     from types import SimpleNamespace
 

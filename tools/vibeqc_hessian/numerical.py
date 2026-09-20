@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import math
+import typing
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
@@ -38,7 +39,7 @@ __all__ = [
 DEFAULT_STEPS = (1e-2, 3e-3, 1e-3)
 
 
-def forces_to_gradient(forces):
+def forces_to_gradient(forces: typing.Any) -> typing.Any:
     """Convert native forces (``-dE/dR``) to the energy gradient (``dE/dR``).
 
     Native VibeQC forces are the negative energy derivative. The numerical
@@ -48,7 +49,7 @@ def forces_to_gradient(forces):
     return -np.asarray(forces, dtype=np.float64)
 
 
-def _as_hessian(values, *, name: str):
+def _as_hessian(values: typing.Any, *, name: str) -> typing.Any:
     """Return ``values`` as a ``(natom, 3, natom, 3)`` array, or raise.
 
     The axis order is part of the contract every consumer relies on: a matrix
@@ -69,7 +70,7 @@ def _as_hessian(values, *, name: str):
     return array
 
 
-def hessian_symmetry_error(hessian) -> float:
+def hessian_symmetry_error(hessian: typing.Any) -> float:
     """Return the largest raw asymmetry, ``max |H - H^T|``.
 
     This is evaluated on the raw assembled matrix. Any later presentation
@@ -80,7 +81,7 @@ def hessian_symmetry_error(hessian) -> float:
     return float(np.max(np.abs(values - values.transpose(2, 3, 0, 1))))
 
 
-def hessian_translation_error(hessian) -> float:
+def hessian_translation_error(hessian: typing.Any) -> float:
     """Return ``max |sum_a H[a, c, b, d]|``, the translation zero-mode residual.
 
     Translational invariance of the energy gives ``sum_a dE/dR[a, c] = 0`` for
@@ -92,7 +93,7 @@ def hessian_translation_error(hessian) -> float:
     return float(np.max(np.abs(values.sum(axis=0))))
 
 
-def hessian_difference(actual, reference) -> dict:
+def hessian_difference(actual: typing.Any, reference: typing.Any) -> dict:
     """Report elementwise statistics of ``actual - reference``.
 
     Both arrays are ``(natom, 3, natom, 3)``. No tolerance is applied and no
@@ -120,7 +121,12 @@ def hessian_difference(actual, reference) -> dict:
     }
 
 
-def _gradient_at(gradient, coordinates, policy: str, expected_shape):
+def _gradient_at(
+    gradient: typing.Any,
+    coordinates: typing.Any,
+    policy: str,
+    expected_shape: typing.Any,
+) -> typing.Any:
     """Evaluate the gradient under a freshly decoded copy of the frozen policy.
 
     Decoding a new copy per evaluation is what prevents a stateful evaluator
@@ -148,7 +154,11 @@ def _gradient_at(gradient, coordinates, policy: str, expected_shape):
 
 
 def numerical_hessian(
-    gradient, coordinates, *, settings: dict, steps=DEFAULT_STEPS
+    gradient: typing.Any,
+    coordinates: typing.Any,
+    *,
+    settings: dict,
+    steps: typing.Any = DEFAULT_STEPS,
 ) -> dict:
     """Report the whole central-difference Hessian curve under one frozen policy.
 

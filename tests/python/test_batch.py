@@ -1,9 +1,11 @@
+import typing
+
 import numpy as np
 import pytest
 from vibeqc import Calculator, Primitive, Shell
 
 
-def test_batch_precision_provenance_availability_abi_and_failed_replay():
+def test_batch_precision_provenance_availability_abi_and_failed_replay() -> None:
     """Each public batch slot owns its record; failed replays cannot leak it."""
     import ctypes
 
@@ -57,7 +59,7 @@ def test_batch_precision_provenance_availability_abi_and_failed_replay():
         assert getter(prepared._batch, 1, None) == _native.STATUS_PRECISION_UNAVAILABLE
 
 
-def test_unconverged_batch_retains_completed_precision_record():
+def test_unconverged_batch_retains_completed_precision_record() -> None:
     """Nonconvergence still reports the operator used by the completed solve."""
     result = Calculator(
         device="cpu", precision="auto", max_iterations=1
@@ -68,7 +70,9 @@ def test_unconverged_batch_retains_completed_precision_record():
 
 
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 1, 1), ("uhf", 2, 2)])
-def test_cuda_public_batch_precision_is_per_item(method, charge, multiplicity):
+def test_cuda_public_batch_precision_is_per_item(
+    method: typing.Any, charge: typing.Any, multiplicity: typing.Any
+) -> None:
     """A cold and a warm public batch item report independently resolved routes."""
     atoms = [("He", (0.0, 0.0, -0.8)), ("H", (0.0, 0.0, 0.8))]
     shells = tuple(
@@ -117,7 +121,7 @@ def test_cuda_public_batch_precision_is_per_item(method, charge, multiplicity):
     assert np.allclose(cold.forces, warm.forces, atol=2e-7, rtol=0)
 
 
-def systems():
+def systems() -> typing.Any:
     return [
         [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],
         [("He", (0.0, 0.0, 0.0))],
@@ -126,7 +130,7 @@ def systems():
     ]
 
 
-def test_ragged_batch_matches_independent_results_and_buckets():
+def test_ragged_batch_matches_independent_results_and_buckets() -> None:
     calculator = Calculator()
     batch_systems = systems()
     charges = [0, 0, 0, 1]
@@ -149,7 +153,7 @@ def test_ragged_batch_matches_independent_results_and_buckets():
     assert result.items[0].bucket_id != result.items[3].bucket_id
 
 
-def test_prepared_batch_warm_start_coordinate_updates_and_failure_isolation():
+def test_prepared_batch_warm_start_coordinate_updates_and_failure_isolation() -> None:
     calculator = Calculator()
     batch_systems = systems()
     with calculator.prepare_batch(batch_systems, charges=[0, 0, 0, 1]) as prepared:
@@ -181,21 +185,21 @@ def test_prepared_batch_warm_start_coordinate_updates_and_failure_isolation():
         assert all(not item.warm_start_used for item in cold_again.items)
 
 
-def test_closed_prepared_batch_rejects_warm_start_policy_update():
+def test_closed_prepared_batch_rejects_warm_start_policy_update() -> None:
     prepared = Calculator().prepare_batch(systems()[:1])
     prepared.close()
     with pytest.raises(RuntimeError, match="closed"):
         prepared.set_warm_start_updates(False)
 
 
-def test_closed_prepared_batch_rejects_execution():
+def test_closed_prepared_batch_rejects_execution() -> None:
     prepared = Calculator().prepare_batch(systems()[:1])
     prepared.close()
     with pytest.raises(RuntimeError, match="closed"):
         prepared.execute()
 
 
-def test_shell_class_profile_requires_explicit_opt_in():
+def test_shell_class_profile_requires_explicit_opt_in() -> None:
     with Calculator().prepare_batch(systems()[:1]) as prepared:
         with pytest.raises(RuntimeError, match="shell_class_profiling=True"):
             prepared.last_shell_class_profile()
@@ -203,7 +207,7 @@ def test_shell_class_profile_requires_explicit_opt_in():
             prepared.last_ppps_queue_profile()
 
 
-def test_inactive_eigensolver_profile_requires_explicit_opt_in():
+def test_inactive_eigensolver_profile_requires_explicit_opt_in() -> None:
     with (
         Calculator().prepare_batch(systems()[:1]) as prepared,
         pytest.raises(RuntimeError, match="inactive_eigensolver_profiling=True"),
@@ -211,7 +215,7 @@ def test_inactive_eigensolver_profile_requires_explicit_opt_in():
         prepared.last_inactive_eigensolver_profile()
 
 
-def test_nonconverged_item_does_not_abort_converged_neighbor():
+def test_nonconverged_item_does_not_abort_converged_neighbor() -> None:
     calculator = Calculator(max_iterations=2)
     batch_systems = [systems()[0], systems()[3]]
     result = calculator.batch_singlepoint(batch_systems, charges=[0, 1])
@@ -222,7 +226,7 @@ def test_nonconverged_item_does_not_abort_converged_neighbor():
     assert result.failure_indices == (1,)
 
 
-def test_real_spherical_batch_reuses_fixed_topology_plan():
+def test_real_spherical_batch_reuses_fixed_topology_plan() -> None:
     """Keep spherical transforms compatible with native batch warm starts."""
 
     basis = (
@@ -259,7 +263,7 @@ def test_real_spherical_batch_reuses_fixed_topology_plan():
     )
 
 
-def test_cuda_real_spherical_batch_reuses_fixed_topology_plan():
+def test_cuda_real_spherical_batch_reuses_fixed_topology_plan() -> None:
     """Exercise public CUDA batching with sparse spherical AO expansions."""
 
     basis = (
@@ -300,7 +304,7 @@ def test_cuda_real_spherical_batch_reuses_fixed_topology_plan():
     )
 
 
-def test_device_resident_cuda_rhf_matches_reference_when_device_is_available():
+def test_device_resident_cuda_rhf_matches_reference_when_device_is_available() -> None:
     batch_systems = [systems()[0], systems()[2], systems()[0], systems()[2]]
     reference = Calculator(device="cpu").batch_singlepoint(batch_systems, strict=True)
     try:
@@ -324,7 +328,7 @@ def test_device_resident_cuda_rhf_matches_reference_when_device_is_available():
     assert isolated.items[1].status_message == "SCF did not converge"
 
 
-def test_cuda_direct_jk_batch_reuses_stable_pair_tasks():
+def test_cuda_direct_jk_batch_reuses_stable_pair_tasks() -> None:
     """Exercise deterministic direct-J/K pair metadata for multiple peers."""
 
     basis = (
@@ -377,8 +381,11 @@ def test_cuda_direct_jk_batch_reuses_stable_pair_tasks():
     (("rhf", 1, 1), ("uhf", 0, 2)),
 )
 def test_cuda_bounded_direct_streaming_matches_exact_replay(
-    monkeypatch, method, charge, multiplicity
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+) -> None:
     """Compare exact and bounded spd force/Fock dispatch across replays."""
 
     basis = (
@@ -425,7 +432,7 @@ def test_cuda_bounded_direct_streaming_matches_exact_replay(
         assert np.allclose(streaming.forces, exact.forces, atol=1.0e-12)
 
 
-def test_cuda_uhf_ragged_batch_warm_start_and_failure_isolation():
+def test_cuda_uhf_ragged_batch_warm_start_and_failure_isolation() -> None:
     """Keep open-shell spin states independent inside a persistent GPU plan."""
 
     batch_systems = [

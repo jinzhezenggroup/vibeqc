@@ -6,6 +6,7 @@ import os
 import random
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from vibeqc_compiler.integral.df_rys import (
 )
 
 
-def arguments():
+def arguments() -> typing.Any:
     """Cover cancellation, branch boundaries, random interiors and asymptotics."""
     rng = random.Random(394)
     values = [
@@ -41,7 +42,7 @@ def arguments():
     return values
 
 
-def check_reference(evaluate, nroots):
+def check_reference(evaluate: typing.Any, nroots: typing.Any) -> None:
     mp = pytest.importorskip("mpmath")
     with mp.workdps(75):
         for argument in arguments():
@@ -118,20 +119,24 @@ def check_reference(evaluate, nroots):
 
 
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
-def test_python_evaluator_matches_independent_integrals(nroots):
+def test_python_evaluator_matches_independent_integrals(
+    nroots: typing.Any,
+) -> None:
     check_reference(rys_roots, nroots)
 
 
 @pytest.mark.parametrize(
     "argument,nroots", ((-1, 1), (math.inf, 2), (math.nan, 1), (0, 5))
 )
-def test_invalid_host_evaluator_domain(argument, nroots):
+def test_invalid_host_evaluator_domain(
+    argument: typing.Any, nroots: typing.Any
+) -> None:
     with pytest.raises(ValueError):
         rys_roots(argument, nroots)
 
 
 @pytest.fixture(scope="module")
-def cuda_evaluator(tmp_path_factory):
+def cuda_evaluator(tmp_path_factory: typing.Any) -> typing.Any:
     """Evaluate every generated fixed-root rule on the allocated GPU.
 
     Batch the full argument grid in each kernel, including different evaluator
@@ -230,12 +235,14 @@ extern "C" int probe(unsigned roots, const double* input, size_t count, double* 
     reason="requires an explicitly Slurm-allocated GPU",
 )
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
-def test_cuda_evaluator_matches_independent_integrals(cuda_evaluator, nroots):
+def test_cuda_evaluator_matches_independent_integrals(
+    cuda_evaluator: typing.Any, nroots: typing.Any
+) -> None:
     check_reference(cuda_evaluator, nroots)
 
 
 @pytest.fixture(scope="module")
-def emitted_evaluator(tmp_path_factory):
+def emitted_evaluator(tmp_path_factory: typing.Any) -> typing.Any:
     """Compile the exact CUDA arithmetic as ordinary C++, including its FMAs.
 
     This gate does not probe or load a GPU runtime. Real CUDA compilation and
@@ -285,7 +292,7 @@ extern "C" void probe(unsigned n,double t,double* nodes,double* weights) {
     ]
     library.probe.restype = None
 
-    def evaluate(argument, nroots):
+    def evaluate(argument: typing.Any, nroots: typing.Any) -> typing.Any:
         nodes = (ctypes.c_double * nroots)()
         weights = (ctypes.c_double * nroots)()
         library.probe(nroots, argument, nodes, weights)
@@ -295,5 +302,7 @@ extern "C" void probe(unsigned n,double t,double* nodes,double* weights) {
 
 
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
-def test_emitted_evaluator_matches_independent_integrals(emitted_evaluator, nroots):
+def test_emitted_evaluator_matches_independent_integrals(
+    emitted_evaluator: typing.Any, nroots: typing.Any
+) -> None:
     check_reference(emitted_evaluator, nroots)

@@ -12,6 +12,7 @@ public production-size, CUDA, DF, ECP, DFT or matrix-free molecular HVP endpoint
 from __future__ import annotations
 
 import shutil
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -60,8 +61,14 @@ _COMPILE_CACHE: dict = {}
 
 
 def _compile_cached(
-    key, build_ir, ir_extra, adapter, cache, output_indices, component_indices
-):
+    key: typing.Any,
+    build_ir: typing.Any,
+    ir_extra: typing.Any,
+    adapter: typing.Any,
+    cache: typing.Any,
+    output_indices: typing.Any,
+    component_indices: typing.Any,
+) -> typing.Any:
     # The directory owns artifact lifetime; the compiler and ordered subsets
     # are part of execution/layout identity, not interchangeable cache hints.
     ck = (
@@ -84,12 +91,14 @@ def _compile_cached(
     return _COMPILE_CACHE[ck]
 
 
-def _tile_components(count, chunk=64):
+def _tile_components(count: typing.Any, chunk: typing.Any = 64) -> typing.Any:
     for start in range(0, count, chunk):
         yield tuple(range(start, min(start + chunk, count)))
 
 
-def _scatter(full, ci, center_atoms, data):
+def _scatter(
+    full: typing.Any, ci: typing.Any, center_atoms: typing.Any, data: typing.Any
+) -> typing.Any:
     """Scatter a dense kernel result to a molecular Hessian tensor."""
     nat = data["state"].nat
     k = len(ci)
@@ -103,7 +112,9 @@ def _scatter(full, ci, center_atoms, data):
     return out.transpose(0, 2, 1, 3)
 
 
-def _scatter_hvp(full, ci, center_atoms, data):
+def _scatter_hvp(
+    full: typing.Any, ci: typing.Any, center_atoms: typing.Any, data: typing.Any
+) -> typing.Any:
     """Scatter one recovered shell-center HVP onto physical atom rows."""
     nat = data["state"].nat
     k = len(ci)
@@ -116,19 +127,19 @@ def _scatter_hvp(full, ci, center_atoms, data):
 
 
 def _run_kernel_summed(
-    data,
-    key,
-    build_ir,
-    ir_extra,
-    adapter,
-    cache,
-    prims,
-    centers,
-    weight_full_flat,
-    component_count,
+    data: typing.Any,
+    key: typing.Any,
+    build_ir: typing.Any,
+    ir_extra: typing.Any,
+    adapter: typing.Any,
+    cache: typing.Any,
+    prims: typing.Any,
+    centers: typing.Any,
+    weight_full_flat: typing.Any,
+    component_count: typing.Any,
     *,
-    direction=None,
-):
+    direction: typing.Any = None,
+) -> typing.Any:
     """Run one shell tuple through the weighted Hessian or HVP provider.
 
     The directional path expands physical displacements to mathematical
@@ -180,7 +191,7 @@ def _run_kernel_summed(
     return _scatter(full, ci, ca, data)
 
 
-def _provider_data(s):
+def _provider_data(s: typing.Any) -> typing.Any:
     _validate_analytic_domain(s)
     C, eps = s.C, s.eps
     W_e = (C[:, : s.nocc] * (2 * eps[: s.nocc])) @ C[:, : s.nocc].T
@@ -196,7 +207,13 @@ def _provider_data(s):
     }
 
 
-def _run_one_electron(data, family, weight, *, direction=None):
+def _run_one_electron(
+    data: typing.Any,
+    family: typing.Any,
+    weight: typing.Any,
+    *,
+    direction: typing.Any = None,
+) -> typing.Any:
     """Provider output for one one-electron family as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
@@ -272,7 +289,9 @@ def _run_one_electron(data, family, weight, *, direction=None):
     return total
 
 
-def _run_eri(data, density, *, direction=None):
+def _run_eri(
+    data: typing.Any, density: typing.Any, *, direction: typing.Any = None
+) -> typing.Any:
     """Provider output for four-center ERIs as Hessian or HVP."""
     state = data["state"]
     nat = state.nat
@@ -333,7 +352,7 @@ def _run_eri(data, density, *, direction=None):
     return total
 
 
-def provider_components(s):
+def provider_components(s: typing.Any) -> typing.Any:
     """Return the frozen-skeleton components from the #178 providers.
 
     Keys ``core`` (kinetic + nuclear_attraction, weight P0), ``pulay``
@@ -350,7 +369,7 @@ def provider_components(s):
     return {"core": core, "pulay": pulay, "two_electron": two_electron}
 
 
-def provider_hvp_components(s, direction):
+def provider_hvp_components(s: typing.Any, direction: typing.Any) -> typing.Any:
     """Return frozen-skeleton second-integral HVP components directly."""
     _validate_analytic_domain(s)
     vector = checked_direction(direction, s.nat)
@@ -369,7 +388,7 @@ def provider_hvp_components(s, direction):
 # ---------------------------------------------------------------------------
 
 
-def nuclear_closed_form(s):
+def nuclear_closed_form(s: typing.Any) -> typing.Any:
     """Exact Coulomb second derivative: d^2 (Za Zb / |ra-rb|) / dx dy.
 
     For the pair contribution ``blk = Za Zb / d^3 (3 R R^T - I)`` the
@@ -393,7 +412,7 @@ def nuclear_closed_form(s):
     return H
 
 
-def nuclear_hvp(s, direction):
+def nuclear_hvp(s: typing.Any, direction: typing.Any) -> typing.Any:
     """Apply the exact nucleus-nucleus Hessian to one Cartesian direction."""
     _validate_analytic_domain(s)
     vector = checked_direction(direction, s.nat)
@@ -415,19 +434,19 @@ def nuclear_hvp(s, direction):
 # ---------------------------------------------------------------------------
 
 
-def build_reference(s):
+def build_reference(s: typing.Any) -> typing.Any:
     """Reuse the caller's validated native snapshot without rerunning SCF."""
     _validate_analytic_domain(s)
     return s.reference
 
 
-def _analytic_first_order_inputs(s):
+def _analytic_first_order_inputs(s: typing.Any) -> typing.Any:
     """Generated S/T/V/ERI contractions, tied to the same native SCF density."""
     _validate_analytic_domain(s)
     return s.first_order_inputs
 
 
-def _validate_analytic_domain(s):
+def _validate_analytic_domain(s: typing.Any) -> None:
     if not isinstance(s, NativeRHFState):
         raise TypeError(
             "analytic Hessian requires NativeRHFState, not an oracle System"
@@ -435,7 +454,7 @@ def _validate_analytic_domain(s):
     s.validate()
 
 
-def cphf_relaxation(s):
+def cphf_relaxation(s: typing.Any) -> typing.Any:
     """Electronic relaxation through #180 RHS contract and #179 solver.
 
     The first-order frozen Fock and overlap matrices are analytic. For every
@@ -496,7 +515,7 @@ def cphf_relaxation(s):
 # ---------------------------------------------------------------------------
 
 
-def analytic_hessian(s, *, relax=None):
+def analytic_hessian(s: typing.Any, *, relax: typing.Any = None) -> typing.Any:
     """Return every component plus the total from the shared #178/#179 layers.
 
     This diagnostic integration is bounded to 12 AOs. A supplied relaxation

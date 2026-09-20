@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import typing
 from dataclasses import asdict, dataclass
 
 from ..df_value_candidates import VALUE_CLASSES
@@ -19,7 +20,7 @@ class DfValueTrial:
     lanes: int
     consumer: str = "raw_cartesian"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.angular, tuple)
             or any(type(l) is not int for l in self.angular)
@@ -33,18 +34,24 @@ class DfValueTrial:
             raise ValueError("this experiment measures raw Cartesian value work")
 
     @property
-    def key(self):
+    def key(self) -> typing.Any:
         return f"{self.consumer}:{''.join(map(str, self.angular))}:{self.lowering}:lanes{self.lanes}"
 
     @property
-    def symbol(self):
+    def symbol(self) -> typing.Any:
         return "df_value_" + self.key.replace(":", "_")
 
     @property
-    def block_threads(self):
+    def block_threads(self) -> typing.Any:
         return 128
 
-    def artifact_key(self, *, generator_sha256, architecture, toolchain):
+    def artifact_key(
+        self,
+        *,
+        generator_sha256: typing.Any,
+        architecture: typing.Any,
+        toolchain: typing.Any,
+    ) -> typing.Any:
         """Consumer participates so value/derivative artifacts cannot collide."""
         if not all(
             isinstance(x, str) and x
@@ -65,7 +72,7 @@ class DfValueTrial:
         ).hexdigest()
 
 
-def enumerate_value_trials():
+def enumerate_value_trials() -> typing.Any:
     """Only implemented class-specific math enters the finite batch search."""
     return tuple(
         DfValueTrial((a[0], a[1], a[2]), math, lanes)
@@ -93,7 +100,7 @@ struct Candidate { const char* key; unsigned a,b,c; Launch launch; };
 """
 
 
-def emit_value_candidate(trial):
+def emit_value_candidate(trial: typing.Any) -> typing.Any:
     """A bounded contraction schedule; all integral equations remain generated."""
     a, b, c = trial.angular
     evaluator = (
@@ -135,7 +142,7 @@ cudaError_t {trial.symbol}(const Input* in,double* out,std::size_t tasks,
 """
 
 
-def emit_value_driver(trials):
+def emit_value_driver(trials: typing.Any) -> typing.Any:
     """Link all eligible value objects into the shared finite benchmark driver."""
     lines = [
         '#include "df_value_benchmark_driver.hpp"',

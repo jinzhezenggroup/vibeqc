@@ -1,5 +1,6 @@
 """Generated correlation input weights, re-solved differences and state gates."""
 
+import typing
 from copy import deepcopy
 from dataclasses import FrozenInstanceError, replace
 from functools import lru_cache
@@ -39,7 +40,7 @@ _STRICT = SolverOptions(
 
 
 @lru_cache(maxsize=4)
-def _state(name="h2"):
+def _state(name: typing.Any = "h2") -> typing.Any:
     snapshot, provider, _, arrays = fixture_problem(name)
     cc = solve(snapshot, provider, options=_STRICT)
     assert cc.converged, cc.reason
@@ -49,13 +50,15 @@ def _state(name="h2"):
     return snapshot, provider, cc, bound, lam, response, arrays
 
 
-def _direction(spec, seed=152):
+def _direction(spec: typing.Any, seed: typing.Any = 152) -> typing.Any:
     layout = PackedLayout.from_spec(spec)  # tiny TEST-ONLY coordinate map
     direction = layout.unpack(np.random.default_rng(seed).normal(size=layout.size))
     return direction / np.linalg.norm(direction)
 
 
-def _resolved_correlation(snapshot, provider, cc, changes):
+def _resolved_correlation(
+    snapshot: typing.Any, provider: typing.Any, cc: typing.Any, changes: typing.Any
+) -> typing.Any:
     """Test-only fixed-mathematical-input seam in the EXISTING CC solver.
 
     A displaced noncanonical F is deliberately NOT exported as a converged
@@ -81,7 +84,9 @@ def _resolved_correlation(snapshot, provider, cc, changes):
 
 
 @pytest.mark.parametrize("parameter", PARAMETERS)
-def test_all_water_blocks_against_reconverged_three_step_differences(parameter):
+def test_all_water_blocks_against_reconverged_three_step_differences(
+    parameter: typing.Any,
+) -> None:
     s, provider, cc, bound, lam, response, _ = _state("h2o")
     weight = response.weight(parameter, reference_identity=s.identity)
     direction = _direction(weight.spec)
@@ -130,7 +135,9 @@ def test_all_water_blocks_against_reconverged_three_step_differences(parameter):
 
 
 @pytest.mark.parametrize("name", ("h2", "h2o", "nh3"))
-def test_diagonal_fock_shift_invariance_includes_diagonal_dependencies(name):
+def test_diagonal_fock_shift_invariance_includes_diagonal_dependencies(
+    name: typing.Any,
+) -> None:
     s, _, _, _, _, response, _ = _state(name)
     occupied = response.weight("foo", reference_identity=s.identity)
     virtual = response.weight("fvv", reference_identity=s.identity)
@@ -144,7 +151,9 @@ def test_diagonal_fock_shift_invariance_includes_diagonal_dependencies(name):
 
 
 @pytest.mark.parametrize("o,v", [(1, 2), (2, 2)])
-def test_generated_full_input_directions_against_independent_determinant(o, v):
+def test_generated_full_input_directions_against_independent_determinant(
+    o: typing.Any, v: typing.Any
+) -> None:
     f, g, t1, t2 = random_case(o, v, 152)
     df, dg, l1, l2 = random_case(o, v, 153)
     df /= np.linalg.norm(df)
@@ -183,7 +192,7 @@ def test_generated_full_input_directions_against_independent_determinant(o, v):
         )
 
 
-def test_parameter_generator_selection_and_identity():
+def test_parameter_generator_selection_and_identity() -> None:
     programs = build_lambda_programs(1, 1)
     first = build_parameter_vjp(programs.primal, "foo")
     second = build_parameter_vjp(programs.primal, "fvv")
@@ -203,10 +212,12 @@ def test_parameter_generator_selection_and_identity():
         )
 
 
-def test_streamed_blocks_are_immutable_and_do_not_reinvoke_solver(monkeypatch):
+def test_streamed_blocks_are_immutable_and_do_not_reinvoke_solver(
+    monkeypatch: typing.Any,
+) -> None:
     s, _, _, bound, lam, response, _ = _state()
 
-    def unexpected(*a, **kw):
+    def unexpected(*a: typing.Any, **kw: typing.Any) -> None:
         pytest.fail("CC weight generation must not re-solve the adjoint")
 
     monkeypatch.setattr(type(bound.solver), "solve", unexpected)
@@ -235,7 +246,7 @@ def test_streamed_blocks_are_immutable_and_do_not_reinvoke_solver(monkeypatch):
         response.max_bytes = 1
 
 
-def test_multiplier_input_is_copied_before_use():
+def test_multiplier_input_is_copied_before_use() -> None:
     s, _, _, bound, lam, _, _ = _state()
     copied = replace(
         lam,
@@ -266,7 +277,7 @@ def test_multiplier_input_is_copied_before_use():
         "shape",
     ),
 )
-def test_false_lambda_reports_cannot_publish_weights(kind):
+def test_false_lambda_reports_cannot_publish_weights(kind: typing.Any) -> None:
     _, _, _, bound, lam, _, _ = _state()
     if kind == "reference":
         lam = replace(lam, reference_identity="other-reference")
@@ -296,7 +307,7 @@ def test_false_lambda_reports_cannot_publish_weights(kind):
         BoundCCSDResponse(bound, lam)
 
 
-def test_bad_lambda_pair_symmetry_rejected():
+def test_bad_lambda_pair_symmetry_rejected() -> None:
     _, _, _, bound, lam, _, _ = _state("h2o")
     values = np.array(lam.lambda2)
     values[0, 1, 0, 1] += 1e-3
@@ -304,7 +315,7 @@ def test_bad_lambda_pair_symmetry_rejected():
         BoundCCSDResponse(bound, replace(lam, lambda2=values))
 
 
-def test_stream_rechecks_expected_identity_and_live_lifetime():
+def test_stream_rechecks_expected_identity_and_live_lifetime() -> None:
     s, _, cc, _, _, _, _ = _state()
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
@@ -322,7 +333,9 @@ def test_stream_rechecks_expected_identity_and_live_lifetime():
         BoundCCSDResponse(bound, lam)
 
 
-def test_state_budget_rejects_before_numeric_execution(monkeypatch):
+def test_state_budget_rejects_before_numeric_execution(
+    monkeypatch: typing.Any,
+) -> None:
     _, _, _, bound, lam, response, _ = _state()
     from tools.vibeqc_cc import lambda_solver
 
@@ -338,8 +351,8 @@ def test_state_budget_rejects_before_numeric_execution(monkeypatch):
 
 
 def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
-    monkeypatch,
-):
+    monkeypatch: typing.Any,
+) -> None:
     s, _, _, bound, lam, response, _ = _state()
     needed = response.required_bytes("ovov", reference_identity=s.identity)
     exact = BoundCCSDResponse(bound, lam, max_bytes=needed)
@@ -360,13 +373,15 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
 @pytest.mark.parametrize(
     "mode", ("wrong_independent", "nonfinite", "dtype", "shape", "backend", "alias")
 )
-def test_generated_output_cannot_bypass_checks(monkeypatch, mode):
+def test_generated_output_cannot_bypass_checks(
+    monkeypatch: typing.Any, mode: typing.Any
+) -> None:
     s, _, _, _, _, response, _ = _state()
     _, independent, _, _ = response._prepare("ovov")
     original = response_module.execute
     shared_storage = None
 
-    def corrupt(program, *a, **kw):
+    def corrupt(program: typing.Any, *a: typing.Any, **kw: typing.Any) -> typing.Any:
         nonlocal shared_storage
         result = original(program, *a, **kw)
         if mode == "backend":
@@ -395,14 +410,16 @@ def test_generated_output_cannot_bypass_checks(monkeypatch, mode):
         response.weight("ovov", reference_identity=s.identity)
 
 
-def test_stale_during_weight_execution_cannot_publish(monkeypatch):
+def test_stale_during_weight_execution_cannot_publish(
+    monkeypatch: typing.Any,
+) -> None:
     s, _, cc, _, _, _, _ = _state()
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
     response = BoundCCSDResponse(bound, bound.solve(reference_identity=s.identity))
     original = response_module.execute
 
-    def changed(*a, **kw):
+    def changed(*a: typing.Any, **kw: typing.Any) -> typing.Any:
         result = original(*a, **kw)
         current[0] = "replaced-in-flight"
         return result
@@ -415,20 +432,20 @@ def test_stale_during_weight_execution_cannot_publish(monkeypatch):
 @pytest.mark.parametrize(
     "parameters", ("foo", (), ("foo", "foo"), ("foo", "t1"), (True,))
 )
-def test_invalid_stream_requests(parameters):
+def test_invalid_stream_requests(parameters: typing.Any) -> None:
     s, _, _, _, _, response, _ = _state()
     with pytest.raises((TypeError, ValueError)):
         list(response.iter_weights(parameters, reference_identity=s.identity))
 
 
 @pytest.mark.parametrize("budget", (-1, True, 1.5))
-def test_invalid_budget_types(budget):
+def test_invalid_budget_types(budget: typing.Any) -> None:
     _, _, _, bound, lam, _, _ = _state()
     with pytest.raises(ValueError):
         BoundCCSDResponse(bound, lam, max_bytes=budget)
 
 
-def test_invalid_consumer_types_and_directions():
+def test_invalid_consumer_types_and_directions() -> None:
     s, _, _, bound, lam, response, _ = _state("h2o")
     for first, second in ((object(), lam), (bound, object())):
         with pytest.raises(TypeError):
@@ -447,7 +464,9 @@ def test_invalid_consumer_types_and_directions():
         w.contract(direction)
 
 
-def _determinant_root(oracle, bound, point):
+def _determinant_root(
+    oracle: typing.Any, bound: typing.Any, point: typing.Any
+) -> typing.Any:
     """Tiny independent numerical Newton solve; never used in a production path."""
     point = np.array(point)
     for _ in range(12):
@@ -469,7 +488,9 @@ def _determinant_root(oracle, bound, point):
 
 
 @pytest.mark.parametrize("name,shift", [("h2", 0.0), ("h2", 0.15), ("h4", 0.0)])
-def test_native_hf_cc_lambda_weights_vs_resolved_determinant(name, shift):
+def test_native_hf_cc_lambda_weights_vs_resolved_determinant(
+    name: typing.Any, shift: typing.Any
+) -> None:
     meta, _ = load("h2" if name == "h4" else name)
     inputs = deepcopy(meta["inputs"])
     inputs["coordinates"][1][2] += shift
@@ -495,7 +516,7 @@ def test_native_hf_cc_lambda_weights_vs_resolved_determinant(name, shift):
         assert s.hf_backend == "native-cpu"
         with ConventionalProvider(s, source) as provider:
 
-            def current():
+            def current() -> typing.Any:
                 source._check_open()
                 if provider._closed:
                     raise ResponseCompatibilityError("provider closed")

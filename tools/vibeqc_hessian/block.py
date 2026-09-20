@@ -5,7 +5,10 @@ the nonredundant orbital solves to #179 solve_many. It never substitutes a
 partial/diagonal Hessian when a full output cannot fit its declared budget.
 """
 
+from __future__ import annotations
+
 import time
+import typing
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -50,11 +53,11 @@ class RHFHVPBlockResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self):
+    def components(self) -> typing.Any:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -73,11 +76,11 @@ class RHFHessianResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         return deepcopy(self._diagnostics)
 
 
-def _checked_directions(directions, natoms):
+def _checked_directions(directions: typing.Any, natoms: typing.Any) -> typing.Any:
     values = np.asarray(directions)
     if (
         values.ndim != 3
@@ -93,13 +96,13 @@ def _checked_directions(directions, natoms):
     return result
 
 
-def _checked_budget(value, name):
+def _checked_budget(value: typing.Any, name: typing.Any) -> typing.Any:
     if type(value) is not int or not 0 < value < 2**63:
         raise ValueError(f"{name} must be a positive int64 byte count")
     return value
 
 
-def _block_persistent_bound(state, nrhs):
+def _block_persistent_bound(state: typing.Any, nrhs: typing.Any) -> typing.Any:
     """Conservative numeric storage retained outside solve_many workspace."""
     nmo, nocc = state.nbf, state.nocc
     nvir = nmo - nocc
@@ -141,22 +144,22 @@ def _block_persistent_bound(state, nrhs):
 
 
 def rhf_hvp_many(
-    state,
-    directions,
+    state: typing.Any,
+    directions: typing.Any,
     *,
-    strategy="recycled",
-    total_budget_bytes=128 << 20,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-    relaxation_backend="cpu",
-    relaxation_compiler=None,
-    relaxation_budget_bytes=64 << 20,
-):
+    strategy: typing.Any = "recycled",
+    total_budget_bytes: typing.Any = 128 << 20,
+    jk_backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    device_budget_bytes: typing.Any = 64 << 20,
+    solver_options: typing.Any = None,
+    first_backend: typing.Any = "cpu",
+    first_compiler: typing.Any = None,
+    first_budget_bytes: typing.Any = 64 << 20,
+    relaxation_backend: str = "cpu",
+    relaxation_compiler: typing.Any = None,
+    relaxation_budget_bytes: int = 64 << 20,
+) -> typing.Any:
     """Apply the complete conventional RHF Hessian to a bounded direction block.
 
     First-integral sources are generated independently per direction, while one
@@ -449,13 +452,13 @@ def rhf_hvp_many(
 
 
 def rhf_hessian(
-    state,
+    state: typing.Any,
     *,
-    block_size=None,
-    strategy="recycled",
-    total_budget_bytes=128 << 20,
-    **hvp_kwargs,
-):
+    block_size: typing.Any = None,
+    strategy: typing.Any = "recycled",
+    total_budget_bytes: typing.Any = 128 << 20,
+    **hvp_kwargs: typing.Any,
+) -> typing.Any:
     """Assemble the raw full Cartesian RHF Hessian in bounded direction blocks.
 
     Columns are independent canonical atom/xyz unit directions. The output is

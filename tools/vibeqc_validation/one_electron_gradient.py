@@ -1,6 +1,7 @@
 """Call the generic public CUDA gradient ABI and independent libcint oracle."""
 
 import ctypes
+import typing
 
 import numpy as np
 from vibeqc import _native
@@ -26,16 +27,16 @@ class GradientResources(ctypes.Structure):
 
 
 def execute_gradient(
-    calculator,
-    atoms,
-    weights,
+    calculator: typing.Any,
+    atoms: typing.Any,
+    weights: typing.Any,
     *,
-    schedule=0,
-    maximum_bytes=128 << 20,
-    device_id=0,
-    charge=0,
-    multiplicity=1,
-):
+    schedule: typing.Any = 0,
+    maximum_bytes: typing.Any = 128 << 20,
+    device_id: typing.Any = 0,
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+) -> typing.Any:
     """Measure the synchronous host bridge; each supplied weight is held fixed."""
     if type(device_id) is not int or device_id < 0:
         raise ValueError("device_id must be a nonnegative integer")
@@ -100,7 +101,7 @@ def execute_gradient(
         library.vibeqc_context_destroy(context)
 
 
-def reference_matrices(inputs):
+def reference_matrices(inputs: typing.Any) -> typing.Any:
     """Independent full AO derivatives including every moving nuclear center."""
     mol, scales, _ = pyscf_molecule(inputs)
     ip = [

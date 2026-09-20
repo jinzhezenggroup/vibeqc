@@ -1,6 +1,7 @@
 """Accuracy contracts must reject evidence that changes the scientific target."""
 
 import json
+import typing
 from dataclasses import FrozenInstanceError, replace
 
 import numpy as np
@@ -24,7 +25,7 @@ FORCE = ObservableTarget("forces", "max_abs", "Eh/bohr", absolute=1e-7)
 TARGET = TargetAccuracy((ENERGY, FORCE))
 
 
-def evidence(**changes):
+def evidence(**changes: typing.Any) -> typing.Any:
     """One independently measured total energy error with explicit provenance."""
     return replace(
         ErrorEvidence(
@@ -61,12 +62,12 @@ def evidence(**changes):
         {"representation": "unspecified-spherical"},
     ],
 )
-def test_invalid_or_unsupported_models(changes):
+def test_invalid_or_unsupported_models(changes: typing.Any) -> None:
     with pytest.raises(ValueError):
         replace(MODEL, **changes)
 
 
-def test_fitted_model_cannot_alias_conventional_or_different_threshold():
+def test_fitted_model_cannot_alias_conventional_or_different_threshold() -> None:
     fitted = replace(
         MODEL,
         approximation="density_fitting",
@@ -104,12 +105,12 @@ def test_fitted_model_cannot_alias_conventional_or_different_threshold():
         {"absolute": 0.0},
     ],
 )
-def test_units_norms_and_nonfinite_targets(changes):
+def test_units_norms_and_nonfinite_targets(changes: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         replace(ENERGY, **changes)
 
 
-def test_requirement_ownership_duplicates_and_relative_zero():
+def test_requirement_ownership_duplicates_and_relative_zero() -> None:
     requirements = [ENERGY]
     target = TargetAccuracy(requirements)
     requirements.append(FORCE)
@@ -125,7 +126,7 @@ def test_requirement_ownership_duplicates_and_relative_zero():
     assert relative.allowance(2) == 2e-6
 
 
-def test_convergence_and_partial_or_fixed_density_evidence_cannot_pass():
+def test_convergence_and_partial_or_fixed_density_evidence_cannot_pass() -> None:
     assert AccuracyAssessment(MODEL, TARGET).status == "unverified"
     assert AccuracyAssessment(MODEL, TARGET, (evidence(),)).status == "unverified"
     energy_target = TargetAccuracy((ENERGY,))
@@ -144,7 +145,7 @@ def test_convergence_and_partial_or_fixed_density_evidence_cannot_pass():
     )
 
 
-def test_small_empirical_estimate_with_bad_conditioning_is_never_success():
+def test_small_empirical_estimate_with_bad_conditioning_is_never_success() -> None:
     item = evidence(
         kind=EvidenceKind.EMPIRICAL,
         value=1e-20,
@@ -168,7 +169,9 @@ def test_small_empirical_estimate_with_bad_conditioning_is_never_success():
 @pytest.mark.parametrize(
     "field", ["model_id", "evaluated_model_id", "reference_model_id"]
 )
-def test_changed_models_are_not_numerical_error_evidence(field):
+def test_changed_models_are_not_numerical_error_evidence(
+    field: typing.Any,
+) -> None:
     item = evidence(
         **{field: replace(MODEL, geometry_hash="another-geometry").identity}
     )
@@ -176,7 +179,9 @@ def test_changed_models_are_not_numerical_error_evidence(field):
         AccuracyAssessment(MODEL, TargetAccuracy((ENERGY,)), (item,))
 
 
-def test_different_source_errors_are_not_summed_and_duplicate_total_is_ambiguous():
+def test_different_source_errors_are_not_summed_and_duplicate_total_is_ambiguous() -> (
+    None
+):
     items = (
         evidence(source="screening", value=0.4e-6),
         evidence(source="arithmetic", value=0.4e-6),
@@ -189,7 +194,7 @@ def test_different_source_errors_are_not_summed_and_duplicate_total_is_ambiguous
         AccuracyAssessment(MODEL, TARGET, (evidence(), evidence(value=2e-8)))
 
 
-def test_portable_evidence_owns_mutable_inputs():
+def test_portable_evidence_owns_mutable_inputs() -> None:
     provenance = [["reference", "v1"]]
     item = evidence(provenance=provenance)
     provenance[0][1] = "corrupted"
@@ -202,7 +207,7 @@ def test_portable_evidence_owns_mutable_inputs():
         evidence(provenance=(("same", "a"), ("same", "b")))
 
 
-def test_loaded_status_is_derived_and_identity_changes_are_detected():
+def test_loaded_status_is_derived_and_identity_changes_are_detected() -> None:
     assessment = AccuracyAssessment(MODEL, TARGET, (evidence(),))
     record = json.loads(json.dumps(assessment.to_dict()))
     assert AccuracyAssessment.from_dict(record) == assessment
@@ -215,7 +220,7 @@ def test_loaded_status_is_derived_and_identity_changes_are_detected():
         AccuracyAssessment.from_dict(record)
 
 
-def test_comparison_measures_different_force_norms_without_broadcasting():
+def test_comparison_measures_different_force_norms_without_broadcasting() -> None:
     target = TargetAccuracy(
         (
             ObservableTarget("forces", "max_abs", "Eh/bohr", 0.6),
@@ -251,7 +256,7 @@ def test_comparison_measures_different_force_norms_without_broadcasting():
             )
 
 
-def test_resolved_calculator_identity_separates_numerics_from_model():
+def test_resolved_calculator_identity_separates_numerics_from_model() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     baseline = Calculator().resolved_model(atoms)
     loose = Calculator(energy_tolerance=1e-6, screening_tolerance=1e-8).resolved_model(
@@ -271,7 +276,9 @@ def test_resolved_calculator_identity_separates_numerics_from_model():
 
 
 @pytest.mark.parametrize("name", ["h2", "hf-plus-uhf"])
-def test_native_hf_energy_and_forces_against_independent_pinned_reference(name):
+def test_native_hf_energy_and_forces_against_independent_pinned_reference(
+    name: typing.Any,
+) -> None:
     reference = next(r for r in load_fixtures() if r["inputs"]["name"] == name)
     inputs = reference["inputs"]
     atoms = list(zip(inputs["atomic_numbers"], inputs["coordinates"], strict=True))
@@ -294,7 +301,7 @@ def test_native_hf_energy_and_forces_against_independent_pinned_reference(name):
     assert all(item.value < 1e-9 for item in report.evidence)
 
 
-def test_requested_accuracy_is_independent_of_iteration_convergence():
+def test_requested_accuracy_is_independent_of_iteration_convergence() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     ordinary = Calculator(energy_tolerance=1e-6).singlepoint(atoms)
     requested = Calculator(energy_tolerance=1e-6, target_accuracy=TARGET).singlepoint(
@@ -307,7 +314,9 @@ def test_requested_accuracy_is_independent_of_iteration_convergence():
     np.testing.assert_array_equal(ordinary.forces, requested.forces)
 
 
-def test_batch_accuracy_preserves_item_geometry_failure_isolation_and_policy_identity():
+def test_batch_accuracy_preserves_item_geometry_failure_isolation_and_policy_identity() -> (
+    None
+):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(target_accuracy=TARGET)
     with calc.prepare_batch([atoms, atoms]) as batch:

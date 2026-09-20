@@ -1,6 +1,7 @@
 """Independent energy, derivative, boundary and grid-chain-rule XC gates."""
 
 import json
+import typing
 from fractions import Fraction
 from pathlib import Path
 
@@ -31,12 +32,18 @@ from vibeqc_compiler.xc.spec import CATALOG
 from tools.vibeqc_validation.schema import block_error
 
 
-def check(actual, expected, *, atol=1e-11, rtol=1e-10):
+def check(
+    actual: typing.Any,
+    expected: typing.Any,
+    *,
+    atol: typing.Any = 1e-11,
+    rtol: typing.Any = 1e-10,
+) -> None:
     result = block_error(actual, expected, atol=atol, rtol=rtol)
     assert result["passed"], result
 
 
-def test_piecewise_select_is_lazy_and_differentiates_selected_branch():
+def test_piecewise_select_is_lazy_and_differentiates_selected_branch() -> None:
     graph = Graph()
     x = graph.variable("x")
     selected = graph.select_le(x, 0, x * x, 1 / x)
@@ -55,7 +62,9 @@ def test_piecewise_select_is_lazy_and_differentiates_selected_branch():
     assert "1.0 / x" in source
 
 
-def _r2scan_unpolarized_feature(alpha, *, density=0.7, sigma=0.014):
+def _r2scan_unpolarized_feature(
+    alpha: typing.Any, *, density: typing.Any = 0.7, sigma: typing.Any = 0.014
+) -> typing.Any:
     k_factor = 3 / 10 * (6 * np.pi**2) ** (2 / 3)
     eta = 0.001
     x2 = sigma * density ** (-8 / 3)
@@ -66,14 +75,14 @@ def _r2scan_unpolarized_feature(alpha, *, density=0.7, sigma=0.014):
 
 
 @pytest.mark.parametrize("alpha", [0.0, 1e-10, 2.5 - 1e-8, 2.5, 2.5 + 1e-8])
-def test_r2scan_physical_alpha_branches_are_finite(alpha):
+def test_r2scan_physical_alpha_branches_are_finite(alpha: typing.Any) -> None:
     program = build_program(functional("R2SCAN", spin="unpolarized"))
     result = program.evaluate(_r2scan_unpolarized_feature(alpha))
     assert np.isfinite(result).all()
     assert result[program.outputs.index((2,)), 0] != 0
 
 
-def test_r2scan_switch_is_continuous_around_alpha_joins_and_low_density():
+def test_r2scan_switch_is_continuous_around_alpha_joins_and_low_density() -> None:
     program = build_program(functional("R2SCAN", spin="unpolarized"), order=1)
     for join, step in ((0.0, 1e-8), (2.5, 1e-8)):
         left = program.evaluate(_r2scan_unpolarized_feature(join - step))[0, 0]
@@ -83,7 +92,7 @@ def test_r2scan_switch_is_continuous_around_alpha_joins_and_low_density():
     assert np.isfinite(program.evaluate(low)).all()
 
 
-def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite():
+def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite() -> None:
     program = build_program(
         functional("LDA_XC_PW", spin="unpolarized"),
         order=1,
@@ -109,7 +118,9 @@ def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite():
 @pytest.mark.parametrize("name", CATALOG)
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 @pytest.mark.parametrize("domain", ["typical", "boundary"])
-def test_each_feature_derivative_against_pinned_independent_oracles(name, spin, domain):
+def test_each_feature_derivative_against_pinned_independent_oracles(
+    name: typing.Any, spin: typing.Any, domain: typing.Any
+) -> None:
     metadata, features, expected, raw = load_fixture(name, spin=spin, domain=domain)
     program = build_program(functional(name, spin=spin))
     actual = program.evaluate(features)
@@ -128,7 +139,7 @@ def test_each_feature_derivative_against_pinned_independent_oracles(name, spin, 
         assert np.all(actual[tau_rows] == 0)
 
 
-def test_licenses_sources_and_reference_generator_hashes():
+def test_licenses_sources_and_reference_generator_hashes() -> None:
     root = Path(__file__).resolve().parents[2]
     source = root / "external/libxc-7.0.0"
     manifest = json.loads((source / "manifest.json").read_text())
@@ -143,7 +154,9 @@ def test_licenses_sources_and_reference_generator_hashes():
 @pytest.mark.parametrize(
     "operation,point", [("log", 0.3), ("log1p", 1e-15), ("expm1", 1e-15)]
 )
-def test_stable_unary_rebuilds_second_derivatives_and_cuda(operation, point):
+def test_stable_unary_rebuilds_second_derivatives_and_cuda(
+    operation: typing.Any, point: typing.Any
+) -> None:
     graph = Graph()
     x = graph.variable("x")
     root = graph.stable_unary(operation, x)
@@ -182,7 +195,9 @@ def test_stable_unary_rebuilds_second_derivatives_and_cuda(operation, point):
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
-def test_optimization_order_and_independently_derived_hessian_symmetry(name, spin):
+def test_optimization_order_and_independently_derived_hessian_symmetry(
+    name: typing.Any, spin: typing.Any
+) -> None:
     _, x, _, _ = load_fixture(name, spin=spin)
     spec = functional(name, spin=spin)
     outputs = (
@@ -203,7 +218,9 @@ def test_optimization_order_and_independently_derived_hessian_symmetry(name, spi
 
 
 @pytest.mark.parametrize("name", CATALOG)
-def test_directional_energy_and_gradient_finite_differences_multiple_steps(name):
+def test_directional_energy_and_gradient_finite_differences_multiple_steps(
+    name: typing.Any,
+) -> None:
     _, x, _, _ = load_fixture(name)
     x = x[:, 12:17]
     program = build_program(functional(name))
@@ -230,7 +247,7 @@ def test_directional_energy_and_gradient_finite_differences_multiple_steps(name)
 
 
 @pytest.mark.parametrize("name", CATALOG)
-def test_spin_exchange_and_unpolarized_chain_rule(name):
+def test_spin_exchange_and_unpolarized_chain_rule(name: typing.Any) -> None:
     _, x, _, _ = load_fixture(name)
     program = build_program(functional(name))
     permutation = [1, 0, 4, 3, 2, 6, 5]
@@ -255,7 +272,9 @@ def test_spin_exchange_and_unpolarized_chain_rule(name):
     )
 
 
-def test_domain_contract_zero_sigma_vacuum_polarization_extremes_and_no_clipping():
+def test_domain_contract_zero_sigma_vacuum_polarization_extremes_and_no_clipping() -> (
+    None
+):
     spec = functional("PBE")
     x = np.array([[0.3, 0.2, 0, 0, 0, 0.2, 0.1]]).T
     assert np.isfinite(build_program(spec).evaluate(x)).all()
@@ -289,7 +308,7 @@ def test_domain_contract_zero_sigma_vacuum_polarization_extremes_and_no_clipping
                 validate_features(spec, point)
 
 
-def test_composition_metadata_pruning_and_capability_stages():
+def test_composition_metadata_pruning_and_capability_stages() -> None:
     pbe = functional("PBE")
     hybrid = FunctionalSpec(
         "test-PBE0",
@@ -342,7 +361,7 @@ def test_composition_metadata_pruning_and_capability_stages():
         FunctionalSpec("bad", (("LDA_X", 0.5),))
 
 
-def test_matrix_potential_factors_from_density_variations_including_tau():
+def test_matrix_potential_factors_from_density_variations_including_tau() -> None:
     rng = np.random.default_rng(16)
     jets = rng.normal(size=(4, 9, 3))
     d = np.stack((np.eye(3), 0.7 * np.eye(3)))
@@ -371,7 +390,7 @@ def test_matrix_potential_factors_from_density_variations_including_tau():
         "p,sp,pkm,pkn->smn", weights, coefficients["tau"], grad, grad
     )
 
-    def energy(density):
+    def energy(density: typing.Any) -> typing.Any:
         values = pack_grid_features(spec, density_features(jets, density))
         return np.dot(
             weights, program.evaluate(values)[0] + 0.3 * values[5] - 0.2 * values[6]
@@ -389,7 +408,7 @@ def test_matrix_potential_factors_from_density_variations_including_tau():
         pack_grid_features(functional("PBE", spin="unpolarized"), features)
 
 
-def test_cuda_source_determinism_output_groups_and_numeric_budget():
+def test_cuda_source_determinism_output_groups_and_numeric_budget() -> None:
     program = build_program(functional("PBE"))
     sources = []
     for variant, groups in (("baseline", 36), ("fused", 1), ("split", 5)):
@@ -409,7 +428,7 @@ def test_cuda_source_determinism_output_groups_and_numeric_budget():
         plan_tiles(program, tile_points=True)
 
 
-def test_r2scan_generated_cuda_includes_tau_and_piecewise_mixed_derivatives():
+def test_r2scan_generated_cuda_includes_tau_and_piecewise_mixed_derivatives() -> None:
     spec = functional("R2SCAN", spin="unpolarized")
     outputs = ((), (0,), (1,), (2,), (0, 2), (1, 2), (2, 2))
     program = build_program(spec, order=2, outputs=outputs)
@@ -429,7 +448,9 @@ def test_r2scan_generated_cuda_includes_tau_and_piecewise_mixed_derivatives():
 
 @pytest.mark.parametrize("spin", [False, True])
 @pytest.mark.parametrize("gga", [False, True])
-def test_closed_form_exchange_oracle_on_typical_domain(spin, gga):
+def test_closed_form_exchange_oracle_on_typical_domain(
+    spin: typing.Any, gga: typing.Any
+) -> None:
     name = "GGA_X_PBE" if gga else "LDA_X"
     _, x, _, _ = load_fixture(name, spin="polarized" if spin else "unpolarized")
     e, v, h = exchange_reference(x, spin=spin, gga=gga)
@@ -439,14 +460,16 @@ def test_closed_form_exchange_oracle_on_typical_domain(spin, gga):
         check(actual[key], expected)
 
 
-def test_functional_spec_rejects_mutable_or_unidentified_composition():
+def test_functional_spec_rejects_mutable_or_unidentified_composition() -> None:
     with pytest.raises(UnsupportedXC):
         FunctionalSpec(1, (("LDA_X", Fraction(1)),))
     with pytest.raises(UnsupportedXC):
         FunctionalSpec("mutable", (["LDA_X", Fraction(1)],))
 
 
-def test_capability_cannot_relabel_cpu_or_failed_blocks_as_cuda_validation(tmp_path):
+def test_capability_cannot_relabel_cpu_or_failed_blocks_as_cuda_validation(
+    tmp_path: typing.Any,
+) -> None:
     from types import SimpleNamespace
 
     from vibeqc_compiler.xc.cuda import XCArtifact

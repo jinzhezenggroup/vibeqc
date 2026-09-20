@@ -1,6 +1,7 @@
 """#149 A: plans on CPU and explicit opt-in real-device equation parity."""
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,9 @@ from tools.vibeqc_cc.oracle import dense_feeds, random_case
 
 
 @pytest.mark.parametrize("shape", [(1, 3), (2, 3)])
-def test_trace_is_original_equation_and_budget_keeps_every_node(shape):
+def test_trace_is_original_equation_and_budget_keeps_every_node(
+    shape: typing.Any,
+) -> None:
     original = build_ccsd_program(*shape)
     traced = rccsd_program(*shape, trace=True)
     assert len(traced.outputs) == len(original.outputs) + len(original.live_nodes)
@@ -43,7 +46,9 @@ def test_trace_is_original_equation_and_budget_keeps_every_node(shape):
     reason="requires explicitly allocated GPU validation window",
 )
 @pytest.mark.parametrize("shape", [(1, 3), (2, 3)])
-def test_real_device_every_node_repeat_failure_and_two_contexts(shape, tmp_path):
+def test_real_device_every_node_repeat_failure_and_two_contexts(
+    shape: typing.Any, tmp_path: typing.Any
+) -> None:
     from vibeqc.profiles import find_nvcc
 
     nvcc = find_nvcc()

@@ -5,6 +5,7 @@ runtime errors fail these tests; they cannot become unavailable-hardware skips.
 """
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def sdf_case_inputs(method, count):
+def sdf_case_inputs(method: typing.Any, count: typing.Any) -> typing.Any:
     """Share physical fixtures between replay tests and independent oracles."""
     # An s/d/f atom plus a separate s atom covers sparse real-spherical f
     # expansions without making this one-electron gate a large ERI benchmark.
@@ -35,16 +36,16 @@ def sdf_case_inputs(method, count):
 
 
 def run_case(
-    monkeypatch,
-    mapping,
+    monkeypatch: typing.Any,
+    mapping: typing.Any,
     *,
-    method,
-    representation,
-    fitted,
-    count,
-    device="cuda",
-    df_budget=0,
-):
+    method: typing.Any,
+    representation: typing.Any,
+    fitted: typing.Any,
+    count: typing.Any,
+    device: typing.Any = "cuda",
+    df_budget: typing.Any = 0,
+) -> typing.Any:
     """Exercise cold, unchanged and changed geometry on one fixed topology."""
     if mapping is None:
         monkeypatch.delenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", raising=False)
@@ -85,8 +86,12 @@ def run_case(
 @pytest.mark.parametrize("fitted", [False, True])
 @pytest.mark.parametrize("count", [1, 3])
 def test_generated_schedules_preserve_scf_and_geometry(
-    monkeypatch, method, representation, fitted, count
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    representation: typing.Any,
+    fitted: typing.Any,
+    count: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests must run inside Slurm"
     kwargs = {
         "method": method,
@@ -115,7 +120,9 @@ def test_generated_schedules_preserve_scf_and_geometry(
         assert np.max(np.abs(actual[0].energies - actual[2].energies)) > 1e-7
 
 
-def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
+def test_policy_changes_rebuild_reused_direct_plan(
+    monkeypatch: typing.Any,
+) -> None:
     """A cached plan must follow the policy recorded for the current execution."""
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests must run inside Slurm"
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
@@ -145,8 +152,8 @@ def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("mapping", ["thread", "shell_warp"])
 def test_generated_pair_policy_hcore_matches_independent_libcint(
-    monkeypatch, representation, mapping
-):
+    monkeypatch: typing.Any, representation: typing.Any, mapping: typing.Any
+) -> None:
     """Exercise normalized pair traversal independently of an SCF fixed point.
 
     Negative contraction coefficients, every s/p/d/f shell, unequal charges

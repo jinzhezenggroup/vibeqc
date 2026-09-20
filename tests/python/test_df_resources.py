@@ -1,20 +1,26 @@
 """The common DF adapter uses the production tile planner without a solve."""
 
+import typing
+
 import pytest
 from vibeqc import Calculator
 from vibeqc.resources_df import density_fitting_tile_plan
 
 
-def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
+def test_packed_query_preserves_complete_u_when_budget_shrinks(
+    monkeypatch: typing.Any,
+) -> None:
     """Query native allocation capacities without touching a GPU or tensor."""
     library = Calculator()._library
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("packed shape query created a CUDA context")
 
     monkeypatch.setattr(library, "vibeqc_context_create", forbidden)
 
-    def query(rank=160, budget=0, fixed=4096):
+    def query(
+        rank: typing.Any = 160, budget: typing.Any = 0, fixed: typing.Any = 4096
+    ) -> typing.Any:
         return density_fitting_tile_plan(
             library,
             1,
@@ -77,8 +83,8 @@ def test_packed_query_preserves_complete_u_when_budget_shrinks(monkeypatch):
     ],
 )
 def test_auto_reserves_only_authorized_rhf_work_policy_candidates(
-    monkeypatch, shape, expected
-):
+    monkeypatch: typing.Any, shape: typing.Any, expected: typing.Any
+) -> None:
     """Only a known profitable RHF occupation can charge automatic factor storage."""
     library = Calculator()._library
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
@@ -103,11 +109,13 @@ def test_auto_reserves_only_authorized_rhf_work_policy_candidates(
 
 @pytest.mark.parametrize("generated", [False, True])
 @pytest.mark.parametrize("rhf_rank", [None, 0, 5, 8])
-def test_ineligible_auto_keeps_dense_budget_and_tiles(monkeypatch, generated, rhf_rank):
+def test_ineligible_auto_keeps_dense_budget_and_tiles(
+    monkeypatch: typing.Any, generated: typing.Any, rhf_rank: typing.Any
+) -> None:
     """UHF/unknown, empty and high-rank jobs spend no unused factor reservation."""
     library = Calculator()._library
 
-    def query(budget):
+    def query(budget: typing.Any) -> typing.Any:
         return density_fitting_tile_plan(
             library,
             1,
@@ -130,11 +138,13 @@ def test_ineligible_auto_keeps_dense_budget_and_tiles(monkeypatch, generated, rh
     assert query(budget) == dense
 
 
-def test_optional_auto_factors_do_not_force_streaming(monkeypatch):
+def test_optional_auto_factors_do_not_force_streaming(
+    monkeypatch: typing.Any,
+) -> None:
     """Even eligible RHF retains its dense tiles when optional factors do not fit."""
     library = Calculator()._library
 
-    def query(budget):
+    def query(budget: typing.Any) -> typing.Any:
         return density_fitting_tile_plan(
             library,
             1,
@@ -160,8 +170,11 @@ def test_optional_auto_factors_do_not_force_streaming(monkeypatch):
 @pytest.mark.parametrize("generated,full_bytes", [(False, 1104943), (True, 1100847)])
 @pytest.mark.parametrize("occupied_policy", ["occupied"])
 def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
-    monkeypatch, generated, full_bytes, occupied_policy
-):
+    monkeypatch: typing.Any,
+    generated: typing.Any,
+    full_bytes: typing.Any,
+    occupied_policy: typing.Any,
+) -> None:
     """All solver owners shift dense/occupied boundaries equally.
 
     The original 8-AO dense bounds were 45394/41298 bytes. This slice adds
@@ -179,7 +192,7 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     minimum_bytes = 1084719 + solver_reserve
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
 
-    def query(budget):
+    def query(budget: typing.Any) -> typing.Any:
         return density_fitting_tile_plan(
             library,
             1,
@@ -220,7 +233,7 @@ def test_exchange_reservation_preserves_full_scratch_and_minimum_boundaries(
     )
 
 
-def test_df_shape_query_composes_fixed_reservation_and_native_tile_shrinking():
+def test_df_shape_query_composes_fixed_reservation_and_native_tile_shrinking() -> None:
     library = Calculator()._library
     shape = (2, 20, 40, 5)
     default = density_fitting_tile_plan(
@@ -246,12 +259,14 @@ def test_df_shape_query_composes_fixed_reservation_and_native_tile_shrinking():
         )
 
 
-def test_df_shape_query_needs_no_integrals_or_context(monkeypatch):
+def test_df_shape_query_needs_no_integrals_or_context(
+    monkeypatch: typing.Any,
+) -> None:
     import numpy as np
 
     library = Calculator()._library
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("DF shape query allocated a numerical tensor or context")
 
     monkeypatch.setattr(library, "vibeqc_context_create", forbidden)
@@ -268,7 +283,7 @@ def test_df_shape_query_needs_no_integrals_or_context(monkeypatch):
         )
 
 
-def test_generated_residency_uses_complete_source_specific_budget():
+def test_generated_residency_uses_complete_source_specific_budget() -> None:
     library = Calculator()._library
     generated = density_fitting_tile_plan(
         library,
@@ -308,7 +323,7 @@ def test_generated_residency_uses_complete_source_specific_budget():
     assert constrained.peak_workspace_bytes <= constrained.budget_bytes
 
 
-def test_overlap_storage_is_reserved_in_every_cuda_df_candidate():
+def test_overlap_storage_is_reserved_in_every_cuda_df_candidate() -> None:
     """Shape-only admission must charge retained S/X/coordinates for each item."""
     import json
 
@@ -328,7 +343,9 @@ def test_overlap_storage_is_reserved_in_every_cuda_df_candidate():
             assert row["resident_host_bytes"] >= expected
 
 
-def test_packed_inventory_charges_both_owners_and_separates_identity(monkeypatch):
+def test_packed_inventory_charges_both_owners_and_separates_identity(
+    monkeypatch: typing.Any,
+) -> None:
     """Representation switches change provenance before any CUDA allocation.
 
     Compare the explicit packed inventory with the same generated-source dense
@@ -380,7 +397,7 @@ def test_packed_inventory_charges_both_owners_and_separates_identity(monkeypatch
         calc._resource_request([atoms])
 
 
-def test_diis_reservation_precedes_retained_panel_selection():
+def test_diis_reservation_precedes_retained_panel_selection() -> None:
     """History growth must consume capacity before a retained-B plan picks Q."""
     from vibeqc.resources_df import (
         density_fitting_diis_bytes,

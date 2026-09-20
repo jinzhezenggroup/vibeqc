@@ -11,6 +11,7 @@ import json
 import os
 import shlex
 import subprocess
+import typing
 from functools import lru_cache
 from pathlib import Path
 
@@ -23,7 +24,7 @@ _POINTER = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"
 
 
 @lru_cache(maxsize=1)
-def _tables():
+def _tables() -> typing.Any:
     manifest = json.loads((_DATA / "manifest.json").read_text())
     values = {}
     for name, expected in manifest["data"].items():
@@ -38,7 +39,14 @@ def _tables():
     return data, radii, manifest["data"]
 
 
-def make_spec(*, s6, s8, a1, a2, **kwargs):
+def make_spec(
+    *,
+    s6: typing.Any,
+    s8: typing.Any,
+    a1: typing.Any,
+    a2: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Any:
     """Bind explicit parameters to the actual canonical reference-data digests."""
     _, _, identities = _tables()
     return D3Spec(
@@ -52,7 +60,7 @@ def make_spec(*, s6, s8, a1, a2, **kwargs):
     )
 
 
-def gfn1_compatibility():
+def gfn1_compatibility() -> typing.Any:
     """The named GFN1 two-body profile, not a default for arbitrary DFT."""
     return make_spec(
         s6=1.0,
@@ -65,7 +73,13 @@ def gfn1_compatibility():
     )
 
 
-def build_reference(directory, *, backend="cpu", nvcc=None, cuda_arch=None):
+def build_reference(
+    directory: typing.Any,
+    *,
+    backend: typing.Any = "cpu",
+    nvcc: typing.Any = None,
+    cuda_arch: typing.Any = None,
+) -> typing.Any:
     """Explicit finite compiler call; never performed at import or evaluation."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -108,7 +122,7 @@ def build_reference(directory, *, backend="cpu", nvcc=None, cuda_arch=None):
 class NativeD3:
     """Explicit migrated reference implementation; energy in Eh, gradient in Eh/bohr."""
 
-    def __init__(self, library):
+    def __init__(self, library: typing.Any) -> None:
         self._library = ctypes.CDLL(str(Path(library).resolve()))
         self._function = self._library.vibeqc_d3_reference
         self._function.argtypes = [ctypes.c_int64, _POINTER, _POINTER, _POINTER]
@@ -118,7 +132,14 @@ class NativeD3:
         identity.restype = ctypes.c_int
         self.backend = {0: "cpu", 1: "cuda"}[identity()]
 
-    def evaluate(self, spec, numbers, positions, *, memory_budget_bytes=64 * 1024**2):
+    def evaluate(
+        self,
+        spec: typing.Any,
+        numbers: typing.Any,
+        positions: typing.Any,
+        *,
+        memory_budget_bytes: typing.Any = 64 * 1024**2,
+    ) -> typing.Any:
         if not isinstance(spec, D3Spec):
             raise TypeError("D3 evaluation requires a D3Spec")
         numbers = np.asarray(numbers)

@@ -1,5 +1,6 @@
 """Spatial mask/reordering invariants against an unscreened identical grid."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -12,7 +13,7 @@ from vibeqc_compiler.dft.spatial import SpatialPolicy, build_spatial_tasks
 
 
 @pytest.fixture
-def fixture():
+def fixture() -> typing.Any:
     atoms = [("H", (-2, 0, 0)), ("H", (2, 0, 0))]
     shells = tuple(
         Shell(atom, angular, (Primitive(2.0, 1.0), Primitive(4.0, -0.1)))
@@ -37,7 +38,9 @@ def fixture():
         yield basis, grid
 
 
-def test_screening_off_partition_is_only_an_equivalent_reordering(fixture):
+def test_screening_off_partition_is_only_an_equivalent_reordering(
+    fixture: typing.Any,
+) -> None:
     basis, grid = fixture
     expected = basis.evaluate(grid.points, order=1)
     generations = set()
@@ -73,12 +76,12 @@ def test_screening_off_partition_is_only_an_equivalent_reordering(fixture):
 
 
 def test_fixed_mask_is_discovered_without_evaluating_the_dense_ao_grid(
-    fixture, monkeypatch
-):
+    fixture: typing.Any, monkeypatch: typing.Any
+) -> None:
     basis, grid = fixture
     original = basis.evaluate
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("mask discovery must not evaluate AO values")
 
     monkeypatch.setattr(basis, "evaluate", forbidden)
@@ -103,7 +106,9 @@ def test_fixed_mask_is_discovered_without_evaluating_the_dense_ao_grid(
             task.ao_ids.setflags(write=True)
 
 
-def test_stale_grid_weights_point_order_and_basis_fail(fixture):
+def test_stale_grid_weights_point_order_and_basis_fail(
+    fixture: typing.Any,
+) -> None:
     basis, grid = fixture
     tasks = build_spatial_tasks(basis, grid)
     for changed in (
@@ -125,7 +130,9 @@ def test_stale_grid_weights_point_order_and_basis_fail(fixture):
     assert tasks.generation_id == build_spatial_tasks(basis, grid).generation_id
 
 
-def test_grid_and_atom_permutations_preserve_geometric_masks(fixture):
+def test_grid_and_atom_permutations_preserve_geometric_masks(
+    fixture: typing.Any,
+) -> None:
     basis, grid = fixture
     policy = SpatialPolicy(region_points=3, screening="absolute_ao_jet", cutoff=1e-8)
     original = build_spatial_tasks(basis, grid, policy=policy)
@@ -167,12 +174,14 @@ def test_grid_and_atom_permutations_preserve_geometric_masks(fixture):
             np.testing.assert_array_equal(left.discarded_max, right.discarded_max)
 
 
-def test_shared_budget_preflight_precedes_envelope_construction(fixture, monkeypatch):
+def test_shared_budget_preflight_precedes_envelope_construction(
+    fixture: typing.Any, monkeypatch: typing.Any
+) -> None:
     from vibeqc_compiler.dft import spatial
 
     basis, grid = fixture
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("preflight must precede mask construction")
 
     monkeypatch.setattr(spatial, "ao_region_envelopes", forbidden)
@@ -190,7 +199,7 @@ def test_shared_budget_preflight_precedes_envelope_construction(fixture, monkeyp
         assert result.resource_plan.peak_bytes["host"] <= budget
 
 
-def test_empty_grid_and_invalid_owner(fixture):
+def test_empty_grid_and_invalid_owner(fixture: typing.Any) -> None:
     basis, _ = fixture
     grid = ExplicitGrid(np.empty((0, 3)), np.empty(0), (), {})
     assert build_spatial_tasks(basis, grid).tasks == ()
@@ -199,7 +208,9 @@ def test_empty_grid_and_invalid_owner(fixture):
         build_spatial_tasks(basis, invalid)
 
 
-def test_mutated_maps_and_relabelled_generations_fail(fixture):
+def test_mutated_maps_and_relabelled_generations_fail(
+    fixture: typing.Any,
+) -> None:
     basis, grid = fixture
     tasks = build_spatial_tasks(basis, grid, policy=SpatialPolicy(region_points=4))
     first = tasks.tasks[0]
@@ -217,7 +228,9 @@ def test_mutated_maps_and_relabelled_generations_fail(fixture):
         replace(tasks, grid_identity=changed.identity).validate(basis, changed)
 
 
-def test_forged_screening_certificate_cannot_drop_large_ao(fixture):
+def test_forged_screening_certificate_cannot_drop_large_ao(
+    fixture: typing.Any,
+) -> None:
     basis, grid = fixture
     policy = SpatialPolicy(region_points=4, screening="absolute_ao_jet", cutoff=1e-8)
     tasks = build_spatial_tasks(basis, grid, policy=policy)

@@ -1,6 +1,7 @@
 """Real-GPU J/K inside the otherwise host directional nuclear response chain."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -18,8 +19,8 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_directional_native_response_with_cuda_jk_and_independent_D_W_differences(
-    name, monkeypatch
-):
+    name: typing.Any, monkeypatch: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with NativeSource(**fixture_inputs(name)) as source:
         s = NativeRHFState.from_source(source)
@@ -42,7 +43,7 @@ def test_directional_native_response_with_cuda_jk_and_independent_D_W_difference
                     (displaced.P0, (c * (2 * displaced.eps[: displaced.nocc])) @ c.T)
                 )
 
-        def forbidden(*args, **kwargs):
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             raise AssertionError(
                 "CUDA metric/CPHF action used a CPU J/K or dense-input fallback"
             )
@@ -78,7 +79,7 @@ def test_directional_native_response_with_cuda_jk_and_independent_D_W_difference
         assert actual.diagnostics["first_order_matrix_bytes"] == 2 * s.nbf**2 * 8
 
 
-def test_directional_cuda_budget_failure_and_valid_replay():
+def test_directional_cuda_budget_failure_and_valid_replay() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
@@ -89,7 +90,9 @@ def test_directional_cuda_budget_failure_and_valid_replay():
         assert result.response.solve_result.converged
 
 
-def test_directional_cuda_closes_plan_after_derivative_failure(monkeypatch):
+def test_directional_cuda_closes_plan_after_derivative_failure(
+    monkeypatch: typing.Any,
+) -> None:
     from tools.vibeqc_hessian import directional
     from tools.vibeqc_response import CudaDirectJKBackend
 
@@ -100,12 +103,12 @@ def test_directional_cuda_closes_plan_after_derivative_failure(monkeypatch):
         closed = []
         original_close = CudaDirectJKBackend.close
 
-        def close(owner):
+        def close(owner: typing.Any) -> typing.Any:
             if owner._plan is not None:
                 closed.append(owner.identity)
             return original_close(owner)
 
-        def failed(*args, **kwargs):
+        def failed(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             raise FloatingPointError("injected directional derivative failure")
 
         with monkeypatch.context() as patch:

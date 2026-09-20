@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -35,7 +36,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(output):
+def run(output: typing.Any) -> typing.Any:
     from types import SimpleNamespace
 
     import pyscf

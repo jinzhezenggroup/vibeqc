@@ -1,5 +1,8 @@
 """Host-side public admission tests; no GPU numerical qualification is implied."""
 
+from __future__ import annotations
+
+import typing
 from dataclasses import replace
 
 import pytest
@@ -21,8 +24,13 @@ from vibeqc._dft_gradient import StationaryKsState
     ],
 )
 def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
-    monkeypatch, tmp_path, method, serialized, representation, d_shell
-):
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    method: typing.Any,
+    serialized: typing.Any,
+    representation: typing.Any,
+    d_shell: typing.Any,
+) -> None:
     atoms, record, _ = fixture(representation=representation, d_shell=d_shell)
     basis = record
     if serialized:
@@ -38,7 +46,7 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     cpu = Calculator(basis=basis, method=method, device="cpu")
     assert cpu._capabilities.supported_properties == frozenset({"energy"})
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("unqualified public ECP forces reached native preparation")
 
     monkeypatch.setattr(calculator, "prepare_batch", forbidden)
@@ -59,7 +67,9 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     )
 
 
-def test_public_force_wrapper_rejects_cpu_owner_before_compilation(monkeypatch):
+def test_public_force_wrapper_rejects_cpu_owner_before_compilation(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc import _stationary_cuda
 
     atoms, record, _ = fixture(representation="cartesian")
@@ -75,12 +85,12 @@ def test_public_force_wrapper_rejects_cpu_owner_before_compilation(monkeypatch):
     sources = []
     original = StationaryKsState.from_native
 
-    def track(batch, basis, *, index=0):
+    def track(batch: typing.Any, basis: typing.Any, *, index: int = 0) -> typing.Any:
         state = original(batch, basis, index=index)
         sources.append(state._source)
         return state
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("public ECP forces reached a compiler or diagnostic consumer")
 
     monkeypatch.setattr(StationaryKsState, "from_native", staticmethod(track))

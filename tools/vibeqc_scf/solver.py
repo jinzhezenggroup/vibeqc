@@ -8,6 +8,7 @@ model, exports a trace by default, or redirects CUDA execution to the host.
 import ctypes as ct
 import threading
 import time
+import typing
 import uuid
 from dataclasses import dataclass
 
@@ -91,10 +92,10 @@ class ScfSolve:
     trace_complete: bool
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return self.status == "converged"
 
-    def as_probe(self):
+    def as_probe(self) -> typing.Any:
         """Adapt a converged solve to NUM01's independent physical audit."""
         if not self.converged:
             raise ValueError("failed solve is not a converged probe")
@@ -112,7 +113,7 @@ class ScfSolve:
             self.solve_seconds,
         )
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         """All work, including rejected proposals and fallback, belongs here."""
         return {
             "status": self.status,
@@ -143,16 +144,16 @@ class ScfSolve:
 
 
 def solve(
-    source,
-    model,
-    controls=None,
+    source: typing.Any,
+    model: typing.Any,
+    controls: typing.Any = None,
     *,
-    proposer=None,
-    initial_density=None,
-    capture=False,
-    owner=None,
-    max_trace_iterations=10000,
-):
+    proposer: typing.Any = None,
+    initial_density: typing.Any = None,
+    capture: typing.Any = False,
+    owner: typing.Any = None,
+    max_trace_iterations: typing.Any = 10000,
+) -> typing.Any:
     """Run one complete CPU solve. Capture is local, bounded and explicit.
 
     ``proposer(snapshot)`` returns ``None`` or a typed DensityProposal. Snapshot
@@ -194,8 +195,8 @@ def solve(
     trace_seconds = 0.0
     trace_complete = capture
 
-    def snapshot(view):
-        def matrix(name):
+    def snapshot(view: typing.Any) -> typing.Any:
+        def matrix(name: typing.Any) -> typing.Any:
             dims = (
                 (view.nbf, view.nbf)
                 if name == "overlap"
@@ -219,7 +220,9 @@ def solve(
         )
 
     @_PROPOSE
-    def propose(view_ptr, out, parent, iteration):
+    def propose(
+        view_ptr: typing.Any, out: typing.Any, parent: typing.Any, iteration: typing.Any
+    ) -> typing.Any:
         nonlocal trace_seconds
         view = view_ptr.contents
         parent[0], iteration[0] = view.generation, view.iteration
@@ -284,7 +287,7 @@ def solve(
             return 3
 
     @_OBSERVE
-    def observe(view_ptr, decision_ptr):
+    def observe(view_ptr: typing.Any, decision_ptr: typing.Any) -> None:
         nonlocal trace_seconds, trace_complete
         copying = time.perf_counter()
         try:
@@ -381,7 +384,7 @@ def solve(
     )
     message = error.value.decode() if code else "; ".join(callback_errors) or None
 
-    def scalar(i):
+    def scalar(i: typing.Any) -> typing.Any:
         return float(scalars[i]) if np.isfinite(scalars[i]) else None
 
     return ScfSolve(
@@ -415,12 +418,12 @@ class ScfItem:
     seeds are explicit inputs, never shared automatically across items.
     """
 
-    def __init__(self, source, model):
+    def __init__(self, source: typing.Any, model: typing.Any) -> None:
         self._lock = threading.RLock()
         self._busy = False
         self.rebind(source, model)
 
-    def rebind(self, source, model):
+    def rebind(self, source: typing.Any, model: typing.Any) -> None:
         with self._lock:
             if self._busy:
                 raise RuntimeError("cannot rebind an active SCF item")
@@ -429,7 +432,7 @@ class ScfItem:
             self._owner = uuid.uuid4().hex
             self.last_result = None
 
-    def solve(self, **kwargs):
+    def solve(self, **kwargs: typing.Any) -> typing.Any:
         with self._lock:
             if self._busy:
                 raise RuntimeError("cannot recursively solve an active SCF item")

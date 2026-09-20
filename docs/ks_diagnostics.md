@@ -11,13 +11,14 @@ from vibeqc import Calculator
 
 result = Calculator(method="pbe-uks").singlepoint(
     [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
-    charge=1, multiplicity=2,
+    charge=1,
+    multiplicity=2,
 )
 diagnostic = result.ks_diagnostic
-print(diagnostic.occupations)           # (1, 0)
-print(diagnostic.components.total)      # the returned physical energy
+print(diagnostic.occupations)  # (1, 0)
+print(diagnostic.components.total)  # the returned physical energy
 print(diagnostic.physical_residual_max)
-print(diagnostic.to_payload())          # all iteration records included
+print(diagnostic.to_payload())  # all iteration records included
 ```
 
 Energies are in Hartree. `KsEnergyComponents` contains nuclear, one-electron,
@@ -134,20 +135,29 @@ from vibeqc_compiler.dft import NativeAO
 
 atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]
 calc = Calculator(
-    method="pbe-rks", basis="sto-3g", device="cpu",
-    ks_options=KsOptions(grid=GridSpec(
-        radial_points=24, angular_polar=8, angular_azimuth=16,
-    )),
-    energy_tolerance=1e-12, density_tolerance=1e-10,
+    method="pbe-rks",
+    basis="sto-3g",
+    device="cpu",
+    ks_options=KsOptions(
+        grid=GridSpec(
+            radial_points=24,
+            angular_polar=8,
+            angular_azimuth=16,
+        )
+    ),
+    energy_tolerance=1e-12,
+    density_tolerance=1e-10,
 )
 with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
     energy = batch.execute(strict=True).items[0].energy
     state = StationaryKsState.from_native(batch, basis)
     diagnostic = complete_rks_gradient_diagnostic(
-        state, basis, cache=".cache/stationary-cpu",
+        state,
+        basis,
+        cache=".cache/stationary-cpu",
     )
-    gradient = diagnostic.gradient       # dE/dR, Hartree/bohr
-    forces = -gradient                   # negate exactly once
+    gradient = diagnostic.gradient  # dE/dR, Hartree/bohr
+    forces = -gradient  # negate exactly once
     print(energy, diagnostic.components, diagnostic.work)
 ```
 

@@ -9,7 +9,10 @@ Screening branches are deliberately excluded: the separately versioned domain
 contract rejects their inputs. Energy is per volume throughout this module.
 """
 
+from __future__ import annotations
+
 import math
+import typing
 from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Graph
@@ -34,7 +37,7 @@ _PW_PARAMETERS = {
 }
 
 
-def lda_xc_pw_unpolarized_tail_expression():
+def lda_xc_pw_unpolarized_tail_expression() -> typing.Any:
     """Return a positive-density LDA DAG without inverse-density overflow.
 
     With ``x=rho^(1/6)``, the PW92 low-density intermediates become bounded
@@ -82,7 +85,7 @@ def lda_xc_pw_unpolarized_tail_expression():
     )
 
 
-def energy_expression(spec):
+def energy_expression(spec: typing.Any) -> typing.Any:
     """Return the uninterpreted energy DAG and its ordered feature variables."""
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
@@ -115,7 +118,9 @@ def energy_expression(spec):
     k_factor = 3 / 10 * (6 * math.pi**2) ** (2 / 3)
     fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
 
-    def pw(modified, *, with_rs_derivative=False):
+    def pw(
+        modified: typing.Any, *, with_rs_derivative: typing.Any = False
+    ) -> typing.Any:
         parameters = _PW_PARAMETERS[modified]
         a = parameters["a"]
         alpha = parameters["alpha"]
@@ -152,14 +157,14 @@ def energy_expression(spec):
                 )
         fz20 = F("1.709920934161365617563962776245" if modified else "1.709921")
 
-        def combine(items):
+        def combine(items: typing.Any) -> typing.Any:
             g0, g1, gm = items
             return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
 
         value = combine(values)
         return (value, combine(derivatives)) if with_rs_derivative else value
 
-    def exchange(gga):
+    def exchange(gga: typing.Any) -> typing.Any:
         terms = []
         for density, sigma in ((ra, saa), (rb, sbb)):
             enhancement = 1
@@ -169,7 +174,7 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def correlation(gga, modified):
+    def correlation(gga: typing.Any, modified: typing.Any) -> typing.Any:
         eps = pw(modified)
         if gga:
             phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
@@ -188,7 +193,13 @@ def energy_expression(spec):
             )
         return n * eps
 
-    def r2_switch(alpha, coefficients, c1, c2, d):
+    def r2_switch(
+        alpha: typing.Any,
+        coefficients: typing.Any,
+        c1: typing.Any,
+        c2: typing.Any,
+        d: typing.Any,
+    ) -> typing.Any:
         polynomial = graph.sum(
             coefficient * alpha.pow(power)
             for power, coefficient in enumerate(coefficients)
@@ -229,7 +240,9 @@ def energy_expression(spec):
         )
     )
 
-    def scan_switch(alpha, c1, c2, d):
+    def scan_switch(
+        alpha: typing.Any, c1: typing.Any, c2: typing.Any, d: typing.Any
+    ) -> typing.Any:
         epsilon = 2.220446049250313e-16
         log_epsilon = -math.log(epsilon)
         left_cutoff = log_epsilon / (log_epsilon + float(c1))
@@ -249,7 +262,7 @@ def energy_expression(spec):
         )
         return graph.select_le(alpha, 1, left, right)
 
-    def scan_exchange():
+    def scan_exchange() -> typing.Any:
         k1 = F("0.065")
         h0 = F("1.174")
         c1 = F("0.667")
@@ -287,7 +300,7 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def scan_correlation():
+    def scan_correlation() -> typing.Any:
         phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
         spin_fifth = (up.pow(5 / 3) + down.pow(5 / 3)) / 2
         total_sigma = saa + 2 * sab + sbb
@@ -323,7 +336,7 @@ def energy_expression(spec):
         ec0 = (eclda0 + h0) * gc
         return n * (ec1 + f_alpha * (ec0 - ec1))
 
-    def r2scan_exchange():
+    def r2scan_exchange() -> typing.Any:
         eta = F("0.001")
         dp2 = F("0.361")
         k1 = F("0.065")
@@ -359,7 +372,7 @@ def energy_expression(spec):
             terms.append(-cx * density.pow(4 / 3) * enhancement)
         return graph.sum(terms)
 
-    def r2scan_correlation():
+    def r2scan_correlation() -> typing.Any:
         eta = F("0.001")
         dp2 = F("0.361")
         phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2

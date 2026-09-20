@@ -1,6 +1,7 @@
 """Explicit offline import of MolSSI Basis Set Exchange complete JSON 0.1."""
 
 import json
+import typing
 
 from .basis import (
     BasisProvenance,
@@ -12,7 +13,14 @@ from .basis import (
 from .elements import checked_integer
 
 
-def import_bse(path, *, source, source_version, license, representation=None):
+def import_bse(
+    path: typing.Any,
+    *,
+    source: typing.Any,
+    source_version: typing.Any,
+    license: typing.Any,
+    representation: typing.Any = None,
+) -> typing.Any:
     """Import a supplied file; declare its provenance/license, never query a service.
 
     BSE single-l general contractions remain matrices. Combined shells require

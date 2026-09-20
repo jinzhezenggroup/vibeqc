@@ -1,5 +1,7 @@
 """Shared small matrix-free residual for CPU and allocated-CUDA implicit tests."""
 
+import typing
+
 import numpy as np
 from vibeqc_compiler.method import ImplicitSolveSpec
 from vibeqc_compiler.tensor import (
@@ -15,10 +17,10 @@ from vibeqc_compiler.tensor import (
 )
 
 
-def rank_one_problem(size=17):
+def rank_one_problem(size: typing.Any = 17) -> typing.Any:
     i = Index("i", IndexSpace("coordinate", "batch", size))
 
-    def value(name, active=False):
+    def value(name: typing.Any, active: typing.Any = False) -> typing.Any:
         return input_tensor(
             name, TensorSpec((i,), role="parameter", differentiable=active)
         )

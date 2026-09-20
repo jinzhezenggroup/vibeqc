@@ -97,17 +97,24 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.dft import NativeAO
 
 atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-compiler = CudaCompilerAdapter(Path("nvcc"),
-                               cuda_target_info("sm_120"), compile_timeout=600)
-calc = Calculator(method="pbe-rks", device="cuda",
-                  ks_options=KsOptions(grid=GridSpec(radial_points=24,
-                      angular_polar=8, angular_azimuth=16)),
-                  energy_tolerance=1e-12, density_tolerance=1e-10)
+compiler = CudaCompilerAdapter(
+    Path("nvcc"), cuda_target_info("sm_120"), compile_timeout=600
+)
+calc = Calculator(
+    method="pbe-rks",
+    device="cuda",
+    ks_options=KsOptions(
+        grid=GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+    ),
+    energy_tolerance=1e-12,
+    density_tolerance=1e-10,
+)
 with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
     energy = batch.execute(strict=True).items[0].energy
     state = StationaryKsState.from_native(batch, basis)
     result = complete_rks_cuda_gradient_diagnostic(
-        state, basis, compiler=compiler, cache=".cache/stationary-cuda")
+        state, basis, compiler=compiler, cache=".cache/stationary-cuda"
+    )
     forces = -result.gradient
 ```
 

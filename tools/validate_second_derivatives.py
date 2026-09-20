@@ -13,6 +13,7 @@ import os
 import platform
 import sys
 import time
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,7 +74,7 @@ CASES = (
 )
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     """Run explicit fixtures and publish only a complete clean-source decision."""
     # Tiny independent oracle blocks use one reference worker; changing the
     # machine's OpenMP default must not make the finite Slurm reproduction hang.
@@ -100,12 +101,19 @@ def run(args):
     args.output.mkdir(parents=True, exist_ok=False)
     rows, artifacts, resources, errors = [], {}, {}, {}
 
-    def save(name, value):
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n"
         )
 
-    def execute(integral, components, coordinates, primitives, weights, direction):
+    def execute(
+        integral: typing.Any,
+        components: typing.Any,
+        coordinates: typing.Any,
+        primitives: typing.Any,
+        weights: typing.Any,
+        direction: typing.Any,
+    ) -> typing.Any:
         artifact = compile_second_derivative(
             integral,
             compiler,
@@ -162,7 +170,11 @@ def run(args):
         if args.case and name not in args.case:
             continue
 
-        def integral(output, family=family, angular=angular):
+        def integral(
+            output: typing.Any,
+            family: typing.Any = family,
+            angular: typing.Any = angular,
+        ) -> typing.Any:
             return (
                 build_eri_second_ir(angular, output=output)
                 if family == "eri"
@@ -489,7 +501,7 @@ def run(args):
     return 0 if passed else 1
 
 
-def main():
+def main() -> typing.Any:
     """Select an explicit backend and preserve a new transient output directory."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("cpu", "cuda"), required=True)

@@ -5,6 +5,7 @@ native/device-resident solver. No native molecular force capability is granted.
 """
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def prepared(tmp_path_factory):
+def prepared(tmp_path_factory: typing.Any) -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "implicit CUDA tests require Slurm"
     nvcc = find_nvcc()
     assert nvcc is not None, "set VIBEQC_NVCC to the supported allocated-GPU compiler"
@@ -55,11 +56,11 @@ def prepared(tmp_path_factory):
 
 @pytest.mark.parametrize("changed", [False, True])
 def test_real_cuda_implicit_vjp_same_graph_true_residual_and_no_cpu_fallback(
-    prepared, changed, monkeypatch
-):
+    prepared: typing.Any, changed: typing.Any, monkeypatch: typing.Any
+) -> None:
     import tools.vibeqc_response.implicit as runtime
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("CPU scientific fallback executed")
 
     monkeypatch.setattr(runtime, "execute", forbidden)
@@ -113,7 +114,9 @@ def test_real_cuda_implicit_vjp_same_graph_true_residual_and_no_cpu_fallback(
         bound.vjp(seed, reference_identity="stale")
 
 
-def test_cuda_primal_failure_does_not_poison_next_bound_state(prepared):
+def test_cuda_primal_failure_does_not_poison_next_bound_state(
+    prepared: typing.Any,
+) -> None:
     spec, feeds = rank_one_problem()
     bad = {**feeds, "q": feeds["q"] + 1.0}
     with pytest.raises(ImplicitSolveError, match="primal is not converged"):
@@ -124,7 +127,9 @@ def test_cuda_primal_failure_does_not_poison_next_bound_state(prepared):
     assert result.adjoint_residual_norm < 1e-10
 
 
-def test_cuda_adjoint_nonconvergence_is_not_published(prepared):
+def test_cuda_adjoint_nonconvergence_is_not_published(
+    prepared: typing.Any,
+) -> None:
     from tools.vibeqc_response.implicit import BoundImplicitState
 
     spec, feeds = rank_one_problem()

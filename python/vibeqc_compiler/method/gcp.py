@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+import typing
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -34,7 +35,7 @@ class GCPSpec:
     profile: str = "r2scan3c"
     version: str = GCP_SPEC_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.version != GCP_SPEC_VERSION:
             raise ValueError("unsupported gCP specification version")
         if not all(
@@ -86,7 +87,7 @@ class GCPSpec:
         ):
             raise ValueError("gCP supported elements must be sorted and unique")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "version": self.version,
             "basis": self.basis,
@@ -110,7 +111,7 @@ class GCPSpec:
         }
 
 
-def r2scan3c_gcp():
+def r2scan3c_gcp() -> typing.Any:
     """Exact def2-mTZVPP gCP profile used by r2SCAN-3c, scoped to H-Ar."""
 
     return GCPSpec(
@@ -138,20 +139,20 @@ class GeometricCounterpoisePrimitive:
     specification: GCPSpec
     kind: ClassVar[str] = "geometric_counterpoise"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.specification, GCPSpec):
             raise TypeError("gCP primitive requires GCPSpec")
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         return ("energy", "nuclear-gradient")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "kind": self.kind,
             "specification": self.specification.to_payload(),
             "derivative_capabilities": self.derivative_capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()

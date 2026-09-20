@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+import typing
 from dataclasses import dataclass
 
 _CORRECTION_API_VERSION = "correction-result-v1"
@@ -18,7 +19,7 @@ class CorrectionProvenance:
     implementation: str
     version: str = _CORRECTION_API_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not all(
             isinstance(v, str) and v
             for v in (
@@ -34,7 +35,7 @@ class CorrectionProvenance:
         if self.version != _CORRECTION_API_VERSION:
             raise ValueError("unsupported correction result version")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "version": self.version,
             "source": self.source,
@@ -59,7 +60,7 @@ class CorrectionResult:
     gradient_unit: str = "hartree/bohr"
     version: str = _CORRECTION_API_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.component, str) or not self.component:
             raise ValueError("correction result requires a component name")
         if self.status != "ok":
@@ -90,12 +91,12 @@ class CorrectionResult:
             raise ValueError("unsupported correction result units/version")
 
     @property
-    def forces(self):
+    def forces(self) -> typing.Any:
         """Cartesian forces in Hartree/bohr; force = -dE/dR exactly once here."""
 
         return tuple(tuple(-v for v in row) for row in self.gradient)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "version": self.version,
             "component": self.component,

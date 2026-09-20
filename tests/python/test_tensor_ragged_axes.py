@@ -1,5 +1,7 @@
 """Cross-axis ragged contracts against explicit-loop and adjoint references."""
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
@@ -38,8 +40,7 @@ def test_ragged_cross_axis(
     shape = [2] * rank
     shape[axis] = 0 if empty else 5
     indices = tuple(
-        Index(f"i{k}", IndexSpace(f"s{k}", "orbital", n))
-        for k, n in enumerate(shape)
+        Index(f"i{k}", IndexSpace(f"s{k}", "orbital", n)) for k, n in enumerate(shape)
     )
     value = input_tensor(
         "x", TensorSpec(indices, dtype=dtype, role="input", differentiable=True)
@@ -74,7 +75,7 @@ def test_ragged_cross_axis(
             for index, out in enumerate(mapping):
                 destination[out] += source[index]
         else:
-            for out, (start, stop) in enumerate(zip(mapping, mapping[1:])):
+            for out, (start, stop) in enumerate(pairwise(mapping)):
                 for index in range(start, stop):
                     destination[out] += source[index]
         return result
@@ -105,5 +106,7 @@ def test_ragged_cross_axis(
         np.sum(tangent * expected_vjp)
     )
     for candidate in (program, forward.program, reverse.program):
-        plan = plan_cuda(candidate, cuda_target_info("sm_120"), schedule=TensorSchedule())
+        plan = plan_cuda(
+            candidate, cuda_target_info("sm_120"), schedule=TensorSchedule()
+        )
         assert emit_cuda(plan)

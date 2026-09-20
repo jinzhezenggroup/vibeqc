@@ -7,6 +7,8 @@ unnormalized, unscreened atomic-unit quantities; contraction and arbitrary
 fixed weights belong to the caller. No HF/DF CUDA method promotion is implied.
 """
 
+import typing
+
 from .df_derivatives import build_df_derivative_kernel
 from .expr import AlgebraForm, AlgebraOrdering, RematerializationPolicy
 from .ir import OperatorFamily
@@ -15,7 +17,9 @@ from .scalar_c import ScalarCEmitter
 from .shell_class import build_shell_class_component_kernel
 
 
-def emit_bounded_component(integral, components, *, backend="cpu"):
+def emit_bounded_component(
+    integral: typing.Any, components: typing.Any, *, backend: typing.Any = "cpu"
+) -> typing.Any:
     """Emit one first-derivative component using the existing scientific DAG.
 
     There is deliberately no implicit full-shell default. Spherical consumers

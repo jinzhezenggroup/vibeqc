@@ -11,6 +11,7 @@ from __future__ import annotations
 import itertools
 import json
 import math
+import typing
 from dataclasses import asdict, dataclass, field
 
 from .provenance import canonical_hash
@@ -34,7 +35,7 @@ def byte_product(*values: int) -> int:
     return checked_bytes(math.prod(values), "byte product")
 
 
-def _sum(values) -> int:
+def _sum(values: typing.Any) -> int:
     return checked_bytes(sum(values), "concurrently live bytes")
 
 
@@ -60,7 +61,7 @@ class ResourceBudget:
     headroom_fraction: float = 0.0
     schema_version: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported resource budget schema")
         for name in ("host_bytes", "device_bytes", "pinned_host_bytes"):
@@ -87,7 +88,7 @@ class ResourceBudget:
         """Effective caps; reserve uses exact integer arithmetic for large sizes."""
         numerator, denominator = float(self.headroom_fraction).as_integer_ratio()
 
-        def remaining(value, reserve=0):
+        def remaining(value: typing.Any, reserve: typing.Any = 0) -> typing.Any:
             headroom = (value * numerator + denominator - 1) // denominator
             return max(0, value - headroom - reserve)
 
@@ -102,7 +103,7 @@ class ResourceBudget:
         limits.update({f"device:{d}": remaining(n) for d, n in self.per_device_bytes})
         return limits
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         return asdict(self)
 
 
@@ -126,7 +127,7 @@ class ResourceIdentity:
     schedule: str
     schema_version: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported resource identity schema")
         for name in ("method", "provider", "backend", "precision", "schedule"):
@@ -146,7 +147,7 @@ class ResourceIdentity:
         object.__setattr__(self, "observables", observables)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(asdict(self))
 
 
@@ -173,7 +174,7 @@ class ResourceEstimate:
     streamed_bytes: int = 0
     accounting: str = "capacity_bound"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name:
             raise ValueError("resource allocation needs an owner name")
         checked_bytes(self.bytes)
@@ -207,7 +208,7 @@ class ResourceCandidate:
     relative_cost: int = 0
     decisions: tuple[tuple[str, str], ...] = ()
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.name or self.mode not in (
             "resident",
             "streamed",
@@ -237,7 +238,7 @@ class ResourceRequest:
     unsupported_reason: str | None = None
     infeasible_reason: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.name or not isinstance(self.identity, ResourceIdentity):
             raise ValueError("request requires an owner and scientific identity")
         candidates = tuple(
@@ -255,7 +256,7 @@ class ResourceRequest:
         object.__setattr__(self, "scope_exclusions", tuple(self.scope_exclusions))
 
 
-def _account(estimates, *, resident=False):
+def _account(estimates: typing.Any, *, resident: typing.Any = False) -> typing.Any:
     """Sweep lifetime endpoints; complexity depends on resources, not phase IDs."""
     resources = [e for e in estimates if not resident or e.kind in RETAINED]
     phases = sorted(
@@ -291,7 +292,7 @@ class ResourcePlan:
     diagnostic: str | None = None
     schema_version: int = field(default=1, init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.budget, ResourceBudget):
             raise TypeError("plan requires a ResourceBudget")
         object.__setattr__(self, "requests", tuple(self.requests))
@@ -335,7 +336,7 @@ class ResourcePlan:
                 raise ValueError("feasible resource plan exceeds its budget")
 
     @property
-    def estimates(self):
+    def estimates(self) -> typing.Any:
         selected = dict(self.selections)
         return tuple(
             e
@@ -346,21 +347,21 @@ class ResourcePlan:
         )
 
     @property
-    def peak_bytes(self):
+    def peak_bytes(self) -> typing.Any:
         return _account(self.estimates)[0]
 
     @property
-    def resident_bytes(self):
+    def resident_bytes(self) -> typing.Any:
         return _account(self.estimates, resident=True)[0]
 
-    def require_feasible(self):
+    def require_feasible(self) -> typing.Any:
         if self.status == "unsupported":
             raise NotImplementedError(self.diagnostic or self.status)
         if self.status != "feasible":
             raise MemoryError(self.diagnostic or self.status)
         return self
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         payload = asdict(self)
         payload.update(
             peak_bytes=self.peak_bytes,
@@ -372,11 +373,11 @@ class ResourcePlan:
         return payload
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return self.to_dict()["identity"]
 
     @classmethod
-    def from_dict(cls, value):
+    def from_dict(cls, value: typing.Any) -> typing.Any:
         """Load a data-only plan and verify both identity and derived accounting."""
         record = dict(value)
         if (
@@ -421,7 +422,12 @@ class ResourcePlan:
         return plan
 
 
-def plan_resources(requests, budget, *, maximum_combinations=65536):
+def plan_resources(
+    requests: typing.Any,
+    budget: typing.Any,
+    *,
+    maximum_combinations: typing.Any = 65536,
+) -> typing.Any:
     """Compose provider alternatives without inventing a scientific fallback.
 
     Enumerate the providers' finite choices in deterministic cost order. A
@@ -500,7 +506,13 @@ def plan_resources(requests, budget, *, maximum_combinations=65536):
     )
 
 
-def lower_memory_plans(plan, failed_space, *, phase=None, maximum_combinations=65536):
+def lower_memory_plans(
+    plan: typing.Any,
+    failed_space: typing.Any,
+    *,
+    phase: typing.Any = None,
+    maximum_combinations: typing.Any = 65536,
+) -> typing.Any:
     """Enumerate supported retries that reduce the failed space and still fit.
 
     The caller must destroy a failed provider before trying another plan and
@@ -517,7 +529,7 @@ def lower_memory_plans(plan, failed_space, *, phase=None, maximum_combinations=6
     if phase is not None:
         checked_bytes(phase, "failed allocation phase")
 
-    def failed_usage(estimates):
+    def failed_usage(estimates: typing.Any) -> typing.Any:
         live = (
             estimates
             if phase is None
@@ -553,7 +565,7 @@ class ResourceAllocationError(MemoryError):
     before raising this exception.
     """
 
-    def __init__(self, space, message):
+    def __init__(self, space: typing.Any, message: typing.Any) -> None:
         if space not in ("host", "pageable", "pinned", "device"):
             ResourceEstimate("failed allocation", 0, space, 0, 0)
         self.space = space
@@ -577,7 +589,7 @@ class ResourceSession:
     general per-buffer lifetime model is otherwise unchanged.
     """
 
-    def __init__(self, plan, factories):
+    def __init__(self, plan: typing.Any, factories: typing.Any) -> None:
         self.plan = plan.require_feasible()
         self.factories = dict(factories)
         if set(self.factories) != {r.name for r in plan.requests}:
@@ -600,7 +612,7 @@ class ResourceSession:
         self._closed = False
 
     @staticmethod
-    def _release(owners):
+    def _release(owners: typing.Any) -> None:
         # Continue releasing even when a provider's close reports a failure.
         # Propagate the first exception after every other owner was attempted.
         first_error = None
@@ -614,7 +626,7 @@ class ResourceSession:
         if first_error is not None:
             raise first_error
 
-    def advance(self, phase):
+    def advance(self, phase: typing.Any) -> typing.Any:
         """Enter a monotonic phase, rolling back failed preparation as a group."""
         checked_bytes(phase, "execution phase")
         if self._closed:
@@ -684,7 +696,7 @@ class ResourceSession:
             break
         return self
 
-    def provider(self, name):
+    def provider(self, name: typing.Any) -> typing.Any:
         """Return an allocated owner only while its declared lifetime is live."""
         if name not in self._live:
             raise RuntimeError(
@@ -692,17 +704,17 @@ class ResourceSession:
             )
         return self._live[name]
 
-    def close(self):
+    def close(self) -> None:
         """Release all owners, including after a scientific execution failure."""
         self._closed = True
         self._release(self._live)
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         if self._closed:
             raise RuntimeError("resource session is closed")
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()
 
 
@@ -716,7 +728,14 @@ class CpuResourceObservation:
     Older libraries and unsampled backends report unavailable data as ``None``.
     """
 
-    def __init__(self, library, *, enabled=True, cpu_workers=0, ledger=None):
+    def __init__(
+        self,
+        library: typing.Any,
+        *,
+        enabled: typing.Any = True,
+        cpu_workers: typing.Any = 0,
+        ledger: typing.Any = None,
+    ) -> None:
         self.library = library
         self.ledger = ledger
         self.device_observation = None
@@ -737,7 +756,7 @@ class CpuResourceObservation:
         self.cuda_arena_peak_bytes = None
         self.cuda_arena_samples = None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         if self.available:
             import ctypes
 
@@ -765,7 +784,7 @@ class CpuResourceObservation:
             )
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         if self.available:
             import ctypes
 
@@ -791,7 +810,7 @@ class CpuResourceObservation:
             if self.ledger is not None:
                 self.device_observation = self.ledger.to_dict()
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         return {
             "status": "observed"
             if self.samples is not None
@@ -814,7 +833,7 @@ class CpuResourceObservation:
             ],
         }
 
-    def verify(self, plan):
+    def verify(self, plan: typing.Any) -> None:
         """Reject underestimated owned capacities without inventing missing data."""
         for space, observed in (
             ("host", self.peak_bytes),

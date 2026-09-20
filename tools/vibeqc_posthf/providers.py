@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+import typing
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 
@@ -23,14 +24,14 @@ class BlockResult:
     hamiltonian_id: str
     diagnostics: dict
 
-    def to_host(self):
+    def to_host(self) -> typing.Any:
         """Download only on explicit request; CPU outputs already own host data."""
         if isinstance(self.values, np.ndarray):
             return self.values
         return self.values.to_host()
 
 
-def transform_tile(tile, coefficients):
+def transform_tile(tile: typing.Any, coefficients: typing.Any) -> typing.Any:
     """Four cyclic staged contractions; no Kronecker product or AO N**4 tensor.
 
     Each step contracts the first remaining AO axis and appends its MO axis:
@@ -56,16 +57,16 @@ class ConventionalProvider:
 
     def __init__(
         self,
-        snapshot,
-        source,
+        snapshot: typing.Any,
+        source: typing.Any,
         *,
-        budget_bytes=256 << 20,
-        axis_tile=2,
-        backend="cpu",
-        cache_policy="pin",
-        cuda_artifact=None,
-        device_id=0,
-    ):
+        budget_bytes: typing.Any = 256 << 20,
+        axis_tile: typing.Any = 2,
+        backend: typing.Any = "cpu",
+        cache_policy: typing.Any = "pin",
+        cuda_artifact: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         if type(budget_bytes) is not int or budget_bytes < 1:
             raise ValueError("budget_bytes must be positive")
         if cache_policy not in ("pin", "lru"):
@@ -98,7 +99,7 @@ class ConventionalProvider:
         }
         self._source_identity = source.identity
 
-    def plan(self, block):
+    def plan(self, block: typing.Any) -> typing.Any:
         """Dry-run a complete requested output before reading any AO integral."""
         return plan_block(
             self.snapshot,
@@ -108,7 +109,7 @@ class ConventionalProvider:
             backend=self.backend,
         )
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         """Return g[p,q,r,s] for explicit global MO columns; reuse exact identity."""
         with self._lock:
             if self._closed:
@@ -242,7 +243,7 @@ class ConventionalProvider:
             self.statistics["source_tiles"] += tiles
             return result
 
-    def clear(self):
+    def clear(self) -> None:
         """Release retained outputs; CUDA block objects become explicitly closed."""
         with self._lock:
             for value, _ in self._cache.values():
@@ -251,13 +252,13 @@ class ConventionalProvider:
             self._cache.clear()
             self._retained = 0
 
-    def close(self):
+    def close(self) -> None:
         """Close this provider, without taking ownership of the source lifetime."""
         self.clear()
         self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

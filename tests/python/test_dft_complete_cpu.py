@@ -6,6 +6,7 @@ generated derivative graphs under test. Public DFT force capabilities stay off.
 """
 
 import ctypes as ct
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -19,7 +20,7 @@ ATOMS = [("O", (0.1, -0.1, 0.0)), ("H", (0.1, 0.2, 1.7)), ("H", (1.6, -0.2, -0.5
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 
 
-def calculator(method, **kwargs):
+def calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
     return Calculator(
         method=method,
         device="cpu",
@@ -30,7 +31,9 @@ def calculator(method, **kwargs):
     )
 
 
-def independent_gradient(basis, state, method):
+def independent_gradient(
+    basis: typing.Any, state: typing.Any, method: typing.Any
+) -> typing.Any:
     """PySCF full-response RKS with native atomic quadrature, independent algebra."""
     from pyscf import dft, gto, lib
     from pyscf.data.elements import ELEMENTS
@@ -105,7 +108,9 @@ def independent_gradient(basis, state, method):
     return mf.e_tot, total, components
 
 
-def independent_uks_gradient(basis, state, method):
+def independent_uks_gradient(
+    basis: typing.Any, state: typing.Any, method: typing.Any
+) -> typing.Any:
     """Independent PySCF full-grid-response UKS total gradient."""
     from pyscf import dft, gto, lib
     from pyscf.data.elements import ELEMENTS
@@ -157,8 +162,8 @@ def independent_uks_gradient(basis, state, method):
 @pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_complete_asymmetric_water_analytic_and_reconverged_fd(
-    method, record_property, execution
-):
+    method: typing.Any, record_property: typing.Any, execution: typing.Any
+) -> None:
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     calc = calculator(method)
     with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
@@ -271,7 +276,9 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(
 
 @pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
-def test_complete_open_shell_uks_analytic_and_reconverged_fd(method, execution):
+def test_complete_open_shell_uks_analytic_and_reconverged_fd(
+    method: typing.Any, execution: typing.Any
+) -> None:
     """B3: asymmetric doublet uses the same seven-source plan without RKS factors."""
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     charge, multiplicity = 1, 2
@@ -347,11 +354,11 @@ def test_complete_open_shell_uks_analytic_and_reconverged_fd(method, execution):
         np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
 
 
-def product_coordinates():
+def product_coordinates() -> typing.Any:
     return ((a, axis) for a in range(3) for axis in range(3))
 
 
-def test_failure_isolation_native_malformed_geometry_and_detached_state():
+def test_failure_isolation_native_malformed_geometry_and_detached_state() -> None:
     calc = calculator("pbe-rks")
     with calc.prepare_batch([ATOMS, ATOMS]) as batch, NativeAO(ATOMS) as basis:
         batch.execute(strict=True)
@@ -396,14 +403,16 @@ def test_failure_isolation_native_malformed_geometry_and_detached_state():
 
 
 @pytest.mark.parametrize("fail_publication", [False, True])
-def test_compiler_source_publication_is_atomic(tmp_path, monkeypatch, fail_publication):
+def test_compiler_source_publication_is_atomic(
+    tmp_path: typing.Any, monkeypatch: typing.Any, fail_publication: typing.Any
+) -> None:
     from vibeqc import _stationary_cpu as module
 
     path = tmp_path / "source.cpp"
     path.write_text("old complete source")
     replace_file = module.os.replace
 
-    def check_then_publish(temporary, destination):
+    def check_then_publish(temporary: typing.Any, destination: typing.Any) -> None:
         assert path.read_text() == "old complete source"
         assert temporary.read_text() == "new complete source"
         if fail_publication:
@@ -423,8 +432,8 @@ def test_compiler_source_publication_is_atomic(tmp_path, monkeypatch, fail_publi
 
 @pytest.mark.parametrize("execution", ["reference", "native"])
 def test_cpu_diagnostic_bounds_and_late_provider_failure(
-    tmp_path, monkeypatch, execution
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any, execution: typing.Any
+) -> None:
     from pathlib import Path
 
     from vibeqc import _stationary_cpu as module
@@ -453,7 +462,9 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(
         original = module._PrimitiveExecutor._run
         calls = 0
 
-        def fail_late(self, kind, count):
+        def fail_late(
+            self: typing.Any, kind: typing.Any, count: typing.Any
+        ) -> typing.Any:
             nonlocal calls
             calls += 1
             if calls == 3:
@@ -482,7 +493,9 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
-def test_fresh_process_gradient_has_no_external_oracle_dependency(tmp_path, method):
+def test_fresh_process_gradient_has_no_external_oracle_dependency(
+    tmp_path: typing.Any, method: typing.Any
+) -> None:
     import subprocess
     import sys
 
@@ -534,8 +547,8 @@ assert not any(name.split('.')[0] in {'pyscf', 'gpu4pyscf', 'cupy'} for name in 
 
 
 def test_native_late_grid_failure_stale_lease_and_changed_geometry(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     from vibeqc import _stationary_cpu as module
 
     atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]
@@ -546,7 +559,9 @@ def test_native_late_grid_failure_stale_lease_and_changed_geometry(
         state = StationaryKsState.from_native(batch, basis)
         calls = 0
 
-        def fail_late(self, *args, **kwargs):
+        def fail_late(
+            self: typing.Any, *args: typing.Any, **kwargs: typing.Any
+        ) -> typing.Any:
             nonlocal calls
             calls += 1
             if calls == 2:
@@ -563,7 +578,9 @@ def test_native_late_grid_failure_stale_lease_and_changed_geometry(
         StationaryDerivativeContract(state.identity).validate(state)
         calls = 0
 
-        def revoke(self, *args, **kwargs):
+        def revoke(
+            self: typing.Any, *args: typing.Any, **kwargs: typing.Any
+        ) -> typing.Any:
             nonlocal calls
             calls += 1
             result = run(self, *args, **kwargs)

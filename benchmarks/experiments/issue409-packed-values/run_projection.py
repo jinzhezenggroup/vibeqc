@@ -13,6 +13,7 @@ import os
 import statistics
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 _BENCHMARKS_DIR = next(
@@ -34,17 +35,17 @@ SOURCE = Path(__file__).resolve().parent
 MODES = ("full", "unpack32", "unpack128", "unpack256", "direct32x16", "direct64x16")
 
 
-def digest(path):
+def digest(path: typing.Any) -> typing.Any:
     """Hash large binary inputs with bounded host staging."""
     with Path(path).open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def dump(path, value):
+def dump(path: typing.Any, value: typing.Any) -> None:
     path.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
 
 
-def resource_plan(fixture, args):
+def resource_plan(fixture: typing.Any, args: typing.Any) -> typing.Any:
     """Charge every simultaneous trial allocation before launching CUDA."""
     n, a, r = (fixture[key] for key in ("n", "a", "r"))
     m, b, u = n * n * 8, n * n * a * 8, n * r * a * 8
@@ -101,7 +102,7 @@ def resource_plan(fixture, args):
     ).require_feasible()
 
 
-def work(fixture, mode):
+def work(fixture: typing.Any, mode: typing.Any) -> typing.Any:
     """Logical reads differ from DRAM traffic; opaque BLAS loads are not guessed."""
     n, a, r = (fixture[key] for key in ("n", "a", "r"))
     b, u, packed = n * n * a * 8, n * r * a * 8, n * (n + 1) // 2 * a * 8
@@ -168,7 +169,7 @@ def work(fixture, mode):
     return result
 
 
-def prepare(args):
+def prepare(args: typing.Any) -> None:
     """Freeze hashes, resource reservations and diagnostic input derivations."""
     if args.output.exists():
         raise RuntimeError("refusing to overwrite prepared experiment")
@@ -258,7 +259,7 @@ def prepare(args):
     )
 
 
-def run(args):
+def run(args: typing.Any) -> None:
     """Persist every sample before numerical gates; never weaken a failed gate."""
     if not os.environ.get("SLURM_JOB_ID"):
         raise RuntimeError("GPU trial requires finite Slurm allocation")

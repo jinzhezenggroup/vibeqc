@@ -7,7 +7,10 @@ AO/features/XC work, atom scatter and final source reduction execute on CUDA.
 No CPU derivative or interpreter fallback is available.
 """
 
+from __future__ import annotations
+
 import ctypes as ct
+import typing
 from contextlib import ExitStack
 from itertools import islice, product
 from pathlib import Path
@@ -57,11 +60,13 @@ _SOURCE_NAMES = (
 )
 
 
-def _ptr(array):
+def _ptr(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(_INT if array.dtype == np.int64 else _DOUBLE)
 
 
-def _checked(array, shape, dtype=np.float64):
+def _checked(
+    array: typing.Any, shape: typing.Any, dtype: typing.Any = np.float64
+) -> typing.Any:
     """Reject lossy/coercive admission before ctypes or device access."""
     value = np.asarray(array)
     if value.shape != shape or value.dtype != dtype or not np.isfinite(value).all():
@@ -69,7 +74,7 @@ def _checked(array, shape, dtype=np.float64):
     return np.ascontiguousarray(value)
 
 
-def _layout(basis):
+def _layout(basis: typing.Any) -> typing.Any:
     """Read the native normalized basis records without evaluating integrals."""
     if any(s.angular_momentum > 1 for s in basis.shells):
         raise NotImplementedError("CUDA gradient diagnostic admits s/p bases only")
@@ -95,7 +100,16 @@ def _layout(basis):
 class _CudaSources:
     """Serialized finite owner; device accumulators publish only after success."""
 
-    def __init__(self, basis, artifact, compiler, device, points, records, budget):
+    def __init__(
+        self,
+        basis: typing.Any,
+        artifact: typing.Any,
+        compiler: typing.Any,
+        device: typing.Any,
+        points: typing.Any,
+        records: typing.Any,
+        budget: typing.Any,
+    ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
         self.artifact = artifact
@@ -157,12 +171,12 @@ class _CudaSources:
             ct.byref(self.handle),
         )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self.library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def reset(self, tolerance):
+    def reset(self, tolerance: typing.Any) -> None:
         self.used, self.pending = 0, None
         self._call(
             "stationary_reset",
@@ -172,7 +186,7 @@ class _CudaSources:
             tolerance,
         )
 
-    def flush(self):
+    def flush(self) -> None:
         if self.used:
             self._call(
                 "stationary_records",
@@ -184,7 +198,15 @@ class _CudaSources:
             )
             self.used = 0
 
-    def integral(self, source, operator, indices, weight, nucleus=None, charge=1.0):
+    def integral(
+        self,
+        source: typing.Any,
+        operator: typing.Any,
+        indices: typing.Any,
+        weight: typing.Any,
+        nucleus: typing.Any = None,
+        charge: typing.Any = 1.0,
+    ) -> None:
         """Pack exponents, raw normalization factors and plan weights separately.
 
         Host work is discrete record enumeration. CUDA multiplies every
@@ -214,7 +236,7 @@ class _CudaSources:
             if self.used == len(self.buffer):
                 self.flush()
 
-    def nuclear(self, a, b, charges):
+    def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> None:
         self.flush()
         self.pending = self.kinds["nuclear", ()], 6
         r, m = self.buffer[0], self.maps[0]
@@ -225,7 +247,15 @@ class _CudaSources:
         m[:2] = a, b
         self.used = 1
 
-    def geometry(self, task, owners, weights, raw, *, pbe):
+    def geometry(
+        self,
+        task: typing.Any,
+        owners: typing.Any,
+        weights: typing.Any,
+        raw: typing.Any,
+        *,
+        pbe: typing.Any,
+    ) -> None:
         view = task.view
         if task._owner.device_id != self.device:
             raise ValueError("stationary/grid current owner device mismatch")
@@ -244,13 +274,13 @@ class _CudaSources:
             _ptr(raw),
         )
 
-    def finish(self):
+    def finish(self) -> typing.Any:
         self.flush()
         out = np.empty((7, self.natom, 3))
         self._call("stationary_finish", self.handle, _ptr(out), out.size)
         return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         values = (ct.c_uint64 * 8)()
         if self.library.stationary_metrics(self.handle, values, 8):
             raise RuntimeError("stationary metrics unavailable")
@@ -270,38 +300,38 @@ class _CudaSources:
             )
         )
 
-    def close(self):
+    def close(self) -> None:
         if self.handle:
             self.library.stationary_destroy(self.handle)
             self.handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "handle"):
             self.close()
 
 
 def complete_rks_cuda_gradient_diagnostic(
-    state,
-    basis,
+    state: typing.Any,
+    basis: typing.Any,
     *,
-    compiler,
-    cache,
-    tile_points=256,
-    integral_terms=32,
-    primitive_tile=128,
-    max_device_bytes=512 << 20,
-    max_host_bytes=256 << 20,
-    max_grid_points=1_000_000,
-    max_primitive_records=2_000_000,
-    max_grid_pair_visits=100_000_000,
-    max_ecp_pair_samples=100_000_000,
-):
+    compiler: typing.Any,
+    cache: typing.Any,
+    tile_points: typing.Any = 256,
+    integral_terms: typing.Any = 32,
+    primitive_tile: typing.Any = 128,
+    max_device_bytes: typing.Any = 512 << 20,
+    max_host_bytes: typing.Any = 256 << 20,
+    max_grid_points: typing.Any = 1_000_000,
+    max_primitive_records: typing.Any = 2_000_000,
+    max_grid_pair_visits: typing.Any = 100_000_000,
+    max_ecp_pair_samples: int = 100_000_000,
+) -> typing.Any:
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
     Domain: real FP64 direct all-electron s/p LDA/PBE RKS/UKS, native version-three
@@ -505,7 +535,7 @@ def complete_rks_cuda_gradient_diagnostic(
         "device_ms": 0.0,
     }
 
-    def record_tensor(result, feeds):
+    def record_tensor(result: typing.Any, feeds: typing.Any) -> None:
         # Aggregate in constant storage; retaining one metrics dictionary per
         # AO quartet block would defeat the bounded diagnostic orchestration.
         tensor_work["executions"] += 1

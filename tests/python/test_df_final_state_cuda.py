@@ -1,6 +1,7 @@
 """Final selection binds energy and complete forces to the same verified state."""
 
 import os
+import typing
 from contextlib import ExitStack
 
 import numpy as np
@@ -15,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def calls(rows, name):
+def calls(rows: typing.Any, name: typing.Any) -> typing.Any:
     return rows.get(name, {}).get("calls", 0)
 
 
@@ -24,8 +25,13 @@ def calls(rows, name):
 @pytest.mark.parametrize("size", (1, 4))
 @pytest.mark.parametrize("budget", (0, 16 << 20))
 def test_selection_rebuild_and_force_transitions(
-    method, representation, size, budget, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    size: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Three independent owners exercise actual provider and reuse choices.
 
     The CPU DF calculation supplies an independent molecular energy/force
@@ -182,7 +188,9 @@ def test_selection_rebuild_and_force_transitions(
 
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("state", ("rhf", "uhf", "empty_beta"))
-def test_complete_force_matches_independent_energy_differences(representation, state):
+def test_complete_force_matches_independent_energy_differences(
+    representation: typing.Any, state: typing.Any
+) -> None:
     """Differentiate total CPU DF energies, independently of all force formulas.
 
     Each displacement rebuilds orbital and auxiliary centers together, testing

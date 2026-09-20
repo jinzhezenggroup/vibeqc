@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import typing
 
 import pytest
 from vibeqc_compiler.integral import (
@@ -22,7 +23,7 @@ from vibeqc_compiler.integral.capabilities import build_capability_report
 
 
 @pytest.mark.parametrize("architecture", sorted(CUDA_TARGETS))
-def test_static_cuda_catalog_has_no_device_topology(architecture: str):
+def test_static_cuda_catalog_has_no_device_topology(architecture: str) -> None:
     """Architecture metadata must not impersonate one concrete GPU."""
 
     target = cuda_target_info(architecture)
@@ -34,7 +35,7 @@ def test_static_cuda_catalog_has_no_device_topology(architecture: str):
     assert schedule_candidates(integral, target)
 
 
-def test_runtime_probe_owns_sm_count():
+def test_runtime_probe_owns_sm_count() -> None:
     """A concrete topology appears only after a device probe enriches a target."""
 
     static = cuda_target_info("sm_120")
@@ -47,7 +48,7 @@ def test_runtime_probe_owns_sm_count():
         static.with_runtime_probe(sm_count=0)
 
 
-def test_generic_cuda_schedule_apis_have_no_sm120_default():
+def test_generic_cuda_schedule_apis_have_no_sm120_default() -> None:
     """Generic scheduling cannot silently select a concrete CUDA architecture."""
 
     assert (
@@ -69,7 +70,7 @@ def test_generic_cuda_schedule_apis_have_no_sm120_default():
         emit_schedule_driver(())
 
 
-def test_explicit_offline_architecture_remains_supported():
+def test_explicit_offline_architecture_remains_supported() -> None:
     """Offline reports and drivers can select an architecture without a device probe."""
 
     report = build_capability_report(
@@ -82,7 +83,7 @@ def test_explicit_offline_architecture_remains_supported():
     assert "compile target sm_80" in source
 
 
-def test_capability_target_and_architecture_must_agree():
+def test_capability_target_and_architecture_must_agree() -> None:
     """Supplying two explicit target identities cannot silently replace either one."""
 
     with pytest.raises(ValueError, match="target and architecture disagree"):
@@ -94,7 +95,7 @@ def test_capability_target_and_architecture_must_agree():
 
 
 @pytest.mark.parametrize("count", [True, 1.5, float("nan"), float("inf")])
-def test_probed_sm_count_is_a_finite_integer(count):
+def test_probed_sm_count_is_a_finite_integer(count: typing.Any) -> None:
     target = cuda_target_info("sm_120")
     with pytest.raises(ValueError, match="SM count must be positive"):
         target.with_runtime_probe(sm_count=count)

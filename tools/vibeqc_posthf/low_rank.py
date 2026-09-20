@@ -10,6 +10,7 @@ import json
 import math
 import threading
 import time
+import typing
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 
@@ -55,7 +56,7 @@ class RefinementResult:
     seconds: float
 
     @property
-    def invalidates_solver_history(self):
+    def invalidates_solver_history(self) -> typing.Any:
         return self.previous_identity != self.identity
 
 
@@ -83,14 +84,14 @@ class IncrementalCholesky:
 
     def __init__(
         self,
-        columns,
+        columns: typing.Any,
         *,
-        rank_capacity,
-        pair_tile=256,
-        export_rank_tile=1,
-        budget=None,
-        _execution_requests=(),
-    ):
+        rank_capacity: typing.Any,
+        pair_tile: typing.Any = 256,
+        export_rank_tile: typing.Any = 1,
+        budget: typing.Any = None,
+        _execution_requests: typing.Any = (),
+    ) -> None:
         started = time.perf_counter()
         self._lock = threading.RLock()
         columns.check()
@@ -168,7 +169,7 @@ class IncrementalCholesky:
         self._setup_seconds = time.perf_counter() - started
 
     @staticmethod
-    def _values(value, count):
+    def _values(value: typing.Any, count: typing.Any) -> typing.Any:
         value = np.asarray(value)
         if (
             value.dtype != np.float64
@@ -180,7 +181,7 @@ class IncrementalCholesky:
             )
         return value
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("incremental factorization is closed")
         self._columns.check()
@@ -188,23 +189,23 @@ class IncrementalCholesky:
             raise ValueError("Coulomb source identity changed; rebuild factorization")
 
     @property
-    def space(self):
+    def space(self) -> typing.Any:
         return self._space
 
     @property
-    def rank(self):
+    def rank(self) -> typing.Any:
         return self._rank
 
     @property
-    def rank_capacity(self):
+    def rank_capacity(self) -> typing.Any:
         return self._rank_capacity
 
     @property
-    def resource_plan(self):
+    def resource_plan(self) -> typing.Any:
         return self._resource_plan
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Hamiltonian identity changes with actual factor values, not a label."""
         with self._lock:
             self._check()
@@ -220,28 +221,28 @@ class IncrementalCholesky:
             )
 
     @property
-    def hamiltonian_id(self):
+    def hamiltonian_id(self) -> typing.Any:
         return "pivoted-cholesky:" + self.identity
 
     @property
-    def history(self):
+    def history(self) -> typing.Any:
         with self._lock:
             self._check()
             return tuple(self._history)
 
-    def _roundoff(self):
+    def _roundoff(self) -> typing.Any:
         return 64 * np.finfo(np.float64).eps * self._scale * (self.rank + 1)
 
-    def _project_column(self, column, pivot):
+    def _project_column(self, column: typing.Any, pivot: typing.Any) -> typing.Any:
         """Subtract the retained prefix; native policies may keep it resident."""
         if self.rank:
             column -= self._factors[: self.rank].T @ self._factors[: self.rank, pivot]
         return column
 
-    def _commit_native_column(self, column):
+    def _commit_native_column(self, column: typing.Any) -> typing.Any:
         """Execution-policy hook, called after validation and before host commit."""
 
-    def _pivot(self, pivot, diagonal):
+    def _pivot(self, pivot: typing.Any, diagonal: typing.Any) -> None:
         """Validate an entire new Schur column before mutating the prefix."""
         n = self.space.size
         column = np.empty(n)
@@ -294,7 +295,9 @@ class IncrementalCholesky:
         self._history.append(record)
         self._rank += 1
 
-    def refine(self, threshold, *, maximum_rank=None):
+    def refine(
+        self, threshold: typing.Any, *, maximum_rank: typing.Any = None
+    ) -> typing.Any:
         """Append pivots until the diagonal threshold, rank cap or roundoff floor.
 
         The threshold is absolute in the normalized Coulomb pair matrix.
@@ -348,7 +351,9 @@ class IncrementalCholesky:
             self._refinements.append(result)
             return result
 
-    def factor_tile(self, begin, count, *, identity=None):
+    def factor_tile(
+        self, begin: typing.Any, count: typing.Any, *, identity: typing.Any = None
+    ) -> typing.Any:
         """Detach at most the reserved rank tile; reject a stale captured generation."""
         with self._lock:
             self._check()
@@ -367,7 +372,7 @@ class IncrementalCholesky:
                 )
             return immutable(self._factors[begin : begin + count])
 
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Report conditional tensor residual diagnostics, never observable bounds."""
         with self._lock:
             self._check()
@@ -397,14 +402,14 @@ class IncrementalCholesky:
                 "refinement_seconds": sum(row.seconds for row in self._refinements),
             }
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             self._closed = True
             self._factors = self._original = self._residual = None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._check()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

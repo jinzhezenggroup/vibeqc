@@ -2,6 +2,7 @@
 
 import sys as _compiler_sys
 import types as _compiler_types
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_root = (
@@ -32,7 +33,7 @@ from vibeqc_compiler.xc.expressions import (
 from vibeqc_compiler.xc.spec import functional
 
 
-def build_roots(spec, outputs):
+def build_roots(spec: typing.Any, outputs: typing.Any) -> typing.Any:
     """Build first-derivative roots and their ordinary XCProgram identity."""
 
     graph, energy, variables = energy_expression(spec)

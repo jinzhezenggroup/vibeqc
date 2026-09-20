@@ -30,7 +30,8 @@ from vibeqc_compiler.dft.spatial import SpatialPolicy
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 
 with PreparedSpatialGrid(
-    basis, grid,
+    basis,
+    grid,
     policy=SpatialPolicy(region_points=128),
     tile_points=32,
     resource_budget=ResourceBudget(host_bytes=128 << 20),
