@@ -109,6 +109,7 @@ class _CudaSources:
         points: typing.Any,
         records: typing.Any,
         budget: typing.Any,
+        timeline: typing.Any = None,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
@@ -122,6 +123,7 @@ class _CudaSources:
         self.pending = None
         self.device = device
         self.borrowed_streams = set()
+        self._timeline = timeline
         self.centers = np.ascontiguousarray(
             basis.packed[: 3 * basis.natom].reshape(-1, 3)
         )
@@ -173,8 +175,16 @@ class _CudaSources:
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
-        if getattr(self.library, name)(*args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        started = perf_counter() if self._timeline is not None else None
+        try:
+            if getattr(self.library, name)(*args, error, len(error)):
+                raise RuntimeError(error.value.decode())
+        finally:
+            if started is not None:
+                seconds = self._timeline.setdefault("native_call_seconds", {})
+                counts = self._timeline.setdefault("native_call_counts", {})
+                seconds[name] = seconds.get(name, 0.0) + (perf_counter() - started)
+                counts[name] = counts.get(name, 0) + 1
 
     def reset(self, tolerance: typing.Any) -> None:
         self.used, self.pending = 0, None
@@ -331,6 +341,7 @@ def complete_rks_cuda_gradient_diagnostic(
     max_primitive_records: typing.Any = 2_000_000,
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
+    measure_timeline: bool = False,
 ) -> typing.Any:
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
@@ -347,6 +358,19 @@ def complete_rks_cuda_gradient_diagnostic(
     force capability to Cartesian/real-spherical s/p records.
     """
     started = perf_counter()
+    if type(measure_timeline) is not bool:
+        raise TypeError("measure_timeline must be bool")
+    timeline = (
+        {"schema": "vibeqc.stationary-cuda-timeline/v1", "exclusive_seconds": {}}
+        if measure_timeline
+        else None
+    )
+
+    def add_phase(name: str, seconds: float) -> None:
+        if timeline is not None:
+            phases = timeline["exclusive_seconds"]
+            phases[name] = phases.get(name, 0.0) + seconds
+
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if contract.family == "mgga":
@@ -519,8 +543,10 @@ def complete_rks_cuda_gradient_diagnostic(
             raise ValueError("ECP additional-host byte budget exceeded")
         if ecp_workspace > max_device_bytes:
             raise ValueError("ECP additional-device budget exceeded")
+    add_phase("admission_and_plan", perf_counter() - started)
     cache = Path(cache)
     spec = state._source.grid_spec
+    phase_started = perf_counter()
     artifact = compile_stationary_cuda(
         emit_first_derivative_cuda(requests),
         pbe=pbe,
@@ -529,6 +555,7 @@ def complete_rks_cuda_gradient_diagnostic(
         cache=cache,
     )
     grid_artifact = compile_grid(compiler, cache)
+    add_phase("artifact_prepare", perf_counter() - phase_started)
     artifacts = [artifact, grid_artifact]
     tensor_work = {
         "executions": 0,
@@ -552,12 +579,16 @@ def complete_rks_cuda_gradient_diagnostic(
             tensor_work[name] += result.metrics[name]
 
     # Run the checked CUDA provider only after all admission checks pass.
+    phase_started = perf_counter()
     derivatives = state._source.ecp_derivatives() if ecp else None
+    if ecp:
+        add_phase("ecp_provider", perf_counter() - phase_started)
     peak = max(ecp_workspace, grid_plan.peak_bytes + source_bytes)
     charges = np.asarray([a.atomic_number for a in basis.atoms]) - np.asarray(
         state._source.ecp_cores
     )
     with ExitStack() as stack:
+        phase_started = perf_counter()
         sources = stack.enter_context(
             _CudaSources(
                 basis,
@@ -567,6 +598,7 @@ def complete_rks_cuda_gradient_diagnostic(
                 tile_points,
                 primitive_tile,
                 source_bytes,
+                timeline=timeline,
             )
         )
         sources.reset(spec.coincident_tolerance)
@@ -584,16 +616,28 @@ def complete_rks_cuda_gradient_diagnostic(
             )
         )
         ao.set_density(density)
+        add_phase("owner_construction", perf_counter() - phase_started)
         for source, rank, operator in (
             ("one_electron", 2, "kinetic"),
             ("overlap_pulay", 2, "overlap"),
             ("coulomb", 4, "four_center_eri"),
         ):
             tp = tensor_plans[source]
+            phase_started = perf_counter()
             ta = compile_cuda(tp, compiler, cache)
+            add_phase("artifact_prepare", perf_counter() - phase_started)
             artifacts.append(ta)
             peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+            phase_started = perf_counter()
             with PreparedCuda(tp, ta, device=device) as weights:
+                add_phase("tensor_owner_construction", perf_counter() - phase_started)
+                source_started = perf_counter()
+                tensor_seconds = 0.0
+                native_source_before = 0.0
+                if timeline is not None:
+                    native_source_before = timeline.get("native_call_seconds", {}).get(
+                        "stationary_records", 0.0
+                    )
                 iterator = product(range(n), repeat=rank)
                 while tuples := tuple(islice(iterator, integral_terms)):
                     ids = np.zeros((integral_terms, rank), dtype=np.int64)
@@ -610,7 +654,10 @@ def complete_rks_cuda_gradient_diagnostic(
                             feeds["density_right"] = state.density[
                                 :, ids[:, 2], ids[:, 3]
                             ]
+                    tensor_started = perf_counter() if timeline is not None else None
                     result = weights.execute(feeds)
+                    if tensor_started is not None:
+                        tensor_seconds += perf_counter() - tensor_started
                     record_tensor(result, feeds)
                     for indices, weight in zip(tuples, result.outputs["weights"]):
                         sources.integral(
@@ -626,12 +673,48 @@ def complete_rks_cuda_gradient_diagnostic(
                                     a,
                                     charges[a],
                                 )
+                source_elapsed = perf_counter() - source_started
+                if timeline is not None:
+                    nested = timeline.setdefault("nested_seconds", {})
+                    nested["tensor_weight_execution"] = (
+                        nested.get("tensor_weight_execution", 0.0) + tensor_seconds
+                    )
+            flush_started = perf_counter()
             sources.flush()
+            source_elapsed += perf_counter() - flush_started
+            add_phase("integral_sources", source_elapsed)
+            if timeline is not None:
+                native_source_after = timeline.get("native_call_seconds", {}).get(
+                    "stationary_records", 0.0
+                )
+                native_source = native_source_after - native_source_before
+                nested = timeline.setdefault("nested_seconds", {})
+                nested["integral_native_primitive_and_reduce"] = (
+                    nested.get("integral_native_primitive_and_reduce", 0.0)
+                    + native_source
+                )
+                nested["integral_python_pack_and_feed"] = nested.get(
+                    "integral_python_pack_and_feed", 0.0
+                ) + max(0.0, source_elapsed - tensor_seconds - native_source)
+        phase_started = perf_counter()
+        native_before = 0.0
+        if timeline is not None:
+            native_before = timeline.get("native_call_seconds", {}).get(
+                "stationary_records", 0.0
+            )
         for a in range(na):
             for b in range(a):
                 sources.nuclear(a, b, charges)
         sources.flush()
+        add_phase("nuclear_source", perf_counter() - phase_started)
+        if timeline is not None:
+            native_after = timeline.get("native_call_seconds", {}).get(
+                "stationary_records", 0.0
+            )
+            nested = timeline.setdefault("nested_seconds", {})
+            nested["nuclear_native_dispatch"] = native_after - native_before
         grid = state.grid
+        phase_started = perf_counter()
         for begin in range(0, len(grid.points), tile_points):
             end = min(begin + tile_points, len(grid.points))
             with ao.xc_task(
@@ -646,13 +729,18 @@ def complete_rks_cuda_gradient_diagnostic(
                     state._source.atomic_weights[begin:end],
                     pbe=pbe,
                 )
+        add_phase("xc_geometry", perf_counter() - phase_started)
+        phase_started = perf_counter()
         components = sources.finish()
+        add_phase("source_publication", perf_counter() - phase_started)
         if ecp:
             # Full ordered AO-pair contraction; the existing TensorIR supplies
             # spin summation and every scientific weight/reduction on CUDA.
             for k, name in enumerate(("ecp_local", "ecp_nonlocal")):
                 tp = tensor_plans[name]
+                phase_started = perf_counter()
                 ta = compile_cuda(tp, compiler, cache)
+                add_phase("artifact_prepare", perf_counter() - phase_started)
                 artifacts.append(ta)
                 peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
                 feeds = {
@@ -663,25 +751,42 @@ def complete_rks_cuda_gradient_diagnostic(
                         derivatives[k].reshape(3 * na, n * n).T
                     ),
                 }
+                phase_started = perf_counter()
                 with PreparedCuda(tp, ta, device=device) as contraction:
+                    add_phase(
+                        "tensor_owner_construction", perf_counter() - phase_started
+                    )
+                    phase_started = perf_counter()
                     result = contraction.execute(feeds)
                     record_tensor(result, feeds)
                     components[name] = result.outputs["gradient"].reshape(na, 3)
+                    add_phase("ecp_contractions", perf_counter() - phase_started)
         # Validate actual coverage before the pre-admitted complete reduction.
+        phase_started = perf_counter()
         plan.reduction_program(atoms=na, sources=components)
+        add_phase("reduction_prepare", perf_counter() - phase_started)
         tp = tensor_plans["reduction"]
+        phase_started = perf_counter()
         ta = compile_cuda(tp, compiler, cache)
+        add_phase("artifact_prepare", perf_counter() - phase_started)
         artifacts.append(ta)
         peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+        phase_started = perf_counter()
         with PreparedCuda(tp, ta, device=device) as reduction:
+            add_phase("tensor_owner_construction", perf_counter() - phase_started)
+            phase_started = perf_counter()
             reduced = reduction.execute(components)
             record_tensor(reduced, components)
             gradient = reduced.outputs["gradient"]
+            add_phase("final_reduction", perf_counter() - phase_started)
+        phase_started = perf_counter()
         work = sources.metrics()
         work["grid_metrics"] = ao.metrics()
         work["borrowed_grid_streams"] = tuple(sorted(sources.borrowed_streams))
         if work["owned_device_bytes"] != source_bytes:
             raise RuntimeError("stationary allocation disagrees with admitted bytes")
+        add_phase("metrics_and_checks", perf_counter() - phase_started)
+    phase_started = perf_counter()
     contract.validate(state)  # Replay/replacement/closure revokes publication.
     if work["primitive_records"] != records or work["grid_pair_visits"] != pair_visits:
         raise RuntimeError("CUDA executed work disagrees with admitted source coverage")
@@ -710,7 +815,6 @@ def complete_rks_cuda_gradient_diagnostic(
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
         host_scope="snapshot validation; primitive enumeration and record packing; density gathers; TensorIR H2D/D2H; immutable result copies",
-        endpoint_seconds=perf_counter() - started,
         artifacts=tuple(
             {
                 "library": str(a.library),
@@ -720,7 +824,8 @@ def complete_rks_cuda_gradient_diagnostic(
             for a in artifacts
         ),
     )
-    return DiagnosticStationaryGradient(
+    add_phase("final_validation_and_metadata", perf_counter() - phase_started)
+    result = DiagnosticStationaryGradient(
         immutable(gradient),
         MappingProxyType({k: immutable(v) for k, v in components.items()}),
         plan.identity,
@@ -729,3 +834,48 @@ def complete_rks_cuda_gradient_diagnostic(
         execution=("cuda-nine-source" if ecp else "cuda-seven-source")
         + "/explicit-host-snapshot-and-orchestration-v1",
     )
+    endpoint_seconds = perf_counter() - started
+    work["endpoint_seconds"] = endpoint_seconds
+    if timeline is not None:
+        native_seconds = timeline.setdefault("native_call_seconds", {})
+        native_counts = timeline.setdefault("native_call_counts", {})
+        nested = timeline.setdefault("nested_seconds", {})
+        geometry_native = native_seconds.get("stationary_geometry", 0.0)
+        nested["xc_geometry_native"] = geometry_native
+        nested["xc_geometry_grid_and_python"] = max(
+            0.0, timeline["exclusive_seconds"].get("xc_geometry", 0.0) - geometry_native
+        )
+        calls = native_counts.get("stationary_records", 0)
+        geometry_calls = native_counts.get("stationary_geometry", 0)
+        timeline["operation_counts"] = {
+            "primitive_kernel_launches": calls,
+            "primitive_reduction_launches": calls,
+            "xc_geometry_kernel_launches": geometry_calls,
+            "xc_geometry_reduction_launches": geometry_calls,
+            "explicit_stream_synchronizations": (
+                native_counts.get("stationary_reset", 0)
+                + calls
+                + geometry_calls
+                + native_counts.get("stationary_finish", 0)
+            ),
+            "tensor_executions": tensor_work["executions"],
+        }
+        timeline["transfer_bytes"] = {
+            "source_h2d": work["h2d_bytes"],
+            "source_d2h": work["d2h_bytes"],
+            "tensor_h2d_numeric": tensor_work["h2d_numeric_bytes"],
+            "tensor_d2h": tensor_work["d2h_bytes"],
+            "snapshot_d2h": int(state._source.export_work.get("d2h_bytes", 0)),
+        }
+        measured = sum(timeline["exclusive_seconds"].values())
+        residual = endpoint_seconds - measured
+        timeline["reconciliation"] = {
+            "endpoint_seconds": endpoint_seconds,
+            "exclusive_phase_seconds": measured,
+            "residual_seconds": residual,
+            "residual_fraction": residual / endpoint_seconds
+            if endpoint_seconds
+            else 0.0,
+        }
+        work["timeline"] = timeline
+    return result

@@ -125,6 +125,7 @@ def test_complete_cuda_independent_analytic(
         assert state._source.grid_spec is not None
         assert np.all(state._source.atomic_weights > 0)
         # Nondivisible capacities exercise both primitive and grid tails.
+        measure_timeline = method == "pbe-rks" and molecule == "water"
         result = _diagnostic(
             state,
             basis,
@@ -132,6 +133,7 @@ def test_complete_cuda_independent_analytic(
             tile_points=137,
             primitive_tile=29,
             integral_terms=17,
+            measure_timeline=measure_timeline,
         )
         # Stop endpoint timing before the independent CPU reference. Otherwise
         # the timing would silently include PySCF validation rather than only
@@ -171,6 +173,29 @@ def test_complete_cuda_independent_analytic(
             result.work["additional_device_peak_bound"]
             <= result.work["additional_device_budget"]
         )
+        if measure_timeline:
+            timeline = result.work["timeline"]
+            counts = timeline["operation_counts"]
+            assert timeline["schema"] == "vibeqc.stationary-cuda-timeline/v1"
+            assert abs(timeline["reconciliation"]["residual_fraction"]) < 0.1
+            assert counts["primitive_kernel_launches"] > 0
+            assert (
+                counts["primitive_kernel_launches"]
+                == counts["primitive_reduction_launches"]
+            )
+            assert (
+                counts["xc_geometry_kernel_launches"]
+                == counts["xc_geometry_reduction_launches"]
+            )
+            assert timeline["transfer_bytes"]["source_h2d"] == result.work["h2d_bytes"]
+            assert timeline["transfer_bytes"]["source_d2h"] == result.work["d2h_bytes"]
+            assert counts["tensor_executions"] == result.work["tensor_executions"]
+            assert (
+                1
+                + 2 * counts["primitive_kernel_launches"]
+                + 2 * counts["xc_geometry_kernel_launches"]
+                == result.work["launches"]
+            )
         if molecule == "water":
             for key in result.components:
                 assert np.max(np.abs(result.components[key])) > 1e-4

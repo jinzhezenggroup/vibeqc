@@ -145,6 +145,40 @@ runs locally without reserving a GPU.
 The [decision record](../.agents/notes/implemented/architecture/2026-09-19-stationary-cuda-diagnostic.md)
 preserves shared-science choices, measured evidence and remaining qualification.
 
+## Complete timeline benchmark
+
+Issue #662 adds an opt-in measurement layer around the unchanged stationary
+CUDA force path. `measure_timeline=True` records mutually exclusive host-wall
+phases in `result.work["timeline"]["exclusive_seconds"]`; only those phases are
+summed for endpoint reconciliation. Nested attribution records TensorIR weight
+execution, native primitive/geometry calls, launch classes, synchronization
+points and transfer bytes without adding them to the exclusive sum.
+
+The machine-readable benchmark records four execution states separately:
+`cold`, `artifact-warm`, `same-state-warm`, and `changed-geometry`. SCF
+convergence prepares the final state and is outside the timed force endpoint;
+explicit `StationaryKsState.from_native` export is timed as its own phase. The
+three default fixtures retain increasing AO regimes (`h2`, `water`, and
+`water-dimer`). Unsupported method/backend combinations are written explicitly
+instead of being silently omitted.
+
+Run the benchmark through the existing finite Slurm profile, for example:
+
+```sh
+python tools/run_stationary_cuda_timeline.py \
+  --output build-cuda/stationary-662/pbe.json \
+  --methods pbe-rks pbe-uks \
+  --fixtures h2 water water-dimer \
+  --include-cold --require-all
+```
+
+`--require-all` rejects unsupported/error cases and any sample whose sum of
+exclusive phases differs from the externally timed endpoint by more than 5%.
+Cold artifact preparation is therefore reported separately from warm execution,
+while the same JSON retains exact primitive/grid/TensorIR work counters and
+source/snapshot/TensorIR transfer bytes. The benchmark changes no tolerance,
+tile policy, work budget, or scientific expression.
+
 ## Strict compilation environment
 
 The stationary CUDA compiler rejects nonempty `NVCC_PREPEND_FLAGS` and
