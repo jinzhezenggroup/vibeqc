@@ -176,7 +176,12 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "static const I" in source
     assert "static const I" not in external
     assert "tensor_static_initialize" in external
-    assert plan.host_bytes >= plan.static_data_bytes == len(tensor_static_data(plan)) == 144
+    assert (
+        plan.host_bytes
+        >= plan.static_data_bytes
+        == len(tensor_static_data(plan))
+        == 144
+    )
 
 
 def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:
