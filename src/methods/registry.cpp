@@ -56,13 +56,18 @@ constexpr MethodDefinition register_method(
   }
 
   const bool executable = validate != nullptr && prepare != nullptr;
+  const bool supports_batch = executable && batch != nullptr;
+  if (manifest.supports_batch != supports_batch)
+    throw "public method manifest batch capability disagrees with native provider";
+  if ((manifest.properties != 0) != executable)
+    throw "public method manifest properties disagree with native provider";
   const auto availability = executable ? runtime::ProviderAvailability::Executable
                                        : runtime::ProviderAvailability::Reserved;
   const auto registered_properties =
       executable ? manifest.properties : vibeqc_property_flags{};
   return {{{"methods", manifest.name, 1, runtime::ProviderBackend::Any},
            {manifest.method, manifest.family, registered_properties, executable,
-            executable && batch != nullptr},
+            supports_batch},
            availability,
            runtime::ProviderFallback::None,
            runtime::ProviderRequirement::PreparedState,
