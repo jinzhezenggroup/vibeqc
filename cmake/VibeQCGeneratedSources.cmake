@@ -40,7 +40,6 @@ macro(vibeqc_register_host_generated_sources target)
     OUTPUTS "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --cpu-st-output "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}")
 
   set(VIBEQC_XC_CPU_HEADER
@@ -50,7 +49,6 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
     OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
   set(VIBEQC_SCF_ARRAY_CPU_HEADER
@@ -60,7 +58,6 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_array_native.py"
     OUTPUTS "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
     COMMENT "Generating Array frontend SCF CPU tensor helpers")
 
@@ -73,7 +70,7 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
     OUTPUTS "${VIBEQC_RCCSD_CPU_HEADER}"
-    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS} ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cpu-header "${VIBEQC_RCCSD_CPU_HEADER}")
 
   set(VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER
@@ -84,7 +81,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --contract-output "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}")
 
   set(VIBEQC_ECP_HEADER
@@ -95,7 +91,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
     OUTPUTS "${VIBEQC_ECP_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_ECP_HEADER}")
 endmacro()
 
@@ -107,7 +102,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_matrix_function_cuda.py"
     OUTPUTS "${VIBEQC_MATRIX_FUNCTION_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_MATRIX_FUNCTION_HEADER}")
 
   set(VIBEQC_DF_HF_RESPONSE_CUDA_HEADER
@@ -117,7 +111,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --cuda-output "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}")
 
   set(VIBEQC_DF_GENERATED_HEADER
@@ -136,7 +129,6 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${VIBEQC_DF_VALUE_CANDIDATE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/production_df_values.json"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS
       --output "${VIBEQC_DF_GENERATED_HEADER}"
       --policy-output "${VIBEQC_DF_POLICY_HEADER}")
@@ -192,7 +184,6 @@ macro(vibeqc_register_cuda_generated_sources target)
       ${VIBEQC_DF_SHELL_UNIT_OUTPUTS}
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/production_df_derivatives.json"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS
       --derivatives
       --output "${VIBEQC_DF_DERIVATIVE_HEADER}"
@@ -214,7 +205,6 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS
       --output "${VIBEQC_ONE_ELECTRON_HEADER}"
       --policy-output "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}")
@@ -228,7 +218,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
   set(VIBEQC_WEIGHTED_ERI_HEADER
@@ -238,7 +227,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
     OUTPUTS "${VIBEQC_WEIGHTED_ERI_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
   set(VIBEQC_R2SCAN_CUDA_HEADER
@@ -248,7 +236,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
     OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
 
   set(VIBEQC_GRID_SOURCE
@@ -261,7 +248,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 
   set(VIBEQC_XC_GRADIENT_SOURCE
@@ -271,7 +257,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_gradient_cuda.py"
     OUTPUTS "${VIBEQC_XC_GRADIENT_SOURCE}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_GRADIENT_SOURCE}")
 
   set(VIBEQC_RCCSD_CUDA_SOURCE
@@ -282,7 +267,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
     OUTPUTS "${VIBEQC_RCCSD_CUDA_SOURCE}"
-    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS} ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cuda-source "${VIBEQC_RCCSD_CUDA_SOURCE}")
 
   set(VIBEQC_MP2_GENERATED_DIRECTORY
@@ -310,7 +295,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_mp2_native.py"
     OUTPUTS ${VIBEQC_MP2_GENERATED_SOURCES}
-    DEPENDS ${VIBEQC_MP2_GENERATOR_INPUTS} ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    DEPENDS ${VIBEQC_MP2_GENERATOR_INPUTS}
     ARGS
       --cuda-dir "${VIBEQC_MP2_GENERATED_DIRECTORY}"
       --architectures "${VIBEQC_MP2_ARCHITECTURES}")
@@ -327,7 +312,6 @@ macro(vibeqc_add_codegen_pilot)
       vibeqc_register_generated_sources(
         GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
         OUTPUTS "${output}"
-        DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
         ARGS --shell-class psss --axis "${axis}" --output "${output}"
         COMMENT "Generating symbolic/CSE psss ${axis}-gradient CUDA pilot")
       list(APPEND VIBEQC_CODEGEN_PILOT_OUTPUTS "${output}")
@@ -338,7 +322,6 @@ macro(vibeqc_add_codegen_pilot)
     vibeqc_register_generated_sources(
       GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
       OUTPUTS "${output}"
-      DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
       ARGS
         --shell-class dppp --d-component xy --p-components xyz
         --lowering factored --output "${output}"
