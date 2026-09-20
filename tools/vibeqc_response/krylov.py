@@ -903,9 +903,10 @@ class KrylovRecycleSpace:
             raise TypeError("transport destination must expose an integer dimension")
         transported = []
         for vector in self._vectors:
-            if self._engine is not None:
-                vector = self._engine.to_host(vector)
-            value = np.asarray(transform(vector), dtype=np.float64)
+            host_vector = (
+                self._engine.to_host(vector) if self._engine is not None else vector
+            )
+            value = np.asarray(transform(host_vector), dtype=np.float64)
             if value.shape != (problem.dimension,) or not np.isfinite(value).all():
                 raise ValueError("transport produced an invalid vector")
             transported.append(value)
