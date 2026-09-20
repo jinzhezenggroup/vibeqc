@@ -18,24 +18,30 @@ from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
 
 def emit_stationary_cuda(
-    primitive_source: typing.Any, *, pbe: typing.Any, iterations: typing.Any = 3
+    primitive_source: typing.Any,
+    *,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
+    iterations: typing.Any = 3,
 ) -> typing.Any:
     """Compose explicit primitive lowering and shared XC geometric lowering.
 
-    The integral subsystem supplies a finite device dispatcher. Method lowering
-    consumes its source, without reaching into recurrence or scheduling policy.
+    ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
+    New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
     """
     return (
         primitive_source
-        + emit_geometry_cuda(pbe=pbe, iterations=iterations)
+        + emit_geometry_cuda(
+            functional=functional, pbe=pbe, iterations=iterations
+        )
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
     )
-
 
 def compile_stationary_cuda(
     primitive_source: typing.Any,
     *,
-    pbe: typing.Any,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
     iterations: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
@@ -45,7 +51,9 @@ def compile_stationary_cuda(
         raise TypeError("stationary CUDA requires an explicit CUDA compiler adapter")
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
-    source = emit_stationary_cuda(primitive_source, pbe=pbe, iterations=iterations)
+    source = emit_stationary_cuda(
+        primitive_source, functional=functional, pbe=pbe, iterations=iterations
+    )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / (canonical_hash(source) + ".cu")
