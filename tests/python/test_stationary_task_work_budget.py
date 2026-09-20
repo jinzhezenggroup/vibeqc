@@ -40,7 +40,7 @@ def test_native_task_budget_is_per_reset_not_cumulative(tmp_path: Path) -> None:
             r"\b\w+<<<.*?>>>\(.*?\);",
             "/* CUDA kernel execution is outside this host-admission test. */",
             _block(header, f"int {name}("),
-            flags=re.S,
+            flags=re.DOTALL,
         )
         launches += count
         pieces.append(body)
