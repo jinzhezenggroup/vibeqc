@@ -205,7 +205,6 @@ macro(vibeqc_configure_cuda_backend target)
         "${VIBEQC_AOT_GENERATED_HEADER}"
       DEPENDS
         "${VIBEQC_AOT_SHELL_MANIFEST}"
-        ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
       ARGS
         --production-manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
         --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"

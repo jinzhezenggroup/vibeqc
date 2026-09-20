@@ -1,69 +1,83 @@
-"""Replay admission must honor current caps before touching retained owners."""
+"""Resident reuse must obey each call's admission caps before any device work."""
 
-from contextlib import nullcontext
-from types import SimpleNamespace as NS
+from types import SimpleNamespace
 
-import numpy as np
 import pytest
 from vibeqc import _stationary_cuda as runtime
 
 
-@pytest.mark.parametrize("rebind", [False, True])
-@pytest.mark.parametrize("cap", ["max_host_bytes", "max_device_bytes"])
-def test_lowered_replay_cap_rejects_before_rebind(
-    monkeypatch: pytest.MonkeyPatch, rebind: bool, cap: str
+@pytest.mark.parametrize(
+    "failed,changed", [(False, False), (False, True), (True, False)]
+)
+def test_retained_host_budget_is_rechecked_before_rebind(
+    monkeypatch: pytest.MonkeyPatch, failed: bool, changed: bool
 ) -> None:
-    touched = []
-    owner = NS(
-        rebind_geometry=lambda basis: touched.append("source"),
-        _rebind_centers=lambda centers: touched.append("grid"),
+    monkeypatch.setattr(runtime, "_basis_topology_identity", lambda basis: "topology")
+    source = SimpleNamespace(backend="cuda")
+    identity = SimpleNamespace(
+        method="pbe-rks", functional_identity="xc", regularization_identity="reg"
     )
-    artifact = NS(library="unused", metadata={"key": "k", "binary_sha256": "h"})
-    monkeypatch.setattr(runtime, "_basis_topology_identity", lambda basis: "fixed")
-    monkeypatch.setattr(runtime, "emit_first_derivative_cuda", lambda req: "source")
-    for name in ("compile_stationary_cuda", "compile_grid", "compile_cuda"):
-        monkeypatch.setattr(runtime, name, lambda *args, **kwargs: artifact)
-    for name in ("_CudaSources", "CudaGrid", "PreparedCuda"):
-        monkeypatch.setattr(runtime, name, lambda *args, **kwargs: nullcontext(owner))
-    monkeypatch.setattr(runtime, "file_hash", lambda path: "h")
-    basis = NS(identity="initial", natom=1, nao=1, packed=np.zeros(3))
+    state = SimpleNamespace(identity=identity, _source=source)
+    spec = SimpleNamespace(partition_iterations=3)
+    grid_plan = SimpleNamespace(allocation_bytes=10)
+    target = SimpleNamespace(to_payload=dict)
+    owner = runtime.PreparedStationaryCudaExecution()
+    owner._key = (
+        "plan",
+        "pbe-rks",
+        "gga",
+        "unpolarized",
+        False,
+        "topology",
+        "cuda",
+        "xc",
+        "reg",
+        repr(("all-electron",)),
+        0,
+        repr({}),
+        repr(spec),
+        3,
+        4,
+        5,
+        6,
+        10,
+        (),
+    )
+    owner._bound_basis_identity = "old"
+    owner._failed = failed
+    owner.host_bound = 100
+    owner.device_peak_bound = 30
+    owner.artifacts = ()
+    owner.sources = SimpleNamespace(
+        rebind_geometry=lambda basis: pytest.fail("rebind before admission")
+    )
     kwargs = {
-        "state": NS(
-            identity=NS(
-                method="pbe-rks",
-                functional_identity="pbe",
-                regularization_identity="strict",
-            ),
-            _source=NS(backend="cuda"),
-        ),
-        "basis": basis,
-        "contract": NS(family="gga", spin="unpolarized"),
-        "plan": NS(identity="p"),
-        "tensor_plans": {"x": NS(identity="t", peak_bytes=40, host_bytes=30)},
-        "compiler": NS(target=NS(to_payload=lambda: {"arch": "sm_120"})),
+        "state": state,
+        "basis": SimpleNamespace(identity="new" if changed else "old"),
+        "contract": SimpleNamespace(family="gga", spin="unpolarized"),
+        "plan": SimpleNamespace(identity="plan"),
+        "tensor_plans": {},
+        "compiler": SimpleNamespace(target=target),
         "cache": "unused",
         "requests": (),
-        "pbe": True,
+        "functional": 1,
         "ecp": False,
         "device": 0,
-        "spec": NS(partition_iterations=3),
-        "grid_plan": NS(allocation_bytes=10, peak_bytes=10),
+        "spec": spec,
+        "grid_plan": grid_plan,
         "source_bytes": 20,
-        "tile_points": 1,
-        "primitive_tile": 1,
-        "integral_terms": 1,
-        "max_device_bytes": 70,
-        "max_host_bytes": 130,
-        "host_bound": 100,
+        "tile_points": 4,
+        "primitive_tile": 5,
+        "integral_terms": 6,
+        "max_device_bytes": 30,
+        "max_host_bytes": 99,
+        "host_bound": 80,
     }
-    with runtime.PreparedStationaryCudaExecution() as prepared:
-        prepared.ensure(**kwargs)
-        assert prepared.host_bound == 130 and prepared.device_peak_bound == 70
-        if rebind:
-            basis.identity = "moved"
-        lower = {**kwargs, cap: kwargs[cap] - 1}
-        with pytest.raises(ValueError, match="budget"):
-            prepared.ensure(**lower)
-        assert not touched and prepared._bound_basis_identity == "initial"
-        prepared.ensure(**kwargs)
-        assert touched == (["source", "grid"] if rebind else [])
+    with pytest.raises(ValueError, match="host budget"):
+        owner.ensure(**kwargs)
+    # An admission failure must leave an unchanged compatible owner reusable.
+    owner._failed = False
+    kwargs["basis"] = SimpleNamespace(identity="old")
+    kwargs["max_host_bytes"] = 100
+    owner.ensure(**kwargs)
+    assert owner._bound_basis_identity == "old"

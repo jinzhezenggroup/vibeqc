@@ -489,15 +489,34 @@ density/energy-weighted-density responses. `rhf_hvp` uses #178
 `weighted_hvp` programs for the core, overlap/Pulay and two-electron skeleton,
 adds the direct nucleus-nucleus HVP, and contracts generated first derivatives
 against `D1(v)` / `W1(v)` for electronic relaxation. The result is raw
-`H @ v`; no post-hoc symmetry projection is applied. The independent
-bilinear identity, dense #449 `H @ v`, and three-step reconverged-gradient
-checks are in `tests/python/test_hessian_hvp.py`.
+`H @ v`; no post-hoc symmetry projection is applied. Bilinear symmetry,
+native dense #449 assembly parity, and independent three-step reconverged-gradient
+checks are in `tests/python/test_hessian_hvp.py`. The native dense assembly
+shares #179's response solver, so parity alone is not an independent response
+gate.
 
 B4 builds on that same HVP contract. rhf_hvp_many prepares several
 directional H1/S1 pairs, binds them to one shared RHF response operator and
 uses #179 solve_many with sequential, blocked or recycled strategy.
 The solver workspace is combined with a conservative retained numeric-storage
 bound; insufficient block budget fails before first-integral work.
+With `jk_backend="cuda", response_execution="cuda-resident"`, all three
+strategies keep iterative response vectors, block bases and retained recycling
+vectors on device. `response_device_budget_bytes` jointly limits the prepared
+J/K allocation and response arena; both are charged to the response phase of
+`total_budget_bytes` before first-integral work. Diagnostics publish the exact
+resident identity, raw transfer/synchronization/action counters and separate
+response action/orthogonalization/recycling times. RHS preparation, final
+response reconstruction and the independently selected first/second derivative
+consumers retain their declared execution. This option also passes through
+`rhf_hessian` to its bounded blocks. The opt-in resident block tests and the
+consumer benchmark additionally compare complete HVPs with PySCF's analytic
+RHF Hessian using identical geometry and shell primitives, independently
+converged SCF and external CPHF/integral derivatives (1e-9 maximum absolute
+error for H2). Native dense assembly remains a separate parity check. PySCF
+is an optional validation dependency, never part of the production endpoint.
+See the
+[shared resident multi-RHS decision](../.agents/notes/implemented/numerics/2026-09-20-resident-multirhs-response.md).
 
 rhf_hessian applies canonical atom/xyz unit directions in bounded blocks and
 stores each returned Hv as one raw Hessian column. It never silently returns a

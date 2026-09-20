@@ -1,0 +1,47 @@
+{
+  "measured_commit": "df1584039eb1d904ae651d66b9e73e43e61f7efb",
+  "python_tests": {
+    "stuttgart-dft": {
+      "passed": 48,
+      "skipped": 0
+    },
+    "cuda-regression": {
+      "passed": 24,
+      "skipped": 0
+    },
+    "regression": {
+      "passed": 90,
+      "skipped": 0
+    },
+    "memcheck": {
+      "passed": 2,
+      "skipped": 0
+    }
+  },
+  "native_ecp_tests": "5/5 passed",
+  "memcheck": "0 errors",
+  "library_sha256": "6476f082c8f4ae7384d920669e0bad0c6534e5765c6594c54231a2d366e00f6d",
+  "scope": "Stuttgart RLC Na/K + STO-3G H; Cartesian/spherical s/p LDA/PBE RKS/UKS complete forces; CPU and RTX4090 sm89 CUDA",
+  "python": "3.11.16 (main, Sep  1 2026, 14:18:37) [Clang 22.1.3 ]",
+  "platform": "Linux-5.15.0-141-generic-x86_64-with-glibc2.35",
+  "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+  "gpu": "NVIDIA GeForce RTX 4090, 570.124.06",
+  "maximum_errors_by_backend": {
+    "cpu": {
+      "analytic_Eh_per_bohr": 5.657906088085696e-11,
+      "directional_fd_Eh_per_bohr": 2.4936429657285153e-11,
+      "cartesian_spherical_Eh_per_bohr": 0
+    },
+    "cuda": {
+      "analytic_Eh_per_bohr": 5.65718513700908e-11,
+      "directional_fd_Eh_per_bohr": 2.415338068439965e-11,
+      "cartesian_spherical_Eh_per_bohr": 0
+    }
+  },
+  "raw_archive_sha256": "71a63abfbee7603b653c3347b257dc016f1360f4f54caae19a3e3cba955e1b63",
+  "raw_archive_bytes": 129333,
+  "git_inputs_verified": 1730,
+  "timing_claim": "Single sequential endpoint samples, including first-use compilation; no speedup or broad performance claim.",
+  "scientific_source_delta": 0
+}

@@ -768,10 +768,11 @@ ssss dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
 ppps dpps dsps dspp pppp psps ppss dsss
 ```
 
-The `ssss` force row is a staged endpoint candidate rather than the production
-default. Runtime clears that class from generated force ownership unless
-`VIBEQC_SSSS_FORCE=generated` is set, so the tuned handwritten path remains
-the default until #356's complete RHF/UHF endpoint gate passes.
+The `ssss` force mathematics is now compiler-owned in production. Runtime still
+keeps the standalone AOT `ssss` force row out of the materialized force queue:
+the generated force-only weighted expression executes inside the already
+qualified bounded/packed scheduler, avoiding a second task stream. The former
+handwritten ssss derivative body and its runtime A/B selector have been deleted.
 
 The generated registry records profile identity, target compute capability,
 class index, consumer mask, block size, and component tile. Every profile uses

@@ -41,9 +41,14 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument(
-        "--mapping", choices=("thread", "shell_warp", "serial"), default="thread"
+        "--mapping",
+        choices=("thread", "shell_warp", "nucleus_cooperative", "serial"),
+        default="thread",
     )
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--energy-tolerance", type=float, default=1e-12)
+    parser.add_argument("--density-tolerance", type=float, default=1e-10)
+    parser.add_argument("--screening-tolerance", type=float, default=1e-14)
     parser.add_argument("--derivatives", action="store_true")
     parser.add_argument(
         "--df-derivatives",
@@ -69,13 +74,20 @@ def main() -> None:
         parser.error("run this real-GPU gate inside Slurm")
     if args.batch < 1 or args.repeats < 5:
         parser.error("batch must be positive and at least five repeats are required")
+    if (
+        min(args.energy_tolerance, args.density_tolerance, args.screening_tolerance)
+        <= 0
+    ):
+        parser.error("SCF and screening tolerances must be positive")
     if args.df_derivatives or not args.derivatives:
         parser.error(
             "the reference value/DF response was retired; use tools/benchmark_cuda_ownership.py "
             "with explicit archived baseline and candidate checkouts"
         )
     if args.mapping == "serial":
-        parser.error("one-electron derivatives use thread/shell_warp mapping")
+        parser.error(
+            "one-electron derivatives use thread/shell_warp/nucleus_cooperative mapping"
+        )
     case = cases[args.case]
     basis = case.vibeqc_basis
     if args.contraction_length:
@@ -112,9 +124,9 @@ def main() -> None:
         "basis": basis,
         "basis_representation": case.basis_representation,
         "device": "cuda",
-        "energy_tolerance": 1e-12,
-        "density_tolerance": 1e-10,
-        "screening_tolerance": 1e-14,
+        "energy_tolerance": args.energy_tolerance,
+        "density_tolerance": args.density_tolerance,
+        "screening_tolerance": args.screening_tolerance,
         "density_fitting": "cuda" if args.fitted else "none",
         "density_fitting_memory_budget_bytes": args.df_budget,
     }

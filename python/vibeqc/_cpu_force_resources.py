@@ -12,6 +12,10 @@ from vibeqc_compiler.integral.ecp_policy import (
     REFINED_POLAR_POINTS,
     REFINED_RADIAL_POINTS,
 )
+from vibeqc_compiler.integral.first_derivative_schedule import (
+    DISPATCH_ROWS,
+    DISPATCH_WIDTH,
+)
 
 from .basis import BasisSet
 from .resources import checked_bytes
@@ -20,12 +24,12 @@ CPU_FORCE_HOST_CAP = 256 << 20
 
 
 def qualified_basis(basis: typing.Any) -> bool:
-    """CPU promotion is specific to s/p ECP records, including their fragments."""
+    """CPU promotion is specific to s/p/d ECP records, including their fragments."""
     return (
         isinstance(basis, BasisSet)
         and any(element.ecp_core_electrons for element in basis.elements)
         and all(
-            shell.angular_momentum <= 1
+            shell.angular_momentum <= 2
             for element in basis.elements
             for shell in element.shells
         )
@@ -73,6 +77,9 @@ def cpu_force_inventory(
         "snapshot_and_ao": 8 * 8 * snapshot_values + 1024 * (1 + a + n + p),
         "xc_tiles": 8 * (128 * tile_points * n + 256 * tile_points + 64 * n * n),
         "integral_staging": 8 * (40 * primitive_tile + 64 * integral_terms + 256 * a),
+        # Include construction copies and the retained immutable metadata; the
+        # conservative full s/p/d table also covers smaller component domains.
+        "component_dispatch": 3 * 8 * (DISPATCH_ROWS * DISPATCH_WIDTH + 3 * n + 46),
         "tensor_and_grid_arenas": 32 << 20,
         "ecp_provider": ecp,
         "ecp_export_and_contraction": 8 * (24 * a * n * n + 24 * a * integral_terms),

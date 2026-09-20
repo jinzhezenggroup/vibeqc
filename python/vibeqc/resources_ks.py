@@ -34,7 +34,7 @@ from .resources import (
 )
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
+_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "pbe0-rks", "pbe0-uks")
 
 
 def _item_host_inventory(
@@ -194,7 +194,7 @@ def ks_resource_request(
     """Resolve one complete energy-only KS request for the shared global planner."""
     if method not in _METHODS or backend not in ("cpu", "cuda"):
         raise NotImplementedError(
-            "KS planning supports native CPU/CUDA LDA/PBE RKS/UKS energies"
+            "KS planning supports native CPU LDA/PBE/PBE0 and CUDA LDA/PBE RKS/UKS energies"
         )
     precision = str(precision).lower()
     if precision not in ("fp64", "auto"):
@@ -202,6 +202,10 @@ def ks_resource_request(
     if precision == "auto" and backend != "cuda":
         raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
+    if backend == "cuda" and model.requires_composition_v2:
+        raise NotImplementedError(
+            "CUDA KS planning does not claim scaled/global-hybrid execution"
+        )
     systems = tuple(tuple(Atom.from_value(a) for a in atoms) for atoms in systems)
     if not systems or any(not atoms for atoms in systems):
         raise ValueError("KS resource planning requires nonempty systems")
@@ -379,16 +383,18 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            if model != resolve_ks_options(method):
+            if model.requires_composition_v2 or model != resolve_ks_options(method):
                 options_version = getattr(library, "vibeqc_ks_options_version", None)
                 if options_version is not None:
                     options_version.argtypes, options_version.restype = (
                         [],
                         ctypes.c_uint32,
                     )
-                if options_version is None or options_version() != 1:
+                version_value = 0 if options_version is None else options_version()
+                required = 2 if model.requires_composition_v2 else 1
+                if version_value < required:
                     raise NotImplementedError(
-                        "native library does not support KS model options v1"
+                        f"native library does not support KS model options v{required}"
                     )
             version = getattr(library, "vibeqc_ks_resource_inventory_version_v1", None)
             if version is not None:

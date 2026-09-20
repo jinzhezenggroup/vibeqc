@@ -68,6 +68,10 @@ struct ScfOptions {
   dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
   /** Bounded AO/XC tile schedule; does not alter the grid or functional. */
   std::size_t xc_tile_points{256};
+  /** Resolved semilocal component scales; exact exchange lives only in the
+   * common FockBuildSpec. Unit defaults preserve legacy LDA/PBE callers. */
+  double semilocal_exchange_scale{1.0};
+  double semilocal_correlation_scale{1.0};
   /** Retain the already evaluated CPU RKS F[D] for an explicit snapshot read.
    * No extra Fock build, canonicalization or W is performed by energy-only SCF. */
   bool retain_ks_state{};

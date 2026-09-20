@@ -481,11 +481,12 @@ def fake_cuda(monkeypatch: typing.Any) -> typing.Any:
             for name, seconds in (("baseline", 10), ("candidate", 8)):
                 prepare(name)
                 metrics = evaluate(name)
+                sample_seconds = seconds
                 if name == "candidate":
-                    seconds = calls.timings.get(
-                        (metrics["threads"], metrics["fixture"]), seconds
+                    sample_seconds = calls.timings.get(
+                        (metrics["threads"], metrics["fixture"]), sample_seconds
                     )
-                result.append({"selection": name, "seconds": seconds})
+                result.append({"selection": name, "seconds": sample_seconds})
         calls.measurements.append({**metrics, "repeats": repeats, "samples": result})
         return result
 

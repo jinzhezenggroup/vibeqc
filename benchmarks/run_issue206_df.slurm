@@ -10,8 +10,8 @@
 set -euo pipefail
 
 # sbatch copies this script into Slurm's spool directory. Use the submission
-# checkout there; direct bash execution can still use the script's location.
-ROOT="${ISSUE206_ROOT:-${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}}"
+# checkout there; direct bash execution derives the checkout from benchmarks/.
+ROOT="${ISSUE206_ROOT:-${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
 if [[ ! -f "${ROOT}/benchmarks/issue206_df_matrix.py" ]]; then
   echo "Submit from the checkout or set ISSUE206_ROOT to its absolute path." >&2
   exit 1

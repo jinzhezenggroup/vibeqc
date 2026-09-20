@@ -141,8 +141,12 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         systems, charges=charges, multiplicities=multiplicities
     ) as batch:
         with no_cpu_derivatives():
+            started = perf_counter()
             cold = batch.execute(strict=True)
+            record_property("batch_cold_seconds", perf_counter() - started)
+            started = perf_counter()
             warm = batch.execute(strict=True)
+            record_property("batch_warm_seconds", perf_counter() - started)
         assert all(item.warm_start_used for item in warm.items)
         for a, b in zip(cold.items, warm.items):
             np.testing.assert_allclose(a.forces, b.forces, atol=1e-9, rtol=0)
@@ -150,7 +154,9 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         moved = xyz.copy()
         moved[1] += [0.03, -0.02, 0.09]
         with no_cpu_derivatives():
+            started = perf_counter()
             replay = batch.execute(coordinates=[moved, None], strict=True)
+            record_property("batch_changed_geometry_seconds", perf_counter() - started)
         fresh_atoms = [(a, r) for (a, _), r in zip(atoms, moved)]
         fresh = calc.singlepoint(fresh_atoms, charge=spin, multiplicity=spin + 1)
         np.testing.assert_allclose(
