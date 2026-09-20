@@ -43,7 +43,10 @@
       "provider": "reserved",
       "properties": [],
       "supports_batch": false,
-      "unavailable_reason": "method has no executable provider registration"
+      "unavailable_reason": "method has no executable provider registration",
+      "aliases": [
+        "ccsd(t)"
+      ]
     },
     {
       "name": "mp2",
