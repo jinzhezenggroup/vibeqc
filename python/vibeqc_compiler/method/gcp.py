@@ -8,7 +8,7 @@ import typing
 from dataclasses import dataclass
 from typing import ClassVar
 
-from ._generated_parameters import GCP_PARAMETER_SETS
+from ._generated_parameters import gcp_parameters
 
 GCP_SPEC_VERSION = "gcp-spec-v1"
 
@@ -115,7 +115,7 @@ class GCPSpec:
 
 def r2scan3c_gcp() -> typing.Any:
     """Exact def2-mTZVPP gCP profile used by r2SCAN-3c, scoped to H-Ar."""
-    return GCPSpec(**typing.cast("typing.Any", GCP_PARAMETER_SETS["r2SCAN-3c"]))
+    return GCPSpec(**gcp_parameters("r2SCAN-3c"))
 
 
 @dataclass(frozen=True)

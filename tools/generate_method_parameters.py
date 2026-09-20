@@ -31,6 +31,57 @@ _D4_CPP_FIELDS = (
 _GCP_CPP_FIELDS = ("sigma", "alpha", "beta", "damping_scale", "damping_exponent")
 
 
+_PYTHON_PARAMETER_TYPES = {
+    "d3_bj": {
+        "s6": "float",
+        "s8": "float",
+        "a1": "float",
+        "a2": "float",
+        "s9": "float",
+        "table_sha256": "str",
+        "radii_sha256": "str",
+    },
+    "d4": {
+        "s6": "float",
+        "s8": "float",
+        "s9": "float",
+        "a1": "float",
+        "a2": "float",
+        "ga": "float",
+        "gc": "float",
+        "profile": "str",
+        "reference_model": "str",
+        "charge_model": "str",
+        "cn_cutoff": "float",
+        "pair_cutoff": "float",
+        "atm_cutoff": "float",
+        "charge_cn_cutoff": "float",
+        "table_sha256": "str",
+        "charge_parameter_sha256": "str",
+    },
+    "gcp": {
+        "basis": "str",
+        "sigma": "float",
+        "eta": "float",
+        "eta_spec": "float",
+        "alpha": "float",
+        "beta": "float",
+        "damping_scale": "float",
+        "damping_exponent": "float",
+        "damping": "bool",
+        "parameter_sha256": "str",
+        "implementation_sha256": "str",
+        "vdw_radii_sha256": "str",
+        "data_sha256": "str",
+        "source": "str",
+        "source_revision": "str",
+        "license": "str",
+        "profile": "str",
+        "supported_atomic_numbers": "ints",
+    },
+}
+
+
 def _finite_number(value: Any, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{label} must be a real scalar")
@@ -131,6 +182,14 @@ def load_source(path: Path) -> tuple[dict[str, Any], str]:
             raise ValueError(
                 "gCP supported_atomic_numbers must be sorted, unique integers in [1, 118]"
             )
+    for category in ("d3_bj", "d4", "gcp"):
+        for record in payload[category]:
+            if category == "d4" and not record.get("python_spec"):
+                continue
+            params = dict(record["parameters"])
+            if category == "d3_bj":
+                params.update(identity)
+            _validate_python_parameters(params, category)
     return payload, hashlib.sha256(raw).hexdigest()
 
 
@@ -156,6 +215,71 @@ def _render_py_mapping(
         lines.append("    }),")
     lines.append("})")
     return lines
+
+
+def _render_parameter_accessors() -> list[str]:
+    lines = [
+        "def _parameter_float(value: object) -> float:",
+        "    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):",
+        "        raise TypeError('parameter must be a finite real scalar')",
+        "    return float(value)",
+        "",
+        "def _parameter_str(value: object) -> str:",
+        "    if not isinstance(value, str) or not value:",
+        "        raise TypeError('parameter must be a nonempty string')",
+        "    return value",
+        "",
+        "def _parameter_bool(value: object) -> bool:",
+        "    if type(value) is not bool:",
+        "        raise TypeError('parameter must be a bool')",
+        "    return value",
+        "",
+        "def _parameter_ints(value: object) -> tuple[int, ...]:",
+        "    if not isinstance(value, tuple) or not value or any(type(x) is not int for x in value):",
+        "        raise TypeError('parameter must be a nonempty integer tuple')",
+        "    return tuple(int(x) for x in value)",
+        "",
+    ]
+    for category, record, table, accessor in (
+        ("d3_bj", "D3Parameters", "D3_BJ_PARAMETER_SETS", "d3_parameters"),
+        ("d4", "D4Parameters", "D4_PARAMETER_SETS", "d4_parameters"),
+        ("gcp", "GCPParameters", "GCP_PARAMETER_SETS", "gcp_parameters"),
+    ):
+        schema = _PYTHON_PARAMETER_TYPES[category]
+        lines += [f"class {record}(TypedDict):"]
+        for field, kind in schema.items():
+            annotation = "tuple[int, ...]" if kind == "ints" else kind
+            lines.append(f"    {field}: {annotation}")
+        lines += [
+            "",
+            f"def {accessor}(name: str) -> {record}:",
+            f"    value = {table}[name]",
+            "    return {",
+        ]
+        for field, kind in schema.items():
+            lines.append(f"        {field!r}: _parameter_{kind}(value[{field!r}]),")
+        lines += ["    }", ""]
+    return lines
+
+
+def _validate_python_parameters(parameters: dict[str, Any], category: str) -> None:
+    schema = _PYTHON_PARAMETER_TYPES[category]
+    if set(parameters) != set(schema):
+        raise ValueError(f"{category} parameter fields differ from the typed schema")
+    for name, kind in schema.items():
+        value = parameters[name]
+        if kind == "float":
+            _finite_number(value, f"{category}.{name}")
+        elif kind == "str" and (not isinstance(value, str) or not value):
+            raise TypeError(f"{category}.{name} must be a nonempty string")
+        elif kind == "bool" and type(value) is not bool:
+            raise TypeError(f"{category}.{name} must be a bool")
+        elif kind == "ints" and (
+            not isinstance(value, list)
+            or not value
+            or any(type(item) is not int for item in value)
+        ):
+            raise TypeError(f"{category}.{name} must be integer values")
 
 
 def render_python(payload: dict[str, Any], source_sha256: str) -> str:
@@ -188,7 +312,9 @@ def render_python(payload: dict[str, Any], source_sha256: str) -> str:
     lines = [
         '"""Generated from method_parameters.json; do not edit by hand."""',
         "",
+        "import math",
         "from types import MappingProxyType",
+        "from typing import TypedDict",
         "",
         f"PARAMETER_SOURCE_SHA256 = {source_sha256!r}",
         f"D3_TABLE_SHA256 = {identity['table_sha256']!r}",
@@ -203,6 +329,7 @@ def render_python(payload: dict[str, Any], source_sha256: str) -> str:
     lines.append("")
     lines.extend(_render_py_mapping("PARAMETER_PROVENANCE", list(provenance.items())))
     lines.append("")
+    lines.extend(_render_parameter_accessors())
     return "\n".join(lines)
 
 

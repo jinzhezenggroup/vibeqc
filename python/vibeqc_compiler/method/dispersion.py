@@ -143,7 +143,7 @@ class D4Spec:
 
 def r2scan3c_d4_eeq() -> D4Spec:
     """Exact pinned D4 part of r2SCAN-3c; the electronic method is separate."""
-    return D4Spec(**typing.cast("typing.Any", D4_PARAMETER_SETS["r2SCAN-3c"]))
+    return D4Spec(**_parameters.d4_parameters("r2SCAN-3c"))
 
 
 @dataclass(frozen=True)
@@ -178,9 +178,9 @@ class DispersionCorrectionPrimitive:
 
 def pbe_d3_bj_spec() -> typing.Any:
     """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
-    return D3Spec(**typing.cast("typing.Any", D3_BJ_PARAMETER_SETS["PBE-D3(BJ)"]))
+    return D3Spec(**_parameters.d3_parameters("PBE-D3(BJ)"))
 
 
 def pbe0_d3_bj_spec() -> typing.Any:
     """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
-    return D3Spec(**typing.cast("typing.Any", D3_BJ_PARAMETER_SETS["PBE0-D3(BJ)"]))
+    return D3Spec(**_parameters.d3_parameters("PBE0-D3(BJ)"))
