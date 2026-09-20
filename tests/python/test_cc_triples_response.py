@@ -34,7 +34,9 @@ def _random_case(nocc: int, nvir: int, seed: int) -> tuple[np.ndarray, ...]:
 
 
 @pytest.mark.parametrize("v,chunk", [(2, 1), (2, 2), (3, 2)])
-def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v: int, chunk: int) -> None:
+def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(
+    v: int, chunk: int
+) -> None:
     """The derivative of the disjoint energy partition equals the full VJP."""
 
     o = 2
@@ -62,7 +64,9 @@ def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v: int, c
     "name",
     ["t1", "t2", "ovvv", "ovoo", "ovov", "fov", "eps_o", "eps_v"],
 )
-def test_generated_response_matches_recomputed_energy_finite_difference(name: str) -> None:
+def test_generated_response_matches_recomputed_energy_finite_difference(
+    name: str,
+) -> None:
     """Each generated source differentiates the actual audited (T) energy."""
 
     # nocc=1 makes r3 identically zero and cannot validate derivative equations.
