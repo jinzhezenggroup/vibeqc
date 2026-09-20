@@ -25,8 +25,8 @@ class RaggedStepSchedule:
     source_extent: int
     target_extent: int
     edge_count: int
-    nonempty_targets: int
-    empty_targets: int
+    nonempty_groups: int
+    empty_groups: int
     max_degree: int
     scan_work: int
     scheduled_work: int
@@ -45,8 +45,8 @@ class RaggedStepSchedule:
             "source_extent": self.source_extent,
             "target_extent": self.target_extent,
             "edge_count": self.edge_count,
-            "nonempty_targets": self.nonempty_targets,
-            "empty_targets": self.empty_targets,
+            "nonempty_groups": self.nonempty_groups,
+            "empty_groups": self.empty_groups,
             "max_degree": self.max_degree,
             "scan_work": self.scan_work,
             "scheduled_work": self.scheduled_work,
@@ -131,27 +131,29 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
     source_extent = node.inputs[0].spec.shape[axis]
     target_extent = node.spec.shape[axis]
 
+    output_elements = node.spec.size
+    outer_count = output_elements // target_extent if target_extent else 0
     if node.op == "scatter_add":
         degrees = [0] * target_extent
         for target in node.attrs["positions"]:
             degrees[target] += 1
-        scan_work = source_extent * target_extent
-        scheduled_work = source_extent
+        scan_work = output_elements * source_extent
+        scheduled_work = outer_count * source_extent
         lowering = "inverted-segments"
     elif node.op == "segment_sum":
         offsets = tuple(node.attrs["offsets"])
         degrees = [
             stop - start for start, stop in zip(offsets, offsets[1:], strict=True)
         ]
-        scan_work = source_extent
-        scheduled_work = source_extent
+        scan_work = outer_count * source_extent
+        scheduled_work = scan_work
         lowering = "contiguous-segments"
     elif node.op == "indexed_gather":
         degrees = [0] * source_extent
         for source in node.attrs["positions"]:
             degrees[source] += 1
-        scan_work = target_extent
-        scheduled_work = target_extent
+        scan_work = output_elements
+        scheduled_work = output_elements
         lowering = "direct-index"
     else:
         raise ValueError(f"unsupported ragged scheduling primitive: {node.op}")
@@ -164,8 +166,8 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
         source_extent=source_extent,
         target_extent=target_extent,
         edge_count=sum(degrees),
-        nonempty_targets=nonempty,
-        empty_targets=len(degrees) - nonempty,
+        nonempty_groups=nonempty,
+        empty_groups=len(degrees) - nonempty,
         max_degree=max(degrees, default=0),
         scan_work=scan_work,
         scheduled_work=scheduled_work,
