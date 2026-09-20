@@ -25,6 +25,7 @@ outside this module.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 from vibeqc_compiler.tensor import execute, optimize, transpose_program
@@ -66,10 +67,10 @@ def build_tile_triples_vjp(
     nocc: int,
     nvir: int,
     *,
-    vir_chunk=None,
+    vir_chunk: tuple[int, int] | None = None,
     inputs: Iterable[str] | None = None,
     max_elements: int = 1_000_000,
-):
+) -> Any:
     """Generate one demand-driven VJP from the existing bounded (T) primal."""
 
     primal = build_tile_triples_program(nocc, nvir, vir_chunk=vir_chunk)
@@ -87,7 +88,7 @@ def build_full_triples_vjp(
     *,
     inputs: Iterable[str] | None = None,
     max_elements: int = 1_000_000,
-):
+) -> Any:
     """Generate the untiled tiny-reference VJP used to verify tile accumulation."""
 
     primal = build_triples_program(nocc, nvir)
@@ -100,15 +101,15 @@ def build_full_triples_vjp(
 
 
 def _arrays(
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
-):
+    ovvv: np.ndarray,
+    ovoo: np.ndarray,
+    ovov: np.ndarray,
+    fov: np.ndarray,
+    t1: np.ndarray,
+    t2: np.ndarray,
+    eps_o: np.ndarray,
+    eps_v: np.ndarray,
+) -> dict[str, np.ndarray]:
     return {
         "ovvv": ovvv,
         "ovoo": ovoo,
@@ -122,23 +123,23 @@ def _arrays(
 
 
 def tile_triples_vjp(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: int,
+    nvir: int,
+    ovvv: np.ndarray,
+    ovoo: np.ndarray,
+    ovov: np.ndarray,
+    fov: np.ndarray,
+    t1: np.ndarray,
+    t2: np.ndarray,
+    eps_o: np.ndarray,
+    eps_v: np.ndarray,
     *,
-    vir_chunk=None,
+    vir_chunk: tuple[int, int] | None = None,
     inputs: Iterable[str] | None = None,
-    denominator_threshold=1e-10,
-    optimize_graph=False,
-    max_elements=1_000_000,
-):
+    denominator_threshold: float = 1e-10,
+    optimize_graph: bool = False,
+    max_elements: int = 1_000_000,
+) -> dict[str, np.ndarray]:
     """Execute a compiler-generated unit-seeded VJP for one (T) energy tile."""
 
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
@@ -164,7 +165,7 @@ def tile_triples_vjp(
     return {name: np.asarray(result[f"bar_{name}"]) for name in selected}
 
 
-def _scatter_prefix(full, local, name, a_end):
+def _scatter_prefix(full: np.ndarray, local: np.ndarray, name: str, a_end: int) -> None:
     """Accumulate one tile cotangent into the matching full-input coordinates."""
 
     if name == "ovvv":
@@ -186,23 +187,23 @@ def _scatter_prefix(full, local, name, a_end):
 
 
 def accumulate_tile_triples_vjp(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: int,
+    nvir: int,
+    ovvv: np.ndarray,
+    ovoo: np.ndarray,
+    ovov: np.ndarray,
+    fov: np.ndarray,
+    t1: np.ndarray,
+    t2: np.ndarray,
+    eps_o: np.ndarray,
+    eps_v: np.ndarray,
     *,
-    vir_chunk_size=None,
+    vir_chunk_size: int | None = None,
     inputs: Iterable[str] | None = None,
-    denominator_threshold=1e-10,
-    optimize_graph=False,
-    max_elements=1_000_000,
-):
+    denominator_threshold: float = 1e-10,
+    optimize_graph: bool = False,
+    max_elements: int = 1_000_000,
+) -> dict[str, np.ndarray]:
     """Sum VJPs of disjoint (T) energy tiles into full response tensors.
 
     Prefix input regions overlap between tiles because a later energy tile may
@@ -244,22 +245,22 @@ def accumulate_tile_triples_vjp(
 
 
 def full_triples_vjp(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: int,
+    nvir: int,
+    ovvv: np.ndarray,
+    ovoo: np.ndarray,
+    ovov: np.ndarray,
+    fov: np.ndarray,
+    t1: np.ndarray,
+    t2: np.ndarray,
+    eps_o: np.ndarray,
+    eps_v: np.ndarray,
     *,
     inputs: Iterable[str] | None = None,
-    denominator_threshold=1e-10,
-    optimize_graph=False,
-    max_elements=1_000_000,
-):
+    denominator_threshold: float = 1e-10,
+    optimize_graph: bool = False,
+    max_elements: int = 1_000_000,
+) -> dict[str, np.ndarray]:
     """Execute the untiled VJP oracle for tiny validation cases."""
 
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
