@@ -325,6 +325,7 @@ def test_unqualified_hybrid_default_grid_fails_closed(method: str) -> None:
     with pytest.raises(NotImplementedError, match="explicit GridSpec"):
         resolve_ks_options(method)
 
+
 def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> None:
     from vibeqc import _native
 
