@@ -618,6 +618,55 @@ std::vector<double> transform_three_center(
   return transformed;
 }
 
+std::vector<double> pullback_matrix_weights(
+    std::span<const double> source, std::size_t cartesian_count,
+    const std::vector<GlobalAoExpansion>& public_aos) {
+  std::vector<double> result(checked_product(cartesian_count, cartesian_count), 0.0);
+  const std::size_t public_count = public_aos.size();
+  for (std::size_t p = 0; p < public_count; ++p) {
+    for (std::size_t q = 0; q < public_count; ++q) {
+      const double weight = source[matrix_index(p, q, public_count)];
+      if (weight == 0.0) continue;
+      for (const GlobalExpansionTerm& i : public_aos[p]) {
+        for (const GlobalExpansionTerm& j : public_aos[q]) {
+          result[matrix_index(i.cartesian_ao, j.cartesian_ao, cartesian_count)] +=
+              weight * i.coefficient * j.coefficient;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+std::vector<double> pullback_three_center_weights(
+    std::span<const double> source, std::size_t cartesian_count,
+    std::size_t cartesian_auxiliary_count, const std::vector<GlobalAoExpansion>& public_aos,
+    const std::vector<GlobalAoExpansion>& public_auxiliary_aos) {
+  const std::size_t cartesian_matrix = checked_product(cartesian_count, cartesian_count);
+  std::vector<double> result(
+      checked_product(cartesian_matrix, cartesian_auxiliary_count), 0.0);
+  const std::size_t public_count = public_aos.size();
+  const std::size_t public_auxiliary_count = public_auxiliary_aos.size();
+  for (std::size_t p = 0; p < public_count; ++p) {
+    for (std::size_t q = 0; q < public_count; ++q) {
+      for (std::size_t auxiliary = 0; auxiliary < public_auxiliary_count; ++auxiliary) {
+        const double weight =
+            source[three_center_index(p, q, auxiliary, public_count, public_auxiliary_count)];
+        if (weight == 0.0) continue;
+        for (const GlobalExpansionTerm& i : public_aos[p]) {
+          for (const GlobalExpansionTerm& j : public_aos[q]) {
+            for (const GlobalExpansionTerm& item : public_auxiliary_aos[auxiliary]) {
+              result[three_center_index(i.cartesian_ao, j.cartesian_ao, item.cartesian_ao,
+                                        cartesian_count, cartesian_auxiliary_count)] +=
+                  weight * i.coefficient * j.coefficient * item.coefficient;
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 void require_matching_density_fitting_geometry(const core::System& orbital_system,
                                                const core::System& auxiliary_system) {
   if (orbital_system.atoms.size() != auxiliary_system.atoms.size()) {
@@ -635,6 +684,135 @@ void require_matching_density_fitting_geometry(const core::System& orbital_syste
 
 }  // namespace
 
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> metric_weights, std::span<const double> three_center_weights) {
+  require_matching_density_fitting_geometry(orbital_system, auxiliary_system);
+  const std::size_t public_nbf = molecule::ao_count(orbital_system);
+  const std::size_t public_naux = molecule::ao_count(auxiliary_system);
+  const std::size_t public_matrix = checked_product(public_nbf, public_nbf);
+  const std::size_t metric_size = checked_product(public_naux, public_naux);
+  const std::size_t three_center_size = checked_product(public_matrix, public_naux);
+  if (metric_weights.size() != metric_size || three_center_weights.size() != three_center_size) {
+    throw std::invalid_argument("weighted DF derivative dimensions are inconsistent");
+  }
+  const auto finite = [](double value) { return std::isfinite(value); };
+  if (!std::all_of(metric_weights.begin(), metric_weights.end(), finite) ||
+      !std::all_of(three_center_weights.begin(), three_center_weights.end(), finite)) {
+    throw std::invalid_argument("weighted DF derivative requires finite weights");
+  }
+
+  const bool generated_supported =
+      std::all_of(orbital_system.shells.begin(), orbital_system.shells.end(),
+                  [](const core::Shell& shell) { return shell.angular_momentum <= 3; }) &&
+      std::all_of(auxiliary_system.shells.begin(), auxiliary_system.shells.end(),
+                  [](const core::Shell& shell) { return shell.angular_momentum <= 3; });
+  const std::size_t ncoord = checked_product(orbital_system.atoms.size(), std::size_t{3});
+  if (!generated_supported) {
+    const DensityFittingIntegralData full =
+        build_density_fitting_integrals(orbital_system, auxiliary_system, true);
+    std::vector<double> result(ncoord, 0.0);
+    for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
+      const double* dm = full.metric_derivative.data() + coordinate * metric_size;
+      const double* db = full.three_center_derivative.data() + coordinate * three_center_size;
+      double value = 0.0;
+      for (std::size_t item = 0; item < metric_size; ++item)
+        value += metric_weights[item] * dm[item];
+      for (std::size_t item = 0; item < three_center_size; ++item)
+        value += three_center_weights[item] * db[item];
+      result[coordinate] = value;
+    }
+    return result;
+  }
+
+  const std::vector<GlobalAoExpansion> public_aos = public_ao_expansions(orbital_system);
+  const std::vector<GlobalAoExpansion> public_auxiliary_aos =
+      public_ao_expansions(auxiliary_system);
+  const std::vector<AoView> orbital_aos = expand_cartesian_aos(orbital_system);
+  const std::vector<AoView> auxiliary_aos = expand_cartesian_aos(auxiliary_system);
+  const std::size_t cartesian_nbf = orbital_aos.size();
+  const std::size_t cartesian_naux = auxiliary_aos.size();
+  const std::vector<double> cartesian_metric_weights =
+      pullback_matrix_weights(metric_weights, cartesian_naux, public_auxiliary_aos);
+  const std::vector<double> cartesian_three_center_weights = pullback_three_center_weights(
+      three_center_weights, cartesian_nbf, cartesian_naux, public_aos, public_auxiliary_aos);
+
+  using GeneratedAngular = generated_df_cpu::Angular;
+  using GeneratedVec3 = generated_df_cpu::Vec3;
+  const auto center = [&](std::size_t atom) {
+    const auto& r = orbital_system.atoms[atom].position;
+    return GeneratedVec3{r[0], r[1], r[2]};
+  };
+  const auto angular = [](const molecule::CartesianComponent& a) {
+    return GeneratedAngular{a[0], a[1], a[2]};
+  };
+  std::vector<double> result(ncoord, 0.0);
+  const auto scatter = [&](std::size_t atom, double weight, GeneratedVec3 value) {
+    result[3 * atom] += weight * value.x;
+    result[3 * atom + 1] += weight * value.y;
+    result[3 * atom + 2] += weight * value.z;
+  };
+
+  for (std::size_t p = 0; p < cartesian_naux; ++p) {
+    const AoView& first = auxiliary_aos[p];
+    const auto first_center = center(first.shell->atom_index);
+    for (std::size_t q = 0; q < cartesian_naux; ++q) {
+      const double external = cartesian_metric_weights[matrix_index(p, q, cartesian_naux)];
+      if (external == 0.0) continue;
+      const AoView& second = auxiliary_aos[q];
+      const auto second_center = center(second.shell->atom_index);
+      const double component_factor =
+          first.component_normalization * second.component_normalization;
+      for (const auto& first_primitive : first.shell->primitives) {
+        for (const auto& second_primitive : second.shell->primitives) {
+          const double weight = external * component_factor * first_primitive.coefficient *
+                                second_primitive.coefficient;
+          const auto response = generated_df_cpu::metric_derivative(
+              first_primitive.exponent, first_center, angular(first.angular),
+              second_primitive.exponent, second_center, angular(second.angular));
+          scatter(first.shell->atom_index, weight, response.first);
+          scatter(second.shell->atom_index, weight, response.third);
+        }
+      }
+    }
+  }
+
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const AoView& first = orbital_aos[i];
+    const auto first_center = center(first.shell->atom_index);
+    for (std::size_t j = 0; j < cartesian_nbf; ++j) {
+      const AoView& second = orbital_aos[j];
+      const auto second_center = center(second.shell->atom_index);
+      for (std::size_t p = 0; p < cartesian_naux; ++p) {
+        const double external = cartesian_three_center_weights[
+            three_center_index(i, j, p, cartesian_nbf, cartesian_naux)];
+        if (external == 0.0) continue;
+        const AoView& auxiliary = auxiliary_aos[p];
+        const auto auxiliary_center = center(auxiliary.shell->atom_index);
+        const double component_factor = first.component_normalization *
+                                        second.component_normalization *
+                                        auxiliary.component_normalization;
+        for (const auto& first_primitive : first.shell->primitives) {
+          for (const auto& second_primitive : second.shell->primitives) {
+            for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
+              const double weight = external * component_factor * first_primitive.coefficient *
+                                    second_primitive.coefficient *
+                                    auxiliary_primitive.coefficient;
+              const auto response = generated_df_cpu::three_center_derivative(
+                  first_primitive.exponent, first_center, angular(first.angular),
+                  second_primitive.exponent, second_center, angular(second.angular),
+                  auxiliary_primitive.exponent, auxiliary_center, angular(auxiliary.angular));
+              scatter(first.shell->atom_index, weight, response.first);
+              scatter(second.shell->atom_index, weight, response.second);
+              scatter(auxiliary.shell->atom_index, weight, response.third);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 DensityFittingIntegralData build_density_fitting_integrals(const core::System& orbital_system,
                                                            const core::System& auxiliary_system,
                                                            bool include_derivatives) {
