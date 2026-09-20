@@ -64,7 +64,7 @@ def test_work_model_boundaries_and_unknown_architecture(
     policy: typing.Any,
 ) -> None:
     rows = [
-        (n, a, op, ap, v, arch)
+        (n, a, op, ap, rank, v, arch)
         for n, a in [
             (0, 96),
             (29, 29),
