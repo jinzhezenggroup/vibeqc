@@ -288,9 +288,8 @@ def grid_policy_provenance(spec: GridSpec) -> dict[str, typing.Any]:
         raise ValueError("unsupported grid policy version")
 
     # A concrete v2 spec may be reconstructed by users or deserialization. Only
-    # byte-for-byte semantic matches to a canonical resolver output may claim
-    # the pinned xTBloom policy source; changed points/radii/topology remain an
-    # explicit contract instead of inheriting provenance they did not resolve.
+    # exact semantic matches to a canonical resolver output may claim the pinned
+    # xTBloom policy source; changed points/radii/topology remain explicit.
     for accuracy in ("standard", "tight"):
         policy = GridPolicy(accuracy)
         for method in ("lda-rks", "pbe-rks"):

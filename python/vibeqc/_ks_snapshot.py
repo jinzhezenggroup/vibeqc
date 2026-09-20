@@ -104,6 +104,7 @@ class NativeKsSnapshot:
         "ecp_terms",
         "export_work",
         "grid",
+        "grid_provenance",
         "grid_spec",
         "hamiltonian",
         "metadata",
