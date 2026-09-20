@@ -363,6 +363,7 @@ def test_rsh_reduction_requires_both_exchange_components() -> None:
                 atoms=2,
             )
 
+
 def test_nonlocal_correlation_extends_shared_stationary_source_inventory() -> None:
     method = MethodSpec(
         "PBE+VV10-test",
@@ -407,6 +408,7 @@ def test_nonlocal_correlation_extends_shared_stationary_source_inventory() -> No
             },
             atoms=2,
         )
+
 
 def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:
     feeds, integrals = fixture("coulomb", 2)

@@ -212,7 +212,9 @@ class StationaryGradientPlan:
             p for p in self.method.primitives if type(p) is SemilocalXCPrimitive
         )
         ranges = tuple(
-            p for p in self.method.primitives if type(p) is RangeSeparatedExchangePrimitive
+            p
+            for p in self.method.primitives
+            if type(p) is RangeSeparatedExchangePrimitive
         )
         exchange = tuple(
             p for p in self.method.primitives if type(p) is ExactExchangePrimitive
