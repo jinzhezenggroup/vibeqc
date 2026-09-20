@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import subprocess
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
@@ -41,7 +42,7 @@ CONSUMERS = (KernelConsumer.FOCK, KernelConsumer.FORCE)
 SCHEMA_VERSION = 1
 
 
-def f_shell_plan(name: str, architecture: str = "sm_120"):
+def f_shell_plan(name: str, architecture: str = "sm_120") -> typing.Any:
     """Use the common complete-component lowering for one f-containing class."""
     if name not in F_SHELL_CLASSES:
         raise ValueError(f"not a canonical s/p/d/f class containing f: {name}")
@@ -115,7 +116,9 @@ def source_audit(name: str, architecture: str = "sm_120") -> tuple[dict, str]:
     }, source
 
 
-def catalog(*, architecture: str = "sm_120", names=F_SHELL_CLASSES) -> dict:
+def catalog(
+    *, architecture: str = "sm_120", names: typing.Any = F_SHELL_CLASSES
+) -> dict:
     """Gate 0/1 report with recurrence/schedule legality and provisional selection."""
     names = tuple(names)
     if (
@@ -266,7 +269,7 @@ def compile_matrix(
     cache: Path,
     jobs: int = 2,
     timeout: float = 600,
-    progress=None,
+    progress: typing.Any = None,
 ) -> dict:
     """Gate 2/3: bounded independent release compilations with verified cache hits.
 
@@ -293,7 +296,7 @@ def compile_matrix(
     compiler = CudaCompilerAdapter(nvcc, target, compile_timeout=timeout)
     cache.mkdir(parents=True, exist_ok=True)
 
-    def compile_one(row):
+    def compile_one(row: typing.Any) -> typing.Any:
         audit, source = source_audit(row["shell_class"], report["architecture"])
         if audit != row["source"]:
             raise ValueError("catalog source changed before compile")

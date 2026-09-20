@@ -244,7 +244,7 @@ def run(args: argparse.Namespace) -> None:
     patch = subprocess.check_output(["git", "diff", "--binary", "HEAD"])
     (output / "measured-source.patch").write_bytes(patch)
 
-    def save():
+    def save() -> None:
         (output / "result.json").write_text(json.dumps(record, indent=2) + "\n")
 
     save()

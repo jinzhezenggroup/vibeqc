@@ -7,6 +7,7 @@ Hamiltonian. No virtual orbitals or correlated amplitudes are transported.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -30,7 +31,7 @@ class ProjectionPolicy:
     maximum_residual: float = 0.5
     maximum_ao: int = 4096
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("relative_threshold", "validation_tolerance", "maximum_residual"):
             value = getattr(self, name)
             if isinstance(value, bool) or not np.isfinite(value) or not 0 < value <= 1:
@@ -63,12 +64,12 @@ class OccupiedProjection:
     diagnostics: ProjectionDiagnostics
 
 
-def _immutable(array):
+def _immutable(array: typing.Any) -> typing.Any:
     array = np.ascontiguousarray(array, dtype=np.float64)
     return np.frombuffer(array.tobytes(), dtype=np.float64).reshape(array.shape)
 
 
-def _array(value, shape, name):
+def _array(value: typing.Any, shape: typing.Any, name: typing.Any) -> typing.Any:
     raw = np.asarray(value)
     if np.iscomplexobj(raw):
         raise ProjectionRejected(f"{name} requires real orbitals")
@@ -78,7 +79,7 @@ def _array(value, shape, name):
     return array
 
 
-def _metric(value, name, policy):
+def _metric(value: typing.Any, name: typing.Any, policy: typing.Any) -> typing.Any:
     raw = np.asarray(value)
     if (
         raw.ndim != 2
@@ -99,14 +100,14 @@ def _metric(value, name, policy):
 
 
 def project_occupied(
-    source_overlap,
-    target_overlap,
-    cross_overlap,
-    source_coefficients,
+    source_overlap: typing.Any,
+    target_overlap: typing.Any,
+    cross_overlap: typing.Any,
+    source_coefficients: typing.Any,
     *,
-    occupation=2,
-    policy=None,
-):
+    occupation: typing.Any = 2,
+    policy: typing.Any = None,
+) -> typing.Any:
     """Project a real occupied subspace, then orthonormalize in the target metric.
 
     Coefficients have shape ``(source_AOs, occupied_orbitals)`` and must satisfy
@@ -201,15 +202,15 @@ def project_occupied(
 
 
 def project_density(
-    source_overlap,
-    target_overlap,
-    cross_overlap,
-    source_density,
+    source_overlap: typing.Any,
+    target_overlap: typing.Any,
+    cross_overlap: typing.Any,
+    source_density: typing.Any,
     *,
-    occupied_orbitals,
-    occupation=2,
-    policy=None,
-):
+    occupied_orbitals: typing.Any,
+    occupation: typing.Any = 2,
+    policy: typing.Any = None,
+) -> typing.Any:
     """Reconstruct a pure HF occupied space from a validated AO density, then project.
 
     Diagonalize ``S_source**(1/2) D S_source**(1/2)`` in the retained metric

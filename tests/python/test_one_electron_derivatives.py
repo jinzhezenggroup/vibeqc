@@ -4,6 +4,7 @@ import ctypes
 import math
 import shutil
 import subprocess
+import typing
 from functools import cache
 from itertools import product
 
@@ -19,13 +20,15 @@ from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 
 @cache
-def kernel(family, angular, components):
+def kernel(
+    family: typing.Any, angular: typing.Any, components: typing.Any
+) -> typing.Any:
     return build_one_electron_derivative_kernel(
         build_one_electron_derivative_ir(family, angular, charge=2.3), components
     )
 
 
-def gaussian_norm(exponent, component):
+def gaussian_norm(exponent: typing.Any, component: typing.Any) -> typing.Any:
     """Closed Cartesian even moments remove libcint's shell radial convention."""
     return (math.pi / (2 * exponent)) ** 1.5 * math.prod(
         math.prod(range(1, 2 * component.count(axis), 2))
@@ -36,7 +39,9 @@ def gaussian_norm(exponent, component):
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("angular", list(product(range(4), repeat=2)))
-def test_all_cartesian_derivatives_match_independent_libcint(family, angular):
+def test_all_cartesian_derivatives_match_independent_libcint(
+    family: typing.Any, angular: typing.Any
+) -> None:
     gto = pytest.importorskip("pyscf.gto")
     positions = [(0.2, -0.3, 0.1), (-0.4, 0.15, 0.5), (0.17, -0.11, -0.4)]
     exponents = (0.8, 0.35)
@@ -87,7 +92,9 @@ def test_all_cartesian_derivatives_match_independent_libcint(family, angular):
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("coincident", [False, True])
-def test_center_sign_translation_and_arbitrary_fixed_weights(family, coincident):
+def test_center_sign_translation_and_arbitrary_fixed_weights(
+    family: typing.Any, coincident: typing.Any
+) -> None:
     positions = np.array([[0.2, -0.3, 0.1], [-0.4, 0.15, 0.5], [0.17, -0.11, -0.4]])
     if coincident:
         positions[:] = positions[0]
@@ -124,7 +131,9 @@ def test_center_sign_translation_and_arbitrary_fixed_weights(family, coincident)
             assert actual[center, axis] == pytest.approx(difference, abs=2e-7, rel=2e-7)
 
 
-def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shells():
+def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shells() -> (
+    None
+):
     ir = build_one_electron_derivative_ir("nuclear_attraction", (3, 3), weighted=True)
     assert ir.derivative.independent_centers(ir.operator) == (0, 1)
     assert ir.derivative.recovered_centers(ir.operator) == (2,)
@@ -134,7 +143,9 @@ def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shell
         build_one_electron_derivative_ir("kinetic", (5, 0))
 
 
-def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):
+def test_emitted_derivatives_normalized_raw_and_spherical_blocks(
+    tmp_path: typing.Any,
+) -> None:
     """Exercise emitted CSE/geometry/Boys boundaries against independent blocks."""
     pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.one_electron_derivatives_cuda import (

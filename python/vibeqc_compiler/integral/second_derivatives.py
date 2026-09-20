@@ -7,6 +7,7 @@ not enable a molecular Hessian. Raw blocks lower one AO component at a time;
 weighted outputs combine a bounded component subset before differentiation.
 """
 
+import typing
 from dataclasses import dataclass, replace
 from functools import cache
 from itertools import product
@@ -24,7 +25,7 @@ from .shell_spec import AXES, cartesian_components
 from .weighted_eri import CENTERS, build_weighted_eri_ir, build_weighted_eri_kernel
 
 
-def require_second_consumer(integral):
+def require_second_consumer(integral: typing.Any) -> typing.Any:
     """Validate the single-consumer invariant before reading second-order fields.
 
     General IntegralIR can represent multiple consumers. Native second-order
@@ -43,7 +44,12 @@ def require_second_consumer(integral):
     return integral.contractions[0]
 
 
-def _second_ir(integral, output, packing, memory_budget_bytes):
+def _second_ir(
+    integral: typing.Any,
+    output: typing.Any,
+    packing: typing.Any,
+    memory_budget_bytes: typing.Any,
+) -> typing.Any:
     """Retain the value operator/signature and declare a separate output ABI."""
     derivative = integral.operator.nuclear_derivative(order=2)
     centers = derivative.requested_centers(integral.operator)
@@ -77,14 +83,14 @@ def _second_ir(integral, output, packing, memory_budget_bytes):
 
 
 def build_one_electron_second_ir(
-    family,
-    angular,
+    family: typing.Any,
+    angular: typing.Any,
     *,
-    charge=1.0,
-    output="raw_hessian",
-    packing="dense",
-    memory_budget_bytes=4 * 1024**2,
-):
+    charge: typing.Any = 1.0,
+    output: typing.Any = "raw_hessian",
+    packing: typing.Any = "dense",
+    memory_budget_bytes: typing.Any = 4 * 1024**2,
+) -> typing.Any:
     """Declare S/T/V partial second derivatives for public s/p/d/f shell pairs."""
     if any(l > 3 for l in angular):
         raise ValueError("second derivatives support s/p/d/f shells")
@@ -97,13 +103,13 @@ def build_one_electron_second_ir(
 
 
 def build_eri_second_ir(
-    angular,
+    angular: typing.Any,
     *,
-    operator=FOUR_CENTER_ERI_OPERATOR,
-    output="weighted_hvp",
-    packing="dense",
-    memory_budget_bytes=4 * 1024**2,
-):
+    operator: typing.Any = FOUR_CENTER_ERI_OPERATOR,
+    output: typing.Any = "weighted_hvp",
+    packing: typing.Any = "dense",
+    memory_budget_bytes: typing.Any = 4 * 1024**2,
+) -> typing.Any:
     """Declare four-center raw, fixed-weight Hessian or directional outputs.
 
     Range semantics can be serialized, but executable support is checked by
@@ -141,7 +147,7 @@ class SecondDerivativeKernel:
     boys_count: int
 
 
-def _eri_differentiate(graph, maximum_order):
+def _eri_differentiate(graph: typing.Any, maximum_order: typing.Any) -> typing.Any:
     """Total coordinate response of the existing geometry-factored ERI DAG.
 
     The logarithmic Gaussian decay leaves introduced by the first derivative
@@ -151,7 +157,7 @@ def _eri_differentiate(graph, maximum_order):
     """
 
     @cache
-    def responses(center, axis):
+    def responses(center: typing.Any, axis: typing.Any) -> typing.Any:
         scale = graph.variable(f"{CENTERS[center]}_product_scale")
         difference_scale = scale if center < 2 else -scale
         leaves = {
@@ -185,7 +191,9 @@ def _eri_differentiate(graph, maximum_order):
             )
         return leaves
 
-    def differentiate(root, center, axis):
+    def differentiate(
+        root: typing.Any, center: typing.Any, axis: typing.Any
+    ) -> typing.Any:
         return graph.differentiate(
             root, graph.variable(f"coordinate_{center}_{axis}"), responses(center, axis)
         )
@@ -193,7 +201,9 @@ def _eri_differentiate(graph, maximum_order):
     return differentiate
 
 
-def _one_electron_primal(integral, indices, primal_form):
+def _one_electron_primal(
+    integral: typing.Any, indices: typing.Any, primal_form: typing.Any
+) -> typing.Any:
     """Contract selected S/T/V components before AD, sharing pair/Boys states."""
     charge = (
         integral.operator.external_centers[0].charge
@@ -230,14 +240,16 @@ def _one_electron_primal(integral, indices, primal_form):
     count = kernel.boys_count + (2 if argument is not None else 0)
 
     @cache
-    def responses(center, axis):
+    def responses(center: typing.Any, axis: typing.Any) -> typing.Any:
         variable = graph.variable(f"{'abc'[center]}_{axis}")
         dt = None if argument is None else graph.differentiate(argument, variable)
         return variable, {
             f"boys_{n}": -graph.variable(f"boys_{n + 1}") * dt for n in range(count - 1)
         }
 
-    def differentiate(root, center, axis):
+    def differentiate(
+        root: typing.Any, center: typing.Any, axis: typing.Any
+    ) -> typing.Any:
         variable, leaves = responses(center, axis)
         return graph.differentiate(root, variable, leaves)
 
@@ -246,12 +258,12 @@ def _one_electron_primal(integral, indices, primal_form):
 
 def build_second_derivative_kernel(
     integral: IntegralIR,
-    component_indices=None,
+    component_indices: typing.Any = None,
     *,
-    output_indices=None,
-    primal_form=AlgebraForm.FACTORED_NARY,
-    output_form=AlgebraForm.BINARY,
-):
+    output_indices: typing.Any = None,
+    primal_form: typing.Any = AlgebraForm.FACTORED_NARY,
+    output_form: typing.Any = AlgebraForm.BINARY,
+) -> typing.Any:
     """Lower one bounded second-order consumer without changing first-force ABI.
 
     Select one AO component for raw output, or one to 64 components for a fixed
@@ -341,7 +353,7 @@ def build_second_derivative_kernel(
         differentiate(value, center, axis) for center, axis in independent
     )
 
-    def row(coordinate):
+    def row(coordinate: typing.Any) -> typing.Any:
         center, axis = divmod(coordinate, 3)
         return tuple(
             (3 * i + axis, factor)
@@ -369,7 +381,7 @@ def build_second_derivative_kernel(
         )
 
         @cache
-        def independent_output(i):
+        def independent_output(i: typing.Any) -> typing.Any:
             return differentiate(directional, *independent[i])
 
         outputs = tuple(
@@ -379,7 +391,7 @@ def build_second_derivative_kernel(
     else:
 
         @cache
-        def mixed(i, j):
+        def mixed(i: typing.Any, j: typing.Any) -> typing.Any:
             # Mixed-partial symmetry chooses one generated representative.
             return differentiate(gradients[i], *independent[j])
 

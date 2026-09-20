@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def fixed_density_probe(tmp_path_factory):
+def fixed_density_probe(tmp_path_factory: typing.Any) -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID")
     pytest.importorskip("pyscf")
     compiler = shutil.which("c++")
@@ -60,15 +61,15 @@ def fixed_density_probe(tmp_path_factory):
 )
 @pytest.mark.parametrize("exchange", ["auto", "full"])
 def test_streamed_raw_reuse_matches_independent_jk(
-    fixed_density_probe,
-    pairs,
-    auxiliary,
-    passes,
-    occupied_rows,
-    retained,
-    exchange,
-    tmp_path,
-):
+    fixed_density_probe: typing.Any,
+    pairs: typing.Any,
+    auxiliary: typing.Any,
+    passes: typing.Any,
+    occupied_rows: typing.Any,
+    retained: typing.Any,
+    exchange: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     binary, fixture = fixed_density_probe
     trace = tmp_path / "trace.jsonl"
     arrays = tmp_path / "arrays.bin"

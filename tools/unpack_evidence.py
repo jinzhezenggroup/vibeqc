@@ -3,12 +3,15 @@
 import argparse
 import io
 import json
+import typing
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
 
-def unpack(directory, output=None, archive_path=None):
+def unpack(
+    directory: typing.Any, output: typing.Any = None, archive_path: typing.Any = None
+) -> typing.Any:
     """Check every byte before writing; never execute historical scripts."""
     directory = Path(directory)
     manifest = json.loads((directory / "raw-evidence.manifest.json").read_text())

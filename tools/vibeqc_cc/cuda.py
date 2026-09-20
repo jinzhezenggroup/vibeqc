@@ -5,6 +5,8 @@ and output transfers are suitable for equation validation, not a resident CC
 iteration. Equations are constructed only by the audited #148 frontend.
 """
 
+import typing
+
 from vibeqc_compiler.tensor import Program
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
@@ -12,7 +14,13 @@ from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 from .doubles import build_ccsd_program
 
 
-def rccsd_program(nocc, nvir, *, form="shared", trace=False):
+def rccsd_program(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    *,
+    form: typing.Any = "shared",
+    trace: typing.Any = False,
+) -> typing.Any:
     """Expose every live node when auditing intermediate parity.
 
     Trace outputs keep the original nodes, including exact coefficients and
@@ -45,17 +53,17 @@ class PreparedRCCSDResidual:
 
     def __init__(
         self,
-        nocc,
-        nvir,
-        compiler,
-        cache,
+        nocc: typing.Any,
+        nvir: typing.Any,
+        compiler: typing.Any,
+        cache: typing.Any,
         *,
-        max_bytes=256 << 20,
-        form="shared",
-        trace=False,
-        device=0,
-        **plan_options,
-    ):
+        max_bytes: typing.Any = 256 << 20,
+        form: typing.Any = "shared",
+        trace: typing.Any = False,
+        device: typing.Any = 0,
+        **plan_options: typing.Any,
+    ) -> None:
         self.program = rccsd_program(nocc, nvir, form=form, trace=trace)
         self.plan = plan_cuda(
             self.program, compiler.target, max_bytes=max_bytes, **plan_options
@@ -63,14 +71,14 @@ class PreparedRCCSDResidual:
         self.artifact = compile_cuda(self.plan, compiler, cache)
         self.executor = PreparedCuda(self.plan, self.artifact, device=device)
 
-    def execute(self, feeds, *, profile=False):
+    def execute(self, feeds: typing.Any, *, profile: typing.Any = False) -> typing.Any:
         return self.executor.execute(feeds, profile=profile)
 
-    def close(self):
+    def close(self) -> None:
         self.executor.close()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()

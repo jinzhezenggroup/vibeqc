@@ -6,7 +6,7 @@ import pytest
 from tools.vibeqc_hessian import build_rhf_nuclear_rhs, metric_density_response_mo
 
 
-def test_metric_density_response_uses_closed_shell_occupation_connection():
+def test_metric_density_response_uses_closed_shell_occupation_connection() -> None:
     overlap = np.array([[0.2, 0.3, 0.4], [0.3, -0.1, 0.5], [0.4, 0.5, 0.6]])
     expected = -0.5 * (
         overlap * np.array([2.0, 0.0, 0.0])[None, :]
@@ -17,7 +17,7 @@ def test_metric_density_response_uses_closed_shell_occupation_connection():
     )
 
 
-def test_nuclear_rhs_includes_metric_fock_and_overlap_energy_gap_term():
+def test_nuclear_rhs_includes_metric_fock_and_overlap_energy_gap_term() -> None:
     energies = np.array([-0.7, 0.2, 0.8])
     frozen = np.array([[0.0, 0.1, 0.2], [0.3, 0.0, 0.4], [0.5, 0.6, 0.0]])
     overlap = np.array([[0.0, 0.7, 0.8], [0.9, 0.0, 0.2], [0.3, 0.4, 0.0]])
@@ -30,7 +30,7 @@ def test_nuclear_rhs_includes_metric_fock_and_overlap_energy_gap_term():
     assert rhs.shape == (1, 2)
 
 
-def test_nuclear_rhs_rejects_missing_or_malformed_metric_inputs():
+def test_nuclear_rhs_rejects_missing_or_malformed_metric_inputs() -> None:
     values = np.zeros((3, 3))
     with pytest.raises(ValueError, match="finite"):
         bad = values.copy()

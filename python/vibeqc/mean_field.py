@@ -1,5 +1,6 @@
 """Fixed-density MethodIR mean-field consumer of native common J/K sources."""
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from hashlib import sha256
@@ -51,7 +52,7 @@ class FixedDensityExchangeEvaluation:
     operator_keys: tuple[tuple[str, Fraction], ...]
 
 
-def exchange_operator_key(primitive):
+def exchange_operator_key(primitive: typing.Any) -> typing.Any:
     """Return the exact operator/omega key consumed by fixed-density exchange."""
 
     if isinstance(primitive, ExactExchangePrimitive):
@@ -61,7 +62,9 @@ def exchange_operator_key(primitive):
     raise TypeError("expected an exact-exchange primitive")
 
 
-def assemble_fixed_density_exchange(method, density, raw_exchange):
+def assemble_fixed_density_exchange(
+    method: typing.Any, density: typing.Any, raw_exchange: typing.Any
+) -> typing.Any:
     """Apply MethodIR exchange coefficients to provider-produced raw K matrices.
 
     Restricted total-density K contributes Vx=-a*K/2; unrestricted same-spin K
@@ -137,7 +140,7 @@ class FixedDensityMethodPlan:
     functional: FunctionalSpec
     fock_spec: FockBuildSpec
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.fock_spec, FockBuildSpec):
             raise TypeError("executable MethodIR plan requires FockBuildSpec")
         functional, spec = _compile_fixed_density_components(
@@ -152,10 +155,10 @@ class FixedDensityMethodPlan:
             )
 
     @property
-    def capabilities(self):
+    def capabilities(self) -> typing.Any:
         return ("energy", "fock")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "schema": "vibeqc.fixed-density-method-plan/v1",
             "method_identity": self.method.identity,
@@ -165,7 +168,7 @@ class FixedDensityMethodPlan:
             "capabilities": self.capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             **self.semantic_payload(),
             "method": self.method.to_payload(),
@@ -174,17 +177,17 @@ class FixedDensityMethodPlan:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.semantic_payload())
 
 
 def _compile_fixed_density_components(
-    method,
+    method: typing.Any,
     *,
-    coulomb_approximation="exact",
-    exchange_approximation="exact",
-    provider_derivative_order=0,
-):
+    coulomb_approximation: typing.Any = "exact",
+    exchange_approximation: typing.Any = "exact",
+    provider_derivative_order: typing.Any = 0,
+) -> typing.Any:
     """Compile semilocal plus full-range exchange to the common J/K request.
 
     Exact exchange supplies a physical fraction a_x. The native provider uses
@@ -239,12 +242,12 @@ def _compile_fixed_density_components(
 
 
 def compile_fixed_density_method(
-    method,
+    method: typing.Any,
     *,
-    coulomb_approximation="exact",
-    exchange_approximation="exact",
-    provider_derivative_order=0,
-):
+    coulomb_approximation: typing.Any = "exact",
+    exchange_approximation: typing.Any = "exact",
+    provider_derivative_order: typing.Any = 0,
+) -> typing.Any:
     """Compile a MethodIR graph into a self-consistent executable energy/Fock plan."""
     functional, spec = _compile_fixed_density_components(
         method,
@@ -264,7 +267,14 @@ class FixedDensityMeanField:
     DFT SCF or geometric-gradient capability is registered.
     """
 
-    def __init__(self, fock, xc, *, method_plan=None, nonlocal_correlation=None):
+    def __init__(
+        self,
+        fock: typing.Any,
+        xc: typing.Any,
+        *,
+        method_plan: typing.Any = None,
+        nonlocal_correlation: typing.Any = None,
+    ) -> None:
         from vibeqc_compiler.dft import FixedDensityNonlocalCorrelation
         from vibeqc_compiler.xc.integration import FixedDensityXC
 
@@ -325,7 +335,7 @@ class FixedDensityMeanField:
         self._nonlocal = nonlocal_correlation
 
     @classmethod
-    def from_method(cls, fock, method):
+    def from_method(cls, fock: typing.Any, method: typing.Any) -> typing.Any:
         """Bind a MethodIR graph to an already prepared common J/K provider."""
         from vibeqc_compiler.dft import FixedDensityNonlocalCorrelation
         from vibeqc_compiler.xc.integration import FixedDensityXC
@@ -361,10 +371,12 @@ class FixedDensityMeanField:
         )
 
     @property
-    def method_plan(self):
+    def method_plan(self) -> typing.Any:
         return self._method_plan
 
-    def integrate(self, grid, density, *, tile_points=256):
+    def integrate(
+        self, grid: typing.Any, density: typing.Any, *, tile_points: typing.Any = 256
+    ) -> typing.Any:
         """Evaluate the same density and immutable basis in both consumers.
 
         XC validates molecular grid/basis compatibility and functional domain

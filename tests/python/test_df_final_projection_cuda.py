@@ -1,6 +1,7 @@
 """Exact-state final occupied-K projection reuse, with independent force gates."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -16,7 +17,9 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
-def test_final_projection_replay_and_geometry(method, monkeypatch, tmp_path):
+def test_final_projection_replay_and_geometry(
+    method: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """Only singleton RHF may lend U; warm and geometry replays bind fresh states."""
     from pyscf import gto, scf
 

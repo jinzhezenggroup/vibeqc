@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes as ct
 import threading
+import typing
 from dataclasses import asdict
 from itertools import product
 from math import prod
@@ -45,7 +46,7 @@ _SIZE = ct.POINTER(ct.c_size_t)
 _UINT64 = ct.POINTER(ct.c_uint64)
 
 
-def pointer(array):
+def pointer(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(_DOUBLE)
 
 
@@ -53,11 +54,11 @@ _C_INT_MAX = 2 ** (8 * ct.sizeof(ct.c_int) - 1) - 1
 _C_SIZE_T_MAX = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
 
 
-def _valid_cuda_device(value):
+def _valid_cuda_device(value: typing.Any) -> typing.Any:
     return type(value) is int and 0 <= value <= _C_INT_MAX
 
 
-def _valid_size_t_budget(value):
+def _valid_size_t_budget(value: typing.Any) -> typing.Any:
     return type(value) is int and 1 <= value <= _C_SIZE_T_MAX
 
 
@@ -92,7 +93,7 @@ class NativeSource:
         )
     )
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed_fields and name in self.__dict__:
             raise AttributeError(
                 "source scientific state is immutable; construct a new source"
@@ -101,14 +102,14 @@ class NativeSource:
 
     def __init__(
         self,
-        atoms,
-        basis="sto-3g",
+        atoms: typing.Any,
+        basis: typing.Any = "sto-3g",
         *,
-        auxiliary_basis=None,
-        charge=0,
-        multiplicity=None,
-        representation="cartesian",
-    ):
+        auxiliary_basis: typing.Any = None,
+        charge: typing.Any = 0,
+        multiplicity: typing.Any = None,
+        representation: typing.Any = "cartesian",
+    ) -> None:
         self.atoms = tuple(Atom.from_value(a) for a in atoms)
         calculator = Calculator(basis=basis, basis_representation=representation)
         self.shells = calculator._shells_for_atoms(self.atoms)
@@ -175,7 +176,7 @@ class NativeSource:
         self.naux = sum(self.auxiliary_sizes)
         inventories = (*self.shells, *self.auxiliary_shells)
 
-        def cartesian(s):
+        def cartesian(s: typing.Any) -> typing.Any:
             return (s.angular_momentum + 1) * (s.angular_momentum + 2) // 2
 
         # Count normalized/native and original/Python coefficients, all owned
@@ -339,7 +340,7 @@ class NativeSource:
                 lib.vibeqc_system_destroy(auxiliary)
             lib.vibeqc_context_destroy(context)
 
-    def _size(self, shell):
+    def _size(self, shell: typing.Any) -> typing.Any:
         l = shell.angular_momentum
         return (
             2 * l + 1
@@ -347,34 +348,36 @@ class NativeSource:
             else (l + 1) * (l + 2) // 2
         )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("integral source is closed")
 
-    def close(self):
+    def close(self) -> None:
         """Release owned native basis state; existing detached values survive."""
         with self._lock:
             if self._handle:
                 self._library.vibeqc_posthf_source_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._check_open()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()
 
-    def _read(self, kind, begin, shape):
+    def _read(
+        self, kind: typing.Any, begin: typing.Any, shape: typing.Any
+    ) -> typing.Any:
         """Private contiguous global-AO adapter; dimensions checked natively."""
         if kind not in _KIND or len(begin) != len(shape) or not 2 <= len(shape) <= 4:
             raise ValueError("invalid raw tile operator/rank")
@@ -404,7 +407,9 @@ class NativeSource:
             )
         return out
 
-    def integral_derivatives(self, *, output_budget_bytes=256 << 20):
+    def integral_derivatives(
+        self, *, output_budget_bytes: typing.Any = 256 << 20
+    ) -> typing.Any:
         """Dense small-system derivative oracle with an output-size guard.
 
         The guard covers the returned NumPy buffer only.  The independent CPU
@@ -437,7 +442,7 @@ class NativeSource:
             )
         offset = 0
 
-        def take(shape):
+        def take(shape: typing.Any) -> typing.Any:
             nonlocal offset
             size = prod(shape)
             value = output[offset : offset + size].reshape(shape)
@@ -451,7 +456,9 @@ class NativeSource:
             "nuclear": take((ncoord,)),
         }
 
-    def df_integral_derivatives(self, *, output_budget_bytes=256 << 20):
+    def df_integral_derivatives(
+        self, *, output_budget_bytes: typing.Any = 256 << 20
+    ) -> typing.Any:
         """Dense small-system DF derivative oracle with an output-size guard."""
 
         if type(output_budget_bytes) is not int or output_budget_bytes < 1:
@@ -478,7 +485,7 @@ class NativeSource:
             )
         offset = 0
 
-        def take(shape):
+        def take(shape: typing.Any) -> typing.Any:
             nonlocal offset
             size = prod(shape)
             value = output[offset : offset + size].reshape(shape)
@@ -495,13 +502,13 @@ class NativeSource:
 
     def df_gradient_tile_cuda(
         self,
-        kind,
-        range_descriptor,
-        weights,
+        kind: typing.Any,
+        range_descriptor: typing.Any,
+        weights: typing.Any,
         *,
-        device_id=0,
-        stage_budget_bytes=128 << 20,
-    ):
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
         """Contract one strided raw-A or metric weight tile through #143."""
 
         if type(kind) is not int or kind not in (0, 1):
@@ -551,13 +558,13 @@ class NativeSource:
     def one_electron_gradient_cuda(
         self,
         *,
-        overlap_weights=None,
-        kinetic_weights=None,
-        attraction_weights=None,
-        device_id=0,
-        schedule=0,
-        stage_budget_bytes=128 << 20,
-    ):
+        overlap_weights: typing.Any = None,
+        kinetic_weights: typing.Any = None,
+        attraction_weights: typing.Any = None,
+        device_id: typing.Any = 0,
+        schedule: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
         """Contract fixed S/T/V AO cotangents with generated CUDA derivatives.
 
         Each optional weight is a real finite ``[AO,AO]`` matrix. At least one
@@ -567,7 +574,7 @@ class NativeSource:
         measured by that consumer, not inferred from the requested budget.
         """
 
-        def checked(name, weights):
+        def checked(name: typing.Any, weights: typing.Any) -> typing.Any:
             if weights is None:
                 return None
             raw = np.asarray(weights)
@@ -630,8 +637,12 @@ class NativeSource:
         }
 
     def weighted_eri_gradient_cuda(
-        self, weights, *, device_id=0, stage_budget_bytes=128 << 20
-    ):
+        self,
+        weights: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
         """Stream fixed public-AO weights through the #144 CUDA consumer.
 
         The stage budget includes numeric candidate, offset, expansion, record,
@@ -668,12 +679,12 @@ class NativeSource:
 
     def weighted_eri_shell_gradient_cuda(
         self,
-        shell_indices,
-        weights,
+        shell_indices: typing.Any,
+        weights: typing.Any,
         *,
-        device_id=0,
-        stage_budget_bytes=16 << 20,
-    ):
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 16 << 20,
+    ) -> typing.Any:
         """Contract one public shell-quartet weight block through #144.
 
         Stage accounting includes numeric expansion/record/result storage and
@@ -729,7 +740,13 @@ class NativeSource:
             )
         return immutable(gradient)
 
-    def requests(self, kind, *, axis_tile=2, budget_bytes=1 << 20):
+    def requests(
+        self,
+        kind: typing.Any,
+        *,
+        axis_tile: typing.Any = 2,
+        budget_bytes: typing.Any = 1 << 20,
+    ) -> typing.Any:
         """Yield bounded CG02 requests, including partial shell-component tiles."""
         if type(axis_tile) is not int or axis_tile < 1:
             raise ValueError("axis_tile must be positive")
@@ -781,7 +798,7 @@ class NativeSource:
                     shell_indices=shell_indices,
                 )
 
-    def global_offsets(self, request):
+    def global_offsets(self, request: typing.Any) -> typing.Any:
         """Resolve validated shell-local CG02 indices into public AO positions."""
         if (
             request.shell_indices is None
@@ -813,7 +830,7 @@ class NativeSource:
             result.append(sum(sizes[:index]) + local)
         return tuple(result)
 
-    def execute(self, request):
+    def execute(self, request: typing.Any) -> typing.Any:
         """Return the existing CG02 response with explicit successful metadata."""
         kind = request.integral.operator.family.value
         if (
@@ -832,7 +849,7 @@ class NativeSource:
 
         return assemble_raw_block(request, values.ravel())
 
-    def tile(self, request):
+    def tile(self, request: typing.Any) -> typing.Any:
         """Read a dense FP64 provider tile through the CG02 response contract."""
         response = self.execute(request)
         if not isinstance(response, BlockResponse) or response.status != BlockStatus.OK:
@@ -841,7 +858,7 @@ class NativeSource:
             request.tile.shape
         )
 
-    def one_electron(self):
+    def one_electron(self) -> typing.Any:
         """Return only O(N**2) S/h matrices; no derivative/four-index allocation."""
         return tuple(
             self._read(k, (0, 0), (self.nbf, self.nbf)) for k in ("overlap", "hcore")
@@ -850,13 +867,13 @@ class NativeSource:
     def rhf_density(
         self,
         *,
-        backend="cpu",
-        device_id=0,
-        max_iterations=100,
-        tolerance=1e-11,
-        df=False,
-        metric_threshold=1e-10,
-    ):
+        backend: typing.Any = "cpu",
+        device_id: typing.Any = 0,
+        max_iterations: typing.Any = 100,
+        tolerance: typing.Any = 1e-11,
+        df: typing.Any = False,
+        metric_threshold: typing.Any = 1e-10,
+    ) -> typing.Any:
         """Run the existing HF solver and export a detached density.
 
         The existing CPU HF solver is a small-system dense oracle. Its setup
@@ -898,13 +915,13 @@ class NativeSource:
     def uhf_density(
         self,
         *,
-        backend="cpu",
-        device_id=0,
-        max_iterations=100,
-        tolerance=1e-11,
-        df=False,
-        metric_threshold=1e-10,
-    ):
+        backend: typing.Any = "cpu",
+        device_id: typing.Any = 0,
+        max_iterations: typing.Any = 100,
+        tolerance: typing.Any = 1e-11,
+        df: typing.Any = False,
+        metric_threshold: typing.Any = 1e-10,
+    ) -> typing.Any:
         """Run UHF and export detached alpha then beta AO densities.
 
         This small-system snapshot bridge preserves the native UHF spin order
@@ -956,12 +973,12 @@ class CudaDFSource(NativeSource):
 
     def __init__(
         self,
-        *args,
-        device_id=0,
-        tile_capacity=512,
-        source_budget_bytes=128 << 20,
-        **kwargs,
-    ):
+        *args: typing.Any,
+        device_id: typing.Any = 0,
+        tile_capacity: typing.Any = 512,
+        source_budget_bytes: typing.Any = 128 << 20,
+        **kwargs: typing.Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._df_handle = ct.c_void_p()
         if (
@@ -1058,7 +1075,9 @@ class CudaDFSource(NativeSource):
         lib.vibeqc_posthf_df_rhf_jk_plan_destroy_v1.restype = None
         self._device_handoff = False
 
-    def _read(self, kind, begin, shape):
+    def _read(
+        self, kind: typing.Any, begin: typing.Any, shape: typing.Any
+    ) -> typing.Any:
         if kind in ("overlap", "hcore"):
             return super()._read(kind, begin, shape)
         if kind not in ("coulomb_metric", "three_center_eri"):
@@ -1091,7 +1110,7 @@ class CudaDFSource(NativeSource):
             )
             return out
 
-    def source_metrics(self):
+    def source_metrics(self) -> typing.Any:
         """Cumulative generated-value traffic for the explicit compatibility source."""
         with self._lock:
             self._check_open()
@@ -1124,7 +1143,7 @@ class CudaDFSource(NativeSource):
                 ),
             }
 
-    def _create_device_rhf_jk_plan(self, threshold):
+    def _create_device_rhf_jk_plan(self, threshold: typing.Any) -> typing.Any:
         """Transfer this generated source into one device-resident J/K consumer."""
         with self._lock:
             self._check_open()
@@ -1147,7 +1166,7 @@ class CudaDFSource(NativeSource):
             )
             return handle, diagnostics
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if getattr(self, "_df_handle", None):
                 self._library.vibeqc_posthf_df_destroy_v1(self._df_handle)

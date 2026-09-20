@@ -1,6 +1,7 @@
 """Independent libcint S/T/V blocks for all public Cartesian shell pairs."""
 
 import math
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -25,22 +26,27 @@ class OneElectronValueFixture:
     projections: tuple[np.ndarray, np.ndarray]
 
     @property
-    def input_hash(self):
+    def input_hash(self) -> typing.Any:
         return canonical_hash(self.inputs)
 
-    def contract(self, values):
+    def contract(self, values: typing.Any) -> typing.Any:
         """Contract each component without folding raw-output channels together."""
         values = values.reshape(*self.weights.shape, 3)
         result = (values * self.weights[:, :, None]).sum(axis=1)
         return result.T.reshape(self.reference.shape)
 
-    def spherical(self, values):
+    def spherical(self, values: typing.Any) -> typing.Any:
         """Use libcint's independent normalized Cartesian-to-spherical map."""
         a, b = self.projections
         return np.array([a.T @ block @ b for block in values])
 
 
-def make_one_electron_fixture(angular, *, variant="asymmetric", lengths=(2, 1)):
+def make_one_electron_fixture(
+    angular: typing.Any,
+    *,
+    variant: typing.Any = "asymmetric",
+    lengths: typing.Any = (2, 1),
+) -> typing.Any:
     """Cover charge signs, contraction normalization, AO order and Boys regimes."""
     if variant not in ("asymmetric", "coincident", "near", "intermediate", "distant"):
         raise ValueError("unknown one-electron fixture geometry")
@@ -142,7 +148,7 @@ def make_one_electron_fixture(angular, *, variant="asymmetric", lengths=(2, 1)):
     )
 
 
-def one_electron_value_matrix():
+def one_electron_value_matrix() -> typing.Any:
     """Complete shell pairs in five geometries plus long signed contractions."""
     fixtures = [
         make_one_electron_fixture(angular, variant=variant)

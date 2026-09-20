@@ -23,6 +23,7 @@ import platform
 import subprocess
 import sys as _compiler_sys
 import time
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +64,7 @@ QUALIFICATION_SOURCE_PATHS = (
 )
 
 
-def _qualification_source_identity():
+def _qualification_source_identity() -> typing.Any:
     """Bind retained evidence to the exact git head and orchestration bytes."""
     git_head = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
@@ -81,13 +82,13 @@ def _qualification_source_identity():
     return {"git_head": git_head, "worktree_dirty": dirty, "sha256": hashes}
 
 
-def _bitwise_equal_float64(left, right):
+def _bitwise_equal_float64(left: typing.Any, right: typing.Any) -> typing.Any:
     a = np.asarray(left, dtype=np.float64)
     b = np.asarray(right, dtype=np.float64)
     return a.shape == b.shape and np.array_equal(a.view(np.uint64), b.view(np.uint64))
 
 
-def load_endpoint(name):
+def load_endpoint(name: typing.Any) -> typing.Any:
     with np.load(ENDPOINTS_DIR / f"{name}.npz", allow_pickle=False) as data:
         eps = data["eps"]
         occ = data["occ"]
@@ -113,12 +114,12 @@ def load_endpoint(name):
     )
 
 
-def arrays_dict(feeds):
+def arrays_dict(feeds: typing.Any) -> typing.Any:
     names = ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
     return dict(zip(names, feeds[2:]))
 
 
-def run(args):
+def run(args: typing.Any) -> None:
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     cache = Path(args.cache)

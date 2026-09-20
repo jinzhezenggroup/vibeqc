@@ -8,13 +8,13 @@ provided fixture. Rejected candidates and all raw samples remain in evidence.
 from __future__ import annotations
 
 import time
+import typing
 from dataclasses import asdict, dataclass
 from itertools import islice
 from pathlib import Path
 
 import numpy as np
 
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash
 from vibeqc_compiler.common.specialization import (
@@ -27,7 +27,6 @@ from vibeqc_compiler.common.specialization import (
 )
 
 from .cuda_execute import CudaArtifact, PreparedCuda, compile_cuda
-from .cuda_plan import TensorPlan, TensorSchedule
 from .cuda_search import (
     DEFAULT_SCREENING_POLICY,
     DEFAULT_SEARCH_LIMITS,
@@ -40,8 +39,15 @@ from .cuda_search import (
 )
 from .interpreter import execute
 
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
-def endpoint_gate(baseline, candidate, *, minimum_speedup=1.02) -> dict:
+    from .cuda_plan import TensorPlan, TensorSchedule
+
+
+def endpoint_gate(
+    baseline: typing.Any, candidate: typing.Any, *, minimum_speedup: typing.Any = 1.02
+) -> dict:
     """Require a paired median gain whose bootstrap lower bound exceeds one."""
     left, right = np.asarray(baseline), np.asarray(candidate)
     if left.ndim != 1 or left.shape != right.shape or not 5 <= left.size <= 30:
@@ -77,7 +83,9 @@ def candidate_schedules(
     return (TensorScheduleSpace() if space is None else space).generate(maximum)
 
 
-def _static_compile_shortlist(search, maximum: int) -> tuple[tuple[int, object], ...]:
+def _static_compile_shortlist(
+    search: typing.Any, maximum: int
+) -> tuple[tuple[int, object], ...]:
     """Rank ready plans before expensive compilation using static audit facts.
 
     The score only allocates the finite compilation budget. It never promotes a
@@ -104,7 +112,9 @@ def _static_compile_shortlist(search, maximum: int) -> tuple[tuple[int, object],
     return tuple((index, proposal) for _, index, proposal in ready[:maximum])
 
 
-def _compile_cost_calibration(estimates, metadata, wall_seconds) -> dict:
+def _compile_cost_calibration(
+    estimates: typing.Any, metadata: typing.Any, wall_seconds: float
+) -> dict:
     source_bytes = estimates["generated_source_bytes"]
     compiler_seconds = metadata.get("compile_seconds")
     seconds_per_kib = None
@@ -140,10 +150,10 @@ class TensorSelection:
 def tune_cuda(
     baseline: TensorPlan,
     compiler: CudaCompilerAdapter,
-    fixtures,
+    fixtures: typing.Any,
     cache: Path,
     *,
-    schedules=None,
+    schedules: typing.Any = None,
     search_space: TensorScheduleSpace | None = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
     screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,
@@ -197,7 +207,7 @@ def tune_cuda(
         raise ValueError("tuning requires an unfused CUDA baseline")
     started = time.monotonic()
 
-    def check_deadline():
+    def check_deadline() -> None:
         if time.monotonic() - started >= maximum_seconds:
             raise TimeoutError("tuning deadline exhausted")
 
@@ -266,7 +276,7 @@ def tune_cuda(
             startup.append(result.metrics)
             reference_cuda.execute(feeds)
 
-        def qualify(plan, compiled, row):
+        def qualify(plan: typing.Any, compiled: typing.Any, row: typing.Any) -> None:
             nonlocal best_plan, best_artifact, best_score, selected_profiles
             try:
                 check_deadline()
@@ -469,7 +479,12 @@ def tune_cuda(
     return TensorSelection(best_plan, best_artifact, evidence, path)
 
 
-def _screening_plan(policy, candidate_budget, fixture_count, repeats):
+def _screening_plan(
+    policy: typing.Any,
+    candidate_budget: typing.Any,
+    fixture_count: typing.Any,
+    repeats: typing.Any,
+) -> typing.Any:
     """Avoid a shortlist when its planned sample count cannot save any work.
 
     Counts are A/B pairs only, not predicted time. Startup, compilation and
@@ -505,7 +520,7 @@ def _screening_plan(policy, candidate_budget, fixture_count, repeats):
     }
 
 
-def _timing_evidence(pairs):
+def _timing_evidence(pairs: typing.Any) -> typing.Any:
     """Retain invalid clock samples without emitting nonstandard JSON NaN/Inf."""
     rows = []
     for sample in pairs:
@@ -517,7 +532,7 @@ def _timing_evidence(pairs):
     return rows
 
 
-def _paired_seconds(pairs):
+def _paired_seconds(pairs: typing.Any) -> typing.Any:
     return tuple(
         np.asarray(
             [row["seconds"] for row in pairs if row["selection"] == side], dtype=float
@@ -526,7 +541,7 @@ def _paired_seconds(pairs):
     )
 
 
-def _screening_speedup(pairs):
+def _screening_speedup(pairs: typing.Any) -> typing.Any:
     """A finite descriptive ratio, not a promotion or statistical decision."""
     left, right = (np.asarray(values) for values in _paired_seconds(pairs))
     if (
@@ -546,16 +561,16 @@ def _screening_speedup(pairs):
 
 
 def _measure_fixture(
-    reference_cuda,
-    candidate,
-    feeds,
-    expected,
+    reference_cuda: typing.Any,
+    candidate: typing.Any,
+    feeds: typing.Any,
+    expected: typing.Any,
     *,
-    inputs_hash,
-    repeats,
-    check_deadline,
-    profile,
-):
+    inputs_hash: typing.Any,
+    repeats: typing.Any,
+    check_deadline: typing.Any,
+    profile: typing.Any,
+) -> typing.Any:
     """Warm and measure one full endpoint, checking every returned output.
 
     Both screening and final qualification use the same synchronized runner and
@@ -571,13 +586,13 @@ def _measure_fixture(
     error = max(error, _parity(candidate.execute(feeds).outputs, expected))
     latest = [None]
 
-    def before_sample(selection):
+    def before_sample(selection: typing.Any) -> None:
         nonlocal error
         check_deadline()
         if latest[0] is not None:
             error = max(error, _parity(latest[0].outputs, expected))
 
-    def evaluate(selection):
+    def evaluate(selection: typing.Any) -> typing.Any:
         selected = reference_cuda if selection == "baseline" else candidate
         latest[0] = selected.execute(feeds)
         return latest[0].metrics
@@ -602,7 +617,14 @@ def _measure_fixture(
     return pairs, error, metrics
 
 
-def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execution):
+def _promotion_profiles(
+    plan: typing.Any,
+    artifact: typing.Any,
+    feeds: typing.Any,
+    evidence_hash: typing.Any,
+    *,
+    baseline_execution: typing.Any,
+) -> typing.Any:
     """Declare only the measured layout domains using #459's shared records.
 
     No new profile database or runtime lookup is introduced. These records refer
@@ -687,7 +709,7 @@ def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execut
     return [profiles[key] for key in sorted(profiles)]
 
 
-def _parity(actual, expected):
+def _parity(actual: typing.Any, expected: typing.Any) -> typing.Any:
     error = 0.0
     for name, reference in expected.items():
         result = actual[name]

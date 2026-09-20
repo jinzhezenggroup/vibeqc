@@ -1,5 +1,7 @@
 """Automatic ISA admission must be safe on every processor in the inventory."""
 
+import typing
+
 import pytest
 from vibeqc_compiler.common import cpu_dispatch
 from vibeqc_compiler.common.cpu_target import CPU_TARGETS
@@ -17,7 +19,9 @@ from vibeqc_compiler.common.cpu_target import CPU_TARGETS
         ("processor: 0\nflags: avx2 fma\n\nprocessor: 1\nflags:\n", ()),
     ],
 )
-def test_linux_dispatch_uses_common_processor_features(monkeypatch, records, expected):
+def test_linux_dispatch_uses_common_processor_features(
+    monkeypatch: typing.Any, records: typing.Any, expected: typing.Any
+) -> None:
     monkeypatch.setattr(cpu_dispatch.sys, "platform", "linux")
     monkeypatch.setattr(cpu_dispatch.platform, "machine", lambda: "x86_64")
     monkeypatch.setattr(cpu_dispatch.Path, "read_text", lambda self: records)
@@ -30,8 +34,10 @@ def test_linux_dispatch_uses_common_processor_features(monkeypatch, records, exp
     )
 
 
-def test_linux_unavailable_feature_inventory_is_generic(monkeypatch):
-    def unavailable(self):
+def test_linux_unavailable_feature_inventory_is_generic(
+    monkeypatch: typing.Any,
+) -> None:
+    def unavailable(self: typing.Any) -> typing.Any:
         raise OSError("unavailable CPU inventory")
 
     monkeypatch.setattr(cpu_dispatch.sys, "platform", "linux")

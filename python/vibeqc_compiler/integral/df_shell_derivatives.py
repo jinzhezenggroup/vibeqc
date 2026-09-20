@@ -7,6 +7,7 @@ No derivative tensor is produced: the consumer accumulates six independent
 center coordinates and recovers the auxiliary center by translation.
 """
 
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -26,7 +27,7 @@ class ShellSchedule:
     shared_bytes: int
 
 
-def shell_schedule(angular, variant):
+def shell_schedule(angular: typing.Any, variant: typing.Any) -> typing.Any:
     """Bound warp, packed-warp and compact-subgroup variants below 48 KiB.
 
     Reserve 1 KiB for compiler/runtime shared state. Compact groups use at
@@ -46,7 +47,7 @@ def shell_schedule(angular, variant):
     return ShellSchedule(lanes, groups, groups * group_bytes + 1024)
 
 
-def axis_cache_layout(angular):
+def axis_cache_layout(angular: typing.Any) -> typing.Any:
     """Pack moment polynomials with only the first orbital center raised.
 
     Raising B follows exactly from raising A plus the center displacement
@@ -62,7 +63,7 @@ def axis_cache_layout(angular):
     return offsets, size
 
 
-def shell_work_model(angular):
+def shell_work_model(angular: typing.Any) -> typing.Any:
     """Describe fixed work in the emitted lowering before compiler optimization.
 
     Dynamic Boys iterations and sparsity depend on the primitive geometry and
@@ -74,7 +75,7 @@ def shell_work_model(angular):
         raise ValueError("shell work model requires an s/p/d/f angular triple")
     offsets, size = axis_cache_layout(angular)
 
-    def powers(degree):
+    def powers(degree: typing.Any) -> typing.Any:
         return [
             (degree - row, row - z, z)
             for row in range(degree + 1)
@@ -103,7 +104,7 @@ def shell_work_model(angular):
     }
 
 
-def select_shell_classes(classes=None):
+def select_shell_classes(classes: typing.Any = None) -> typing.Any:
     """Return a validated canonical subset; ordering never depends on callers."""
     if classes is None:
         return SHELL_CLASSES
@@ -117,7 +118,7 @@ def select_shell_classes(classes=None):
     return tuple(angular for angular in SHELL_CLASSES if angular in requested)
 
 
-def emit_df_shell_derivatives_cuda(*, classes=None):
+def emit_df_shell_derivatives_cuda(*, classes: typing.Any = None) -> typing.Any:
     """Emit class-specialized cache construction from the shared polynomial IR."""
     selected = select_shell_classes(classes)
     lines = [

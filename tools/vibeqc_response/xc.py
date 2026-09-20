@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict
 from hashlib import sha256
 from time import perf_counter
@@ -22,7 +23,7 @@ from tools.vibeqc_posthf.reference import immutable
 __all__ = ["FixedDensityXCDerivativeKernel", "density_feature_response"]
 
 
-def _tiles(grid, tile_points):
+def _tiles(grid: typing.Any, tile_points: typing.Any) -> typing.Any:
     if isinstance(grid, MolecularGrid):
         yield from grid.tiles(tile_points)
     else:
@@ -51,8 +52,15 @@ class FixedDensityXCDerivativeKernel:
     """
 
     def __init__(
-        self, spec, basis, grid, reference_density, *, tile_points=256, prepared=None
-    ):
+        self,
+        spec: typing.Any,
+        basis: typing.Any,
+        grid: typing.Any,
+        reference_density: typing.Any,
+        *,
+        tile_points: typing.Any = 256,
+        prepared: typing.Any = None,
+    ) -> None:
         checked_int(tile_points, "XC response tile points")
         if spec.exact_exchange or spec.range_omega or spec.long_range_exchange:
             raise UnsupportedXC(
@@ -120,7 +128,7 @@ class FixedDensityXCDerivativeKernel:
             "peak_bytes": 0,
         }
 
-    def apply_spin(self, delta_density):
+    def apply_spin(self, delta_density: typing.Any) -> typing.Any:
         """Return functional-spin response before the restricted solver reduction.
 
         Polarized requests keep alpha/beta and cross-spin terms separately.
@@ -168,15 +176,15 @@ class FixedDensityXCDerivativeKernel:
         )
         return immutable(response)
 
-    def apply(self, delta_density):
+    def apply(self, delta_density: typing.Any) -> typing.Any:
         """Restricted solver adapter: total-D directions split equally by spin."""
         return immutable(self.apply_spin(delta_density).mean(axis=0))
 
-    def apply_transpose(self, delta_density):
+    def apply_transpose(self, delta_density: typing.Any) -> typing.Any:
         """Apply the symmetric semilocal kernel transpose."""
         return self.apply(delta_density)
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Require the kernel to belong to the exact converged KS reference."""
         if reference.geometry_hash != self.geometry_hash:
             raise ValueError("XC kernel/reference geometry mismatch")

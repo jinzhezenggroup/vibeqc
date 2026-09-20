@@ -1,5 +1,7 @@
 """Feature-chain-rule coefficients for a downstream AO matrix contraction."""
 
+import typing
+
 import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
@@ -7,7 +9,9 @@ from vibeqc_compiler.common.arrays import immutable
 from .coefficients import coefficient_program
 
 
-def potential_coefficients(spec, density_gradient, xc_gradient):
+def potential_coefficients(
+    spec: typing.Any, density_gradient: typing.Any, xc_gradient: typing.Any
+) -> typing.Any:
     """Return scalar, spatial-gradient and kinetic AO bilinear coefficients.
 
     For spin a: G_a = 2 e_sigma_aa grad(rho_a) + e_sigma_ab grad(rho_b).
@@ -21,7 +25,13 @@ def potential_coefficients(spec, density_gradient, xc_gradient):
     )
 
 
-def assemble_potential(spec, jets, density_gradient, xc_gradient, weights):
+def assemble_potential(
+    spec: typing.Any,
+    jets: typing.Any,
+    density_gradient: typing.Any,
+    xc_gradient: typing.Any,
+    weights: typing.Any,
+) -> typing.Any:
     """Assemble one weighted tile, returning [functional spin, AO, AO].
 
     All bilinears use ordinary spatial AO jets. Inputs are unweighted; this
@@ -41,7 +51,9 @@ def assemble_potential(spec, jets, density_gradient, xc_gradient, weights):
     return assemble_coefficients(jets, coefficients, weights)
 
 
-def assemble_coefficients(jets, coefficients, weights):
+def assemble_coefficients(
+    jets: typing.Any, coefficients: typing.Any, weights: typing.Any
+) -> typing.Any:
     """Contract compact point coefficients with at most two GEMMs per spin.
 
     The scalar and gradient bilinears share this sole production assembly

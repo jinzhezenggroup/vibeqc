@@ -1,5 +1,6 @@
 """RHF density-fitting source weights generated through StationaryProblem (#358)."""
 
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -12,7 +13,7 @@ from vibeqc_compiler.method.df_hf_response_cuda import (
 from vibeqc_compiler.tensor import execute
 
 
-def _fixture():
+def _fixture() -> typing.Any:
     rng = np.random.default_rng(358)
     n, a = 2, 3
     raw = rng.normal(size=(a, a))
@@ -38,7 +39,7 @@ def _fixture():
     return rng, DensityFittingRHFResponsePlan(n, a), feeds
 
 
-def _weights(owner, feeds):
+def _weights(owner: typing.Any, feeds: typing.Any) -> typing.Any:
     plan = owner.compile()
     rhs = execute(plan.rhs, feeds).outputs["fitted"]
     metric = feeds["metric"]
@@ -53,7 +54,7 @@ def _weights(owner, feeds):
     return plan, {name: result[output] for name, output in plan.weight_outputs.items()}
 
 
-def _resolved_energy(owner, feeds):
+def _resolved_energy(owner: typing.Any, feeds: typing.Any) -> typing.Any:
     density = feeds["density"]
     weighted = feeds["weighted_density"]
     hamiltonian = feeds["one_electron"]
@@ -74,7 +75,7 @@ def _resolved_energy(owner, feeds):
     )
 
 
-def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra():
+def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra() -> None:
     _, owner, feeds = _fixture()
     assert owner.coulomb_coefficient == Fraction(1, 1)
     assert owner.exchange_coefficient == Fraction(1, 4)
@@ -116,7 +117,7 @@ def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra():
     }
 
 
-def test_generated_source_weights_match_resolved_finite_differences():
+def test_generated_source_weights_match_resolved_finite_differences() -> None:
     rng, owner, feeds = _fixture()
     _, weights = _weights(owner, feeds)
     directions = {
@@ -146,7 +147,7 @@ def test_generated_source_weights_match_resolved_finite_differences():
         assert max(errors) < 2e-7
 
 
-def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse():
+def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse() -> None:
     owner = DensityFittingRHFResponsePlan(2, 3)
     rule = owner.metric_rule(0.1)
     assert rule.function == "pseudoinverse"
@@ -156,7 +157,7 @@ def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse():
     assert np.linalg.norm(state.jvp(tangent)[:1, 1:]) > 0
 
 
-def test_production_native_lowering_is_bound_to_stationary_plan():
+def test_production_native_lowering_is_bound_to_stationary_plan() -> None:
     owner = DensityFittingRHFResponsePlan(1, 1)
     plan = owner.compile(max_elements=256)
     contract = emit_df_hf_response_contract()

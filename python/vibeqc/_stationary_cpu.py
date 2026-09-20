@@ -11,6 +11,7 @@ selector enables public Calculator forces or global resource qualification.
 import ctypes as ct
 import os
 import tempfile
+import typing
 from dataclasses import dataclass
 from itertools import islice, product
 from pathlib import Path
@@ -55,7 +56,7 @@ class DiagnosticStationaryGradient:
     execution: str = "native-cpu-primitives/compiler-interpreter-diagnostic-v1"
 
 
-def _publish_source(path, source):
+def _publish_source(path: typing.Any, source: typing.Any) -> None:
     """Publish complete immutable compiler input before hashing or compilation.
 
     Concurrent calls may reuse a cache. Never truncate a hash-named source
@@ -88,7 +89,13 @@ class _PrimitiveExecutor:
     code size. Wider component/subset scheduling is separate qualification work.
     """
 
-    def __init__(self, basis, cache, primitive_tile, compiler):
+    def __init__(
+        self,
+        basis: typing.Any,
+        cache: typing.Any,
+        primitive_tile: typing.Any,
+        compiler: typing.Any,
+    ) -> None:
         if any(shell.angular_momentum > 1 for shell in basis.shells):
             raise NotImplementedError(
                 "complete CPU gradient diagnostic supports s/p bases only"
@@ -148,7 +155,7 @@ class _PrimitiveExecutor:
         self.buffer = np.zeros((primitive_tile, 17))
         self.records = 0
 
-    def _run(self, kind, count):
+    def _run(self, kind: typing.Any, count: typing.Any) -> typing.Any:
         out = np.empty((4, 3))
         if self.call(
             kind,
@@ -160,7 +167,13 @@ class _PrimitiveExecutor:
         self.records += count
         return out
 
-    def integral(self, operator, indices, weight, nucleus=None):
+    def integral(
+        self,
+        operator: typing.Any,
+        indices: typing.Any,
+        weight: typing.Any,
+        nucleus: typing.Any = None,
+    ) -> typing.Any:
         """Contract primitive normalization before publishing center derivatives."""
         rows = self.aos[list(indices)]
         rank = len(indices)
@@ -187,7 +200,7 @@ class _PrimitiveExecutor:
             result += self._run(kind, count)
         return owners, result[: len(owners)]
 
-    def nuclear(self, a, b, charges):
+    def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> typing.Any:
         self.buffer.fill(0)
         self.buffer[0, :2] = charges[[a, b]]
         self.buffer[0, 4:10] = self.centers[[a, b]].reshape(-1)
@@ -196,16 +209,16 @@ class _PrimitiveExecutor:
 
 
 def complete_rks_gradient_diagnostic(
-    state,
-    basis,
+    state: typing.Any,
+    basis: typing.Any,
     *,
-    cache,
-    tile_points=256,
-    integral_terms=32,
-    primitive_tile=128,
-    compiler=None,
-    execution="reference",
-):
+    cache: typing.Any,
+    tile_points: typing.Any = 256,
+    integral_terms: typing.Any = 32,
+    primitive_tile: typing.Any = 128,
+    compiler: typing.Any = None,
+    execution: typing.Any = "reference",
+) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
     Admitted domain: direct real FP64 integer RKS/UKS, canonical

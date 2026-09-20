@@ -1,6 +1,7 @@
 """Element identity and electron bookkeeping, independent of bundled basis data."""
 
 import math
+import typing
 from dataclasses import dataclass
 from numbers import Integral
 
@@ -129,7 +130,13 @@ SYMBOLS = (
 ATOMIC_NUMBERS = {symbol: z for z, symbol in enumerate(SYMBOLS, 1)}
 
 
-def checked_integer(value, name, *, low=0, high=2**31 - 1):
+def checked_integer(
+    value: typing.Any,
+    name: typing.Any,
+    *,
+    low: typing.Any = 0,
+    high: typing.Any = 2**31 - 1,
+) -> typing.Any:
     """Reject truncation and overflow before constructing native integer fields."""
     if (
         isinstance(value, bool)
@@ -140,7 +147,7 @@ def checked_integer(value, name, *, low=0, high=2**31 - 1):
     return int(value)
 
 
-def atomic_number(value):
+def atomic_number(value: typing.Any) -> typing.Any:
     """Resolve an IUPAC symbol or an exact integer Z without basis lookup."""
     if isinstance(value, str):
         try:
@@ -165,8 +172,13 @@ class ElectronState:
 
 
 def electron_state(
-    atoms, *, charge=0, multiplicity=1, element_metadata=None, electron_count=None
-):
+    atoms: typing.Any,
+    *,
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+    element_metadata: typing.Any = None,
+    electron_count: typing.Any = None,
+) -> typing.Any:
     """Compute active electrons including declared ECP cores, without execution.
 
     A schema can describe an ECP's active-electron count even while capability

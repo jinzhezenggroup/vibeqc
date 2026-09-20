@@ -1,5 +1,6 @@
 """Binding contracts with an exact oracle, independent of native HF convergence."""
 
+import typing
 from types import SimpleNamespace
 
 import numpy as np
@@ -13,12 +14,17 @@ from vibeqc.torch import batched_energy, energy
 class QuadraticCalculator:
     """Record backend entry and return E=sum(R**2), forces=-2*R exactly."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.calls = []
 
     def singlepoint(
-        self, atoms, *, charge, multiplicity, properties=("energy", "forces")
-    ):
+        self,
+        atoms: typing.Any,
+        *,
+        charge: typing.Any,
+        multiplicity: typing.Any,
+        properties: typing.Any = ("energy", "forces"),
+    ) -> typing.Any:
         # The autograd binding explicitly requests analytic forces, including
         # when the public calculator's method would default to energy only.
         assert properties == ("energy", "forces")
@@ -26,7 +32,14 @@ class QuadraticCalculator:
         xyz = np.asarray([a[1] for a in atoms], dtype=float)
         return SimpleNamespace(energy=float((xyz**2).sum()), forces=-2 * xyz)
 
-    def batch_singlepoint(self, systems, *, charges, multiplicities, strict):
+    def batch_singlepoint(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any,
+        multiplicities: typing.Any,
+        strict: typing.Any,
+    ) -> typing.Any:
         assert strict
         items = tuple(
             self.singlepoint(atoms, charge=c, multiplicity=m)
@@ -44,10 +57,10 @@ class QuadraticPreparedBatch:
     charges = (0,)
     multiplicities = (1,)
 
-    def __init__(self, calculator):
+    def __init__(self, calculator: typing.Any) -> None:
         self.calculator = calculator
 
-    def execute(self, coordinates, *, strict):
+    def execute(self, coordinates: typing.Any, *, strict: typing.Any) -> typing.Any:
         return self.calculator.batch_singlepoint(
             [
                 list(zip(numbers, xyz, strict=True))
@@ -59,7 +72,14 @@ class QuadraticPreparedBatch:
         )
 
 
-def evaluate(route, xyz, calculator, numbers=(1, 1), charge=0, multiplicity=1):
+def evaluate(
+    route: typing.Any,
+    xyz: typing.Any,
+    calculator: typing.Any,
+    numbers: typing.Any = (1, 1),
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+) -> typing.Any:
     """Apply the same molecular request to each public binding route."""
     if route == "single":
         return energy(
@@ -77,12 +97,12 @@ def evaluate(route, xyz, calculator, numbers=(1, 1), charge=0, multiplicity=1):
 
 
 @pytest.fixture(params=["single", "batch", "prepared"])
-def route(request):
+def route(request: typing.Any) -> typing.Any:
     return request.param
 
 
 @pytest.fixture
-def xyz():
+def xyz() -> typing.Any:
     return torch.tensor(
         [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         dtype=torch.float64,
@@ -91,7 +111,9 @@ def xyz():
 
 
 @pytest.mark.parametrize("numbers", [(1,), (1, 1, 8)])
-def test_atom_count_mismatch_never_reaches_backend(route, xyz, numbers):
+def test_atom_count_mismatch_never_reaches_backend(
+    route: typing.Any, xyz: typing.Any, numbers: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     with pytest.raises(ValueError, match="atomic_numbers.*coordinates"):
         evaluate(route, xyz, calculator, numbers=numbers)
@@ -102,7 +124,9 @@ def test_atom_count_mismatch_never_reaches_backend(route, xyz, numbers):
 @pytest.mark.parametrize(
     "value", [True, np.bool_(False), 1.9, np.float64(1.0), "1", 2**40]
 )
-def test_lossy_integer_inputs_never_reach_backend(route, xyz, field, value):
+def test_lossy_integer_inputs_never_reach_backend(
+    route: typing.Any, xyz: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     argument = (value, 1) if field == "numbers" else value
     with pytest.raises(ValueError, match="must be an integer"):
@@ -119,7 +143,9 @@ def test_lossy_integer_inputs_never_reach_backend(route, xyz, field, value):
         {"multiplicity": 0},
     ],
 )
-def test_native_integer_ranges_checked_before_backend(route, xyz, arguments):
+def test_native_integer_ranges_checked_before_backend(
+    route: typing.Any, xyz: typing.Any, arguments: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     with pytest.raises(ValueError, match="must be an integer"):
         evaluate(route, xyz, calculator, **arguments)
@@ -127,7 +153,9 @@ def test_native_integer_ranges_checked_before_backend(route, xyz, arguments):
 
 
 @pytest.mark.parametrize("integer", [int, np.int32, np.int64, np.uint64])
-def test_exact_integers_keep_molecular_identity(route, xyz, integer):
+def test_exact_integers_keep_molecular_identity(
+    route: typing.Any, xyz: typing.Any, integer: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     value = evaluate(
         route,
@@ -145,14 +173,16 @@ def test_exact_integers_keep_molecular_identity(route, xyz, integer):
 
 
 @pytest.mark.parametrize("route", ["single", "batch"])
-def test_signed_charge_is_preserved(route, xyz):
+def test_signed_charge_is_preserved(route: typing.Any, xyz: typing.Any) -> None:
     calculator = QuadraticCalculator()
     evaluate(route, xyz, calculator, charge=np.int64(-1), multiplicity=np.int32(2))
     assert calculator.calls == [((1, 1), -1, 2)]
 
 
-def test_invalid_input_does_not_construct_default_calculator(monkeypatch, route, xyz):
-    def unexpected_calculator(**kwargs):
+def test_invalid_input_does_not_construct_default_calculator(
+    monkeypatch: typing.Any, route: typing.Any, xyz: typing.Any
+) -> None:
+    def unexpected_calculator(**kwargs: typing.Any) -> None:
         pytest.fail("invalid input constructed a native calculator")
 
     monkeypatch.setattr("vibeqc.torch.Calculator", unexpected_calculator)
@@ -162,7 +192,9 @@ def test_invalid_input_does_not_construct_default_calculator(monkeypatch, route,
 
 @pytest.mark.parametrize("field", ["charges", "multiplicities"])
 @pytest.mark.parametrize("values", [[], [0, 0]])
-def test_batch_metadata_count_never_reaches_backend(xyz, field, values):
+def test_batch_metadata_count_never_reaches_backend(
+    xyz: typing.Any, field: typing.Any, values: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     if field == "multiplicities":
         values = [1] * len(values)
@@ -171,7 +203,9 @@ def test_batch_metadata_count_never_reaches_backend(xyz, field, values):
     assert calculator.calls == []
 
 
-def test_first_order_composition_and_gradcheck(route, xyz):
+def test_first_order_composition_and_gradcheck(
+    route: typing.Any, xyz: typing.Any
+) -> None:
     calculator = QuadraticCalculator()
     result = evaluate(route, xyz, calculator)
     (gradient,) = torch.autograd.grad(result.square(), xyz)
@@ -179,7 +213,7 @@ def test_first_order_composition_and_gradcheck(route, xyz):
     assert torch.autograd.gradcheck(lambda r: evaluate(route, r, calculator), (xyz,))
 
 
-def test_ragged_first_order_keeps_independent_cotangents(xyz):
+def test_ragged_first_order_keeps_independent_cotangents(xyz: typing.Any) -> None:
     other = torch.tensor([[0.5, -2.0, 1.0]], dtype=torch.float64, requires_grad=True)
     values = batched_energy([xyz, other], [[1, 1], [2]], QuadraticCalculator())
     gradients = torch.autograd.grad(values, (xyz, other), torch.tensor([2.0, -3.0]))
@@ -188,7 +222,9 @@ def test_ragged_first_order_keeps_independent_cotangents(xyz):
 
 
 @pytest.mark.parametrize("nonlinear", [False, True])
-def test_differentiable_backward_is_explicitly_unsupported(route, xyz, nonlinear):
+def test_differentiable_backward_is_explicitly_unsupported(
+    route: typing.Any, xyz: typing.Any, nonlinear: typing.Any
+) -> None:
     value = evaluate(route, xyz, QuadraticCalculator())
     loss = value.square() if nonlinear else value
     with pytest.raises(RuntimeError, match="higher-order derivatives.*unsupported"):
@@ -198,12 +234,12 @@ def test_differentiable_backward_is_explicitly_unsupported(route, xyz, nonlinear
 @pytest.mark.parametrize("operation", ["hessian", "hessian_vectorized", "hvp", "vhp"])
 @pytest.mark.parametrize("nonlinear", [False, True])
 def test_functional_second_derivatives_fail_with_default_non_strict_options(
-    route,
-    xyz,
-    operation,
-    nonlinear,
-):
-    def loss(r):
+    route: typing.Any,
+    xyz: typing.Any,
+    operation: typing.Any,
+    nonlinear: typing.Any,
+) -> None:
+    def loss(r: typing.Any) -> typing.Any:
         value = evaluate(route, r, QuadraticCalculator())
         return value.square() if nonlinear else value
 
@@ -219,7 +255,9 @@ def test_functional_second_derivatives_fail_with_default_non_strict_options(
             )
 
 
-def test_all_torch_oracle_contains_both_composite_hessian_terms(xyz):
+def test_all_torch_oracle_contains_both_composite_hessian_terms(
+    xyz: typing.Any,
+) -> None:
     """Pin the reported failure: a detached native force previously returned 8."""
     hessian = torch.autograd.functional.hessian(
         lambda r: r.square().sum().square(), xyz
@@ -231,7 +269,9 @@ def test_all_torch_oracle_contains_both_composite_hessian_terms(xyz):
     "dtype",
     [torch.bool, torch.int32, torch.int64, torch.complex64, torch.complex128],
 )
-def test_non_real_floating_coordinates_never_reach_backend(route, dtype):
+def test_non_real_floating_coordinates_never_reach_backend(
+    route: typing.Any, dtype: typing.Any
+) -> None:
     coordinates = torch.tensor([[0, 0, -1], [0, 0, 1]], dtype=dtype)
     calculator = QuadraticCalculator()
     with pytest.raises(TypeError, match="real floating-point tensor"):
@@ -239,8 +279,10 @@ def test_non_real_floating_coordinates_never_reach_backend(route, dtype):
     assert calculator.calls == []
 
 
-def test_coordinate_dtype_is_checked_before_default_calculator(monkeypatch, route):
-    def unexpected_calculator(**kwargs):
+def test_coordinate_dtype_is_checked_before_default_calculator(
+    monkeypatch: typing.Any, route: typing.Any
+) -> None:
+    def unexpected_calculator(**kwargs: typing.Any) -> None:
         pytest.fail("invalid coordinate dtype constructed a native calculator")
 
     monkeypatch.setattr("vibeqc.torch.Calculator", unexpected_calculator)
@@ -252,7 +294,9 @@ def test_coordinate_dtype_is_checked_before_default_calculator(monkeypatch, rout
 @pytest.mark.parametrize(
     "dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64]
 )
-def test_real_floating_coordinate_dtypes_preserve_energy_and_backward(route, dtype):
+def test_real_floating_coordinate_dtypes_preserve_energy_and_backward(
+    route: typing.Any, dtype: typing.Any
+) -> None:
     coordinates = torch.tensor(
         [[0.25, -0.5, 1.0], [0.0, 0.75, -1.5]],
         dtype=dtype,

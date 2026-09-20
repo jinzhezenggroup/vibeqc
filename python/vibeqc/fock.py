@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes as ct
 import math
 import threading
+import typing
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
@@ -38,7 +39,7 @@ class FockTerm:
     omega: float = 0.0
     approximation: str = "exact"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.present) is not bool:
             raise TypeError("Fock presence must be bool")
         if self.operator not in _OPERATORS or self.approximation not in _APPROXIMATIONS:
@@ -64,7 +65,7 @@ class FockBuildSpec:
     coulomb: FockTerm = field(default_factory=FockTerm)
     exchange: FockTerm = field(default_factory=lambda: FockTerm(coefficient=-0.5))
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             self.spin not in _SPINS
             or type(self.derivative_order) is not int
@@ -78,8 +79,13 @@ class FockBuildSpec:
 
     @classmethod
     def hf(
-        cls, spin="restricted", *, coulomb="exact", exchange="exact", derivative_order=1
-    ):
+        cls,
+        spin: typing.Any = "restricted",
+        *,
+        coulomb: typing.Any = "exact",
+        exchange: typing.Any = "exact",
+        derivative_order: typing.Any = 1,
+    ) -> typing.Any:
         """Standard HF coefficients with independently requested approximations."""
         return cls(
             spin,
@@ -91,7 +97,7 @@ class FockBuildSpec:
             ),
         )
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         return {"version": 1, **asdict(self)}
 
 
@@ -216,12 +222,12 @@ class _ScfResult(ct.Structure):
     ]
 
 
-def _descriptor(kind, **values):
+def _descriptor(kind: typing.Any, **values: typing.Any) -> typing.Any:
     return kind(struct_size=ct.sizeof(kind), abi_version=_native.ABI_VERSION, **values)
 
 
-def _spec(spec):
-    def term(t):
+def _spec(spec: typing.Any) -> typing.Any:
+    def term(t: typing.Any) -> typing.Any:
         return _Term(
             int(t.present),
             t.coefficient,
@@ -240,8 +246,8 @@ def _spec(spec):
     )
 
 
-def _spec_dict(spec):
-    def term(t):
+def _spec_dict(spec: typing.Any) -> typing.Any:
+    def term(t: typing.Any) -> typing.Any:
         return {
             "present": bool(t.present),
             "coefficient": t.coefficient,
@@ -259,7 +265,7 @@ def _spec_dict(spec):
     }
 
 
-def _bind(lib):
+def _bind(lib: typing.Any) -> None:
     lib.vibeqc_get_source_identity.argtypes = []
     lib.vibeqc_get_source_identity.restype = ct.c_char_p
     lib.vibeqc_fock_plan_create.argtypes = [
@@ -300,7 +306,7 @@ def _bind(lib):
         storage.restype = ct.c_int
 
 
-def _check(lib, status, detail):
+def _check(lib: typing.Any, status: typing.Any, detail: typing.Any) -> None:
     if status:
         message = (detail or lib.vibeqc_status_message(status)).decode("utf-8")
         exception = {1: ValueError, 3: NotImplementedError, 7: MemoryError}.get(
@@ -309,7 +315,7 @@ def _check(lib, status, detail):
         raise exception(message)
 
 
-def _pointer(array):
+def _pointer(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(_DOUBLE) if array is not None else None
 
 
@@ -319,7 +325,7 @@ class _DiagnosticResult:
     _diagnostic: dict
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Requested/resolved semantics and source provenance, copied on access."""
         return deepcopy(self._diagnostic)
 
@@ -344,7 +350,7 @@ class FockEvaluation(_DiagnosticResult):
     _diagnostic: dict = field(repr=False)
 
     @property
-    def energy(self):
+    def energy(self) -> typing.Any:
         return (
             self.energy_one_electron + self.energy_two_electron + self.nuclear_repulsion
         )
@@ -382,16 +388,16 @@ class FockPlan:
 
     def __init__(
         self,
-        basis,
-        spec=None,
+        basis: typing.Any,
+        spec: typing.Any = None,
         *,
-        auxiliary=None,
-        device="cpu",
-        device_id=0,
-        screening_tolerance=1e-12,
-        metric_relative_threshold=1e-10,
-        device_budget_bytes=0,
-    ):
+        auxiliary: typing.Any = None,
+        device: typing.Any = "cpu",
+        device_id: typing.Any = 0,
+        screening_tolerance: typing.Any = 1e-12,
+        metric_relative_threshold: typing.Any = 1e-10,
+        device_budget_bytes: typing.Any = 0,
+    ) -> None:
         from vibeqc_compiler.dft import NativeAO
 
         from .calculator import Calculator
@@ -499,28 +505,28 @@ class FockPlan:
         )
 
     @property
-    def basis(self):
+    def basis(self) -> typing.Any:
         return self._basis
 
     @property
-    def spec(self):
+    def spec(self) -> typing.Any:
         return self._spec
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return self._identity
 
     @property
-    def execution_identity(self):
+    def execution_identity(self) -> typing.Any:
         """Prepared source/backend provenance, distinct from mathematical identity."""
         return self._execution_identity
 
-    def _ensure_open(self):
+    def _ensure_open(self) -> None:
         if not self._handle:
             raise RuntimeError("Fock plan is closed")
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         with self._lock:
             self._ensure_open()
             out = _descriptor(_Diagnostic)
@@ -584,7 +590,7 @@ class FockPlan:
                 "auxiliary_identity": self._auxiliary_identity,
             }
 
-    def _density_snapshot(self, density):
+    def _density_snapshot(self, density: typing.Any) -> typing.Any:
         """Own one validated input for native execution and provenance hashing."""
         n = self.basis.nao
         separate = self.spec.spin == "unrestricted"
@@ -598,7 +604,9 @@ class FockPlan:
             raise ValueError("Fock density shape/spin/finiteness mismatch")
         return d
 
-    def evaluate(self, density, *, derivative=False):
+    def evaluate(
+        self, density: typing.Any, *, derivative: typing.Any = False
+    ) -> typing.Any:
         """Return native unscaled J/K, assembled Fock/energy and optional dE2/dR.
 
         D is [AO,AO] for restricted spin or [2,AO,AO] for unrestricted spin.
@@ -663,13 +671,13 @@ class FockPlan:
     def solve(
         self,
         *,
-        initial_density=None,
-        compute_forces=True,
-        max_iterations=100,
-        diis_history=8,
-        energy_tolerance=1e-10,
-        density_tolerance=1e-8,
-    ):
+        initial_density: typing.Any = None,
+        compute_forces: typing.Any = True,
+        max_iterations: typing.Any = 100,
+        diis_history: typing.Any = 8,
+        energy_tolerance: typing.Any = 1e-10,
+        density_tolerance: typing.Any = 1e-8,
+    ) -> typing.Any:
         """Run shared SCF for the declared J/K energy, with no XC contribution.
 
         CUDA plans retain host DIIS and use CUDA integral consumers. Plans
@@ -763,19 +771,19 @@ class FockPlan:
                 self.diagnostics,
             )
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._handle:
                 self._library.vibeqc_fock_plan_destroy(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._ensure_open()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

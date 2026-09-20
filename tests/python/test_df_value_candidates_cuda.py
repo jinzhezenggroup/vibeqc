@@ -1,6 +1,7 @@
 """Generated value math preserves complete native public/source semantics."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -15,7 +16,12 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("budget", [0, 16 << 20])
-def test_value_math_replay_and_geometry(method, representation, budget, monkeypatch):
+def test_value_math_replay_and_geometry(
+    method: typing.Any,
+    representation: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
     """Resident/export and bounded/generated sources use the same independent gates."""
     from pyscf import gto, scf
 

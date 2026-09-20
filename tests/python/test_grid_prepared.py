@@ -1,5 +1,6 @@
 """State, ragged-offset and allocation regressions for the internal grid plan."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -10,12 +11,12 @@ from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.dft.prepared import PreparedGrid, PreparedGridBatch
 
 
-def arguments(name="h2"):
+def arguments(name: typing.Any = "h2") -> typing.Any:
     meta, data = load_fixture(name)
     return {**basis_arguments(meta), "spec": GridSpec(3, 3, 6), "tile_points": 7}, data
 
 
-def test_replay_and_invalidated_iterator_density_and_geometry():
+def test_replay_and_invalidated_iterator_density_and_geometry() -> None:
     args, data = arguments()
     with PreparedGrid(**args) as plan:
         first = plan.integrate(data["density"])
@@ -52,7 +53,7 @@ def test_replay_and_invalidated_iterator_density_and_geometry():
         )
 
 
-def test_replacement_overlap_is_budgeted_before_device_allocation():
+def test_replacement_overlap_is_budgeted_before_device_allocation() -> None:
     args, _ = arguments()
     with PreparedGrid(**args) as measured:
         peak = measured.plan.peak_bytes
@@ -67,7 +68,7 @@ def test_replacement_overlap_is_budgeted_before_device_allocation():
         assert plan.diagnostics()["peak_bytes"] == peak
 
 
-def test_basis_charge_spin_and_rule_invalidation():
+def test_basis_charge_spin_and_rule_invalidation() -> None:
     args, _ = arguments()
     with PreparedGrid(**args) as plan:
         identities = [plan.identity]
@@ -89,7 +90,7 @@ def test_basis_charge_spin_and_rule_invalidation():
         assert len(set(identities)) == len(identities)
 
 
-def test_ragged_offsets_failure_isolation_and_update_budget():
+def test_ragged_offsets_failure_isolation_and_update_budget() -> None:
     args, a = arguments("h2")
     other, b = arguments("water")
     with PreparedGridBatch([args, other]) as batch:
@@ -111,7 +112,7 @@ def test_ragged_offsets_failure_isolation_and_update_budget():
         PreparedGridBatch([args, other], budget_bytes=1)
 
 
-def test_budget_scales_with_tile_and_jets_not_molecular_grid_size():
+def test_budget_scales_with_tile_and_jets_not_molecular_grid_size() -> None:
     args, _ = arguments("f_spherical")
     with NativeAO(
         **{k: v for k, v in args.items() if k not in ("spec", "tile_points")}
@@ -127,7 +128,7 @@ def test_budget_scales_with_tile_and_jets_not_molecular_grid_size():
             )
 
 
-def test_unsupported_public_basis_and_invalid_native_arrays_fail():
+def test_unsupported_public_basis_and_invalid_native_arrays_fail() -> None:
     from vibeqc import Primitive, Shell
 
     with pytest.raises(ValueError, match="through f"):

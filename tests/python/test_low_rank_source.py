@@ -1,5 +1,7 @@
 """Raw column and target recovery gates against pinned independent AO fixtures."""
 
+import typing
+
 import numpy as np
 import pytest
 
@@ -9,7 +11,7 @@ from tools.vibeqc_posthf.low_rank import IncrementalCholesky
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def source_for(name):
+def source_for(name: typing.Any) -> typing.Any:
     metadata, arrays = load_fixture(name)
     try:
         source = NativeSource(**source_arguments(metadata))
@@ -18,7 +20,7 @@ def source_for(name):
     return source, arrays
 
 
-def packed_reference(space, ao):
+def packed_reference(space: typing.Any, ao: typing.Any) -> typing.Any:
     """Independent explicit four-index projection for these tiny fixtures only."""
     out = np.empty((space.size, space.size))
     for i in range(space.size):
@@ -31,7 +33,7 @@ def packed_reference(space, ao):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_native_columns_and_full_target_recovery(name):
+def test_native_columns_and_full_target_recovery(name: typing.Any) -> None:
     source, arrays = source_for(name)
     with source:
         columns = CoulombColumns(source)
@@ -69,7 +71,7 @@ def test_native_columns_and_full_target_recovery(name):
         columns.diagonal(0, 1)
 
 
-def test_spherical_f_partial_pair_rows():
+def test_spherical_f_partial_pair_rows() -> None:
     source, arrays = source_for("f_heh")
     with source:
         columns = CoulombColumns(source)

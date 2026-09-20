@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import time
+import typing
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -53,7 +54,7 @@ class RCCSDTCapabilities:
     supported_properties: frozenset = frozenset({"energy"})
     batch_shape_policy: str = "homogeneous"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.method != "rccsd(t)" or self.family != "coupled_cluster":
             raise ValueError("RCCSD(T) capability identity mismatch")
         if self.supported_properties != frozenset({"energy"}):
@@ -76,7 +77,7 @@ def rccsd_t_method_capabilities(method: str = "rccsd(t)") -> RCCSDTCapabilities:
     return RCCSDTCapabilities()
 
 
-def _array_sha256(array) -> str:
+def _array_sha256(array: typing.Any) -> str:
     return sha256(np.ascontiguousarray(array, dtype="<f8").tobytes()).hexdigest()
 
 
@@ -117,7 +118,7 @@ def _qualified_cc_state_identity(backend: str, state: CCSDResult) -> str:
     )
 
 
-def _triples_arrays(snapshot, state: CCSDResult) -> dict[str, np.ndarray]:
+def _triples_arrays(snapshot: typing.Any, state: CCSDResult) -> dict[str, np.ndarray]:
     """Recover the exact mathematical inputs retained by the accepted CC solve."""
 
     required = ("ovvv", "ovoo", "ovov", "fov", "orbital_energies")
@@ -173,7 +174,7 @@ class RCCSDTResult:
 
         return self.ccsd.state
 
-    def write(self, path):
+    def write(self, path: typing.Any) -> typing.Any:
         """Write strict compact JSON; hash all fields except record_hash.
 
         The scientific identities exclude timing; the artifact hash includes
@@ -265,18 +266,18 @@ def _failed_from_ccsd(result: RCCSDResult, timing: dict) -> RCCSDTResult:
 
 def _validate_execution(
     *,
-    backend="cpu",
-    options=None,
-    compiler=None,
-    cache=None,
-    device=0,
-    provider_peak_bytes=0,
-    triples_max_bytes=256 << 20,
-    vir_chunk_size=1,
-    triples_oracle=False,
-    profile=False,
-    compute_forces=False,
-):
+    backend: typing.Any = "cpu",
+    options: typing.Any = None,
+    compiler: typing.Any = None,
+    cache: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+    triples_max_bytes: typing.Any = 256 << 20,
+    vir_chunk_size: typing.Any = 1,
+    triples_oracle: typing.Any = False,
+    profile: typing.Any = False,
+    compute_forces: typing.Any = False,
+) -> None:
     """Validate shared execution controls before any solver work, even if empty."""
     if compute_forces:
         raise NotImplementedError(
@@ -299,24 +300,24 @@ def _validate_execution(
 
 
 def rccsd_t_energy(
-    snapshot,
-    provider,
+    snapshot: typing.Any,
+    provider: typing.Any,
     *,
-    backend="cpu",
-    options=None,
-    t1=None,
-    t2=None,
-    warm_start=None,
-    compiler=None,
-    cache=None,
-    device=0,
-    provider_peak_bytes=0,
-    triples_max_bytes=256 << 20,
-    vir_chunk_size=1,
-    triples_oracle=False,
-    profile=False,
-    compute_forces=False,
-):
+    backend: typing.Any = "cpu",
+    options: typing.Any = None,
+    t1: typing.Any = None,
+    t2: typing.Any = None,
+    warm_start: typing.Any = None,
+    compiler: typing.Any = None,
+    cache: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+    triples_max_bytes: typing.Any = 256 << 20,
+    vir_chunk_size: typing.Any = 1,
+    triples_oracle: typing.Any = False,
+    profile: typing.Any = False,
+    compute_forces: typing.Any = False,
+) -> typing.Any:
     """Execute RHF-reference RCCSD followed by standard noniterative (T).
 
     Production GPU composition uses ``backend="cuda-resident"``: RCCSD is the
@@ -512,7 +513,13 @@ class PreparedRCCSDTBatch:
     settings. No padding or ragged-shape claim is made.
     """
 
-    def __init__(self, problems, *, compute_forces=False, **settings):
+    def __init__(
+        self,
+        problems: typing.Any,
+        *,
+        compute_forces: typing.Any = False,
+        **settings: typing.Any,
+    ) -> None:
         state_keys = ("t1", "t2", "warm_start")
         if any(settings.get(name) is not None for name in state_keys):
             raise ValueError(
@@ -542,7 +549,7 @@ class PreparedRCCSDTBatch:
             self.shape = shapes[0]
         self.settings = dict(settings)
 
-    def execute(self, *, compute_forces=False) -> BatchRCCSDTResult:
+    def execute(self, *, compute_forces: typing.Any = False) -> BatchRCCSDTResult:
         """Return input-ordered results; any item exception leaves others runnable."""
         if compute_forces:
             raise NotImplementedError(
@@ -586,7 +593,7 @@ class PreparedRCCSDTBatch:
 
 
 def rccsd_t_batch_energy(
-    problems, *, compute_forces=False, **settings
+    problems: typing.Any, *, compute_forces: typing.Any = False, **settings: typing.Any
 ) -> BatchRCCSDTResult:
     """Prepare and execute a homogeneous energy-only RCCSD(T) batch."""
 

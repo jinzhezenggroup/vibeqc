@@ -1,5 +1,6 @@
 """Independent E/V fixtures and directional checks of compact XC contractions."""
 
+import typing
 from functools import lru_cache
 
 import numpy as np
@@ -12,7 +13,11 @@ from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as 
 
 
 @lru_cache(maxsize=16)
-def program(name, spin="polarized", observable="potential"):
+def program(
+    name: typing.Any,
+    spin: typing.Any = "polarized",
+    observable: typing.Any = "potential",
+) -> typing.Any:
     return ContractionProgram(functional(name, spin=spin), observable)
 
 
@@ -22,7 +27,9 @@ def program(name, spin="polarized", observable="potential"):
     "layout,spin",
     [("total", "unpolarized"), ("total", "polarized"), ("spin", "polarized")],
 )
-def test_minimal_contractions_preserve_independent_fixtures(case, name, layout, spin):
+def test_minimal_contractions_preserve_independent_fixtures(
+    case: typing.Any, name: typing.Any, layout: typing.Any, spin: typing.Any
+) -> None:
     meta, data, grid = fixture(case)
     consumer = program(name, spin)
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -45,7 +52,9 @@ def test_minimal_contractions_preserve_independent_fixtures(case, name, layout, 
         )
 
 
-def test_r2scan_vtau_potential_matches_complete_density_directional_derivative():
+def test_r2scan_vtau_potential_matches_complete_density_directional_derivative() -> (
+    None
+):
     rng = np.random.default_rng(164)
     jets = rng.normal(size=(4, 13, 3))
     density = np.stack((np.eye(3), 0.7 * np.eye(3)))
@@ -69,13 +78,17 @@ def test_r2scan_vtau_potential_matches_complete_density_directional_derivative()
 
 
 @pytest.mark.parametrize("observable", ["response", "geometry"])
-def test_r2scan_unvalidated_derivative_consumers_fail_closed(observable):
+def test_r2scan_unvalidated_derivative_consumers_fail_closed(
+    observable: typing.Any,
+) -> None:
     with pytest.raises(UnsupportedXC, match="tau-dependent"):
         program("R2SCAN", observable=observable)
 
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
-def test_spin_resolved_response_finite_differences_transpose_and_exchange(name):
+def test_spin_resolved_response_finite_differences_transpose_and_exchange(
+    name: typing.Any,
+) -> None:
     meta, data, grid = fixture("h2")
     primal, response = program(name), program(name, observable="response")
     density = data["density_spin"]
@@ -142,7 +155,9 @@ def test_spin_resolved_response_finite_differences_transpose_and_exchange(name):
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 @pytest.mark.parametrize("case", ["h2", "f_cartesian", "f_spherical"])
-def test_explicit_geometry_sources_against_moved_native_collocation(name, spin, case):
+def test_explicit_geometry_sources_against_moved_native_collocation(
+    name: typing.Any, spin: typing.Any, case: typing.Any
+) -> None:
     meta, data, grid = fixture(case)
     args = basis_arguments(meta)
     density = data["density_spin" if spin == "polarized" else "density_total"]
@@ -203,7 +218,7 @@ def test_explicit_geometry_sources_against_moved_native_collocation(name, spin, 
     )
 
 
-def test_contraction_requests_reject_unsupported_axes_domains_and_directions():
+def test_contraction_requests_reject_unsupported_axes_domains_and_directions() -> None:
     from vibeqc_compiler.xc.contracts import DerivativeRequest, IngredientContract
     from vibeqc_compiler.xc.spec import UnsupportedXC
 

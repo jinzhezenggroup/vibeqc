@@ -77,17 +77,25 @@ Run this from the repository root:
 ```python
 import numpy as np
 from vibeqc_compiler.tensor import (
-    Index, IndexSpace, Program, TensorSpec, einsum, execute, input_tensor,
+    Index,
+    IndexSpace,
+    Program,
+    TensorSpec,
+    einsum,
+    execute,
+    input_tensor,
 )
 
 ao = IndexSpace("ao", "ao", 2)
 aux = IndexSpace("aux", "auxiliary", 3)
-a = input_tensor("a", TensorSpec(
-    (Index("p", ao), Index("P", aux)), role="input"))
-b = input_tensor("b", TensorSpec(
-    (Index("P", aux), Index("q", ao)), role="parameter", differentiable=True))
-program = Program({"c": einsum("pP,Pq->pq", a, b)},
-                  provenance={"equation_version": 1})
+a = input_tensor("a", TensorSpec((Index("p", ao), Index("P", aux)), role="input"))
+b = input_tensor(
+    "b",
+    TensorSpec(
+        (Index("P", aux), Index("q", ao)), role="parameter", differentiable=True
+    ),
+)
+program = Program({"c": einsum("pP,Pq->pq", a, b)}, provenance={"equation_version": 1})
 replayed = Program.loads(program.dumps())
 result = execute(replayed, {"a": np.ones((2, 3)), "b": np.ones((3, 2))}, debug=True)
 assert np.array_equal(result.outputs["c"], np.full((2, 2), 3.0))

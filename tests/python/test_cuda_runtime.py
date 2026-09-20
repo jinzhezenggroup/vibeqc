@@ -1,4 +1,5 @@
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -14,7 +15,7 @@ def _cuda_tolerances() -> tuple[float, float]:
     return 2.0e-10, 2.0e-9
 
 
-def test_cuda_minimal_rhf_matches_cpu_reference():
+def test_cuda_minimal_rhf_matches_cpu_reference() -> None:
     """Exercise one real RHF CUDA calculation without batch/replay overhead."""
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -39,7 +40,7 @@ def test_cuda_minimal_rhf_matches_cpu_reference():
     assert np.allclose(result.forces, reference.forces, atol=force_atol, rtol=0.0)
 
 
-def test_cuda_minimal_uhf_matches_cpu_reference():
+def test_cuda_minimal_uhf_matches_cpu_reference() -> None:
     """Exercise the unrestricted CUDA path with a one-electron one-shell case."""
 
     atoms = [("H", (0.0, 0.0, 0.0))]
@@ -63,7 +64,9 @@ def test_cuda_minimal_uhf_matches_cpu_reference():
 
 
 @pytest.mark.parametrize("fixture_name", ("minimal_h2", "water", "water_sdf"))
-def test_cuda_resident_rhf_response_matches_host_operator(fixture_name):
+def test_cuda_resident_rhf_response_matches_host_operator(
+    fixture_name: typing.Any,
+) -> None:
     """B2: keep RHF response operator/Krylov vectors resident on the CUDA stream."""
     if (
         os.environ.get("CUMETAL_ROOT")

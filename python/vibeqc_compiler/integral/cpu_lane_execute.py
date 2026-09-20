@@ -6,6 +6,7 @@ import ctypes as ct
 import math
 import os
 import tempfile
+import typing
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -14,7 +15,6 @@ import numpy as np
 
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.cpu_target import CpuTargetInfo
-from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
@@ -26,7 +26,11 @@ from .cpu_lane import (
 from .cpu_schedule import CpuScheduleIR
 from .first_derivatives_execute import first_derivative_component_tiles
 from .first_derivatives_native import validate_first_components
-from .ir import IntegralIR
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_runtime import CudaArtifact
+
+    from .ir import IntegralIR
 
 
 @dataclass(frozen=True)
@@ -60,11 +64,11 @@ class CompiledFirstDerivativeCpuLane:
 
 
 def first_derivative_cpu_lane_shell_identity(
-    integral,
-    target,
-    schedule,
+    integral: typing.Any,
+    target: typing.Any,
+    schedule: typing.Any,
     *,
-    tile_size=64,
+    tile_size: typing.Any = 64,
 ) -> str:
     tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
     return canonical_hash(
@@ -114,14 +118,14 @@ class CompiledFirstDerivativeCpuLaneShell:
 
 
 def compile_first_derivative_cpu_lane(
-    integral,
-    compiler,
-    cache,
+    integral: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
     *,
-    component_indices,
-    target,
-    schedule,
-):
+    component_indices: typing.Any,
+    target: typing.Any,
+    schedule: typing.Any,
+) -> typing.Any:
     if not isinstance(compiler, CppCompilerAdapter):
         raise TypeError("CPU lane execution requires an explicit C++ compiler")
     if not isinstance(target, CpuTargetInfo) or not isinstance(schedule, CpuScheduleIR):
@@ -176,14 +180,14 @@ def compile_first_derivative_cpu_lane(
 
 
 def compile_first_derivative_cpu_lane_shell(
-    integral,
-    compiler,
-    cache,
+    integral: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
     *,
-    target,
-    schedule,
-    tile_size=64,
-):
+    target: typing.Any,
+    schedule: typing.Any,
+    tile_size: typing.Any = 64,
+) -> typing.Any:
     schedule.validate_for(target)
     tiles = first_derivative_component_tiles(integral, tile_size=tile_size)
     compiled = tuple(
@@ -217,7 +221,13 @@ def compile_first_derivative_cpu_lane_shell(
 class FirstDerivativeCpuLaneEvaluator:
     """Execute one scalar/SIMD component tile with bounded record storage."""
 
-    def __init__(self, artifact, *, record_capacity=128, budget_bytes=1 << 20):
+    def __init__(
+        self,
+        artifact: typing.Any,
+        *,
+        record_capacity: typing.Any = 128,
+        budget_bytes: typing.Any = 1 << 20,
+    ) -> None:
         if type(record_capacity) is not int or record_capacity < 1:
             raise ValueError("record capacity must be a positive integer")
         if type(budget_bytes) is not int or budget_bytes < 1:
@@ -266,7 +276,7 @@ class FirstDerivativeCpuLaneEvaluator:
         self.run.restype = ct.c_int
         self.record_capacity = record_capacity
 
-    def contract(self, primitives, centers):
+    def contract(self, primitives: typing.Any, centers: typing.Any) -> typing.Any:
         if len(primitives) != self.nexponent or any(not shell for shell in primitives):
             raise ValueError(
                 "nonempty primitive lists must match the compiled shell tuple"
@@ -285,7 +295,7 @@ class FirstDerivativeCpuLaneEvaluator:
         result = np.zeros(self.shape)
         count = 0
 
-        def flush(size):
+        def flush(size: typing.Any) -> None:
             status = self.run(
                 records.ctypes.data,
                 size,
@@ -316,7 +326,13 @@ class FirstDerivativeCpuLaneEvaluator:
 class FirstDerivativeCpuLaneShellEvaluator:
     """Execute a complete Cartesian shell through scalar or SIMD lane tiles."""
 
-    def __init__(self, artifact, *, record_capacity=128, budget_bytes=4 << 20):
+    def __init__(
+        self,
+        artifact: typing.Any,
+        *,
+        record_capacity: typing.Any = 128,
+        budget_bytes: typing.Any = 4 << 20,
+    ) -> None:
         if not isinstance(artifact, CompiledFirstDerivativeCpuLaneShell):
             raise TypeError("expected a compiled CPU lane shell artifact")
         artifact.validate()
@@ -339,7 +355,7 @@ class FirstDerivativeCpuLaneShellEvaluator:
         if self.numeric_bytes > budget_bytes:
             raise ValueError("CPU lane full-shell numeric budget exceeded")
 
-    def contract(self, primitives, centers):
+    def contract(self, primitives: typing.Any, centers: typing.Any) -> typing.Any:
         result = np.empty(self.shape)
         for tile, evaluator in zip(
             self.artifact.tiles,

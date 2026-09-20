@@ -8,13 +8,16 @@ be evaluated on the first profile-selected production shell class.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import AXES, DPPP_SPEC, PSSS_SPEC, ShellClassSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping, Sequence
 
 CENTERS = ("first", "second", "third", "fourth")
 # Compatibility alias for the component-level dppp inspection CLI.  The

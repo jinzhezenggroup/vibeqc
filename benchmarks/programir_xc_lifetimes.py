@@ -11,6 +11,7 @@ import os
 import shutil
 import statistics
 import tempfile
+import typing
 import weakref
 from pathlib import Path
 from time import perf_counter
@@ -26,7 +27,7 @@ from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=("h2", "f_spherical"), default="h2")
     parser.add_argument("--functional", choices=("LDA_XC_PW", "PBE"), default="PBE")
@@ -55,7 +56,7 @@ def main():
             original_ao, original_xc = basis.evaluate, program.evaluate
             original_rows = getattr(program, "potential_from_rows", None)
 
-            def track_ao(*a, **kw):
+            def track_ao(*a: typing.Any, **kw: typing.Any) -> typing.Any:
                 before.append(
                     {
                         "live_boundary_arrays": sum(
@@ -70,14 +71,14 @@ def main():
                 refs.append(("jets", jets.nbytes, weakref.ref(jets)))
                 return jets
 
-            def track_xc(*a, **kw):
+            def track_xc(*a: typing.Any, **kw: typing.Any) -> typing.Any:
                 result = original_xc(*a, **kw)
                 for name in ("potential", "electrons"):
                     value = result[name]
                     refs.append((name, value.nbytes, weakref.ref(value)))
                 return result
 
-            def track_rows(*a, **kw):
+            def track_rows(*a: typing.Any, **kw: typing.Any) -> typing.Any:
                 result = original_rows(*a, **kw)
                 for name in ("potential", "electrons"):
                     value = result[name]

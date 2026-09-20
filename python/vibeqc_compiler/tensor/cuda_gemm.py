@@ -8,15 +8,18 @@ or spin symmetry is inferred when grouping labels into matrix dimensions.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from math import prod
 
 from .cuda_dtype import scalar_type
-from .ir import Node
 from .types import checked_size
 
+if typing.TYPE_CHECKING:
+    from .ir import Node
 
-def fp64_coefficient(pair) -> float:
+
+def fp64_coefficient(pair: typing.Any) -> float:
     """Round an exact rational once, as in the independent CPU interpreter."""
     return scalar_type("float64").coefficient(pair)
 
@@ -42,7 +45,7 @@ class GemmContract:
     coefficient: float
     dtype: str = "float64"
 
-    def extent(self, labels) -> int:
+    def extent(self, labels: typing.Any) -> int:
         """Flatten only declared groups, checking integer products eagerly."""
         return checked_size(prod(self.extents[i] for i in labels), "GEMM dimension")
 
@@ -98,7 +101,9 @@ class GemmContract:
             "GEMM panel bytes",
         )
 
-    def matrix_coordinates(self, batch: int, row: int, column: int, reduction: int):
+    def matrix_coordinates(
+        self, batch: int, row: int, column: int, reduction: int
+    ) -> typing.Any:
         """Reference coordinate map for independently checking pack/scatter code.
 
         CUDA code emits the corresponding integer maps; this host helper is
@@ -167,7 +172,7 @@ def gemm_contract(node: Node) -> GemmContract | None:
     return result
 
 
-def direct_gemm_kind(g: GemmContract, layouts) -> str | None:
+def direct_gemm_kind(g: GemmContract, layouts: typing.Any) -> str | None:
     """Recognize dense grouped matrices from physical rather than logical order.
 
     None denotes a virtual operand without a directly addressable buffer. Such
@@ -179,7 +184,7 @@ def direct_gemm_kind(g: GemmContract, layouts) -> str | None:
     if max(g.batch, g.m, g.n, g.k) > 2**31 - 1:
         return None
 
-    def norm(labels):
+    def norm(labels: typing.Any) -> typing.Any:
         return tuple(label for label in labels if g.extents[label] != 1)
 
     physical = tuple(

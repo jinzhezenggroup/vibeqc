@@ -2,6 +2,7 @@
 
 import math
 import re
+import typing
 from dataclasses import asdict, dataclass
 from typing import ClassVar
 
@@ -34,7 +35,7 @@ class D3Spec:
     pair_switch_width: float = 0.0
     version: str = "d3-bj-spec-v1"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.version != "d3-bj-spec-v1" or self.damping != "bj":
             raise ValueError("only the versioned two-body D3(BJ) model is supported")
         for field in ("s6", "s8", "a1", "a2", "s9", "pair_switch_width"):
@@ -65,11 +66,11 @@ class D3Spec:
             if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
                 raise ValueError(f"{field} requires a lowercase SHA-256 digest")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return asdict(self)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
@@ -95,7 +96,7 @@ class D4Spec:
     charge_cn_cutoff: float = 25.0
     version: str = "d4-bj-eeq-spec-v1"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.version != "d4-bj-eeq-spec-v1":
             raise ValueError("unsupported D4 specification version")
         if self.reference_model != "eeq" or self.charge_model != "eeq2019":
@@ -128,11 +129,11 @@ class D4Spec:
             if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
                 raise ValueError(f"{field} requires a lowercase SHA-256 digest")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return asdict(self)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
@@ -163,26 +164,26 @@ class DispersionCorrectionPrimitive:
     specification: D3Spec | D4Spec
     kind: ClassVar[str] = "dispersion_correction"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.specification, (D3Spec, D4Spec)):
             raise TypeError("dispersion primitive requires a D3Spec or D4Spec")
 
     @property
-    def derivative_capabilities(self):
+    def derivative_capabilities(self) -> typing.Any:
         return ("energy", "nuclear-gradient")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "kind": self.kind,
             "specification": self.specification.to_payload(),
             "derivative_capabilities": self.derivative_capabilities,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()
 
 
-def pbe_d3_bj_spec():
+def pbe_d3_bj_spec() -> typing.Any:
     """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(
         s6=1.0,
@@ -194,7 +195,7 @@ def pbe_d3_bj_spec():
     )
 
 
-def pbe0_d3_bj_spec():
+def pbe0_d3_bj_spec() -> typing.Any:
     """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(
         s6=1.0,

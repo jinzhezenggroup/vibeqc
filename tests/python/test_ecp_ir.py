@@ -3,6 +3,7 @@
 import math
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from vibeqc_compiler.integral.ir_serialization import (
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 
-def test_ecp_codegen_without_site_packages(tmp_path):
+def test_ecp_codegen_without_site_packages(tmp_path: typing.Any) -> None:
     """CPU builds generate this header before installing Python dependencies."""
     generator = Path(__file__).resolve().parents[2] / "tools/generate_ecp_kernels.py"
     output = tmp_path / "generated" / "generated_ecp_ao.cuh"
@@ -37,7 +38,7 @@ def test_ecp_codegen_without_site_packages(tmp_path):
     assert output.read_text() == emit_ecp_quadrature_cpp()
 
 
-def test_generated_grid_radial_map_and_jacobian():
+def test_generated_grid_radial_map_and_jacobian() -> None:
     graph, (radius, weight) = radial_map_roots()
     for z in (-0.999, -0.7, 0.0, 0.4, 0.999):
         values = {"z": z, "weight": 0.37}
@@ -50,7 +51,7 @@ def test_generated_grid_radial_map_and_jacobian():
         )
 
 
-def test_generated_harmonic_channel_addition_theorem():
+def test_generated_harmonic_channel_addition_theorem() -> None:
     graph, roots = harmonic_roots()
     rng = np.random.default_rng(17103)
     for _ in range(30):
@@ -73,7 +74,7 @@ def test_generated_harmonic_channel_addition_theorem():
 
 
 @pytest.mark.parametrize("weighted", [False, True])
-def test_ecp_center_and_versioned_roundtrip(weighted):
+def test_ecp_center_and_versioned_roundtrip(weighted: typing.Any) -> None:
     ir = build_ecp_ir(
         (1, 2),
         (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(3, 0, 1.5, 2)),
@@ -102,7 +103,7 @@ def test_ecp_center_and_versioned_roundtrip(weighted):
         OperatorSpec("nuclear_attraction", (0, 1, 2), external_centers=(changed,))
 
 
-def test_generated_center_derivatives_independent_finite_difference():
+def test_generated_center_derivatives_independent_finite_difference() -> None:
     rng = np.random.default_rng(171)
     for l in range(4):
         for component in cartesian_components(l):
@@ -112,7 +113,11 @@ def test_generated_center_derivatives_independent_finite_difference():
                 values = dict(zip("xyz", xyz, strict=True), alpha=alpha)
                 actual = np.array([graph.evaluate(root, values) for root in roots])
 
-                def reference(x, alpha=alpha, component=component):
+                def reference(
+                    x: typing.Any,
+                    alpha: typing.Any = alpha,
+                    component: typing.Any = component,
+                ) -> typing.Any:
                     return math.exp(-alpha * (x @ x)) * math.prod(
                         x[i] ** component.count(a) for i, a in enumerate("xyz")
                     )
@@ -125,7 +130,7 @@ def test_generated_center_derivatives_independent_finite_difference():
                     assert actual[axis + 1] == pytest.approx(expected, abs=2e-9)
 
 
-def test_invalid_ecp_lowerings_fail_closed():
+def test_invalid_ecp_lowerings_fail_closed() -> None:
     term = EcpRadialTerm(-1, 2, 1.0, 1.0)
     for angular in ((0,), (0, 4)):
         with pytest.raises(ValueError):
@@ -144,7 +149,9 @@ def test_invalid_ecp_lowerings_fail_closed():
 
 @pytest.mark.parametrize("angular", [(0, 3), (3, 2), (3, 3)])
 @pytest.mark.parametrize("weighted", [False, True])
-def test_f_orbital_ir_derivative_contract(angular, weighted):
+def test_f_orbital_ir_derivative_contract(
+    angular: typing.Any, weighted: typing.Any
+) -> None:
     ir = build_ecp_ir(
         angular,
         (EcpRadialTerm(2, 4, 0.8, -1.2),),
@@ -156,7 +163,7 @@ def test_f_orbital_ir_derivative_contract(angular, weighted):
 
 
 @pytest.mark.parametrize("power", range(5))
-def test_radial_measure_and_operator_contract(power):
+def test_radial_measure_and_operator_contract(power: typing.Any) -> None:
     graph, (root,) = radial_roots(power)
     for r in (0.0, 1e-8, 0.37, 1.8, 17.0):
         values = {"r": r, "alpha": 0.63, "coefficient": -1.23, "weight": 0.41}
@@ -167,7 +174,7 @@ def test_radial_measure_and_operator_contract(power):
             radial_roots(bad)
 
 
-def test_projector_pair_jets_against_displaced_bilinear():
+def test_projector_pair_jets_against_displaced_bilinear() -> None:
     graph, roots = pair_roots()
     rng = np.random.default_rng(17102)
     for _ in range(20):

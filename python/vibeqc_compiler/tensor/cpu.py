@@ -6,6 +6,7 @@ Unsupported semantics fail at generation, before any allocation or compilation.
 """
 
 import ctypes as ct
+import typing
 from collections.abc import Mapping
 from fractions import Fraction
 from math import isfinite, prod
@@ -25,14 +26,19 @@ from .program import Program
 from .types import checked_size
 
 
-def _literal(pair):
+def _literal(pair: typing.Any) -> typing.Any:
     value = float(Fraction(*pair))
     if not isfinite(value):
         raise ValueError("CPU coefficient is not finite FP64")
     return value.hex()
 
 
-def emit_cpu(program, *, max_bytes=8 * 1024 * 1024, max_work=100_000_000):
+def emit_cpu(
+    program: typing.Any,
+    *,
+    max_bytes: typing.Any = 8 * 1024 * 1024,
+    max_work: typing.Any = 100_000_000,
+) -> typing.Any:
     """Return source and exact bounded storage/work requirements without runtime imports.
 
     No packed/symmetric semantics or implicit dtype conversion are admitted.
@@ -82,7 +88,7 @@ def emit_cpu(program, *, max_bytes=8 * 1024 * 1024, max_work=100_000_000):
     for i, node in enumerate(nodes):
         a, shape = node.attrs, node.spec.shape
 
-        def read(child, index="z"):
+        def read(child: typing.Any, index: typing.Any = "z") -> typing.Any:
             return f"p[{offsets[child]}ULL + ({index})]"
 
         c = [_coordinate("z", shape, axis) for axis in range(len(shape))]
@@ -169,13 +175,13 @@ class NativeTensorProgram:
 
     def __init__(
         self,
-        program,
+        program: typing.Any,
         *,
-        compiler,
-        cache,
-        max_bytes=8 * 1024 * 1024,
-        max_work=100_000_000,
-    ):
+        compiler: typing.Any,
+        cache: typing.Any,
+        max_bytes: typing.Any = 8 * 1024 * 1024,
+        max_work: typing.Any = 100_000_000,
+    ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
             raise TypeError("native TensorIR requires a CPU compiler adapter")
         source, self.resources = emit_cpu(
@@ -209,7 +215,7 @@ class NativeTensorProgram:
         ]
         self.call.restype = ct.c_int
 
-    def execute(self, feeds):
+    def execute(self, feeds: typing.Any) -> typing.Any:
         """Reject wrong shapes/dtypes/NaNs before calling the checked native ABI."""
         if not isinstance(feeds, Mapping):
             raise TypeError("CPU tensor feeds must be a mapping")

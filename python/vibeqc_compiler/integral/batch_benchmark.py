@@ -18,10 +18,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.cuda_resources import KernelResources as KernelResources
@@ -35,6 +35,9 @@ from .shell_spec import (
     FUSED_SHELL_SPECS,
     ShellClassSpec,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _PRODUCTION_MANIFEST_PATH = Path(__file__).with_name("production_shell_classes.json")
 PRODUCTION_SHELL_CLASSES = frozenset(

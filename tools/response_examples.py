@@ -10,6 +10,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -43,7 +44,7 @@ from tools.vibeqc_response import (
 )
 
 
-def _serializable(value):
+def _serializable(value: typing.Any) -> typing.Any:
     if isinstance(value, np.ndarray):
         return value.tolist()
     if isinstance(value, np.generic):
@@ -55,7 +56,7 @@ def _serializable(value):
     return value
 
 
-def _solve_record(result, expected=None):
+def _solve_record(result: typing.Any, expected: typing.Any = None) -> typing.Any:
     record = {
         "strategy": result.strategy,
         "converged": result.converged,
@@ -87,7 +88,7 @@ def _solve_record(result, expected=None):
     return record
 
 
-def _context(args, meta, arrays):
+def _context(args: typing.Any, meta: typing.Any, arrays: typing.Any) -> typing.Any:
     """Return owned source, backend, snapshot, provider and backend metadata."""
     if args.device == "cuda":
         source = CudaDFSource(
@@ -139,7 +140,7 @@ def _context(args, meta, arrays):
     )
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     meta, arrays = load_fixture(args.case)
     started = time.perf_counter()
     (
@@ -234,7 +235,7 @@ def run(args):
             oracle_source.close()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", default="water", choices=("h2", "water", "lih"))
     parser.add_argument("--device", default="cpu", choices=("cpu", "cuda"))

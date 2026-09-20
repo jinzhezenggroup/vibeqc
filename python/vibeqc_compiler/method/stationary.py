@@ -9,7 +9,7 @@ This module neither solves a stationary problem nor publishes molecular forces.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+import typing
 from dataclasses import asdict, dataclass, fields, replace
 from graphlib import CycleError, TopologicalSorter
 from types import MappingProxyType
@@ -27,6 +27,9 @@ from vibeqc_compiler.tensor import (
 
 from .implicit import ImplicitSolveSpec, ImplicitVJPPlan
 
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
 SCHEMA = "vibeqc.stationary_problem"
 VERSION = 2
 PLAN_VERSION = 2
@@ -35,19 +38,19 @@ CONVENTION = "L=E+lambda^T R; R_x^T lambda=-E_x; weights=E_q+R_q^T lambda"
 _PREFIX = "stationary_"
 
 
-def _identifier(value, label):
+def _identifier(value: typing.Any, label: typing.Any) -> None:
     if not isinstance(value, str) or not value.isidentifier():
         raise ValueError(f"{label} must be an identifier")
     if value.startswith(_PREFIX):
         raise ValueError(f"{label} uses reserved prefix {_PREFIX}")
 
 
-def _identity(value, label):
+def _identity(value: typing.Any, label: typing.Any) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a nonempty identity")
 
 
-def _names(values, label):
+def _names(values: typing.Any, label: typing.Any) -> typing.Any:
     if isinstance(values, str):
         raise TypeError(f"{label} must be a sequence, not a string")
     values = tuple(values)
@@ -58,18 +61,18 @@ def _names(values, label):
     return tuple(sorted(values))
 
 
-def _inputs(program):
+def _inputs(program: typing.Any) -> typing.Any:
     return {
         node.attrs["name"]: node for node in program.live_nodes if node.op == "input"
     }
 
 
-def _dependencies(node):
+def _dependencies(node: typing.Any) -> typing.Any:
     """Actual SSA input dependencies, never a caller's guessed equation list."""
     return tuple(sorted(_inputs(Program({"value": node}))))
 
 
-def _record(record_type, payload):
+def _record(record_type: typing.Any, payload: typing.Any) -> typing.Any:
     if not isinstance(payload, dict) or set(payload) != {
         f.name for f in fields(record_type)
     }:
@@ -77,8 +80,8 @@ def _record(record_type, payload):
     return record_type(**payload)
 
 
-def _load_json(source):
-    def unique(pairs):
+def _load_json(source: typing.Any) -> typing.Any:
+    def unique(pairs: typing.Any) -> typing.Any:
         result = {}
         for name, value in pairs:
             if name in result:
@@ -109,7 +112,7 @@ class StationaryState:
     implicit_operator_identity: str | None = None
     residual_layout_identity: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _identifier(self.name, "state name")
         _identifier(self.residual, "residual output")
         _identity(self.coordinate_identity, "state coordinate")
@@ -150,7 +153,7 @@ class ParameterSource:
     dependencies: tuple[str, ...] = ()
     pullback_identity: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _identifier(self.name, "parameter source")
         _identity(self.identity, "parameter source")
         dependencies = _names(self.dependencies, "source dependency")
@@ -179,7 +182,7 @@ class StationaryProblem:
     model_identity: str
     solver_contract: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.equations, Program):
             raise TypeError("stationary equations must be a TensorIR Program")
         _identifier(self.objective, "objective output")
@@ -264,23 +267,23 @@ class StationaryProblem:
             )
 
     @property
-    def state_names(self):
+    def state_names(self) -> typing.Any:
         return tuple(state.name for state in self.states)
 
     @property
-    def boundary_sources(self):
+    def boundary_sources(self) -> typing.Any:
         inputs = _inputs(self.equations)
         return tuple(source.name for source in self.sources if source.name in inputs)
 
     @property
-    def differentiable_sources(self):
+    def differentiable_sources(self) -> typing.Any:
         inputs = _inputs(self.equations)
         return tuple(
             name for name in self.boundary_sources if inputs[name].spec.differentiable
         )
 
     @property
-    def dependency_graph(self):
+    def dependency_graph(self) -> typing.Any:
         """Data-only provider DAG plus the explicitly cut implicit equation region."""
         order = tuple(
             TopologicalSorter(
@@ -311,7 +314,7 @@ class StationaryProblem:
             ],
         }
 
-    def _semantic_payload(self):
+    def _semantic_payload(self) -> typing.Any:
         return {
             "schema": SCHEMA,
             "schema_version": VERSION,
@@ -325,10 +328,10 @@ class StationaryProblem:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self._semantic_payload())
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         payload = self._semantic_payload()
         payload.pop("equation_hash")
         return {
@@ -337,14 +340,14 @@ class StationaryProblem:
             "identity": self.identity,
         }
 
-    def dumps(self):
+    def dumps(self) -> typing.Any:
         return (
             json.dumps(self.to_payload(), sort_keys=True, indent=2, allow_nan=False)
             + "\n"
         )
 
     @classmethod
-    def from_payload(cls, payload):
+    def from_payload(cls, payload: typing.Any) -> typing.Any:
         fields = {
             "schema",
             "schema_version",
@@ -382,15 +385,17 @@ class StationaryProblem:
         return result
 
     @classmethod
-    def loads(cls, source):
+    def loads(cls, source: typing.Any) -> typing.Any:
         return cls.from_payload(_load_json(source))
 
-    def compile(self, *, max_elements=1_000_000):
+    def compile(self, *, max_elements: typing.Any = 1_000_000) -> typing.Any:
         """Generate first-order fragments and declared implicit VJP plans; do not solve."""
         return compile_stationary(self, max_elements=max_elements)
 
 
-def _unit_reverse(primal, output, inputs, max_elements):
+def _unit_reverse(
+    primal: typing.Any, output: typing.Any, inputs: typing.Any, max_elements: typing.Any
+) -> typing.Any:
     """Use #151, specializing only the scalar seed (no new derivative rules)."""
     reverse = transpose_program(
         primal, (output,), inputs=inputs, max_elements=max_elements
@@ -425,7 +430,7 @@ class StationaryDerivativePlan:
     weight_outputs: Mapping[str, str]
     implicit_plans: Mapping[str, ImplicitVJPPlan]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in (
             "multiplier_inputs",
             "stationarity_outputs",
@@ -435,7 +440,7 @@ class StationaryDerivativePlan:
             object.__setattr__(self, name, MappingProxyType(dict(getattr(self, name))))
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "schema": "vibeqc.stationary_derivative_plan",
@@ -453,7 +458,7 @@ class StationaryDerivativePlan:
             }
         )
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Persist an inspectable plan using ordinary TensorIR artifacts."""
         return {
             "schema": "vibeqc.stationary_derivative_plan",
@@ -473,14 +478,16 @@ class StationaryDerivativePlan:
             "identity": self.identity,
         }
 
-    def dumps(self):
+    def dumps(self) -> typing.Any:
         return (
             json.dumps(self.to_payload(), sort_keys=True, indent=2, allow_nan=False)
             + "\n"
         )
 
     @classmethod
-    def from_payload(cls, payload, *, max_elements=1_000_000):
+    def from_payload(
+        cls, payload: typing.Any, *, max_elements: typing.Any = 1_000_000
+    ) -> typing.Any:
         """Regenerate from equations and reject altered derivative fragments.
 
         Reuse the caller's #151 constant-generation limit during regeneration.
@@ -502,18 +509,20 @@ class StationaryDerivativePlan:
         return plan
 
     @classmethod
-    def loads(cls, source, *, max_elements=1_000_000):
+    def loads(
+        cls, source: typing.Any, *, max_elements: typing.Any = 1_000_000
+    ) -> typing.Any:
         return cls.from_payload(_load_json(source), max_elements=max_elements)
 
     @property
-    def provider_pullbacks(self):
+    def provider_pullbacks(self) -> typing.Any:
         """Outstanding provider rules after method-level implicit dispatch."""
         order = self.problem.dependency_graph["provider_pullback_order"]
         sources = {s.name: s for s in self.problem.sources}
         return tuple(sources[name] for name in order)
 
 
-def _compile_implicit_state(problem, state):
+def _compile_implicit_state(problem: typing.Any, state: typing.Any) -> typing.Any:
     """Compile one declared independent state through #465.
 
     A state is dispatched only when its operator identity is explicit. Coupled
@@ -557,7 +566,9 @@ def _compile_implicit_state(problem, state):
     ).compile()
 
 
-def compile_stationary(problem, *, max_elements=1_000_000):
+def compile_stationary(
+    problem: typing.Any, *, max_elements: typing.Any = 1_000_000
+) -> typing.Any:
     """Compose L and generate -E_x and (L_x,L_q) using the shared TensorIR AD.
 
     Residual values use the declared physical equations, never shifted solver

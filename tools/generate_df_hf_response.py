@@ -16,7 +16,7 @@ from vibeqc_compiler.method.df_hf_response_cuda import (
 from tools.generate_df_kernels import write_if_changed
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda-output", type=Path)
     parser.add_argument("--contract-output", type=Path)

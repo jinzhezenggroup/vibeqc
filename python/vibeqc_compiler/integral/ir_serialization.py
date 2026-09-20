@@ -5,6 +5,7 @@ silently acquire today's defaults and then alias an existing compiled cache.
 Legacy production profiles continue to use their existing schema and loader.
 """
 
+import typing
 from dataclasses import asdict
 
 from .blocks import (
@@ -36,7 +37,7 @@ ECP_INTEGRAL_SCHEMA_VERSION = 4
 INTEGRAL_SCHEMA = "vibeqc.integral_ir"
 
 
-def _record(payload, fields):
+def _record(payload: typing.Any, fields: typing.Any) -> typing.Any:
     if not isinstance(payload, dict):
         raise TypeError("IR record must be an object")
     unknown = set(payload) - set(fields)
@@ -48,7 +49,7 @@ def _record(payload, fields):
     return payload
 
 
-def _invariant_payload(invariant):
+def _invariant_payload(invariant: typing.Any) -> typing.Any:
     centers = invariant.parameters.centers
     return {
         "centers": centers if centers == "all" else list(centers),
@@ -56,18 +57,18 @@ def _invariant_payload(invariant):
     }
 
 
-def _coordinates(payload):
+def _coordinates(payload: typing.Any) -> typing.Any:
     return NuclearCoordinates(payload if payload == "all" else tuple(payload))
 
 
-def _invariant(payload):
+def _invariant(payload: typing.Any) -> typing.Any:
     _record(payload, ("centers", "dependent_center"))
     return TranslationInvariant(
         _coordinates(payload["centers"]), payload["dependent_center"]
     )
 
 
-def _layout(payload):
+def _layout(payload: typing.Any) -> typing.Any:
     _record(payload, ("indices", "shape", "strides", "dtype"))
     if payload["dtype"] != "float64":
         raise ValueError("unsupported tensor scalar type; expected float64")
@@ -76,7 +77,7 @@ def _layout(payload):
     )
 
 
-def _consumer_payload(consumer):
+def _consumer_payload(consumer: typing.Any) -> typing.Any:
     if isinstance(consumer, SecondDerivative):
         return {
             "consumer": consumer.consumer,
@@ -123,7 +124,7 @@ def _consumer_payload(consumer):
     }
 
 
-def _consumer(payload):
+def _consumer(payload: typing.Any) -> typing.Any:
     if not isinstance(payload, dict) or "consumer" not in payload:
         raise ValueError("consumer record requires a consumer tag")
     kind = payload["consumer"]

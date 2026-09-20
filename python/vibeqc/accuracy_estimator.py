@@ -7,6 +7,7 @@ molecular families must be held out when assessing its reliability.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass
 
 from .accuracy import ErrorEvidence, EvidenceKind, ResolvedModel, _identity, _number
@@ -36,7 +37,7 @@ class HFErrorFeatures:
     backend: str = "cpu"
     precision: str = "fp64"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("model_id", "basis_family_id", "backend", "precision"):
             _identity(getattr(self, name), name)
         numbers = tuple(
@@ -82,7 +83,7 @@ class HFCalibrationDomain:
     backend: str = "cpu"
     schema_version: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _identity(self.basis_family_id, "basis family")
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported calibration domain schema")
@@ -175,7 +176,7 @@ class HFCalibrationSample:
     force_max_error: float
     reference_id: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("family", "sample_id", "reference_id"):
             _identity(getattr(self, name), name)
         if not isinstance(self.model, ResolvedModel) or not isinstance(
@@ -209,7 +210,7 @@ class EmpiricalHFEstimator:
     force_floor: float = 1e-10
     schema_version: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.domain, HFCalibrationDomain):
             raise TypeError("estimator requires a typed calibration domain")
         if type(self.schema_version) is not int or self.schema_version != 1:
@@ -242,7 +243,13 @@ class EmpiricalHFEstimator:
             raise ValueError("training safety factor must be at least one")
 
     @classmethod
-    def fit(cls, domain: HFCalibrationDomain, samples, *, safety_factor=4.0):
+    def fit(
+        cls,
+        domain: HFCalibrationDomain,
+        samples: typing.Any,
+        *,
+        safety_factor: typing.Any = 4.0,
+    ) -> typing.Any:
         """Fit only declared training families; never ingest held-out observations."""
         samples = tuple(samples)
         if not samples or any(not isinstance(s, HFCalibrationSample) for s in samples):
@@ -356,7 +363,11 @@ class EmpiricalHFEstimator:
         return result
 
     def evaluate_holdout(
-        self, samples, *, energy_tolerance=1e-6, force_tolerance=1e-6
+        self,
+        samples: typing.Any,
+        *,
+        energy_tolerance: typing.Any = 1e-6,
+        force_tolerance: typing.Any = 1e-6,
     ) -> dict:
         """Report whole-family coverage, missed tolerances and excess rejection."""
         energy_tolerance = _number(energy_tolerance, "energy tolerance", positive=True)

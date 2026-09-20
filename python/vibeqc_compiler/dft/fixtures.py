@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import typing
 from hashlib import sha256
 
 import numpy as np
@@ -13,7 +14,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 NAMES = ("h2", "water", "f_cartesian", "f_spherical", "diffuse", "tight")
 
 
-def load_fixture(name):
+def load_fixture(name: typing.Any) -> typing.Any:
     """Verify all arrays and mathematical inputs before returning reference data."""
     root = source_root() / "tests/reference_data/grid"
     if name not in NAMES:
@@ -38,7 +39,7 @@ def load_fixture(name):
     return meta, arrays
 
 
-def basis_arguments(meta):
+def basis_arguments(meta: typing.Any) -> typing.Any:
     """Build exactly the original shell coefficients, geometry and representation."""
     from vibeqc import Primitive, Shell
 
@@ -59,7 +60,7 @@ def basis_arguments(meta):
     }
 
 
-def __getattr__(name):
+def __getattr__(name: typing.Any) -> typing.Any:
     """Retain the checkout-only ROOT compatibility attribute without eager IO."""
     if name == "ROOT":
         return source_root() / "tests/reference_data/grid"

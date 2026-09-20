@@ -1,5 +1,6 @@
 """Reject incorrect hardware evidence without loading CUDA in ordinary CI."""
 
+import typing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,13 +10,19 @@ from tools import benchmark_density_sources as benchmark
 from tools.vibeqc_validation.hardware import CUDA_BENCHMARK_PROFILES
 
 
-def _runtime(pci_status=0, bus=b"0000:03:00.0", runtime_version=12090):
-    def pci_bus(buffer, length, ordinal):
+def _runtime(
+    pci_status: typing.Any = 0,
+    bus: typing.Any = b"0000:03:00.0",
+    runtime_version: typing.Any = 12090,
+) -> typing.Any:
+    def pci_bus(
+        buffer: typing.Any, length: typing.Any, ordinal: typing.Any
+    ) -> typing.Any:
         assert ordinal == 0 and length >= 16
         buffer.value = bus
         return pci_status
 
-    def version(output):
+    def version(output: typing.Any) -> typing.Any:
         output._obj.value = runtime_version
         return 0
 
@@ -65,11 +72,11 @@ def _runtime(pci_status=0, bus=b"0000:03:00.0", runtime_version=12090):
     ],
 )
 def test_probe_binds_assigned_device_then_qualifies_requested_profile(
-    monkeypatch, row, profile, accepted
-):
+    monkeypatch: typing.Any, row: typing.Any, profile: typing.Any, accepted: typing.Any
+) -> None:
     monkeypatch.setattr(benchmark.ctypes, "CDLL", lambda _: _runtime())
 
-    def query(arguments):
+    def query(arguments: typing.Any) -> typing.Any:
         assert "--id=0000:03:00.0" in arguments
         assert "compute_cap" in arguments[2]
         return row
@@ -90,14 +97,16 @@ def test_probe_binds_assigned_device_then_qualifies_requested_profile(
 
 
 @pytest.mark.parametrize("status,bus", [(100, b""), (0, b"")])
-def test_failed_runtime_probe_cannot_publish_hardware_success(monkeypatch, status, bus):
+def test_failed_runtime_probe_cannot_publish_hardware_success(
+    monkeypatch: typing.Any, status: typing.Any, bus: typing.Any
+) -> None:
     monkeypatch.setattr(
         benchmark.ctypes,
         "CDLL",
         lambda _: _runtime(pci_status=status, bus=bus),
     )
 
-    def forbidden(_):
+    def forbidden(_: typing.Any) -> typing.Any:
         raise AssertionError(
             "NVML must not substitute another GPU after a CUDA probe failure"
         )

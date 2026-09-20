@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -17,7 +18,9 @@ WATER = [(8, (0.0, 0.0, 0.0)), (1, (1.43, 0.0, 1.11)), (1, (-1.43, 0.0, 1.11))]
 
 
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
-def test_small_direct_cuda_global_budget_covers_all_ragged_caches(method):
+def test_small_direct_cuda_global_budget_covers_all_ragged_caches(
+    method: typing.Any,
+) -> None:
     reference = Calculator(device="cuda", method=method)
     systems = [H2, WATER, H2]
     probe = reference.estimate_resources(systems).require_feasible()
@@ -72,12 +75,14 @@ def test_small_direct_cuda_global_budget_covers_all_ragged_caches(method):
         constrained.prepare_batch(systems)
 
 
-def test_cuda_dry_run_query_never_calls_profile_or_context(monkeypatch):
+def test_cuda_dry_run_query_never_calls_profile_or_context(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc import _native, profiles
 
     library = _native.load_library(device="cpu")
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("dry-run resource query initialized a CUDA execution context")
 
     monkeypatch.setattr(profiles, "select_library", forbidden)
@@ -101,7 +106,9 @@ def test_cuda_dry_run_query_never_calls_profile_or_context(monkeypatch):
         ("VIBEQC_FINAL_FOCK_REBUILD", "1"),
     ],
 )
-def test_cuda_execution_rejects_changed_resource_schedule(monkeypatch, variable, value):
+def test_cuda_execution_rejects_changed_resource_schedule(
+    monkeypatch: typing.Any, variable: typing.Any, value: typing.Any
+) -> None:
     calculator = Calculator(
         device="cuda", resource_budget=ResourceBudget(device_bytes=1 << 20)
     )
@@ -114,7 +121,9 @@ def test_cuda_execution_rejects_changed_resource_schedule(monkeypatch, variable,
 @pytest.mark.parametrize(
     "initial,changed", [("dense", "occupied"), ("occupied", "dense")]
 )
-def test_cuda_df_budget_freezes_exchange_policy(monkeypatch, initial, changed):
+def test_cuda_df_budget_freezes_exchange_policy(
+    monkeypatch: typing.Any, initial: typing.Any, changed: typing.Any
+) -> None:
     """A changed factor reservation must be rejected before native execution."""
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", initial)
     calculator = Calculator(
@@ -133,8 +142,8 @@ def test_cuda_df_budget_freezes_exchange_policy(monkeypatch, initial, changed):
     "mode,old_peak", [("resident", 805315268), ("recomputed", 805316952)]
 )
 def test_cuda_df_common_ledger_preserves_factor_differential(
-    monkeypatch, mode, old_peak
-):
+    monkeypatch: typing.Any, mode: typing.Any, old_peak: typing.Any
+) -> None:
     """Charge ordinary eigen and final snapshots to both exchange policies."""
     from vibeqc.resources import ResourcePlan, plan_resources
 
@@ -177,7 +186,9 @@ def test_cuda_df_common_ledger_preserves_factor_differential(
 
 
 @pytest.mark.parametrize("fitted", [False, True])
-def test_native_ledger_rejects_unplanned_arena_and_releases_failed_state(fitted):
+def test_native_ledger_rejects_unplanned_arena_and_releases_failed_state(
+    fitted: typing.Any,
+) -> None:
     """Fault the assigned capacity to exercise the native allocation boundary."""
     calculator = Calculator(
         device="cuda",
@@ -211,8 +222,8 @@ def test_native_ledger_rejects_unplanned_arena_and_releases_failed_state(fitted)
 @pytest.mark.parametrize("mode", ["resident", "recomputed"])
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
-    mode, method
-):
+    mode: typing.Any, method: typing.Any
+) -> None:
     from vibeqc.resources import ResourcePlan, plan_resources
 
     systems = [H2, WATER, H2]
@@ -313,7 +324,9 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
 
 
 @pytest.mark.parametrize("mode", ["resident", "recomputed"])
-def test_cuda_df_distinct_auxiliary_basis_and_open_shell_inventory(mode):
+def test_cuda_df_distinct_auxiliary_basis_and_open_shell_inventory(
+    mode: typing.Any,
+) -> None:
     """Orbital dimensions cannot substitute for auxiliary or spin dimensions."""
     from vibeqc.resources import ResourcePlan
 

@@ -4,13 +4,14 @@ import itertools
 import json
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture(scope="module")
-def policy_query(tmp_path_factory):
+def policy_query(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if not compiler:
         pytest.skip("host C++ compiler unavailable")
@@ -45,7 +46,7 @@ int main() {
         check=True,
     )
 
-    def query(shapes):
+    def query(shapes: typing.Any) -> typing.Any:
         result = subprocess.run(
             [str(binary)],
             input="".join(f"{n} {a} {cap}\n" for n, a, cap in shapes),
@@ -59,7 +60,9 @@ int main() {
     return query
 
 
-def test_policy_minimizes_actual_source_work_and_handles_tails(policy_query):
+def test_policy_minimizes_actual_source_work_and_handles_tails(
+    policy_query: typing.Any,
+) -> None:
     # Exhaustively compare both row and Q choices for many nondivisible shapes.
     # This independently enumerates the traversal, rather than repeating the
     # production quotient search or using VibeQC-to-VibeQC numeric parity.
@@ -91,7 +94,9 @@ def test_policy_minimizes_actual_source_work_and_handles_tails(policy_query):
         assert nr * nq == min(possible)
 
 
-def test_reported_768_shape_uses_raw_panel_for_multiple_outputs(policy_query):
+def test_reported_768_shape_uses_raw_panel_for_multiple_outputs(
+    policy_query: typing.Any,
+) -> None:
     ns = [96, 192, 384, 768]
     shapes = [(n, n, (min(n * n, 8192) // n) * n * min(n, 128)) for n in ns]
     panels = policy_query(shapes)
@@ -109,7 +114,9 @@ def test_reported_768_shape_uses_raw_panel_for_multiple_outputs(policy_query):
     assert large[0] * 10**9 * large[1] <= 10**18
 
 
-def test_generated_positive_budget_reduces_raw_passes_monotonically(policy_query):
+def test_generated_positive_budget_reduces_raw_passes_monotonically(
+    policy_query: typing.Any,
+) -> None:
     from vibeqc import Calculator
     from vibeqc.resources_df import density_fitting_tile_plan
 

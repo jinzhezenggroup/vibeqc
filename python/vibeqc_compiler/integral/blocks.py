@@ -10,6 +10,7 @@ provider-owned caches. No molecular N**4 tensor is constructed.
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -79,7 +80,7 @@ class TensorLayout:
         """Return the checked FP64 allocation size."""
         return 8 * self.storage_elements
 
-    def offsets(self):
+    def offsets(self) -> typing.Any:
         """Iterate logical row-major coordinates through this physical layout."""
         for coordinate in product(*(range(n) for n in self.shape)):
             yield sum(i * s for i, s in zip(coordinate, self.strides))
@@ -196,7 +197,7 @@ class SecondDerivative:
     direction_source: str | None = None
     output_sign: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         checked_index(
             self.memory_budget_bytes, "second derivative memory budget", minimum=1
         )
@@ -225,12 +226,12 @@ class SecondDerivative:
             raise ValueError("a Hessian output cannot also consume an HVP direction")
 
     @property
-    def consumer(self):
+    def consumer(self) -> typing.Any:
         """Versioned second-order consumer, distinct from first derivatives."""
         return "second_derivative"
 
     @property
-    def kernel_consumer(self):
+    def kernel_consumer(self) -> None:
         """Second integral derivatives do not enable direct HF force kernels."""
         return None
 
@@ -515,7 +516,7 @@ def _center_data(
     return data
 
 
-def _pack(layout: TensorLayout, values) -> tuple[float, ...]:
+def _pack(layout: TensorLayout, values: typing.Any) -> tuple[float, ...]:
     result = [0.0] * layout.storage_elements
     for offset, value in zip(layout.offsets(), values, strict=True):
         result[offset] = float(value)
@@ -566,7 +567,7 @@ def contract_weighted_derivative(
     center_atoms = {b.center: b.atom_index for b in request.center_bindings}
     rows = request.atom_indices if consumer.output == "atomic_force" else centers
 
-    def results():
+    def results() -> typing.Any:
         for row in rows:
             selected = (
                 tuple(c for c in centers if center_atoms[c] == row)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from fractions import Fraction
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.method import (
     BackendCapability,
@@ -21,6 +21,9 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 from .xc import Coefficient, _coefficient, _normalize_components
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 API_VERSION = 1
 

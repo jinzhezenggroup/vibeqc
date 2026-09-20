@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_provider_free_sgemm_declarations_and_imports(tmp_path):
+def test_provider_free_sgemm_declarations_and_imports(
+    tmp_path: typing.Any,
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
@@ -54,7 +57,9 @@ static_assert(std::is_same_v<decltype(&cublasSgemmStridedBatched), Batch>);
     assert "cublasSgemmStridedBatched" in symbols
 
 
-def test_sgemm_trampolines_link_without_providers_and_forward_abi(tmp_path):
+def test_sgemm_trampolines_link_without_providers_and_forward_abi(
+    tmp_path: typing.Any,
+) -> None:
     """Exercise real lazy import stubs, including 64-bit strides, without CUDA."""
     import platform
     import sys
@@ -92,7 +97,7 @@ def test_sgemm_trampolines_link_without_providers_and_forward_abi(tmp_path):
         tmp_path,
     )
 
-    def run(*command):
+    def run(*command: typing.Any) -> typing.Any:
         return subprocess.run(
             list(command),
             check=True,

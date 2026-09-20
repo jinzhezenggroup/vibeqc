@@ -7,6 +7,7 @@ cannot satisfy an accelerator request by silently evaluating it on the CPU.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass
 from typing import Protocol, runtime_checkable
 
@@ -37,7 +38,7 @@ class RuntimeCapabilities:
     device_enqueue: bool = False
     graphs: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.backend, str) or not self.backend:
             raise ValueError("runtime backend must be named")
         for name in (
@@ -75,7 +76,7 @@ class ExecutionShape:
     requires_device_enqueue: bool = False
     requires_graphs: bool = False
 
-    def validate_for(self, target: RuntimeCapabilities):
+    def validate_for(self, target: RuntimeCapabilities) -> None:
         """Check actual queried limits without inserting CUDA warp assumptions."""
         for name in (
             "requires_fp64",
@@ -120,7 +121,7 @@ class ExecutionShape:
                     f"{target.backend} does not support {name}"
                 )
 
-    def padded_items(self, count):
+    def padded_items(self, count: typing.Any) -> typing.Any:
         """OpenCL 1.2 global sizes must be multiples of the local workgroup size."""
         if (
             type(count) is not int
@@ -155,7 +156,7 @@ class CompiledArtifactIdentity:
     schedule_hash: str
     abi: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("backend", "device", "runtime", "compiler", "driver", "language"):
             if not isinstance(getattr(self, name), str) or not getattr(self, name):
                 raise ValueError(f"verified {name} identity is required")
@@ -174,10 +175,10 @@ class CompiledArtifactIdentity:
             raise ValueError("compiler options must be strings")
 
     @property
-    def key(self):
+    def key(self) -> typing.Any:
         return canonical_hash(asdict(self))
 
-    def require_compatible(self, other):
+    def require_compatible(self, other: typing.Any) -> None:
         """Reject executable reuse across any compilation/runtime boundary."""
         if self != other:
             raise ValueError(
@@ -202,7 +203,7 @@ class LibraryRequest:
     workspace_limit_bytes: int = 0
     residual_tolerance: float = 1e-11
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         import math
 
         rank = 3 if self.operation == "gemm" else 1
@@ -230,7 +231,7 @@ class UnsupportedLibraryProvider:
     backend: str
     reason: str
 
-    def plan(self, request: LibraryRequest):
+    def plan(self, request: LibraryRequest) -> typing.Any:
         raise UnsupportedBackendFeature(
             f"{self.backend} {request.operation}: {self.reason}"
         )

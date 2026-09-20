@@ -1,6 +1,7 @@
 """Occupied response must consume only its exact verified electronic state."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -22,8 +23,14 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("batch_size", [1, 2])
 @pytest.mark.parametrize("pairs", ["generic", "full", "packed"])
 def test_occupied_response_replay_and_zero_rank_spin(
-    monkeypatch, tmp_path, method, multiplicity, elements, batch_size, pairs
-):
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    method: typing.Any,
+    multiplicity: typing.Any,
+    elements: typing.Any,
+    batch_size: typing.Any,
+    pairs: typing.Any,
+) -> None:
     """Independent forces, changed geometry, rank-zero beta and dense fallback."""
     from pyscf import gto, scf
 
@@ -165,8 +172,8 @@ def test_occupied_response_replay_and_zero_rank_spin(
 
 @pytest.mark.parametrize("batch_products", ["off", "auto"])
 def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(
-    monkeypatch, tmp_path, batch_products
-):
+    monkeypatch: typing.Any, tmp_path: typing.Any, batch_products: typing.Any
+) -> None:
     """A 96-AO oracle covers the ragged second GEMM block and two packed panels.
 
     Smaller molecular fixtures fit in a single AO block and cannot detect a
@@ -238,7 +245,9 @@ def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(
 
 
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
-def test_batched_full_response_keeps_rectangular_output(method, monkeypatch, tmp_path):
+def test_batched_full_response_keeps_rectangular_output(
+    method: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """Exercise the full batched expansion with both nonempty UHF spin factors.
 
     Tiny full-output fixtures exhaust the shared tensor with their weight

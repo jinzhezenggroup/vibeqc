@@ -5,6 +5,7 @@ no solver, nuclear Jacobian, reference library or native runtime dependency.
 """
 
 import json
+import typing
 from dataclasses import FrozenInstanceError, replace
 
 import numpy as np
@@ -31,7 +32,14 @@ from vibeqc_compiler.tensor import (
 )
 
 
-def _input(name, indices=(), *, diff=True, symmetries=(), dtype="float64"):
+def _input(
+    name: typing.Any,
+    indices: typing.Any = (),
+    *,
+    diff: typing.Any = True,
+    symmetries: typing.Any = (),
+    dtype: typing.Any = "float64",
+) -> typing.Any:
     return input_tensor(
         name,
         TensorSpec(
@@ -44,17 +52,19 @@ def _input(name, indices=(), *, diff=True, symmetries=(), dtype="float64"):
     )
 
 
-def _axis(name, size):
+def _axis(name: typing.Any, size: typing.Any) -> typing.Any:
     return Index(name, IndexSpace(name, "batch", size))
 
 
-def _state(name="x", residual="residual", **kwargs):
+def _state(
+    name: typing.Any = "x", residual: typing.Any = "residual", **kwargs: typing.Any
+) -> typing.Any:
     return StationaryState(
         name, residual, f"{name}-independent-v1", "fixed-gauge-v1", **kwargs
     )
 
 
-def _scalar():
+def _scalar() -> typing.Any:
     x, q = _input("x"), _input("q")
     residual = add(multiply(x, x), q, coefficients=(1, -1))
     energy = add(multiply(multiply(x, x), x), q, coefficients=(1, 2))
@@ -68,7 +78,9 @@ def _scalar():
     )
 
 
-def _partials(plan, feeds, multipliers):
+def _partials(
+    plan: typing.Any, feeds: typing.Any, multipliers: typing.Any
+) -> typing.Any:
     return execute(
         plan.partials,
         {
@@ -81,7 +93,7 @@ def _partials(plan, feeds, multipliers):
     ).outputs
 
 
-def test_nonvariational_scalar_sign_and_resolved_finite_differences():
+def test_nonvariational_scalar_sign_and_resolved_finite_differences() -> None:
     problem = _scalar()
     plan = problem.compile()
     q = 2.3
@@ -103,7 +115,7 @@ def test_nonvariational_scalar_sign_and_resolved_finite_differences():
     assert abs(wrong[plan.stationarity_outputs["x"]]) > 1
 
 
-def _nonsymmetric(*, matrix_diff=True):
+def _nonsymmetric(*, matrix_diff: typing.Any = True) -> typing.Any:
     space = IndexSpace("state", "batch", 3)
     i, j = Index("i", space), Index("j", space)
     x, q, a, c = (
@@ -132,7 +144,7 @@ def _nonsymmetric(*, matrix_diff=True):
     }
 
 
-def test_declared_stationary_state_dispatches_generic_implicit_plan():
+def test_declared_stationary_state_dispatches_generic_implicit_plan() -> None:
     problem, feeds = _nonsymmetric()
     state = replace(
         problem.states[0],
@@ -165,7 +177,7 @@ def test_declared_stationary_state_dispatches_generic_implicit_plan():
     assert changed.implicit_plans["x"].identity != implicit.identity
 
 
-def test_automatic_implicit_dispatch_rejects_unpacked_coupled_states():
+def test_automatic_implicit_dispatch_rejects_unpacked_coupled_states() -> None:
     problem = _constrained()
     states = tuple(
         replace(
@@ -182,7 +194,9 @@ def test_automatic_implicit_dispatch_rejects_unpacked_coupled_states():
 
 
 @pytest.mark.parametrize("matrix_diff", [False, True])
-def test_nonsymmetric_coupled_state_and_parameter_weights(matrix_diff):
+def test_nonsymmetric_coupled_state_and_parameter_weights(
+    matrix_diff: typing.Any,
+) -> None:
     problem, feeds = _nonsymmetric(matrix_diff=matrix_diff)
     plan = problem.compile()
     rhs = execute(plan.rhs, feeds).outputs["x"]
@@ -205,7 +219,7 @@ def test_nonsymmetric_coupled_state_and_parameter_weights(matrix_diff):
         np.testing.assert_allclose(wa, np.outer(multiplier, feeds["x"]), atol=2e-15)
         directional += float(np.sum(wa * da))
 
-    def energy(t):
+    def energy(t: typing.Any) -> typing.Any:
         q = feeds["q"] + t * dq
         x = np.linalg.solve(feeds["A"] + t * da, q)
         return 0.5 * (x @ x) + feeds["c"] @ q
@@ -219,7 +233,7 @@ def test_nonsymmetric_coupled_state_and_parameter_weights(matrix_diff):
         )
 
 
-def _constrained():
+def _constrained() -> typing.Any:
     i = _axis("state", 2)
     x, a, mu, q = _input("x", (i,)), _input("a", (i,)), _input("mu"), _input("q")
     difference = add(x, a, coefficients=(1, -1))
@@ -243,7 +257,7 @@ def _constrained():
     )
 
 
-def test_constraint_is_a_declared_equation_not_inferred_from_energy():
+def test_constraint_is_a_declared_equation_not_inferred_from_energy() -> None:
     problem = _constrained()
     plan = problem.compile()
     a, q = np.array([1.2, -0.4]), 0.3
@@ -265,7 +279,7 @@ def test_constraint_is_a_declared_equation_not_inferred_from_energy():
         result[plan.weight_outputs["a"]] @ da + result[plan.weight_outputs["q"]] * dq
     )
 
-    def energy(t):
+    def energy(t: typing.Any) -> typing.Any:
         at, qt = a + t * da, q + t * dq
         mut = (sum(at) - qt) / 2
         return mut**2 + 0.3 * qt
@@ -278,7 +292,7 @@ def test_constraint_is_a_declared_equation_not_inferred_from_energy():
         replace(problem, states=tuple(s for s in problem.states if s.name != "mu"))
 
 
-def _provider_problem():
+def _provider_problem() -> typing.Any:
     x, s, h = _input("x"), _input("overlap"), _input("h")
     return StationaryProblem(
         Program(
@@ -301,7 +315,7 @@ def _provider_problem():
     )
 
 
-def test_provider_dag_preserves_overlap_and_stops_at_source_boundaries():
+def test_provider_dag_preserves_overlap_and_stops_at_source_boundaries() -> None:
     problem = _provider_problem()
     graph = problem.dependency_graph
     assert graph["providers"] == {
@@ -336,7 +350,9 @@ def test_provider_dag_preserves_overlap_and_stops_at_source_boundaries():
 @pytest.mark.parametrize(
     "case", ["duplicate-name", "duplicate-identity", "cycle", "state-cycle", "unused"]
 )
-def test_source_graph_rejects_ambiguous_or_incomplete_dependencies(case):
+def test_source_graph_rejects_ambiguous_or_incomplete_dependencies(
+    case: typing.Any,
+) -> None:
     problem = _scalar()
     q = problem.sources[0]
     if case == "duplicate-name":
@@ -357,7 +373,9 @@ def test_source_graph_rejects_ambiguous_or_incomplete_dependencies(case):
 
 
 @pytest.mark.parametrize("factory", [_scalar, _provider_problem, _constrained])
-def test_serialization_and_identity_are_canonical_and_data_only(factory):
+def test_serialization_and_identity_are_canonical_and_data_only(
+    factory: typing.Any,
+) -> None:
     problem = factory()
     replay = StationaryProblem.loads(problem.dumps())
     assert replay.identity == problem.identity
@@ -399,14 +417,14 @@ def test_serialization_and_identity_are_canonical_and_data_only(factory):
         ("unknown", "extra"),
     ],
 )
-def test_problem_replay_rejects_tampering(field, value):
+def test_problem_replay_rejects_tampering(field: typing.Any, value: typing.Any) -> None:
     payload = _scalar().to_payload()
     payload[field] = value
     with pytest.raises(ValueError):
         StationaryProblem.from_payload(payload)
 
 
-def test_duplicate_json_fields_are_rejected():
+def test_duplicate_json_fields_are_rejected() -> None:
     source = (
         _scalar()
         .dumps()
@@ -416,7 +434,7 @@ def test_duplicate_json_fields_are_rejected():
         StationaryProblem.loads(source)
 
 
-def test_records_and_plan_maps_are_immutable_snapshots():
+def test_records_and_plan_maps_are_immutable_snapshots() -> None:
     deps = ["geometry"]
     source = ParameterSource("q", "q-field", deps, "q-rule")
     deps.append("wrong")
@@ -443,7 +461,7 @@ def test_records_and_plan_maps_are_immutable_snapshots():
         {"name": "stationary_bad"},
     ],
 )
-def test_state_contract_fails_closed(kwargs):
+def test_state_contract_fails_closed(kwargs: typing.Any) -> None:
     with pytest.raises(ValueError):
         replace(_state(), **kwargs)
 
@@ -458,12 +476,12 @@ def test_state_contract_fails_closed(kwargs):
         {"identity": ""},
     ],
 )
-def test_provider_contract_fails_closed(kwargs):
+def test_provider_contract_fails_closed(kwargs: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError)):
         ParameterSource("q", **{"identity": "q-field", **kwargs})
 
 
-def test_no_sources_and_objective_independent_state_are_supported():
+def test_no_sources_and_objective_independent_state_are_supported() -> None:
     x, c = _input("x"), _input("c", diff=False)
     problem = StationaryProblem(
         Program({"energy": c, "residual": x}),
@@ -488,7 +506,7 @@ def test_no_sources_and_objective_independent_state_are_supported():
     assert free.compile().provider_pullbacks == ()
 
 
-def test_redundant_state_coordinates_and_fp32_are_not_silently_admitted():
+def test_redundant_state_coordinates_and_fp32_are_not_silently_admitted() -> None:
     space = IndexSpace("state", "batch", 2)
     i, j = Index("i", space), Index("j", space)
     x = _input("x", (i, j), symmetries=(Symmetry((1, 0), 1),))
@@ -507,7 +525,7 @@ def test_redundant_state_coordinates_and_fp32_are_not_silently_admitted():
         )
 
 
-def test_dense_symmetric_parameter_uses_existing_projected_adjoint():
+def test_dense_symmetric_parameter_uses_existing_projected_adjoint() -> None:
     space = IndexSpace("source", "batch", 2)
     i, j = Index("i", space), Index("j", space)
     q = _input("q", (i, j), symmetries=(Symmetry((1, 0), 1),))
@@ -539,7 +557,7 @@ def test_dense_symmetric_parameter_uses_existing_projected_adjoint():
         problem.compile(max_elements=0)
 
 
-def test_large_diagonal_problem_does_not_materialize_state_jacobian():
+def test_large_diagonal_problem_does_not_materialize_state_jacobian() -> None:
     axis = _axis("state", 2000)
     x, q = _input("x", (axis,)), _input("q", (axis,))
     problem = replace(
@@ -556,7 +574,7 @@ def test_large_diagonal_problem_does_not_materialize_state_jacobian():
     assert max(node.spec.size for node in plan.partials.live_nodes) <= 2000
 
 
-def test_generated_fragments_reuse_cuda_planning_without_device_or_runtime():
+def test_generated_fragments_reuse_cuda_planning_without_device_or_runtime() -> None:
     from vibeqc_compiler.integral.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
@@ -578,14 +596,16 @@ def test_generated_fragments_reuse_cuda_planning_without_device_or_runtime():
         ("sources", "pullback_identity"),
     ],
 )
-def test_replay_requires_complete_versioned_record_fields(group, field):
+def test_replay_requires_complete_versioned_record_fields(
+    group: typing.Any, field: typing.Any
+) -> None:
     payload = _scalar().to_payload()
     del payload[group][0][field]
     with pytest.raises(ValueError, match="fields"):
         StationaryProblem.from_payload(payload)
 
 
-def test_plan_replay_regenerates_derivatives_and_rejects_tampering():
+def test_plan_replay_regenerates_derivatives_and_rejects_tampering() -> None:
     plan = _scalar().compile()
     replay = StationaryDerivativePlan.loads(plan.dumps())
     assert replay.identity == plan.identity
@@ -614,12 +634,14 @@ def test_plan_replay_regenerates_derivatives_and_rejects_tampering():
         ({"solver_contract": ""}, "identity"),
     ],
 )
-def test_problem_requires_complete_typed_declarations(kwargs, match):
+def test_problem_requires_complete_typed_declarations(
+    kwargs: typing.Any, match: typing.Any
+) -> None:
     with pytest.raises((ValueError, TypeError), match=match):
         replace(_scalar(), **kwargs)
 
 
-def test_unclassified_output_scalar_objective_and_state_domain_checks():
+def test_unclassified_output_scalar_objective_and_state_domain_checks() -> None:
     problem = _scalar()
     outputs = dict(problem.equations.outputs)
     with pytest.raises(ValueError, match="declared residuals"):
@@ -665,7 +687,9 @@ def test_unclassified_output_scalar_objective_and_state_domain_checks():
         )
 
 
-def test_derived_sources_cannot_be_declared_frozen_and_missing_equations_reject():
+def test_derived_sources_cannot_be_declared_frozen_and_missing_equations_reject() -> (
+    None
+):
     problem = _provider_problem()
     x, s, h = _input("x"), _input("overlap", diff=False), _input("h")
     with pytest.raises(ValueError, match="freeze"):
@@ -688,12 +712,12 @@ def test_derived_sources_cannot_be_declared_frozen_and_missing_equations_reject(
 
 
 @pytest.mark.parametrize("value", [-1, True, 1.5])
-def test_compile_budget_is_explicit_and_strict(value):
+def test_compile_budget_is_explicit_and_strict(value: typing.Any) -> None:
     with pytest.raises(ValueError, match="nonnegative integer"):
         _scalar().compile(max_elements=value)
 
 
-def test_repeated_named_inputs_are_accumulated_by_shared_tensor_ad():
+def test_repeated_named_inputs_are_accumulated_by_shared_tensor_ad() -> None:
     x, q1, q2 = _input("x"), _input("q"), _input("q")
     problem = replace(
         _scalar(),
@@ -709,7 +733,7 @@ def test_repeated_named_inputs_are_accumulated_by_shared_tensor_ad():
     np.testing.assert_allclose(result[plan.weight_outputs["q"]], 6.0, atol=1e-14)
 
 
-def test_diagnostic_executor_rejects_nonfinite_inputs_and_enforces_its_budget():
+def test_diagnostic_executor_rejects_nonfinite_inputs_and_enforces_its_budget() -> None:
     plan = _scalar().compile()
     with pytest.raises((ValueError, FloatingPointError), match="finite|non-finite"):
         _partials(plan, {"x": np.asarray(np.nan), "q": np.asarray(2.0)}, {"x": -1.0})
@@ -726,12 +750,12 @@ def test_diagnostic_executor_rejects_nonfinite_inputs_and_enforces_its_budget():
 
 
 @pytest.mark.parametrize("name", ["bad name", "", 42])
-def test_identifiers_reject_invalid_types_and_spellings(name):
+def test_identifiers_reject_invalid_types_and_spellings(name: typing.Any) -> None:
     with pytest.raises(ValueError, match="identifier"):
         replace(_state(), name=name)
 
 
-def test_malformed_replay_records_and_wrong_compiler_object_reject():
+def test_malformed_replay_records_and_wrong_compiler_object_reject() -> None:
     from vibeqc_compiler.method.stationary import compile_stationary
 
     payload = _scalar().to_payload()

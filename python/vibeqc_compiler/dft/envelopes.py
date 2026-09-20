@@ -9,6 +9,7 @@ AO rather than claiming it is negligible.
 from __future__ import annotations
 
 import math
+import typing
 
 import numpy as np
 
@@ -17,7 +18,7 @@ from vibeqc_compiler.common.arrays import immutable
 from .ao import NativeAO, jet_indices
 
 
-def derivative_domain(derivatives):
+def derivative_domain(derivatives: typing.Any) -> typing.Any:
     """Canonical nonempty subset of ordinary spatial derivatives through three."""
     values = tuple(tuple(d) for d in derivatives)
     allowed = jet_indices(3)
@@ -31,11 +32,11 @@ def derivative_domain(derivatives):
     return tuple(d for d in allowed if d in values)
 
 
-def _up(value):
+def _up(value: typing.Any) -> typing.Any:
     return math.nextafter(value, math.inf)
 
 
-def _add(a, b):
+def _add(a: typing.Any, b: typing.Any) -> typing.Any:
     if a == 0:
         return b
     if b == 0:
@@ -43,13 +44,19 @@ def _add(a, b):
     return _up(a + b)
 
 
-def _multiply(a, b):
+def _multiply(a: typing.Any, b: typing.Any) -> typing.Any:
     if a == 0 or b == 0:
         return 0.0
     return _up(float(a) * float(b))
 
 
-def _axis_bound(power, derivative, alpha, lower, upper):
+def _axis_bound(
+    power: typing.Any,
+    derivative: typing.Any,
+    alpha: typing.Any,
+    lower: typing.Any,
+    upper: typing.Any,
+) -> typing.Any:
     """Bound |d^d(x^l exp(-a*x*x))| without polynomial cancellation.
 
     Differentiation maps P to P'-2axP. Propagating absolute coefficients
@@ -87,7 +94,9 @@ def _axis_bound(power, derivative, alpha, lower, upper):
     return _multiply(polynomial, gaussian)
 
 
-def ao_region_envelopes(basis, bounds, derivatives=((0, 0, 0),)):
+def ao_region_envelopes(
+    basis: typing.Any, bounds: typing.Any, derivatives: typing.Any = ((0, 0, 0),)
+) -> typing.Any:
     """Return [requested jet, public AO] absolute bounds on an axis-aligned box.
 
     ``bounds`` is [lower/upper, xyz] in Bohr. Basis records carry the native

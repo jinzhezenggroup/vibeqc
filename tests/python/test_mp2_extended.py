@@ -1,6 +1,7 @@
 """Independent >12 AO public molecular gate; explicit opt-in reference tier."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -13,7 +14,9 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_fourteen_ao_all_electron_public_reference_and_tail(device):
+def test_fourteen_ao_all_electron_public_reference_and_tail(
+    device: typing.Any,
+) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1":
         pytest.skip("requires allocated CUDA device")
     pyscf = pytest.importorskip("pyscf")

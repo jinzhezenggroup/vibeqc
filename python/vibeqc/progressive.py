@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import math
 import time
+import typing
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 
@@ -22,7 +23,7 @@ from .projection import (
 )
 
 
-def _dimension(calculator, atoms):
+def _dimension(calculator: typing.Any, atoms: typing.Any) -> typing.Any:
     return sum(
         2 * s.angular_momentum + 1
         if calculator._basis_representation == _native.BASIS_SPHERICAL
@@ -32,8 +33,13 @@ def _dimension(calculator, atoms):
 
 
 def initialize_from(
-    target, source, *, policy=None, strict=True, maximum_host_bytes=256 << 20
-):
+    target: typing.Any,
+    source: typing.Any,
+    *,
+    policy: typing.Any = None,
+    strict: typing.Any = True,
+    maximum_host_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Install per-item metric-projected densities into a fresh prepared target.
 
     Source and target must have the same ordered nuclei, current geometry,
@@ -236,7 +242,7 @@ class ProgressiveResult:
     target_density: np.ndarray
 
 
-def _retained_density(batch, index=0):
+def _retained_density(batch: typing.Any, index: typing.Any = 0) -> typing.Any:
     """Detach the actual converged target density for root comparisons."""
     state = _descriptor()
     _native.check(
@@ -262,15 +268,15 @@ def _retained_density(batch, index=0):
 
 
 def projected_singlepoint(
-    target,
-    source,
-    atoms,
+    target: typing.Any,
+    source: typing.Any,
+    atoms: typing.Any,
     *,
-    charge=0,
-    multiplicity=1,
-    policy=None,
-    maximum_host_bytes=256 << 20,
-):
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+    policy: typing.Any = None,
+    maximum_host_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Solve a source basis, project its seed if valid, and converge the target HF.
 
     Rejected/failed source items use the target's ordinary cold guess. Native

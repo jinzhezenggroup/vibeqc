@@ -4,6 +4,7 @@ import ctypes
 import math
 import shutil
 import subprocess
+import typing
 
 import numpy as np
 import pytest
@@ -23,7 +24,7 @@ from tools.vibeqc_validation.df_derivatives import make_df_derivative_fixture
 
 
 @pytest.fixture(scope="module")
-def shell_evaluator(tmp_path_factory):
+def shell_evaluator(tmp_path_factory: typing.Any) -> typing.Any:
     """Compile the emitted primitive arithmetic; no native runtime or GPU probe."""
     compiler = shutil.which("c++")
     if compiler is None:
@@ -112,7 +113,13 @@ __SHELL_CASES__
     ]
     library.probe.restype = None
 
-    def evaluate(exponents, centers, angular=((0, 0, 0),) * 3, *, rys=True):
+    def evaluate(
+        exponents: typing.Any,
+        centers: typing.Any,
+        angular: typing.Any = ((0, 0, 0),) * 3,
+        *,
+        rys: typing.Any = True,
+    ) -> typing.Any:
         exponents = np.ascontiguousarray(exponents, dtype=np.float64)
         centers = np.ascontiguousarray(centers, dtype=np.float64)
         out = np.empty((3, 3))
@@ -142,8 +149,11 @@ __SHELL_CASES__
 @pytest.mark.parametrize("variant", ("asymmetric", "coincident"))
 @pytest.mark.parametrize("lengths", ((2, 1, 2), (3, 2, 5)))
 def test_rys_shell_matches_independent_libcint_contractions(
-    shell_evaluator, angular, variant, lengths
-):
+    shell_evaluator: typing.Any,
+    angular: typing.Any,
+    variant: typing.Any,
+    lengths: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     fixture = make_df_derivative_fixture(
         angular, variant=variant, primitive_lengths=lengths
@@ -167,8 +177,8 @@ def test_rys_shell_matches_independent_libcint_contractions(
     "exponents", ((0.7, 1.3, 0.9), (0.03, 7.1, 0.002), (40, 0.04, 15))
 )
 def test_rys_retains_polynomial_force_contract_across_argument_branches(
-    shell_evaluator, angular, exponents
-):
+    shell_evaluator: typing.Any, angular: typing.Any, exponents: typing.Any
+) -> None:
     # Coincident orbital centers keep pair decay finite while C independently
     # sweeps small-argument cancellation and the large-argument asymptotic regime.
     rho = sum(exponents[:2]) * exponents[2] / sum(exponents)
@@ -198,8 +208,8 @@ def test_rys_retains_polynomial_force_contract_across_argument_branches(
 @pytest.mark.parametrize("angular", RYS_SHELL_CLASSES)
 @pytest.mark.parametrize("argument", (0.5, 48.0, 1e300))
 def test_independent_high_precision_center_differentiation(
-    shell_evaluator, angular, argument
-):
+    shell_evaluator: typing.Any, angular: typing.Any, argument: typing.Any
+) -> None:
     """Differentiate the closed SSS integral; no generated DAG or Rys oracle.
 
     Cartesian p/d/f functions are center derivatives of an s Gaussian (d/f
@@ -221,7 +231,7 @@ def test_independent_high_precision_center_differentiation(
         p, q = alpha + beta, gamma
         rho_mp = p * q / (p + q)
 
-        def sss(a, b, c):
+        def sss(a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
             t = rho_mp * ((alpha * a + beta * b) / p - c) ** 2
             f0 = (
                 mp.mpf(1)
@@ -276,7 +286,7 @@ def test_independent_high_precision_center_differentiation(
         assert np.all(np.abs(actual[2] - expected[2]) <= propagated + rounding + 1e-323)
 
 
-def test_auxiliary_f_capability_does_not_admit_unqualified_five_root_math():
+def test_auxiliary_f_capability_does_not_admit_unqualified_five_root_math() -> None:
     assert AUXILIARY_F_RYS_SHELL_CLASSES == (
         (0, 0, 3),
         (1, 0, 3),

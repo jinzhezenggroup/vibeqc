@@ -13,10 +13,10 @@ import platform
 import struct
 import subprocess
 import time
+import typing
 from dataclasses import dataclass
 from itertools import product
 from math import exp, prod, sqrt
-from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.integral.shell_spec import (
@@ -25,6 +25,9 @@ from vibeqc_compiler.integral.shell_spec import (
 )
 
 from .schema import block_error, canonical_hash
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 FIXTURE_VARIANTS = (
     "cartesian",
@@ -38,7 +41,9 @@ FIXTURE_VARIANTS = (
 )
 
 
-def numerical_error(actual, reference, *, atol, rtol) -> dict:
+def numerical_error(
+    actual: typing.Any, reference: typing.Any, *, atol: typing.Any, rtol: typing.Any
+) -> dict:
     """Retain absolute/scaled gates and raw relative errors on nonzero entries.
 
     Exactly zero reference entries have no defined relative error; their
@@ -93,7 +98,7 @@ class ShellFixture:
         )
 
 
-def eri_orbit(indices) -> tuple[tuple[int, ...], ...]:
+def eri_orbit(indices: typing.Any) -> tuple[tuple[int, ...], ...]:
     """Enumerate unique chemists' ERI permutations using explicit set equality."""
     i, j, k, l = indices
     return tuple(
@@ -112,7 +117,14 @@ def eri_orbit(indices) -> tuple[tuple[int, ...], ...]:
     )
 
 
-def contract_reference(eri, derivatives, density, spin_density, offsets, atom_indices):
+def contract_reference(
+    eri: typing.Any,
+    derivatives: typing.Any,
+    density: typing.Any,
+    spin_density: typing.Any,
+    offsets: typing.Any,
+    atom_indices: typing.Any,
+) -> typing.Any:
     """Contract one shell-orbit contribution with independent RHF/UHF formulas."""
     n = density.shape[0]
     result = {
@@ -147,7 +159,7 @@ def contract_reference(eri, derivatives, density, spin_density, offsets, atom_in
     return result
 
 
-def _normalized_primitives(shell):
+def _normalized_primitives(shell: typing.Any) -> typing.Any:
     """Use the shared native radial convention; the oracle remains independent."""
     from vibeqc_compiler.integral.weight_pullback import normalized_radial_primitives
 
@@ -156,7 +168,14 @@ def _normalized_primitives(shell):
     )
 
 
-def _pair_rows(first, second, A, B, *, reverse=False):
+def _pair_rows(
+    first: typing.Any,
+    second: typing.Any,
+    A: typing.Any,
+    B: typing.Any,
+    *,
+    reverse: typing.Any = False,
+) -> typing.Any:
     rows = []
     for (a, ca), (b, cb) in product(
         _normalized_primitives(first), _normalized_primitives(second)
@@ -176,7 +195,7 @@ def _pair_rows(first, second, A, B, *, reverse=False):
     return rows
 
 
-def _reference_integrals(inputs):
+def _reference_integrals(inputs: typing.Any) -> typing.Any:
     # Reuse the audited CG01 libcint normalization and derivative-center
     # adapter; this import is optional outside the manual numerical tier.
     from tools.generate_validation_references import pyscf_molecule, quartet_data
@@ -189,7 +208,7 @@ def _reference_integrals(inputs):
 
 
 def make_fixture(
-    name: str, variant: str = "cartesian", *, displacement=None
+    name: str, variant: str = "cartesian", *, displacement: typing.Any = None
 ) -> ShellFixture:
     """Build asymmetric, reversed-cache, coincident-atom, or spherical fixtures."""
     if variant not in FIXTURE_VARIANTS:
@@ -363,7 +382,7 @@ def decoded_outputs(fixture: ShellFixture, row: dict) -> dict[str, np.ndarray]:
     return result
 
 
-def class_fixtures(name: str, *, finite_difference: bool = False):
+def class_fixtures(name: str, *, finite_difference: bool = False) -> typing.Any:
     """Reconstruct the exact ordered fixture set and finite-difference indices."""
     fixtures = [make_fixture(name, variant) for variant in FIXTURE_VARIANTS]
     fd_indices = []
@@ -389,8 +408,8 @@ def numerical_matrix(
     cache: Path,
     slurm_time: str | None = None,
     timeout: int = 900,
-    finite_difference_classes=("fsss", "fsps", "fpps"),
-    progress=None,
+    finite_difference_classes: typing.Any = ("fsss", "fsps", "fpps"),
+    progress: typing.Any = None,
 ) -> dict:
     """Gate 4: all ordinary/persistent RHF/UHF wrappers against libcint.
 

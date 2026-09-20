@@ -1,6 +1,7 @@
 """A real 96-AO replay changes value residency while retaining full force response."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def tetramer_reference():
+def tetramer_reference() -> typing.Any:
     from pyscf import df, gto, scf
 
     case = benchmark_cases()["water-tetramer-def2-svp-spherical"]
@@ -39,8 +40,11 @@ def tetramer_reference():
 @pytest.mark.parametrize("provider", ["tensor", "generated"])
 @pytest.mark.parametrize("budget", [32 << 20, 64 << 20])
 def test_property_replay_replans_value_storage_with_complete_forces(
-    tetramer_reference, provider, budget, monkeypatch
-):
+    tetramer_reference: typing.Any,
+    provider: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     case, energy, forces = tetramer_reference
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", provider)
@@ -77,8 +81,8 @@ def test_property_replay_replans_value_storage_with_complete_forces(
 
 
 def test_resident_response_budget_replans_without_reference_factors(
-    tetramer_reference, monkeypatch, tmp_path
-):
+    tetramer_reference: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """Changing response scratch preserves full forces and the resident provider."""
     assert os.environ.get("SLURM_JOB_ID")
     case, energy, forces = tetramer_reference
@@ -118,8 +122,8 @@ def test_resident_response_budget_replans_without_reference_factors(
     [("0", 0), ("-1", 0), ("1e9", 0), (str(1 << 64), 0), (str(16 << 20), 16 << 20)],
 )
 def test_response_override_cannot_be_invalid_or_enlarge_public_budget(
-    monkeypatch, override, public_budget
-):
+    monkeypatch: typing.Any, override: typing.Any, public_budget: typing.Any
+) -> None:
     """The diagnostic selector cannot turn a bounded caller into an unbounded one."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES", override)
@@ -134,7 +138,9 @@ def test_response_override_cannot_be_invalid_or_enlarge_public_budget(
 
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
-def test_batch_four_rejects_insufficient_solver_allowance(method, representation):
+def test_batch_four_rejects_insufficient_solver_allowance(
+    method: typing.Any, representation: typing.Any
+) -> None:
     """Do not turn the historical 8-MiB provider-test failures into silent retries."""
     assert os.environ.get("SLURM_JOB_ID")
     atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8))]

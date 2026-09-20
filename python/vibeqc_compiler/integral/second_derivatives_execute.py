@@ -18,6 +18,7 @@ import sys
 import tempfile
 import threading
 import time
+import typing
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,7 +46,6 @@ from vibeqc_compiler.common.resources import (
     plan_resources,
 )
 
-from .ir import IntegralIR
 from .ir_serialization import integral_to_payload
 from .second_derivatives import build_second_derivative_kernel, require_second_consumer
 from .second_derivatives_native import (
@@ -53,6 +53,9 @@ from .second_derivatives_native import (
     emit_second_derivative_runtime,
     second_program_identity,
 )
+
+if typing.TYPE_CHECKING:
+    from .ir import IntegralIR
 
 
 @dataclass(frozen=True)
@@ -66,7 +69,7 @@ class CompiledSecondDerivative:
     backend: str
     program_identity: str
 
-    def validate(self):
+    def validate(self) -> None:
         """Reject replaced metadata before loading an artifact or allocating buffers."""
         require_second_consumer(self.integral)
         if (
@@ -93,14 +96,19 @@ class CompiledSecondDerivative:
             )
 
     @property
-    def record_format(self):
+    def record_format(self) -> typing.Any:
         """Tagged 208-byte primitive prefix, packed weights and twelve directions."""
         return struct.Struct("<14I19d" + "d" * (len(self.component_indices) + 12))
 
 
 def compile_second_derivative(
-    integral, compiler, cache, *, component_indices=None, output_indices=None
-):
+    integral: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    component_indices: typing.Any = None,
+    output_indices: typing.Any = None,
+) -> typing.Any:
     """Compile an explicit coordinate tile without executing or probing a GPU."""
     if isinstance(compiler, CppCompilerAdapter):
         backend = "cpu"
@@ -191,7 +199,7 @@ class SecondPrimitive:
     output_tile: int = 0
 
 
-def _finite(values, size, name):
+def _finite(values: typing.Any, size: typing.Any, name: typing.Any) -> typing.Any:
     """Normalize bounded scalar inputs without silently dropping complex parts."""
     if np.iscomplexobj(values):
         raise ValueError(f"{name} must be real")
@@ -201,7 +209,7 @@ def _finite(values, size, name):
     return values
 
 
-def pack_second_primitive(artifact, primitive):
+def pack_second_primitive(artifact: typing.Any, primitive: typing.Any) -> typing.Any:
     """Validate and pack one explicitly tagged record for an immutable program."""
     if not isinstance(primitive, SecondPrimitive):
         raise TypeError("expected a SecondPrimitive record")
@@ -288,13 +296,13 @@ class PreparedSecondDerivative:
 
     def __init__(
         self,
-        artifact,
+        artifact: typing.Any,
         *,
-        record_capacity=256,
-        tile_capacity=1,
-        budget=None,
-        device_id=0,
-    ):
+        record_capacity: typing.Any = 256,
+        tile_capacity: typing.Any = 1,
+        budget: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         self._lock, self._handle, self._library = threading.RLock(), ct.c_void_p(), None
         if not isinstance(artifact, CompiledSecondDerivative):
             raise TypeError("expected a compiled second derivative artifact")
@@ -467,28 +475,28 @@ class PreparedSecondDerivative:
             raise
 
     @property
-    def artifact(self):
+    def artifact(self) -> typing.Any:
         """Immutable program metadata bound to the retained native handle."""
         return self._artifact
 
     @property
-    def record_capacity(self):
+    def record_capacity(self) -> typing.Any:
         return self._record_capacity
 
     @property
-    def tile_capacity(self):
+    def tile_capacity(self) -> typing.Any:
         return self._tile_capacity
 
     @property
-    def device_id(self):
+    def device_id(self) -> typing.Any:
         return self._device_id
 
     @property
-    def resource_plan(self):
+    def resource_plan(self) -> typing.Any:
         """Shared resource estimate for the immutable prepared capacities."""
         return self._resource_plan
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(1024)
         status = getattr(self._library, name)(*args, error, len(error))
         if status:
@@ -502,7 +510,13 @@ class PreparedSecondDerivative:
                 error.value.decode() or f"second derivative native status {status}"
             )
 
-    def contract(self, primitives, *, tile_count=1, profile=False):
+    def contract(
+        self,
+        primitives: typing.Any,
+        *,
+        tile_count: typing.Any = 1,
+        profile: typing.Any = False,
+    ) -> typing.Any:
         """Accumulate streamed fixed-weight primitives into detached output tiles."""
         from .second_derivatives_inputs import SecondShellStream
 
@@ -539,7 +553,7 @@ class PreparedSecondDerivative:
                 for name in ("device_ms", "input_ms", "output_ms", "kernel_ms")
             }
 
-            def flush(count):
+            def flush(count: typing.Any) -> None:
                 nonlocal chunks
                 self._call(
                     "vibeqc_second_run_v1",
@@ -608,7 +622,7 @@ class PreparedSecondDerivative:
             }
             return SecondDerivativeExecution(result, diagnostics)
 
-    def close(self):
+    def close(self) -> None:
         """Release the shared native arena once, respecting its preparation lock."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle.value:
@@ -616,12 +630,12 @@ class PreparedSecondDerivative:
                 self._handle = ct.c_void_p()
             self._records = self._chunk = None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         with suppress(Exception):
             self.close()

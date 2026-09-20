@@ -1,11 +1,13 @@
 """Shared compiler-owned density bilinears for CPU and CUDA D/C consumers."""
 
+import typing
+
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 
-def emit_feature_policy(*, device=False):
+def emit_feature_policy(*, device: typing.Any = False) -> typing.Any:
     """Emit rho/gradient/tau and sigma with identical occupation conventions.
 
     D supplies AO jets and their density products; C supplies weighted orbital

@@ -1,6 +1,7 @@
 """Real-device GeometryIR/PairIR energy and generated-force qualification (#502)."""
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     from vibeqc.profiles import find_nvcc
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.common.cuda_target import cuda_target_info
@@ -29,7 +30,7 @@ def compiler():
 
 
 @pytest.fixture(scope="module")
-def cache(tmp_path_factory):
+def cache(tmp_path_factory: typing.Any) -> typing.Any:
     return (
         Path(os.environ["VIBEQC_TENSOR_CACHE"])
         if "VIBEQC_TENSOR_CACHE" in os.environ
@@ -38,8 +39,8 @@ def cache(tmp_path_factory):
 
 
 def test_cuda_energy_and_generated_coordinate_vjp_match_reference_and_fd(
-    compiler, cache
-):
+    compiler: typing.Any, cache: typing.Any
+) -> None:
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 

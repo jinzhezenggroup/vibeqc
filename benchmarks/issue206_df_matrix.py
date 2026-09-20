@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -192,7 +193,7 @@ def run_matrix(
         result_path = output_dir / f"{stem}.json"
         log_path = output_dir / f"{stem}.log"
 
-        def result_identity(path=result_path):
+        def result_identity(path: typing.Any = result_path) -> typing.Any:
             """Distinguish a new endpoint artifact from an earlier attempt."""
             try:
                 stat = path.stat()

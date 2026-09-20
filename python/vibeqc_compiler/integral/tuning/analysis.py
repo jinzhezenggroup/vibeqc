@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import typing
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
@@ -120,11 +121,11 @@ def _integral_signature(integral: IntegralIR) -> str:
     the suffix is stable across Python processes.
     """
 
-    def coordinates(parameters) -> str | list[int]:
+    def coordinates(parameters: typing.Any) -> str | list[int]:
         selected = parameters.centers
         return selected if isinstance(selected, str) else list(selected)
 
-    def invariants(items) -> list[dict[str, object]]:
+    def invariants(items: typing.Any) -> list[dict[str, object]]:
         return [
             {
                 "parameters": coordinates(item.parameters),
@@ -223,7 +224,7 @@ def _analysis_roots(
 
 
 @cache
-def _packed_force_geometry_analysis(pair_shift_rows: int):
+def _packed_force_geometry_analysis(pair_shift_rows: int) -> typing.Any:
     """Return static metrics for the geometry setup emitted by packed force.
 
     Geometry is lowered with a fixed binary/small-integer form in the CUDA

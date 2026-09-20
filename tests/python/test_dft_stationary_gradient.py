@@ -1,3 +1,4 @@
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -25,7 +26,7 @@ from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 from tools.vibeqc_validation.dft_gradient import finite_difference_xc_directional
 
 
-def identity(method="pbe-rks"):
+def identity(method: typing.Any = "pbe-rks") -> typing.Any:
     return StationaryKsIdentity(
         method=method,
         model_identity="model-pbe-rks-v1",
@@ -45,7 +46,11 @@ def identity(method="pbe-rks"):
     )
 
 
-def state(method="pbe-rks", occupations=None, overlap=None):
+def state(
+    method: typing.Any = "pbe-rks",
+    occupations: typing.Any = None,
+    overlap: typing.Any = None,
+) -> typing.Any:
     spins = 1 if method.endswith("rks") else 2
     overlap = np.diag([1.0, 2.0]) if overlap is None else overlap
     eigenvalues, vectors = np.linalg.eigh(overlap)
@@ -87,7 +92,13 @@ def state(method="pbe-rks", occupations=None, overlap=None):
     )
 
 
-def bound_h2(method, name, spin, *, occupations=None):
+def bound_h2(
+    method: typing.Any,
+    name: typing.Any,
+    spin: typing.Any,
+    *,
+    occupations: typing.Any = None,
+) -> typing.Any:
     spec = functional(name, spin=spin)
     meta, _, grid = load_integration_fixture("h2")
     args = basis_arguments(meta)
@@ -128,8 +139,8 @@ def bound_h2(method, name, spin, *, occupations=None):
     ],
 )
 def test_cartesian_point_coefficient_pullback_matches_generated_interior(
-    method, name, spin
-):
+    method: typing.Any, name: typing.Any, spin: typing.Any
+) -> None:
     spec, _, args, grid, density, bound, _ = bound_h2(method, name, spin)
     with NativeAO(**args) as basis:
         program = ContractionProgram(spec, "geometry")
@@ -174,7 +185,9 @@ def test_cartesian_point_coefficient_pullback_matches_generated_interior(
         ("pbe-uks", "PBE", "polarized"),
     ],
 )
-def test_scf_domain_pullback_matches_independent_displaced_energy(method, name, spin):
+def test_scf_domain_pullback_matches_independent_displaced_energy(
+    method: typing.Any, name: typing.Any, spin: typing.Any
+) -> None:
     spec, value, args, grid, density, _, _ = bound_h2(
         method,
         name,
@@ -184,7 +197,7 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(method, name, 
     library = _native.load_library(device="cpu")
     pbe = method.startswith("pbe")
 
-    def point_energy(features):
+    def point_energy(features: typing.Any) -> typing.Any:
         gradient = features.get("gradient")
         if gradient is None:
             gradient = np.zeros((2, len(grid.points), 3))
@@ -236,7 +249,9 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(method, name, 
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_stationary_contract_accepts_consistent_rks_and_uks(method):
+def test_stationary_contract_accepts_consistent_rks_and_uks(
+    method: typing.Any,
+) -> None:
     value = state(
         method,
         occupations=([[1.0, 0.0], [0.7, 0.2]] if method == "pbe-uks" else None),
@@ -269,7 +284,9 @@ def test_stationary_contract_accepts_consistent_rks_and_uks(method):
         "orbital_generation",
     ],
 )
-def test_stationary_contract_rejects_every_stale_identity_axis(field):
+def test_stationary_contract_rejects_every_stale_identity_axis(
+    field: typing.Any,
+) -> None:
     value = state()
     old = getattr(value.identity, field)
     changed = old + 1 if isinstance(old, int) else old + "-stale"
@@ -280,7 +297,7 @@ def test_stationary_contract_rejects_every_stale_identity_axis(field):
 
 
 @pytest.mark.parametrize("flag", ["successful", "converged", "physical"])
-def test_stationary_contract_rejects_unsuccessful_state(flag):
+def test_stationary_contract_rejects_unsuccessful_state(flag: typing.Any) -> None:
     value = state()
     with pytest.raises(ValueError, match="successful converged physical"):
         StationaryDerivativeContract(value.identity)._validate_arrays(
@@ -297,7 +314,9 @@ def test_stationary_contract_rejects_unsuccessful_state(flag):
         ("coefficients", 1e-4, "S-orthonormal"),
     ],
 )
-def test_stationary_contract_rejects_inconsistent_orbital_state(field, delta, message):
+def test_stationary_contract_rejects_inconsistent_orbital_state(
+    field: typing.Any, delta: typing.Any, message: typing.Any
+) -> None:
     value = state()
     changed = np.array(getattr(value, field), copy=True)
     changed[0, 0, 0] += delta
@@ -307,7 +326,7 @@ def test_stationary_contract_rejects_inconsistent_orbital_state(field, delta, me
         )
 
 
-def test_stationary_contract_requires_weighted_density_and_true_residual():
+def test_stationary_contract_requires_weighted_density_and_true_residual() -> None:
     value = state()
     with pytest.raises(ValueError, match="weighted density"):
         StationaryDerivativeContract(value.identity)._validate_arrays(
@@ -323,7 +342,7 @@ def test_stationary_contract_requires_weighted_density_and_true_residual():
         )
 
 
-def test_stationary_state_owns_read_only_snapshot_arrays():
+def test_stationary_state_owns_read_only_snapshot_arrays() -> None:
     density = np.array(state().density, copy=True)
     value = replace(state(), density=density)
     density[:] = 99.0
@@ -334,19 +353,25 @@ def test_stationary_state_owns_read_only_snapshot_arrays():
 
 
 @pytest.mark.parametrize("field", ["successful", "converged", "physical"])
-def test_stationary_state_rejects_truthy_nonboolean_gates(field):
+def test_stationary_state_rejects_truthy_nonboolean_gates(
+    field: typing.Any,
+) -> None:
     with pytest.raises(TypeError, match="boolean"):
         replace(state(), **{field: "false"})
 
 
 @pytest.mark.parametrize("residual", [True, np.nan, np.array([0.0])])
-def test_stationary_state_requires_finite_scalar_physical_residual(residual):
+def test_stationary_state_requires_finite_scalar_physical_residual(
+    residual: typing.Any,
+) -> None:
     with pytest.raises((TypeError, ValueError), match="physical residual"):
         replace(state(), physical_residual=residual)
 
 
 @pytest.mark.parametrize("method", ["b3lyp-rks", "pbe0-rks", "pbe-rhf"])
-def test_stationary_contract_rejects_unsupported_method_domain(method):
+def test_stationary_contract_rejects_unsupported_method_domain(
+    method: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="LDA/PBE RKS/UKS"):
         replace(identity(), method=method)
 
@@ -360,7 +385,9 @@ def test_stationary_contract_rejects_unsupported_method_domain(method):
         ("pbe-uks", "PBE", "polarized"),
     ],
 )
-def test_generated_xc_geometry_is_bound_to_stationary_identity(method, name, spin):
+def test_generated_xc_geometry_is_bound_to_stationary_identity(
+    method: typing.Any, name: typing.Any, spin: typing.Any
+) -> None:
     spec, value, _, grid, _, bound, natom = bound_h2(
         method,
         name,
@@ -377,7 +404,7 @@ def test_generated_xc_geometry_is_bound_to_stationary_identity(method, name, spi
     assert bound.force_capability == "unsupported"
 
 
-def test_generated_xc_binding_rejects_actual_source_or_method_mismatch():
+def test_generated_xc_binding_rejects_actual_source_or_method_mismatch() -> None:
     from dataclasses import replace as dc_replace
     from fractions import Fraction
 
@@ -423,7 +450,7 @@ def test_generated_xc_binding_rejects_actual_source_or_method_mismatch():
             )
 
 
-def test_generated_xc_binding_rejects_out_of_range_grid_owner():
+def test_generated_xc_binding_rejects_out_of_range_grid_owner() -> None:
     from vibeqc_compiler.dft import ExplicitGrid
 
     spec, value, args, grid, _, _, _ = bound_h2("pbe-rks", "PBE", "unpolarized")
@@ -452,7 +479,7 @@ def test_generated_xc_binding_rejects_out_of_range_grid_owner():
             )
 
 
-def test_stable_motion_reports_each_xc_component_once_and_translation():
+def test_stable_motion_reports_each_xc_component_once_and_translation() -> None:
     _, value, _, _, _, bound, _ = bound_h2("pbe-rks", "PBE", "unpolarized")
     rng = np.random.default_rng(163)
     centers = rng.normal(size=bound.partials.centers.shape)
@@ -495,8 +522,8 @@ def test_stable_motion_reports_each_xc_component_once_and_translation():
     ],
 )
 def test_generated_xc_geometry_rejects_stale_invalid_or_changing_motion(
-    change, message
-):
+    change: typing.Any, message: typing.Any
+) -> None:
     from vibeqc_compiler.xc.contractions import GeometryPartials
 
     value = state()
@@ -532,7 +559,7 @@ def test_generated_xc_geometry_rejects_stale_invalid_or_changing_motion(
         bound.directional(StableGridMotion(**values))
 
 
-def test_generated_xc_geometry_owns_read_only_partial_arrays():
+def test_generated_xc_geometry_owns_read_only_partial_arrays() -> None:
     from vibeqc._dft_gradient import FixedDensityXcGeometry
     from vibeqc_compiler.xc.contractions import GeometryPartials
 
@@ -567,8 +594,8 @@ def test_generated_xc_geometry_owns_read_only_partial_arrays():
     ],
 )
 def test_stationary_xc_directions_match_independent_multistep_oracle(
-    method, name, spin
-):
+    method: typing.Any, name: typing.Any, spin: typing.Any
+) -> None:
     spec, value, args, grid, density, bound, _ = bound_h2(
         method,
         name,
@@ -610,7 +637,7 @@ def test_stationary_xc_directions_match_independent_multistep_oracle(
         np.testing.assert_allclose(oracle.stable_estimate, expected, atol=3e-9)
 
 
-def test_stationary_xc_oracle_detects_omission_and_sign_reversal():
+def test_stationary_xc_oracle_detects_omission_and_sign_reversal() -> None:
     spec, value, args, grid, density, bound, _ = bound_h2(
         "pbe-rks", "PBE", "unpolarized"
     )
@@ -640,7 +667,7 @@ def test_stationary_xc_oracle_detects_omission_and_sign_reversal():
     assert abs(oracle.stable_estimate + components.total) > 1e-7
 
 
-def test_manufactured_state_cannot_authorize_stationary_derivatives():
+def test_manufactured_state_cannot_authorize_stationary_derivatives() -> None:
     value = state()
     with pytest.raises(ValueError, match="current native #162 snapshot"):
         StationaryDerivativeContract(value.identity).validate(value)
@@ -654,7 +681,7 @@ def test_manufactured_state_cannot_authorize_stationary_derivatives():
         )
 
 
-def test_finite_xc_components_cannot_publish_an_overflowed_total():
+def test_finite_xc_components_cannot_publish_an_overflowed_total() -> None:
     from vibeqc._dft_gradient import XcDirectionalComponents
 
     with pytest.raises(ArithmeticError, match="nonfinite total"):

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,7 @@ class AblationBranchMismatch(ValueError):
     branches that caused rejection; no timing assessment is produced.
     """
 
-    def __init__(self, rows, mismatches):
+    def __init__(self, rows: typing.Any, mismatches: typing.Any) -> None:
         super().__init__(
             "preparation timing requires matching SCF iteration/retry branches: "
             + repr(mismatches)
@@ -52,7 +53,7 @@ class AblationBranchMismatch(ValueError):
         }
 
 
-def validate_ablation_branches(rows):
+def validate_ablation_branches(rows: typing.Any) -> None:
     """Reject timing promotion when either selection took different SCF work.
 
     A frozen seed must give one iteration/retry branch per workload and item.
@@ -86,7 +87,7 @@ def validate_ablation_branches(rows):
         raise AblationBranchMismatch(rows, mismatches)
 
 
-def preparation_policies(ablation):
+def preparation_policies(ablation: typing.Any) -> typing.Any:
     """Return eager-core/rebuild-overlap switches for a causal A/B comparison.
 
     All three increments share the original eager/rebuilt baseline. Comparing
@@ -103,7 +104,14 @@ def preparation_policies(ablation):
     return {"baseline": (True, True), "candidate": candidates[ablation]}
 
 
-def validate_preparation_counts(components, *, batch_size, workload, eager, rebuild):
+def validate_preparation_counts(
+    components: typing.Any,
+    *,
+    batch_size: typing.Any,
+    workload: typing.Any,
+    eager: typing.Any,
+    rebuild: typing.Any,
+) -> None:
     """Require actual solves and matching cache scopes, including partial rebuilds.
 
     The changed-geometry workload moves only the last item and restores the
@@ -141,8 +149,13 @@ def validate_preparation_counts(components, *, batch_size, workload, eager, rebu
 
 
 def validate_final_eigen_counts(
-    components, *, batch_size, method, reference, strict_final_state=False
-):
+    components: typing.Any,
+    *,
+    batch_size: typing.Any,
+    method: typing.Any,
+    reference: typing.Any,
+    strict_final_state: typing.Any = False,
+) -> None:
     """Require actual finalizer leaves; a flag or omitted observer is insufficient.
 
     Provider ablations force rebuilding after retained-state integration. Cold
@@ -188,8 +201,14 @@ def validate_final_eigen_counts(
 
 
 def validate_final_state_counts(
-    components, *, batch_size, method, force, reference, compute_forces
-):
+    components: typing.Any,
+    *,
+    batch_size: typing.Any,
+    method: typing.Any,
+    force: typing.Any,
+    reference: typing.Any,
+    compute_forces: typing.Any,
+) -> None:
     """Distinguish retained work from real correction, even at zero solves.
 
     Every item must still read and validate its candidate against current F.
@@ -198,7 +217,7 @@ def validate_final_state_counts(
     """
     phases = components.get("exclusive_phases", {})
 
-    def calls(name):
+    def calls(name: typing.Any) -> typing.Any:
         return phases.get(name, {}).get("calls", 0)
 
     corrections = calls("strict_final_correction")
@@ -246,8 +265,14 @@ def validate_final_state_counts(
 
 
 def validate_setup_eigen_counts(
-    components, *, batch_size, workload, reference, eager=False, rebuild=False
-):
+    components: typing.Any,
+    *,
+    batch_size: typing.Any,
+    workload: typing.Any,
+    reference: typing.Any,
+    eager: typing.Any = False,
+    rebuild: typing.Any = False,
+) -> None:
     """Gate setup substitution separately from work elimination and final solves."""
     expected = {
         "overlap": batch_size
@@ -274,20 +299,20 @@ def validate_setup_eigen_counts(
 
 def host_workloads(
     *,
-    case_name,
-    batch_size,
-    library,
-    repeats,
-    memory_budget_bytes,
-    energy_only,
-    trace_directory=None,
-    eager_core_ablation=False,
-    preparation_ablation=None,
-    final_eigen_ablation=False,
-    setup_eigen_ablation=False,
-    final_state_ablation=False,
-    combined_host_ablation=False,
-):
+    case_name: typing.Any,
+    batch_size: typing.Any,
+    library: typing.Any,
+    repeats: typing.Any,
+    memory_budget_bytes: typing.Any,
+    energy_only: typing.Any,
+    trace_directory: typing.Any = None,
+    eager_core_ablation: typing.Any = False,
+    preparation_ablation: typing.Any = None,
+    final_eigen_ablation: typing.Any = False,
+    setup_eigen_ablation: typing.Any = False,
+    final_state_ablation: typing.Any = False,
+    combined_host_ablation: typing.Any = False,
+) -> typing.Any:
     """Measure one source-bound cold/replay/rebuild domain without hiding setup.
 
     Warm updates are frozen after cold convergence. Every changed sample starts
@@ -419,8 +444,8 @@ def host_workloads(
         trace_directory.mkdir(parents=True, exist_ok=False)
     sequence = 0
 
-    def measured(workload, evaluate):
-        def sample(_selection):
+    def measured(workload: typing.Any, evaluate: typing.Any) -> typing.Any:
+        def sample(_selection: typing.Any) -> typing.Any:
             nonlocal sequence
             # Both selections replay the same frozen density on one plan.
             # Diagnostic switches restore discarded work, preserving numerical
@@ -578,7 +603,7 @@ def host_workloads(
 
         return sample
 
-    def prepare(geometries=None):
+    def prepare(geometries: typing.Any = None) -> typing.Any:
         return calculator.prepare_batch(
             systems if geometries is None else geometries,
             charges=[case.charge] * batch_size,
@@ -586,7 +611,7 @@ def host_workloads(
             warm_start=True,
         )
 
-    def execute(batch, coordinates=None):
+    def execute(batch: typing.Any, coordinates: typing.Any = None) -> typing.Any:
         result = batch.execute(coordinates, strict=True, properties=properties)
         if any(item.executed_backend != "cuda" for item in result.items):
             raise RuntimeError("a CUDA workload cannot pass with a substituted backend")
@@ -602,7 +627,7 @@ def host_workloads(
             ],
         }
 
-    def cold():
+    def cold() -> typing.Any:
         # Both ownership creation and destruction are within the timed call.
         with prepare() as batch:
             return execute(batch)
