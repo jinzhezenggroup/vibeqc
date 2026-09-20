@@ -19,35 +19,6 @@ std::size_t checked_mul(std::size_t a, std::size_t b) {
 }
 std::size_t bytes(std::size_t elements) { return checked_mul(elements, sizeof(double)); }
 
-void validate_problem(const Problem& p) {
-  if (!p.nocc || !p.nvir)
-    throw std::invalid_argument("RCCSD requires occupied and virtual orbitals");
-  const auto o = p.nocc, v = p.nvir;
-  auto expect = [](const std::vector<double>& x, std::size_t n, const char* name) {
-    if (x.size() != n ||
-        !std::all_of(x.begin(), x.end(), [](double y) { return std::isfinite(y); }))
-      throw std::invalid_argument(std::string("invalid RCCSD input ") + name);
-  };
-  const auto ov = checked_mul(o, v), oo = checked_mul(o, o), vv = checked_mul(v, v);
-  const auto oovv = checked_mul(oo, vv);
-  expect(p.foo, oo, "foo");
-  expect(p.fov, ov, "fov");
-  expect(p.fvv, vv, "fvv");
-  expect(p.ovov, oovv, "ovov");
-  expect(p.ovvo, oovv, "ovvo");
-  expect(p.oovv, oovv, "oovv");
-  expect(p.ovvv, checked_mul(o, checked_mul(vv, v)), "ovvv");
-  expect(p.ovoo, checked_mul(ov, oo), "ovoo");
-  expect(p.oooo, checked_mul(oo, oo), "oooo");
-  expect(p.vvvv, checked_mul(vv, vv), "vvvv");
-  expect(p.d1, ov, "d1");
-  expect(p.d2, oovv, "d2");
-  expect(p.initial_t1, ov, "initial_t1");
-  expect(p.initial_t2, oovv, "initial_t2");
-  if (!std::isfinite(p.reference_energy))
-    throw std::invalid_argument("nonfinite RCCSD reference energy");
-}
-
 generated::Inputs inputs(const Problem& p, const double* t1, const double* t2) {
   return {p.foo.data(),
           p.fov.data(),
@@ -147,6 +118,35 @@ struct Diis {
 };
 
 }  // namespace
+
+void validate_problem(const Problem& p) {
+  if (!p.nocc || !p.nvir)
+    throw std::invalid_argument("RCCSD requires occupied and virtual orbitals");
+  const auto o = p.nocc, v = p.nvir;
+  auto expect = [](const std::vector<double>& x, std::size_t n, const char* name) {
+    if (x.size() != n ||
+        !std::all_of(x.begin(), x.end(), [](double y) { return std::isfinite(y); }))
+      throw std::invalid_argument(std::string("invalid RCCSD input ") + name);
+  };
+  const auto ov = checked_mul(o, v), oo = checked_mul(o, o), vv = checked_mul(v, v);
+  const auto oovv = checked_mul(oo, vv);
+  expect(p.foo, oo, "foo");
+  expect(p.fov, ov, "fov");
+  expect(p.fvv, vv, "fvv");
+  expect(p.ovov, oovv, "ovov");
+  expect(p.ovvo, oovv, "ovvo");
+  expect(p.oovv, oovv, "oovv");
+  expect(p.ovvv, checked_mul(o, checked_mul(vv, v)), "ovvv");
+  expect(p.ovoo, checked_mul(ov, oo), "ovoo");
+  expect(p.oooo, checked_mul(oo, oo), "oooo");
+  expect(p.vvvv, checked_mul(vv, vv), "vvvv");
+  expect(p.d1, ov, "d1");
+  expect(p.d2, oovv, "d2");
+  expect(p.initial_t1, ov, "initial_t1");
+  expect(p.initial_t2, oovv, "initial_t2");
+  if (!std::isfinite(p.reference_energy))
+    throw std::invalid_argument("nonfinite RCCSD reference energy");
+}
 
 void validate_options(const SolverOptions& o) {
   if (!o.max_iterations || o.diis_size == 1 || o.diis_size > 20 || !o.max_bytes)

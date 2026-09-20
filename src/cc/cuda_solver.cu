@@ -324,20 +324,10 @@ void run_diis(Owner& s, const SolverOptions& options,
   cuda_check(cudaGetLastError());
 }
 
-void validate_problem_cuda(const Problem& p) {
-  if (!p.nocc || !p.nvir)
-    throw std::invalid_argument("RCCSD requires occupied and virtual orbitals");
-  const auto n1 = checked_mul(p.nocc, p.nvir);
-  const auto n2 = checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir));
-  if (p.initial_t1.size() != n1 || p.initial_t2.size() != n2 || p.d1.size() != n1 ||
-      p.d2.size() != n2)
-    throw std::invalid_argument("invalid RCCSD amplitude/denominator shapes");
-}
-
 }  // namespace
 
 SolverResult solve_cuda(const Problem& p, const SolverOptions& options, int device) {
-  validate_problem_cuda(p);
+  validate_problem(p);
   validate_options(options);
   Owner owner(p, options, device);
   SolverResult result;

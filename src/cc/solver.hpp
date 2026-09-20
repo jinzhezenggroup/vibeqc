@@ -58,6 +58,8 @@ struct SolverResult {
   [[nodiscard]] bool converged() const noexcept { return status == SolveStatus::Converged; }
 };
 
+// Shared CPU/CUDA admission; rejects malformed data before any execution owner.
+void validate_problem(const Problem& problem);
 void validate_options(const SolverOptions& options);
 std::size_t problem_host_bytes(const Problem& problem);
 SolverResult solve_cpu(const Problem& problem, const SolverOptions& options);
