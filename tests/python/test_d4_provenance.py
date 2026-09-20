@@ -27,8 +27,7 @@ def test_generated_table_matches_manifest() -> None:
     assert digest(folder / manifest["output"]) == manifest["output_sha256"]
     assert manifest["element_output"] == "d4_element_data.hpp"
     assert (
-        digest(folder / manifest["element_output"])
-        == manifest["element_output_sha256"]
+        digest(folder / manifest["element_output"]) == manifest["element_output_sha256"]
     )
 
 

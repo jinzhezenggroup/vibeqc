@@ -429,6 +429,7 @@ inline constexpr std::array<double, kReferenceCount * (kReferenceCount + 1) / 2>
 // clang-format on
 """
 
+
 def main() -> int:
     """Generate pinned D4 tables and their provenance manifest."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -463,7 +464,9 @@ def main() -> int:
         "output": "d4_data.hpp",
         "output_sha256": hashlib.sha256(header.encode("utf-8")).hexdigest(),
         "element_output": "d4_element_data.hpp",
-        "element_output_sha256": hashlib.sha256(element_header.encode("utf-8")).hexdigest(),
+        "element_output_sha256": hashlib.sha256(
+            element_header.encode("utf-8")
+        ).hexdigest(),
         "xtbloom_revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
         "license": DFTD4_LICENSE,
         "mctc_revision": MCTC_REVISION,

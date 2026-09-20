@@ -105,6 +105,7 @@ inline constexpr std::array<double, kReferenceCount * (kReferenceCount + 1) / 2>
 // clang-format on
 """
 
+
 def render_r2scan_c6(
     references: list[dict[str, float | int]],
     c6_r2scan3c: list[float],
