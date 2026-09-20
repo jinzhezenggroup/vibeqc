@@ -670,6 +670,8 @@ class Calculator:
                     for shell in element.shells
                 )
             )
+            and self._ks_options is not None
+            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner
