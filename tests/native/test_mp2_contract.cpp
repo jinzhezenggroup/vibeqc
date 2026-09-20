@@ -167,6 +167,26 @@ void provider_and_reference() {
     batch_rejected = true;
   }
   require(batch_rejected, "native MO batch exceeded the memory budget");
+  // Heterogeneous shapes and zero-padded tail columns must keep request order.
+  const vibeqc::posthf::MOSlots padded{{{0}, {1, vibeqc::posthf::padded_mo}, {1}, {0}}};
+  const std::vector<vibeqc::posthf::MOSlots> mixed{slots, padded, second_slots};
+  const auto mixed_values = provider.get_many(mixed);
+  for (std::size_t request = 0; request < mixed.size(); ++request) {
+    const auto single = provider.get(mixed[request]);
+    require(single == mixed_values[request], "heterogeneous MO batch changed values or order");
+  }
+  auto invalid = slots;
+  invalid[3][0] = ref.nbf;
+  vibeqc::posthf::ProviderWork rejected_work;
+  bool invalid_rejected = false;
+  try {
+    (void)provider.get_many({slots, invalid}, false, 0, nullptr, &rejected_work);
+  } catch (const std::invalid_argument&) {
+    invalid_rejected = true;
+  }
+  require(invalid_rejected && rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
+          "invalid later MO request reached AO traversal or published work");
+
   bool overflow = false;
   try {
     vibeqc::posthf::numeric_block_plan(1, 0, 0, {SIZE_MAX, 2, 2, 2}, {1, 1, 1, 1}, false);
