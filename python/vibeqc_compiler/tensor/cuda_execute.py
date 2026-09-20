@@ -148,8 +148,10 @@ def _read_static_data(artifact: CudaArtifact, expected_bytes: int) -> np.ndarray
     descriptor = artifact.metadata.get("identity", {}).get("static_data", {})
     size, digest = descriptor.get("bytes"), descriptor.get("sha256")
     if (
-        type(size) is not int or size != expected_bytes
-        or not isinstance(digest, str) or len(digest) != 64
+        type(size) is not int
+        or size != expected_bytes
+        or not isinstance(digest, str)
+        or len(digest) != 64
         or any(c not in "0123456789abcdef" for c in digest)
         or artifact.metadata.get("static_data_bytes") != size
         or artifact.metadata.get("static_data_sha256") != digest
@@ -165,7 +167,10 @@ def _read_static_data(artifact: CudaArtifact, expected_bytes: int) -> np.ndarray
                 raise ValueError("tensor static-data size changed during read")
     except OSError as error:
         raise ValueError("tensor static-data file is unavailable") from error
-    if payload.nbytes != size or hashlib.sha256(memoryview(payload)).hexdigest() != digest:
+    if (
+        payload.nbytes != size
+        or hashlib.sha256(memoryview(payload)).hexdigest() != digest
+    ):
         raise ValueError("tensor static-data bytes differ from compiled identity")
     return payload
 
