@@ -45,8 +45,13 @@ def _check_source(path: Path) -> None:
     source = path.read_text()
     if "tensor_static_initialize" not in source:
         raise RuntimeError("external TensorIR source lacks static-data ABI")
-    if "static const double constant_" in source or "static const I index_data_" in source:
-        raise RuntimeError("external TensorIR source still embeds static payload literals")
+    if (
+        "static const double constant_" in source
+        or "static const I index_data_" in source
+    ):
+        raise RuntimeError(
+            "external TensorIR source still embeds static payload literals"
+        )
 
 
 def main() -> None:
@@ -56,9 +61,7 @@ def main() -> None:
     parser.add_argument("--cache", required=True, type=Path)
     args = parser.parse_args()
 
-    compiler = CudaCompilerAdapter(
-        args.nvcc, cuda_target_info(args.architecture)
-    )
+    compiler = CudaCompilerAdapter(args.nvcc, cuda_target_info(args.architecture))
     plan = plan_cuda(_program(), compiler.target)
     ordinary = compile_cuda(plan, compiler, args.cache / "ordinary")
     resident = compile_resident(plan, compiler, args.cache / "resident")
