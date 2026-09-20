@@ -77,3 +77,24 @@ runtime regression and is not treated as a substitute for that NVIDIA gate.
 
 The evidence commit changes only this retained-results directory; production
 code and numerical tests remain the exact measured tree above.
+
+
+## Final integration bridge
+
+The source-qualified production tree above was measured at `ad815e87` on
+master `ab6938a6`. Before publication, upstream master advanced to
+`097ee4ac` through #616. That upstream delta is confined to CC triples-response
+notes, CI wiring, tests and `tools/vibeqc_cc`; it does not touch any GridPolicy,
+KS snapshot/stationary consumer, native DFT grid or #596 qualification file.
+
+The previously generated pre-commit.ci formatting fix was also applied before
+the final publish. Against the qualified source, all #596 production files are
+byte-identical except `python/vibeqc_compiler/dft/grid.py`, whose sole change is
+removal of a blank line; Python AST equality was checked explicitly. The other
+production C++/Python files were checked with an exact Git diff.
+
+On integration head `686e27e0`, Ruff passed for the grid/snapshot/CPU/CUDA
+qualification set, 12 focused policy/provenance/capability regressions passed,
+and `git diff --check origin/master...HEAD` was clean. The commit adding this
+section is evidence-only. The final real-NVIDIA gate must still bind the
+published PR head, including this evidence-only delta.
