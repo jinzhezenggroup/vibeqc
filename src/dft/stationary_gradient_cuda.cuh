@@ -135,12 +135,14 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
       atomicExch(error, 1);
       return;
     }
-    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{};
-    if (stationary_pbe)
+    double rho[2]{view.features[p], view.features[5 * np + p]}, g[2][3]{}, tau[2]{};
+    if (stationary_functional != 0)
       for (size_t s = 0; s < 2; ++s)
         for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
+    if (stationary_functional == 2)
+      for (size_t s = 0; s < 2; ++s) tau[s] = view.features[(5 * s + 4) * np + p];
     // The exact shared SCF point model, including vacuum/spin boundaries.
-    const auto xc = vibeqc::dft::point::evaluate(stationary_pbe, rho, g);
+    const auto xc = stationary_evaluate_point(rho, g, tau);
     if (!xc.valid) {
       atomicExch(error, 1);
       return;
@@ -157,11 +159,12 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
       }
       double pullback[4]{};
       for (size_t s = 0; s < 2; ++s) {
-        double c[4]{weights[p] * xc.rho[s]}, w[4]{};
+        double c[5]{weights[p] * xc.rho[s]}, w[4]{};
         for (size_t j = 0; j < stationary_jets; ++j) {
           w[j] = work[(4 * s + j) * stride + p * n + mu];
           if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
         }
+        if (stationary_functional == 2) c[4] = weights[p] * xc.kinetic[s];
         double local[4]{};
         ao_pullback(c, w, local);
         for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
@@ -286,7 +289,7 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
     if (!p || !view || view->version != 1 || view->nao != p->aos || view->nactive != p->aos ||
-        view->npoint > p->points || view->jets < (stationary_pbe ? 10U : 4U) || !view->features ||
+        view->npoint > p->points || view->jets < stationary_ao_jets || !view->features ||
         !work || !view->ao_ids || !view->ao || !view->points)
       throw std::invalid_argument("invalid geometry task lease");
     check(*p);
