@@ -24,6 +24,9 @@ option(VIBEQC_ENABLE_AOT_SHELLS
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_PYTHON_WHEEL
        "Install one unversioned shared library for a Python wheel" OFF)
+option(VIBEQC_BUNDLE_XTB_OPENBLAS
+       "Bundle the reviewed private LP64 OpenBLAS provider for GFN2 wheels"
+       ${VIBEQC_PYTHON_WHEEL})
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
 option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
@@ -180,8 +183,25 @@ if(VIBEQC_ENABLE_CUDA)
   endif()
 endif()
 
+# Transitional, pinned GFN2-xTB runtime bootstrap. It is statically linked
+# into VibeQC; no installed xTBloom library is loaded at runtime. CUDA remains
+# separately gated until a VibeQC-native path is qualified.
+function(vibeqc_add_pinned_xtbloom)
+  set(BUILD_SHARED_LIBS OFF)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  set(XTBLOOM_ENABLE_CUDA OFF CACHE STRING "" FORCE)
+  set(XTBLOOM_ENABLE_TORCH_EXT OFF CACHE BOOL "" FORCE)
+  set(XTBLOOM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(XTBLOOM_BUILD_WEB_DEMO OFF CACHE BOOL "" FORCE)
+  set(XTBLOOM_EMBEDDED_ONLY ON CACHE BOOL "" FORCE)
+  set(XTBLOOM_PYTHON_WHEEL ${VIBEQC_PYTHON_WHEEL} CACHE BOOL "" FORCE)
+  set(XTBLOOM_BUNDLE_WHEEL_OPENBLAS ${VIBEQC_BUNDLE_XTB_OPENBLAS} CACHE BOOL "" FORCE)
+  add_subdirectory(external/xtbloom-gfn2)
+endfunction()
+vibeqc_add_pinned_xtbloom()
+
 add_library(vibeqc SHARED)
-target_link_libraries(vibeqc PRIVATE Threads::Threads)
+target_link_libraries(vibeqc PRIVATE Threads::Threads xtbloom::xtbloom)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 

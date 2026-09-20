@@ -22,6 +22,7 @@ EXPECTED_ABI_IDS = {
     "r2scan-rks": 10,
     "r2scan-uks": 11,
     "rccsd": 12,
+    "gfn2-xtb": 15,
 }
 
 
@@ -46,6 +47,7 @@ def test_public_method_abi_ids_are_explicit_and_stable() -> None:
     assert dict(_generated_methods.METHOD_NAME_TO_ID) == {
         **EXPECTED_ABI_IDS,
         "ccsd(t)": 4,
+        "gfn2": 15,
     }
 
 

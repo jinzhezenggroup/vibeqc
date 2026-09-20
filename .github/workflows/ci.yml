@@ -273,11 +273,29 @@ jobs:
           key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
+      - name: Prepare GFN2 CPU linear algebra runtime
+        run: |
+          uv venv --python 3.11 .venv-gfn2-build
+          uv pip install --python .venv-gfn2-build/bin/python scipy
+          xtb_linalg="$(
+            .venv-gfn2-build/bin/python - <<'PY_INNER'
+          from pathlib import Path
+          import scipy
+
+          site = Path(scipy.__file__).resolve().parent.parent
+          matches = sorted((site / "scipy.libs").glob("libscipy_openblas*.so"))
+          if len(matches) != 1:
+              raise SystemExit(f"expected one SciPy OpenBLAS runtime, found {matches}")
+          print(matches[0])
+          PY_INNER
+          )"
+          echo "XTBLOOM_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
+            -DXTBLOOM_CPU_LINALG_LIBRARY="$XTBLOOM_CPU_LINALG_LIBRARY" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --parallel
