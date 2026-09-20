@@ -415,6 +415,11 @@ class PreparedXCContractions:
     def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared XC contractions are closed")
+        if (
+            not isinstance(self.schedule, GridXcExecutionSchedule)
+            or self.schedule.identity != self.schedule_identity
+        ):
+            raise ValueError("stale XC execution schedule; prepare a new XC consumer")
         mask = None if self.spatial is None else self.spatial.tasks.identity
         if (
             self.program.contract.identity,

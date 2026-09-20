@@ -221,6 +221,34 @@ def test_prepared_xc_builds_profile_workload_from_actual_scientific_state(
             )
 
 
+@pytest.mark.parametrize("invalid", [False, True])
+def test_prepared_xc_rejects_schedule_replacement(
+    native_factory: typing.Any, invalid: bool
+) -> None:
+    meta, data, grid = fixture("h2")
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        PreparedXCContractions(
+            native_factory("PBE", "potential"), basis, grid, tile_points=7
+        ) as prepared,
+    ):
+        original = prepared.schedule
+        expected = prepared.execute(data["density_spin"])
+        prepared.schedule = None if invalid else replace(original, point_tile=8)
+        try:
+            with pytest.raises(ValueError, match="schedule"):
+                prepared.tuning_workload(
+                    architecture="sm_120",
+                    source_identity="a" * 64,
+                    density_route="density_matrix",
+                )
+            with pytest.raises(ValueError, match="schedule"):
+                prepared.execute(data["density_spin"])
+        finally:
+            prepared.schedule = original
+        compare(prepared.execute(data["density_spin"]), expected)
+
+
 def test_native_spatial_mask_matches_independent_zeroed_collocation(
     native_factory: typing.Any,
 ) -> None:

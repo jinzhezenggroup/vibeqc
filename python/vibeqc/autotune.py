@@ -250,6 +250,27 @@ def dft_endpoint_gate(
     """Promote DFT schedules only from matched synchronized energy+force endpoints."""
     if len(baseline) != len(candidate) or len(baseline) < 5:
         raise ValueError("DFT endpoint gate requires at least five paired repeats")
+    # NumPy broadcasting must not turn a different system/atom/Cartesian
+    # layout into apparently zero-error complete-endpoint evidence.
+    expected_layout = None
+    for sample in baseline + candidate:
+        energies = np.asarray(sample.get("energies"))
+        forces = np.asarray(sample.get("forces"))
+        layout = energies.shape, forces.shape
+        if (
+            energies.ndim != 1
+            or energies.size == 0
+            or forces.ndim != 3
+            or forces.shape[0] != energies.size
+            or forces.shape[1] == 0
+            or forces.shape[2] != 3
+            or (expected_layout is not None and layout != expected_layout)
+        ):
+            raise ValueError(
+                "DFT endpoint energy/force layouts must match nonempty "
+                "system, atom, and Cartesian dimensions across all samples"
+            )
+        expected_layout = layout
     result = endpoint_gate(baseline, candidate, minimum_speedup=minimum_speedup)
     failures = list(result["failures"])
     identities = {sample.get("scientific_identity") for sample in baseline + candidate}
