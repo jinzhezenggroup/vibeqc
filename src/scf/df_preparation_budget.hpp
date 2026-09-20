@@ -131,10 +131,14 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
     result.total_bytes = requested_bytes;
   } else if (resource.live) {
     const auto fractional = resource.total_bytes / 8U;
-    result.reserved_headroom_bytes = std::max(min_headroom, fractional);
-    const auto after_absolute = resource.free_bytes > result.reserved_headroom_bytes
-                                    ? resource.free_bytes - result.reserved_headroom_bytes
-                                    : resource.free_bytes / 2U;
+    const auto desired_headroom = std::max(min_headroom, fractional);
+    // When the desired reservation exceeds free memory, the existing fallback
+    // retains half that free envelope. Report that actual reservation, not an
+    // impossible amount larger than the observed free-memory capacity.
+    result.reserved_headroom_bytes = resource.free_bytes > desired_headroom
+                                         ? desired_headroom
+                                         : resource.free_bytes - resource.free_bytes / 2U;
+    const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
     const auto available = after_absolute - after_absolute / 4U;
     result.total_bytes = std::min(workload_target, available);
   } else {

@@ -115,7 +115,45 @@ int main() {
     assert small == small_repeat
     assert 32 << 20 <= small < large <= 1 << 30
     assert constrained <= (400 << 20)
-    assert constrained_headroom >= 256 << 20
+    assert constrained_headroom == 200 << 20  # Actual half-free fallback reservation.
     assert roomy >= constrained
     assert roomy_headroom >= 256 << 20
     assert [impossible, impossible_value, impossible_response] == [0, 1, 0]
+
+
+def test_constrained_headroom_reports_the_actual_reservation(tmp_path: Path) -> None:
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    source = tmp_path / "headroom.cpp"
+    source.write_text(r"""
+#include "scf/df_preparation_budget.hpp"
+int main() {
+  using namespace vibeqc::scf;
+  const DfBudgetWorkload shape{300,700,80,8,8,true};
+  const auto tight = resolve_df_budget(shape,{400ULL<<20,8ULL<<30,true},0);
+  if (tight.reserved_headroom_bytes > tight.observed_free_bytes) return 1;
+  if (tight.total_bytes != (150ULL<<20)) return 2;
+  if (tight.reserved_headroom_bytes != (200ULL<<20)) return 3;
+  for (std::size_t free : {std::size_t(0),std::size_t(1),std::size_t(2),std::size_t(7)}) {
+    const auto budget = resolve_df_budget(shape,{free,8ULL<<30,true},0);
+    if (budget.reserved_headroom_bytes > free) return 4;
+    if (budget.total_bytes > free-budget.reserved_headroom_bytes) return 5;
+  }
+  return 0;
+}
+""")
+    output = tmp_path / "headroom"
+    root = Path(__file__).resolve().parents[2]
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(output),
+        ],
+        check=True,
+    )
+    subprocess.run([str(output)], check=True)

@@ -319,3 +319,8 @@ At these archived revisions the generated path remained opt-in. The artificial
 small workloads supported integration, but did not establish the broader
 real-molecule promotion gate. Direct-HF and one-electron derivatives have separate
 promotion requirements.
+
+When live free memory is smaller than the desired reservation, automatic DF
+planning retains its half-free fallback and reports the actual reservation,
+not a target larger than observed free memory. This does not change the resolved
+value/response budget or establish device endpoint qualification.
