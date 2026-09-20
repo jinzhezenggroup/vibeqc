@@ -208,6 +208,88 @@ class _PrimitiveExecutor:
         return self._run(self.kinds["nuclear", ()], 1)[:2]
 
 
+def _admit_work(
+    state: typing.Any,
+    basis: typing.Any,
+    execution: str,
+    tile_points: int,
+    max_primitive_records: int,
+    max_grid_points: int,
+    max_grid_pair_visits: int,
+    max_ecp_pair_samples: int,
+) -> dict[str, int]:
+    """Metadata-only admission; no derivative compiler, provider or allocations.
+
+    Counts describe semantic loops, not FLOPs or timing. CPU's independent ECP
+    provider owns its own fixed grid policy in checked_ecp_integrals; keep its
+    bound independent of the generated CUDA policy (tested against that source).
+    """
+    if any(shell.angular_momentum > 1 for shell in basis.shells):
+        raise NotImplementedError(
+            "complete CPU gradient diagnostic supports s/p bases only"
+        )
+    natom, n = basis.natom, basis.nao
+    aos = basis.packed[3 * natom + 2 * basis.nprimitive :].reshape(-1, 16)
+    if any(int(row[3]) != 1 for row in aos):
+        raise NotImplementedError(
+            "this diagnostic requires single-component public AOs"
+        )
+    primitive_sum = sum(int(row[2]) for row in aos)
+    pairs = natom * (natom - 1) // 2
+    records = primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
+    points = len(state.grid.points)
+    visits = (2 if execution == "native" else 3 * natom) * pairs * points
+    validations = ((points + tile_points - 1) // tile_points) * pairs
+    # Native adjoint validates once per tile; the reference directional route
+    # validates on every coordinate traversal. Include both in admission.
+    if execution == "reference":
+        validations *= 3 * natom
+    for actual, budget, label in (
+        (records, max_primitive_records, "primitive"),
+        (points, max_grid_points, "grid point"),
+        (visits + validations, max_grid_pair_visits, "grid pair"),
+    ):
+        if actual > budget:
+            raise ValueError(f"{label} work budget exceeded")
+    ecp_samples = 0
+    if state._source.hamiltonian == "scalar-semilocal-ecp":
+        # Explicit dense-provider domain bounds radial term/AO preparation as
+        # well as pair sampling. This does not claim a host memory budget.
+        if (
+            n > 16
+            or natom > 8
+            or basis.nprimitive > 128
+            or len(state._source.ecp_terms) > 128
+        ):
+            raise ValueError("ECP diagnostic dense-export domain exceeded")
+        ecp_samples = (
+            sum(core > 0 for core in state._source.ecp_cores)
+            * (n * (n + 1) // 2)
+            * 2
+            * (160 * 32**2 + 224 * 44**2)
+        )
+        if ecp_samples > max_ecp_pair_samples:
+            raise ValueError("ECP quadrature pair-sample work budget exceeded")
+    return {
+        "ordered_pairs": n * n,
+        "ordered_quartets": n**4,
+        "primitive_record_bound": records,
+        "primitive_record_budget": max_primitive_records,
+        "xc_points": points,
+        "grid_point_budget": max_grid_points,
+        "grid_directional_points": 3 * natom * points
+        if execution == "reference"
+        else 0,
+        "grid_adjoint_points": points if execution == "native" else 0,
+        "grid_pair_visits": visits,
+        "grid_center_pair_validations": validations,
+        "grid_pair_work_bound": visits + validations,
+        "grid_pair_work_budget": max_grid_pair_visits,
+        "ecp_quadrature_pair_samples": ecp_samples,
+        "ecp_pair_sample_budget": max_ecp_pair_samples,
+    }
+
+
 def complete_rks_gradient_diagnostic(
     state: typing.Any,
     basis: typing.Any,
@@ -218,6 +300,10 @@ def complete_rks_gradient_diagnostic(
     primitive_tile: typing.Any = 128,
     compiler: typing.Any = None,
     execution: typing.Any = "reference",
+    max_primitive_records: int = 2_000_000,
+    max_grid_points: int = 1_000_000,
+    max_grid_pair_visits: int = 100_000_000,
+    max_ecp_pair_samples: int = 100_000_000,
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
@@ -233,7 +319,10 @@ def complete_rks_gradient_diagnostic(
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
     Both retain Python primitive enumeration/scatter and NumPy XC BLAS/maps;
-    neither establishes an overall endpoint/SCF memory budget.
+    neither establishes an overall endpoint/SCF memory budget. Semantic work
+    budgets reject before derivative compilation or provider execution, after
+    the caller's SCF and snapshot export. ECP pair-samples are a conservative
+    two-grid bound, including radial shells the provider may skip.
     Scalar-ECP CPU snapshots additionally bind effective ionic charges and two
     residual derivative sources to the actual energy owner. Their existing
     independent CPU provider materializes 2*3*natom*nao**2 derivative elements;
@@ -255,9 +344,23 @@ def complete_rks_gradient_diagnostic(
         (tile_points, "tile_points", 4096),
         (integral_terms, "integral_terms", 128),
         (primitive_tile, "primitive_tile", 4096),
+        (max_primitive_records, "max_primitive_records", 1 << 40),
+        (max_grid_points, "max_grid_points", 1 << 40),
+        (max_grid_pair_visits, "max_grid_pair_visits", 1 << 40),
+        (max_ecp_pair_samples, "max_ecp_pair_samples", 1 << 40),
     ):
         if type(value) is not int or not 1 <= value <= cap:
             raise ValueError(f"{name} must be an integer in [1,{cap}]")
+    work = _admit_work(
+        state,
+        basis,
+        execution,
+        tile_points,
+        max_primitive_records,
+        max_grid_points,
+        max_grid_pair_visits,
+        max_ecp_pair_samples,
+    )
     method, functional = resolve_ks_method(state.identity.method)
     plan = StationaryGradientPlan(
         method,
@@ -277,27 +380,11 @@ def complete_rks_gradient_diagnostic(
     charges = np.asarray([atom.atomic_number for atom in basis.atoms]) - np.asarray(
         state._source.ecp_cores
     )
-    work = {
-        "ordered_pairs": n * n,
-        "ordered_quartets": n**4,
-        "xc_points": len(state.grid.points),
-        "grid_directional_points": (
-            3 * natom * len(state.grid.points) if execution == "reference" else 0
-        ),
-        "grid_adjoint_points": len(state.grid.points) if execution == "native" else 0,
-        "grid_pair_visits": (2 if execution == "native" else 3 * natom)
-        * (natom * (natom - 1) // 2)
-        * len(state.grid.points),
-        "grid_center_pair_validations": (
-            ((len(state.grid.points) + tile_points - 1) // tile_points)
-            * (natom * (natom - 1) // 2)
-            if execution == "native"
-            else 0
-        ),
-        "point_tile_capacity": tile_points,
-        "primitive_tile_capacity": primitive_tile,
-        "integral_term_capacity": integral_terms,
-    }
+    work.update(
+        point_tile_capacity=tile_points,
+        primitive_tile_capacity=primitive_tile,
+        integral_term_capacity=integral_terms,
+    )
     tensor_consumers = {}
     # TensorIR AD supplies D, D*D/2, and -W. The runtime never rebuilds these
     # scientific coefficients from a method-name-specific gradient formula.
@@ -459,6 +546,8 @@ def complete_rks_gradient_diagnostic(
         else plan.reduce_diagnostic(components, atoms=natom)
     )
     contract.validate(state)  # No partial publication after replay/failure/replacement.
+    if native.records != work["primitive_record_bound"]:
+        raise RuntimeError("CPU derivative primitive work differs from admission")
     work["primitive_records"] = native.records
     return DiagnosticStationaryGradient(
         immutable(gradient),

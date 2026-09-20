@@ -82,6 +82,19 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         if plan.schedule.reduction_unroll == 1
         else f"#pragma unroll {plan.schedule.reduction_unroll}\n"
     )
+    if node.op == "cast":
+        child = args[0]
+        source = scalar_type(plan.steps[child].node.spec.dtype)
+        value = _read(child, "z", prefix)
+        if source.dtype == "float64" and scalar.dtype == "float32":
+            converted = f"__double2float_rn({value})"
+        elif source.dtype == "float32" and scalar.dtype == "float64":
+            # FP32 -> FP64 is exact. Keep the boundary explicit instead of
+            # relying on arithmetic promotion in a neighboring primitive.
+            converted = f"static_cast<double>({value})"
+        else:
+            converted = value
+        return f"return finite({converted}, error, {i});"
     if node.op == "add":
         lines = [f"{ty} value = {scalar.zero};"]
         for child, factor in zip(args, a["coefficients"], strict=True):
@@ -155,10 +168,33 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
         )
     elif node.op == "broadcast":
         index = _flat([c[axis] for axis in a["axes"]], source_shape)
-    elif node.op == "gather":
+    elif node.op in ("gather", "indexed_gather"):
         table = dict(plan.index_tables)[i]
         c[a["axis"]] = f"reinterpret_cast<const I*>(p + {table})[{c[a['axis']]}]"
         index = _flat(c, source_shape)
+    elif node.op == "scatter_add":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        target = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+{reduction_pragma}for (I r = 0; r < {_integer(source_shape[axis])}; ++r)
+    if (reinterpret_cast<const I*>(p + {table})[r] == {target})
+        value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
+    elif node.op == "segment_sum":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        segment = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+const I begin = reinterpret_cast<const I*>(p + {table})[{segment}];
+const I end = reinterpret_cast<const I*>(p + {table})[{segment} + 1];
+{reduction_pragma}for (I r = begin; r < end; ++r)
+    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
     elif node.op == "reduce":
         reduction_shape = tuple(source_shape[axis] for axis in a["axes"])
         source, cursor = [], 0
@@ -408,11 +444,16 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
-        if node.op == "gather" and node.attrs["positions"]:
-            values = ", ".join(_integer(v) for v in node.attrs["positions"])
-            parts.append(f"static const I {prefix}positions_{i}[] = {{{values}}};")
+        table_values = None
+        if node.op in ("gather", "indexed_gather", "scatter_add"):
+            table_values = node.attrs["positions"]
+        elif node.op == "segment_sum":
+            table_values = node.attrs["offsets"]
+        if table_values:
+            values = ", ".join(_integer(v) for v in table_values)
+            parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}positions_{i}, {len(node.attrs['positions']) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}index_data_{i}, {len(table_values) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         body = (
             _value(plan, i, prefix)

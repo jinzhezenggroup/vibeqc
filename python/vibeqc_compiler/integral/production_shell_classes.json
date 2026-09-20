@@ -23,7 +23,7 @@
       "kernels": [
         {
           "shell_class": "ssss",
-          "consumers": ["fock"],
+          "consumers": ["fock", "force"],
           "capabilities": ["streaming_fock"],
           "schedule": {
             "kind": "packed_tasks",

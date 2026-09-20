@@ -18,6 +18,8 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
 from .cuda_plan import TensorPlan, TensorSchedule, plan_cuda
+from .precision import describe_precision
+from .program import Program
 
 
 @dataclass(frozen=True)
@@ -222,7 +224,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     resident = _resident_blocks(plan, registers, 0)
     traffic = plan.semantic_traffic
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v2",
+        "schema": "vibeqc.tensor.cuda.static-cost.v3",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
@@ -230,6 +232,12 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "materialization_bytes": materialized,
         "estimated_logical_traffic_bytes": traffic["logical_tensor_bytes"],
         "estimated_layout_conversion_bytes": traffic["layout_conversion_bytes"],
+        "estimated_precision_cast_read_bytes": traffic["precision_cast_read_bytes"],
+        "estimated_precision_cast_write_bytes": traffic["precision_cast_write_bytes"],
+        "estimated_precision_cast_simultaneous_bytes": traffic[
+            "precision_cast_simultaneous_bytes"
+        ],
+        "precision_schedule_identity": plan.precision_schedule.identity,
         "estimated_host_to_device_bytes": traffic["host_to_device_bytes"],
         "estimated_device_to_host_bytes": traffic["device_to_host_bytes"],
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
@@ -259,6 +267,7 @@ class ScheduleCandidate:
     reason: str | None = None
     estimates: dict | None = None
     equivalent_to: str | None = None
+    precision_schedule: dict | None = None
 
     def to_payload(self) -> typing.Any:
         row = {
@@ -274,81 +283,144 @@ class ScheduleCandidate:
             row["static_resources"] = self.estimates
         if self.equivalent_to is not None:
             row["equivalent_to"] = self.equivalent_to
+        if self.precision_schedule is not None:
+            row["precision_schedule"] = self.precision_schedule
         return row
+
+
+def _program_abi(program: Program) -> tuple:
+    inputs = {
+        node.attrs["name"]: node.spec
+        for node in program.live_nodes
+        if node.op == "input"
+    }
+    outputs = {name: node.spec for name, node in program.outputs.items()}
+    return tuple(sorted(inputs.items())), tuple(sorted(outputs.items()))
 
 
 def plan_schedule_search(
     baseline: typing.Any,
     schedules: typing.Any,
     limits: typing.Any = DEFAULT_SEARCH_LIMITS,
+    *,
+    precision_programs: typing.Any = None,
 ) -> typing.Any:
     """Plan, deduplicate and statically prune without compiling or allocating."""
     if not isinstance(limits, TensorSearchLimits):
         raise TypeError("limits must be TensorSearchLimits")
     schedules = tuple(islice(schedules, limits.maximum_candidates + 1))
-    if not 1 <= len(schedules) <= limits.maximum_candidates:
-        raise ValueError("schedule count exceeds the candidate limit or is empty")
+    programs = (
+        (baseline.program,)
+        if precision_programs is None
+        else tuple(islice(precision_programs, limits.maximum_candidates + 1))
+    )
+    if (
+        not schedules
+        or not programs
+        or len(schedules) * len(programs) > limits.maximum_candidates
+    ):
+        raise ValueError(
+            "schedule/precision product exceeds the candidate limit or is empty"
+        )
     if any(not isinstance(s, TensorSchedule) for s in schedules):
         raise TypeError("search requires TensorSchedule candidates")
+    if any(not isinstance(program, Program) for program in programs):
+        raise TypeError("precision variants must be TensorIR Programs")
+    baseline_abi = _program_abi(baseline.program)
+    resolved = []
+    for program in programs:
+        if _program_abi(program) != baseline_abi:
+            raise ValueError(
+                "precision variants must preserve the baseline input/output ABI"
+            )
+        precision = describe_precision(program)
+        if precision.source_equation != baseline.program.logical_hash:
+            raise ValueError(
+                "precision variant must retain the baseline scientific equation identity"
+            )
+        resolved.append((program, precision.to_payload()))
+
     seen = {execution_key(baseline): baseline.identity}
     candidates = []
-    for requested in schedules:
-        try:
-            plan = plan_cuda(
-                baseline.program,
-                baseline.target,
-                max_bytes=baseline.max_bytes,
-                schedule=requested,
-                reservations=baseline.reservations,
-                library_bytes=baseline.library_bytes,
-                provider_bytes=baseline.provider_bytes,
-            )
-        except ValueError as error:
-            candidates.append(
-                ScheduleCandidate(requested, None, "pruned", "legality", str(error))
-            )
-            continue
-        key = execution_key(plan)
-        if key in seen:
+    for program, precision in resolved:
+        for requested in schedules:
+            try:
+                plan = plan_cuda(
+                    program,
+                    baseline.target,
+                    max_bytes=baseline.max_bytes,
+                    schedule=requested,
+                    reservations=baseline.reservations,
+                    library_bytes=baseline.library_bytes,
+                    provider_bytes=baseline.provider_bytes,
+                )
+            except ValueError as error:
+                candidates.append(
+                    ScheduleCandidate(
+                        requested,
+                        None,
+                        "pruned",
+                        "legality",
+                        str(error),
+                        precision_schedule=precision,
+                    )
+                )
+                continue
+            key = execution_key(plan)
+            if key in seen:
+                candidates.append(
+                    ScheduleCandidate(
+                        requested,
+                        plan,
+                        "pruned",
+                        "duplicate",
+                        "equivalent executable plan",
+                        equivalent_to=seen[key],
+                        precision_schedule=precision,
+                    )
+                )
+                continue
+            seen[key] = plan.identity
+            try:
+                estimates = estimate_schedule(plan)
+            except ValueError as error:
+                candidates.append(
+                    ScheduleCandidate(
+                        requested,
+                        plan,
+                        "pruned",
+                        "legality",
+                        str(error),
+                        precision_schedule=precision,
+                    )
+                )
+                continue
+            reasons = []
+            if estimates["generated_source_bytes"] > limits.maximum_source_bytes:
+                reasons.append("generated source exceeds compile-cost budget")
+            if estimates["estimated_registers_per_thread"] > min(
+                plan.target.tuning_maximum_registers,
+                plan.target.maximum_registers_per_thread,
+            ):
+                reasons.append("estimated register pressure exceeds target policy")
+            if (
+                estimates["resident_blocks_upper_bound"]
+                < limits.minimum_resident_blocks
+            ):
+                reasons.append(
+                    "estimated occupancy cannot satisfy resident-block policy"
+                )
             candidates.append(
                 ScheduleCandidate(
                     requested,
                     plan,
-                    "pruned",
-                    "duplicate",
-                    "equivalent executable plan",
-                    equivalent_to=seen[key],
+                    "pruned" if reasons else "ready",
+                    "static-resource",
+                    "; ".join(reasons) if reasons else None,
+                    estimates,
+                    precision_schedule=precision,
                 )
             )
-            continue
-        seen[key] = plan.identity
-        try:
-            estimates = estimate_schedule(plan)
-        except ValueError as error:
-            candidates.append(
-                ScheduleCandidate(requested, plan, "pruned", "legality", str(error))
-            )
-            continue
-        reasons = []
-        if estimates["generated_source_bytes"] > limits.maximum_source_bytes:
-            reasons.append("generated source exceeds compile-cost budget")
-        if estimates["estimated_registers_per_thread"] > min(
-            plan.target.tuning_maximum_registers,
-            plan.target.maximum_registers_per_thread,
-        ):
-            reasons.append("estimated register pressure exceeds target policy")
-        if estimates["resident_blocks_upper_bound"] < limits.minimum_resident_blocks:
-            reasons.append("estimated occupancy cannot satisfy resident-block policy")
-        candidates.append(
-            ScheduleCandidate(
-                requested,
-                plan,
-                "pruned" if reasons else "ready",
-                "static-resource",
-                "; ".join(reasons) if reasons else None,
-                estimates,
-            )
-        )
     return tuple(candidates)
 
 

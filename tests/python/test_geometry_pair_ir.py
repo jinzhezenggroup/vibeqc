@@ -112,6 +112,8 @@ def test_pair_reductions_are_shared_tensorir_not_method_kernels() -> None:
             "owned": pair_to_atom(values, context, owners_only=True),
         }
     )
+    assert all(node.op != "einsum" for node in program.live_nodes)
+    assert sum(node.op == "scatter_add" for node in program.live_nodes) == 3
     result = execute(program, {"q": np.array([1.0, 2.0, 3.0])}).outputs
     np.testing.assert_array_equal(result["system"], 6.0)
     np.testing.assert_array_equal(result["incident"], np.array([3.0, 4.0, 5.0]))

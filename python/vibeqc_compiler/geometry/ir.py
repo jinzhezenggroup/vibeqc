@@ -21,14 +21,13 @@ from vibeqc_compiler.tensor import (
     TensorSpec,
     add,
     constant,
-    einsum,
-    gather,
+    indexed_gather,
     input_tensor,
     linearize,
     multiply,
     power,
     reduce_sum,
-    reshape,
+    scatter_add,
     sqrt,
     transpose_program,
 )
@@ -281,8 +280,8 @@ def lower_geometry(geometry: GeometryIR, topology: PairTopology) -> PairTensorCo
     )
     left_positions = tuple(i for i, _ in topology.pairs)
     right_positions = tuple(j for _, j in topology.pairs)
-    left = reshape(gather(coordinates, 0, left_positions), (pair, cart))
-    right = reshape(gather(coordinates, 0, right_positions), (pair, cart))
+    left = indexed_gather(coordinates, 0, left_positions, pair)
+    right = indexed_gather(coordinates, 0, right_positions, pair)
     displacement = add(right, left, coefficients=(1, -1))
     squared_distance = reduce_sum(multiply(displacement, displacement), (1,))
     distance = sqrt(squared_distance)
@@ -316,18 +315,12 @@ def pair_to_atom(
 
     if value.spec.indices != (context.pair_index,):
         raise ValueError("pair_to_atom requires one scalar value per canonical pair")
-    atom, pair = context.atom_index, context.pair_index
-    spec = TensorSpec(
-        (Index("atom_row", atom.space), Index("pair_col", pair.space)),
-        dtype=value.spec.dtype,
-        role="constant",
-    )
-    rows = []
-    for a in range(context.topology.atom_count):
-        for owner, (i, j) in zip(context.topology.owners, context.topology.pairs):
-            rows.append(int(a == owner) if owners_only else int(a == i or a == j))
-    incidence = constant(tuple(rows), spec)
-    return einsum("p,ap->a", value, incidence)
+    atom = context.atom_index
+    left = scatter_add(value, 0, tuple(i for i, _ in context.topology.pairs), atom)
+    if owners_only:
+        return left
+    right = scatter_add(value, 0, tuple(j for _, j in context.topology.pairs), atom)
+    return add(left, right)
 
 
 def build_pair_program(

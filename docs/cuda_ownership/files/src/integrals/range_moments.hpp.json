@@ -1,0 +1,7 @@
+{
+  "path": "src/integrals/range_moments.hpp",
+  "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

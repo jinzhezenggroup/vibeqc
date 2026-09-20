@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/device_timer.cuh",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
+  "regions": []
+}

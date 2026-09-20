@@ -1,0 +1,6 @@
+{
+  "name": "jit_method",
+  "outputs": [],
+  "owner": "python/vibeqc_compiler/method",
+  "scope": "JIT method-level composition, including bounded stationary-gradient primitive and XC geometry contractions. Per-artifact provenance distinguishes generated source from native runtime assets."
+}

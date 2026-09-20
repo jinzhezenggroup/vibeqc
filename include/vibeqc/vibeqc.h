@@ -42,20 +42,7 @@ enum {
   VIBEQC_STATUS_PRECISION_UNAVAILABLE = 9
 };
 
-typedef int32_t vibeqc_method;
-enum {
-  VIBEQC_METHOD_RHF = 1,
-  VIBEQC_METHOD_UHF = 2,
-  VIBEQC_METHOD_WB97M_V = 3,
-  VIBEQC_METHOD_RCCSD_T = 4,
-  VIBEQC_METHOD_MP2 = 5,
-  VIBEQC_METHOD_LDA_RKS = 6,
-  VIBEQC_METHOD_PBE_RKS = 7,
-  VIBEQC_METHOD_LDA_UKS = 8,
-  VIBEQC_METHOD_PBE_UKS = 9,
-  VIBEQC_METHOD_R2SCAN_RKS = 10,
-  VIBEQC_METHOD_R2SCAN_UKS = 11
-};
+#include "vibeqc/generated_method_ids.h"
 
 /** Broad algorithm family used for capability discovery and dispatch. */
 typedef int32_t vibeqc_method_family;

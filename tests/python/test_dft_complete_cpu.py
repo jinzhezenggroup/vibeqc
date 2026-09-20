@@ -170,8 +170,14 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(
         energy = batch.execute(strict=True).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         result = complete_rks_gradient_diagnostic(
-            state, basis, cache=".cache/b22-tests", execution=execution
+            state,
+            basis,
+            cache=".cache/b22-tests",
+            execution=execution,
+            max_ecp_pair_samples=1,
         )
+        assert result.work["ecp_quadrature_pair_samples"] == 0
+        assert result.work["primitive_records"] == result.work["primitive_record_bound"]
         reference_energy, reference, components = independent_gradient(
             basis, state, method
         )

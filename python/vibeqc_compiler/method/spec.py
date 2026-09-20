@@ -402,6 +402,19 @@ class MethodIR:
     def reference(self) -> typing.Any:
         return "unrestricted" if self.spin == "polarized" else "restricted"
 
+    @property
+    def full_range_exact_exchange(self) -> Fraction:
+        """Return the canonical full-range exact-exchange fraction.
+
+        Range-separated exchange remains structurally separate and is not folded
+        into this value.  This lets downstream SCF composition consume the same
+        coefficient that defines MethodIR without method-name dispatch.
+        """
+        for primitive in self.primitives:
+            if isinstance(primitive, ExactExchangePrimitive):
+                return primitive.coefficient
+        return Fraction(0)
+
     def preflight_atomic_numbers(self, atomic_numbers: typing.Any) -> typing.Any:
         """Reject unsupported chemistry before lowering or correction execution."""
 
