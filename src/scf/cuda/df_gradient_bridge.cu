@@ -726,9 +726,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // Correctness, provenance, resident-storage and single-term eligibility stay
       // explicit here; benchmark endpoint identities and GPU marketing names do not.
       if (promoted_default && borrowed && borrowed->occupied_response && terms.size() == 1)
-        packed_default =
-            df_packed_response_preferred(n, a, borrowed->occupied_factors[0].rank,
-                                         derivative_architecture);
+        packed_default = df_packed_response_preferred(n, a, borrowed->occupied_factors[0].rank,
+                                                      derivative_architecture);
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
