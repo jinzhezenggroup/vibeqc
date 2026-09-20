@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     """Native and JIT builds must compile exactly one scientific grid policy."""
-    from vibeqc_compiler.dft.ao_cuda import emit_grid_source
+    from vibeqc_compiler.dft.ao_cuda import (
+        emit_grid_source,
+        emit_native_xc_contraction_kernels,
+    )
 
     output = tmp_path / "grid.cu"
     subprocess.run(
@@ -33,7 +36,8 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     # Resident KS adds only a consumer of the shared AO/ingredient policy.
     # Keep the independently compiled JIT owner's ABI free of that extension.
     source, _, headers = emit_grid_source()
-    assert native == source + '#include "cuda_xc_kernels.cuh"\n'
+    native_contractions = emit_native_xc_contraction_kernels()
+    assert native == source + native_contractions + '#include "cuda_xc_kernels.cuh"\n'
     runtime = source.index('#include "cuda_grid.cu"')
     for scientific in (
         "__global__ void ao_kernel",
@@ -43,11 +47,35 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     ):
         assert scientific in source
         assert source.index(scientific) < runtime
+    for scientific in (
+        "__global__ void density_product",
+        "__global__ void density_features",
+        "struct DevicePointValue",
+        "__device__ inline DevicePointValue response_point",
+        "__device__ inline DevicePointValue evaluate_semilocal_point",
+        "__global__ void evaluate_points",
+        "__global__ void assemble_potential",
+        "__global__ void accumulate_totals",
+    ):
+        assert scientific in native_contractions
+        assert scientific not in source
     native_template = (ROOT / "src/dft/cuda_grid.cu").read_text()
     assert "__global__ void ao_kernel" not in native_template
     assert (
         "__device__ vibeqc::dft::point::Value evaluate_xc_point" not in native_template
     )
+    resident_template = (ROOT / "src/dft/cuda_xc_kernels.cuh").read_text()
+    for retired in (
+        "__global__ void density_product",
+        "__global__ void density_features",
+        "struct DevicePointValue",
+        "__device__ inline DevicePointValue response_point",
+        "__device__ inline DevicePointValue evaluate_semilocal_point",
+        "__global__ void evaluate_points",
+        "__global__ void assemble_potential",
+        "__global__ void accumulate_totals",
+    ):
+        assert retired not in resident_template
     assert headers[-1] == ROOT / "include/vibeqc/vibeqc.h"
 
 

@@ -3819,6 +3819,41 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "cudaErrorNotSupported" in mask_source
 
 
+def test_psss_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep the Direct-HF psss candidate free of unused value/center-four roots."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    begin = source.index("IndependentGradient psss_force(")
+    end = source.index("IndependentGradient ssss_force(", begin)
+    psss_force = source[begin:end]
+    assert "Gradient psss(" in source
+    assert "result.value" not in psss_force
+    assert "result.center[3]" not in psss_force
+    for center in range(3):
+        for axis in range(3):
+            assert f"result.center[{center}][{axis}]" in psss_force
+
+
+def test_psss_generated_candidate_resolves_route_outside_primitive_loop() -> None:
+    """Make psss A/B selection a shell-task decision, not primitive-loop work."""
+
+    native_source = (REPOSITORY_ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(
+        encoding="utf-8"
+    )
+    low_order_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
+    ).read_text(encoding="utf-8")
+    assert "template <bool ResidentBra, bool GeneratedMath>" in native_source
+    assert "if constexpr (GeneratedMath)" in native_source
+    assert "if (batch.generated_psss_weighted)" not in native_source
+    assert "generated_weighted_eri::Geometry geometry;" in native_source
+    assert "generated_weighted_eri::Geometry geometry{};" not in native_source
+    assert "generated_weighted_eri::psss_force" in native_source
+    assert low_order_source.count("batch.generated_psss_weighted") == 1
+    assert "<ResidentBra, true>" in low_order_source
+    assert "<ResidentBra, false>" in low_order_source
+
+
 def test_ssss_force_codegen_emits_only_independent_gradient_roots() -> None:
     """Keep the native-adapter ssss helper free of unused value/center-four work."""
 

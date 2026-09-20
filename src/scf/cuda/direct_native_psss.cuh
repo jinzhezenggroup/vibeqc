@@ -97,7 +97,7 @@ __device__ inline __noinline__ PsssIntegralVector contracted_eri_cartesian_sourc
  * decay, and Boys values are evaluated only once. The fourth-center gradient
  * is intentionally omitted and restored from translation by the force task.
  */
-template <bool ResidentBra>
+template <bool ResidentBra, bool GeneratedMath>
 __device__ inline __noinline__ PsssWeightedGradient
 contracted_eri_cartesian_source_psss_weighted_gradient(
     const DeviceBatch& batch, std::size_t first_shell_pair, std::size_t second_shell_pair,
@@ -166,11 +166,12 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
       boys_values<2>(rho * distance_squared(product_p, product_q), boys);
       const double prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
                                2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      if (batch.generated_psss_weighted) {
+      if constexpr (GeneratedMath) {
         // Retain resident-bra reuse, primitive orientation, normalization, and
-        // one traversal across all p outputs. Only the scalar weighted
-        // expression comes from the generic external-weight DAG lowering.
-        generated_weighted_eri::Geometry geometry{};
+        // one traversal across all p outputs. Selection occurs once per shell
+        // task, so this primitive loop contains no runtime A/B branch. The
+        // force-only helper reads only the fields initialized below.
+        generated_weighted_eri::Geometry geometry;
         geometry.inverse_two_p = 0.5 / p;
         geometry.rho = rho;
         geometry.prefactor = prefactor;
@@ -190,7 +191,7 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
           geometry.decay[2][coordinate] =
               -2.0 * nu * (vec_axis(third, coordinate) - vec_axis(fourth, coordinate));
         }
-        const auto generated = generated_weighted_eri::psss(geometry, axis_weight);
+        const auto generated = generated_weighted_eri::psss_force(geometry, axis_weight);
 #pragma unroll
         for (unsigned center = 0; center < 3; ++center) {
 #pragma unroll
