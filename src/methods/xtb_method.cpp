@@ -49,7 +49,7 @@ const char* xtb_status_name(xtbloom_status_t status) noexcept {
 }
 
 [[noreturn]] void throw_xtbloom(xtbloom_status_t status, const char* stage,
-                                 const std::string& detail = {}) {
+                                const std::string& detail = {}) {
   vibeqc_status mapped = VIBEQC_STATUS_INTERNAL_ERROR;
   switch (status) {
     case XTBLOOM_STATUS_INVALID_ARGUMENT:
@@ -167,8 +167,8 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     output.per_system_status = output_buffer(statuses);
 
     std::string execution_error;
-    const xtbloom_status_t execution_status =
-        xtbloom::detail::execute_restricted_gfn2_cpu(cache_, batch, options, output, execution_error);
+    const xtbloom_status_t execution_status = xtbloom::detail::execute_restricted_gfn2_cpu(
+        cache_, batch, options, output, execution_error);
     if (execution_status != XTBLOOM_STATUS_SUCCESS)
       throw_xtbloom(execution_status, "execution", execution_error);
 

@@ -198,7 +198,7 @@ def main() -> int:
         KeyError,
     ) as error:
         parser.error(str(error))
-    print(json.dumps(resolved, sort_keys=True))  # noqa: T201
+    print(json.dumps(resolved, sort_keys=True))
     return 0
 
 
