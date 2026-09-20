@@ -2,7 +2,9 @@
 
 This bounded consumer also supplies qualified public Calculator CUDA forces. Native
 CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
-records and gathers TensorIR inputs; all derivative/normalization/contraction,
+records and AO indices; D/W are uploaded once to the source owner and the
+StationaryGradientPlan-generated TensorIR source weights are evaluated inside
+the CUDA derivative consumer. All derivative/normalization/contraction,
 AO/features/XC work, atom scatter and final source reduction execute on CUDA.
 No CPU derivative or interpreter fallback is available.
 """
@@ -30,7 +32,10 @@ from vibeqc_compiler.dft.cuda import (
 )
 from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
-from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
+from vibeqc_compiler.method.stationary_cuda import (
+    STATIONARY_RUNTIME_SOURCE_NAMES,
+    compile_stationary_cuda,
+)
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -49,15 +54,7 @@ from .ks import resolve_ks_method
 
 _DOUBLE = ct.POINTER(ct.c_double)
 _INT = ct.POINTER(ct.c_int64)
-_SOURCE_NAMES = (
-    "one_electron",
-    "coulomb",
-    "xc_ao",
-    "xc_grid",
-    "xc_weight",
-    "overlap_pulay",
-    "nuclear",
-)
+_SOURCE_NAMES = STATIONARY_RUNTIME_SOURCE_NAMES
 
 
 def _ptr(array: typing.Any) -> typing.Any:
@@ -109,6 +106,7 @@ class _CudaSources:
         points: typing.Any,
         records: typing.Any,
         budget: typing.Any,
+        spin_blocks: typing.Any = 1,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
@@ -116,8 +114,11 @@ class _CudaSources:
         self.handle = ct.c_void_p()
         self.library = lib = ct.CDLL(str(artifact.library))
         self.natom, self.nao, self.point_capacity = basis.natom, basis.nao, points
+        if spin_blocks not in (1, 2):
+            raise ValueError("stationary CUDA requires one or two density spin blocks")
+        self.spin_blocks = spin_blocks
         self.buffer = np.ones((records, 26))
-        self.maps = np.full((records, 4), -1, dtype=np.int64)
+        self.maps = np.full((records, 8), -1, dtype=np.int64)
         self.used = 0
         self.pending = None
         self.device = device
@@ -130,9 +131,17 @@ class _CudaSources:
         self.kinds = {key: i for i, key in enumerate(requests)}
         tail = [ct.c_char_p, ct.c_size_t]
         lib.stationary_create.argtypes = (
-            [ct.c_int] * 3 + [ct.c_size_t] * 5 + [ct.POINTER(ct.c_void_p), *tail]
+            [ct.c_int] * 3 + [ct.c_size_t] * 6 + [ct.POINTER(ct.c_void_p), *tail]
         )
-        lib.stationary_reset.argtypes = [ct.c_void_p, _DOUBLE, _INT, ct.c_double, *tail]
+        lib.stationary_reset.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            _INT,
+            _DOUBLE,
+            _DOUBLE,
+            ct.c_double,
+            *tail,
+        ]
         lib.stationary_records.argtypes = [
             ct.c_void_p,
             ct.c_uint,
@@ -167,6 +176,7 @@ class _CudaSources:
             basis.nao,
             points,
             records,
+            spin_blocks,
             budget,
             ct.byref(self.handle),
         )
@@ -176,13 +186,23 @@ class _CudaSources:
         if getattr(self.library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def reset(self, tolerance: typing.Any) -> None:
+    def reset(
+        self,
+        tolerance: typing.Any,
+        density: typing.Any,
+        weighted_density: typing.Any,
+    ) -> None:
         self.used, self.pending = 0, None
+        shape = (self.spin_blocks, self.nao, self.nao)
+        density = _checked(density, shape)
+        weighted_density = _checked(weighted_density, shape)
         self._call(
             "stationary_reset",
             self.handle,
             _ptr(self.centers),
             _ptr(self.ao_atoms),
+            _ptr(density),
+            _ptr(weighted_density),
             tolerance,
         )
 
@@ -203,14 +223,14 @@ class _CudaSources:
         source: typing.Any,
         operator: typing.Any,
         indices: typing.Any,
-        weight: typing.Any,
         nucleus: typing.Any = None,
         charge: typing.Any = 1.0,
     ) -> None:
-        """Pack exponents, raw normalization factors and plan weights separately.
+        """Pack primitive data, derivative-center maps and AO indices.
 
-        Host work is discrete record enumeration. CUDA multiplies every
-        normalization factor and performs the weighted derivative/scatter.
+        Host work is discrete record enumeration only. CUDA loads the generated
+        plan weight from resident D/W, multiplies normalization factors and
+        performs the weighted derivative/scatter.
         """
         key = self.kinds[operator, tuple(self.components[i] for i in indices)], source
         if key != self.pending:
@@ -230,8 +250,9 @@ class _CudaSources:
             r[4 : 4 + 3 * len(owners)] = self.centers[owners].reshape(-1)
             r[16 : 16 + len(ids)] = primitives[:, 1]
             r[20 : 20 + len(ids)] = rows[:, 7]
-            r[24], r[25] = weight, charge
+            r[25] = charge
             m[: len(owners)] = owners
+            m[4 : 4 + len(indices)] = indices
             self.used += 1
             if self.used == len(self.buffer):
                 self.flush()
@@ -426,31 +447,34 @@ def complete_rks_cuda_gradient_diagnostic(
         budget_bytes=max_device_bytes,
     )
     source_bytes = (
-        8 * (42 * primitive_tile + 24 * na + 3 * tile_points + 576 * na + n) + 256
+        8
+        * (
+            46 * primitive_tile
+            + 24 * na
+            + 3 * tile_points
+            + 576 * na
+            + n
+            + 2 * plan.spin_blocks * n * n
+        )
+        + 256
     )
     available = max_device_bytes - grid_plan.peak_bytes - source_bytes
     if available <= 0:
         raise ValueError("stationary additional-device budget exceeded")
     tensor_plans = {
-        name: plan_cuda(
-            plan.integral_block(name, terms=integral_terms).weights,
-            compiler.target,
-            max_bytes=available,
+        "reduction": plan_cuda(
+            plan.reduction_program(atoms=na), compiler.target, max_bytes=available
         )
-        for name in ("one_electron", "overlap_pulay", "coulomb")
     }
-    tensor_plans["reduction"] = plan_cuda(
-        plan.reduction_program(atoms=na), compiler.target, max_bytes=available
-    )
-    # Conservative numeric-array bound: record/maps, adapter staging, D spin
-    # conversion, gathered feeds, candidate/publication copies, and tile owners.
+    # Conservative numeric-array bound: record/maps, D/W admission copies,
+    # adapter staging, candidate/publication copies, and tile owners.
     # Compiler objects, Python headers and the caller's existing SCF snapshot
     # are explicit exclusions, as in the reused grid/TensorIR resource contracts.
     host_bound = (
         grid_plan.host_bytes
         + 8
         * (
-            30 * primitive_tile
+            34 * primitive_tile
             + 4 * plan.spin_blocks * n * n
             + 120 * na
             + 26 * integral_terms
@@ -524,6 +548,7 @@ def complete_rks_cuda_gradient_diagnostic(
     artifact = compile_stationary_cuda(
         emit_first_derivative_cuda(requests),
         pbe=pbe,
+        plan=plan,
         iterations=spec.partition_iterations,
         compiler=compiler,
         cache=cache,
@@ -567,9 +592,12 @@ def complete_rks_cuda_gradient_diagnostic(
                 tile_points,
                 primitive_tile,
                 source_bytes,
+                spin_blocks=plan.spin_blocks,
             )
         )
-        sources.reset(spec.coincident_tolerance)
+        sources.reset(
+            spec.coincident_tolerance, state.density, state.weighted_density
+        )
         ao = stack.enter_context(
             CudaGrid(
                 basis,
@@ -589,43 +617,21 @@ def complete_rks_cuda_gradient_diagnostic(
             ("overlap_pulay", 2, "overlap"),
             ("coulomb", 4, "four_center_eri"),
         ):
-            tp = tensor_plans[source]
-            ta = compile_cuda(tp, compiler, cache)
-            artifacts.append(ta)
-            peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
-            with PreparedCuda(tp, ta, device=device) as weights:
-                iterator = product(range(n), repeat=rank)
-                while tuples := tuple(islice(iterator, integral_terms)):
-                    ids = np.zeros((integral_terms, rank), dtype=np.int64)
-                    ids[: len(tuples)] = tuples
-                    if source == "overlap_pulay":
-                        feeds = {
-                            "weighted_density": state.weighted_density[
-                                :, ids[:, 0], ids[:, 1]
-                            ]
-                        }
-                    else:
-                        feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
-                        if rank == 4:
-                            feeds["density_right"] = state.density[
-                                :, ids[:, 2], ids[:, 3]
-                            ]
-                    result = weights.execute(feeds)
-                    record_tensor(result, feeds)
-                    for indices, weight in zip(tuples, result.outputs["weights"]):
-                        sources.integral(
-                            _SOURCE_NAMES.index(source), operator, indices, weight
-                        )
-                        if source == "one_electron":
-                            for a in range(na):
-                                sources.integral(
-                                    0,
-                                    "nuclear_attraction",
-                                    indices,
-                                    weight,
-                                    a,
-                                    charges[a],
-                                )
+            iterator = product(range(n), repeat=rank)
+            while tuples := tuple(islice(iterator, integral_terms)):
+                for indices in tuples:
+                    sources.integral(
+                        _SOURCE_NAMES.index(source), operator, indices
+                    )
+                    if source == "one_electron":
+                        for a in range(na):
+                            sources.integral(
+                                0,
+                                "nuclear_attraction",
+                                indices,
+                                a,
+                                charges[a],
+                            )
             sources.flush()
         for a in range(na):
             for b in range(a):
@@ -704,12 +710,23 @@ def complete_rks_cuda_gradient_diagnostic(
         device_ordinal=device,
         tensor_executions=tensor_work["executions"],
         tensor_work=tensor_work,
+        stationary_weight_lowering="generated-tensorir/device-pointwise-v1",
+        stationary_weight_plan_identity=plan.identity,
+        stationary_weight_programs={
+            name: plan.integral_block(name, terms=1).weights.logical_hash
+            for name in ("one_electron", "overlap_pulay", "coulomb")
+        },
+        stationary_weight_tensor_executions=0,
+        stationary_weight_roundtrip_bytes=0,
+        stationary_state_dw_upload_bytes=(
+            state.density.nbytes + state.weighted_density.nbytes
+        ),
         additional_host_numeric_bound=host_bound,
         additional_host_budget=max_host_bytes,
         snapshot_host_bytes=state._source.values.nbytes,
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
-        host_scope="snapshot validation; primitive enumeration and record packing; density gathers; TensorIR H2D/D2H; immutable result copies",
+        host_scope="snapshot validation; primitive enumeration/record packing; one D/W owner upload; final TensorIR reduction; immutable result copies",
         endpoint_seconds=perf_counter() - started,
         artifacts=tuple(
             {
@@ -727,5 +744,5 @@ def complete_rks_cuda_gradient_diagnostic(
         state.identity,
         MappingProxyType(work),
         execution=("cuda-nine-source" if ecp else "cuda-seven-source")
-        + "/explicit-host-snapshot-and-orchestration-v1",
+        + "/generated-device-stationary-weights-v1",
     )
