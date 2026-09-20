@@ -107,7 +107,9 @@ class BoundCCSDTOrbitalResponse:
         # Reuse the already-qualified #153 raw Hamiltonian, RHF operator,
         # curvature checks and lifetime gates.  Constructing this validation
         # owner does not evaluate nuclear integral derivatives.
-        baseline = BoundCCSDOrbitalResponse(response.baseline, provider, options=options)
+        baseline = BoundCCSDOrbitalResponse(
+            response.baseline, provider, options=options
+        )
         reference = baseline.reference
         response.bound._assert_current(reference.identity)
         if (
