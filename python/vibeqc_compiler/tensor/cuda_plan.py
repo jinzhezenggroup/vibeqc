@@ -1,8 +1,9 @@
 """Deterministic typed tensor storage and contraction plans, without CUDA calls.
 
 The byte budget is a combined numeric-buffer budget: device allocations plus
-prepared host input staging and one detached host output set. Caller-owned
-inputs/old results, Python/code objects, CUDA context/module/stack overhead,
+prepared host input staging and the larger of one detached host output set or
+immutable static-data upload staging. Caller-owned inputs/old results,
+Python/code objects, CUDA context/module/stack overhead,
 provider host metadata,
 and the CUDA allocator's page rounding are outside this scope. Retained
 cuBLAS device allocations have a separate checked allowance. The runtime
@@ -608,11 +609,16 @@ def plan_cuda(
         + sum(len(_index_table_values(step.node) or ()) * 8 for step in steps),
         "static host tensor bytes",
     )
+    input_host_bytes = sum(
+        nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs
+    )
+    output_host_bytes = sum(
+        nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs
+    )
     host = checked_size(
-        sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs)
-        + sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs)
+        input_host_bytes
         + (VALIDATION_BYTES if inputs else 0)
-        + static_host_bytes,
+        + max(output_host_bytes, static_host_bytes),
         "host tensor bytes",
     )
     needs_blas = any(
