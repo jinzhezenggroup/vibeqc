@@ -19,7 +19,7 @@ from tools.vibeqc_cc.triples_tiles import build_tile_triples_program
 INPUT_NAMES = ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
 
 
-def _random_case(nocc, nvir, seed):
+def _random_case(nocc: int, nvir: int, seed: int) -> tuple[np.ndarray, ...]:
     rng = np.random.default_rng(seed)
     ovvv = rng.normal(size=(nocc, nvir, nvir, nvir))
     ovoo = rng.normal(size=(nocc, nvir, nocc, nocc))
@@ -34,7 +34,7 @@ def _random_case(nocc, nvir, seed):
 
 
 @pytest.mark.parametrize("v,chunk", [(2, 1), (2, 2), (3, 2)])
-def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v, chunk):
+def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v: int, chunk: int) -> None:
     """The derivative of the disjoint energy partition equals the full VJP."""
 
     o = 2
@@ -62,7 +62,7 @@ def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v, chunk)
     "name",
     ["t1", "t2", "ovvv", "ovoo", "ovov", "fov", "eps_o", "eps_v"],
 )
-def test_generated_response_matches_recomputed_energy_finite_difference(name):
+def test_generated_response_matches_recomputed_energy_finite_difference(name: str) -> None:
     """Each generated source differentiates the actual audited (T) energy."""
 
     # nocc=1 makes r3 identically zero and cannot validate derivative equations.
@@ -101,7 +101,7 @@ def test_generated_response_matches_recomputed_energy_finite_difference(name):
         )
 
 
-def test_denominator_response_is_present_and_not_frozen():
+def test_denominator_response_is_present_and_not_frozen() -> None:
     """eps_o/eps_v cotangents must carry reciprocal-denominator response."""
 
     o, v = 2, 2
@@ -117,7 +117,7 @@ def test_denominator_response_is_present_and_not_frozen():
     assert np.linalg.norm(response["eps_v"]) > 0
 
 
-def test_optimized_reverse_graph_preserves_response_and_never_grows_live_dag():
+def test_optimized_reverse_graph_preserves_response_and_never_grows_live_dag() -> None:
     """CSE/dead cleanup may share work but cannot change a response source."""
 
     o, v = 2, 2
@@ -139,7 +139,7 @@ def test_optimized_reverse_graph_preserves_response_and_never_grows_live_dag():
         np.testing.assert_allclose(after[name], before[name], rtol=1e-12, atol=1e-12)
 
 
-def test_generated_vjp_keeps_primal_identity_and_is_cuda_plannable():
+def test_generated_vjp_keeps_primal_identity_and_is_cuda_plannable() -> None:
     """#154 A remains a compiler derivative, not a second equation stack."""
 
     o, v = 1, 2
