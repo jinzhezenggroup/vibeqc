@@ -13,7 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include "data/parameters/d4.hpp"
+#include "data/parameters/gfn2.hpp"
+#include "dft/dispersion/d4_data.hpp"
 #include "data/parameters/gfn2.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
@@ -44,8 +45,9 @@ struct D4PlanData {
 
 namespace {
 
-using parameters::d4::D4ElementData;
-using parameters::d4::D4ReferenceData;
+namespace d4_data = ::vibeqc::dft::dispersion::data;
+using D4ElementData = d4_data::D4ElementData;
+using D4ReferenceData = d4_data::D4ReferenceData;
 
 constexpr double kCoordinationCutoff = 30.0;
 constexpr double kTwoBodyCutoff = 50.0;
@@ -61,7 +63,7 @@ constexpr double kChargeScalingSteepness = 2.0;
 constexpr double kReferenceWeightFactor = 6.0;
 constexpr double kAtmExponent = 16.0;
 
-static_assert(parameters::d4::kElementCount == parameters::gfn2::kElementCount,
+static_assert(d4_data::kElementCount == parameters::gfn2::kElementCount,
               "D4 and GFN2 element domains must match");
 static_assert(parameters::gfn2::kGlobal.dispersion_self_consistent,
               "GFN2 parameter data must select self-consistent D4");
@@ -354,12 +356,12 @@ bool valid_periodic_d4_call_storage(const D4Plan& plan, const PeriodicShortRange
 }
 
 const D4ElementData& element(const D4PlanData& data, std::int64_t atom) {
-  return parameters::d4::kElements[data.element_indices[static_cast<std::size_t>(atom)]];
+  return d4_data::kElements[data.element_indices[static_cast<std::size_t>(atom)]];
 }
 
 const D4ReferenceData& reference(const D4ElementData& element_data, std::size_t local_reference) {
-  return parameters::d4::kReferences[static_cast<std::size_t>(element_data.reference_offset) +
-                                     local_reference];
+  return d4_data::kReferences[static_cast<std::size_t>(element_data.reference_offset) +
+                              local_reference];
 }
 
 std::size_t pair_index(const D4PlanData& data, std::int64_t batch, std::int64_t first,
@@ -476,6 +478,12 @@ struct PairCoefficient {
   double second_charge = 0.0;
 };
 
+double reference_c6(std::size_t first, std::size_t second) noexcept {
+  const std::size_t high = std::max(first, second);
+  const std::size_t low = std::min(first, second);
+  return d4_data::kReferenceC6[high * (high + 1u) / 2u + low];
+}
+
 PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first, std::int64_t second,
                                  const D4Workspace& workspace, bool derivatives) {
   const D4ElementData& first_element = element(data, first);
@@ -490,22 +498,20 @@ PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first, std
     for (std::size_t second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
       const std::size_t global_second =
           static_cast<std::size_t>(second_element.reference_offset) + second_ref;
-      const double reference_c6 =
-          parameters::d4::kReferenceC6[global_first * parameters::d4::kReferenceCount +
-                                       global_second];
+      const double pair_reference_c6 = reference_c6(global_first, global_second);
       const double second_value = workspace.weights[second_weight + second_ref];
-      result.c6 += first_value * second_value * reference_c6;
+      result.c6 += first_value * second_value * pair_reference_c6;
       if (derivatives) {
-        result.first_cn +=
-            workspace.weight_cn_derivatives[first_weight + first_ref] * second_value * reference_c6;
+        result.first_cn += workspace.weight_cn_derivatives[first_weight + first_ref] *
+                           second_value * pair_reference_c6;
         result.second_cn += first_value *
                             workspace.weight_cn_derivatives[second_weight + second_ref] *
-                            reference_c6;
+                            pair_reference_c6;
         result.first_charge += workspace.weight_charge_derivatives[first_weight + first_ref] *
-                               second_value * reference_c6;
+                               second_value * pair_reference_c6;
         result.second_charge += first_value *
                                 workspace.weight_charge_derivatives[second_weight + second_ref] *
-                                reference_c6;
+                                pair_reference_c6;
       }
     }
   }
@@ -671,8 +677,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
     created->total_pairs = created->pair_offsets.back();
     for (std::int64_t atom = 0; atom < total_atoms; ++atom) {
       const std::int32_t atomic_number = atomic_numbers[atom];
-      if (atomic_number <= 0 ||
-          atomic_number > static_cast<std::int32_t>(parameters::d4::kElementCount)) {
+      if (atomic_number <= 0 || atomic_number > static_cast<std::int32_t>(d4_data::kElementCount)) {
         error = "D4 plan contains an unsupported atomic number";
         return XTBLOOM_STATUS_INVALID_ARGUMENT;
       }

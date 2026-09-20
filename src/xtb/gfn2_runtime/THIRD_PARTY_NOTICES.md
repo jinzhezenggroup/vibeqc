@@ -259,8 +259,10 @@ mctc-lib repository: <https://github.com/grimme-lab/mctc-lib>
 
 mctc-lib license: `Apache-2.0` (`LICENSES/Apache-2.0.txt`).
 
-The packed GFN2-D4 reference data in `data/parameters/d4.hpp` is derived
-from dftd4 revision `6e1f59c3f39d919a2dbef0601d2576727c8b30e8`.
+The GFN2-D4 reference data consumed by this scoped runtime is shared from
+VibeQC's canonical `src/dft/dispersion/d4_data.hpp` table rather than copied
+into this runtime. It is derived from dftd4 revision
+`6e1f59c3f39d919a2dbef0601d2576727c8b30e8`.
 The GFN1 atomic input and exponential coordination data, and the D4
 electronegativity-weighted coordination data and implementation conventions,
 also use mctc-lib revision
@@ -270,7 +272,7 @@ double-exponential convention, while the H0 implementation retains its
 Mantina atomic-radii table. GFN1 also retains the same atomic radii for H0 and
 halogen correction, Pauling electronegativities for H0, and the 4/3-scaled
 covalent radii and exponential CN convention. Exact dftd4 source blobs are
-recorded in `data/parameters/d4_manifest.json`; exact mctc-lib source paths,
+recorded in VibeQC's canonical `src/dft/dispersion/d4_manifest.json`; exact mctc-lib source paths,
 blobs, and hashes are recorded in `data/parameters/mctc_manifest.json`. The
 original focused notice and upstream license copies remain in
 `data/parameters/d4.NOTICE` and `data/parameters/licenses/`.
