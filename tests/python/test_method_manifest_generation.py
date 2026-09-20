@@ -39,7 +39,10 @@ def test_public_method_abi_ids_are_explicit_and_stable() -> None:
     )
     actual = {entry["name"]: entry["abi_id"] for entry in payload["methods"]}
     assert actual == EXPECTED_ABI_IDS
-    assert dict(_generated_methods.METHOD_NAME_TO_ID) == {\n        **EXPECTED_ABI_IDS,\n        "ccsd(t)": 4,\n    }
+    assert dict(_generated_methods.METHOD_NAME_TO_ID) == {
+        **EXPECTED_ABI_IDS,
+        "ccsd(t)": 4,
+    }
 
 
 def test_public_method_provider_sets_are_generated() -> None:
