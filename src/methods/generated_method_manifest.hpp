@@ -23,7 +23,7 @@ struct MethodManifestEntry {
   std::string_view unavailable_reason;
 };
 
-inline constexpr std::array<MethodManifestEntry, 9> kMethodManifest{{
+inline constexpr std::array<MethodManifestEntry, 9> kMethodManifest{
     {"rhf", VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES, true, PublicProvider::Hf, ""},
     {"uhf", VIBEQC_METHOD_UHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES, true, PublicProvider::Hf, ""},
     {"wb97m-v", VIBEQC_METHOD_WB97M_V, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, 0, false, PublicProvider::Reserved, "method has no executable provider registration"},
