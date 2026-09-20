@@ -24,7 +24,8 @@ endfunction()
 function(vibeqc_add_runtime_sources target)
   target_sources(${target} PRIVATE
     src/runtime/context.cpp
-    src/runtime/cuda_provider.cpp)
+    src/runtime/cuda_provider.cpp
+    src/tensor/cpu_linalg.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/runtime/cuda_runtime.cu
@@ -49,10 +50,12 @@ function(vibeqc_add_dft_sources target)
       src/dft/cosx_fock_provider.cpp
       src/dft/cosx_scf.cpp
       src/dft/cuda_cosx.cu
+      src/dft/cuda_cosx_derivative.cu
       src/dft/cuda_xc.cpp
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu
-      src/dft/dispersion/d3_cuda.cu)
+      src/dft/dispersion/d3_cuda.cu
+      src/dft/dispersion/d4_cuda.cu)
   endif()
 endfunction()
 
@@ -70,7 +73,8 @@ function(vibeqc_add_posthf_cc_sources target)
     src/posthf/mp2_force.cpp
     src/posthf/mp2_gradient.cpp
     src/posthf/native_provider.cpp
-    src/response/native_gmres.cpp)
+    src/response/native_gmres.cpp
+    src/methods/xtb_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/cc/cuda_solver.cu
@@ -82,6 +86,7 @@ endfunction()
 function(vibeqc_add_integrals_scf_sources target)
   target_sources(${target} PRIVATE
     src/integrals/s_integrals.cpp
+    src/integrals/generated_df_cpu.cpp
     src/integrals/ecp.cpp
     src/methods/hf_method.cpp
     src/molecule/basis.cpp

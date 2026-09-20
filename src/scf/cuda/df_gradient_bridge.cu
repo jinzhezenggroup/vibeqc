@@ -711,26 +711,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Work-based schedule selection is independent of correctness eligibility.
     // Preserve source/metric/diagnostic gates; small or unknown targets retain
     // the generic route. Packed response has a separate qualification boundary.
-    bool promoted_default = false, packed_default = false;
+    bool promoted_default = false;
     unsigned derivative_architecture = 0;
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    if (device_metric && schedule == 0 && (!source || packed_raw) &&
+    if (device_metric && schedule == 0 && (!source || packed_raw || whitened) &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
       check(runtime::cuda_architecture(device, derivative_architecture));
       promoted_default = df_shell_execution_preferred(n, a, derivative_architecture);
-      // Packed production is qualified on the same trusted 768-AO occupied
-      // response as #381. Smaller defaults keep the faster dense response
-      // producer and consume its shell pairs symmetrically.
-      if (promoted_default && borrowed && borrowed->occupied_response && n == 768 && a == 768 &&
-          terms.size() == 1 && borrowed->occupied_factors[0].rank == 160) {
-        cudaDeviceProp properties{};
-        check(cudaGetDeviceProperties(&properties, device));
-        packed_default = std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
-      }
+      // The generalized packed preference is a candidate, not measured promotion
+      // evidence. Keep automatic response on the established symmetric/full
+      // routes; explicit packed selection remains available for qualification.
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
@@ -748,9 +742,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Only the trusted occupied producer supplies folded packed AO weights.
     // Unsupported/corrected states retain the dense response, folding its two
     // ordered adjoints when a generated shell consumer is available.
-    const bool packed_pairs =
-        (pair_policy == "packed" || (pair_policy == "auto" && packed_default)) && shell_execution &&
-        full_shell_domain && borrowed && borrowed->occupied_response;
+    const bool packed_pairs = pair_policy == "packed" && shell_execution && full_shell_domain &&
+                              borrowed && borrowed->occupied_response;
     const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
                                   : pair_policy == "symmetric" || pair_policy == "packed" ||
                                           (pair_policy == "auto" && promoted_default)
@@ -1102,17 +1095,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("raw_value_owner_identity",
                                            borrowed->resident_raw.owner_identity);
       }
-      // A bounded fitted-panel route reads the whitened owner instead. Merely
+      // Every fitted-panel route, including one full-width panel, reads the
+      // whitened owner instead. Merely
       // receiving a packed raw view does not establish any raw-value traffic.
-      if (packed_raw && (borrowed || !whitened || tile == a)) {
+      if (packed_raw && (borrowed || !whitened)) {
         runtime::cuda_trace::trace_counter("raw_packed_value_reused_bytes",
                                            packed_raw->pair_count * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
-      if (whitened && !borrowed && tile < a) {
+      if (whitened && !borrowed) {
         // The forward plan already owns this immutable tensor. Reading it is
         // an explicit borrow, not extra response allocation or raw regeneration.
+        // Full-width panels must use the same reader: falling back to raw A
+        // would regenerate every Q solely because more scratch is available.
         const auto bytes = whitened->pair_count * a * sizeof(double);
         arena.stats.borrowed_device_bytes += bytes;
         runtime::cuda_trace::trace_counter("response_borrowed_whitened_bytes", bytes);

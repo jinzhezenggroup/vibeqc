@@ -39,6 +39,8 @@ struct vibeqc_rhf_response_resident {
   double *slots{}, *coefficients{}, *energy_occ{}, *energy_virt{};
   double *density{}, *coulomb{}, *exchange{};
   double *transform_one{}, *transform_two{}, *gap_scratch{};
+  std::vector<double> orbital_energies;
+  bool reconstruction_ready{};
   int* numerical_error{};
   std::uint64_t h2d_bytes{}, d2h_bytes{}, synchronizations{}, operator_actions{}, blas_calls{};
 #endif
@@ -479,6 +481,7 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_create(
     owner->dimension = dim;
     owner->vector_slots = vector_slots;
     owner->allocation_bytes = bytes;
+    owner->orbital_energies.assign(orbital_energies, orbital_energies + energy_count);
 
     resident_cuda(cudaSetDevice(owner->device_id));
     resident_blas(cublasCreate(&owner->blas));
@@ -761,6 +764,7 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_apply(vibeqc_rhf_response_
 #if VIBEQC_HAS_CUDA
   return resident_guard(owner, [&] {
     require(destination != source, "resident RHF operator source/output must be distinct");
+    owner->reconstruction_ready = false;
     const auto n = static_cast<int>(owner->nbf);
     const auto o = static_cast<int>(owner->nocc);
     const auto v = static_cast<int>(owner->nvirt);
@@ -824,6 +828,167 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_apply(vibeqc_rhf_response_
   (void)owner;
   (void)destination;
   (void)source;
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+#endif
+}
+
+extern "C" vibeqc_status vibeqc_rhf_response_resident_reconstruct_v1(
+    vibeqc_rhf_response_resident* owner, uint32_t solution_slot, const double* frozen_mo,
+    uint64_t frozen_count, const double* overlap_mo, uint64_t overlap_count) {
+#if VIBEQC_HAS_CUDA
+  return resident_guard(owner, [&] {
+    owner->reconstruction_ready = false;
+    const auto n = owner->nbf, o = owner->nocc, v = owner->nvirt, matrix = n * n;
+    require(frozen_mo && overlap_mo && frozen_count == matrix && overlap_count == matrix,
+            "resident RHF reconstruction matrix shape mismatch");
+    for (std::size_t i = 0; i < matrix; ++i)
+      require(std::isfinite(frozen_mo[i]) && std::isfinite(overlap_mo[i]),
+              "resident RHF reconstruction requires finite matrices");
+    const auto* x = resident_slot(owner, solution_slot);
+    const auto* c_occ = owner->coefficients;
+    const double one = 1.0, zero = 0.0, two = 2.0, half = -0.5;
+    std::vector<double> mo1(n * o), hs(n * o);
+    for (std::size_t i = 0; i < o; ++i) {
+      const double ei = owner->orbital_energies[i];
+      for (std::size_t row = 0; row < n; ++row) {
+        const double sij = overlap_mo[row * n + i];
+        mo1[i * n + row] = -0.5 * sij;
+        double value = frozen_mo[row * n + i] - sij * ei;
+        if (row < o) value += (-0.5 * sij) * (owner->orbital_energies[row] - ei);
+        hs[i * n + row] = value;
+      }
+    }
+
+    resident_cuda(cudaMemcpyAsync(owner->transform_one, mo1.data(), mo1.size() * sizeof(double),
+                                  cudaMemcpyHostToDevice, owner->stream));
+    owner->h2d_bytes += mo1.size() * sizeof(double);
+    for (std::size_t i = 0; i < o; ++i) {
+      resident_blas(cublasDaxpy(owner->blas, static_cast<int>(v), &one, x + i * v, 1,
+                                owner->transform_one + i * n + o, 1));
+      ++owner->blas_calls;
+    }
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_N, n, o, n, &one,
+                              owner->coefficients, n, owner->transform_one, n, &zero,
+                              owner->transform_two, n));
+    ++owner->blas_calls;
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, o, &two,
+                              owner->transform_two, n, c_occ, n, &zero, owner->density, n));
+    ++owner->blas_calls;
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, o, &two, c_occ, n,
+                              owner->transform_two, n, &one, owner->density, n));
+    ++owner->blas_calls;
+
+    auto spec = owner->parent->source->strategy().spec;
+    spec.derivative_order = 0;
+    std::string detail;
+    const auto status = vibeqc::scf::enqueue_cuda_direct_jk_device(
+        owner->direct, spec, owner->density, nullptr, matrix, owner->coulomb, owner->exchange,
+        nullptr, owner->numerical_error, detail);
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw std::runtime_error(detail.empty() ? "resident reconstruction J/K failed" : detail);
+
+    resident_blas(cublasDscal(owner->blas, static_cast<int>(matrix), &half, owner->exchange, 1));
+    ++owner->blas_calls;
+    resident_blas(cublasDaxpy(owner->blas, static_cast<int>(matrix), &one, owner->coulomb, 1,
+                              owner->exchange, 1));
+    ++owner->blas_calls;
+    resident_cuda(cudaMemcpyAsync(owner->transform_one, hs.data(), hs.size() * sizeof(double),
+                                  cudaMemcpyHostToDevice, owner->stream));
+    owner->h2d_bytes += hs.size() * sizeof(double);
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_N, n, o, n, &one, owner->exchange,
+                              n, c_occ, n, &zero, owner->coulomb, n));
+    ++owner->blas_calls;
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_T, CUBLAS_OP_N, n, o, n, &one,
+                              owner->coefficients, n, owner->coulomb, n, &one, owner->transform_one,
+                              n));
+    ++owner->blas_calls;
+    for (std::size_t i = 0; i < o; ++i) {
+      const double ei = owner->orbital_energies[i];
+      resident_blas(
+          cublasDscal(owner->blas, static_cast<int>(n), &ei, owner->transform_two + i * n, 1));
+      ++owner->blas_calls;
+    }
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, o, &two,
+                              owner->transform_two, n, c_occ, n, &zero, owner->coulomb, n));
+    ++owner->blas_calls;
+#if VIBEQC_CUDA_PROVIDER_CUMETAL
+    // CuMetal does not expose cublasDgeam. Preserve the same column-major A + A^T
+    // operation with its supported Level-1 surface, without changing the NVIDIA path.
+    resident_blas(
+        cublasDcopy(owner->blas, static_cast<int>(matrix), owner->coulomb, 1, owner->exchange, 1));
+    ++owner->blas_calls;
+    for (std::size_t column = 0; column < n; ++column) {
+      resident_blas(cublasDaxpy(owner->blas, static_cast<int>(n), &one, owner->coulomb + column,
+                                static_cast<int>(n), owner->exchange + column * n, 1));
+      ++owner->blas_calls;
+    }
+#else
+    resident_blas(cublasDgeam(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, &one, owner->coulomb, n,
+                              &one, owner->coulomb, n, owner->exchange, n));
+    ++owner->blas_calls;
+#endif
+
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_N, n, o, o, &one, c_occ, n,
+                              owner->transform_one, n, &zero, owner->transform_two, n));
+    ++owner->blas_calls;
+    resident_blas(cublasDgemm(owner->blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, o, &two,
+                              owner->transform_two, n, c_occ, n, &one, owner->exchange, n));
+    ++owner->blas_calls;
+    resident_blas(
+        cublasDcopy(owner->blas, static_cast<int>(matrix), owner->exchange, 1, owner->coulomb, 1));
+    ++owner->blas_calls;
+    int numerical_error = 0;
+    resident_cuda(cudaMemcpyAsync(&numerical_error, owner->numerical_error, sizeof(int),
+                                  cudaMemcpyDeviceToHost, owner->stream));
+    owner->d2h_bytes += sizeof(int);
+    resident_sync(owner);
+    if (numerical_error) throw std::runtime_error("nonfinite resident RHF reconstruction J/K");
+    owner->reconstruction_ready = true;
+  });
+#else
+  (void)owner;
+  (void)solution_slot;
+  (void)frozen_mo;
+  (void)frozen_count;
+  (void)overlap_mo;
+  (void)overlap_count;
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+#endif
+}
+
+extern "C" const double* vibeqc_rhf_response_resident_reconstructed_weights_device_v1(
+    const vibeqc_rhf_response_resident* owner) {
+#if VIBEQC_HAS_CUDA
+  return owner && owner->reconstruction_ready ? owner->density : nullptr;
+#else
+  (void)owner;
+  return nullptr;
+#endif
+}
+
+extern "C" vibeqc_status vibeqc_rhf_response_resident_download_reconstruction_v1(
+    vibeqc_rhf_response_resident* owner, double* density_derivative, uint64_t density_count,
+    double* energy_weighted_density_derivative, uint64_t energy_count) {
+#if VIBEQC_HAS_CUDA
+  return resident_guard(owner, [&] {
+    const auto count = owner->nbf * owner->nbf;
+    require(owner->reconstruction_ready, "resident RHF reconstruction is unavailable");
+    require(density_derivative && energy_weighted_density_derivative && density_count == count &&
+                energy_count == count,
+            "resident RHF reconstruction download shape mismatch");
+    resident_cuda(cudaMemcpyAsync(density_derivative, owner->density, count * sizeof(double),
+                                  cudaMemcpyDeviceToHost, owner->stream));
+    resident_cuda(cudaMemcpyAsync(energy_weighted_density_derivative, owner->coulomb,
+                                  count * sizeof(double), cudaMemcpyDeviceToHost, owner->stream));
+    owner->d2h_bytes += 2 * count * sizeof(double);
+    resident_sync(owner);
+  });
+#else
+  (void)owner;
+  (void)density_derivative;
+  (void)density_count;
+  (void)energy_weighted_density_derivative;
+  (void)energy_count;
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 #endif
 }

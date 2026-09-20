@@ -40,6 +40,7 @@ def main() -> None:
             "cooperative",
             "generated_thread",
             "generated_shell_warp",
+            "generated_nucleus_cooperative",
         ),
         required=True,
     )

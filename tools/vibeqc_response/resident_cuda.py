@@ -68,6 +68,21 @@ def _bind(lib: typing.Any) -> None:
     signatures = {
         "upload": [handle, ct.c_uint32, _DOUBLE, ct.c_uint64],
         "download": [handle, ct.c_uint32, _DOUBLE, ct.c_uint64],
+        "reconstruct_v1": [
+            handle,
+            ct.c_uint32,
+            _DOUBLE,
+            ct.c_uint64,
+            _DOUBLE,
+            ct.c_uint64,
+        ],
+        "download_reconstruction_v1": [
+            handle,
+            _DOUBLE,
+            ct.c_uint64,
+            _DOUBLE,
+            ct.c_uint64,
+        ],
         "zero": [handle, ct.c_uint32],
         "copy": [handle, ct.c_uint32, ct.c_uint32],
         "scale": [handle, ct.c_uint32, ct.c_double],
@@ -80,6 +95,10 @@ def _bind(lib: typing.Any) -> None:
         function = getattr(lib, f"vibeqc_rhf_response_resident_{name}")
         function.argtypes = args
         function.restype = ct.c_int32
+    lib.vibeqc_rhf_response_resident_reconstructed_weights_device_v1.argtypes = [handle]
+    lib.vibeqc_rhf_response_resident_reconstructed_weights_device_v1.restype = (
+        ct.c_void_p
+    )
 
 
 class _ResidentVector:
@@ -96,6 +115,52 @@ class _ResidentVector:
     def __del__(self) -> None:
         if hasattr(self, "_released"):
             self.release()
+
+
+class ResidentRHFReconstruction:
+    """Borrowed resident D1/W1 pair valid for one reconstruction generation."""
+
+    __slots__ = ("generation", "owner")
+
+    def __init__(self, owner: typing.Any, generation: int) -> None:
+        self.owner, self.generation = owner, generation
+
+    def _validate(self) -> None:
+        if self.owner._reconstruction_generation != self.generation:
+            raise ValueError("resident RHF reconstruction lease is stale")
+        if self.owner._closed or not self.owner._handle:
+            raise RuntimeError("resident RHF response owner is closed")
+
+    @property
+    def nbf(self) -> int:
+        return self.owner.problem.reference.nmo
+
+    @property
+    def device_id(self) -> int:
+        return self.owner._backend.device_id
+
+    @property
+    def device_pointer(self) -> int:
+        self._validate()
+        pointer = self.owner._lib.vibeqc_rhf_response_resident_reconstructed_weights_device_v1(
+            self.owner._handle
+        )
+        if not pointer:
+            raise RuntimeError("resident RHF reconstruction is unavailable")
+        return int(pointer)
+
+    def to_host(self) -> tuple[np.ndarray, np.ndarray]:
+        self._validate()
+        density = np.empty((self.nbf, self.nbf), dtype=np.float64)
+        weighted = np.empty_like(density)
+        self.owner._call(
+            "download_reconstruction_v1",
+            density.ctypes.data_as(_DOUBLE),
+            density.size,
+            weighted.ctypes.data_as(_DOUBLE),
+            weighted.size,
+        )
+        return density, weighted
 
 
 class CudaResidentRHFResponse:
@@ -132,6 +197,7 @@ class CudaResidentRHFResponse:
         self.dimension = problem.dimension
         self._handle = ct.c_void_p()
         self._closed = False
+        self._reconstruction_generation = 0
         coefficients = np.ascontiguousarray(
             problem.reference.coefficients, dtype=np.float64
         )
@@ -157,6 +223,7 @@ class CudaResidentRHFResponse:
         self.vector_slots = vector_slots
         self._free = list(reversed(range(vector_slots)))
         self._live = set()
+        self._retained = set()
         self._vectors = WeakValueDictionary()
         diagnostic = self.diagnostics
         if (
@@ -230,12 +297,26 @@ class CudaResidentRHFResponse:
             yield
         finally:
             for vector in list(self._vectors.values()):
-                vector.release()
+                if vector.slot not in self._retained:
+                    vector.release()
 
     def reset(self) -> None:
-        if self._live:
+        if self._live != self._retained:
             raise RuntimeError("resident Krylov reset with live vector leases")
-        self._free = list(reversed(range(self.vector_slots)))
+        self._free = [
+            slot
+            for slot in reversed(range(self.vector_slots))
+            if slot not in self._live
+        ]
+
+    def _retain(self, vector: typing.Any) -> None:
+        """Promote a validated recycle vector beyond one solver workspace.
+
+        The recycle space owns its lease and must release it before this owner
+        closes. Temporary cleanup never revokes successfully retained vectors.
+        """
+        self._validate_vector(vector)
+        self._retained.add(vector.slot)
 
     def _validate_vector(self, value: typing.Any) -> None:
         if self._closed or not self._handle:
@@ -259,6 +340,7 @@ class CudaResidentRHFResponse:
     def _release_slot(self, slot: typing.Any) -> None:
         if slot in self._live:
             self._live.remove(slot)
+            self._retained.discard(slot)
             self._vectors.pop(slot, None)
             self._free.append(slot)
 
@@ -327,12 +409,46 @@ class CudaResidentRHFResponse:
         self._validate_vector(value)
         del operator
         result = self._allocate()
+        self._reconstruction_generation += 1
         try:
             self._call("apply", result.slot, value.slot)
             return result
         except BaseException:
             result.release()
             raise
+
+    def reconstruct_nuclear_response(
+        self,
+        solution: typing.Any,
+        frozen_mo: typing.Any,
+        overlap_mo: typing.Any,
+    ) -> ResidentRHFReconstruction:
+        """Keep D1/W1 on device from one converged resident rotation vector."""
+        self._validate_vector(solution)
+        n = self.problem.reference.nmo
+
+        def checked_matrix(value: typing.Any, name: str) -> np.ndarray:
+            array = np.asarray(value)
+            if (
+                array.shape != (n, n)
+                or array.dtype.kind not in "iuf"
+                or not np.isfinite(array).all()
+            ):
+                raise ValueError(f"{name} must be a finite real ({n},{n}) matrix")
+            return np.ascontiguousarray(array, dtype=np.float64)
+
+        frozen = checked_matrix(frozen_mo, "frozen MO derivative")
+        overlap = checked_matrix(overlap_mo, "overlap MO derivative")
+        self._reconstruction_generation += 1
+        self._call(
+            "reconstruct_v1",
+            solution.slot,
+            frozen.ctypes.data_as(_DOUBLE),
+            frozen.size,
+            overlap.ctypes.data_as(_DOUBLE),
+            overlap.size,
+        )
+        return ResidentRHFReconstruction(self, self._reconstruction_generation)
 
     def precondition(self, preconditioner: typing.Any, value: typing.Any) -> typing.Any:
         if preconditioner is not None:
@@ -416,6 +532,7 @@ class CudaResidentRHFResponse:
             # Any retained vector now refers to a closed owner; later release
             # is harmless because its slot is no longer in the live set.
             self._live.clear()
+            self._retained.clear()
         elif self._live:
             import gc
 

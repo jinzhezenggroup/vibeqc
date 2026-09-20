@@ -20,6 +20,7 @@ from tools.vibeqc_response import (
     GMRESOptions,
     NativeJKBackend,
     RHFResponseOperator,
+    resident_vector_slots,
 )
 
 from .analytic import (
@@ -153,6 +154,8 @@ def rhf_hvp_many(
     jk_backend: str = "cpu",
     device_id: int = 0,
     device_budget_bytes: int = 64 << 20,
+    response_execution: str = "host",
+    response_device_budget_bytes: int = 128 << 20,
     solver_options: object = None,
     first_backend: str = "cpu",
     first_compiler: object = None,
@@ -191,6 +194,13 @@ def rhf_hvp_many(
         raise ValueError("strategy must be sequential, blocked or recycled")
     if jk_backend not in ("cpu", "cuda"):
         raise ValueError("jk_backend must be cpu or cuda")
+    if response_execution not in ("host", "cuda-resident"):
+        raise ValueError("response_execution must be host or cuda-resident")
+    if response_execution == "cuda-resident" and jk_backend != "cuda":
+        raise ValueError("cuda-resident response requires jk_backend='cuda'")
+    response_device_budget_bytes = _checked_budget(
+        response_device_budget_bytes, "response_device_budget_bytes"
+    )
     if first_backend not in ("cpu", "cuda"):
         raise ValueError("first_backend must be cpu or cuda")
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
@@ -224,6 +234,13 @@ def rhf_hvp_many(
     elif first_compiler is not None:
         raise ValueError("first_compiler is only meaningful for CUDA first derivatives")
 
+    resident_relaxation = (
+        response_execution == "cuda-resident" and relaxation_backend == "cuda"
+    )
+    resident_relaxation_values: list[object | None] = [None] * len(vectors)
+    resident_relaxation_diagnostics: list[object | None] = [None] * len(vectors)
+    resident_relaxation_seconds = 0.0
+
     storage = _block_persistent_bound(state, len(vectors))
     if storage["total"] >= total_budget_bytes:
         raise ValueError(
@@ -252,13 +269,70 @@ def rhf_hvp_many(
                 CudaDirectJKBackend(
                     state.source,
                     device_id=device_id,
-                    device_budget_bytes=device_budget_bytes,
+                    device_budget_bytes=min(
+                        device_budget_bytes,
+                        total_budget_bytes - storage["total"],
+                        response_device_budget_bytes
+                        if response_execution == "cuda-resident"
+                        else device_budget_bytes,
+                    ),
                 )
             )
         else:
             backend = NativeJKBackend(state.source)
         problem = RHFResponseOperator.build_problem(state.reference, backend)
         operator = RHFResponseOperator(problem, backend)
+        resident_owner = None
+        retained_response_bytes = (
+            backend.device_resident_bytes if jk_backend == "cuda" else 0
+        )
+        if response_execution == "cuda-resident":
+            slots = resident_vector_slots(
+                operator.dimension,
+                bounded_options,
+                rhs_count=len(vectors),
+                strategy=strategy,
+            )
+            if slots > 4096:
+                raise ValueError(
+                    "resident block vector-slot plan exceeds native capacity"
+                )
+            remaining = (
+                min(response_device_budget_bytes, total_budget_bytes - storage["total"])
+                - retained_response_bytes
+            )
+            if remaining <= 0:
+                raise ValueError(
+                    "Coulomb/exchange leaves no resident response device budget"
+                )
+            resident_owner = stack.enter_context(
+                backend.resident_response(
+                    problem, vector_slots=max(8, slots), device_budget_bytes=remaining
+                )
+            )
+            retained_response_bytes += resident_owner.workspace_bytes
+            operator._krylov_engine = resident_owner
+        # The response phase coexists with the fixed device arena. Reserve it
+        # before first-integral work, in addition to the solver's logical buffers.
+        resident_relaxation_reserve = (
+            relaxation_storage["numeric_peak_bytes"]
+            if resident_relaxation and relaxation_storage is not None
+            else 0
+        )
+        response_available = (
+            total_budget_bytes
+            - storage["total"]
+            - retained_response_bytes
+            - resident_relaxation_reserve
+        )
+        if response_available <= 0:
+            raise ValueError("retained response storage exceeds total_budget_bytes")
+        bounded_options = replace(
+            bounded_options,
+            max_workspace_bytes=min(
+                bounded_options.max_workspace_bytes, response_available
+            ),
+        )
 
         first_started = time.perf_counter()
         frozen = np.empty((len(vectors), state.nbf, state.nbf))
@@ -281,6 +355,27 @@ def rhf_hvp_many(
             overlap[index] = s1
         first_seconds = time.perf_counter() - first_started
 
+        def resident_consumer(index: int) -> object:
+            def consume(weights: object) -> None:
+                nonlocal resident_relaxation_seconds
+                from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
+
+                started = time.perf_counter()
+                value, diagnostic = generated_rhf_relaxation_contraction_cuda(
+                    state,
+                    None,
+                    None,
+                    relaxation_compiler,
+                    resident_weights=weights,
+                    device_id=device_id,
+                    budget_bytes=relaxation_budget_bytes,
+                )
+                resident_relaxation_values[index] = value
+                resident_relaxation_diagnostics[index] = diagnostic
+                resident_relaxation_seconds += time.perf_counter() - started
+
+            return consume
+
         response_started = time.perf_counter()
         batch = solve_rhf_nuclear_perturbations(
             operator,
@@ -288,18 +383,46 @@ def rhf_hvp_many(
             overlap,
             strategy=strategy,
             options=bounded_options,
+            resident_reconstruction_consumers=(
+                tuple(resident_consumer(index) for index in range(len(vectors)))
+                if resident_relaxation
+                else None
+            ),
         )
-        response_seconds = time.perf_counter() - response_started
+        response_seconds = max(
+            0.0,
+            time.perf_counter() - response_started - resident_relaxation_seconds,
+        )
         jk_statistics = deepcopy(backend.statistics)
         jk_provider = backend.diagnostics if jk_backend == "cuda" else None
+        resident_diagnostic = (
+            resident_owner.diagnostics if resident_owner is not None else None
+        )
+        resident_identity = (
+            resident_owner.identity if resident_owner is not None else None
+        )
 
     state.validate()
-    if storage["total"] + batch.solve_result.peak_workspace_bytes > total_budget_bytes:
+    if (
+        storage["total"]
+        + retained_response_bytes
+        + batch.solve_result.peak_workspace_bytes
+        > total_budget_bytes
+    ):
         raise RuntimeError("multi-RHS response exceeded the declared total budget")
 
     relaxation_started = time.perf_counter()
     relaxation_diagnostics = []
-    if relaxation_backend == "cuda":
+    if resident_relaxation:
+        if any(value is None for value in resident_relaxation_values) or any(
+            diagnostic is None for diagnostic in resident_relaxation_diagnostics
+        ):
+            raise RuntimeError(
+                "resident block RHF relaxation did not publish every direction"
+            )
+        relaxation = np.stack(resident_relaxation_values)
+        relaxation_diagnostics = list(resident_relaxation_diagnostics)
+    elif relaxation_backend == "cuda":
         from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
 
         relaxation_items = []
@@ -326,7 +449,11 @@ def rhf_hvp_many(
                 for response in batch.responses
             ]
         )
-    relaxation_seconds = time.perf_counter() - relaxation_started
+    relaxation_seconds = (
+        resident_relaxation_seconds
+        if resident_relaxation
+        else time.perf_counter() - relaxation_started
+    )
 
     second_started = time.perf_counter()
     second_items = [
@@ -360,9 +487,23 @@ def rhf_hvp_many(
     state.validate()
 
     total_seconds = time.perf_counter() - total_started
-    response_phase_bound = storage["total"] + batch.solve_result.peak_workspace_bytes
+    response_phase_bound = (
+        storage["total"]
+        + retained_response_bytes
+        + batch.solve_result.peak_workspace_bytes
+    )
     relaxation_phase_bound = storage["total"] + (
         0 if relaxation_storage is None else relaxation_storage["numeric_peak_bytes"]
+    )
+    resident_relaxation_phase_bound = (
+        response_phase_bound
+        + (
+            relaxation_storage["numeric_peak_bytes"]
+            if resident_relaxation and relaxation_storage is not None
+            else 0
+        )
+        if resident_relaxation
+        else 0
     )
     second_host_peak = max(
         (item["peak_host_bytes"] for item in second_diagnostics), default=0
@@ -375,7 +516,12 @@ def rhf_hvp_many(
         raise ValueError(
             "HVP block plus second-integral provider storage exceeds total_budget_bytes"
         )
-    actual_bound = max(response_phase_bound, relaxation_phase_bound, second_phase_bound)
+    actual_bound = max(
+        response_phase_bound,
+        relaxation_phase_bound,
+        resident_relaxation_phase_bound,
+        second_phase_bound,
+    )
     first_programs = (
         tuple(
             sorted(
@@ -402,6 +548,8 @@ def rhf_hvp_many(
                 vectors.astype("<f8", copy=False).tobytes()
             ).hexdigest(),
             "jk_backend": jk_backend,
+            "response_execution": response_execution,
+            "resident_response": resident_identity,
             "first_backend": first_backend,
             "first_programs": first_programs,
             "second_backend": second_backend,
@@ -444,11 +592,18 @@ def rhf_hvp_many(
         "relaxation_numeric_bound": deepcopy(relaxation_storage),
         "response_phase_numeric_bound_bytes": response_phase_bound,
         "relaxation_phase_numeric_bound_bytes": relaxation_phase_bound,
+        "resident_response_relaxation_phase_numeric_bound_bytes": (
+            resident_relaxation_phase_bound
+        ),
         "second_integral_phase_numeric_bound_bytes": second_phase_bound,
         "complete_numeric_peak_bound_bytes": actual_bound,
         "total_budget_bytes": total_budget_bytes,
         "solver_options": asdict(bounded_options),
         "jk_backend": jk_backend,
+        "response_execution": response_execution,
+        "resident_response": deepcopy(resident_diagnostic),
+        "retained_response_device_bytes": retained_response_bytes,
+        "response_device_budget_bytes": response_device_budget_bytes,
         "first_backend": first_backend,
         "second_backend": second_backend,
         "second_integral_budget_bytes": second_budget_bytes,
@@ -456,7 +611,11 @@ def rhf_hvp_many(
         "relaxation_backend": relaxation_backend,
         "relaxation_provider": deepcopy(relaxation_diagnostics),
         "execution_residency": (
-            "mixed-host-device"
+            "mixed-host-device-resident-response-relaxation"
+            if resident_relaxation
+            else "mixed-host-device-resident-response"
+            if response_execution == "cuda-resident"
+            else "mixed-host-device"
             if jk_backend == "cuda"
             or first_backend == "cuda"
             or relaxation_backend == "cuda"
@@ -471,6 +630,9 @@ def rhf_hvp_many(
             "first_sources": first_seconds,
             "response_prepare_solve_reconstruct": response_seconds,
             "response_solve_many": batch.solve_result.seconds,
+            "response_operator": batch.solve_result.operator_seconds,
+            "response_orthogonalization": batch.solve_result.orthogonalization_seconds,
+            "response_recycling": batch.solve_result.recycling_seconds,
             "relaxation_first_integrals": relaxation_seconds,
             "second_integral_hvps": second_seconds,
             "nuclear": nuclear_seconds,

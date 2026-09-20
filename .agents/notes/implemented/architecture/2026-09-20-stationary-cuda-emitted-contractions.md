@@ -28,5 +28,9 @@ This does not expand method capability or prove a faster/full-resident endpoint.
 Revisit only with independent numerical and complete-endpoint qualification.
 Refs #349/#163/#626; tests/python/test_stationary_cuda_lowering.py.
 
+Follow-up: the host-visible generated source-weight handoff was superseded by
+`.agents/notes/implemented/performance/2026-09-20-stationary-weight-consumer-fusion.md`
+under #665; the compiler-owned scientific-contraction boundary remains unchanged.
+
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

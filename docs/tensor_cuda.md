@@ -144,11 +144,21 @@ produce zero. Index expressions remain compilable for zero extents.
 
 Generated kernels cover ordered addition, products, division/denominators,
 transpose, logical reshape, slice, gather (including repeated coordinates),
-reduction and explicit broadcast. Packing scatter assigns unique destinations;
-generated derivative programs from #151 use incidence-matrix einsum nodes
-rather than a new mathematical scatter-add primitive.
+reduction, explicit broadcast, and the ragged `indexed_gather`, `scatter_add`
+and `segment_sum` primitives. Packing scatter still assigns unique GEMM
+destinations; TensorIR `scatter_add` instead has explicit repeated-destination
+accumulation semantics.
 
-Generated JVP/VJP programs from #151 are ordinary TensorIR programs and use
+`plan.batch_schedule` exposes a backend-neutral `BatchScheduleIR` with batch
+domains, degree histograms, and baseline-versus-scheduled ragged work. Static
+`scatter_add` maps are compiled into deterministic offsets-plus-members tables,
+so each output traverses only its members instead of scanning the full source
+axis. Members retain ascending source order, preserving the previous reduction
+order. `segment_sum` keeps its already-linear contiguous-offset lowering and
+`indexed_gather` remains a direct indexed load. This first scheduling slice
+does not yet add degree-bucketed warp/CTA queues or runtime-varying topology.
+
+Generated JVP/VJP programs from #151/#501 are ordinary TensorIR programs and use
 the same planning, compilation and execution path. The fixed CC-like RTX 5090
 numerical/resource evidence is recorded in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md).
@@ -217,11 +227,17 @@ arithmetic, and the strict CUDA arithmetic identity remains
 `PrecisionDirective` records requested storage, compute and accumulation
 dtypes. `lower_precision` converts supported requests into ordinary TensorIR
 DAGs with explicit casts while preserving the external input/output ABI and the
-source-equation identity. The current ordinary-stream lowering requires compute
-and accumulation dtypes to agree. FP32 requests for reductions/contractions or
-sensitive divide/transcendental operations fail closed unless they carry
-qualification provenance; the conservative generated candidate only lowers
-ordinary elementwise/view subgraphs and leaves those boundaries in FP64.
+source-equation identity. Qualified `reduce` and `einsum` values may use FP32
+storage/compute with FP64 accumulation; the
+wider accumulator is represented in the resolved precision schedule and plan
+identity. Other compute/accumulation mismatches fail closed. Mixed-accumulation
+einsums deliberately use the generated generic contraction kernel because the
+current cuBLAS path does not provide this FP32-input/FP64-accumulator contract.
+FP32 requests for reductions/contractions or sensitive divide/transcendental
+operations still require qualification provenance; the conservative generated
+candidate leaves those boundaries in FP64. The numerical/backend rationale and
+qualification boundary are recorded in the
+[FP64 accumulation decision](../.agents/notes/implemented/numerics/2026-09-21-tensor-fp64-accumulation.md).
 
 Precision candidates are passed to the existing #508 schedule search and tuner.
 They share the same planning budgets, deduplication, compilation cache, resource
@@ -479,3 +495,6 @@ Precision-request identity and qualification scope are part of the resolved sche
 not the source equation hash. Cast AD uses the declared arithmetic linearization
 rather than the derivative of bit-level rounding; see the
 [precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).
+
+The shared topology layout and admission boundary are recorded in the
+[ragged batch scheduling decision](../.agents/notes/implemented/architecture/2026-09-20-ragged-batch-schedule-ownership.md).

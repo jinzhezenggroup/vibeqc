@@ -123,6 +123,27 @@ def rhf_hvp(
         raise ValueError("relaxation_compiler is only meaningful for CUDA relaxation")
 
     total_started = time.perf_counter()
+    resident_relaxation = (
+        response_execution == "cuda-resident" and relaxation_backend == "cuda"
+    )
+    resident_result = {}
+
+    def consume_resident_response(weights: object) -> None:
+        from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
+
+        started = time.perf_counter()
+        value, provider = generated_rhf_relaxation_contraction_cuda(
+            state,
+            None,
+            None,
+            relaxation_compiler,
+            resident_weights=weights,
+            device_id=device_id,
+            budget_bytes=relaxation_budget_bytes,
+        )
+        resident_result["value"] = value
+        resident_result["provider"] = provider
+        resident_result["seconds"] = time.perf_counter() - started
 
     response_started = time.perf_counter()
     response = directional_rhf_response(
@@ -137,11 +158,21 @@ def rhf_hvp(
         first_backend=first_backend,
         first_compiler=first_compiler,
         first_budget_bytes=first_budget_bytes,
+        resident_reconstruction_consumer=(
+            consume_resident_response if resident_relaxation else None
+        ),
     )
-    response_seconds = time.perf_counter() - response_started
+    response_elapsed = time.perf_counter() - response_started
+    relaxation_seconds = float(resident_result.get("seconds", 0.0))
+    response_seconds = max(0.0, response_elapsed - relaxation_seconds)
 
     relaxation_started = time.perf_counter()
-    if relaxation_backend == "cuda":
+    if resident_relaxation:
+        if "value" not in resident_result or "provider" not in resident_result:
+            raise RuntimeError("resident RHF relaxation result was not published")
+        relaxation = resident_result["value"]
+        relaxation_provider = resident_result["provider"]
+    elif relaxation_backend == "cuda":
         from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
 
         relaxation, relaxation_provider = generated_rhf_relaxation_contraction_cuda(
@@ -162,7 +193,8 @@ def rhf_hvp(
             "backend": "cpu-generated-weighted-contraction",
             "device_transfers": 0,
         }
-    relaxation_seconds = time.perf_counter() - relaxation_started
+    if not resident_relaxation:
+        relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
     second, second_provider = provider_hvp_components(
@@ -207,7 +239,9 @@ def rhf_hvp(
 
     response_diag = response.diagnostics
     residency = (
-        "mixed-host-device-resident-response"
+        "mixed-host-device-resident-response-relaxation"
+        if resident_relaxation
+        else "mixed-host-device-resident-response"
         if response_execution == "cuda-resident"
         else "mixed-host-device"
         if first_backend == "cuda"
@@ -285,10 +319,16 @@ def rhf_hvp(
             "response_device_budget_bytes", 0
         ),
         "second_integral_budget_bytes": second_budget_bytes,
+        "resident_relaxation_overlap_device_bytes": (
+            response_diag.get("retained_response_device_bytes", 0)
+            + relaxation_provider.get("storage", {}).get("device_bytes", 0)
+            if resident_relaxation
+            else 0
+        ),
         "published_hvp_bytes": int(total.nbytes),
         "memory_scope": (
-            "published HVP + directional-provider/solver diagnostics only; "
-            "not a combined SCF/J/K/compiler/CUDA-context peak"
+            "resident response + CUDA relaxation simultaneous device storage is reported "
+            "when active; still not a combined SCF/compiler/CUDA-context global peak"
         ),
     }
 

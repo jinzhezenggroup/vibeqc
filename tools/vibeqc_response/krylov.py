@@ -71,41 +71,16 @@ def _orthogonalize_against(
 ) -> typing.Any:
     """Modified Gram-Schmidt with reorthogonalization and an explicit breakdown."""
     work = np.asarray(value, dtype=np.float64).copy()
-    coefficients = np.zeros(vectors.shape[1])
+    coefficients = np.zeros(len(vectors))
     for _ in range(reorthogonalize):
-        for column in range(vectors.shape[1]):
-            projection = float(np.dot(vectors[:, column], work))
+        for column, vector in enumerate(vectors):
+            projection = float(np.dot(vector, work))
             coefficients[column] += projection
-            work -= projection * vectors[:, column]
+            work -= projection * vector
         norm = _vector_norm(work)
         if norm <= tolerance:
             break
     return work, coefficients, _vector_norm(work)
-
-
-def _initial_block_basis(matrix: typing.Any, *, tolerance: typing.Any) -> typing.Any:
-    """Orthonormalize RHS columns without an absolute rank cutoff.
-
-    The scalar SVD helper intentionally treats tiny singular values as
-    numerical rank zero for recycling.  Block solves cannot do that: a
-    numerically small but nonzero RHS still has its own convergence target.
-    This routine drops only directions whose *orthogonal residual* is at the
-    explicit breakdown tolerance.
-    """
-    value = np.asarray(matrix, dtype=np.float64)
-    columns = []
-    for column in range(value.shape[1]):
-        work, _, norm = _orthogonalize_against(
-            np.column_stack(columns) if columns else np.empty((value.shape[0], 0)),
-            value[:, column],
-            reorthogonalize=2,
-            tolerance=tolerance,
-        )
-        if norm > tolerance:
-            columns.append(work / norm)
-    if not columns:
-        return np.empty((value.shape[0], 0)), 0
-    return np.column_stack(columns), len(columns)
 
 
 def _single_workspace_bytes(n: typing.Any, options: typing.Any) -> typing.Any:
@@ -170,6 +145,45 @@ def _workspace_failure(
             basis=np.empty((n, 0)),
         )
         for _ in range(nrhs)
+    )
+
+
+def resident_vector_slots(
+    dimension: int,
+    options: typing.Any,
+    *,
+    rhs_count: int = 1,
+    strategy: str = "sequential",
+    recycle_capacity: int = 8,
+) -> int:
+    """Conservative vector-slot plan for the shared resident algorithms.
+
+    This is a logical lease bound, separate from the native owner's device
+    byte request. Consumers must reject an unsupported count instead of
+    clamping it to the owner's maximum and discovering exhaustion mid-solve.
+    """
+    if (
+        type(dimension) is not int
+        or dimension < 0
+        or type(rhs_count) is not int
+        or rhs_count < 0
+    ):
+        raise ValueError("dimension and rhs_count must be nonnegative integers")
+    if strategy not in ("sequential", "blocked", "recycled"):
+        raise ValueError("unknown resident multi-RHS strategy")
+    if not isinstance(options, GMRESOptions):
+        raise TypeError("resident vector planning requires GMRESOptions")
+    if type(recycle_capacity) is not int or recycle_capacity < 0:
+        raise ValueError("recycle_capacity must be a nonnegative integer")
+    if strategy == "blocked":
+        return (
+            4 * min(dimension, rhs_count + options.max_iterations) + 2 * rhs_count + 12
+        )
+    restart = min(dimension, options.restart, options.max_iterations)
+    return (
+        2 * restart
+        + 16
+        + (2 * min(recycle_capacity, dimension) if strategy == "recycled" else 0)
     )
 
 
@@ -242,7 +256,15 @@ class DiagonalPreconditioner:
 
 @dataclass(frozen=True)
 class SolveResult:
-    """One response solve with the actual residual and failure reason."""
+    """One response solve with the actual residual and failure reason.
+
+    Operator time measures only engine actions. Orthogonalization includes
+    basis construction/projection and block range factorization; recycling
+    measures projection/replacement of the retained space. These disjoint
+    components are not a complete wall-time decomposition: residual vector
+    arithmetic, small least squares, validation and publication remain in
+    the enclosing solve's wall time.
+    """
 
     solution: np.ndarray
     converged: bool
@@ -259,6 +281,7 @@ class SolveResult:
     recycled_vectors: int = 0
     rank: int = 0
     basis: np.ndarray = field(default_factory=lambda: np.empty((0, 0)))
+    recycling_seconds: float = 0.0
 
     def require_converged(self) -> typing.Any:
         """Raise with the complete diagnostic if the solve did not converge."""
@@ -288,6 +311,24 @@ class MultiRHSResult:
         if not self.results:
             return np.empty((0, 0))
         return np.column_stack([result.solution for result in self.results])
+
+    def _aggregate_seconds(self, field: str) -> float:
+        # Each blocked result describes the same shared solve; summing those
+        # repeated records would multiply one operation's cost by nrhs.
+        records = self.results[:1] if self.strategy == "blocked" else self.results
+        return sum(getattr(item, field) for item in records)
+
+    @property
+    def operator_seconds(self) -> float:
+        return self._aggregate_seconds("operator_seconds")
+
+    @property
+    def orthogonalization_seconds(self) -> float:
+        return self._aggregate_seconds("orthogonalization_seconds")
+
+    @property
+    def recycling_seconds(self) -> float:
+        return self._aggregate_seconds("recycling_seconds")
 
     def require_converged(self) -> typing.Any:
         """Raise the first nonconverged result with its actual residual."""
@@ -325,6 +366,9 @@ class _HostKrylovEngine:
     def norm(self, value: typing.Any) -> typing.Any:
         return _vector_norm(value)
 
+    def dot(self, left: typing.Any, right: typing.Any) -> float:
+        return float(np.dot(left, right))
+
     def apply(self, operator: typing.Any, value: typing.Any) -> typing.Any:
         return np.asarray(operator.apply(value), dtype=np.float64)
 
@@ -341,13 +385,8 @@ class _HostKrylovEngine:
         reorthogonalize: typing.Any,
         tolerance: typing.Any,
     ) -> typing.Any:
-        matrix = (
-            np.column_stack(basis)
-            if basis
-            else np.empty((self.dimension, 0), dtype=np.float64)
-        )
         return _orthogonalize_against(
-            matrix,
+            basis,
             value,
             reorthogonalize=reorthogonalize,
             tolerance=tolerance,
@@ -383,6 +422,8 @@ def _solve_single(
     initial_guess: typing.Any = None,
     preconditioner: typing.Any = None,
     collect_basis: typing.Any = True,
+    resident_recycle: typing.Any = None,
+    solution_consumer: typing.Any = None,
 ) -> typing.Any:
     """Restarted GMRES with one control flow and pluggable vector residency."""
     b_host = np.asarray(rhs, dtype=np.float64)
@@ -427,6 +468,13 @@ def _solve_single(
 
     b = engine.from_host(b_host)
     x = engine.zeros() if guess_host is None else engine.from_host(guess_host)
+    has_guess = guess_host is not None
+    recycle_seconds = 0.0
+    if resident_recycle is not None and guess_host is None:
+        recycle_started = time.perf_counter()
+        x = resident_recycle._initial_guess_vector(operator.problem, b, engine)
+        recycle_seconds += time.perf_counter() - recycle_started
+        has_guess = bool(resident_recycle._vectors)
     operator_actions = 0
     preconditioner_actions = 0
     ortho_seconds = 0.0
@@ -455,7 +503,9 @@ def _solve_single(
         basis: typing.Any,
         rhs_norm: typing.Any,
     ) -> typing.Any:
-        return SolveResult(
+        if converged and solution_consumer is not None:
+            solution_consumer(engine, solution)
+        result = SolveResult(
             immutable(engine.to_host(solution)),
             converged,
             residual_norm,
@@ -472,10 +522,21 @@ def _solve_single(
                 engine.stack_host(basis) if collect_basis else np.empty((n, 0))
             ),
         )
+        if converged and resident_recycle is not None:
+            # Recycle before the temporary-vector scope is drained. Published
+            # host diagnostics are never uploaded again to update the space.
+            getattr(operator, "validate_current", lambda: None)()
+            recycle_started = time.perf_counter()
+            resident_recycle._update_vectors(operator.problem, solution, basis, engine)
+            return replace(
+                result,
+                recycling_seconds=recycle_seconds
+                + time.perf_counter()
+                - recycle_started,
+            )
+        return replace(result, recycling_seconds=recycle_seconds)
 
-    residual = (
-        engine.subtract(b, apply(x)) if guess_host is not None else engine.copy(b)
-    )
+    residual = engine.subtract(b, apply(x)) if has_guess else engine.copy(b)
     beta = engine.norm(residual)
     history.append(beta)
     rhs_norm = engine.norm(b)
@@ -498,11 +559,12 @@ def _solve_single(
         for column in range(restart):
             if total_steps >= options.max_iterations:
                 break
-            ortho_started = time.perf_counter()
             work = engine.precondition(preconditioner, basis[column])
             if preconditioner is not None:
                 preconditioner_actions += 1
             work = apply(work)
+            # Keep operator execution out of the orthogonalization ledger.
+            ortho_started = time.perf_counter()
             work, coefficients, norm = engine.orthogonalize(
                 basis[: column + 1],
                 work,
@@ -612,7 +674,12 @@ def _solve_single(
 
 
 class KrylovRecycleSpace:
-    """Reference-bound retained Krylov vectors with explicit reset/transport."""
+    """Reference-bound retained vectors with optional resident ownership.
+
+    ``vector_engine=resident`` keeps projection and replacement on that exact
+    owner. Close/reset this space before closing the borrowed resident owner.
+    Default host storage and explicit host-result updates remain supported.
+    """
 
     def __init__(
         self,
@@ -620,6 +687,7 @@ class KrylovRecycleSpace:
         *,
         max_vectors: typing.Any = 8,
         max_bytes: typing.Any = 8 << 20,
+        vector_engine: typing.Any = None,
     ) -> None:
         if type(max_vectors) is not int or max_vectors < 1:
             raise ValueError("max_vectors must be positive")
@@ -628,6 +696,17 @@ class KrylovRecycleSpace:
         self.problem = problem
         self.max_vectors = max_vectors
         self.max_bytes = max_bytes
+        self._engine = vector_engine
+        if vector_engine is not None:
+            if not getattr(vector_engine, "resident", False):
+                raise TypeError("recycle vector_engine must be a resident owner")
+            if (
+                vector_engine.problem.compatibility_identity
+                != problem.compatibility_identity
+            ):
+                raise ResponseCompatibilityError(
+                    "resident recycle owner/problem mismatch"
+                )
         self._vectors = []
         self.generation = 0
 
@@ -641,13 +720,20 @@ class KrylovRecycleSpace:
             {
                 "problem": self.key,
                 "generation": self.generation,
-                "vectors": [hashlib_sha(v) for v in self._vectors],
+                "vectors": (
+                    [hashlib_sha(v) for v in self._vectors]
+                    if self._engine is None
+                    else [v.slot for v in self._vectors]
+                ),
+                "vector_owner": None if self._engine is None else self._engine.identity,
             }
         )
 
     @property
     def storage_bytes(self) -> typing.Any:
         """Bytes held by the independently retained immutable vectors."""
+        if self._engine is not None:
+            return len(self._vectors) * self._engine.dimension * 8
         return sum(vector.nbytes for vector in self._vectors)
 
     def projection_bytes(self, dimension: typing.Any) -> typing.Any:
@@ -674,6 +760,12 @@ class KrylovRecycleSpace:
             raise ResponseCompatibilityError(
                 "stale Krylov subspace: reference/model/operator compatibility key changed"
             )
+        if self._engine is not None:
+            self._engine._backend._ensure_open()
+            if self._engine._closed:
+                raise RuntimeError("resident recycle owner is closed")
+            for vector in self._vectors:
+                self._engine._validate_vector(vector)
 
     def initial_guess(self, problem: typing.Any, rhs: typing.Any) -> typing.Any:
         """Project one RHS onto the already orthonormal retained vectors."""
@@ -681,6 +773,14 @@ class KrylovRecycleSpace:
         b = np.asarray(rhs, dtype=np.float64)
         if b.ndim != 1 or not np.isfinite(b).all():
             raise ValueError("recycled RHS must be a finite vector")
+        if self._engine is not None:
+            # Explicit diagnostic API: the production solver uses the resident
+            # vector seam below and avoids both this upload and publication.
+            with self._engine.solver_workspace():
+                guess = self._initial_guess_vector(
+                    problem, self._engine.from_host(b), self._engine
+                )
+                return self._engine.to_host(guess)
         guess = np.zeros(b.size)
         for vector in self._vectors:
             if vector.shape != b.shape:
@@ -688,33 +788,84 @@ class KrylovRecycleSpace:
             guess += vector * np.dot(vector, b)
         return guess
 
+    def _initial_guess_vector(
+        self, problem: typing.Any, rhs: typing.Any, engine: typing.Any
+    ) -> typing.Any:
+        self.assert_compatible(problem)
+        if engine is not self._engine:
+            raise ResponseCompatibilityError(
+                "recycle vectors belong to another resident owner"
+            )
+        coefficients = [engine.dot(vector, rhs) for vector in self._vectors]
+        return engine.combination(engine.zeros(), self._vectors, coefficients, None)
+
     def update(self, problem: typing.Any, result: typing.Any) -> typing.Any:
         """Publish a bounded orthonormal replacement after a successful solve."""
         self.assert_compatible(problem)
         if not result.converged:
             return self
         n = result.solution.size
+        if self._engine is not None:
+            # Caller-requested import of a detached result, distinct from the
+            # production solve path's direct resident update.
+            with self._engine.solver_workspace():
+                solution = self._engine.from_host(result.solution)
+                basis = [self._engine.from_host(value) for value in result.basis.T]
+                return self._update_vectors(problem, solution, basis, self._engine)
+        return self._update_vectors(
+            problem, result.solution, result.basis.T, _HostKrylovEngine(n)
+        )
+
+    def _update_vectors(
+        self,
+        problem: typing.Any,
+        solution: typing.Any,
+        basis: typing.Any,
+        engine: typing.Any,
+    ) -> typing.Any:
+        """One bounded replacement policy for host and device vector storage."""
+        self.assert_compatible(problem)
+        if self._engine is not None and engine is not self._engine:
+            raise ResponseCompatibilityError(
+                "recycle vectors belong to another resident owner"
+            )
+        n = engine.dimension
         # A valid UHF reference can have no occupied-virtual rotations. Its
         # solved empty vector has no reusable directions or storage cost.
         capacity = min(self.max_vectors, n, self.max_bytes // (n * 8)) if n else 0
         replacement = []
         # Retain old directions first and stop as soon as capacity is reached;
         # no full candidate matrix is created.
-        candidates = (*self._vectors, result.solution, *result.basis.T)
-        for candidate in candidates:
-            if len(replacement) == capacity:
-                break
-            work = np.asarray(candidate, dtype=np.float64).copy()
-            if work.shape != (n,) or not np.isfinite(work).all():
-                raise ValueError("invalid recycle candidate")
-            original_norm = _vector_norm(work)
-            for _ in range(2):
+        candidates = (*self._vectors, solution, *basis)
+        try:
+            for candidate in candidates:
+                if len(replacement) == capacity:
+                    break
+                work = engine.copy(candidate)
+                if self._engine is None and (
+                    work.shape != (n,) or not np.isfinite(work).all()
+                ):
+                    raise ValueError("invalid recycle candidate")
+                original_norm = engine.norm(work)
+                work, _, norm = engine.orthogonalize(
+                    replacement, work, reorthogonalize=2, tolerance=0.0
+                )
+                if norm > 1e-12 * max(1.0, original_norm):
+                    vector = _normalized_vector(engine, work, norm)
+                    replacement.append(
+                        immutable(vector) if self._engine is None else vector
+                    )
+            if self._engine is not None:
                 for vector in replacement:
-                    work -= np.dot(vector, work) * vector
-            norm = _vector_norm(work)
-            if norm > 1e-12 * max(1.0, original_norm):
-                work /= norm
-                replacement.append(immutable(work))
+                    engine._retain(vector)
+        except BaseException:
+            if self._engine is not None:
+                for vector in replacement:
+                    vector.release()
+            raise
+        if self._engine is not None:
+            for vector in self._vectors:
+                vector.release()
         self._vectors = replacement
         self.generation += 1
         return self
@@ -722,10 +873,30 @@ class KrylovRecycleSpace:
     def reset(self, problem: typing.Any = None) -> typing.Any:
         """Discard all vectors; optionally bind a fresh compatible problem."""
         if problem is not None:
+            if self._engine is not None:
+                self.assert_compatible(problem)
             self.problem = problem
+        if self._engine is not None:
+            for vector in self._vectors:
+                vector.release()
         self._vectors = []
         self.generation += 1
         return self
+
+    def close(self) -> None:
+        """Release retained vector leases without closing the borrowed owner."""
+        self.reset()
+
+    def __enter__(self) -> typing.Self:
+        self.assert_compatible(self.problem)
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        if hasattr(self, "_vectors"):
+            self.close()
 
     def transport(self, problem: typing.Any, transform: typing.Any) -> typing.Any:
         """Explicitly transport vectors to a new problem under a caller map."""
@@ -735,7 +906,10 @@ class KrylovRecycleSpace:
             raise TypeError("transport destination must expose an integer dimension")
         transported = []
         for vector in self._vectors:
-            value = np.asarray(transform(vector), dtype=np.float64)
+            host_vector = (
+                self._engine.to_host(vector) if self._engine is not None else vector
+            )
+            value = np.asarray(transform(host_vector), dtype=np.float64)
             if value.shape != (problem.dimension,) or not np.isfinite(value).all():
                 raise ValueError("transport produced an invalid vector")
             transported.append(value)
@@ -776,12 +950,19 @@ def solve(
     preconditioner: typing.Any = None,
     raise_on_failure: typing.Any = False,
     collect_basis: typing.Any = True,
+    solution_consumer: typing.Any = None,
 ) -> typing.Any:
-    """Solve one RHS with bounded true-residual GMRES."""
+    """Solve one RHS with bounded true-residual GMRES.
+
+    solution_consumer runs synchronously on the converged engine-native
+    solution before host publication and must not retain engine-owned leases.
+    """
     # A live reference lease must hold even when a zero RHS skips all actions.
     validate_current = getattr(operator, "validate_current", lambda: None)
     validate_current()
     options = GMRESOptions() if options is None else options
+    if solution_consumer is not None and not callable(solution_consumer):
+        raise TypeError("solution_consumer must be callable")
     b = np.asarray(rhs)
     if (
         b.shape != (operator.dimension,)
@@ -800,9 +981,16 @@ def solve(
                 "initial guess must be a finite real vector of operator dimension"
             )
     reservation = 0
+    recycle_seconds = 0.0
     recycled_vectors = 0
+    engine = getattr(operator, "_krylov_engine", None)
+    resident_recycle = recycle is not None and recycle._engine is not None
     if recycle is not None:
         recycle.assert_compatible(operator.problem)
+        if resident_recycle and recycle._engine is not engine:
+            raise ResponseCompatibilityError(
+                "recycle vectors belong to another resident owner"
+            )
         recycled_vectors = len(recycle._vectors)
         reservation = (
             recycle.storage_bytes
@@ -810,14 +998,35 @@ def solve(
             + recycle.update_bytes(operator.dimension)
         )
     required = _single_workspace_bytes(operator.dimension, options) + reservation
+    # Old best-cycle and current Arnoldi vectors may overlap. Resident recycle
+    # replacement additionally overlaps both old and new retained spaces.
+    retained_capacity = (
+        min(
+            recycle.max_vectors,
+            operator.dimension,
+            recycle.max_bytes // (8 * operator.dimension),
+        )
+        if resident_recycle and operator.dimension
+        else 0
+    )
+    required_slots = (
+        resident_vector_slots(operator.dimension, options)
+        + recycled_vectors
+        + retained_capacity
+    )
     if required > options.max_workspace_bytes:
         # This preflight owns the whole public solve, including projection and
         # replacement. Direct callers receive the same bound as solve_many.
         result = _workspace_failure(operator.dimension, 1, required)[0]
+    elif getattr(engine, "vector_slots", required_slots) < required_slots:
+        result = _workspace_failure(
+            operator.dimension, 1, required, reason="vector_slot_limit"
+        )[0]
     else:
-        if recycle is not None and initial_guess is None:
+        if recycle is not None and initial_guess is None and not resident_recycle:
+            recycle_started = time.perf_counter()
             initial_guess = recycle.initial_guess(operator.problem, rhs)
-        engine = getattr(operator, "_krylov_engine", None)
+            recycle_seconds += time.perf_counter() - recycle_started
         workspace = getattr(engine, "solver_workspace", nullcontext)
         with workspace():
             result = _solve_single(
@@ -829,41 +1038,114 @@ def solve(
                 ),
                 initial_guess=initial_guess,
                 preconditioner=preconditioner,
-                collect_basis=collect_basis or recycle is not None,
+                collect_basis=collect_basis
+                or (recycle is not None and not resident_recycle),
+                resident_recycle=recycle if resident_recycle else None,
+                solution_consumer=solution_consumer,
             )
         validate_current()
-        if recycle is not None and result.converged:
+        if recycle is not None and result.converged and not resident_recycle:
+            recycle_started = time.perf_counter()
             recycle.update(operator.problem, result)
+            recycle_seconds += time.perf_counter() - recycle_started
     result = replace(
-        result, recycled_vectors=recycled_vectors, workspace_bytes=required
+        result,
+        recycled_vectors=recycled_vectors,
+        workspace_bytes=required,
+        recycling_seconds=result.recycling_seconds + recycle_seconds,
     )
+    if not collect_basis and result.basis.shape[1]:
+        # A host recycle update temporarily needs the solved basis too, but
+        # that internal need must not override the caller's output policy.
+        result = replace(result, basis=np.empty((operator.dimension, 0)))
     if raise_on_failure:
         result.require_converged()
     validate_current()
     return result
 
 
-def _block_solve(
-    operator: typing.Any, rhs: typing.Any, options: typing.Any
+def _normalized_vector(
+    engine: typing.Any, value: typing.Any, norm: float
 ) -> typing.Any:
-    """Block GMRES with block-Arnoldi expansion and true residuals.
+    """Normalize without overflowing the reciprocal of a subnormal norm."""
+    if norm < 1e-200:
+        return engine.scale(engine.scale(value, 1e150), 1.0 / (norm * 1e150))
+    return engine.scale(value, 1.0 / norm)
 
-    Resident vector execution qualifies scalar/recycled GMRES only. The block
-    Arnoldi implementation remains host-only and fails rather than relabeling
-    host vector work as device-resident.
+
+def _block_range_factor(
+    engine: typing.Any,
+    columns: typing.Any,
+    *,
+    tolerance: float,
+    capacity: int,
+) -> typing.Any:
+    """Thin QR followed by a small SVD, keeping all long vectors in the engine.
+
+    Twice-reorthogonalized MGS gives W=Q R. SVD(R) then makes the same
+    singular-value rank decision as SVD(W), without a host N-by-block panel
+    or the loss of precision from forming W.T@W. Projected scalars stay on
+    the host for both vector engines. Keep even tiny nonzero QR residuals;
+    only the subsequent SVD applies the declared block breakdown gate.
     """
-    if getattr(getattr(operator, "_krylov_engine", None), "resident", False):
-        raise ValueError(
-            "blocked GMRES is not qualified for resident vector execution; "
-            "use sequential or recycled"
+    count = len(columns)
+    qr = []
+    factor = np.zeros((min(engine.dimension, count), count))
+    for column, value in enumerate(columns):
+        work, coefficients, norm = engine.orthogonalize(
+            qr, engine.copy(value), reorthogonalize=2, tolerance=0.0
         )
+        factor[: len(qr), column] = coefficients
+        if norm > 0.0 and len(qr) < engine.dimension:
+            factor[len(qr), column] = norm
+            qr.append(_normalized_vector(engine, work, norm))
+    left, singular, right = np.linalg.svd(factor[: len(qr)], full_matrices=False)
+    cutoff = max(
+        tolerance,
+        np.finfo(float).eps
+        * max(engine.dimension, count)
+        * (singular[0] if len(singular) else 0.0),
+    )
+    keep = min(int(np.count_nonzero(singular > cutoff)), capacity)
+    zero = engine.zeros()
+    basis = [
+        engine.combination(zero, qr, left[:, column], None) for column in range(keep)
+    ]
+    return basis, singular[:keep, None] * right[:keep, :]
+
+
+def _block_solve(
+    operator: typing.Any,
+    rhs: typing.Any,
+    options: typing.Any,
+    *,
+    collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
+) -> typing.Any:
+    """One block-Arnoldi algorithm with host or resident vector storage.
+
+    Only projected coefficients and small least-squares/SVD problems are host
+    data. Input upload and explicit final solution/basis publication delimit
+    the resident solve; no intermediate long vector is downloaded.
+    """
 
     # Expansion uses orthogonalized operator images rather than the projected
     # Galerkin residual. This is required for indefinite/nonsymmetric operators
     # where the projected matrix can be singular even though the operator is
     # nonsingular.
-    b = np.asarray(rhs, dtype=np.float64)
-    n, nrhs = b.shape
+    b_host = np.asarray(rhs, dtype=np.float64)
+    n, nrhs = b_host.shape
+    consumers = (
+        (None,) * nrhs if solution_consumers is None else tuple(solution_consumers)
+    )
+    if len(consumers) != nrhs or any(
+        consumer is not None and not callable(consumer) for consumer in consumers
+    ):
+        raise ValueError("block solution_consumers must match RHS columns")
+    engine = getattr(operator, "_krylov_engine", None) or _HostKrylovEngine(n)
+    if engine.dimension != n:
+        raise ValueError("Krylov vector engine dimension mismatch")
+    engine.reset()
     max_columns = min(n, nrhs + options.max_iterations)
     required_workspace = _block_workspace_bytes(n, nrhs, options, max_columns)
     if required_workspace > options.max_workspace_bytes:
@@ -873,17 +1155,49 @@ def _block_solve(
             required_workspace,
             False,
         )
-    basis, rank = _initial_block_basis(b, tolerance=options.breakdown_tolerance)
+    if nrhs == 0:
+        return (), 0, required_workspace, False
+    # Reserve the live basis, RHS, iterates, QR/range panels and overlapping
+    # replacement temporaries before the first upload or operator action.
+    # The owner's physical arena has its own device-byte budget.
+    required_slots = resident_vector_slots(
+        n, options, rhs_count=nrhs, strategy="blocked"
+    )
+    if getattr(engine, "vector_slots", required_slots) < required_slots:
+        return (
+            _workspace_failure(n, nrhs, required_workspace, reason="vector_slot_limit"),
+            0,
+            required_workspace,
+            False,
+        )
+    b = [engine.from_host(b_host[:, column]) for column in range(nrhs)]
+    rhs_norms = np.array([engine.norm(value) for value in b])
+    basis = []
+    ortho_started = time.perf_counter()
+    for value in b:
+        work, _, norm = engine.orthogonalize(
+            basis,
+            engine.copy(value),
+            reorthogonalize=2,
+            tolerance=options.breakdown_tolerance,
+        )
+        if norm > options.breakdown_tolerance and len(basis) < n:
+            basis.append(_normalized_vector(engine, work, norm))
+    ortho_seconds = time.perf_counter() - ortho_started
+    rank = len(basis)
     rank_deficient = rank < nrhs
     if rank == 0:
         results = []
         for column in range(nrhs):
-            norm = _vector_norm(b[:, column])
+            norm = rhs_norms[column]
             target = max(options.atol, options.rtol * norm)
             converged = norm <= target
+            solution = engine.zeros()
+            if converged and consumers[column] is not None:
+                consumers[column](engine, solution)
             results.append(
                 SolveResult(
-                    immutable(np.zeros(n)),
+                    immutable(engine.to_host(solution)),
                     converged,
                     norm,
                     _relative_residual(norm, norm),
@@ -892,7 +1206,7 @@ def _block_solve(
                     (norm,),
                     0,
                     0,
-                    0.0,
+                    ortho_seconds,
                     0.0,
                     required_workspace,
                     rank=0,
@@ -901,69 +1215,80 @@ def _block_solve(
             )
         return tuple(results), 0, required_workspace, rank_deficient
 
-    q_initial = basis.shape[1]
-    initial_coefficients = basis.T @ b
+    q_initial = len(basis)
+    ortho_started = time.perf_counter()
+    initial_coefficients = np.array(
+        [[engine.dot(vector, value) for value in b] for vector in basis]
+    )
+    ortho_seconds += time.perf_counter() - ortho_started
     hbar = np.zeros((max_columns, max_columns))
-    solution = np.zeros((n, nrhs))
-    residual = b.copy()
+    solution = [engine.zeros() for _ in b]
     action_seconds = 0.0
-    ortho_seconds = 0.0
     actions = 0
     iterations = 0
-    history = [float(_vector_norm(b[:, column])) for column in range(nrhs)]
+    history = [float(norm) for norm in rhs_norms]
     last_start = 0
     breakdown = False
+
+    def apply(value: typing.Any) -> typing.Any:
+        # Match the scalar solver's action-only scope. Residual subtraction
+        # and norms can synchronize too, but belong to complete solve time.
+        nonlocal action_seconds, actions
+        begin = time.perf_counter()
+        result = engine.apply(operator, value)
+        action_seconds += time.perf_counter() - begin
+        actions += 1
+        return result
+
     while iterations < options.max_iterations:
-        q = basis.shape[1]
-        block = basis[:, last_start:q]
-        apply_started = time.perf_counter()
-        image = np.column_stack(
-            [operator.apply(block[:, column]) for column in range(block.shape[1])]
-        )
-        actions += block.shape[1]
-        action_seconds += time.perf_counter() - apply_started
-        h_top = np.zeros((q, block.shape[1]))
-        work = image.copy()
+        q = len(basis)
+        block = basis[last_start:q]
+        images = [apply(vector) for vector in block]
+        h_top = np.zeros((q, len(block)))
+        work = []
         ortho_started = time.perf_counter()
-        for _ in range(options.reorthogonalize):
-            for index in range(q):
-                projection = basis[:, index] @ work
-                h_top[index, :] += projection
-                work -= np.outer(basis[:, index], projection)
-        ortho_seconds += time.perf_counter() - ortho_started
-        left, singular, right = np.linalg.svd(work, full_matrices=False)
-        cutoff = max(
-            options.breakdown_tolerance,
-            np.finfo(float).eps
-            * max(n, block.shape[1])
-            * (singular[0] if len(singular) else 0.0),
+        for column, image in enumerate(images):
+            residual, coefficients, _ = engine.orthogonalize(
+                basis,
+                image,
+                reorthogonalize=options.reorthogonalize,
+                tolerance=options.breakdown_tolerance,
+            )
+            h_top[:, column] = coefficients
+            work.append(residual)
+        # Release image aliases before building the QR and replacement panel.
+        images.clear()
+        new_basis, h_bottom = _block_range_factor(
+            engine,
+            work,
+            tolerance=options.breakdown_tolerance,
+            capacity=max_columns - q,
         )
-        keep = int(np.count_nonzero(singular > cutoff))
-        keep = min(keep, max_columns - q)
+        ortho_seconds += time.perf_counter() - ortho_started
+        keep = len(new_basis)
         hbar[:q, last_start:q] = h_top
         if keep:
-            new_basis = left[:, :keep]
-            hbar[q : q + keep, last_start:q] = singular[:keep, None] * right[:keep, :]
-            basis = np.column_stack((basis, new_basis))
-        q_new = basis.shape[1]
+            hbar[q : q + keep, last_start:q] = h_bottom
+            basis.extend(new_basis)
+        q_new = len(basis)
         projected = hbar[:q_new, :q]
         for column in range(nrhs):
             rhs_projected = np.zeros(q_new)
             rhs_projected[:q_initial] = initial_coefficients[:, column]
             coefficients, *_ = np.linalg.lstsq(projected, rhs_projected, rcond=None)
-            solution[:, column] = basis[:, :q] @ coefficients
-        apply_started = time.perf_counter()
-        residual = b - np.column_stack(
-            [operator.apply(solution[:, column]) for column in range(nrhs)]
+            solution[column] = engine.combination(
+                engine.zeros(), basis[:q], coefficients, None
+            )
+        norms = np.array(
+            [
+                engine.norm(engine.subtract(value, apply(candidate)))
+                for value, candidate in zip(b, solution, strict=True)
+            ]
         )
-        actions += nrhs
-        action_seconds += time.perf_counter() - apply_started
-        norms = np.array([_vector_norm(residual[:, column]) for column in range(nrhs)])
         history = [float(max(old, new)) for old, new in zip(history, norms)]
         targets = np.maximum(
             options.atol,
-            options.rtol
-            * np.array([_vector_norm(b[:, column]) for column in range(nrhs)]),
+            options.rtol * rhs_norms,
         )
         if np.all(norms <= targets):
             break
@@ -973,9 +1298,17 @@ def _block_solve(
         iterations += keep
         last_start = q
     results = []
-    for column in range(nrhs):
-        norm = _vector_norm(b[:, column] - operator.apply(solution[:, column]))
-        target = max(options.atol, options.rtol * _vector_norm(b[:, column]))
+    # Explicit publication occurs once after iteration. All per-RHS results
+    # may share the same immutable basis; no solve/recycle step uses this copy.
+    published_basis = immutable(
+        engine.stack_host(basis) if collect_basis else np.empty((n, 0))
+    )
+    final_norms = [
+        engine.norm(engine.subtract(value, apply(candidate)))
+        for value, candidate in zip(b, solution, strict=True)
+    ]
+    for column, norm in enumerate(final_norms):
+        target = max(options.atol, options.rtol * rhs_norms[column])
         converged = norm <= target
         if converged:
             reason = "converged"
@@ -983,28 +1316,30 @@ def _block_solve(
             reason = "breakdown"
         else:
             reason = "max_iterations"
+        if converged and consumers[column] is not None:
+            consumers[column](engine, solution[column])
         results.append(
             SolveResult(
-                immutable(solution[:, column]),
+                immutable(engine.to_host(solution[column])),
                 converged,
                 norm,
-                _relative_residual(norm, float(_vector_norm(b[:, column]))),
+                _relative_residual(norm, float(rhs_norms[column])),
                 iterations,
                 reason,
                 tuple(history),
-                actions + nrhs,
+                actions,
                 0,
                 ortho_seconds,
                 action_seconds,
                 required_workspace,
                 rank=rank,
-                basis=immutable(basis),
+                basis=published_basis,
             )
         )
-    return tuple(results), actions + nrhs, required_workspace, rank_deficient
+    return tuple(results), actions, required_workspace, rank_deficient
 
 
-def solve_many(
+def _solve_many_impl(
     operator: typing.Any,
     rhs: typing.Any,
     *,
@@ -1013,6 +1348,8 @@ def solve_many(
     recycle: typing.Any = None,
     preconditioner: typing.Any = None,
     raise_on_failure: typing.Any = False,
+    collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
 ) -> typing.Any:
     """Compare sequential, blocked and recycled multi-RHS response solves."""
     validate_current = getattr(operator, "validate_current", lambda: None)
@@ -1026,6 +1363,15 @@ def solve_many(
         )
     options = GMRESOptions() if options is None else options
     values = operator.problem.validate_rhs(rhs)
+    consumers = (
+        (None,) * values.shape[1]
+        if solution_consumers is None
+        else tuple(solution_consumers)
+    )
+    if len(consumers) != values.shape[1] or any(
+        consumer is not None and not callable(consumer) for consumer in consumers
+    ):
+        raise ValueError("solution_consumers must match the multi-RHS column count")
     started = time.perf_counter()
     # validate_rhs publishes an owned immutable array for real ResponseProblems.
     # Charge it even when a test/custom operator happens to return a view.
@@ -1042,9 +1388,16 @@ def solve_many(
             False,
         )
     elif strategy == "blocked":
-        results, actions, peak, rank_deficient = _block_solve(
-            operator, values, replace(options, max_workspace_bytes=available)
-        )
+        engine = getattr(operator, "_krylov_engine", None)
+        workspace = getattr(engine, "solver_workspace", nullcontext)
+        with workspace():
+            results, actions, peak, rank_deficient = _block_solve(
+                operator,
+                values,
+                replace(options, max_workspace_bytes=available),
+                collect_basis=collect_basis,
+                solution_consumers=consumers,
+            )
         answer = MultiRHSResult(
             tuple(results),
             strategy,
@@ -1103,6 +1456,8 @@ def solve_many(
                 options=replace(options, max_workspace_bytes=remaining),
                 recycle=recycle if use_recycle else None,
                 preconditioner=preconditioner,
+                collect_basis=collect_basis,
+                solution_consumer=consumers[column],
             )
             peak = max(peak, retained + result.workspace_bytes)
             results.append(result)
@@ -1126,3 +1481,46 @@ def solve_many(
         answer.require_converged()
     validate_current()
     return answer
+
+
+def solve_many(
+    operator: typing.Any,
+    rhs: typing.Any,
+    *,
+    strategy: typing.Any = "sequential",
+    options: typing.Any = None,
+    recycle: typing.Any = None,
+    preconditioner: typing.Any = None,
+    raise_on_failure: typing.Any = False,
+    collect_basis: bool = True,
+    solution_consumers: typing.Any = None,
+) -> typing.Any:
+    """Solve multiple RHS with one shared algorithm and explicit publication.
+
+    An automatic recycled space follows the vector engine and is released on
+    every exit, including exceptions retained by a traceback. Caller-supplied
+    spaces retain their existing host/resident ownership. ``collect_basis``
+    controls final diagnostics, independently of resident recycle updates.
+    """
+    owned_recycle = strategy == "recycled" and recycle is None
+    if owned_recycle:
+        engine = getattr(operator, "_krylov_engine", None)
+        recycle = KrylovRecycleSpace(
+            operator.problem,
+            vector_engine=engine if getattr(engine, "resident", False) else None,
+        )
+    try:
+        return _solve_many_impl(
+            operator,
+            rhs,
+            strategy=strategy,
+            options=options,
+            recycle=recycle,
+            preconditioner=preconditioner,
+            raise_on_failure=raise_on_failure,
+            collect_basis=collect_basis,
+            solution_consumers=solution_consumers,
+        )
+    finally:
+        if owned_recycle:
+            recycle.close()

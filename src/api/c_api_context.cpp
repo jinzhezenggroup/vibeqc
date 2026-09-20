@@ -58,9 +58,15 @@ vibeqc_status vibeqc_system_create(vibeqc_context* context,
       descriptor->struct_size < offsetof(vibeqc_system_descriptor, basis_representation)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
-  if (descriptor->atoms == nullptr || descriptor->shells == nullptr ||
-      descriptor->primitives == nullptr || descriptor->atom_count == 0 ||
-      descriptor->shell_count == 0) {
+  if (descriptor->atoms == nullptr || descriptor->atom_count == 0) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const bool atom_only = descriptor->shell_count == 0 && descriptor->primitive_count == 0;
+  if (!atom_only && (descriptor->shells == nullptr || descriptor->primitives == nullptr ||
+                     descriptor->shell_count == 0 || descriptor->primitive_count == 0)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (atom_only && (descriptor->shells != nullptr || descriptor->primitives != nullptr)) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 

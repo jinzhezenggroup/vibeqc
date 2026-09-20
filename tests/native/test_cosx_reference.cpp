@@ -146,6 +146,34 @@ int main() {
     require(std::abs(rhf.exchange_energy - expected_rhf_energy) < 2.0e-15,
             "COSX RHF exchange-energy spin factor is wrong");
 
+    const auto point_derivative = vibeqc::dft::build_cosx_point_derivative_reference(
+        system, tiny_grid.points(), tiny_grid.weights(), density,
+        vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+    require(std::abs(point_derivative.value.exchange_energy - rhf.exchange_energy) < 2.0e-15 &&
+                point_derivative.point_gradient.size() == 3 * tiny_grid.point_count(),
+            "COSX point derivative changed the underlying discrete energy");
+    constexpr double point_step = 1.0e-5;
+    const std::size_t checked_points = std::min<std::size_t>(3, tiny_grid.point_count());
+    for (std::size_t point = 0; point < checked_points; ++point) {
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        auto plus = tiny_grid.points();
+        auto minus = tiny_grid.points();
+        plus[3 * point + axis] += point_step;
+        minus[3 * point + axis] -= point_step;
+        const auto plus_value =
+            vibeqc::dft::build_cosx_reference(system, plus, tiny_grid.weights(), density,
+                                              vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+        const auto minus_value =
+            vibeqc::dft::build_cosx_reference(system, minus, tiny_grid.weights(), density,
+                                              vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+        const double finite_difference =
+            (plus_value.exchange_energy - minus_value.exchange_energy) / (2.0 * point_step);
+        require(std::abs(finite_difference - point_derivative.point_gradient[3 * point + axis]) <
+                    2.0e-8,
+                "COSX analytic explicit-point derivative disagrees with finite differences");
+      }
+    }
+
     std::vector<double> half_density = density;
     for (double& value : half_density) value *= 0.5;
     const auto spin = vibeqc::dft::build_cosx_reference(
@@ -163,6 +191,27 @@ int main() {
     const auto analytic_esp = vibeqc::integrals::build_esp_integrals(system, probe_xyz);
     require(analytic_esp.nbf == 2 && analytic_esp.npoint == 1 && analytic_esp.values.size() == 4,
             "analytic ESP reference dimensions are wrong");
+    const auto analytic_esp_derivative =
+        vibeqc::integrals::build_esp_integrals_with_probe_derivatives(system, probe_xyz);
+    require(max_abs_diff(analytic_esp.values, analytic_esp_derivative.values) < 1.0e-15 &&
+                analytic_esp_derivative.probe_derivative.size() == 12,
+            "analytic ESP derivative changed the value path");
+    constexpr double esp_step = 1.0e-5;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      auto plus = probe_xyz;
+      auto minus = probe_xyz;
+      plus[axis] += esp_step;
+      minus[axis] -= esp_step;
+      const auto plus_value = vibeqc::integrals::build_esp_integrals(system, plus);
+      const auto minus_value = vibeqc::integrals::build_esp_integrals(system, minus);
+      for (std::size_t element = 0; element < analytic_esp.values.size(); ++element) {
+        const double finite_difference =
+            (plus_value.values[element] - minus_value.values[element]) / (2.0 * esp_step);
+        require(std::abs(finite_difference -
+                         analytic_esp_derivative.probe_derivative[axis * 4 + element]) < 2.0e-8,
+                "analytic ESP probe derivative disagrees with finite differences");
+      }
+    }
     const auto coarse_esp =
         numerical_esp(system, probe, vibeqc::dft::GridSpec{1, 20, 10, 20, 3, 1.0e-12});
     const auto fine_esp =

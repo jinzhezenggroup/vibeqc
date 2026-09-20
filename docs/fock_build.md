@@ -118,9 +118,24 @@ provider choices and energy/Fock capability. FixedDensityMeanField.from_method
 requires an already prepared FockPlan to match that request before evaluation
 and attaches both method and executable-plan provenance to its result. Existing
 direct FixedDensityMeanField construction retains the historical unit-J,
-absent-K semilocal contract and identity. This slice deliberately does not
-register PBE0 SCF or geometric forces; those require the stationary/response
-work owned by #162/#163/#165.
+absent-K semilocal contract and identity.
+
+The same full-range exchange primitive now also drives native **CPU** PBE0
+RKS/UKS SCF and the common stationary first-gradient diagnostic. The KS v2
+composition suffix carries separate semilocal exchange/correlation scales and
+the resolved raw-K coefficient; PBE0 therefore executes through the ordinary
+PBE point model plus the common J/K provider rather than through a named-method
+scientific branch. The stationary plan adds a same-spin
+`D[a,c] D[b,d]` exact-exchange source for each ordered `(ab|cd)` derivative.
+CPU hybrid snapshots retain those coefficients so the derivative consumer
+cannot reinterpret PBE0 as pure PBE.
+
+This does **not** promote public Calculator PBE0 forces or CUDA hybrid execution.
+Those remain fail-closed under #163/#165 until their complete endpoint gates are
+satisfied; existing qualified semilocal force paths are unchanged. B3LYP is not
+synthesized from PBE: its audited MethodIR and scalar B88/LYP/VWN-RPA inventory
+already exist, but this slice does not supply their native KS SCF/geometry
+lowering or independent end-to-end qualification.
 
 ## Densities, operators, and coefficients
 

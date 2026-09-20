@@ -33,23 +33,11 @@ def render(
     c6_standard: list[float],
     charge_params: list[tuple[float, float, float, float]],
 ) -> str:
-    nref = len(references)
-    element_rows = [
-        "    D4ElementData{"
-        + ", ".join(
-            [
-                str(e["reference_offset"]),
-                str(e["reference_count"]),
-                base.format_double(float(e["covalent_radius"])),
-                base.format_double(float(e["electronegativity"])),
-                base.format_double(float(e["effective_charge"])),
-                base.format_double(float(e["hardness"])),
-                base.format_double(float(e["r4r2"])),
-            ]
+    if len(elements) != ELEMENT_COUNT:
+        raise base.D4DataError(
+            f"EEQ element table has {len(elements)} entries, expected {ELEMENT_COUNT}"
         )
-        + "},"
-        for e in elements
-    ]
+    nref = len(references)
     reference_rows = [
         "    D4ReferenceData{"
         + ", ".join(
@@ -80,17 +68,17 @@ def render(
 #include <array>
 #include <cstddef>
 
-#include "dft/dispersion/d4_types.hpp"
+#include "dft/dispersion/d4_element_data.hpp"
 
 namespace vibeqc::dft::dispersion::eeq_data {{
 
-using data::D4ElementData;
 using data::D4ReferenceData;
+using data::kElementCount;
+using data::kElements;
 
 inline constexpr char kDftd4Revision[] = "{DFTD4_REVISION}";
 inline constexpr char kMultichargeRevision[] = "{MULTICHARGE_REVISION}";
 inline constexpr char kMctcRevision[] = "{MCTC_REVISION}";
-inline constexpr std::size_t kElementCount = {len(elements)}u;
 inline constexpr std::size_t kReferenceCount = {len(references)}u;
 
 struct EEQChargeElementData {{
@@ -99,10 +87,6 @@ struct EEQChargeElementData {{
   double kcnchi;
   double radius;
 }};
-
-inline constexpr std::array<D4ElementData, kElementCount> kElements{{{{
-{chr(10).join(element_rows)}
-}}}};
 
 inline constexpr std::array<D4ReferenceData, kReferenceCount> kReferences{{{{
 {chr(10).join(reference_rows)}
@@ -218,6 +202,7 @@ def main() -> int:
             "r2scan-3c": {"ga": 2.0, "gc": 1.0},
         },
         "element_count": len(elements),
+        "shared_element_table": "d4_element_data.hpp",
         "reference_count": len(references),
         "storage": "lower-triangle-including-diagonal",
         "outputs": output_hashes,

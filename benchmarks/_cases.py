@@ -353,6 +353,65 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         basis_representation="spherical",
         expected_ao_count=768,
     )
+    # #444/#459 qualification points bracket the first packed-response work
+    # threshold without encoding benchmark identities in production dispatch.
+    # Reuse already-qualified WATER27 cluster topology rather than an artificial
+    # periodic monomer grid: highly symmetric separated monomers create a
+    # near-degenerate cold-SCF problem and are not a useful policy benchmark.
+    tetramer = cases["water-tetramer-def2-svp-spherical"].atoms
+    three_octamers = tuple(
+        (
+            element,
+            (position[0] + x_shift, position[1] + y_shift, position[2]),
+        )
+        for x_shift, y_shift in (
+            (-half_separation, -half_separation),
+            (-half_separation, half_separation),
+            (half_separation, -half_separation),
+        )
+        for element, position in octamer
+    )
+    three_water_fragment = tuple(
+        (
+            element,
+            (
+                position[0] + half_separation,
+                position[1] + half_separation,
+                position[2],
+            ),
+        )
+        for element, position in tetramer[:9]
+    )
+    cases["water-27mer-water27-derived-def2-svp-spherical"] = BenchmarkCase(
+        description=(
+            "synthetic 27-water WATER27-derived scaling cluster, "
+            "648 real spherical AOs, def2-SVP DF qualification"
+        ),
+        atoms=three_octamers + three_water_fragment,
+        vibeqc_basis="def2-svp",
+        pyscf_basis="def2-svp",
+        basis_representation="spherical",
+        expected_ao_count=648,
+    )
+    translated_tetramer = tuple(
+        (
+            element,
+            (position[0], position[1], position[2] + 2 * half_separation),
+        )
+        for element, position in tetramer
+    )
+    cases["water-36mer-water27-derived-def2-svp-spherical"] = BenchmarkCase(
+        description=(
+            "synthetic WATER27-derived 32-mer plus translated tetramer, "
+            "864 real spherical AOs, def2-SVP DF qualification"
+        ),
+        atoms=cases["water-32mer-4s4-def2-svp-spherical"].atoms + translated_tetramer,
+        vibeqc_basis="def2-svp",
+        pyscf_basis="def2-svp",
+        basis_representation="spherical",
+        expected_ao_count=864,
+    )
+
     # Reuse the documented optimized WATER27 geometry with an actual f-shell
     # basis; the validation runner inspects both loaded basis implementations.
     cases["water-tetramer-def2-tzvp-spherical"] = BenchmarkCase(

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
+from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.xc import UnsupportedXC, functional
 from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as fixture
@@ -72,6 +73,60 @@ def test_r2scan_vtau_potential_matches_complete_density_directional_derivative()
         minus = consumer.evaluate(jets, density - step * direction, weights)["energy"]
         errors.append(abs((plus - minus) / (2 * step) - analytic))
     assert np.all(np.asarray(errors) < [2e-7, 3e-8, 5e-9]), errors
+
+
+def test_b3lyp_methodir_geometry_matches_moved_collocation() -> None:
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_total"]
+    functional_spec = (
+        resolve_method("B3LYP", spin="unpolarized").primitives[0].functional
+    )
+    geometry = ContractionProgram(functional_spec, "geometry")
+    energy = ContractionProgram(functional_spec, "energy")
+    with NativeAO(**args) as basis:
+        ao_atoms = np.repeat(
+            [shell.atom_index for shell in basis.shells],
+            [
+                2 * shell.angular_momentum + 1
+                if basis.representation == "real_spherical"
+                else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+                for shell in basis.shells
+            ],
+        )
+        partials = geometry.evaluate(
+            basis.evaluate(grid.points, geometry.contract.ao_order),
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            natom=basis.natom,
+        )["geometry"]
+
+    centers = np.array([[0.013, -0.009, 0.011], [-0.007, 0.012, -0.005]])
+    points = np.tile(np.array([[0.002, -0.001, 0.003]]), (len(grid.points), 1))
+    measure = np.linspace(-1.5e-5, 1.5e-5, len(grid.weights))
+    expected = partials.directional(centers=centers, points=points, weights=measure)
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        values = []
+        for sign in (1, -1):
+            moved = [
+                (atom, np.asarray(position) + sign * step * delta)
+                for (atom, position), delta in zip(args["atoms"], centers, strict=True)
+            ]
+            with NativeAO(**{**args, "atoms": moved}) as basis:
+                moved_jets = basis.evaluate(
+                    grid.points + sign * step * points, energy.contract.ao_order
+                )
+                values.append(
+                    energy.evaluate(
+                        moved_jets,
+                        density,
+                        grid.weights + sign * step * measure,
+                    )["energy"]
+                )
+        errors.append(abs((values[0] - values[1]) / (2 * step) - expected))
+    assert np.all(np.asarray(errors) < [3e-7, 4e-8, 8e-9]), errors
 
 
 def test_r2scan_unvalidated_density_response_fails_closed() -> None:

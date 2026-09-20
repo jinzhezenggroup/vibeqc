@@ -323,6 +323,10 @@ class Mp2PreparedBatch final : public PreparedBatch {
 }  // namespace
 
 vibeqc_status validate_mp2_system(vibeqc_method, const core::System& system, std::string& detail) {
+  if (system.shells.empty()) {
+    detail = "canonical MP2 requires an explicit Gaussian orbital basis";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   // The canonical reference/provider gates cover all-electron systems only.
   // Enabling ECP HF must not silently extend that correlated-method domain.
   if (!system.ecp_terms.empty()) {

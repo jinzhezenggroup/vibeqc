@@ -56,6 +56,11 @@ XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid
                                        const std::vector<double>& density,
                                        std::size_t tile_points = 256, XcDensitySource source = {});
 
+XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                              const std::vector<double>& density,
+                                              std::size_t tile_points, XcDensitySource source,
+                                              double exchange_scale, double correlation_scale);
+
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
@@ -73,6 +78,41 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
                                  const std::vector<double>& alpha_density,
                                  const std::vector<double>& beta_density,
                                  std::size_t tile_points = 256);
+
+SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                        const std::vector<double>& alpha_density,
+                                        const std::vector<double>& beta_density,
+                                        std::size_t tile_points, double exchange_scale,
+                                        double correlation_scale);
+/** Generated B3-family GGA point result on the audited interior-v1 domain.
+ * Full-/range-separated exact exchange remains owned by common Fock providers.
+ */
+struct B3GgaPointValue {
+  double energy{};
+  double rho[2]{};
+  double gradient[2][3]{};
+};
+using B3lypPointValue = B3GgaPointValue;
+using CamB3lypPointValue = B3GgaPointValue;
+
+B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+
+XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                               const std::vector<double>& density, std::size_t tile_points = 256,
+                               XcDensitySource source = {});
+SpinXcIntegral integrate_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& alpha_density,
+                                   const std::vector<double>& beta_density,
+                                   std::size_t tile_points = 256);
+
+XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density,
+                                   std::size_t tile_points = 256, XcDensitySource source = {});
+SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       std::size_t tile_points = 256);
 
 struct R2scanPointValue {
   double energy{};

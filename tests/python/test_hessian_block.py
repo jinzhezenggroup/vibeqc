@@ -68,7 +68,7 @@ def test_hvp_many_uses_solve_many_not_single_solver(
     assert result.response_batch.solve_result.strategy == "blocked"
 
 
-def test_full_hessian_blocked_matches_independent_dense_reference(
+def test_full_hessian_blocked_matches_native_dense_assembly(
     h2_case: typing.Any,
 ) -> None:
     state, dense, _ = h2_case

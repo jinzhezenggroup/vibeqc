@@ -31,6 +31,13 @@ struct Value {
 
 namespace detail {
 VIBEQC_XC_HD inline bool finite(double x) { return x >= -DBL_MAX && x <= DBL_MAX; }
+/** Shared SCF/response admission for a reference gradient component. AO
+ * contractions can round density to zero with a subnormal gradient residue;
+ * SCF already admits that numerically-null reference at the analytic vacuum.
+ * Positive-density values are unchanged. Tangent admission is checked separately. */
+VIBEQC_XC_HD inline bool valid_gradient_component(double rho, double gradient) {
+  return finite(gradient) && (rho != 0.0 || ::fabs(gradient) < DBL_MIN);
+}
 /** Forward differentiation in locally scaled physical coordinates. The scale
  * is fixed during differentiation, so these are physical partial derivatives,
  * including at equal spin densities; it is not a density regularization. */
@@ -262,14 +269,19 @@ VIBEQC_XC_HD inline Scalar correlation_per_scale(bool pbe, const Scalar& a, cons
 
 /** Evaluate full-spin LDA_XC_PW or PBE energy and AO-potential coefficients.
  * Invalid inputs return valid=false on both CPU and CUDA (no device throw).
- * At the all-spin vacuum only the zero gradient is admissible. */
-VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double gradient[2][3]) {
+ * At zero spin density, reference gradient components must be zero or subnormal. */
+VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double gradient[2][3],
+                                   double exchange_scale = 1.0, double correlation_scale = 1.0) {
   Value out;
+  // Scale the audited X/C components independently, including every first
+  // derivative. Exact exchange is supplied exclusively by the Fock provider.
+  if (!detail::finite(exchange_scale) || !detail::finite(correlation_scale) || exchange_scale < 0 ||
+      correlation_scale < 0)
+    out.valid = false;
   for (unsigned s = 0; s < 2; ++s) {
     if (!detail::finite(rho[s]) || rho[s] < 0.0) out.valid = false;
     for (unsigned k = 0; k < 3; ++k)
-      if (!detail::finite(gradient[s][k]) || (rho[s] == 0.0 && gradient[s][k] != 0.0))
-        out.valid = false;
+      if (!detail::valid_gradient_component(rho[s], gradient[s][k])) out.valid = false;
   }
   const double scale = rho[0] + rho[1];
   if (!detail::finite(scale)) out.valid = false;
@@ -295,15 +307,16 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
     g[k].d[5 + k] = 1.0;  // Each independent spin contributes to the sum.
   }
   const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale, gradient_ratio);
-  out.energy = scale * energy.v;
+  out.energy = correlation_scale * (scale * energy.v);
   out.valid = detail::finite(out.energy);
   for (unsigned s = 0; s < 2; ++s) {
     const auto x = detail::exchange(pbe, rho[s], gradient[s]);
-    out.energy += x.energy;
-    out.rho[s] = energy.d[s] + x.rho;
+    out.energy += exchange_scale * x.energy;
+    out.rho[s] = correlation_scale * energy.d[s] + exchange_scale * x.rho;
     out.valid = out.valid && detail::finite(out.rho[s]);
     for (unsigned k = 0; k < 3; ++k) {
-      out.gradient[s][k] = gradient_ratio * energy.d[2 + 3 * s + k] + x.gradient[k];
+      out.gradient[s][k] = correlation_scale * (gradient_ratio * energy.d[2 + 3 * s + k]) +
+                           exchange_scale * x.gradient[k];
       out.valid = out.valid && detail::finite(out.gradient[s][k]);
     }
   }

@@ -25,6 +25,10 @@ def test_generated_table_matches_manifest() -> None:
     assert manifest["reference_count"] == 262
     assert manifest["revision"] == "6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
     assert digest(folder / manifest["output"]) == manifest["output_sha256"]
+    assert manifest["element_output"] == "d4_element_data.hpp"
+    assert (
+        digest(folder / manifest["element_output"]) == manifest["element_output_sha256"]
+    )
 
 
 def test_independent_oracle_assets_match_manifest() -> None:
@@ -99,6 +103,7 @@ def test_eeq_tables_and_charge_parameters_match_pinned_manifest() -> None:
         "standard": {"ga": 3.0, "gc": 2.0},
     }
     assert manifest["element_count"] == 86
+    assert manifest["shared_element_table"] == "d4_element_data.hpp"
     assert manifest["reference_count"] == 262
     assert set(manifest["outputs"]) == {
         "d4_eeq_data.hpp",
@@ -129,3 +134,16 @@ def test_independent_eeq_oracle_assets_match_manifest() -> None:
     assert manifest["generator_sha256"] == digest(
         ROOT / "tools/oracle/generate_d4_eeq_reference.py"
     )
+
+
+def test_d4_element_table_has_one_generated_owner() -> None:
+    folder = ROOT / "src/dft/dispersion"
+    shared = (folder / "d4_element_data.hpp").read_text(encoding="utf-8")
+    gfn2 = (folder / "d4_data.hpp").read_text(encoding="utf-8")
+    eeq = (folder / "d4_eeq_data.hpp").read_text(encoding="utf-8")
+
+    assert shared.count("D4ElementData{") == 86
+    assert "D4ElementData{" not in gfn2
+    assert "D4ElementData{" not in eeq
+    assert '#include "dft/dispersion/d4_element_data.hpp"' in gfn2
+    assert '#include "dft/dispersion/d4_element_data.hpp"' in eeq

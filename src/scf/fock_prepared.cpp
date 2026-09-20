@@ -105,6 +105,9 @@ struct PreparedFockPlan::Impl {
   std::size_t requested_budget;
   FockPreparationDiagnostic diagnostic;
   integrals::IntegralData exact;
+  std::vector<double> range_eri;
+  FockOperator range_operator{FockOperator::FullRange};
+  double range_omega{};
   std::optional<DensityFittingScfData> fitted;
   std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> cuda_exact{
       nullptr, &destroy_cuda_direct_jk_plan};
@@ -134,16 +137,40 @@ struct PreparedFockPlan::Impl {
     diagnostic.variant = execution_variant(strategy);
     const bool has_df = needs(strategy.spec, FockApproximation::DensityFitted);
     const bool has_exact = needs(strategy.spec, FockApproximation::Exact);
+    const bool range_exact = strategy.spec.exchange.present &&
+                             strategy.spec.exchange.approximation == FockApproximation::Exact &&
+                             strategy.spec.exchange.op != FockOperator::FullRange;
+    const bool full_exact = (strategy.spec.coulomb.present &&
+                             strategy.spec.coulomb.approximation == FockApproximation::Exact) ||
+                            (strategy.spec.exchange.present &&
+                             strategy.spec.exchange.approximation == FockApproximation::Exact &&
+                             strategy.spec.exchange.op == FockOperator::FullRange);
     const bool derivatives = strategy.spec.derivative_order != 0;
     if (has_df) {
       auxiliary = aux ? *aux : system;
       fitted.emplace();
     }
     if (strategy.backend == FockBackend::Cpu) {
-      auto ints = integrals::build_integrals(system, derivatives, has_exact);
+      auto ints = integrals::build_integrals(system, derivatives, full_exact);
+      if (range_exact) {
+        range_operator = strategy.spec.exchange.op;
+        range_omega = strategy.spec.exchange.omega;
+        const auto radial = range_operator == FockOperator::ShortRange
+                                ? integrals::CoulombRange::Short
+                                : integrals::CoulombRange::Long;
+        range_eri = integrals::build_range_eri(system, radial, range_omega);
+      }
       if (has_df) {
         fitted->one_electron = std::move(ints);
-        fitted->raw = integrals::build_density_fitting_integrals(system, *auxiliary, derivatives);
+        const bool materialize_df_derivatives =
+            derivatives && cpu_materialized_df_derivatives_requested();
+        fitted->raw = integrals::build_density_fitting_integrals(system, *auxiliary,
+                                                                 materialize_df_derivatives);
+        if (derivatives && !materialize_df_derivatives) {
+          fitted->raw.ncoord = system.atoms.size() * 3U;
+          fitted->df_gradient_orbital = system;
+          fitted->df_gradient_auxiliary = *auxiliary;
+        }
         fitted->metric_relative_threshold = strategy.metric_relative_threshold;
         fitted->three_center = orthonormalize_density_fitting_three_center(
             fitted->raw.three_center, fitted->raw.nbf,
@@ -154,8 +181,10 @@ struct PreparedFockPlan::Impl {
       const auto& data = one_electron();
       auto provider = [&](const FockTermSpec& term) -> std::optional<CpuFockProviderView> {
         if (!term.present) return {};
-        return term.approximation == FockApproximation::Exact ? CpuFockProviderView(data)
-                                                              : CpuFockProviderView(*fitted);
+        return term.approximation == FockApproximation::Exact
+                   ? CpuFockProviderView(data, range_exact ? &range_eri : nullptr, range_operator,
+                                         range_omega)
+                   : CpuFockProviderView(*fitted);
       };
       cpu_view.emplace(strategy, data.nbf, data.ncoord, provider(strategy.spec.coulomb),
                        provider(strategy.spec.exchange));
@@ -328,13 +357,14 @@ std::size_t PreparedFockPlan::cpu_observation_capacity() const noexcept {
   const auto orbital = runtime::add_capacity(
       runtime::vector_capacities(data.overlap, data.hcore, data.eri, data.overlap_derivative,
                                  data.hcore_derivative, data.eri_derivative,
-                                 data.nuclear_repulsion_derivative),
+                                 data.nuclear_repulsion_derivative, impl_->range_eri),
       impl_->overlap_cache.numeric_capacity_bytes());
-  return fitted ? runtime::add_capacity(orbital, runtime::vector_capacities(
-                                                     fitted->raw.metric, fitted->raw.three_center,
-                                                     fitted->raw.metric_derivative,
-                                                     fitted->raw.three_center_derivative,
-                                                     fitted->three_center.values))
+  return fitted ? runtime::add_capacity(
+                      orbital,
+                      runtime::vector_capacities(
+                          fitted->raw.metric, fitted->raw.three_center,
+                          fitted->raw.metric_derivative, fitted->raw.three_center_derivative,
+                          fitted->three_center.values, fitted->three_center.auxiliary_major_values))
                 : orbital;
 }
 const FockPreparationDiagnostic& PreparedFockPlan::diagnostic() const noexcept {

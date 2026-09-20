@@ -176,7 +176,8 @@ namespace {
 SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid,
                                  const std::vector<double>& alpha_density,
                                  const std::vector<double>& beta_density, std::size_t tile_points,
-                                 bool pbe) {
+                                 bool pbe, double exchange_scale = 1.0,
+                                 double correlation_scale = 1.0) {
   validate_density_matrix(basis, grid, alpha_density, tile_points);
   validate_density_matrix(basis, grid, beta_density, tile_points);
   const std::size_t n = basis.nao;
@@ -201,7 +202,7 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = point::evaluate(pbe, rho, gradient);
+      const auto xc = point::evaluate(pbe, rho, gradient, exchange_scale, correlation_scale);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;
@@ -231,10 +232,226 @@ SpinXcIntegral integrate_lda_xc_pw_uks(const AoBasis& basis, const MolecularGrid
   return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, false);
 }
 
+SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                        const std::vector<double>& alpha_density,
+                                        const std::vector<double>& beta_density,
+                                        std::size_t tile_points, double exchange_scale,
+                                        double correlation_scale) {
+  return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true,
+                           exchange_scale, correlation_scale);
+}
+
 SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid,
                                  const std::vector<double>& alpha_density,
                                  const std::vector<double>& beta_density, std::size_t tile_points) {
-  return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true);
+  return integrate_pbe_uks_scaled(basis, grid, alpha_density, beta_density, tile_points, 1.0, 1.0);
+}
+
+namespace {
+
+std::array<double, 3> validate_b3_gga_point(const double rho[2], const double (&gradient)[2][3],
+                                            const char* method) {
+  std::array<double, 3> sigma{};
+  generated::sigma(gradient, sigma.data());
+  const double total = rho[0] + rho[1];
+  if (!std::isfinite(total) || total < 1.0e-12 || total > 1.0e12)
+    throw std::domain_error(std::string(method) + " requires interior-v1 total density");
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    const double same_sigma = sigma[spin == 0 ? 0 : 2];
+    if (!std::isfinite(rho[spin]) || rho[spin] <= 0.0 || rho[spin] / total < 1.0e-10 ||
+        !std::isfinite(same_sigma) || same_sigma <= 0.0)
+      throw std::domain_error(std::string(method) + " requires interior-v1 spin density/gradient");
+    const double reduced = std::sqrt(same_sigma) / std::pow(rho[spin], 4.0 / 3.0);
+    if (!std::isfinite(reduced) || reduced > 1.0e6)
+      throw std::domain_error(std::string(method) + " reduced gradient exceeds interior-v1");
+    for (double component : gradient[spin])
+      if (!std::isfinite(component))
+        throw std::domain_error(std::string(method) + " requires finite density gradients");
+  }
+  const double bound = std::sqrt(sigma[0]) * std::sqrt(sigma[2]);
+  if (!std::isfinite(sigma[1]) ||
+      std::abs(sigma[1]) > bound * (1.0 + 16.0 * std::numeric_limits<double>::epsilon()))
+    throw std::domain_error(std::string(method) + " spin-gradient Gram matrix is invalid");
+  return sigma;
+}
+
+template <class Raw>
+B3GgaPointValue map_b3_gga_point(const Raw& raw, const double (&gradient)[2][3],
+                                 const char* method) {
+  if (!std::isfinite(raw.energy_density))
+    throw std::domain_error(std::string("nonfinite generated ") + method + " semilocal energy");
+  for (double derivative : raw.feature_derivative)
+    if (!std::isfinite(derivative))
+      throw std::domain_error(std::string("nonfinite generated ") + method +
+                              " semilocal derivative");
+  B3GgaPointValue out;
+  out.energy = raw.energy_density;
+  out.rho[0] = raw.feature_derivative[0];
+  out.rho[1] = raw.feature_derivative[1];
+  for (unsigned k = 0; k < 3; ++k) {
+    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] +
+                         raw.feature_derivative[3] * gradient[1][k];
+    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] +
+                         2.0 * raw.feature_derivative[4] * gradient[1][k];
+  }
+  return out;
+}
+
+using B3GgaEvaluator = B3GgaPointValue (*)(const double[2], const double (&)[2][3]);
+
+XcIntegral integrate_b3_gga_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                const std::vector<double>& density, std::size_t tile_points,
+                                XcDensitySource source, B3GgaEvaluator evaluate,
+                                const char* method) {
+  const std::size_t n = basis.nao;
+  validate_density_matrix(basis, grid, density, tile_points);
+  XcIntegral result;
+  result.potential.assign(n * n, 0.0);
+  result.points = grid.point_count();
+  auto& record = result.density_diagnostic;
+  record.npoint = result.points;
+  record.ingredient_mask = 7U;
+  const auto* factor = resolve_density_source(n, density, source, record);
+  std::vector<double> ao;
+  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
+    const std::size_t count = std::min(tile_points, result.points - begin);
+    ao.resize(4 * count * n);
+    sample_xc_capacity(result, ao, count);
+    basis.evaluate(grid.points().data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    for (std::size_t point = 0; point < count; ++point) {
+      const double* phi = ao.data() + point * n;
+      std::array<const double*, 3> jets{};
+      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
+      const auto total = rks_features(phi, jets, n, density, factor, 7U);
+      const double rho[2]{0.5 * total[0], 0.5 * total[0]};
+      const double gradient[2][3]{{0.5 * total[1], 0.5 * total[2], 0.5 * total[3]},
+                                  {0.5 * total[1], 0.5 * total[2], 0.5 * total[3]}};
+      const auto xc = evaluate(rho, gradient);
+      const double weight = grid.weights()[begin + point];
+      result.energy += weight * xc.energy;
+      result.electrons += weight * total[0];
+      const double rho_coefficient = 0.5 * (xc.rho[0] + xc.rho[1]);
+      double gradient_coefficient[3]{};
+      for (unsigned k = 0; k < 3; ++k)
+        gradient_coefficient[k] = 0.5 * (xc.gradient[0][k] + xc.gradient[1][k]);
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          double value = rho_coefficient * phi[mu] * phi[nu];
+          for (unsigned k = 0; k < 3; ++k)
+            value += gradient_coefficient[k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+          result.potential[mu * n + nu] += weight * value;
+        }
+    }
+  }
+  if (!std::isfinite(result.energy))
+    throw std::runtime_error(std::string("nonfinite ") + method + " RKS semilocal energy");
+  return result;
+}
+
+SpinXcIntegral integrate_b3_gga_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                    const std::vector<double>& alpha_density,
+                                    const std::vector<double>& beta_density,
+                                    std::size_t tile_points, B3GgaEvaluator evaluate,
+                                    const char* method) {
+  validate_density_matrix(basis, grid, alpha_density, tile_points);
+  validate_density_matrix(basis, grid, beta_density, tile_points);
+  const std::size_t n = basis.nao;
+  SpinXcIntegral result;
+  for (auto& potential : result.potential) potential.assign(n * n, 0.0);
+  result.points = grid.point_count();
+  std::vector<double> ao;
+  const std::vector<double>* densities[2]{&alpha_density, &beta_density};
+  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
+    const std::size_t count = std::min(tile_points, result.points - begin);
+    ao.resize(4 * count * n);
+    basis.evaluate(grid.points().data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    for (std::size_t point = 0; point < count; ++point) {
+      const double* phi = ao.data() + point * n;
+      std::array<const double*, 3> jets{};
+      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
+      double rho[2]{}, gradient[2][3]{};
+      for (unsigned spin = 0; spin < 2; ++spin) {
+        const auto features = rks_features(phi, jets, n, *densities[spin], nullptr, 7U);
+        rho[spin] = features[0];
+        for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
+      }
+      const auto xc = evaluate(rho, gradient);
+      const double weight = grid.weights()[begin + point];
+      result.energy += weight * xc.energy;
+      for (unsigned spin = 0; spin < 2; ++spin) {
+        result.electrons[spin] += weight * rho[spin];
+        for (std::size_t mu = 0; mu < n; ++mu)
+          for (std::size_t nu = 0; nu < n; ++nu) {
+            double value = xc.rho[spin] * phi[mu] * phi[nu];
+            for (unsigned k = 0; k < 3; ++k)
+              value += xc.gradient[spin][k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+            result.potential[spin][mu * n + nu] += weight * value;
+          }
+      }
+    }
+  }
+  if (!std::isfinite(result.energy))
+    throw std::runtime_error(std::string("nonfinite ") + method + " UKS semilocal energy");
+  return result;
+}
+
+}  // namespace
+
+B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
+  const auto sigma = validate_b3_gga_point(rho, gradient, "B3LYP");
+  return map_b3_gga_point(generated::b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]),
+                          gradient, "B3LYP");
+}
+
+CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
+  const auto sigma = validate_b3_gga_point(rho, gradient, "CAM-B3LYP");
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  constexpr double beta_b88 = 0.0042;
+  constexpr double gamma_b88 = 6.0;
+  const double cx = 0.375 * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    const double same_sigma = sigma[spin == 0 ? 0 : 2];
+    const double x2 = same_sigma * std::pow(rho[spin], -8.0 / 3.0);
+    const double x = std::sqrt(x2);
+    const double enhancement =
+        1.0 + beta_b88 / cx * x2 / (1.0 + gamma_b88 * beta_b88 * x * std::asinh(x));
+    const double k_gga = std::sqrt(9.0 * pi / (2.0 * cx * enhancement)) * std::cbrt(rho[spin]);
+    if (!std::isfinite(k_gga) || generated::kCamB3lypOmega / (2.0 * k_gga) >= 1.35)
+      throw std::domain_error("CAM-B3LYP ITYH attenuation exceeds rsh-interior-v1");
+  }
+  return map_b3_gga_point(
+      generated::cam_b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]), gradient,
+      "CAM-B3LYP");
+}
+
+XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                               const std::vector<double>& density, std::size_t tile_points,
+                               XcDensitySource source) {
+  return integrate_b3_gga_rks(basis, grid, density, tile_points, source, evaluate_b3lyp_point,
+                              "B3LYP");
+}
+
+SpinXcIntegral integrate_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& alpha_density,
+                                   const std::vector<double>& beta_density,
+                                   std::size_t tile_points) {
+  return integrate_b3_gga_uks(basis, grid, alpha_density, beta_density, tile_points,
+                              evaluate_b3lyp_point, "B3LYP");
+}
+
+XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density, std::size_t tile_points,
+                                   XcDensitySource source) {
+  return integrate_b3_gga_rks(basis, grid, density, tile_points, source, evaluate_cam_b3lyp_point,
+                              "CAM-B3LYP");
+}
+
+SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       std::size_t tile_points) {
+  return integrate_b3_gga_uks(basis, grid, alpha_density, beta_density, tile_points,
+                              evaluate_cam_b3lyp_point, "CAM-B3LYP");
 }
 
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
@@ -408,7 +625,8 @@ SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& g
 
 XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& grid,
                                   const std::vector<double>& density, std::size_t tile_points,
-                                  bool allow_tail, XcDensitySource source) {
+                                  bool allow_tail, XcDensitySource source,
+                                  double exchange_scale = 1.0, double correlation_scale = 1.0) {
   const std::size_t n = basis.nao;
   validate_density_matrix(basis, grid, density, tile_points);
 
@@ -443,7 +661,8 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double spin_rho[2]{rho / 2.0, rho / 2.0};
       const double spin_gradient[2][3]{{gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0},
                                        {gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0}};
-      const auto xc = point::evaluate(true, spin_rho, spin_gradient);
+      const auto xc =
+          point::evaluate(true, spin_rho, spin_gradient, exchange_scale, correlation_scale);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable PBE features");
       const double weight = weights[begin + point];
       result.energy += weight * xc.energy;
@@ -469,10 +688,18 @@ XcIntegral integrate_pbe_rks(const AoBasis& basis, const MolecularGrid& grid,
   return integrate_pbe_rks_impl(basis, grid, density, tile_points, false, source);
 }
 
+XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                              const std::vector<double>& density,
+                                              std::size_t tile_points, XcDensitySource source,
+                                              double exchange_scale, double correlation_scale) {
+  return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source, exchange_scale,
+                                correlation_scale);
+}
+
 XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& density, std::size_t tile_points,
                                        XcDensitySource source) {
-  return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source);
+  return integrate_pbe_rks_with_tail_scaled(basis, grid, density, tile_points, source, 1.0, 1.0);
 }
 
 // Keep the CPU slice's entry name bound to the same numerical contract.

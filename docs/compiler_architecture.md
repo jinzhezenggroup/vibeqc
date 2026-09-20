@@ -145,6 +145,14 @@ CMake and `vibeqc.autotune.source_identity` expand the same
 for recursive groups so adding or removing a covered source reconfigures the
 build before the compatibility hash is reused.
 
+Generated-source invalidation is intentionally narrower than that complete
+compatibility identity. The shared codegen runner records repository-local
+Python modules actually loaded by each successful generator invocation and emits
+a Make/Ninja depfile. Explicit manifests, parameter files and other non-imported
+inputs remain ordinary CMake dependencies. An unrelated compiler edit can
+therefore refresh the complete source identity without forcing every generated
+family to run again.
+
 The wheel includes the integral manifests, required native templates and their
 transitive local headers, plus the audited Libxc source and license provenance
 from `external/libxc-7.0.0`. These inputs are included in the sdist too.

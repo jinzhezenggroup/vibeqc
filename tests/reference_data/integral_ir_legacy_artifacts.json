@@ -511,10 +511,10 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "21840cac66f4820457458d0ac420bcf12617d31f949fa46c0fc2b45b1c0e80bc",
-    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "431aee70d4cd1765d80515f1fbc2b3c22e3cd807559fbdeedb11dbd1ba838430",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "c1b4fb292de92db453e2449b0251058c3e68ec5eb09920a602f909981b52e888",
-    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "576a7b4cb9ad4abb0e157872c75860dc3f572e9b39afab9ef5f77a40fddf0507",
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "f0a086fc8eee8437a2eed4fb9a4083149c46d8f4baba1e4cd8fe370c26d7ce4f",
+    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "7c93a5248db0fd8aa824577e657d9c849e8c6ea018f43787eefef34f9cfe0947",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "9dedc1dbf5ec09b262126fc2ba29edff0903b2c43527c3ba7284cee6271aaa54",
+    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "9362a5001c9994cc02c1469d81ae5410bb8837e12839756b9a7663d8b784ad0f",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
     "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
   },
@@ -547,6 +547,16 @@
         "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
         "vibeqc_generated_shell_registry.hpp",
         "vibeqc_generated_shell_registry.cu"
+      ]
+    },
+    {
+      "issue": 673,
+      "reason": "Prune proven-dead non-mixed streaming Fock internal arguments while preserving the stable public launch wrapper ABI. The four sm_120 generated shards change intentionally; portable sm_90 shards and registry artifacts remain unchanged.",
+      "paths": [
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
       ]
     }
   ]

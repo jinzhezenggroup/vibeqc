@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from . import production_cost as _production_cost
 from .capabilities import (
     CAPABILITY_LOCAL_PACKED_STREAMING_FOCK,
     CAPABILITY_MIXED_FOCK,
@@ -38,10 +39,21 @@ from .cuda_target import (
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
+from .signature import GeneratedKernelArgument, GeneratedKernelSignature
+from .specialize import specialize_integral_ir
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
     from pathlib import Path
+
+# Compatibility re-exports while #487 moves production responsibilities behind
+# narrower leaf modules.  Keep the canonical objects identical for downstream
+# callers that still import these names from ``integral.production``.
+_STABLE_AOT_SHARD_MAP_VERSION = _production_cost._STABLE_AOT_SHARD_MAP_VERSION
+_partition_production_selections = _production_cost._partition_production_selections
+production_compile_cost = _production_cost.production_compile_cost
+shell_class_index = _production_cost.shell_class_index
+stable_aot_shard_slot = _production_cost.stable_aot_shard_slot
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4", "rys5"))
 
@@ -314,18 +326,11 @@ def _selection_integral(
     ):
         return base
     if frozenset(selected_consumers) == base.consumers:
-        return build_integral_ir(
-            selection.spec,
-            operator=base.operator,
-            derivative=base.derivative,
-            contractions=base.contractions,
-            recurrence=selected_recurrence,
-        )
-    return build_integral_ir(
-        selection.spec,
-        selected_consumers,
-        operator=base.operator,
-        recurrence=selected_recurrence,
+        return specialize_integral_ir(base, recurrence=selected_recurrence)
+    return specialize_integral_ir(
+        base,
+        consumers=selected_consumers,
+        recurrence=recurrence,
     )
 
 
@@ -880,16 +885,6 @@ def load_production_kernel_selections(
     return resolve_production_profile(path, architecture, profile).selections
 
 
-def shell_class_index(spec: ShellClassSpec) -> int:
-    """Return the production triangular quartet-class index."""
-
-    first = shell_pair_class(*spec.angular[:2])
-    second = shell_pair_class(*spec.angular[2:])
-    high = max(first, second)
-    low = min(first, second)
-    return high * (high + 1) // 2 + low
-
-
 def load_production_manifest(
     path: Path,
     architecture: str | None = None,
@@ -1099,8 +1094,8 @@ extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_mixed_fo
 """
 
 
-def _streaming_fock_source(selection: KernelSelection) -> str:
-    """Emit fixed-storage shell-pair enumeration for dominant Fock classes."""
+def _streaming_fock_schedule(selection: KernelSelection) -> ScheduleIR:
+    """Resolve the value-path schedule used by streaming Fock lowering."""
 
     spec = selection.spec
     schedule = selection.fock_schedule or selection.schedule
@@ -1117,7 +1112,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
             (angular_order + 1) * (angular_order + 2) * (angular_order + 3) // 6
         )
         block_threads = (max(spec.component_count, value_state_count) + 31) // 32 * 32
-        schedule = ScheduleIR(
+        return ScheduleIR(
             kind=ScheduleKind.COMPONENT_LANES,
             block_threads=block_threads,
             component_tile=spec.component_count,
@@ -1131,8 +1126,79 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
             ),
             warp_size=schedule.warp_size,
         )
+    return schedule
+
+
+def _streaming_fock_internal_signature(
+    selection: KernelSelection,
+) -> GeneratedKernelSignature:
+    """Derive the specialized compiler-owned streaming-kernel ABI.
+
+    The public registry ABI remains stable. Only the generated device/kernel
+    boundary is specialized, and launch forwarding is rendered from this same
+    manifest so a removed parameter cannot remain in host-side packing.
+    """
+
+    spec = selection.spec
+    class_name = spec.name[0].upper() + spec.name[1:]
+    schedule = _streaming_fock_schedule(selection)
+    first_pair_class = shell_pair_class(*spec.angular[:2])
+    second_pair_class = shell_pair_class(*spec.angular[2:])
+    head_name = (
+        "task_head"
+        if (
+            schedule.kind == ScheduleKind.COMPONENT_LANES
+            and first_pair_class != second_pair_class
+        )
+        else "bra_head"
+    )
+    signature = GeneratedKernelSignature(
+        (
+            GeneratedKernelArgument(
+                "const vibeqc::scf::detail::GeneratedShellPairStream*",
+                "topology_pointer",
+                "topology",
+            ),
+            GeneratedKernelArgument(
+                f"const Generated{class_name}PrimitivePairData*",
+                "primitive_pairs",
+                "typed_primitive_pairs",
+            ),
+            GeneratedKernelArgument("const std::int64_t*", "primitive_pair_offsets"),
+            GeneratedKernelArgument("const double*", "ao_coefficients"),
+            GeneratedKernelArgument(
+                f"const Generated{class_name}Vec3*",
+                "atom_positions",
+                "typed_positions",
+            ),
+            GeneratedKernelArgument("double", "screening_tolerance"),
+            GeneratedKernelArgument("bool", "mixed_precision_enabled"),
+            GeneratedKernelArgument("double", "fp64_threshold"),
+            GeneratedKernelArgument("const double*", "schwarz_bounds"),
+            GeneratedKernelArgument("const double*", "density"),
+            GeneratedKernelArgument("double*", "fock"),
+            GeneratedKernelArgument("std::uint32_t*", head_name, "bra_head"),
+            GeneratedKernelArgument("unsigned long long*", "fp64_work_count"),
+            GeneratedKernelArgument("unsigned long long*", "fp32_work_count"),
+        )
+    )
+    if selection.has_capability(CAPABILITY_MIXED_FOCK):
+        return signature
+    return signature.without(
+        "mixed_precision_enabled",
+        "fp64_threshold",
+        "fp32_work_count",
+    )
+
+
+def _streaming_fock_source(selection: KernelSelection) -> str:
+    """Emit fixed-storage shell-pair enumeration for dominant Fock classes."""
+
     if not selection.has_capability(CAPABILITY_STREAMING_FOCK):
         return ""
+
+    spec = selection.spec
+    schedule = _streaming_fock_schedule(selection)
 
     class_name = spec.name[0].upper() + spec.name[1:]
     first_pair_class = shell_pair_class(*spec.angular[:2])
@@ -1167,11 +1233,36 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
         )
     prefix = f"generated_{spec.name}"
     supports_mixed_fock = selection.has_capability(CAPABILITY_MIXED_FOCK)
+    internal_signature = _streaming_fock_internal_signature(selection)
+    internal_parameters = internal_signature.parameter_list()
+    internal_arguments = internal_signature.argument_list()
     retained_state = (
         "mixed_precision_enabled && contribution_bound < fp64_threshold ? 3U : 1U"
         if supports_mixed_fock
         else "1U"
     )
+    precision_parameters = (
+        """    std::uint32_t state, unsigned long long* fp64_work_count,
+    unsigned long long* fp32_work_count"""
+        if supports_mixed_fock
+        else "    unsigned long long* fp64_work_count"
+    )
+    precision_body = (
+        """  unsigned long long* counter =
+      state == 3U ? fp32_work_count : fp64_work_count;
+  if (counter != nullptr) atomicAdd(counter, 1ULL);"""
+        if supports_mixed_fock
+        else "  if (fp64_work_count != nullptr) atomicAdd(fp64_work_count, 1ULL);"
+    )
+
+    def record_precision(state: str) -> str:
+        arguments = (
+            f"{state}, fp64_work_count, fp32_work_count"
+            if supports_mixed_fock
+            else "fp64_work_count"
+        )
+        return f"{prefix}_record_fock_precision({arguments});"
+
     common = f"""
 /** Return the packed shell-pair ordinal for two shells in one system. */
 __device__ __forceinline__ std::size_t {prefix}_stream_pair_index(
@@ -1241,10 +1332,8 @@ __device__ __forceinline__ bool {prefix}_stream_survives(
 
 /** Count the arithmetic route actually selected for one retained quartet. */
 __device__ __forceinline__ void {prefix}_record_fock_precision(
-    std::uint32_t state, unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
-  unsigned long long* counter = state == 3U ? fp32_work_count : fp64_work_count;
-  if (counter != nullptr) atomicAdd(counter, 1ULL);
+{precision_parameters}) {{
+{precision_body}
 }}
 
 /** Canonicalize one pair product into the stable generated task ABI. */
@@ -1357,16 +1446,7 @@ __device__ __forceinline__ void {prefix}_stream_populate_task(
         worker = f"""
 template <bool Unrestricted>
 __device__ __forceinline__ void {prefix}_streaming_fock(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology_pointer,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* bra_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   static_assert(kGenerated{class_name}FockBlockThreads == 32U);
 {state_declarations}
   __shared__ std::uint32_t bra_ordinal;
@@ -1420,8 +1500,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
       }}
       if (keep) {{
         const std::uint32_t precision_state = {retained_state};
-        {prefix}_record_fock_precision(
-            precision_state, fp64_work_count, fp32_work_count);
+        {record_precision("precision_state")}
         {prefix}_stream_populate_task(
             topology, bra_pair, ket_pair, {task_reference});
         if (precision_state == 3U) {{
@@ -1454,16 +1533,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         worker = f"""
 template <bool Unrestricted>
 __device__ __forceinline__ void {prefix}_streaming_fock(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology_pointer,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* bra_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   static_assert(kGenerated{class_name}FockBlockThreads == {schedule.block_threads}U);
   __shared__ Generated{class_name}ShellTask stream_tasks[{tasks_per_block}];
   {
@@ -1534,8 +1604,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
           }}
           state = past_schwarz_tail ? 2U : (keep ? {retained_state} : 0U);
           if (keep) {{
-            {prefix}_record_fock_precision(
-                state, fp64_work_count, fp32_work_count);
+            {record_precision("state")}
             {prefix}_stream_populate_task(
                 topology, bra_pair, ket_pair, stream_tasks[subgroup]);
           }}
@@ -1589,16 +1658,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         worker = f"""
 template <bool Unrestricted>
 __device__ __forceinline__ void {prefix}_streaming_fock(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology_pointer,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* task_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   static_assert(kGenerated{class_name}FockBlockThreads ==
                 {schedule.block_threads}U);
   __shared__ Generated{class_name}ShellTask stream_task[1];
@@ -1661,8 +1721,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         stream_state = keep ? {retained_state} : 0U;
         if (past_schwarz_tail) stream_state = 2U;
         if (keep) {{
-          {prefix}_record_fock_precision(
-              stream_state, fp64_work_count, fp32_work_count);
+          {record_precision("stream_state")}
           {prefix}_stream_populate_task(
               topology, bra_pair, ket_pair, stream_task[0]);
         }}
@@ -1695,16 +1754,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         worker = f"""
 template <bool Unrestricted>
 __device__ __forceinline__ void {prefix}_streaming_fock(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology_pointer,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* bra_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   static_assert(kGenerated{class_name}FockBlockThreads ==
                 {schedule.block_threads}U);
   __shared__ Generated{class_name}ShellTask stream_task[1];
@@ -1750,8 +1800,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         }}
         stream_state = past_schwarz_tail ? 2U : (keep ? {retained_state} : 0U);
         if (keep) {{
-          {prefix}_record_fock_precision(
-              stream_state, fp64_work_count, fp32_work_count);
+          {record_precision("stream_state")}
           {prefix}_stream_populate_task(
               topology, bra_pair, ket_pair, stream_task[0]);
         }}
@@ -1783,52 +1832,32 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
     kernels = f"""
 extern "C" __global__ __launch_bounds__(kGenerated{class_name}FockBlockThreads)
 void {prefix}_shell_class_fock_rhf_streaming_kernel(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* bra_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   {prefix}_streaming_fock<false>(
-      topology, primitive_pairs, primitive_pair_offsets, ao_coefficients,
-      atom_positions, screening_tolerance, mixed_precision_enabled,
-      fp64_threshold, schwarz_bounds, density, fock, bra_head,
-      fp64_work_count, fp32_work_count);
+      {internal_arguments});
 }}
 
 extern "C" __global__ __launch_bounds__(kGenerated{class_name}FockBlockThreads)
 void {prefix}_shell_class_fock_uhf_streaming_kernel(
-    const vibeqc::scf::detail::GeneratedShellPairStream* topology,
-    const Generated{class_name}PrimitivePairData* primitive_pairs,
-    const std::int64_t* primitive_pair_offsets,
-    const double* ao_coefficients,
-    const Generated{class_name}Vec3* atom_positions,
-    double screening_tolerance, bool mixed_precision_enabled,
-    double fp64_threshold, const double* schwarz_bounds,
-    const double* density, double* fock, std::uint32_t* bra_head,
-    unsigned long long* fp64_work_count,
-    unsigned long long* fp32_work_count) {{
+{internal_parameters}) {{
   {prefix}_streaming_fock<true>(
-      topology, primitive_pairs, primitive_pair_offsets, ao_coefficients,
-      atom_positions, screening_tolerance, mixed_precision_enabled,
-      fp64_threshold, schwarz_bounds, density, fock, bra_head,
-      fp64_work_count, fp32_work_count);
+      {internal_arguments});
 }}
 """
     return common + worker + kernels
 
 
 def _streaming_fock_launch_wrapper(
-    spec: ShellClassSpec,
+    selection: KernelSelection,
     symbol: str | None = None,
 ) -> str:
-    """Emit the stable host wrapper for fixed-storage Fock streaming."""
+    """Emit the stable host wrapper adapting to a specialized internal ABI."""
 
+    spec = selection.spec
     class_name = spec.name[0].upper() + spec.name[1:]
+    internal_arguments = _streaming_fock_internal_signature(selection).argument_list(
+        wrapper=True
+    )
     return f"""
 extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_streaming_fock"}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
@@ -1852,17 +1881,11 @@ extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_streamin
   if (unrestricted) {{
     generated_{spec.name}_shell_class_fock_uhf_streaming_kernel<<<
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
-        topology, typed_primitive_pairs, primitive_pair_offsets,
-        ao_coefficients, typed_positions, screening_tolerance,
-        mixed_precision_enabled, fp64_threshold, schwarz_bounds, density,
-        fock, bra_head, fp64_work_count, fp32_work_count);
+        {internal_arguments});
   }} else {{
     generated_{spec.name}_shell_class_fock_rhf_streaming_kernel<<<
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
-        topology, typed_primitive_pairs, primitive_pair_offsets,
-        ao_coefficients, typed_positions, screening_tolerance,
-        mixed_precision_enabled, fp64_threshold, schwarz_bounds, density,
-        fock, bra_head, fp64_work_count, fp32_work_count);
+        {internal_arguments});
   }}
   return cudaPeekAtLastError();
 }}
@@ -2026,7 +2049,7 @@ def emit_production_shard(
                 body.append(_mixed_fock_launch_wrapper(selection.spec))
             if selection.has_capability(CAPABILITY_STREAMING_FOCK):
                 body.append(_streaming_fock_source(selection))
-                body.append(_streaming_fock_launch_wrapper(selection.spec))
+                body.append(_streaming_fock_launch_wrapper(selection))
         if selection.resident_force_recurrence is not None:
             body.append(_emit_ppps_resident_source(selection))
             body.append(_ppps_resident_launch_wrapper())
@@ -2578,7 +2601,7 @@ def emit_profile_shard(
                 streaming_symbol = f"{force_symbol}_streaming_fock"
                 streaming_wrapper = _scope_profile_identifiers(
                     _streaming_fock_launch_wrapper(
-                        selection.spec,
+                        selection,
                         streaming_symbol,
                     ),
                     selection,
@@ -3229,115 +3252,6 @@ def _write_if_changed(path: Path, content: str) -> None:
     if path.exists() and path.read_text(encoding="utf-8") == content:
         return
     path.write_text(content, encoding="utf-8")
-
-
-_STABLE_AOT_SHARD_MAP_VERSION = 1
-
-# The map is intentionally keyed by shell name rather than manifest position.
-# Its slots were chosen from the measured component/recurrence/consumer cost
-# of the sm_120 production profile.  Keeping this small, versioned table in
-# source means adding or removing a manifest row cannot move an unrelated class
-# to another translation unit (the failure mode of both manifest-order and
-# whole-profile greedy partitioners).  A future measurement refresh should
-# increment the version and deliberately invalidate the affected cache keys.
-_STABLE_AOT_SHARD_SLOTS: dict[str, int] = {
-    "ssss": 0,
-    "psss": 1,
-    "psps": 2,
-    "ppss": 2,
-    "ppps": 4,
-    "pppp": 7,
-    "dsss": 6,
-    "dsps": 5,
-    "dspp": 7,
-    "dpss": 2,
-    "dpps": 5,
-    "dppp": 4,
-    "dpds": 5,
-    "dpdp": 3,
-    "dsds": 3,
-    "ddss": 6,
-    "ddps": 6,
-    "ddpp": 2,
-    "ddds": 7,
-    "dddp": 1,
-    "dddd": 0,
-    "fpps": 7,
-}
-
-
-def production_compile_cost(selection: KernelSelection) -> float:
-    """Estimate the relative cold-compile cost of one production selection.
-
-    Real compiler timings, when attached to a manifest row, are preferred.
-    Older manifests have no such measurements, so this deterministic estimate
-    uses the generated component count, recurrence root count, and number of
-    emitted consumers.  It is a partitioning signal only; it must never be
-    used as a runtime or scientific quality metric.
-    """
-
-    if selection.compile_seconds is not None:
-        return float(selection.compile_seconds)
-    recurrence_factor = {
-        "subset_wick": 1.0,
-        "rys2": 1.15,
-        "rys3": 1.35,
-        "rys4": 1.7,
-        "rys5": 2.0,
-    }[selection.recurrence]
-    consumer_factor = 1.0 + 0.65 * max(len(selection.consumers) - 1, 0)
-    schedule_factor = max(selection.schedule.block_threads / 32.0, 1.0)
-    structural = (
-        selection.spec.component_count
-        * (selection.spec.maximum_force_coulomb_order + 1)
-        * recurrence_factor
-        * consumer_factor
-    )
-    # Keep measured source/object sizes useful without allowing a stale size
-    # estimate to dominate the mathematical structure of a new class.
-    artifact_factor = 1.0
-    if selection.source_bytes is not None:
-        artifact_factor += min(selection.source_bytes / 1.0e6, 4.0) * 0.05
-    if selection.object_bytes is not None:
-        artifact_factor += min(selection.object_bytes / 1.0e6, 4.0) * 0.05
-    return float(structural * artifact_factor * schedule_factor)
-
-
-def stable_aot_shard_slot(selection: KernelSelection) -> int:
-    """Return the versioned, manifest-order-independent virtual shard slot."""
-
-    slot = _STABLE_AOT_SHARD_SLOTS.get(selection.spec.name)
-    if slot is not None:
-        return slot
-    # Unknown classes remain stable across manifest edits.  The triangular
-    # index is part of the canonical shell ABI, unlike list ordering.
-    return shell_class_index(selection.spec)
-
-
-def _partition_production_selections(
-    selections: Iterable[KernelSelection], shard_count: int
-) -> tuple[tuple[KernelSelection, ...], ...]:
-    """Assign classes to versioned, compile-cost-aware stable translation units.
-
-    Slots are deliberately not recomputed from the current manifest.  A
-    weighted greedy pass would balance a clean build but would also move every
-    class after an insertion/removal, destroying the cache identity this layer
-    is meant to preserve.  The checked-in slot map is therefore the stable
-    result of that pass over the current measured profile; unknown classes use
-    their canonical shell-class index as a deterministic fallback.
-    """
-
-    if isinstance(shard_count, bool) or not isinstance(shard_count, int):
-        raise TypeError("shard_count must be an integer")
-    if shard_count < 1:
-        raise ValueError("shard_count must be positive")
-    shards: list[list[KernelSelection]] = [[] for _ in range(shard_count)]
-    for selection in sorted(
-        selections,
-        key=lambda item: (stable_aot_shard_slot(item) % shard_count, item.spec.name),
-    ):
-        shards[stable_aot_shard_slot(selection) % shard_count].append(selection)
-    return tuple(tuple(shard) for shard in shards)
 
 
 def write_production_bundle(

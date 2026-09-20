@@ -357,6 +357,7 @@ def test_nonlocal_primitive_participates_in_method_identity_and_requirements() -
     assert resolved.primitives[-1].derivative_capabilities == (
         "energy",
         "ks-potential",
+        "nuclear-gradient",
     )
     assert resolved.requirements["ingredients"] == ("rho", "sigma")
     assert resolved.requirements["operators"] == (

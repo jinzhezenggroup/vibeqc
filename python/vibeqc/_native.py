@@ -33,6 +33,7 @@ METHOD_FAMILY_HARTREE_FOCK = 1
 METHOD_FAMILY_DENSITY_FUNCTIONAL = 2
 METHOD_FAMILY_COUPLED_CLUSTER = 3
 METHOD_FAMILY_PERTURBATION = 4
+METHOD_FAMILY_SEMIEMPIRICAL = 5
 PROPERTY_ENERGY = 1 << 0
 PROPERTY_FORCES = 1 << 1
 BACKEND_CPU_REFERENCE = 0
@@ -195,6 +196,11 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("tile_points", ctypes.c_uint64),
         ("element_radii", ctypes.POINTER(ctypes.c_double)),
         ("element_radius_count", ctypes.c_uint32),
+        ("reserved_v1_padding", ctypes.c_uint32),
+        ("composition_version", ctypes.c_uint32),
+        ("semilocal_exchange_scale", ctypes.c_double),
+        ("semilocal_correlation_scale", ctypes.c_double),
+        ("fock_exchange_coefficient", ctypes.c_double),
     ]
 
 

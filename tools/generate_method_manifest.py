@@ -17,6 +17,7 @@ FAMILIES = {
     "density_functional": "VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL",
     "coupled_cluster": "VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER",
     "perturbation": "VIBEQC_METHOD_FAMILY_PERTURBATION",
+    "semiempirical": "VIBEQC_METHOD_FAMILY_SEMIEMPIRICAL",
 }
 PROVIDERS = {
     "reserved": ("Reserved", False, False),
@@ -24,6 +25,7 @@ PROVIDERS = {
     "mp2": ("Mp2", True, True),
     "rccsd": ("Rccsd", True, True),
     "dft": ("Dft", True, True),
+    "xtb": ("Xtb", True, False),
 }
 PROPERTIES = {
     "energy": "VIBEQC_PROPERTY_ENERGY",
@@ -123,6 +125,8 @@ def load_manifest() -> list[dict]:
             raise ValueError(f"{name}: RCCSD provider requires coupled-cluster family")
         if method["provider"] == "dft" and method["family"] != "density_functional":
             raise ValueError(f"{name}: DFT provider requires density-functional family")
+        if method["provider"] == "xtb" and method["family"] != "semiempirical":
+            raise ValueError(f"{name}: xTB provider requires semiempirical family")
 
         method_aliases = method.get("aliases", [])
         if not isinstance(method_aliases, list) or any(
@@ -226,7 +230,7 @@ def emit_cpp(methods: list[dict]) -> str:
         "// clang-format off",
         "namespace vibeqc::methods::generated {",
         "",
-        "enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Rccsd, Dft };",
+        "enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Rccsd, Dft, Xtb };",
         "",
         "struct MethodManifestEntry {",
         "  std::string_view name;",

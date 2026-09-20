@@ -13,6 +13,9 @@
 
 namespace vibeqc::scf {
 
+/** Diagnostic A/B control: retain coordinate-resolved CPU DF derivative tensors. */
+[[nodiscard]] bool cpu_materialized_df_derivatives_requested() noexcept;
+
 /** Conditioning diagnostics and symmetric inverse square root of (P|Q). */
 struct DensityFittingMetricFactor {
   std::size_t dimension{};
@@ -41,6 +44,10 @@ struct DensityFittingThreeCenter {
   // The auxiliary dimension remains uncompressed so fixed-topology device
   // plans can preserve their indexing after dependent directions are removed.
   std::vector<double> values;
+  // Optional provider-oriented cache: Q-major [Q][mu][nu]. Production CPU
+  // preparation materializes it only when the external dense-LA provider will
+  // use it, so repeated SCF exchange builds do not repack the immutable tensor.
+  std::vector<double> auxiliary_major_values;
 };
 
 /** Immutable integral state shared by all iterations of a DF SCF solve. */
@@ -152,6 +159,22 @@ struct DensityFittingUhfGradient {
  * independently for each matching-spin density.
  */
 [[nodiscard]] DensityFittingUhfGradient build_density_fitting_uhf_gradient(
+    const integrals::DensityFittingIntegralData& integrals,
+    const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
+    double relative_threshold = 1.0e-10, JkCoefficients coefficients = {1.0, -1.0});
+/**
+ * Build the RHF DF response by reverse-contracting energy weights into the
+ * generated host derivative evaluator. Value tensors remain resident, while
+ * coordinate-resolved DF derivative tensors are never required.
+ */
+[[nodiscard]] DensityFittingRhfGradient build_density_fitting_rhf_weighted_gradient(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& density,
+    double relative_threshold = 1.0e-10, JkCoefficients coefficients = {});
+
+/** UHF analogue of build_density_fitting_rhf_weighted_gradient. */
+[[nodiscard]] DensityFittingUhfGradient build_density_fitting_uhf_weighted_gradient(
+    const core::System& orbital_system, const core::System& auxiliary_system,
     const integrals::DensityFittingIntegralData& integrals,
     const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
     double relative_threshold = 1.0e-10, JkCoefficients coefficients = {1.0, -1.0});

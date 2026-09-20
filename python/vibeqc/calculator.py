@@ -228,6 +228,7 @@ def method_capabilities(method: str) -> MethodCapabilities:
         _native.METHOD_FAMILY_DENSITY_FUNCTIONAL: "density_functional",
         _native.METHOD_FAMILY_COUPLED_CLUSTER: "coupled_cluster",
         _native.METHOD_FAMILY_PERTURBATION: "perturbation",
+        _native.METHOD_FAMILY_SEMIEMPIRICAL: "semiempirical",
     }[native.family]
     properties = set()
     if native.supported_properties & _native.PROPERTY_ENERGY:
@@ -367,7 +368,7 @@ class Calculator:
     def __init__(
         self,
         method: str = "rhf",
-        basis: str | Path | BasisSet | Sequence[Shell] = "sto-3g",
+        basis: str | Path | BasisSet | Sequence[Shell] | None = None,
         device: str = "cpu",
         device_id: int = 0,
         basis_representation: str | None = None,
@@ -433,24 +434,43 @@ class Calculator:
             "cartesian": _native.BASIS_CARTESIAN,
             "spherical": _native.BASIS_SPHERICAL,
         }
-        basis = _snapshot_basis(basis, basis_representation)
-        if basis_representation is None:
-            basis_representation = (
-                basis.representation if isinstance(basis, BasisSet) else "cartesian"
-            )
-        if basis_representation not in representations:
-            raise ValueError("basis_representation must be 'cartesian' or 'spherical'")
-        if auxiliary_basis is not None:
-            auxiliary_basis = _snapshot_basis(
-                auxiliary_basis,
-                None
-                if isinstance(auxiliary_basis, (BasisSet, os.PathLike))
-                or (
-                    isinstance(auxiliary_basis, str)
-                    and auxiliary_basis.endswith(".json")
+        method_id = _METHODS[method.lower()]
+        intrinsic_xtb_basis = method_id == _native.METHOD_GFN2_XTB
+        if intrinsic_xtb_basis:
+            if basis is not None:
+                raise ValueError(
+                    "GFN2-xTB uses its intrinsic minimal basis; omit the basis argument"
                 )
-                else basis_representation,
-            )
+            if basis_representation not in (None, "cartesian"):
+                raise ValueError(
+                    "GFN2-xTB does not accept a Gaussian basis representation"
+                )
+            if auxiliary_basis is not None:
+                raise ValueError("GFN2-xTB does not accept an auxiliary Gaussian basis")
+            basis_representation = "cartesian"
+        else:
+            if basis is None:
+                basis = "sto-3g"
+            basis = _snapshot_basis(basis, basis_representation)
+            if basis_representation is None:
+                basis_representation = (
+                    basis.representation if isinstance(basis, BasisSet) else "cartesian"
+                )
+            if basis_representation not in representations:
+                raise ValueError(
+                    "basis_representation must be 'cartesian' or 'spherical'"
+                )
+            if auxiliary_basis is not None:
+                auxiliary_basis = _snapshot_basis(
+                    auxiliary_basis,
+                    None
+                    if isinstance(auxiliary_basis, (BasisSet, os.PathLike))
+                    or (
+                        isinstance(auxiliary_basis, str)
+                        and auxiliary_basis.endswith(".json")
+                    )
+                    else basis_representation,
+                )
         if isinstance(density_fitting, bool):
             density_fitting = "cpu" if density_fitting else "none"
         density_fitting_modes = {
@@ -479,12 +499,27 @@ class Calculator:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
             "pbe-rks",
             "lda-uks",
             "pbe-uks",
+            "pbe0-rks",
+            "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
         ):
@@ -492,7 +527,30 @@ class Calculator:
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires a supported semilocal RKS/UKS method")
+            raise ValueError("ks_options requires a supported RKS/UKS method")
+        if self._method == _native.METHOD_GFN2_XTB:
+            if device != "cpu":
+                raise NotImplementedError(
+                    "GFN2-xTB CUDA execution is not admitted yet; use device='cpu'"
+                )
+            if density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise ValueError("GFN2-xTB does not use Gaussian density fitting")
+            if target_accuracy is not None:
+                raise NotImplementedError(
+                    "target_accuracy is not implemented for GFN2-xTB yet"
+                )
+            if resource_budget is not None:
+                raise NotImplementedError(
+                    "resource_budget planning is not implemented for GFN2-xTB yet"
+                )
+            for name, value in (
+                ("max_iterations", max_iterations),
+                ("diis_history", diis_history),
+            ):
+                if type(value) is not int or not 1 <= value <= 2**31 - 1:
+                    raise ValueError(f"{name} must be a positive int32 for GFN2-xTB")
+            if diis_history > 64:
+                raise ValueError("GFN2-xTB mixer history must not exceed 64")
         if self._method in _CORRELATED_METHODS:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -595,24 +653,11 @@ class Calculator:
                 )
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        precision_modes = {
-            "fp64": _native.PRECISION_FP64,
-            "auto": _native.PRECISION_AUTO,
-        }
-        try:
-            self._precision_mode = precision_modes[str(precision).lower()]
-        except KeyError as error:
-            raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
             self._method in _CORRELATED_METHODS
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical correlated methods require precision='fp64'")
-        if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
-            and self._precision_mode != _native.PRECISION_FP64
-        ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
@@ -620,13 +665,23 @@ class Calculator:
             if query is not None:
                 query.argtypes, query.restype = [], ctypes.c_uint32
                 self._ks_options_version = query()
-            if self._ks_options_version != 1:
-                from .ks import resolve_ks_options
+            from .ks import resolve_ks_options
 
-                if self._ks_options != resolve_ks_options(self._method_name):
+            if self._ks_options_version == 0:
+                if (
+                    self._ks_options.requires_composition_v2
+                    or self._ks_options != resolve_ks_options(self._method_name)
+                ):
                     raise NotImplementedError(
-                        "native library does not support KS model options v1"
+                        "native library does not support KS model options"
                     )
+            elif (
+                self._ks_options_version == 1
+                and self._ks_options.requires_composition_v2
+            ):
+                raise NotImplementedError(
+                    "native library does not support KS composition options v2"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -658,6 +713,8 @@ class Calculator:
                     for shell in element.shells
                 )
             )
+            and self._ks_options is not None
+            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner
@@ -715,6 +772,7 @@ class Calculator:
                     "source": "cpu",
                     "identity": None,
                     "kernels": [],
+                    "dft_schedules": [],
                     "rejected": [],
                 },
             )
@@ -761,10 +819,15 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version == 1:
+        if self._ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(native_ks_options(self._ks_options))
+            descriptor.ks_options = ctypes.pointer(
+                native_ks_options(
+                    self._ks_options,
+                    version=1 if self._ks_options_version == 1 else 2,
+                )
+            )
         if self._method == _native.METHOD_RCCSD:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
@@ -931,6 +994,24 @@ class Calculator:
         atoms = tuple(Atom.from_value(a) for a in atoms)
         checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
         checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+        if self._method == _native.METHOD_GFN2_XTB:
+            intrinsic = {
+                "name": "GFN2-xTB intrinsic minimal basis",
+                "parameter_source": "xtbloom@5a67cc59ace94c8296e873503b2ae1298e7c2861",
+                "element_domain": [1, 86],
+            }
+            return {
+                "intrinsic_basis": intrinsic,
+                "model_identity": canonical_hash(
+                    {
+                        "method": "gfn2-xtb",
+                        "intrinsic_basis": intrinsic,
+                        "atoms": [a.atomic_number for a in atoms],
+                        "charge": int(charge),
+                        "multiplicity": int(multiplicity),
+                    }
+                ),
+            }
         result = {}
         for role, basis in (
             ("orbital", self._basis),
@@ -1045,11 +1126,12 @@ class Calculator:
     ) -> None:
         """Check operators and AO jets needed by the selected mean-field outputs.
 
-        Runtime shape/resource and occupation checks remain native. This data
-        preflight never turns an ECP or an unsupported auxiliary shell into an
-        all-electron through-f approximation. Energy-only calls deliberately
-        avoid requiring derivative capability that their backend will not use.
+        Runtime shape/resource and occupation checks remain native. GFN2-xTB
+        owns an intrinsic minimal basis and deliberately bypasses Gaussian
+        basis capability checks.
         """
+        if self._method == _native.METHOD_GFN2_XTB:
+            return
         derivative_orders = (0, 1) if compute_forces else (0,)
         auxiliary_backend = self._density_fitting_backend()
         orbital_operators = ["overlap", "kinetic", "nuclear_attraction", "eri"]
@@ -1095,6 +1177,40 @@ class Calculator:
         multiplicity: int,
         basis: str | Sequence[Shell] | None = None,
     ) -> ctypes.c_void_p:
+        if self._method == _native.METHOD_GFN2_XTB:
+            if basis is not None:
+                raise ValueError("GFN2-xTB does not accept a Gaussian basis")
+            checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
+            checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+            checked_integer(len(atoms), "atom count", low=1, high=2**32 - 1)
+            atom_array = (_native.AtomDescriptor * len(atoms))(
+                *(
+                    _native.AtomDescriptor(atom.atomic_number, *atom.position)
+                    for atom in atoms
+                )
+            )
+            descriptor = _native.SystemDescriptor(
+                ctypes.sizeof(_native.SystemDescriptor),
+                _native.ABI_VERSION,
+                atom_array,
+                len(atom_array),
+                None,
+                0,
+                None,
+                0,
+                int(charge),
+                int(multiplicity),
+                _native.BASIS_CARTESIAN,
+            )
+            system = ctypes.c_void_p()
+            _native.check(
+                self._library,
+                self._library.vibeqc_system_create(
+                    context, ctypes.byref(descriptor), ctypes.byref(system)
+                ),
+                context=context,
+            )
+            return system
         selected_basis = self._basis if basis is None else basis
         if not isinstance(selected_basis, BasisSet):
             selected_basis = _snapshot_basis(selected_basis, self._representation_name)
