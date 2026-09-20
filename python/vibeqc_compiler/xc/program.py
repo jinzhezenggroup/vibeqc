@@ -93,6 +93,12 @@ def validate_features(spec, features, *, order=2, copy=True):
         raise UnsupportedXC(
             "B88/PW91 exchange derivatives require positive same-spin sigma"
         )
+    if "GGA_C_P86" in components and order:
+        total_sigma = aa[active] + 2 * ab[active] + bb[active]
+        if np.any(total_sigma == 0):
+            raise UnsupportedXC(
+                "P86 correlation derivatives require positive total-density sigma"
+            )
     if "GGA_X_ITYH" in components:
         beta_b88 = 0.0042
         gamma_b88 = 6.0

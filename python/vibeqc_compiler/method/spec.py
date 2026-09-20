@@ -557,6 +557,40 @@ METHOD_CATALOG = MappingProxyType(
             "BLYP",
             (("GGA_X_B88", Fraction(1)), ("GGA_C_LYP", Fraction(1))),
         ),
+        "BP86": MethodSpec(
+            "BP86",
+            (("GGA_X_B88", Fraction(1)), ("GGA_C_P86", Fraction(1))),
+        ),
+        "B3P86": MethodSpec(
+            "B3P86",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN_RPA", Fraction(19, 100)),
+                ("GGA_C_P86", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        "B3P86G": MethodSpec(
+            "B3P86G",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN_RPA", Fraction(19, 100)),
+                ("GGA_C_P86", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
+        "B3P86V5": MethodSpec(
+            "B3P86V5",
+            (
+                ("LDA_X", Fraction(2, 25)),
+                ("GGA_X_B88", Fraction(18, 25)),
+                ("LDA_C_VWN", Fraction(19, 100)),
+                ("GGA_C_P86", Fraction(81, 100)),
+            ),
+            exact_exchange=Fraction(1, 5),
+        ),
         "B3LYP": MethodSpec(
             "B3LYP",
             (
