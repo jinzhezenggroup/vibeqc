@@ -17,7 +17,7 @@ import numpy as np
 
 from vibeqc_compiler.tensor import Program
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
-from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+from vibeqc_compiler.tensor.cuda_plan import TensorPlan, plan_cuda
 
 from .d3 import (
     D3CompilerSpec,
@@ -159,7 +159,7 @@ class PreparedD3CudaBatch:
         self._compiled: D3GeometryBatchProgram | None = None
         self._program: Program | None = None
         self._seed_name = ""
-        self._plan = None
+        self._plan: TensorPlan | None = None
         self._rebuild_count = 0
         try:
             self._install(default_flat)
@@ -197,10 +197,12 @@ class PreparedD3CudaBatch:
             old.close()
             self._rebuild_count += 1
 
-    def _require_open(self) -> tuple[D3GeometryBatchProgram, PreparedCuda]:
-        if self._compiled is None or self._prepared is None:
+    def _require_open(
+        self,
+    ) -> tuple[D3GeometryBatchProgram, PreparedCuda, TensorPlan]:
+        if self._compiled is None or self._prepared is None or self._plan is None:
             raise RuntimeError("generated D3 CUDA batch is closed")
-        return self._compiled, self._prepared
+        return self._compiled, self._prepared, self._plan
 
     def _coordinates(
         self, geometries: typing.Iterable[np.ndarray | None] | None
@@ -237,7 +239,7 @@ class PreparedD3CudaBatch:
         if type(gradients) is not bool:
             raise TypeError("gradients must be a Boolean")
         coordinates = self._coordinates(geometries)
-        compiled, prepared = self._require_open()
+        compiled, prepared, plan = self._require_open()
         rebuilt = False
         try:
             compiled.validate_coordinates(coordinates)
@@ -245,7 +247,7 @@ class PreparedD3CudaBatch:
             if "stale D3 batch pair topology/switch state" not in str(error):
                 raise
             self._install(coordinates)
-            compiled, prepared = self._require_open()
+            compiled, prepared, plan = self._require_open()
             rebuilt = True
 
         result = prepared.execute(
@@ -270,12 +272,12 @@ class PreparedD3CudaBatch:
             gradients=split,
             rebuilt=rebuilt,
             program_identity=compiled.identity,
-            plan_identity=self._plan.identity,
+            plan_identity=plan.identity,
             metrics=dict(result.metrics),
         )
 
     def diagnostic(self) -> D3GeneratedCudaDiagnostic:
-        compiled, _ = self._require_open()
+        compiled, _, plan = self._require_open()
         counts = tuple(
             end - begin
             for begin, end in zip(self._offsets[:-1], self._offsets[1:], strict=True)
@@ -284,9 +286,9 @@ class PreparedD3CudaBatch:
             system_count=self.system_count,
             total_atoms=self._offsets[-1],
             maximum_atoms=max(counts),
-            peak_bytes=self._plan.peak_bytes,
+            peak_bytes=plan.peak_bytes,
             program_identity=compiled.identity,
-            plan_identity=self._plan.identity,
+            plan_identity=plan.identity,
             rebuild_count=self._rebuild_count,
         )
 
