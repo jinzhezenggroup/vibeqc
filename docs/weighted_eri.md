@@ -16,7 +16,7 @@ source emission alone does not select a production route.
 | --- | --- | --- |
 | HF, at most 16 public AOs | Persistent ERI values and their native force path | AO cutoff; does not exercise the direct psss migration |
 | Direct HF psss Fock | Fixed queues use handwritten three-component `contracted_eri_cartesian_source_psss`; bounded streaming can use the existing generated Fock row | `kFixedTopologyGeneratedFockExclusionMask` retains the fixed low-order workers; streaming capabilities select generated psss for bounded Fock |
-| Direct HF psss force | Handwritten weighted PA/PQ dot products, F0/F1/F2 once per primitive pair product | Default remains handwritten; `VIBEQC_PSSS_WEIGHTED=generated` substitutes only its primitive weighted expression |
+| Direct HF psss force | Handwritten weighted PA/PQ dot products, F0/F1/F2 once per primitive pair product | Default remains handwritten pending requalification; `VIBEQC_PSSS_WEIGHTED=generated` now selects a force-only generated helper with nine independent gradient roots, and route selection occurs once per shell task rather than inside the primitive loop |
 | Direct HF psss resident force | Resident bra pairs and primitive-length descriptors | `VIBEQC_PSSS_RESIDENT_BRA`; the generated expression uses the same resident pairs and canonical-orientation scales |
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |
 | Direct HF ssss force | Generated force-only weighted-ERI expression over the native primitive-pair cache | Generated mathematics is the unconditional production path; the qualified bounded/packed native scheduler remains, while the superseded handwritten ssss derivative body and runtime selector are deleted |
@@ -136,7 +136,13 @@ the Slurm `main` partition, `--gres=gpu:5090:1`, and a finite `--time`.
 The generated psss policy remains opt-in. A resource-safe or mathematically
 correct candidate is promoted only after non-regressing molecular endpoint
 evidence; the old component-cloning candidate and its rejection remain
-documented in [shell_codegen.md](shell_codegen.md).
+documented in [shell_codegen.md](shell_codegen.md). The current retirement
+candidate removes two structural costs that were present in the archived 72-run
+comparison: it emits only the nine independent force roots consumed by Direct HF
+and resolves native/generated selection once per shell task rather than once per
+primitive quartet. The archived timing ratios therefore remain historical evidence,
+not qualification of this revised candidate; promotion still requires a fresh
+matched endpoint/resource run.
 
 The final [RTX 5090 evidence](../benchmarks/results/weighted-eri-144/README.md)
 includes native libcint agreement, memory-sanitizer results, resource records,
