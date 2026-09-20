@@ -783,17 +783,17 @@ def _vjp_arrays(
         for operand, contribution in zip(node.inputs, contributions):
             if operand not in relevant:
                 continue
-            contribution = np.asarray(contribution)
+            contribution_array = np.asarray(contribution)
             if (
-                contribution.shape != operand.spec.shape
-                or contribution.dtype != np.dtype(operand.spec.dtype)
+                contribution_array.shape != operand.spec.shape
+                or contribution_array.dtype != np.dtype(operand.spec.dtype)
             ):
                 raise ValueError(
                     f"VJP rule for {node.op} violates its operand contract"
                 )
-            if not np.isfinite(contribution).all():
+            if not np.isfinite(contribution_array).all():
                 raise ValueError(f"non-finite VJP contribution at primitive {node.op}")
-            bars[operand] += contribution
+            bars[operand] += contribution_array
     return bars
 
 

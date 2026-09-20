@@ -489,3 +489,6 @@ Precision-request identity and qualification scope are part of the resolved sche
 not the source equation hash. Cast AD uses the declared arithmetic linearization
 rather than the derivative of bit-level rounding; see the
 [precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).
+
+The shared topology layout and admission boundary are recorded in the
+[ragged batch scheduling decision](../.agents/notes/implemented/architecture/2026-09-20-ragged-batch-schedule-ownership.md).

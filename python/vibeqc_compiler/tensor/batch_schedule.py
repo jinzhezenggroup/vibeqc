@@ -104,6 +104,8 @@ def scatter_add_inverted_table(node: typing.Any) -> tuple[int, ...]:
     axis = node.attrs["axis"]
     positions = tuple(node.attrs["positions"])
     target_extent = node.spec.shape[axis]
+    if not positions:
+        return ()
     buckets: list[list[int]] = [[] for _ in range(target_extent)]
     for source, target in enumerate(positions):
         buckets[target].append(source)
@@ -115,15 +117,16 @@ def scatter_add_inverted_table(node: typing.Any) -> tuple[int, ...]:
     return tuple(offsets + members)
 
 
-def index_table_length(node: typing.Any) -> int:
-    """Count the static payload without allocating target-sized scatter buckets."""
+def index_table_length(node: typing.Any) -> int | None:
+    """Count topology bytes without materializing a host-side target map."""
     if node.op in ("gather", "indexed_gather"):
         return len(node.attrs["positions"])
-    if node.op == "scatter_add":
-        return node.spec.shape[node.attrs["axis"]] + 1 + len(node.attrs["positions"])
     if node.op == "segment_sum":
         return len(node.attrs["offsets"])
-    raise ValueError(f"primitive has no static index table: {node.op}")
+    if node.op == "scatter_add":
+        count = len(node.attrs["positions"])
+        return node.spec.shape[node.attrs["axis"]] + 1 + count if count else 0
+    return None
 
 
 def index_table_values(node: typing.Any) -> tuple[int, ...]:

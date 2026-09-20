@@ -104,9 +104,9 @@ double owner_partition(const double* point, const core::System& system, std::siz
 }  // namespace
 
 void validate_grid_spec(const GridSpec& spec) {
-  if (spec.version != 1 || !spec.radial_points || spec.radial_points > 512 || !spec.angular_polar ||
-      spec.angular_polar > 256 || spec.angular_azimuth < 3 || spec.angular_azimuth > 1024 ||
-      !spec.partition_iterations || spec.partition_iterations > 5 ||
+  if ((spec.version != 1 && spec.version != 2) || !spec.radial_points || spec.radial_points > 512 ||
+      !spec.angular_polar || spec.angular_polar > 256 || spec.angular_azimuth < 3 ||
+      spec.angular_azimuth > 1024 || !spec.partition_iterations || spec.partition_iterations > 5 ||
       !std::isfinite(spec.coincident_tolerance) || spec.coincident_tolerance < 0.0)
     throw std::invalid_argument("unsupported DFT grid prescription/version");
   for (double radius : spec.element_radii)
@@ -132,7 +132,10 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
     const auto& center = system_.atoms[owner].position;
     const auto z = system_.atoms[owner].atomic_number;
     if (z < 1 || z > 118) throw std::invalid_argument("invalid grid atomic number");
-    const double radius = spec_.element_radii[z] > 0.0 ? spec_.element_radii[z] : 1.0;
+    const double stored = spec_.element_radii[z];
+    if (spec_.version >= 2 && !(stored > 0.0))
+      throw std::invalid_argument("production DFT grid has no sourced element radius");
+    const double radius = stored > 0.0 ? stored : 1.0;
     for (std::size_t radial = 0; radial < spec_.radial_points; ++radial) {
       const double t = 0.5 * (radial_nodes[radial] + 1.0);
       const double r = radius * t / (1.0 - t);
@@ -161,6 +164,8 @@ std::vector<double> MolecularGrid::atomic_weights() const {
   result.reserve(point_count());
   for (const auto& atom : system_.atoms) {
     const double stored = spec_.element_radii[atom.atomic_number];
+    if (spec_.version >= 2 && !(stored > 0.0))
+      throw std::invalid_argument("production DFT grid has no sourced element radius");
     const double radius = stored > 0.0 ? stored : 1.0;
     for (std::size_t radial = 0; radial < nodes.size(); ++radial)
       for (double polar_weight : polar_weights)

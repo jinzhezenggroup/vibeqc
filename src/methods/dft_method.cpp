@@ -121,7 +121,10 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
 }
 
 /** Copy every pointee before constructing scientific owners. Legacy method
- * descriptors retain the original unit-radius GridSpec and 256-point tiles. */
+ * descriptors that omit KS options retain the original v1 unit-radius GridSpec
+ * and 256-point tiles strictly as an ABI/reference compatibility boundary.
+ * Modern production callers pass the compiler-resolved GridSpec v2 here; C++
+ * does not own a second production profile/default policy. */
 dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
                               scf::ScfOptions& options) {
   dft::GridSpec grid;
@@ -149,9 +152,9 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   if (input.element_radii) {
     for (std::size_t z = 1; z < grid.element_radii.size(); ++z) {
       const double radius = input.element_radii[z];
-      if (!std::isfinite(radius) || radius <= 0.0)
-        throw std::invalid_argument("KS element radii must be positive finite");
-      grid.element_radii[z] = radius == 1.0 ? 0.0 : radius;
+      if (!std::isfinite(radius) || (grid.version == 1 ? radius <= 0.0 : radius < 0.0))
+        throw std::invalid_argument("invalid KS element radius");
+      grid.element_radii[z] = grid.version == 1 && radius == 1.0 ? 0.0 : radius;
     }
   }
   dft::validate_grid_spec(grid);

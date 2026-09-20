@@ -14,12 +14,18 @@ from __future__ import annotations
 
 import typing
 from dataclasses import asdict, dataclass, replace
+from functools import cached_property
 from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
-from .batch_schedule import BatchScheduleIR, analyze_batch_schedule, index_table_length
+from .batch_schedule import (
+    BatchScheduleIR,
+    analyze_batch_schedule,
+    index_table_length,
+    index_table_values,
+)
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
@@ -51,6 +57,18 @@ def aligned(size: int) -> int:
     return checked_size(
         (size + ALIGNMENT - 1) // ALIGNMENT * ALIGNMENT, "aligned bytes"
     )
+
+
+def _index_table_length(node: Node) -> int | None:
+    """Compatibility boundary; the shared batch scheduler owns table layout."""
+    return index_table_length(node)
+
+
+def _index_table_values(node: Node) -> tuple[int, ...] | None:
+    """Keep existing emitter/admission clients on the one shared table owner."""
+    if node.op not in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
+        return None
+    return index_table_values(node)
 
 
 @dataclass(frozen=True)
@@ -150,11 +168,11 @@ class TensorPlan:
     estimated_traffic_bytes: int
     layout_decision: LayoutDecision
 
-    @property
+    @cached_property
     def precision(self) -> str:
         return program_precision(self.program)
 
-    @property
+    @cached_property
     def precision_schedule(self) -> PrecisionSchedule:
         return describe_precision(self.program)
 
@@ -180,9 +198,11 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            table_length = index_table_length(node)
+            count = _index_table_length(node)
+            if count is None:  # pragma: no cover - planner constructs table owners
+                raise AssertionError(f"unexpected index-table owner: {node.op}")
             total = checked_size(
-                total + aligned(table_length * 8),
+                total + aligned(count * 8),
                 "index table bytes",
             )
         return total
@@ -470,11 +490,11 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        if node.op in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
-            table_length = index_table_length(node)
+        count = _index_table_length(node)
+        if count is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(table_length * 8),
+                capacity + aligned(count * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0

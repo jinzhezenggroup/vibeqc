@@ -177,8 +177,9 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert first_materialized >= plan.index_table_bytes
     assert "index_data_" in source
     assert "reinterpret_cast<const I*>" in source
-    assert "const I* topology" in source
-    assert "const I r = topology[" in source
+    assert "const I begin = index[" in source
+    assert "for (I q = begin; q < end; ++q)" in source
+    assert "for (I r =" in source  # segment_sum keeps its direct segment traversal
     assert "{0LL, 2LL, 3LL, 5LL, 0LL, 1LL, 2LL, 3LL, 4LL}" in source
     assert "if (reinterpret_cast<const I*>" not in source
 

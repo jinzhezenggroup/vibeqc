@@ -107,6 +107,7 @@ class NativeKsSnapshot:
         "ecp_terms",
         "export_work",
         "grid",
+        "grid_provenance",
         "grid_spec",
         "hamiltonian",
         "metadata",
@@ -117,6 +118,10 @@ class NativeKsSnapshot:
     def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
+        if name == "grid_provenance" and value is not None:
+            # Own the mapping as well as the attribute: write-once storage alone
+            # does not prevent a caller from mutating model-defining provenance.
+            value = MappingProxyType(dict(value))
         super().__setattr__(name, value)
 
     def __delattr__(self, name: typing.Any) -> None:
@@ -262,7 +267,7 @@ class NativeKsSnapshot:
             take((npoint,)),
         )
         if self.metadata[0] in (2, 3, 4, 5):
-            from vibeqc_compiler.dft.grid import GridSpec
+            from vibeqc_compiler.dft.grid import GridSpec, grid_policy_provenance
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
             radii = take((119,))
@@ -277,9 +282,11 @@ class NativeKsSnapshot:
                     (z, float(r)) for z, r in enumerate(radii) if z and r
                 ),
             )
+            self.grid_provenance = grid_policy_provenance(self.grid_spec)
             self.atomic_weights = take((npoint,))
         else:
             self.grid_spec = None  # CUDA v1 has no prescription suffix.
+            self.grid_provenance = None
             self.atomic_weights = None
         self.export_work = MappingProxyType(
             dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
@@ -375,6 +382,11 @@ class NativeKsSnapshot:
                     "functional": spec.identity,
                     "scf_domain": SCF_DOMAIN,
                     "grid": grid.identity,
+                    **(
+                        {"grid_provenance": dict(self.grid_provenance)}
+                        if self.grid_provenance is not None
+                        else {}
+                    ),
                     "basis": basis_identity,
                     **(
                         {

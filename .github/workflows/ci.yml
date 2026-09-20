@@ -396,6 +396,7 @@ jobs:
             tests/python/test_ecp_public_cpu.py
             tests/python/test_ecp_spd_cartesian_cpu.py
             tests/python/test_ecp_spd_spherical_cpu.py
+            tests/python/test_ecp_stuttgart_dft.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -441,6 +442,7 @@ jobs:
                 tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_spd_cartesian_cpu.py
                 tests/python/test_ecp_spd_spherical_cpu.py
+                tests/python/test_ecp_stuttgart_dft.py
               )
               ;;
             compiler-heavy)
