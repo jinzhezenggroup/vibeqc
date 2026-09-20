@@ -277,6 +277,10 @@ class BoundCCSDTOrbitalResponse:
                 ),
                 "orbital_energy_weights": _feed_hash(dict(orbital_energy_weights)),
                 "z_state": _feed_hash({"rhs": rhs, "solution": z.solution}),
+                "canonical_fock_tolerance": _CANONICAL_FOCK_TOLERANCE,
+                "minimum_same_space_gap_tolerance": _MINIMUM_SAME_SPACE_GAP,
+                "stationarity_tolerance": options.stationarity_tolerance,
+                "orbital_residual_tolerance": options.orbital_residual_tolerance,
                 "scope": "RCCSD(T) total orbital/metric response; no nuclear derivatives",
             }
         )
