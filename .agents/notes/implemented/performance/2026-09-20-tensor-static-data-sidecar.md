@@ -41,7 +41,8 @@ and execution kernels are unchanged.
 
 ## Evidence boundary
 
-Host/source checks and CUDA compilation are delegated to CI for this slice.
+Host/source checks plus a CUDA 12.9 compile-only CI gate cover both ordinary
+and resident external-static generated artifacts without requiring a GPU.
 Allocated-GPU before/after timing must be added separately; no runtime speedup
 is claimed from source-size reduction alone.
 
