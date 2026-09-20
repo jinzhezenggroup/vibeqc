@@ -2,19 +2,22 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <random>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
 #include "tensor/cpu_linalg.hpp"
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) try {
   const std::size_t n =
       argc > 1 ? static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10)) : 256;
   const int repeats = argc > 2 ? std::max(1, std::atoi(argv[2])) : 5;
   const std::string_view provider_name = argc > 3 ? argv[3] : "auto";
   const int provider_threads = argc > 4 ? std::max(1, std::atoi(argv[4])) : 1;
-  if (!n) return 2;
+  if (!n || n > std::numeric_limits<std::size_t>::max() / sizeof(double) / n)
+    throw std::invalid_argument("invalid probe matrix extent");
 
   using vibeqc::tensor::CpuLinalgProvider;
   using vibeqc::tensor::CpuLinalgThreadOwnership;
@@ -26,8 +29,8 @@ int main(int argc, char** argv) {
   else if (provider_name != "auto")
     return 3;
   const auto ownership =
-      provider == CpuLinalgProvider::openblas &&
-              (!vibeqc::tensor::cpu_openblas_local_thread_control_built() || provider_threads > 1)
+      provider_threads > 1 || (provider == CpuLinalgProvider::openblas &&
+                               !vibeqc::tensor::cpu_openblas_local_thread_control_built())
           ? CpuLinalgThreadOwnership::provider_parallel
           : CpuLinalgThreadOwnership::task_parallel;
 
@@ -56,4 +59,7 @@ int main(int argc, char** argv) {
                     ? "task_parallel"
                     : "provider_parallel")
             << "\",\"seconds\":" << seconds << ",\"gflops\":" << gflops << "}\n";
+} catch (const std::exception& error) {
+  std::cerr << "CPU linalg probe: " << error.what() << '\n';
+  return 1;
 }

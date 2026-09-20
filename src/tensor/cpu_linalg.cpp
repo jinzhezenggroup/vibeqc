@@ -47,6 +47,12 @@ void validate_plan(const CpuLinalgPlan& plan) {
     throw std::invalid_argument("task-parallel CPU linear algebra requires single-thread provider");
 }
 
+std::size_t checked_matrix_elements(std::size_t rows, std::size_t columns) {
+  if (columns && rows > std::numeric_limits<std::size_t>::max() / sizeof(double) / columns)
+    throw std::length_error("CPU matrix storage extent overflows");
+  return rows * columns;
+}
+
 void scalar_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k, const double* a,
                  const double* b, double* c, double alpha, double beta) {
   for (std::size_t i = 0; i < m; ++i) {
@@ -57,7 +63,7 @@ void scalar_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k, 
         const double bv = tb ? b[j * k + p] : b[p * n + j];
         sum += av * bv;
       }
-      c[i * n + j] = alpha * sum + beta * c[i * n + j];
+      c[i * n + j] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[i * n + j];
     }
   }
 }
@@ -82,6 +88,16 @@ int scalar_cholesky_lower(double* matrix, std::size_t n) {
 }
 
 CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::size_t n) {
+  // Jacobi angle differences and doubled off-diagonals can overflow even
+  // when every input and eigenvalue is representable. Normalize only extreme
+  // scales; preserve established ordinary-range arithmetic and eigenvectors.
+  double scale = 0.0, output_scale = 1.0;
+  for (double value : matrix) scale = std::max(scale, std::abs(value));
+  if (scale > std::sqrt(std::numeric_limits<double>::max()) ||
+      (scale > 0.0 && scale < std::sqrt(std::numeric_limits<double>::min()))) {
+    output_scale = scale;
+    for (double& value : matrix) value /= scale;
+  }
   std::vector<double> vectors(matrix.size(), 0.0);
   for (std::size_t item = 0; item < n; ++item) vectors[item * n + item] = 1.0;
   constexpr std::size_t maximum_sweeps = 100;
@@ -133,7 +149,9 @@ CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::
   result.vectors.resize(matrix.size());
   for (std::size_t column = 0; column < n; ++column) {
     const std::size_t source = order[column];
-    result.values[column] = matrix[source * n + source];
+    result.values[column] = matrix[source * n + source] * output_scale;
+    if (!std::isfinite(result.values[column]))
+      throw std::overflow_error("CPU symmetric eigenvalue exceeds finite FP64 range");
     for (std::size_t row = 0; row < n; ++row)
       result.vectors[row * n + column] = vectors[row * n + source];
   }
@@ -366,11 +384,18 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
   const bool tb = transpose(b_trans);
   validate_plan(plan);
   if (!m || !n) return;
-  if (!c || (k && (!a || !b))) throw std::invalid_argument("CPU GEMM received null storage");
-  if (!k) {
-    for (std::size_t i = 0; i < m * n; ++i) c[i] *= beta;
+  const auto elements = checked_matrix_elements(m, n);
+  if (!c) throw std::invalid_argument("CPU GEMM received null storage");
+  if (!k || alpha == 0.0) {
+    if (beta == 0.0)
+      std::fill(c, c + elements, 0.0);
+    else if (beta != 1.0)
+      for (std::size_t i = 0; i < elements; ++i) c[i] *= beta;
     return;
   }
+  checked_matrix_elements(m, k);
+  checked_matrix_elements(k, n);
+  if (!a || !b) throw std::invalid_argument("CPU GEMM received null storage");
 
   CpuLinalgProvider provider = plan.provider;
   if (provider == CpuLinalgProvider::automatic) {
@@ -391,6 +416,7 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {
   validate_plan(plan);
   if (!n) return 0;
+  checked_matrix_elements(n, n);
   if (!matrix) throw std::invalid_argument("CPU Cholesky received null storage");
 #if VIBEQC_HAS_OPENBLAS
   if (resolve_cpu_linalg_provider(plan, true) == CpuLinalgProvider::openblas)
