@@ -98,3 +98,18 @@ qualification set, 12 focused policy/provenance/capability regressions passed,
 and `git diff --check origin/master...HEAD` was clean. The commit adding this
 section is evidence-only. The final real-NVIDIA gate must still bind the
 published PR head, including this evidence-only delta.
+
+### Post-CI master bridge
+
+After that publication, master advanced once more from `097ee4ac` to
+`f1b64173` through #651. That delta changes only Array API documentation,
+`python/vibeqc_compiler/array_api/{capabilities,namespace}.py`, and the matching
+Array API frontend test; it has no overlap with #596 production, snapshot,
+stationary-gradient, grid-policy or qualification files. The #596 branch was
+rebased cleanly across it.
+
+CI then exposed an evidence-transport-only defect: pytest-xdist/execnet cannot
+serialize NumPy scalar subclasses stored by `record_property`. Commit
+`ae6743c4` normalizes those retained properties to Python `int`/`float` values.
+A two-worker xdist regression using NumPy scalar inputs passes, and this change
+alters neither the production grid policy nor any numerical threshold/result.
