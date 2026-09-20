@@ -113,6 +113,8 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
     assert pbe.identity != tight.identity
     assert pbe.to_payload()["grid"]["version"] == 2
     assert pbe.to_payload()["grid_provenance"] == grid_policy_provenance(pbe.grid)
+    assert pbe.to_payload()["grid_provenance"]["contract"] == "production-grid-v2"
+    assert pbe.to_payload()["grid_provenance"]["profile"] == "gga-standard-v2"
     assert GridSpec(**pbe.to_payload()["grid"]) == pbe.grid
     changed_provenance = json.loads(json.dumps(pbe.to_payload()))
     changed_provenance["grid_provenance"]["upstream_revision"] = "different"
@@ -123,6 +125,24 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
     assert native.element_radius_count == 119
     assert native.element_radii[26] == pytest.approx(radii[26], rel=0, abs=0)
     assert native.element_radii[87] == 0.0
+
+    custom_points = replace(pbe.grid, radial_points=pbe.grid.radial_points + 1)
+    custom_radii = replace(
+        pbe.grid,
+        element_radii=tuple(
+            (z, radius * 1.01 if z == 1 else radius)
+            for z, radius in pbe.grid.element_radii
+        ),
+    )
+    for custom in (custom_points, custom_radii):
+        provenance = grid_policy_provenance(custom)
+        assert provenance["contract"] == "explicit-grid-v2"
+        assert provenance["canonical"] is False
+        assert provenance["radii_source"] == "explicit-grid-spec"
+        assert "upstream_revision" not in provenance
+        resolved_custom = resolve_ks_options("pbe-rks", KsOptions(grid=custom))
+        assert resolved_custom.to_payload()["grid_provenance"] == provenance
+        assert resolved_custom.identity != pbe.identity
 
 
 def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> None:

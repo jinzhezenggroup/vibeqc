@@ -40,10 +40,13 @@ for GGA. Partition iterations remain three; pruning and screening remain
 explicitly disabled so derivative topology does not change under response.
 
 Production radii are pinned xTBloom GFN1 covalent radii from
-`external/xtbloom-d3/covalent_radii.json`, with source hash and upstream revision
-carried by the policy provenance. The table currently covers atomic numbers
-1–86. A version-2 grid must carry a positive sourced radius for every element it
-uses; unsupported elements fail closed instead of silently receiving 1 Bohr.
+`external/xtbloom-d3/covalent_radii.json`. Source hash/upstream revision provenance
+is attached only when the complete concrete v2 spec exactly matches a canonical
+`GridPolicy` result. A user-constructed or deserialized v2 spec whose points,
+radii or topology differ is identified as `explicit-grid-v2` and does not claim
+xTBloom upstream provenance. The pinned table currently covers atomic numbers
+1–86. A version-2 grid must carry a positive radius for every element it uses;
+unsupported elements fail closed instead of silently receiving 1 Bohr.
 LDA and PBE/GGA are the qualified families. meta-GGA/r2SCAN, VV10 and hybrid
 requests remain outside this policy boundary and fail closed until separately
 qualified.
@@ -53,7 +56,12 @@ enter the KS calculation payload and native snapshot identity. Serialization
 therefore preserves the resolved contract rather than only an accuracy label.
 Native descriptors that omit KS options retain the historical v1 behavior only
 as an ABI/reference compatibility boundary; they are not a second production
-policy. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
+policy. Production point counts are guarded by `benchmarks/grid_policy_convergence.py`:
+independent PySCF SCF plus analytic grid-response gradients first verify that a
+96×32×64 v2 reference is stable against 120×40×80, then bound standard/tight
+energy and force error together with their deterministic point-count cost. The
+PBE gate also retains the historical 48×16×32 candidate as a negative cost/accuracy
+control. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
 
 `MolecularGrid` retains radial/angular topology and streams bounded tiles. It
 computes normalized ownership using log products. Coincident atoms share
