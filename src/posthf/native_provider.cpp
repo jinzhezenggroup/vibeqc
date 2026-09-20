@@ -264,8 +264,10 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
       }
     }
     if (metrics) {
-      metrics->owned_device_bytes = std::max(metrics->owned_device_bytes, batch_owned);
-      metrics->provider_retained_bytes = std::max(metrics->provider_retained_bytes, batch_retained);
+      metrics->owned_device_bytes =
+          std::max<decltype(metrics->owned_device_bytes)>(metrics->owned_device_bytes, batch_owned);
+      metrics->provider_retained_bytes = std::max<decltype(metrics->provider_retained_bytes)>(
+          metrics->provider_retained_bytes, batch_retained);
     }
 #else
     (void)metrics;
