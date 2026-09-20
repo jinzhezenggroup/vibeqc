@@ -82,6 +82,11 @@ Runtime-varying maps, higher-degree ragged consumers, larger scatter work counts
 or a different deterministic-reduction schedule become necessary. Preserve the
 same semantic/adjoint contract and include topology bytes in resource accounting.
 
+The scan-based scatter performance limitation described above was superseded on
+2026-09-20 by
+`../performance/2026-09-20-ragged-scatter-inversion.md`, which retains the
+same deterministic source-order reduction through a static inverted index.
+
 ## References
 
 - PR #619; issue #501.

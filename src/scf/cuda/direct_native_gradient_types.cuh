@@ -28,9 +28,4 @@ struct CartesianQuartetGradient {
   double center[4][3];
 };
 
-/** Density-weighted ssss derivatives for the first three input centers. */
-struct SsssWeightedGradient {
-  double center[3][3];
-};
-
 }  // namespace vibeqc::scf::cuda_execution

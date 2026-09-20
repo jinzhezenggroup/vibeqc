@@ -167,6 +167,7 @@ from vibeqc_compiler.integral.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
@@ -3816,8 +3817,24 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "cudaErrorNotSupported" in mask_source
 
 
-def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None:
-    """Compile generated ssss for A/B while retaining the tuned native default."""
+def test_ssss_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep the native-adapter ssss helper free of unused value/center-four work."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    begin = source.index("IndependentGradient ssss_force(")
+    end = source.index("}  // namespace vibeqc::scf::generated_weighted_eri", begin)
+    ssss_force = source[begin:end]
+    assert "result.value" not in ssss_force
+    assert "result.center[3]" not in ssss_force
+    assert "geometry.product_scales[3]" not in ssss_force
+    assert "geometry.decay[3]" not in ssss_force
+    for center in range(3):
+        for axis in range(3):
+            assert f"result.center[{center}][{axis}]" in ssss_force
+
+
+def test_ssss_force_retires_handwritten_math_and_selector() -> None:
+    """Keep ssss force science compiler-owned on the qualified native scheduler."""
 
     manifest = load_production_kernel_selections(
         REPOSITORY_ROOT
@@ -3839,21 +3856,28 @@ def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
-    assert "SsssWeightedGradient" in types_source
-    assert "contracted_eri_cartesian_source_ssss_weighted_gradient" in gradient_source
+    assert "SsssWeightedGradient" not in types_source
+    assert (
+        "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
+    )
     assert "contract_two_electron_force_ssss_task" in low_order_source
+    assert "generated_weighted_eri::ssss_force" in low_order_source
+    assert "generated_math" not in low_order_source
+    assert "geometry.product_scales[3]" not in low_order_source
+    assert "geometry.decay[3][axis]" not in low_order_source
 
     policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
         encoding="utf-8"
     )
-    driver = _direct_cuda_source()
-    assert 'selected("VIBEQC_SSSS_FORCE", "generated")' in policy
-    assert (
-        "plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();"
-        in driver
+    resources = (REPOSITORY_ROOT / "python/vibeqc/resources_hf.py").read_text(
+        encoding="utf-8"
     )
-    assert "plan.generated_ssss_force ? 0U" in driver
-    assert "std::uint64_t{1} << kSsssShellClass" in driver
+    driver = _direct_cuda_source()
+    assert "VIBEQC_SSSS_FORCE" not in policy
+    assert "VIBEQC_SSSS_FORCE" not in resources
+    assert "generated_ssss_force" not in driver
+    assert "const std::uint64_t ssss_shell_class_mask" in driver
+    assert "~ssss_shell_class_mask" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
 
 
