@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import subprocess
 import tempfile
@@ -114,8 +115,13 @@ def _timeline_record(
         "state_export": state_export_seconds,
         **diagnostic["exclusive_wall_seconds"],
     }
+    durations = (state_export_seconds, diagnostic["endpoint_seconds"], *phases.values())
+    if any(not math.isfinite(value) or value < 0.0 for value in durations):
+        raise ValueError("stationary timeline requires finite nonnegative durations")
     endpoint = state_export_seconds + diagnostic["endpoint_seconds"]
     reconciled = sum(phases.values())
+    if not math.isfinite(endpoint) or not math.isfinite(reconciled):
+        raise ValueError("stationary timeline duration sum is not finite")
     return {
         "schema": "vibeqc.stationary-cuda-force-timeline.v1",
         "scenario": scenario,
@@ -155,6 +161,13 @@ def _successful_record(
     basis: typing.Any,
 ) -> dict[str, typing.Any]:
     work = dict(result.work)
+    if any(
+        not math.isfinite(value) or value < 0.0
+        for value in (observed_diagnostic_seconds, work["endpoint_seconds"])
+    ):
+        raise ValueError("stationary diagnostic requires finite nonnegative durations")
+    if not math.isfinite(energy):
+        raise ValueError("stationary benchmark energy must be finite")
     timeline = _timeline_record(scenario, state_export_seconds, work)
     tolerance = max(2e-6, 2e-6 * timeline["endpoint_seconds"])
     if abs(timeline["reconciliation_error_seconds"]) > tolerance:
@@ -164,8 +177,8 @@ def _successful_record(
     ):
         raise RuntimeError("diagnostic timer disagrees with external wall clock")
     gradient = np.asarray(result.gradient)
-    if not np.isfinite(gradient).all():
-        raise RuntimeError("stationary gradient contains nonfinite values")
+    if gradient.shape != (basis.natom, 3) or not np.isfinite(gradient).all():
+        raise RuntimeError("stationary gradient requires finite atom-by-three values")
     return {
         "status": "ok",
         "system": system,
