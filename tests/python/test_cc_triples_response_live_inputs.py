@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 from test_cc_triples_response_cuda import (
-    _Resident,
     _cc_state,
     _fake_response_owner,
+    _Resident,
     _triples_arrays,
 )
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
@@ -41,7 +41,9 @@ def test_selected_triples_response_uploads_only_live_inputs(
                 for node in self.plan.program.live_nodes
                 if node.op == "input"
             }
-            assert set(feeds) == required, "resident upload includes dead/missing inputs"
+            assert set(feeds) == required, (
+                "resident upload includes dead/missing inputs"
+            )
             uploads.append(set(feeds))
             super().upload(feeds)
 
