@@ -33,3 +33,17 @@ No performance or complete-residency claim follows from this endpoint.
 
 Broader element/angular/representation and CPU routes need their own complete
 force and resource gates. Keep #171 open for those distinct acceptance domains.
+
+## Real-spherical s/p extension
+
+The public capability additionally admits real-spherical s/p ECP records.
+Their normalized AOs fit the existing single-component packed representation;
+no new derivative or transformation formula is introduced. Higher angular
+momentum remains gated by the same public check and the consumer's layout gate.
+
+`test_ecp_public_cuda.py` runs all four independent analytic/FD gates and both
+mixed-batch spin cases in each representation. The spherical public endpoints
+load serialized records and match equivalent Cartesian energies/forces. Both
+representations must pass work-rejection/snapshot-cleanup/recovery checks.
+This supersedes the representation exclusion in the initial decision above;
+CPU and higher-angular promotion still require distinct qualification.

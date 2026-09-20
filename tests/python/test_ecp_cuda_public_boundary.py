@@ -13,7 +13,12 @@ from vibeqc._dft_gradient import StationaryKsState
 @pytest.mark.parametrize("serialized", [False, True])
 @pytest.mark.parametrize(
     "representation,d_shell",
-    [("cartesian", False), ("spherical", False), ("cartesian", True)],
+    [
+        ("cartesian", False),
+        ("spherical", False),
+        ("cartesian", True),
+        ("spherical", True),
+    ],
 )
 def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     monkeypatch, tmp_path, method, serialized, representation, d_shell
@@ -28,7 +33,7 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     library = _native.load_library(device="cpu")
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
     calculator = Calculator(basis=basis, method=method, device="cuda")
-    admitted = representation == "cartesian" and not d_shell
+    admitted = not d_shell
     assert ("forces" in calculator._capabilities.supported_properties) == admitted
     cpu = Calculator(basis=basis, method=method, device="cpu")
     assert cpu._capabilities.supported_properties == frozenset({"energy"})

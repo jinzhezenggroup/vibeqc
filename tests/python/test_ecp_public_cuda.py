@@ -32,10 +32,19 @@ def calculator(record, method="pbe-rks", **kwargs):
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_public_ecp_force_analytic_and_reconverged_fd(method, record_property):
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+def test_public_ecp_force_analytic_and_reconverged_fd(
+    method, representation, record_property, tmp_path
+):
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation="cartesian")
-    calc = calculator(record, method)
+    atoms, record, mol = fixture(spin=spin, representation=representation)
+    # Exercise serialized spherical ECP data through the real public endpoint.
+    public_basis = record
+    if representation == "spherical":
+        path = tmp_path / "spherical-ecp.json"
+        record.write(path)
+        public_basis = path
+    calc = calculator(public_basis, method)
     started = perf_counter()
     with no_cpu_derivatives():
         result = calc.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
@@ -77,14 +86,29 @@ def test_public_ecp_force_analytic_and_reconverged_fd(method, record_property):
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
     assert max(errors) < 2e-7
     record_property("fd_errors", errors)
+    if representation == "spherical":
+        # s/p real spherical and Cartesian spaces are equivalent, but public
+        # normalized AO ordering/representation identities remain distinct.
+        from dataclasses import replace
+
+        cartesian = calculator(replace(record, representation="cartesian"), method)
+        with no_cpu_derivatives():
+            other = cartesian.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+        assert abs(result.energy - other.energy) < 2e-9
+        np.testing.assert_allclose(result.forces, other.forces, atol=1e-9, rtol=0)
+        record_property(
+            "representation_force_error",
+            float(np.max(np.abs(result.forces - other.forces))),
+        )
 
 
 @pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
-    method, record_property
+    method, representation, record_property
 ):
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation="cartesian")
+    atoms, record, mol = fixture(spin=spin, representation=representation)
     fragment = [("H", (0, 0, 0))] if spin else [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     systems, charges, multiplicities = [atoms, fragment], [spin, 0], [spin + 1] * 2
     calc = calculator(record, method)
@@ -144,11 +168,14 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         record_property("generated_force", work)
 
 
-def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(monkeypatch):
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(
+    monkeypatch, representation
+):
     from vibeqc import _stationary_cuda
     from vibeqc._ks_snapshot import NativeKsSnapshot
 
-    atoms, record, _ = fixture(representation="cartesian")
+    atoms, record, _ = fixture(representation=representation)
     fragment = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = calculator(record)
     sources = []

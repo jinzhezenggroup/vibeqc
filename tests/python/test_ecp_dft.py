@@ -94,7 +94,7 @@ def endpoint(method, device, representation):
         )
         < 1e-12
     )
-    if device == "cpu" or representation != "cartesian":
+    if device == "cpu":
         with pytest.raises(ValueError, match="does not support properties.*forces"):
             calc.singlepoint(
                 atoms,
@@ -152,13 +152,15 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(method, device):
     with bounded.prepare_batch(
         systems, charges=charges, multiplicities=multiplicities
     ) as batch:
-        cold = batch.execute(strict=True)
-        warm = batch.execute(strict=True)
+        cold = batch.execute(strict=True, properties=("energy",))
+        warm = batch.execute(strict=True, properties=("energy",))
         assert all(item.warm_start_used for item in warm.items)
         np.testing.assert_allclose(warm.energies, cold.energies, atol=2e-9, rtol=0)
         xyz = mol.atom_coords()
         xyz[1] += [0.03, -0.02, 0.19]
-        moved = batch.execute(coordinates=[xyz, None], strict=True)
+        moved = batch.execute(
+            coordinates=[xyz, None], strict=True, properties=("energy",)
+        )
         moved_mol = mol.copy().set_geom_(xyz, unit="Bohr")
         moved_atoms = [
             (symbol, tuple(position)) for (symbol, _), position in zip(atoms, xyz)
@@ -166,9 +168,13 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(method, device):
         target, _, _, _ = reference(moved_mol, moved_atoms, method)
         assert abs(moved.items[0].energy - target) < 1e-8
         assert abs(moved.items[1].energy - cold.items[1].energy) < 2e-9
-        bad = batch.execute(coordinates=[[0.0], None], strict=False)
+        bad = batch.execute(
+            coordinates=[[0.0], None], strict=False, properties=("energy",)
+        )
         assert not bad.items[0].succeeded and bad.items[1].succeeded
-        restored = batch.execute(coordinates=[mol.atom_coords(), None], strict=True)
+        restored = batch.execute(
+            coordinates=[mol.atom_coords(), None], strict=True, properties=("energy",)
+        )
         np.testing.assert_allclose(restored.energies, cold.energies, atol=2e-9, rtol=0)
         if device == "cuda":
             ledger = batch.resource_diagnostics["observation"]["device_ledger"]

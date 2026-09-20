@@ -535,13 +535,10 @@ class Calculator:
             and not (
                 isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
-                and (
-                    self._basis.representation != "cartesian"
-                    or any(
-                        shell.angular_momentum > 1
-                        for element in self._basis.elements
-                        for shell in element.shells
-                    )
+                and any(
+                    shell.angular_momentum > 1
+                    for element in self._basis.elements
+                    for shell in element.shells
                 )
             )
             and self._method
@@ -556,9 +553,9 @@ class Calculator:
             # prepared owner plus the compiler-owned CUDA gradient consumer.
             # Keep the backend-neutral C registry conservative: CPU/native-C
             # callers do not inherit a force capability they cannot execute.
-            # ECP promotion is bounded to Cartesian s/p records. The shared
+            # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
             # nine-source consumer also enforces shape, byte and work caps;
-            # wider ECP representations/angular domains remain energy-only.
+            # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties

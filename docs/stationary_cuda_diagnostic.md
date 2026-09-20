@@ -5,7 +5,7 @@
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
 The result is an energy gradient in Eh/bohr; force is its negative. The public
 Python C2 endpoint reuses this consumer for qualified CUDA LDA/PBE RKS/UKS
-forces, including Cartesian s/p scalar ECP records. Public ECP scope and
+forces, including Cartesian and real-spherical s/p scalar ECP records. Public ECP scope and
 resource/work limits are described in [ecp.md](ecp.md#public-cuda-semilocal-ecp-forces).
 The native C and CPU DFT force capabilities are unchanged.
 
