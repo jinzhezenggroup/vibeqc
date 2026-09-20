@@ -134,7 +134,6 @@ def test_rys_fock_support_remains_live_after_output_pruning() -> None:
     assert "generated_dpss_rys3_value_axis" in source
 
 
-
 def test_explicit_fock_schedule_does_not_inherit_force_rys_support() -> None:
     """Keep an explicitly independent Fock policy independent of force Rys."""
 
