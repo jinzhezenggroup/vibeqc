@@ -204,6 +204,16 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
+  set(VIBEQC_R2SCAN_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_r2scan_device.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
+    OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
+
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
   vibeqc_register_generated_sources(
@@ -213,6 +223,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_GRID_SOURCE}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
+      "${VIBEQC_R2SCAN_CUDA_HEADER}"
       ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 

@@ -26,7 +26,7 @@ CASES = ("h2", "water", "f_cartesian", "f_spherical")
 FUNCTIONALS = {"LDA_XC_PW": "LDA_X,LDA_C_PW", "PBE": "GGA_X_PBE,GGA_C_PBE"}
 
 
-def generate(directory):
+def generate(directory: Path) -> None:
     import pyscf
     from pyscf.dft import gen_grid, libxc, numint
 

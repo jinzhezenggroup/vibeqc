@@ -388,6 +388,8 @@ class ContractionProgram:
             weighted = {"rho": weights * coefficients["rho"][spin]}
             if order:
                 weighted["gradient"] = weights[:, None] * coefficients["gradient"][spin]
+            if "tau" in coefficients:
+                weighted["tau"] = weights * coefficients["tau"][spin]
             jet_pullback = self.jet_pullback
             if jet_pullback is None:
                 raise RuntimeError("geometry pullback program is unavailable")

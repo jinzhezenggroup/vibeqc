@@ -24,7 +24,7 @@ struct MethodManifestEntry {
   std::string_view unavailable_reason;
 };
 
-inline constexpr std::array<MethodManifestEntry, 9> kMethodManifest{{
+inline constexpr std::array<MethodManifestEntry, 11> kMethodManifest{{
     {"rhf", VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES, true, PublicProvider::Hf, ""},
     {"uhf", VIBEQC_METHOD_UHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES, true, PublicProvider::Hf, ""},
     {"wb97m-v", VIBEQC_METHOD_WB97M_V, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, 0, false, PublicProvider::Reserved, "method has no executable provider registration"},
@@ -34,6 +34,8 @@ inline constexpr std::array<MethodManifestEntry, 9> kMethodManifest{{
     {"pbe-rks", VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY, true, PublicProvider::Dft, ""},
     {"lda-uks", VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY, true, PublicProvider::Dft, ""},
     {"pbe-uks", VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY, true, PublicProvider::Dft, ""},
+    {"r2scan-rks", VIBEQC_METHOD_R2SCAN_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY, true, PublicProvider::Dft, ""},
+    {"r2scan-uks", VIBEQC_METHOD_R2SCAN_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY, true, PublicProvider::Dft, ""},
 }};
 
 inline constexpr const MethodManifestEntry* find_method(

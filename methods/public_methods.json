@@ -103,6 +103,28 @@
         "energy"
       ],
       "supports_batch": true
+    },
+    {
+      "name": "r2scan-rks",
+      "symbol": "R2SCAN_RKS",
+      "abi_id": 10,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "r2scan-uks",
+      "symbol": "R2SCAN_UKS",
+      "abi_id": 11,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
     }
   ]
 }

@@ -208,6 +208,9 @@ class AOJetPullbackProgram:
                     for k in range(3)
                 }
             )
+        if self.family == "mgga":
+            kinetic = immutable(coefficients["tau"], shape=(shape[0],))
+            values["c4"] = np.broadcast_to(kinetic[:, None], shape).reshape(-1)
         for j in range(jets):
             values[f"x{j}"] = values[f"y{j}"] = work[j].reshape(-1)
         return values, shape
@@ -227,7 +230,7 @@ class AOJetPullbackProgram:
         return self.unpack(evaluate_array_graph(self.graph, self.roots, values), shape)
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=3)
 def jet_pullback_program(family: typing.Any) -> typing.Any:
     """Generate AO-jet adjoints from the same compact potential bilinears.
 
@@ -235,16 +238,20 @@ def jet_pullback_program(family: typing.Any) -> typing.Any:
     c_k*(x_k*y0+x0*y_k). Graph AD owns differentiation of both AO legs;
     geometry consumers supply only center/point translation and weight sources.
     """
-    if family not in ("lda", "gga"):
-        raise ValueError("AO pullbacks support LDA/GGA only")
+    if family not in ("lda", "gga", "mgga"):
+        raise ValueError("AO pullbacks support LDA/GGA/meta-GGA")
     graph = Graph()
     jets = 1 if family == "lda" else 4
+    coefficient_count = jets + (1 if family == "mgga" else 0)
     x = [graph.variable(f"x{j}") for j in range(jets)]
     y = [graph.variable(f"y{j}") for j in range(jets)]
-    c = [graph.variable(f"c{j}") for j in range(jets)]
+    c = [graph.variable(f"c{j}") for j in range(coefficient_count)]
     bilinear = c[0] * x[0] * y[0]
     for j in range(1, jets):
         bilinear += c[j] * (x[j] * y[0] + x[0] * y[j])
+    if family == "mgga":
+        for j in range(1, 4):
+            bilinear += c[4] * x[j] * y[j]
     roots = [
         graph.differentiate(bilinear, x[j]) + graph.differentiate(bilinear, y[j])
         for j in range(jets)

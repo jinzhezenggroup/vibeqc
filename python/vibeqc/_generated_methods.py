@@ -12,6 +12,8 @@ METHOD_LDA_RKS = 6
 METHOD_PBE_RKS = 7
 METHOD_LDA_UKS = 8
 METHOD_PBE_UKS = 9
+METHOD_R2SCAN_RKS = 10
+METHOD_R2SCAN_UKS = 11
 
 METHOD_CONSTANTS = MappingProxyType({
     "METHOD_RHF": METHOD_RHF,
@@ -23,6 +25,8 @@ METHOD_CONSTANTS = MappingProxyType({
     "METHOD_PBE_RKS": METHOD_PBE_RKS,
     "METHOD_LDA_UKS": METHOD_LDA_UKS,
     "METHOD_PBE_UKS": METHOD_PBE_UKS,
+    "METHOD_R2SCAN_RKS": METHOD_R2SCAN_RKS,
+    "METHOD_R2SCAN_UKS": METHOD_R2SCAN_UKS,
 })
 
 METHOD_METADATA = MappingProxyType({
@@ -35,6 +39,8 @@ METHOD_METADATA = MappingProxyType({
     'pbe-rks': MappingProxyType({"abi_id": 7, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'lda-uks': MappingProxyType({"abi_id": 8, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'pbe-uks': MappingProxyType({"abi_id": 9, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
+    'r2scan-rks': MappingProxyType({"abi_id": 10, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
+    'r2scan-uks': MappingProxyType({"abi_id": 11, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
 })
 
 METHOD_NAME_TO_ID = MappingProxyType({
@@ -48,6 +54,8 @@ METHOD_NAME_TO_ID = MappingProxyType({
     'pbe-rks': METHOD_PBE_RKS,
     'lda-uks': METHOD_LDA_UKS,
     'pbe-uks': METHOD_PBE_UKS,
+    'r2scan-rks': METHOD_R2SCAN_RKS,
+    'r2scan-uks': METHOD_R2SCAN_UKS,
 })
 METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_RHF: 'rhf',
@@ -59,8 +67,10 @@ METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_PBE_RKS: 'pbe-rks',
     METHOD_LDA_UKS: 'lda-uks',
     METHOD_PBE_UKS: 'pbe-uks',
+    METHOD_R2SCAN_RKS: 'r2scan-rks',
+    METHOD_R2SCAN_UKS: 'r2scan-uks',
 })
 
 HF_METHOD_IDS = frozenset((METHOD_RHF, METHOD_UHF,))
-NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS,))
+NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS, METHOD_R2SCAN_RKS, METHOD_R2SCAN_UKS,))
 # fmt: on

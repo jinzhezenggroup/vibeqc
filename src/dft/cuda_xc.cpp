@@ -37,38 +37,51 @@ void device_pointer(const void* pointer, int device) {
 }
 }  // namespace
 
-CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid, bool pbe,
-                            bool unrestricted, std::size_t tile_points) {
+CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
+                            std::uint32_t functional, bool unrestricted, std::size_t tile_points) {
   // Equal dimensions alone cannot bind a grid to its current geometry/basis.
   const AoBasis grid_basis(grid.system());
   if (basis.nao != grid_basis.nao || basis.natom != grid_basis.natom ||
       basis.nprimitive != grid_basis.nprimitive || basis.packed != grid_basis.packed)
     throw std::invalid_argument("CUDA XC grid/basis identity mismatch");
-  return cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(), pbe,
-                              unrestricted, tile_points);
+  return cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(),
+                              functional, unrestricted, tile_points);
 }
 
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
-                                  std::size_t points, bool pbe, bool unrestricted,
+                                  std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points) {
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
-      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX)
+      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
     throw std::invalid_argument("invalid CUDA XC resource shape");
   constexpr auto overflow = "CUDA XC storage overflow";
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
-  CudaXcLayout out{
-      atoms,         primitives, nao, points, std::min(tile_points, points), unrestricted ? 2U : 1U,
-      pbe ? 4U : 1U, packed,     0,   pbe};
+  const auto ao_jets = functional == 0U ? 1U : 4U;
+  const auto work_jets = functional == 2U ? 4U : 1U;
+  const auto feature_terms = functional == 0U ? 1U : (functional == 1U ? 4U : 5U);
+  CudaXcLayout out{atoms,
+                   primitives,
+                   nao,
+                   points,
+                   std::min(tile_points, points),
+                   unrestricted ? 2U : 1U,
+                   ao_jets,
+                   work_jets,
+                   feature_terms,
+                   packed,
+                   0,
+                   functional};
   std::size_t elements = size_add(out.packed_elements, size_mul(4, out.npoint, overflow), overflow);
   const auto panel = size_mul(out.tile_points, out.nao, overflow);
-  const auto panel_terms = size_add(out.jets, out.spins, overflow);
+  const auto panel_terms =
+      size_add(out.jets, size_mul(out.spins, out.work_jets, overflow), overflow);
   elements = size_add(elements, size_mul(panel_terms, panel, overflow), overflow);
-  auto feature_terms = size_mul(2, out.spins, overflow);
-  feature_terms = size_mul(feature_terms, out.jets, overflow);
-  feature_terms = size_add(feature_terms, 3, overflow);
-  elements = size_add(elements, size_mul(feature_terms, out.tile_points, overflow), overflow);
+  auto feature_storage = size_mul(2, out.spins, overflow);
+  feature_storage = size_mul(feature_storage, out.feature_terms, overflow);
+  feature_storage = size_add(feature_storage, 3, overflow);
+  elements = size_add(elements, size_mul(feature_storage, out.tile_points, overflow), overflow);
   const auto matrix = size_mul(out.nao, out.nao, overflow);
   elements = size_add(elements, size_mul(out.spins, matrix, overflow), overflow);
   elements = size_add(elements, 3, overflow);
@@ -78,10 +91,10 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   return out;
 }
 
-CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, bool pbe, bool unrestricted,
-                       std::size_t tile_points, void* arena, std::size_t arena_bytes,
-                       cudaStream_t stream)
-    : layout_(cuda_xc_layout(basis, grid, pbe, unrestricted, tile_points)),
+CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
+                       bool unrestricted, std::size_t tile_points, void* arena,
+                       std::size_t arena_bytes, cudaStream_t stream)
+    : layout_(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points)),
       arena_(arena),
       stream_(stream) {
   if (arena_bytes < layout_.device_bytes ||
@@ -103,8 +116,10 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, bool pbe
   weights_ = take_double(l.npoint);
   const auto panel = size_mul(l.tile_points, l.nao, "CUDA XC workspace layout overflow");
   ao_ = take_double(size_mul(l.jets, panel, "CUDA XC workspace layout overflow"));
-  work_ = take_double(size_mul(l.spins, panel, "CUDA XC workspace layout overflow"));
-  const auto feature_panel = size_mul(l.spins, l.jets, "CUDA XC workspace layout overflow");
+  work_ = take_double(size_mul(size_mul(l.spins, l.work_jets, "CUDA XC workspace layout overflow"),
+                               panel, "CUDA XC workspace layout overflow"));
+  const auto feature_panel =
+      size_mul(l.spins, l.feature_terms, "CUDA XC workspace layout overflow");
   features_ =
       take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
   coefficients_ =

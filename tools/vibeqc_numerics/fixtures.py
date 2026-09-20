@@ -1,5 +1,6 @@
 """Whole-family accuracy splits and two additional independent HF references."""
 
+import typing
 from copy import deepcopy
 from pathlib import Path
 
@@ -23,7 +24,7 @@ FAMILIES = {
 }
 
 
-def extra_inputs():
+def extra_inputs() -> list[dict[str, typing.Any]]:
     """Hold out HF as a molecule and def2-SVP as a complete basis family."""
     originals = {row["name"]: row for row in molecular_inputs()}
     hf = deepcopy(originals["hf-plus-uhf"])
@@ -48,7 +49,7 @@ def extra_inputs():
     return [hf, hydrogen]
 
 
-def accuracy_suite():
+def accuracy_suite() -> list[dict[str, typing.Any]]:
     """Load only independent molecular references, with their pinned hashes."""
     return [
         r for r in load_fixtures() if r["inputs"]["kind"] == "molecule"

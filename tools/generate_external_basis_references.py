@@ -11,6 +11,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -21,11 +22,11 @@ PIN = "4adaf1372c7101620ca1a9f3130be9ae97fb8f30"
 LICENSE_HASH = "14b5a1c21a9e0966e295b9e3d66c0cee9475ffe5931e74d063c3713e2ae9a496"
 
 
-def digest(path):
+def digest(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def pyscf_basis(data):
+def pyscf_basis(data: dict[str, typing.Any]) -> dict[str, list[typing.Any]]:
     """Independently map interchange contractions to PySCF's general shell lists."""
     result = {}
     for z, element in data["elements"].items():
@@ -57,7 +58,7 @@ def pyscf_basis(data):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("--bse-source", type=Path, required=True)
