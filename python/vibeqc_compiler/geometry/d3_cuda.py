@@ -296,7 +296,7 @@ class PreparedD3CudaBatch:
         self._program = None
         self._plan = None
 
-    def __enter__(self) -> typing.Self:
+    def __enter__(self) -> PreparedD3CudaBatch:
         self._require_open()
         return self
 
