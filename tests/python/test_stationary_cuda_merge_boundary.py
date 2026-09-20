@@ -67,7 +67,17 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
         library=tmp_path / "runtime.so", metadata={"binary_sha256": "binary"}
     )
     compiler = SimpleNamespace(target=SimpleNamespace(compute_capability=(12, 0)))
-    basis = SimpleNamespace(natom=1, nao=2, packed=np.zeros(3))
+    basis = SimpleNamespace(
+        natom=1,
+        nprimitive=2,
+        nao=2,
+        representation="cartesian",
+        charge=0,
+        multiplicity=1,
+        atoms=(SimpleNamespace(atomic_number=1),),
+        identity="basis-id",
+        packed=np.zeros(3),
+    )
 
     with pytest.raises(ValueError, match="one or two density spin blocks"):
         runtime._CudaSources(basis, artifact, compiler, 0, 4, 2, 4096, spin_blocks=3)
