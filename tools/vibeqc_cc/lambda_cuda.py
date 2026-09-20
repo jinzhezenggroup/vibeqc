@@ -7,6 +7,7 @@ resident on device while #179's checked GMRES remains the host controller.
 This is not a device-resident Krylov loop or a public force capability.
 
 Rationale: .agents/notes/implemented/architecture/2026-09-20-generated-cuda-lambda-owner.md
+Resident phase/transfer contract: .agents/notes/implemented/architecture/2026-09-20-resident-lambda-actions.md
 """
 
 from __future__ import annotations
