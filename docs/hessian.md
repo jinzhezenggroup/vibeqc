@@ -536,14 +536,17 @@ These B3/B4 paths remain within the declared small-system conventional-RHF tools
 domain. B2 closes the iterative response-residency slice: response vectors,
 orthogonalization, operator AO/MO transforms and direct J/K actions can stay on
 device under the existing #179 GMRES controller. The B1-CUDA relaxation slice
-adds an independently selectable generated CUDA first-integral contraction:
-`relaxation_backend="cuda"` with an explicit `relaxation_compiler` uploads the
-solved D1/W1 and reference P0 AO weights once per directional contraction,
-evaluates S/T/V/four-center primitive derivatives and one/two-matrix AO-weight
-products on device, accumulates directly into the Cartesian atomic vector, and
-downloads only that final `(natoms,3)` result. No RHF coefficient formula is
-handwritten in the CUDA runtime; the generic compiler emits the declared weight
-products. CPU remains the default and no silent fallback is permitted.
+adds an independently selectable generated CUDA first-integral contraction.
+With a host response, `relaxation_backend="cuda"` and an explicit
+`relaxation_compiler` upload solved D1/W1 and reference P0 once per direction.
+When combined with `response_execution="cuda-resident"`, the converged resident
+rotation vector is instead consumed before host publication: the existing
+resident RHF response owner reconstructs D1/W1 on device, the generated
+first-gradient accumulator imports those two AO matrices device-to-device, and
+only the static P0 weight is uploaded from host. Both paths evaluate the same
+generated S/T/V/four-center derivative contractions and download only the final
+`(natoms,3)` relaxation vector. CPU remains the default and no silent fallback
+is permitted.
 
 The #178 frozen-skeleton second-integral HVP consumer is independently
 selectable with `second_backend="cuda"` and an explicit `second_compiler`.
@@ -555,12 +558,18 @@ CPU remains the default, there is no silent fallback, and scalar, multi-RHS and
 bounded full-Hessian callers preserve the selected provider/program identities
 and its host/device phase peak.
 
-This still does **not** make the complete HVP all-device: response reconstruction
-currently publishes D1/W1 on the host before the optional CUDA relaxation
-upload, while final molecular assembly and full-Hessian output remain host-owned.
-Block/full-Hessian diagnostics account for the response, CUDA relaxation and
-second-integral-provider phases separately. Production-size qualification, a
-public Calculator Hessian endpoint and DFT Hessians remain separate. See the
+This still does **not** make the complete HVP all-device. Scalar and bounded
+multi-RHS/full-Hessian response paths can consume each converged resident
+rotation before host publication, reconstruct D1/W1 in the shared CUDA response
+owner, and import those two matrices device-to-device into the generated
+relaxation contraction. H1/S1 publication and nuclear-RHS preparation remain
+host-owned, compatibility D1/W1 publications are still returned, the
+second-integral providers publish compact coordinate HVP tiles to host, and the
+final molecular HVP/full-Hessian assembly remains host-owned. Diagnostics report
+the simultaneously resident response-plus-relaxation device storage, but this is
+not a global SCF/compiler/CUDA-context memory bound. Production-size
+qualification, a public Calculator Hessian endpoint and DFT Hessians remain
+separate. See the
 [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
 [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md),
 [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md),

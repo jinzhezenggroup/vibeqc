@@ -102,6 +102,128 @@ def test_complete_hvp_can_select_cuda_relaxation_without_cpu_substitution(
     assert transfer["raw_derivative_downloads"] == 0
 
 
+def test_resident_response_feeds_cuda_relaxation_without_host_d1_w1_reupload(
+    h2_case: typing.Any,
+    compiler: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
+    state, vector, _ = h2_case
+    expected = rhf_hvp(state, vector)
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> NoReturn:
+        raise AssertionError("resident relaxation validated/reuploaded host D1/W1")
+
+    monkeypatch.setattr(
+        "tools.vibeqc_hessian.first_order_cuda._checked_ao_weight",
+        forbidden,
+    )
+    actual = rhf_hvp(
+        state,
+        vector,
+        jk_backend="cuda",
+        response_execution="cuda-resident",
+        relaxation_backend="cuda",
+        relaxation_compiler=compiler,
+    )
+    np.testing.assert_allclose(actual.value, expected.value, atol=1e-9, rtol=4e-10)
+    np.testing.assert_allclose(
+        actual.relaxation, expected.relaxation, atol=3e-10, rtol=3e-10
+    )
+    provider = actual.diagnostics["relaxation_provider"]
+    assert provider["response_weight_source"] == "resident-d2d"
+    assert provider["resident_weight_imports"] == 1
+    assert provider["gradient_downloads"] == 1
+    assert actual.diagnostics["response_execution"] == "cuda-resident"
+
+
+@pytest.mark.parametrize("strategy", ("sequential", "blocked", "recycled"))
+def test_resident_block_response_feeds_cuda_relaxation_without_host_d1_w1_reupload(
+    h2_case: typing.Any,
+    compiler: typing.Any,
+    monkeypatch: typing.Any,
+    strategy: str,
+) -> None:
+    state, vector, _ = h2_case
+    directions = np.stack((vector, -0.37 * vector))
+    expected = rhf_hvp_many(state, directions, strategy=strategy)
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> NoReturn:
+        raise AssertionError("resident block relaxation revalidated host D1/W1")
+
+    monkeypatch.setattr(
+        "tools.vibeqc_hessian.first_order_cuda._checked_ao_weight",
+        forbidden,
+    )
+    actual = rhf_hvp_many(
+        state,
+        directions,
+        strategy=strategy,
+        jk_backend="cuda",
+        response_execution="cuda-resident",
+        relaxation_backend="cuda",
+        relaxation_compiler=compiler,
+    )
+    np.testing.assert_allclose(actual.values, expected.values, atol=1e-9, rtol=4e-10)
+    np.testing.assert_allclose(
+        actual.relaxation, expected.relaxation, atol=3e-10, rtol=3e-10
+    )
+    diagnostic = actual.diagnostics
+    assert diagnostic["execution_residency"] == (
+        "mixed-host-device-resident-response-relaxation"
+    )
+    assert diagnostic["resident_response_relaxation_phase_numeric_bound_bytes"] > 0
+    assert (
+        diagnostic["complete_numeric_peak_bound_bytes"]
+        <= diagnostic["total_budget_bytes"]
+    )
+    assert len(diagnostic["relaxation_provider"]) == len(directions)
+    assert all(
+        item["response_weight_source"] == "resident-d2d"
+        and item["resident_weight_imports"] == 1
+        and item["gradient_downloads"] == 1
+        for item in diagnostic["relaxation_provider"]
+    )
+
+
+def test_resident_full_hessian_feeds_cuda_relaxation_without_host_d1_w1_reupload(
+    h2_case: typing.Any,
+    compiler: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
+    state, _, _ = h2_case
+    expected = rhf_hessian(state, block_size=2, strategy="recycled")
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> NoReturn:
+        raise AssertionError("resident Hessian relaxation revalidated host D1/W1")
+
+    monkeypatch.setattr(
+        "tools.vibeqc_hessian.first_order_cuda._checked_ao_weight",
+        forbidden,
+    )
+    actual = rhf_hessian(
+        state,
+        block_size=2,
+        strategy="recycled",
+        jk_backend="cuda",
+        response_execution="cuda-resident",
+        relaxation_backend="cuda",
+        relaxation_compiler=compiler,
+    )
+    np.testing.assert_allclose(actual.matrix, expected.matrix, atol=1e-9, rtol=4e-10)
+    assert actual.diagnostics["raw_symmetry_error"] < 2e-9
+    blocks = actual.diagnostics["blocks"]
+    assert blocks
+    assert all(
+        block["diagnostics"]["execution_residency"]
+        == "mixed-host-device-resident-response-relaxation"
+        and all(
+            item["response_weight_source"] == "resident-d2d"
+            for item in block["diagnostics"]["relaxation_provider"]
+        )
+        for block in blocks
+    )
+
+
 def test_block_hvp_can_use_cuda_relaxation(
     h2_case: typing.Any, compiler: typing.Any
 ) -> None:

@@ -192,6 +192,13 @@ extern "C" int vibeqc_first_gradient_reset_v1(void* value,const double* weights,
     char* detail,std::size_t size) {{
   return boundary([&] {{ plan(value).reset(weights,count,runtime_identity); }},detail,size);
 }}
+extern "C" int vibeqc_first_gradient_reset_mixed_v1(void* value,const double* device_weights,
+    std::size_t device_count,const double* host_weights,std::size_t host_count,
+    char* detail,std::size_t size) {{
+  return boundary([&] {{
+    plan(value).reset_mixed(device_weights,device_count,host_weights,host_count,runtime_identity);
+  }},detail,size);
+}}
 extern "C" int vibeqc_first_gradient_append_v1(void* value,const double* records,std::size_t count,
     const Mapping* mapping,char* detail,std::size_t size) {{
   return boundary([&] {{
