@@ -24,7 +24,8 @@ endfunction()
 function(vibeqc_add_runtime_sources target)
   target_sources(${target} PRIVATE
     src/runtime/context.cpp
-    src/runtime/cuda_provider.cpp)
+    src/runtime/cuda_provider.cpp
+    src/tensor/cpu_linalg.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/runtime/cuda_runtime.cu

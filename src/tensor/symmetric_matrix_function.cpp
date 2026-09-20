@@ -5,6 +5,8 @@
 #include <limits>
 #include <stdexcept>
 
+#include "tensor/cpu_linalg.hpp"
+
 namespace vibeqc::tensor {
 namespace {
 std::size_t index(std::size_t row, std::size_t column, std::size_t n) { return row * n + column; }
@@ -83,31 +85,21 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
     for (std::size_t j = 0; j < n; ++j)
       symmetric[index(i, j, n)] = 0.5 * response[index(i, j, n)] + 0.5 * response[index(j, i, n)];
 
-  // temp = sym(E) Q; transformed = Q^T temp.
+  // Dense products use the common CPU provider boundary. The independent
+  // SCF reference linear algebra remains structurally separate.
+  cpu_gemm('N', 'N', n, n, n, symmetric.data(), eigenvectors.data(), temp.data());
+  cpu_gemm('T', 'N', n, n, n, eigenvectors.data(), temp.data(), transformed.data());
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k)
-        temp[index(i, j, n)] += symmetric[index(i, k, n)] * eigenvectors[index(k, j, n)];
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j) {
-      for (std::size_t k = 0; k < n; ++k)
-        transformed[index(i, j, n)] += eigenvectors[index(k, i, n)] * temp[index(k, j, n)];
       transformed[index(i, j, n)] =
           weighted_difference(transformed[index(i, j, n)], eigenvalues[i], eigenvalues[j],
                               retained[i] != 0, retained[j] != 0, function, resolution);
-    }
 
   std::fill(temp.begin(), temp.end(), 0.0);
   std::vector<double> result(elements, 0.0);
   // result = Q transformed Q^T.
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k)
-        temp[index(i, j, n)] += eigenvectors[index(i, k, n)] * transformed[index(k, j, n)];
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      for (std::size_t k = 0; k < n; ++k)
-        result[index(i, j, n)] += temp[index(i, k, n)] * eigenvectors[index(j, k, n)];
+  cpu_gemm('N', 'N', n, n, n, eigenvectors.data(), transformed.data(), temp.data());
+  cpu_gemm('N', 'T', n, n, n, temp.data(), eigenvectors.data(), result.data());
   for (std::size_t i = 0; i < n; ++i)
     for (std::size_t j = i + 1; j < n; ++j)
       result[index(i, j, n)] = result[index(j, i, n)] =

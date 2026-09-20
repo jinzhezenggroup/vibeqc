@@ -10,6 +10,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGeneratedSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCpuLinalg.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
 
@@ -182,6 +183,7 @@ endif()
 
 add_library(vibeqc SHARED)
 target_link_libraries(vibeqc PRIVATE Threads::Threads)
+vibeqc_configure_cpu_linalg(vibeqc)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 
