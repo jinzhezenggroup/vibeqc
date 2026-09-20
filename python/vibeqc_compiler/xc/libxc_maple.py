@@ -325,7 +325,8 @@ class _Evaluator:
             target = self._eval(node.func, environment)
             arguments = tuple(self._eval(item, environment) for item in node.args)
             if isinstance(target, _FunctionRef):
-                return self.call(target.name, arguments)
+                scalar_arguments = tuple(self._as_expr(value) for value in arguments)
+                return self.call(target.name, scalar_arguments)
             if isinstance(target, _IntrinsicRef):
                 return self._intrinsic(target.name, arguments)
             raise MapleImportError("Maple call target is not callable")
@@ -337,7 +338,12 @@ class _Evaluator:
                 raise MapleImportError(
                     "gga_exchange requires a function and four scalars"
                 )
-            function, rs, z, xs0, xs1 = arguments
+            function = arguments[0]
+            if not isinstance(function, _FunctionRef):
+                raise MapleImportError(
+                    "gga_exchange requires a function and four scalars"
+                )
+            rs, z, xs0, xs1 = arguments[1:]
             rs_expr, z_expr = self._as_expr(rs), self._as_expr(z)
             term0 = self._lda_x_spin(rs_expr, z_expr) * self.call(
                 function.name, (self._as_expr(xs0),)
