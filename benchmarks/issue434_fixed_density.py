@@ -13,6 +13,11 @@ from pathlib import Path
 import numpy as np
 import scipy.linalg
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 def sha256(path: Path) -> str:
     with path.open("rb") as stream:
@@ -81,7 +86,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--fixture", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     if "SLURM_JOB_ID" not in os.environ or "CUDA_VISIBLE_DEVICES" not in os.environ:
         raise SystemExit(
