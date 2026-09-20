@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from vibeqc import _generated_methods
+from vibeqc import _generated_methods, _native
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_ABI_IDS = {
@@ -45,3 +45,8 @@ def test_public_method_abi_ids_are_explicit_and_stable():
 def test_public_method_provider_sets_are_generated():
     assert _generated_methods.HF_METHOD_IDS == frozenset({1, 2})
     assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset({6, 7, 8, 9})
+
+
+def test_native_binding_reexports_generated_method_constants():
+    for symbol, value in _generated_methods.METHOD_CONSTANTS.items():
+        assert getattr(_native, symbol) == value
