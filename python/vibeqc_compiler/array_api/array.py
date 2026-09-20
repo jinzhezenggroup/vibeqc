@@ -11,7 +11,7 @@ from vibeqc_compiler.tensor.ir import Node
 ExactScalar: typing.TypeAlias = int | str | Fraction
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class VibeArray:
     """One symbolic Array-API value backed by an ordinary TensorIR node."""
 
@@ -35,6 +35,12 @@ class VibeArray:
 
     def __bool__(self) -> bool:
         raise TypeError("symbolic VibeArray values cannot drive Python control flow")
+
+    def __eq__(self, other: object) -> bool:
+        raise TypeError("symbolic VibeArray comparisons are not supported")
+
+    def __ne__(self, other: object) -> bool:
+        raise TypeError("symbolic VibeArray comparisons are not supported")
 
     def __add__(self, other: object) -> VibeArray:
         from . import namespace
