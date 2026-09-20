@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import tracemalloc
+import typing
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -46,11 +47,17 @@ OBSERVABLES = ("energy", "potential", "response", "geometry")
 STEPS = (1e-3, 3e-4, 1e-4)
 
 
-def capture(argv):
+def capture(argv: typing.Any) -> typing.Any:
     return subprocess.check_output(argv, text=True, timeout=60).strip()
 
 
-def gate(actual, expected, *, atol=1e-11, rtol=1e-10):
+def gate(
+    actual: typing.Any,
+    expected: typing.Any,
+    *,
+    atol: typing.Any = 1e-11,
+    rtol: typing.Any = 1e-10,
+) -> typing.Any:
     error = block_error(
         np.atleast_1d(actual), np.atleast_1d(expected), atol=atol, rtol=rtol
     )
@@ -59,7 +66,7 @@ def gate(actual, expected, *, atol=1e-11, rtol=1e-10):
     return error
 
 
-def compare(actual, expected):
+def compare(actual: typing.Any, expected: typing.Any) -> typing.Any:
     assert set(actual) == set(expected)
     errors = {}
     for key, value in actual.items():
@@ -77,7 +84,13 @@ def compare(actual, expected):
     return errors
 
 
-def oracle(inputs, points, weights, density, code):
+def oracle(
+    inputs: typing.Any,
+    points: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    code: typing.Any,
+) -> typing.Any:
     """Independent normalized AO, feature, Libxc and AO-potential evaluation."""
     from pyscf.dft import gen_grid, numint
 
@@ -91,7 +104,7 @@ def oracle(inputs, points, weights, density, code):
     return float(energy), matrix * scale[:, None] * scale[None, :]
 
 
-def load_case(case):
+def load_case(case: typing.Any) -> typing.Any:
     """Use pinned fixtures plus a reproducible case with genuinely local f masks."""
     if case != "separated_f":
         return load_integration_fixture(case)
@@ -131,7 +144,7 @@ def load_case(case):
     return {"inputs": inputs, "inputs_hash": canonical_hash(inputs)}, data, grid
 
 
-def ao_atoms(basis):
+def ao_atoms(basis: typing.Any) -> typing.Any:
     return np.repeat(
         [s.atom_index for s in basis.shells],
         [
@@ -143,7 +156,14 @@ def ao_atoms(basis):
     )
 
 
-def independent_derivatives(meta, data, grid, basis, programs, name):
+def independent_derivatives(
+    meta: typing.Any,
+    data: typing.Any,
+    grid: typing.Any,
+    basis: typing.Any,
+    programs: typing.Any,
+    name: typing.Any,
+) -> typing.Any:
     """Retain raw external finite-difference projections at every declared step."""
     from tools.vibeqc_posthf.pair_space import PairSpace
 
@@ -265,7 +285,15 @@ def independent_derivatives(meta, data, grid, basis, programs, name):
     return {"projections": rows, "svec_transpose": transpose}
 
 
-def diagnostic(program, basis, grid, density, tile, spatial, direction):
+def diagnostic(
+    program: typing.Any,
+    basis: typing.Any,
+    grid: typing.Any,
+    density: typing.Any,
+    tile: typing.Any,
+    spatial: typing.Any,
+    direction: typing.Any,
+) -> typing.Any:
     """Identical-mask arithmetic reference; zeros precede nonlinear evaluation."""
     observable = program.contract.request.observable
     nspin = 2
@@ -316,7 +344,7 @@ def diagnostic(program, basis, grid, density, tile, spatial, direction):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", required=True, type=Path)
     parser.add_argument("--cache", required=True, type=Path)

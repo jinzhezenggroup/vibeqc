@@ -19,7 +19,9 @@ options = KsOptions(
     tile_points=128,
 )
 calculator = Calculator(
-    method="pbe-rks", device="cuda", ks_options=options,
+    method="pbe-rks",
+    device="cuda",
+    ks_options=options,
     resource_budget=ResourceBudget(host_bytes=1 << 30, device_bytes=1 << 30),
 )
 print(calculator.ks_options.to_payload())

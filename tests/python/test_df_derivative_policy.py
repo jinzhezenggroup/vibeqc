@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,7 +14,7 @@ from benchmarks.df_admission_probe import CONTROLS, controls, errors
 
 
 @pytest.fixture(scope="module")
-def policy(tmp_path_factory):
+def policy(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if not compiler:
         pytest.skip("host C++ compiler unavailable")
@@ -44,7 +45,7 @@ int main() {
         check=True,
     )
 
-    def query(rows):
+    def query(rows: typing.Any) -> typing.Any:
         result = subprocess.run(
             [str(executable)],
             input="".join(" ".join(map(str, r)) + "\n" for r in rows),
@@ -58,7 +59,9 @@ int main() {
     return query
 
 
-def test_work_model_boundaries_and_unknown_architecture(policy):
+def test_work_model_boundaries_and_unknown_architecture(
+    policy: typing.Any,
+) -> None:
     rows = [
         (n, a, op, ap, v, arch)
         for n, a in [
@@ -91,7 +94,9 @@ def test_work_model_boundaries_and_unknown_architecture(policy):
         )
 
 
-def test_controls_restore_absent_and_present_variables_on_failure(monkeypatch):
+def test_controls_restore_absent_and_present_variables_on_failure(
+    monkeypatch: typing.Any,
+) -> None:
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "generic")
     monkeypatch.delenv("VIBEQC_DF_PRIMITIVE_BUCKETS", raising=False)
     monkeypatch.setenv("VIBEQC_DF_TRACE", "caller-trace")
@@ -110,7 +115,7 @@ def test_controls_restore_absent_and_present_variables_on_failure(monkeypatch):
 
 
 @pytest.mark.parametrize("invalid", ["shape", "energy_nan", "force_inf", "oracle_nan"])
-def test_probe_rejects_invalid_numerical_evidence(invalid):
+def test_probe_rejects_invalid_numerical_evidence(invalid: typing.Any) -> None:
     result = SimpleNamespace(
         energies=np.array([1.0]), items=[SimpleNamespace(forces=np.ones((2, 3)))]
     )
@@ -127,7 +132,9 @@ def test_probe_rejects_invalid_numerical_evidence(invalid):
         errors(result, energy, force)
 
 
-def test_architecture_query_only_reads_required_attributes(tmp_path):
+def test_architecture_query_only_reads_required_attributes(
+    tmp_path: typing.Any,
+) -> None:
     """Mock the runtime to test failure propagation and forbid full queries."""
     compiler = shutil.which("c++")
     if not compiler:

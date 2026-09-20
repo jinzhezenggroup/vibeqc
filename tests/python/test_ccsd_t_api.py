@@ -1,6 +1,7 @@
 """End-to-end RCCSD(T) composition and batch-state tests for #150 C."""
 
 import json
+import typing
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -35,13 +36,13 @@ TRIPLES_REFERENCE = {
 class FixtureProvider(ConventionalProvider):
     """Exact saved MO integrals without a native library dependency."""
 
-    def __init__(self, snapshot, g):
+    def __init__(self, snapshot: typing.Any, g: typing.Any) -> None:
         self.snapshot = snapshot
         self.g = g
         self.backend = "cpu"
         self.source = SimpleNamespace(_check_open=lambda: None)
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         return BlockResult(
             block,
             self.g[np.ix_(*block.slots)],
@@ -51,7 +52,7 @@ class FixtureProvider(ConventionalProvider):
         )
 
 
-def fixture_problem(name="h2"):
+def fixture_problem(name: typing.Any = "h2") -> typing.Any:
     meta, arrays = load(name)
     source = SimpleNamespace(
         electron_count=int(arrays["occ"].sum()),
@@ -62,7 +63,7 @@ def fixture_problem(name="h2"):
     return snapshot, FixtureProvider(snapshot, arrays["g"]), meta, arrays
 
 
-def test_capabilities_are_energy_only_and_homogeneous_batch():
+def test_capabilities_are_energy_only_and_homogeneous_batch() -> None:
     caps = rccsd_t_method_capabilities("rccsd(t)")
     assert caps.method == "rccsd(t)"
     assert caps.family == "coupled_cluster"
@@ -76,7 +77,9 @@ def test_capabilities_are_energy_only_and_homogeneous_batch():
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_cpu_endpoint_composes_converged_ccsd_and_standard_triples(name):
+def test_cpu_endpoint_composes_converged_ccsd_and_standard_triples(
+    name: typing.Any,
+) -> None:
     snapshot, provider, meta, _arrays = fixture_problem(name)
     result = rccsd_t_energy(snapshot, provider, backend="cpu", vir_chunk_size=1)
 
@@ -122,7 +125,7 @@ def test_cpu_endpoint_composes_converged_ccsd_and_standard_triples(name):
     )
 
 
-def test_nonconverged_ccsd_never_publishes_a_triples_or_total_energy():
+def test_nonconverged_ccsd_never_publishes_a_triples_or_total_energy() -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2")
     result = rccsd_t_energy(
         snapshot,
@@ -139,7 +142,7 @@ def test_nonconverged_ccsd_never_publishes_a_triples_or_total_energy():
     assert result.provenance["triples_evaluated"] is False
 
 
-def test_force_and_nonproduction_cuda_backend_are_rejected_before_execution():
+def test_force_and_nonproduction_cuda_backend_are_rejected_before_execution() -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2")
     with pytest.raises(NotImplementedError, match="energy only"):
         rccsd_t_energy(snapshot, provider, compute_forces=True)
@@ -149,7 +152,9 @@ def test_force_and_nonproduction_cuda_backend_are_rejected_before_execution():
         rccsd_t_energy(snapshot, provider, backend="cuda-resident")
 
 
-def test_endpoint_artifact_records_components_and_identity(tmp_path):
+def test_endpoint_artifact_records_components_and_identity(
+    tmp_path: typing.Any,
+) -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2o")
     result = rccsd_t_energy(snapshot, provider)
     path = tmp_path / "h2o-rccsd-t.json"
@@ -161,13 +166,13 @@ def test_endpoint_artifact_records_components_and_identity(tmp_path):
     assert path.read_text().endswith("\n")
 
 
-def test_batch_force_request_is_rejected_before_item_execution():
+def test_batch_force_request_is_rejected_before_item_execution() -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2")
     with pytest.raises(NotImplementedError, match="energy only"):
         rccsd_t_batch_energy([(snapshot, provider)], compute_forces=True)
 
 
-def test_homogeneous_batch_isolates_one_invalid_provider_and_keeps_order():
+def test_homogeneous_batch_isolates_one_invalid_provider_and_keeps_order() -> None:
     s0, p0, _meta0, _arrays0 = fixture_problem("h2")
     s1, _p1, _meta1, arrays1 = fixture_problem("h2")
     result = rccsd_t_batch_energy(
@@ -186,21 +191,21 @@ def test_homogeneous_batch_isolates_one_invalid_provider_and_keeps_order():
     assert result.items[2].converged
 
 
-def test_prepared_batch_rejects_ragged_cc_shapes_before_any_item_execution():
+def test_prepared_batch_rejects_ragged_cc_shapes_before_any_item_execution() -> None:
     h2 = fixture_problem("h2")
     h2o = fixture_problem("h2o")
     with pytest.raises(ValueError, match="homogeneous"):
         PreparedRCCSDTBatch([(h2[0], h2[1]), (h2o[0], h2o[1])])
 
 
-def test_empty_prepared_batch_has_an_explicit_empty_shape():
+def test_empty_prepared_batch_has_an_explicit_empty_shape() -> None:
     result = PreparedRCCSDTBatch([]).execute()
     assert result.shape is None
     assert result.items == ()
     assert rccsd_t_batch_energy(iter(())).items == ()
 
 
-def test_prepared_batch_rejects_shared_amplitude_or_warm_start_state():
+def test_prepared_batch_rejects_shared_amplitude_or_warm_start_state() -> None:
     snapshot, provider, _meta, arrays = fixture_problem("h2")
     with pytest.raises(ValueError, match="shared t1/t2 or warm_start"):
         PreparedRCCSDTBatch([(snapshot, provider)], t1=arrays["t1"], t2=arrays["t2"])
@@ -208,7 +213,7 @@ def test_prepared_batch_rejects_shared_amplitude_or_warm_start_state():
         PreparedRCCSDTBatch([(snapshot, provider)], warm_start=object())
 
 
-def test_deterministic_identity_and_tile_partition():
+def test_deterministic_identity_and_tile_partition() -> None:
     first = rccsd_t_energy(*fixture_problem("h2o")[:2])
     repeat = rccsd_t_energy(*fixture_problem("h2o")[:2])
     for key in ("ccsd_state_identity", "result_identity"):
@@ -227,7 +232,9 @@ def test_deterministic_identity_and_tile_partition():
     assert abs(different_tiles.triples_energy - first.triples_energy) <= 1e-13
 
 
-def test_nonconvergence_does_not_execute_tiles(monkeypatch, tmp_path):
+def test_nonconvergence_does_not_execute_tiles(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     monkeypatch.setattr(
         api, "cpu_triples_tiles", lambda *a, **kw: pytest.fail("triples ran")
     )
@@ -260,8 +267,8 @@ def test_nonconvergence_does_not_execute_tiles(monkeypatch, tmp_path):
     ],
 )
 def test_request_rejection_precedes_ccsd_including_empty_batch(
-    monkeypatch, kwargs, error, match
-):
+    monkeypatch: typing.Any, kwargs: typing.Any, error: typing.Any, match: typing.Any
+) -> None:
     monkeypatch.setattr(
         api, "rccsd_energy", lambda *a, **kw: pytest.fail("CCSD started")
     )
@@ -273,7 +280,7 @@ def test_request_rejection_precedes_ccsd_including_empty_batch(
         PreparedRCCSDTBatch([], **kwargs)
 
 
-def test_cuda_requires_path_cache():
+def test_cuda_requires_path_cache() -> None:
     compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
     with pytest.raises(ValueError, match="pathlib.Path"):
         rccsd_t_energy(
@@ -281,14 +288,16 @@ def test_cuda_requires_path_cache():
         )
 
 
-def test_exact_replay_feeds_and_final_amplitudes(monkeypatch):
+def test_exact_replay_feeds_and_final_amplitudes(monkeypatch: typing.Any) -> None:
     snapshot, provider, _, _ = fixture_problem("h2o")
     cc = api.rccsd_energy(snapshot, provider)
     monkeypatch.setattr(provider, "get", lambda *a: pytest.fail("provider re-read"))
     monkeypatch.setattr(api, "rccsd_energy", lambda *a, **kw: cc)
     original = api.cpu_triples_tiles
 
-    def check_inputs(nocc, nvir, arrays, **kwargs):
+    def check_inputs(
+        nocc: typing.Any, nvir: typing.Any, arrays: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         assert (nocc, nvir) == (5, 2)
         assert arrays["t1"] is cc.t1 and arrays["t2"] is cc.t2
         for key in ("ovvv", "ovoo", "ovov", "fov"):
@@ -311,7 +320,9 @@ def test_exact_replay_feeds_and_final_amplitudes(monkeypatch):
 
 
 @pytest.mark.parametrize("accepted", [False, True])
-def test_resident_handoff_requires_solved_identity(monkeypatch, tmp_path, accepted):
+def test_resident_handoff_requires_solved_identity(
+    monkeypatch: typing.Any, tmp_path: typing.Any, accepted: typing.Any
+) -> None:
     """CPU-only dispatch test: a fake tile owner does not qualify GPU numerics."""
     snapshot, provider, _, _ = fixture_problem()
     cc = api.rccsd_energy(snapshot, provider)
@@ -323,24 +334,28 @@ def test_resident_handoff_requires_solved_identity(monkeypatch, tmp_path, accept
     )
     calls = []
 
-    def cc_energy(*args, **kwargs):
+    def cc_energy(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         assert kwargs["backend"] == "cuda-resident"
         calls.append("ccsd")
         return cc
 
     class TileOwner:
-        def __init__(self, config, compiler, cache):
+        def __init__(
+            self, config: typing.Any, compiler: typing.Any, cache: typing.Any
+        ) -> None:
             assert accepted, "unqualified CCSD reached CUDA tiles"
             assert config.nocc == config.nvir == 1
             assert config.max_bytes == 4096 and cache == tmp_path
 
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             calls.append("closed")
 
-        def run_tiles(self, arrays, *, oracle, profile):
+        def run_tiles(
+            self, arrays: typing.Any, *, oracle: typing.Any, profile: typing.Any
+        ) -> typing.Any:
             assert oracle is False and profile is False
             assert arrays["t1"] is cc.t1 and arrays["t2"] is cc.t2
             return CudaTriplesResult(
@@ -384,7 +399,7 @@ def test_resident_handoff_requires_solved_identity(monkeypatch, tmp_path, accept
         assert result.provenance["timing"]["triples_detail"] == {"run_s": 0.01}
 
 
-def test_artifact_hash_and_nonfinite_rejection(tmp_path):
+def test_artifact_hash_and_nonfinite_rejection(tmp_path: typing.Any) -> None:
     result = rccsd_t_energy(*fixture_problem("h2o")[:2])
     path = tmp_path / "energy.json"
     result.write(path)
@@ -400,7 +415,7 @@ def test_artifact_hash_and_nonfinite_rejection(tmp_path):
         assert path.read_text() == text
 
 
-def test_homogeneous_batch_independent_state_and_repeatability():
+def test_homogeneous_batch_independent_state_and_repeatability() -> None:
     h2, hp, _, _ = fixture_problem("h2")
     he, ep, _, _ = fixture_problem("he")
     prepared = PreparedRCCSDTBatch([(h2, hp), (h2, object()), (he, ep), (h2, hp)])
@@ -427,12 +442,14 @@ def test_homogeneous_batch_independent_state_and_repeatability():
         prepared.execute(compute_forces=True)
 
 
-def test_batch_isolates_triples_failure_and_nonconvergence(monkeypatch):
+def test_batch_isolates_triples_failure_and_nonconvergence(
+    monkeypatch: typing.Any,
+) -> None:
     snapshot, provider, _, _ = fixture_problem()
     original = api.cpu_triples_tiles
     calls = 0
 
-    def fail_second(*args, **kwargs):
+    def fail_second(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         nonlocal calls
         calls += 1
         if calls == 2:
@@ -457,7 +474,7 @@ def test_batch_isolates_triples_failure_and_nonconvergence(monkeypatch):
     )
 
 
-def test_ragged_preflight_never_starts_a_solver(monkeypatch):
+def test_ragged_preflight_never_starts_a_solver(monkeypatch: typing.Any) -> None:
     monkeypatch.setattr(
         api, "rccsd_energy", lambda *a, **kw: pytest.fail("ragged batch ran CCSD")
     )

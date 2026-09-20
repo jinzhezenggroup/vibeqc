@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..cuda_schedule import (
     ScheduleKind,
-)
-from ..fused_schedule import (
-    FusedShellPlan,
 )
 from ..rys import (
     build_rys_force_program,
 )
-from ..shell_spec import (
-    ShellClassSpec,
-)
 from .common import _emitted_component_names, _generic_task_component_setup
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def _emit_rys_component_lane_fock_consumer_cuda(

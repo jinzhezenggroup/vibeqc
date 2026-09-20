@@ -99,8 +99,12 @@ from tools.vibeqc_local_cc.mp2 import build_local_mp2
 localized = localize_occupied(snapshot, ao_atoms)
 domain = projected_virtual_space(snapshot)
 result = build_local_mp2(
-    snapshot, source, localized, domain,
-    occupation_threshold=1e-7, budget_bytes=128 << 20,
+    snapshot,
+    source,
+    localized,
+    domain,
+    occupation_threshold=1e-7,
+    budget_bytes=128 << 20,
 )
 print(result.observed_energy_difference)
 ```

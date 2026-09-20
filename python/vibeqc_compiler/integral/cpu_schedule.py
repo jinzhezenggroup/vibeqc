@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-
-from vibeqc_compiler.common.cpu_target import CpuTargetInfo
+from typing import TYPE_CHECKING
 
 from .expr import (
     AlgebraForm,
@@ -14,6 +13,9 @@ from .expr import (
     PowerLowering,
     RematerializationPolicy,
 )
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.common.cpu_target import CpuTargetInfo
 
 
 class CpuLanePacking(str, Enum):

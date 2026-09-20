@@ -2,6 +2,7 @@
 
 import copy
 import json
+import typing
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -10,7 +11,7 @@ from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
 from vibeqc_compiler.common.resources import MAX_BYTES, ResourceBudget, plan_resources
 
 
-def example():
+def example() -> typing.Any:
     return ProgramIR(
         "test",
         tuple(
@@ -28,7 +29,7 @@ def example():
     )
 
 
-def test_last_use_is_after_call_not_before_its_output_allocation():
+def test_last_use_is_after_call_not_before_its_output_allocation() -> None:
     p = example()
     intervals = {e.name: (e.first_phase, e.last_phase, e.kind) for e in p.lifetimes()}
     assert intervals == {
@@ -59,7 +60,7 @@ def test_last_use_is_after_call_not_before_its_output_allocation():
         p.lifetimes(retain_temporaries=1)
 
 
-def test_dense_layout_is_part_of_boundary_identity_and_strict_replay():
+def test_dense_layout_is_part_of_boundary_identity_and_strict_replay() -> None:
     layout = DenseLayout((2, 3), order=(1, 0), alignment=8)
     base = example()
     buffer = ProgramBuffer("x", 48, layout=layout, itemsize=8)
@@ -79,7 +80,7 @@ def test_dense_layout_is_part_of_boundary_identity_and_strict_replay():
         ProgramBuffer("matrix", 48, layout="C", itemsize=8)
 
 
-def test_serialization_is_detached_strict_and_deterministic():
+def test_serialization_is_detached_strict_and_deterministic() -> None:
     p = example()
     payload = json.loads(json.dumps(p.to_payload()))
     assert ProgramIR.from_payload(payload) == p
@@ -113,39 +114,39 @@ def test_serialization_is_detached_strict_and_deterministic():
     )
 
 
-def test_dead_outputs_are_released_without_pruning_opaque_calls():
+def test_dead_outputs_are_released_without_pruning_opaque_calls() -> None:
     p = replace(example(), outputs=("b",))
     assert len(p.calls) == 4
     assert p.release_after("finish") == ("c", "out")
     assert next(e for e in p.lifetimes() if e.name == "b").last_phase == 5
 
 
-def test_borrowed_output_is_not_donated():
+def test_borrowed_output_is_not_donated() -> None:
     p = replace(example(), outputs=("x",))
     e = next(e for e in p.lifetimes() if e.name == "x")
     assert e.first_phase == 0 and e.last_phase == 5 and e.kind == "persistent"
     assert "x" not in sum((p.release_after(c.name) for c in p.calls), ())
 
 
-def test_repeated_reads_are_not_duplicate_owners():
+def test_repeated_reads_are_not_duplicate_owners() -> None:
     p = example()
     p = replace(p, calls=(replace(p.calls[0], reads=("x", "x")), *p.calls[1:]))
     assert p.release_after("b") == ("a",)
 
 
 @pytest.mark.parametrize("bytes", [-1, True, 1.2, MAX_BYTES + 1])
-def test_invalid_buffer_sizes(bytes):
+def test_invalid_buffer_sizes(bytes: typing.Any) -> None:
     with pytest.raises(ValueError):
         ProgramBuffer("x", bytes)
 
 
 @pytest.mark.parametrize("space", ["", "cuda", "device:-1", "device:01", None])
-def test_invalid_memory_spaces(space):
+def test_invalid_memory_spaces(space: typing.Any) -> None:
     with pytest.raises(ValueError):
         ProgramBuffer("x", 1, space)
 
 
-def test_byte_overflow_and_device_space_use_existing_planner():
+def test_byte_overflow_and_device_space_use_existing_planner() -> None:
     p = ProgramIR(
         "overflow",
         (ProgramBuffer("x", MAX_BYTES, "device:0"), ProgramBuffer("y", 1, "device:0")),
@@ -180,12 +181,12 @@ def test_byte_overflow_and_device_space_use_existing_planner():
         ("buffers", ("wrong",)),
     ],
 )
-def test_invalid_program_contract(field, value):
+def test_invalid_program_contract(field: typing.Any, value: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError)):
         replace(example(), **{field: value})
 
 
-def test_duplicate_and_missing_owners_fail():
+def test_duplicate_and_missing_owners_fail() -> None:
     p = example()
     for buffers in (
         (*p.buffers, p.buffers[0]),
@@ -217,7 +218,7 @@ def test_duplicate_and_missing_owners_fail():
         {"writes": ("a", "a")},
     ],
 )
-def test_bad_calls(changes):
+def test_bad_calls(changes: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError)):
         replace(example().calls[0], **changes)
 
@@ -235,7 +236,9 @@ def test_bad_calls(changes):
         ("program", "schema_version", 0),
     ],
 )
-def test_untrusted_replay_is_fail_closed(location, field, value):
+def test_untrusted_replay_is_fail_closed(
+    location: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     payload = copy.deepcopy(example().to_payload())
     target = {
         "program": payload,
@@ -247,7 +250,7 @@ def test_untrusted_replay_is_fail_closed(location, field, value):
         ProgramIR.from_payload(payload)
 
 
-def test_replay_rejects_missing_fields_and_non_objects():
+def test_replay_rejects_missing_fields_and_non_objects() -> None:
     with pytest.raises(ValueError):
         ProgramIR.from_payload([])
     payload = example().to_payload()

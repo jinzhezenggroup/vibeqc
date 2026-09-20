@@ -5,6 +5,7 @@ weights. No HF coefficient, SCF state or device execution policy is inferred.
 """
 
 import math
+import typing
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -33,7 +34,7 @@ class DirectionalMatrixTerm:
     weight_pair: tuple[int, int] | None = None
     coefficient: float = 1.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.output_slot) is not int or not 0 <= self.output_slot < 32:
             raise ValueError("directional output slot must be in [0,32)")
         for name in ("output_pair", "weight_pair"):
@@ -53,7 +54,9 @@ class DirectionalMatrixTerm:
         object.__setattr__(self, "coefficient", float(self.coefficient))
 
 
-def validate_directional(integral, indices, terms):
+def validate_directional(
+    integral: typing.Any, indices: typing.Any, terms: typing.Any
+) -> None:
     validate_first_components(integral, indices)
     if any(shell.convention != "cartesian" for shell in integral.signature.shells):
         raise ValueError("directional matrix execution requires Cartesian AO slots")
@@ -70,7 +73,9 @@ def validate_directional(integral, indices, terms):
                 raise ValueError("directional matrix term uses a missing shell slot")
 
 
-def directional_identity(integral, indices, terms):
+def directional_identity(
+    integral: typing.Any, indices: typing.Any, terms: typing.Any
+) -> typing.Any:
     validate_directional(integral, indices, terms)
     return canonical_hash(
         {
@@ -84,7 +89,13 @@ def directional_identity(integral, indices, terms):
     )
 
 
-def emit_directional_matrix(integral, indices, terms, *, runtime_identity):
+def emit_directional_matrix(
+    integral: typing.Any,
+    indices: typing.Any,
+    terms: typing.Any,
+    *,
+    runtime_identity: typing.Any,
+) -> typing.Any:
     """Generate mathematical direction/weight/scatter; reuse primitive DAGs."""
     indices, terms = tuple(indices), tuple(terms)
     identity = directional_identity(integral, indices, terms)

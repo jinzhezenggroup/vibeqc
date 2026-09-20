@@ -1,7 +1,10 @@
 """Execution and deliberate evidence publication have different output paths."""
 
+from __future__ import annotations
+
 import argparse
 import ast
+import typing
 from pathlib import Path
 
 import pytest
@@ -11,7 +14,7 @@ from benchmarks import _support
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def active_runner_output_arguments():
+def active_runner_output_arguments() -> typing.Any:
     """Yield every live benchmark CLI output path, excluding frozen evidence scripts."""
 
     benchmark_root = ROOT / "benchmarks"
@@ -51,8 +54,8 @@ def active_runner_output_arguments():
 
 @pytest.mark.parametrize("alias", [False, True])
 def test_raw_writer_rejects_retained_tree_and_symlink_alias(
-    tmp_path, monkeypatch, alias
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any, alias: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     retained = tmp_path / "benchmarks/results"
     retained.mkdir(parents=True)
@@ -71,8 +74,8 @@ def test_raw_writer_rejects_retained_tree_and_symlink_alias(
 
 
 def test_guard_rejects_relative_traversal_before_creating_anything(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="raw benchmark output"):
@@ -80,7 +83,9 @@ def test_guard_rejects_relative_traversal_before_creating_anything(
     assert not (tmp_path / "benchmarks").exists()
 
 
-def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatch):
+def test_scratch_paths_and_neighbour_names_remain_supported(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     for name in (
         ".artifacts/benchmarks/run.json",
@@ -92,7 +97,9 @@ def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatc
         assert path.is_file()
 
 
-def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch):
+def test_argparse_reports_bad_output_without_starting_work(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=_support.raw_output_path)
@@ -102,7 +109,7 @@ def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch
     assert list(tmp_path.iterdir()) == []
 
 
-def test_all_active_runner_outputs_are_guarded_during_argument_parsing():
+def test_all_active_runner_outputs_are_guarded_during_argument_parsing() -> None:
     seen = []
     for path, node, options in active_runner_output_arguments():
         seen.append((path.relative_to(ROOT), tuple(options)))

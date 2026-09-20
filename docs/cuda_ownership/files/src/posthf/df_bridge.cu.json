@@ -1,0 +1,7 @@
+{
+  "path": "src/posthf/df_bridge.cu",
+  "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -25,7 +26,7 @@ class BasisBinding:
     ecp_core_electrons: int = 0
     version: str = BASIS_BINDING_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("basis binding requires a nonempty name")
         for field in ("basis_identity", "source_sha256"):
@@ -59,7 +60,7 @@ class BasisBinding:
         if self.version != BASIS_BINDING_VERSION:
             raise ValueError("unsupported basis binding version")
 
-    def semantic_payload(self):
+    def semantic_payload(self) -> typing.Any:
         return {
             "version": self.version,
             "name": self.name,
@@ -73,14 +74,14 @@ class BasisBinding:
             "ecp_core_electrons": self.ecp_core_electrons,
         }
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return self.semantic_payload()
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.semantic_payload())
 
-    def require_atomic_numbers(self, atomic_numbers):
+    def require_atomic_numbers(self, atomic_numbers: typing.Any) -> None:
         values = tuple(atomic_numbers)
         if any(type(z) is not int for z in values):
             raise TypeError("atomic numbers must be integers")
@@ -92,7 +93,7 @@ class BasisBinding:
             )
 
 
-def r2scan3c_def2_mtzvpp_h_ar():
+def r2scan3c_def2_mtzvpp_h_ar() -> typing.Any:
     """Pinned H-Ar all-electron basis binding for the first r2SCAN-3c domain."""
 
     return BasisBinding(
@@ -107,7 +108,9 @@ def r2scan3c_def2_mtzvpp_h_ar():
     )
 
 
-def validate_basis_snapshot(binding, basis, *, atomic_numbers=()):
+def validate_basis_snapshot(
+    binding: typing.Any, basis: typing.Any, *, atomic_numbers: typing.Any = ()
+) -> typing.Any:
     """Fail closed if a loaded #169 BasisSet differs from the method binding."""
 
     if not isinstance(binding, BasisBinding):

@@ -1,6 +1,7 @@
 """Small explicit gradient fixtures and pinned independent reference records."""
 
 import json
+import typing
 from copy import deepcopy
 from pathlib import Path
 
@@ -12,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1] / "tests/reference_data/cc/gradients"
 CASES = ("h2", "h2_shifted", "h2o", "nh3", "ch4", "h2_d_cartesian", "h2_d_spherical")
 
 
-def inputs(name):
+def inputs(name: typing.Any) -> typing.Any:
     if name not in CASES:
         raise ValueError("unknown small CCSD gradient case")
     base = "h2" if name.startswith("h2_") else name
@@ -31,7 +32,7 @@ def inputs(name):
     return value
 
 
-def source_arguments(value):
+def source_arguments(value: typing.Any) -> typing.Any:
     """Validate the explicit molecular schema without dropping unsupported physics."""
     expected = set(inputs("h2"))
     if not isinstance(value, dict) or set(value) != expected:
@@ -74,7 +75,7 @@ def source_arguments(value):
     return args
 
 
-def load(name, root=ROOT):
+def load(name: typing.Any, root: typing.Any = ROOT) -> typing.Any:
     data = json.loads((Path(root) / f"{name}.json").read_text())
     if (
         data["schema"] != "vibeqc.ccsd.gradient_reference"

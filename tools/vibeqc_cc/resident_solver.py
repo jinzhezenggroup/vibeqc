@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ctypes
 import time
+import typing
 from contextlib import ExitStack
 from dataclasses import asdict, fields
 from hashlib import sha256
@@ -32,7 +33,7 @@ from .gpu_state import AmplitudeSnapshot, solver_plans
 from .solver import CCSDResult, PreparedCCSD, SolverOptions
 
 
-def _offsets(plan):
+def _offsets(plan: typing.Any) -> typing.Any:
     inputs = {
         plan.steps[index].node.attrs["name"]: plan.steps[index].offset
         for index in plan.inputs
@@ -41,7 +42,13 @@ def _offsets(plan):
     return inputs, outputs
 
 
-def _resident_extension(plan, segments, n1, n2, diis_size):
+def _resident_extension(
+    plan: typing.Any,
+    segments: typing.Any,
+    n1: typing.Any,
+    n2: typing.Any,
+    diis_size: typing.Any,
+) -> typing.Any:
     inputs, outputs = _offsets(plan)
     required_inputs = {"t1", "t2"}
     required_outputs = {
@@ -58,7 +65,7 @@ def _resident_extension(plan, segments, n1, n2, diis_size):
     p1 = segments["r1_partials"]["bytes"] // 8
     p2 = segments["r2_partials"]["bytes"] // 8
 
-    def seg(name):
+    def seg(name: typing.Any) -> typing.Any:
         return reserve + segments[name]["offset"]
 
     return f"""// __VIBEQC_RESIDENT_POST_RUN_DECL__
@@ -101,7 +108,16 @@ extern "C" int resident_cc_download_amplitudes(void* pointer,int last,double* t1
 
 
 class _ResidentCCOwner(PreparedResident):
-    def __init__(self, plan, artifact, *, n1, n2, diis_size, device=0):
+    def __init__(
+        self,
+        plan: typing.Any,
+        artifact: typing.Any,
+        *,
+        n1: typing.Any,
+        n2: typing.Any,
+        diis_size: typing.Any,
+        device: typing.Any = 0,
+    ) -> None:
         super().__init__(plan, artifact, device=device)
         self._n1, self._n2, self._diis_size = n1, n2, diis_size
         self._t1_shape = plan.steps[plan.inputs[self._names["t1"]]].node.spec.shape
@@ -157,18 +173,18 @@ class _ResidentCCOwner(PreparedResident):
         ]
         lib.resident_cc_download_amplitudes.restype = ctypes.c_int
 
-    def _call_cc(self, name, *args):
+    def _call_cc(self, name: typing.Any, *args: typing.Any) -> None:
         error = ctypes.create_string_buffer(2048)
         if getattr(self._library, name)(self._pointer, *args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def initialize_cc(self):
+    def initialize_cc(self) -> None:
         with self._lock:
             self._call_cc("resident_cc_initialize")
             self._history_count = self._restarts = 0
             self._invalidate()
 
-    def status(self):
+    def status(self) -> typing.Any:
         with self._lock:
             if not self._ready:
                 raise RuntimeError(
@@ -186,7 +202,7 @@ class _ResidentCCOwner(PreparedResident):
             self.control_transfers["scalar_synchronizations"] += 1
             return tuple(float(v) for v in values)
 
-    def advance_trial(self):
+    def advance_trial(self) -> None:
         with self._lock:
             if not self._ready:
                 raise RuntimeError(
@@ -195,7 +211,7 @@ class _ResidentCCOwner(PreparedResident):
             self._call_cc("resident_cc_advance_trial")
             self._invalidate()
 
-    def diis_update(self):
+    def diis_update(self) -> None:
         with self._lock:
             if not self._ready:
                 raise RuntimeError(
@@ -223,7 +239,7 @@ class _ResidentCCOwner(PreparedResident):
                 self.control_transfers["scalar_synchronizations"] += 1
             self._invalidate()
 
-    def amplitudes(self, *, last=False):
+    def amplitudes(self, *, last: typing.Any = False) -> typing.Any:
         with self._lock:
             t1 = np.empty(self._t1_shape, dtype=np.float64)
             t2 = np.empty(self._t2_shape, dtype=np.float64)
@@ -245,18 +261,18 @@ class PreparedResidentCCSD:
 
     def __init__(
         self,
-        snapshot,
-        provider,
-        compiler,
-        cache,
+        snapshot: typing.Any,
+        provider: typing.Any,
+        compiler: typing.Any,
+        cache: typing.Any,
         *,
-        options=None,
-        t1=None,
-        t2=None,
-        warm_start=None,
-        device=0,
-        provider_peak_bytes=0,
-    ):
+        options: typing.Any = None,
+        t1: typing.Any = None,
+        t2: typing.Any = None,
+        warm_start: typing.Any = None,
+        device: typing.Any = 0,
+        provider_peak_bytes: typing.Any = 0,
+    ) -> None:
         if not isinstance(compiler, CudaCompilerAdapter):
             raise TypeError("resident GPU RCCSD requires a CudaCompilerAdapter")
         if not isinstance(cache, Path):
@@ -336,7 +352,7 @@ class PreparedResidentCCSD:
         self.state_identity = self.owner_identity
         self._solved_state_identity = None
 
-    def _run(self):
+    def _run(self) -> typing.Any:
         try:
             return self.primary.run()
         except RuntimeError as error:
@@ -346,38 +362,38 @@ class PreparedResidentCCSD:
                 raise FloatingPointError(str(error)) from error
             raise
 
-    def current_status(self):
+    def current_status(self) -> typing.Any:
         _, metrics = self._run()
         return (*self.primary.status(), metrics)
 
-    def amplitudes(self, *, last=False):
+    def amplitudes(self, *, last: typing.Any = False) -> typing.Any:
         return self.primary.amplitudes(last=last)
 
-    def amplitude_snapshot(self):
+    def amplitude_snapshot(self) -> typing.Any:
         """Detach the current amplitudes with exact-reference warm-start identity."""
         return AmplitudeSnapshot(self.snapshot.identity, *self.amplitudes())
 
-    def independent(self, t1, t2):
+    def independent(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         return self.replay.execute({**self.cpu.feeds, "t1": t1, "t2": t2}).outputs
 
     @property
-    def solved_state_identity(self):
+    def solved_state_identity(self) -> typing.Any:
         """Exact qualified amplitude state; absent during mutation/nonconvergence."""
         if self._solved_state_identity is None:
             raise RuntimeError("resident CC owner has no qualified solved state")
         return self._solved_state_identity
 
-    def close(self):
+    def close(self) -> None:
         self.primary.close()
         self.replay.close()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()
 
-    def solve(self):
+    def solve(self) -> typing.Any:
         # Any new solve may mutate amplitudes; downstream solved-state bindings
         # fail closed until a fresh expanded replay qualifies the final T again.
         self._solved_state_identity = None
@@ -544,18 +560,18 @@ class PreparedResidentCCSD:
 
 
 def solve_gpu_resident(
-    snapshot,
-    provider,
+    snapshot: typing.Any,
+    provider: typing.Any,
     *,
-    compiler,
-    cache,
-    options=None,
-    t1=None,
-    t2=None,
-    warm_start=None,
-    device=0,
-    provider_peak_bytes=0,
-):
+    compiler: typing.Any,
+    cache: typing.Any,
+    options: typing.Any = None,
+    t1: typing.Any = None,
+    t2: typing.Any = None,
+    warm_start: typing.Any = None,
+    device: typing.Any = 0,
+    provider_peak_bytes: typing.Any = 0,
+) -> typing.Any:
     """Convenience owner for the #149-B resident single-system solver."""
     with PreparedResidentCCSD(
         snapshot,

@@ -9,7 +9,7 @@ not a differentiated iteration graph. No solver or native runtime is imported.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from types import MappingProxyType
@@ -28,6 +28,9 @@ from vibeqc_compiler.tensor import (
 )
 from vibeqc_compiler.tensor.ad_program import _rebuild
 
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
 SCHEMA = "vibeqc.method.implicit_solve"
 VERSION = 1
 PREFIX = "__implicit_"
@@ -41,7 +44,7 @@ def _inputs(program: Program) -> dict:
     }
 
 
-def _metric(values, size: int, name: str) -> tuple[float, ...]:
+def _metric(values: typing.Any, size: int, name: str) -> tuple[float, ...]:
     if not isinstance(values, tuple):
         raise TypeError(f"{name} must be an immutable tuple")
     if values and len(values) != size:
@@ -54,7 +57,9 @@ def _metric(values, size: int, name: str) -> tuple[float, ...]:
     return tuple(float(value) for value in values)
 
 
-def _scaled(node, weights, *, inverse=False):
+def _scaled(
+    node: typing.Any, weights: typing.Any, *, inverse: typing.Any = False
+) -> typing.Any:
     """Emit square-root metric scaling, never a dense metric/Jacobian."""
     if not weights:
         return node
@@ -68,13 +73,13 @@ def _scaled(node, weights, *, inverse=False):
     return multiply(node, factor)
 
 
-def _seed(name: str, spec: TensorSpec):
+def _seed(name: str, spec: TensorSpec) -> typing.Any:
     return input_tensor(
         PREFIX + name, replace(spec, role="input", differentiable=False)
     )
 
 
-def _substitute(program: Program, name: str, replacement) -> Program:
+def _substitute(program: Program, name: str, replacement: typing.Any) -> Program:
     # Reuse the AD frontend's primitive reconstruction, including its legality
     # checks. Multiple definitions of one named input must all be replaced.
     substitutions = {
@@ -109,7 +114,7 @@ class ImplicitSolveSpec:
     residual_metric: tuple[float, ...] = ()
     kind: ClassVar[str] = "implicit_solve"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.program, Program):
             raise TypeError("implicit residual must be a TensorIR Program")
         if set(self.program.outputs) != {self.residual_name}:
@@ -265,7 +270,7 @@ class ImplicitVJPPlan:
     programs: Mapping[str, Program]
     identity: str
 
-    def __init__(self, spec: ImplicitSolveSpec):
+    def __init__(self, spec: ImplicitSolveSpec) -> None:
         if not isinstance(spec, ImplicitSolveSpec):
             raise TypeError("implicit plan requires ImplicitSolveSpec")
         state, residual = spec.state_spec, spec.residual_spec

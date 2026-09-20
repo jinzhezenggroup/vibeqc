@@ -8,6 +8,7 @@ resource measurements or grounds for performance promotion.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass, fields
 from itertools import combinations, islice, product
 from math import prod
@@ -41,7 +42,7 @@ class TensorScheduleSpace:
     reduction_unroll: tuple[int, ...] = (1, 2, 4)
     staging_width: tuple[int, ...] = (1, 2, 4)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for field in fields(self):
             values = tuple(getattr(self, field.name))
             if not 1 <= len(values) <= 16:
@@ -63,7 +64,7 @@ class TensorScheduleSpace:
         names = tuple(axes)
         anchor = {name: values[0] for name, values in axes.items()}
 
-        def walk():
+        def walk() -> typing.Any:
             yield TensorSchedule(**anchor)
             for radius in range(1, len(names) + 1):
                 for changed in combinations(names, radius):
@@ -73,7 +74,7 @@ class TensorScheduleSpace:
         return tuple(islice(walk(), maximum))
 
 
-def _positive_int(value, label):
+def _positive_int(value: typing.Any, label: typing.Any) -> None:
     if type(value) is not int or value < 1:
         raise ValueError(f"{label} must be a positive integer")
 
@@ -91,7 +92,7 @@ class TensorSearchLimits:
     maximum_source_bytes: int = 2 * 1024**2
     minimum_resident_blocks: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name, value in asdict(self).items():
             _positive_int(value, name)
         if self.maximum_candidates > 4096:
@@ -117,7 +118,7 @@ class TensorScreeningPolicy:
     repeats: int = 5
     fixture_indices: tuple[int, ...] = (0,)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _positive_int(self.maximum_finalists, "finalist limit")
         if self.maximum_finalists > 4096:
             raise ValueError("finalist limit must not exceed 4096")
@@ -183,7 +184,9 @@ def execution_key(plan: TensorPlan) -> str:
     return canonical_hash(payload)
 
 
-def _resident_blocks(plan, registers, shared_bytes):
+def _resident_blocks(
+    plan: typing.Any, registers: typing.Any, shared_bytes: typing.Any
+) -> typing.Any:
     target, threads = plan.target, plan.schedule.threads
     limits = [target.maximum_blocks_per_sm, target.maximum_threads_per_sm // threads]
     if registers:
@@ -257,7 +260,7 @@ class ScheduleCandidate:
     estimates: dict | None = None
     equivalent_to: str | None = None
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         row = {
             "requested_schedule": asdict(self.requested),
             "status": self.status,
@@ -274,7 +277,11 @@ class ScheduleCandidate:
         return row
 
 
-def plan_schedule_search(baseline, schedules, limits=DEFAULT_SEARCH_LIMITS):
+def plan_schedule_search(
+    baseline: typing.Any,
+    schedules: typing.Any,
+    limits: typing.Any = DEFAULT_SEARCH_LIMITS,
+) -> typing.Any:
     """Plan, deduplicate and statically prune without compiling or allocating."""
     if not isinstance(limits, TensorSearchLimits):
         raise TypeError("limits must be TensorSearchLimits")
@@ -345,7 +352,9 @@ def plan_schedule_search(baseline, schedules, limits=DEFAULT_SEARCH_LIMITS):
     return tuple(candidates)
 
 
-def compiled_resource_calibration(plan, estimates, resources) -> dict:
+def compiled_resource_calibration(
+    plan: typing.Any, estimates: typing.Any, resources: typing.Any
+) -> dict:
     """Compare static heuristics with compiler-reported resources.
 
     This record calibrates the human-readable cost model; promotion still uses
@@ -399,7 +408,9 @@ def compiled_resource_calibration(plan, estimates, resources) -> dict:
     }
 
 
-def require_compiled_resources(plan, resources, *, minimum_resident_blocks=1):
+def require_compiled_resources(
+    plan: typing.Any, resources: typing.Any, *, minimum_resident_blocks: typing.Any = 1
+) -> None:
     """Fail closed on missing PTXAS data, spills or infeasible block resources."""
     required = (
         "registers",

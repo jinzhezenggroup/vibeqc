@@ -81,7 +81,7 @@ with NativeSource(
 ) as source:
     result = complete_gradient_validation(source, options=CCSDGradientOptions())
     gradient = result.gradient  # dE/dR, Eh/bohr
-    forces = result.forces      # -dE/dR, Eh/bohr
+    forces = result.forces  # -dE/dR, Eh/bohr
 ```
 
 The source is borrowed and remains open. The convenience endpoint owns/closes

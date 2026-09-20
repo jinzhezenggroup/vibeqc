@@ -11,13 +11,16 @@ import os
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..cuda_schedule import (
-    ScheduleIR,
-)
 from ..ir import KernelConsumer
 from .policy import schedule_payload
 from .shared import _PROVENANCE_FIELDS
+
+if TYPE_CHECKING:
+    from ..cuda_schedule import (
+        ScheduleIR,
+    )
 
 
 def _validated_provenance(

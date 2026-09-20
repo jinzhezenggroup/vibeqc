@@ -22,6 +22,7 @@ CPU/TensorIR entry-point contract.  CPU oracle comparison is **opt-in**
 from __future__ import annotations
 
 import time
+import typing
 from dataclasses import dataclass, field
 
 from .triples import _check_denominators, _validate
@@ -42,7 +43,7 @@ class TriplesTileConfig:
     max_bytes: int
     device: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if any(type(n) is not int or n < 1 for n in (self.nocc, self.nvir)):
             raise ValueError("triples require nonempty occupied and virtual spaces")
         if type(self.vir_chunk_size) is not int or self.vir_chunk_size < 1:
@@ -99,7 +100,9 @@ class CudaTriplesTiles:
         Writable compilation cache directory.
     """
 
-    def __init__(self, config, compiler, cache):
+    def __init__(
+        self, config: typing.Any, compiler: typing.Any, cache: typing.Any
+    ) -> None:
         from vibeqc_compiler.tensor.cuda_plan import plan_cuda
         from vibeqc_compiler.tensor.cuda_resident import (
             PreparedResident,
@@ -113,7 +116,13 @@ class CudaTriplesTiles:
         self._compile_resident = compile_resident
         self._PreparedResident = PreparedResident
 
-    def run_tiles(self, arrays, *, oracle=False, profile=False):
+    def run_tiles(
+        self,
+        arrays: typing.Any,
+        *,
+        oracle: typing.Any = False,
+        profile: typing.Any = False,
+    ) -> typing.Any:
         """Evaluate all tiles and return :class:`CudaTriplesResult`.
 
         The shared finite/canonical/denominator guards run once before any
@@ -280,16 +289,16 @@ class CudaTriplesTiles:
             },
         )
 
-    def close(self):
+    def close(self) -> typing.Any:
         pass  # no persistent resources; each tile creates and closes its own
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
 
@@ -299,8 +308,13 @@ class CudaTriplesTiles:
 
 
 def cpu_triples_tiles(
-    nocc, nvir, arrays, *, vir_chunk_size=1, denominator_threshold=1e-10
-):
+    nocc: typing.Any,
+    nvir: typing.Any,
+    arrays: typing.Any,
+    *,
+    vir_chunk_size: typing.Any = 1,
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """CPU-only tile loop; mirror of :meth:`CudaTriplesTiles.run_tiles`.
 
     Returns the same :class:`CudaTriplesResult` shape (``peak_device_bytes=0``,

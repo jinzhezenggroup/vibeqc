@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -18,8 +19,8 @@ SYSTEMS = [
     "route", ["cpu-direct", "cpu-df", "cuda-direct", "cuda-df", "cuda-source"]
 )
 def test_energy_only_batch_preserves_replay_and_force_recovery(
-    method, route, monkeypatch, tmp_path
-):
+    method: typing.Any, route: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     device, provider = route.split("-")
     if device == "cuda":
         if os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
@@ -88,11 +89,11 @@ def test_energy_only_batch_preserves_replay_and_force_recovery(
     ],
 )
 def test_invalid_batch_properties_reject_before_execution(
-    properties, error, monkeypatch
-):
+    properties: typing.Any, error: typing.Any, monkeypatch: typing.Any
+) -> None:
     with Calculator().prepare_batch(SYSTEMS) as batch:
 
-        def forbidden(*args):
+        def forbidden(*args: typing.Any) -> None:
             pytest.fail("invalid output request reached native execution")
 
         monkeypatch.setattr(batch._library, "vibeqc_batch_execute", forbidden)
@@ -101,13 +102,15 @@ def test_invalid_batch_properties_reject_before_execution(
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_energy_only_dft_batch_rejects_forces_before_execution(method, monkeypatch):
+def test_energy_only_dft_batch_rejects_forces_before_execution(
+    method: typing.Any, monkeypatch: typing.Any
+) -> None:
     preparation = (
         {"charges": [-1], "multiplicities": [2]} if method.endswith("uks") else {}
     )
     with Calculator(method=method).prepare_batch(SYSTEMS[:1], **preparation) as batch:
 
-        def forbidden(*args):
+        def forbidden(*args: typing.Any) -> None:
             pytest.fail("unsupported force request reached native execution")
 
         monkeypatch.setattr(batch._library, "vibeqc_batch_execute", forbidden)

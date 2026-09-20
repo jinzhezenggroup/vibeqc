@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -30,7 +31,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     nvcc = shutil.which("nvcc")
     assert nvcc, "selected CUDA qualification needs nvcc on PATH"
@@ -40,7 +41,7 @@ def compiler():
 
 
 @pytest.fixture(scope="module")
-def artifact(compiler):
+def artifact(compiler: typing.Any) -> typing.Any:
     return compile_directional_first(
         build_one_electron_derivative_ir("overlap", (0, 0)),
         compiler,
@@ -50,7 +51,9 @@ def artifact(compiler):
     )
 
 
-def test_signed_f_shell_eri_scatter_matches_independent_native_derivatives(compiler):
+def test_signed_f_shell_eri_scatter_matches_independent_native_derivatives(
+    compiler: typing.Any,
+) -> None:
     xyz = np.array([[0.13, -0.24, 0.37], [-0.41, 0.22, 0.91], [0.72, 0.34, -0.31]])
     exponents = (0.7, 0.8, 1.1)
     shells = (
@@ -112,7 +115,9 @@ def test_signed_f_shell_eri_scatter_matches_independent_native_derivatives(compi
             )
 
 
-def test_empty_partial_late_failure_and_clean_replay(artifact):
+def test_empty_partial_late_failure_and_clean_replay(
+    artifact: typing.Any,
+) -> None:
     primitives = (((0.7, 1.0),), ((0.8, 1.0),))
     centers = np.array([[0.1, 0.2, 0.3], [0.4, 0.3, 1.0]])
     weights = np.eye(2)
@@ -147,7 +152,9 @@ def test_empty_partial_late_failure_and_clean_replay(artifact):
 
 
 @pytest.mark.parametrize("failure", ["mapping", "target", "runtime", "terms"])
-def test_bad_mapping_or_cached_program_rejected_and_resettable(artifact, failure):
+def test_bad_mapping_or_cached_program_rejected_and_resettable(
+    artifact: typing.Any, failure: typing.Any
+) -> None:
     with DirectionalFirstAccumulator(artifact, nbf=2, natoms=2, outputs=1) as owner:
         owner.reset(np.eye(2), np.ones((2, 3)))
         changed = artifact
@@ -176,7 +183,9 @@ def test_bad_mapping_or_cached_program_rejected_and_resettable(artifact, failure
         np.testing.assert_array_equal(owner.finish(), np.zeros((1, 2, 2)))
 
 
-def test_impossible_budget_and_nonfinite_input_rejected(artifact):
+def test_impossible_budget_and_nonfinite_input_rejected(
+    artifact: typing.Any,
+) -> None:
     with pytest.raises(MemoryError, match="before allocation"):
         DirectionalFirstAccumulator(artifact, nbf=2, natoms=2, budget_bytes=1)
     with DirectionalFirstAccumulator(artifact, nbf=2, natoms=2, outputs=1) as owner:
@@ -186,7 +195,7 @@ def test_impossible_budget_and_nonfinite_input_rejected(artifact):
         np.testing.assert_array_equal(owner.finish(), np.zeros((1, 2, 2)))
 
 
-def test_numerical_overflow_poisoning_and_replay(artifact):
+def test_numerical_overflow_poisoning_and_replay(artifact: typing.Any) -> None:
     centers = np.array([[0.0, 0.0, 0.0], [0.1, 0.2, 1.0]])
     with DirectionalFirstAccumulator(artifact, nbf=2, natoms=2, outputs=1) as owner:
         owner.reset(np.eye(2), np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1e200]]))

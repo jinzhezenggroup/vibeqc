@@ -4,13 +4,16 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
 
 
 @pytest.mark.parametrize("progress", [False, True])
-def test_df_trace_disabled_capture_timing_failure_and_logical_tiles(tmp_path, progress):
+def test_df_trace_disabled_capture_timing_failure_and_logical_tiles(
+    tmp_path: typing.Any, progress: typing.Any
+) -> None:
     """Capture work cannot masquerade as execution; timing failures invalidate records."""
     nvcc = os.environ.get("VIBEQC_NVCC")
     compiler = shutil.which("c++")

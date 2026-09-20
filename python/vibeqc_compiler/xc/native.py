@@ -9,6 +9,7 @@ is introduced. CPU BLAS consumes the resulting bounded point coefficients.
 import ctypes as ct
 import os
 import tempfile
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from .program import validate_features
 from .spec import UnsupportedXC
 
 
-def _cache_source(path, source):
+def _cache_source(path: typing.Any, source: typing.Any) -> None:
     """Publish complete compiler input without rewriting a cache hit.
 
     Concurrent misses publish identical bytes via same-directory replacement;
@@ -48,7 +49,7 @@ def _cache_source(path, source):
         Path(temporary).unlink(missing_ok=True)
 
 
-def _variables(graph, roots):
+def _variables(graph: typing.Any, roots: typing.Any) -> typing.Any:
     """Order only reachable scalar leaves; inactive tau slots need no loads."""
     return tuple(
         sorted(
@@ -61,7 +62,7 @@ def _variables(graph, roots):
     )
 
 
-def emit_native(program):
+def emit_native(program: typing.Any) -> typing.Any:
     """Emit checked point loops around shared scalar C lowering, with no AO expansion."""
     graphs = {"xc_scalar": (program.program.graph, program.program.roots)}
     if program.contract.request.observable in ("potential", "geometry"):
@@ -133,7 +134,9 @@ def emit_native(program):
 class _PointFunction:
     """Checked contiguous arrays for a generated native point function."""
 
-    def __init__(self, library, name, layout):
+    def __init__(
+        self, library: typing.Any, name: typing.Any, layout: typing.Any
+    ) -> None:
         self.variables = tuple(layout["variables"])
         self.outputs = layout["outputs"]
         self.function = getattr(library, name)
@@ -146,7 +149,7 @@ class _PointFunction:
         ]
         self.function.restype = ct.c_int
 
-    def evaluate_matrix(self, values):
+    def evaluate_matrix(self, values: typing.Any) -> typing.Any:
         """Consume an already-owned feature-major FP64 matrix without repacking."""
         values = np.asarray(values)
         if (
@@ -171,7 +174,7 @@ class _PointFunction:
             raise ArithmeticError(f"native XC point evaluation failed at output {code}")
         return output
 
-    def evaluate(self, variables, npoint):
+    def evaluate(self, variables: typing.Any, npoint: typing.Any) -> typing.Any:
         values = (
             np.stack(
                 [np.broadcast_to(variables[name], (npoint,)) for name in self.variables]
@@ -185,10 +188,17 @@ class _PointFunction:
 class _NativeCoefficients:
     """Keep diagnostic/native binding and root-label interpretation identical."""
 
-    def __init__(self, program, function):
+    def __init__(self, program: typing.Any, function: typing.Any) -> None:
         self.program, self.function = program, function
 
-    def evaluate(self, gradient, v, *, delta_gradient=None, delta_v=None):
+    def evaluate(
+        self,
+        gradient: typing.Any,
+        v: typing.Any,
+        *,
+        delta_gradient: typing.Any = None,
+        delta_v: typing.Any = None,
+    ) -> typing.Any:
         variables, npoint = self.program.bind(
             gradient, v, delta_gradient=delta_gradient, delta_v=delta_v
         )
@@ -198,10 +208,10 @@ class _NativeCoefficients:
 class _NativeJetPullback:
     """Native execution of the identical generated two-leg AO pullback."""
 
-    def __init__(self, program, function):
+    def __init__(self, program: typing.Any, function: typing.Any) -> None:
         self.program, self.function = program, function
 
-    def evaluate(self, coefficients, work):
+    def evaluate(self, coefficients: typing.Any, work: typing.Any) -> typing.Any:
         variables, shape = self.program.bind(coefficients, work)
         return self.program.unpack(
             self.function.evaluate(variables, shape[0] * shape[1]), shape
@@ -216,7 +226,14 @@ class NativeContractionProgram(ContractionProgram):
     a complete bounded collocation/response/geometry endpoint.
     """
 
-    def __init__(self, spec, observable="potential", *, compiler, cache):
+    def __init__(
+        self,
+        spec: typing.Any,
+        observable: typing.Any = "potential",
+        *,
+        compiler: typing.Any,
+        cache: typing.Any,
+    ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
             raise TypeError("native XC currently requires CppCompilerAdapter")
         super().__init__(spec, observable)
@@ -254,7 +271,7 @@ class NativeContractionProgram(ContractionProgram):
                 self.jet_pullback, functions["xc_jet_pullback"]
             )
 
-    def scalar_values(self, features):
+    def scalar_values(self, features: typing.Any) -> typing.Any:
         """Preserve audited physical-domain checks before native scalar evaluation."""
         x, active = validate_features(
             self.spec, _pack(self.spec, features), order=self.program.order
@@ -265,7 +282,7 @@ class NativeContractionProgram(ContractionProgram):
             result[:, active] = self._scalar.evaluate(variables, int(active.sum()))
         return dict(zip(self.program.outputs, result, strict=True))
 
-    def scalar_values_packed(self, features):
+    def scalar_values_packed(self, features: typing.Any) -> typing.Any:
         """Consume ProgramIR-owned polarized features with no hidden materialization."""
         if self.spec.spin != "polarized":
             raise ValueError(

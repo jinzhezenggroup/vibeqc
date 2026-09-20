@@ -13,6 +13,7 @@ import shutil
 import statistics
 import tempfile
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +29,7 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def _fixture():
+def _fixture() -> typing.Any:
     coordinates = np.array(
         [
             [0.13, -0.31, 0.24],
@@ -59,7 +60,7 @@ def _fixture():
     return coordinates, specs, primitives, shells
 
 
-def _median_ms(function, samples):
+def _median_ms(function: typing.Any, samples: typing.Any) -> typing.Any:
     for _ in range(5):
         function()
     timings = []
@@ -70,7 +71,7 @@ def _median_ms(function, samples):
     return statistics.median(timings)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--samples", type=int, default=50)
     parser.add_argument("--tile-size", type=int, default=5)

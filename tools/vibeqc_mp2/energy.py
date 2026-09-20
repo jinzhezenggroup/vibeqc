@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import threading
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -42,7 +43,7 @@ class EnergyResult:
     scalar_fold_backend: str = "cpu-compensated-sum"
 
 
-def denominator_check(snapshot, threshold):
+def denominator_check(snapshot: typing.Any, threshold: typing.Any) -> typing.Any:
     """Check extrema of the separable denominator before any integral reads."""
     if not np.isfinite(threshold) or threshold <= 0:
         raise ValueError("denominator threshold must be finite and positive")
@@ -83,21 +84,21 @@ class PreparedMP2Energy:
 
     def __init__(
         self,
-        snapshot,
-        source,
+        snapshot: typing.Any,
+        source: typing.Any,
         *,
-        occupied_tile=1,
-        virtual_tile=2,
-        axis_tile=2,
-        budget_bytes=256 << 20,
-        denominator_threshold=1e-10,
-        energy_backend="cpu",
-        integral_backend="cpu",
-        transform_artifact=None,
-        compiler=None,
-        cache=None,
-        device_id=0,
-    ):
+        occupied_tile: typing.Any = 1,
+        virtual_tile: typing.Any = 2,
+        axis_tile: typing.Any = 2,
+        budget_bytes: typing.Any = 256 << 20,
+        denominator_threshold: typing.Any = 1e-10,
+        energy_backend: typing.Any = "cpu",
+        integral_backend: typing.Any = "cpu",
+        transform_artifact: typing.Any = None,
+        compiler: typing.Any = None,
+        cache: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         if not isinstance(snapshot, ReferenceSnapshot):
             raise TypeError("MP2 requires a validated CG10 ReferenceSnapshot")
         for name, value in (
@@ -184,18 +185,18 @@ class PreparedMP2Energy:
             )
 
     @property
-    def state(self):
+    def state(self) -> typing.Any:
         return self._state
 
     @property
-    def last_result(self):
+    def last_result(self) -> typing.Any:
         return self._last_result
 
     @property
-    def numeric_capacity_bytes(self):
+    def numeric_capacity_bytes(self) -> typing.Any:
         return self._capacity
 
-    def _blocks(self):
+    def _blocks(self) -> typing.Any:
         no, nm = self._snapshot.nocc, self._snapshot.nmo
         for i, j, a, b in product(
             range(0, no, self._ot),
@@ -212,7 +213,7 @@ class PreparedMP2Energy:
                 )
             )
 
-    def _read(self, block):
+    def _read(self, block: typing.Any) -> typing.Any:
         result = self._provider.get(block)
         if (
             result.reference_id != self._snapshot.identity
@@ -223,7 +224,7 @@ class PreparedMP2Energy:
         self._provider.clear()
         return values
 
-    def execute(self, *, properties=("energy",)):
+    def execute(self, *, properties: typing.Any = ("energy",)) -> typing.Any:
         """Recompute with fresh private blocks; errors never publish partial energy."""
         with self._lock:
             if self._state == "closed":
@@ -324,14 +325,14 @@ class PreparedMP2Energy:
             self._state = "ready"
             return result
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             self._provider.close()
             self._last_result = None
             self._state = "closed"
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

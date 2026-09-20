@@ -133,9 +133,14 @@ CPU provider:
 ```python
 from tools.vibeqc_cc import SolverOptions, solve
 
-result = solve(snapshot, provider, options=SolverOptions(
-    energy_tolerance=1e-12, residual_tolerance=1e-10,
-))
+result = solve(
+    snapshot,
+    provider,
+    options=SolverOptions(
+        energy_tolerance=1e-12,
+        residual_tolerance=1e-10,
+    ),
+)
 if not result.converged:
     raise RuntimeError(result.reason)
 print(result.correlation_energy, result.total_energy)

@@ -6,6 +6,7 @@ class definitions or cache implementation belongs here.
 """
 
 import sys
+import typing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
@@ -17,9 +18,9 @@ __all__ = list(
 )
 
 
-def __getattr__(name):
+def __getattr__(name: typing.Any) -> typing.Any:
     return getattr(_target, name)
 
 
-def __dir__():
+def __dir__() -> typing.Any:
     return sorted(set(globals()) | set(dir(_target)))

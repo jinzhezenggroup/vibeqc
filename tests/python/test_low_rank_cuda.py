@@ -1,6 +1,7 @@
 """Scheduled CUDA prefix reuse, same-approximation consumers and owner checks."""
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +24,7 @@ from tools.vibeqc_posthf.sources import pointer
 
 
 @pytest.fixture(scope="module")
-def artifact(tmp_path_factory):
+def artifact(tmp_path_factory: typing.Any) -> typing.Any:
     if os.environ.get("VIBEQC_TEST_LOW_RANK_CUDA") != "1":
         pytest.skip("set VIBEQC_TEST_LOW_RANK_CUDA=1 in a scheduled GPU job")
     if not os.environ.get("SLURM_JOB_ID"):
@@ -36,7 +37,7 @@ def artifact(tmp_path_factory):
     )
 
 
-def test_cuda_budget_preflight_never_reads_source_or_loads_a_device():
+def test_cuda_budget_preflight_never_reads_source_or_loads_a_device() -> None:
     source = DenseColumns(np.eye(3), 2)
     with pytest.raises(MemoryError):
         CudaIncrementalCholesky(
@@ -46,7 +47,9 @@ def test_cuda_budget_preflight_never_reads_source_or_loads_a_device():
 
 
 @pytest.mark.parametrize("spins", [1, 2])
-def test_resident_cuda_prefix_and_jk_match_independent_dense_tensor(artifact, spins):
+def test_resident_cuda_prefix_and_jk_match_independent_dense_tensor(
+    artifact: typing.Any, spins: typing.Any
+) -> None:
     rng = np.random.default_rng(19)
     raw = rng.normal(size=(6, 6))
     matrix = raw @ raw.T + np.eye(6) * 0.1
@@ -105,7 +108,7 @@ def test_resident_cuda_prefix_and_jk_match_independent_dense_tensor(artifact, sp
         factor.refine(0)
 
 
-def test_cuda_native_source_extension_and_zero_rank(artifact):
+def test_cuda_native_source_extension_and_zero_rank(artifact: typing.Any) -> None:
     source, arrays = source_for("water")
     with (
         source,
@@ -135,7 +138,9 @@ def test_cuda_native_source_extension_and_zero_rank(artifact):
         np.testing.assert_allclose(factors(factor), factors(cpu), atol=1e-12)
 
 
-def test_cuda_rejected_schur_column_preserves_native_prefix(artifact):
+def test_cuda_rejected_schur_column_preserves_native_prefix(
+    artifact: typing.Any,
+) -> None:
     source = DenseColumns([[1, 2, 0], [2, 1, 0], [0, 0, 1]], 2)
     with CudaIncrementalCholesky(source, artifact, rank_capacity=3) as factor:
         with pytest.raises(ValueError, match="PSD Cauchy"):
@@ -144,7 +149,9 @@ def test_cuda_rejected_schur_column_preserves_native_prefix(artifact):
         np.testing.assert_array_equal(LowRankProvider(factor).jk(np.eye(2)).exchange, 0)
 
 
-def test_cuda_staged_initializer_matches_exact_cleanup_under_budget(artifact):
+def test_cuda_staged_initializer_matches_exact_cleanup_under_budget(
+    artifact: typing.Any,
+) -> None:
     from test_low_rank_refinement import basis_for
     from vibeqc.fock import FockPlan
 

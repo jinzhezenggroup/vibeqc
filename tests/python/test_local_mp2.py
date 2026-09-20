@@ -1,5 +1,6 @@
 """Native bounded providers must recover canonical MP2 before truncation."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -25,7 +26,7 @@ from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def ao_atoms(source):
+def ao_atoms(source: typing.Any) -> typing.Any:
     return tuple(
         sh.atom_index
         for sh in source.shells
@@ -39,7 +40,9 @@ def ao_atoms(source):
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
 @pytest.mark.parametrize("label", ["conventional", "df"])
-def test_full_space_recovery_with_independent_same_hamiltonian_mp2(name, label):
+def test_full_space_recovery_with_independent_same_hamiltonian_mp2(
+    name: typing.Any, label: typing.Any
+) -> None:
     meta, arrays = load_fixture(name)
     with NativeSource(**source_arguments(meta)) as source:
         metric = MetricFactor.from_source(source) if label == "df" else None
@@ -100,8 +103,8 @@ def test_full_space_recovery_with_independent_same_hamiltonian_mp2(name, label):
 
 
 def test_constrained_budget_and_truncation_do_not_change_parent_hamiltonian(
-    monkeypatch,
-):
+    monkeypatch: typing.Any,
+) -> None:
     meta, arrays = load_fixture("water")
     with NativeSource(**source_arguments(meta)) as source:
         s = fixture_snapshot(meta, arrays)
@@ -139,7 +142,7 @@ def test_constrained_budget_and_truncation_do_not_change_parent_hamiltonian(
             recover_canonical_amplitudes(s, local, exact, budget_bytes=1)
 
 
-def test_stale_localization_and_malformed_occupied_coupling_are_rejected():
+def test_stale_localization_and_malformed_occupied_coupling_are_rejected() -> None:
     meta, arrays = load_fixture("lih")
     with NativeSource(**source_arguments(meta)) as source:
         s = fixture_snapshot(meta, arrays)
@@ -163,7 +166,7 @@ def test_stale_localization_and_malformed_occupied_coupling_are_rejected():
             )
 
 
-def test_near_zero_denominators_fail_before_any_truncated_local_result():
+def test_near_zero_denominators_fail_before_any_truncated_local_result() -> None:
     meta, arrays = load_fixture("h2")
     with NativeSource(**source_arguments(meta)) as source:
         s = fixture_snapshot(meta, arrays)
@@ -178,8 +181,8 @@ def test_near_zero_denominators_fail_before_any_truncated_local_result():
 
 @pytest.mark.parametrize("exponent", [1.0, 1e-12])
 def test_duplicate_and_extremely_diffuse_native_bases_cannot_supply_a_local_reference(
-    exponent,
-):
+    exponent: typing.Any,
+) -> None:
     atoms = [("H", (0, 0, 0)), ("H", (0, 0, 1.4))]
     basis = [
         Shell(0, 0, (Primitive(exponent, 1.0),)),
@@ -193,7 +196,7 @@ def test_duplicate_and_extremely_diffuse_native_bases_cannot_supply_a_local_refe
             export_rhf(source)
 
 
-def test_native_atom_permutation_preserves_local_truncation_with_new_identity():
+def test_native_atom_permutation_preserves_local_truncation_with_new_identity() -> None:
     metadata, _ = load_fixture("water")
     args = source_arguments(metadata)
     reversed_args = dict(args)

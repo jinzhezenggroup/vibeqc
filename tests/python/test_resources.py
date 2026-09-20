@@ -1,6 +1,7 @@
 """Global lifetime composition, coupled budgets and side-effect-free planning."""
 
 import json
+import typing
 from dataclasses import replace
 
 import pytest
@@ -18,7 +19,7 @@ from vibeqc.resources import (
 )
 
 
-def request(name, candidates):
+def request(name: typing.Any, candidates: typing.Any) -> typing.Any:
     identity = ResourceIdentity(
         "hf",
         name,
@@ -31,13 +32,19 @@ def request(name, candidates):
     return ResourceRequest(name, identity, tuple(candidates))
 
 
-def allocation(name, size, begin, end, **kwargs):
+def allocation(
+    name: typing.Any,
+    size: typing.Any,
+    begin: typing.Any,
+    end: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Any:
     return ResourceEstimate(
         name, size, kwargs.pop("space", "pageable"), begin, end, **kwargs
     )
 
 
-def test_shared_state_plus_serial_phases_does_not_sum_phase_maxima():
+def test_shared_state_plus_serial_phases_does_not_sum_phase_maxima() -> None:
     hf = request(
         "hf",
         [
@@ -72,7 +79,7 @@ def test_shared_state_plus_serial_phases_does_not_sum_phase_maxima():
     assert plan.identity == plan_resources([hf, tensor], plan.budget).identity
 
 
-def test_concurrent_stream_lifetimes_and_host_pinned_total_are_composed():
+def test_concurrent_stream_lifetimes_and_host_pinned_total_are_composed() -> None:
     a = request(
         "a",
         [
@@ -92,7 +99,7 @@ def test_concurrent_stream_lifetimes_and_host_pinned_total_are_composed():
         plan.require_feasible()
 
 
-def test_coupled_host_device_tradeoff_selects_supported_streaming():
+def test_coupled_host_device_tradeoff_selects_supported_streaming() -> None:
     resident = ResourceCandidate(
         "resident",
         "resident",
@@ -131,7 +138,7 @@ def test_coupled_host_device_tradeoff_selects_supported_streaming():
     )
 
 
-def test_each_device_and_combined_device_caps_both_apply():
+def test_each_device_and_combined_device_caps_both_apply() -> None:
     r = request(
         "tensor",
         [
@@ -160,7 +167,7 @@ def test_each_device_and_combined_device_caps_both_apply():
     )
 
 
-def test_recomputation_keeps_outputs_and_fixed_state_reserved():
+def test_recomputation_keeps_outputs_and_fixed_state_reserved() -> None:
     r = request(
         "tensor",
         [
@@ -195,7 +202,7 @@ def test_recomputation_keeps_outputs_and_fixed_state_reserved():
     )
 
 
-def test_headroom_reserve_zero_and_unlimited_are_distinct():
+def test_headroom_reserve_zero_and_unlimited_are_distinct() -> None:
     assert (
         ResourceBudget(
             host_bytes=100, host_reserve_bytes=5, headroom_fraction=0.25
@@ -214,7 +221,7 @@ def test_headroom_reserve_zero_and_unlimited_are_distinct():
 
 
 @pytest.mark.parametrize("bad", [-1, True, 1.5, MAX_BYTES + 1])
-def test_sizes_and_products_cannot_wrap(bad):
+def test_sizes_and_products_cannot_wrap(bad: typing.Any) -> None:
     with pytest.raises(ValueError):
         ResourceBudget(host_bytes=bad)
     with pytest.raises(ValueError):
@@ -223,7 +230,7 @@ def test_sizes_and_products_cannot_wrap(bad):
         byte_product(MAX_BYTES, 2)
 
 
-def test_unsupported_provider_and_search_limit_are_not_false_oom():
+def test_unsupported_provider_and_search_limit_are_not_false_oom() -> None:
     r = request(
         "a", [ResourceCandidate("one", "resident", (allocation("x", 1, 0, 0),))]
     )
@@ -237,7 +244,7 @@ def test_unsupported_provider_and_search_limit_are_not_false_oom():
     )
 
 
-def test_sparse_phase_ids_do_not_allocate_a_dense_timeline():
+def test_sparse_phase_ids_do_not_allocate_a_dense_timeline() -> None:
     r = request(
         "sparse",
         [
@@ -254,7 +261,7 @@ def test_sparse_phase_ids_do_not_allocate_a_dense_timeline():
     assert plan_resources([r], ResourceBudget(host_bytes=20)).peak_bytes["host"] == 20
 
 
-def test_scientific_and_schedule_changes_invalidate_plan_identity():
+def test_scientific_and_schedule_changes_invalidate_plan_identity() -> None:
     r = request(
         "a", [ResourceCandidate("one", "resident", (allocation("x", 1, 0, 0),))]
     )
@@ -269,7 +276,7 @@ def test_scientific_and_schedule_changes_invalidate_plan_identity():
         assert plan_resources([changed], ResourceBudget()).identity != base
 
 
-def test_portable_plan_rechecks_derived_bytes_even_after_rehashed_tampering():
+def test_portable_plan_rechecks_derived_bytes_even_after_rehashed_tampering() -> None:
     from vibeqc.profiles import canonical_hash
 
     r = request(
@@ -285,7 +292,7 @@ def test_portable_plan_rechecks_derived_bytes_even_after_rehashed_tampering():
         ResourcePlan.from_dict(payload)
 
 
-def test_allocation_retry_only_returns_enumerated_lower_memory_candidates():
+def test_allocation_retry_only_returns_enumerated_lower_memory_candidates() -> None:
     r = request(
         "a",
         [
@@ -304,17 +311,17 @@ def test_allocation_retry_only_returns_enumerated_lower_memory_candidates():
     assert not lower_memory_plans(alternatives[0], "host")
 
 
-def test_session_releases_failed_group_before_retry_and_enforces_lifetimes():
+def test_session_releases_failed_group_before_retry_and_enforces_lifetimes() -> None:
     from vibeqc.resources import ResourceAllocationError, ResourceSession
 
     events = []
 
     class Owner:
-        def __init__(self, name):
+        def __init__(self, name: typing.Any) -> None:
             self.name = name
             events.append(("allocate", name))
 
-        def close(self):
+        def close(self) -> None:
             events.append(("close", self.name))
 
     a = request(
@@ -333,7 +340,7 @@ def test_session_releases_failed_group_before_retry_and_enforces_lifetimes():
         "c", [ResourceCandidate("fixed", "resident", (allocation("c", 90, 1, 1),))]
     )
 
-    def factory_b(plan):
+    def factory_b(plan: typing.Any) -> typing.Any:
         if dict(plan.selections)["b"] == "large":
             events.append(("failed", "b"))
             raise ResourceAllocationError("host", "allocator rejected b")
@@ -365,7 +372,7 @@ def test_session_releases_failed_group_before_retry_and_enforces_lifetimes():
     assert events[-1] == ("close", "c")
 
 
-def test_session_never_retries_numerical_errors_or_changes_live_owners():
+def test_session_never_retries_numerical_errors_or_changes_live_owners() -> None:
     from vibeqc.resources import ResourceAllocationError, ResourceSession
 
     retained = request(
@@ -384,7 +391,7 @@ def test_session_never_retries_numerical_errors_or_changes_live_owners():
     closed = []
 
     class Retained:
-        def close(self):
+        def close(self) -> None:
             closed.append("a")
 
     for failure in (
@@ -393,7 +400,11 @@ def test_session_never_retries_numerical_errors_or_changes_live_owners():
     ):
         attempts = []
 
-        def fail(selected, attempts=attempts, failure=failure):
+        def fail(
+            selected: typing.Any,
+            attempts: typing.Any = attempts,
+            failure: typing.Any = failure,
+        ) -> None:
             attempts.append(selected.identity)
             raise failure
 
@@ -409,7 +420,7 @@ def test_session_never_retries_numerical_errors_or_changes_live_owners():
     assert closed == ["a", "a"]
 
 
-def test_resource_session_rejects_internal_phases_it_cannot_enforce():
+def test_resource_session_rejects_internal_phases_it_cannot_enforce() -> None:
     from vibeqc.resources import ResourceSession
 
     r = request(
@@ -429,7 +440,7 @@ def test_resource_session_rejects_internal_phases_it_cannot_enforce():
         ResourceSession(plan_resources([r], ResourceBudget()), {"a": lambda p: None})
 
 
-def test_session_exhausts_alternating_host_device_failures_without_cycling():
+def test_session_exhausts_alternating_host_device_failures_without_cycling() -> None:
     from vibeqc.resources import ResourceAllocationError, ResourceSession
 
     choices = request(
@@ -456,7 +467,7 @@ def test_session_exhausts_alternating_host_device_failures_without_cycling():
     )
     attempts = []
 
-    def fail(plan):
+    def fail(plan: typing.Any) -> None:
         choice = dict(plan.selections)["a"]
         attempts.append(choice)
         # Fail fast if the executor regresses into a retry cycle.
@@ -475,7 +486,7 @@ def test_session_exhausts_alternating_host_device_failures_without_cycling():
         assert session.fallbacks[-1]["to_plan"] is None
 
 
-def test_native_ledger_metadata_needs_no_gpu_and_rejects_concurrent_binding():
+def test_native_ledger_metadata_needs_no_gpu_and_rejects_concurrent_binding() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     from vibeqc import Calculator
@@ -494,7 +505,7 @@ def test_native_ledger_metadata_needs_no_gpu_and_rejects_concurrent_binding():
     r = replace(r, identity=replace(r.identity, backend="cuda"))
     ledger = NativeDeviceLedger(library, plan_resources([r], ResourceBudget()))
 
-    def observe():
+    def observe() -> typing.Any:
         with CpuResourceObservation(library, ledger=ledger):
             return ledger.to_dict()
 

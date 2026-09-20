@@ -5,6 +5,7 @@ helpers describe small mathematical-center outputs and validation adapters;
 they do not imply an executable second-order backend or a molecular Hessian.
 """
 
+import typing
 from dataclasses import dataclass
 from math import sqrt
 
@@ -28,7 +29,7 @@ class HessianLayout:
     centers: tuple[int, ...]
     packing: str = "dense"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         if not 1 <= len(self.centers) <= 4 or len(set(self.centers)) != len(
             self.centers
@@ -42,19 +43,19 @@ class HessianLayout:
             raise ValueError("Hessian packing must be dense or svec")
 
     @property
-    def dimension(self):
+    def dimension(self) -> typing.Any:
         """Number of ordered mathematical-center Cartesian coordinates."""
         return 3 * len(self.centers)
 
     @property
-    def pairs(self):
+    def pairs(self) -> typing.Any:
         """Upper-triangular coordinate pairs in deterministic packed order."""
         return tuple(
             (i, j) for i in range(self.dimension) for j in range(i, self.dimension)
         )
 
     @property
-    def tensor_layout(self):
+    def tensor_layout(self) -> typing.Any:
         """Reuse the common numeric layout and byte-count contract."""
         if self.packing == "svec":
             return TensorLayout(("symmetric_coordinate_pair",), (len(self.pairs),))
@@ -63,7 +64,7 @@ class HessianLayout:
             (len(self.centers), 3, len(self.centers), 3),
         )
 
-    def encode(self, matrix):
+    def encode(self, matrix: typing.Any) -> typing.Any:
         """Store a finite symmetric coordinate matrix without averaging its entries.
 
         This bounded diagnostic adapter allows only floating-point roundoff in
@@ -81,7 +82,7 @@ class HessianLayout:
                 [matrix[i, j] * (1 if i == j else sqrt(2)) for i, j in self.pairs]
             )
 
-    def decode(self, values):
+    def decode(self, values: typing.Any) -> typing.Any:
         """Recover a coordinate matrix using the same packed inner-product factors."""
         values = _finite_array(values, self.tensor_layout.shape)
         if self.packing == "dense":
@@ -106,7 +107,7 @@ class CenterRecovery:
     independent: tuple[int, ...]
     rows: tuple[tuple[int, ...], ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         object.__setattr__(self, "independent", tuple(self.independent))
         object.__setattr__(self, "rows", tuple(tuple(row) for row in self.rows))
@@ -134,24 +135,24 @@ class CenterRecovery:
             )
 
     @property
-    def coordinate_matrix(self):
+    def coordinate_matrix(self) -> typing.Any:
         """Expand center recovery into ordered xyz coordinates for diagnostics."""
         return np.kron(np.asarray(self.rows, dtype=float), np.eye(3))
 
-    def project_direction(self, direction):
+    def project_direction(self, direction: typing.Any) -> typing.Any:
         """Project a fixed shell-center direction before differentiating its scalar."""
         direction = _finite_array(direction, (len(self.centers), 3))
         with np.errstate(over="raise", invalid="raise"):
             return np.asarray(self.rows, dtype=float).T @ direction
 
-    def recover_hessian(self, independent):
+    def recover_hessian(self, independent: typing.Any) -> typing.Any:
         """Recover both raw coordinate indices for a small validation block."""
         independent = _finite_array(independent, (3 * len(self.independent),) * 2)
         matrix = self.coordinate_matrix
         with np.errstate(over="raise", invalid="raise"):
             return matrix @ independent @ matrix.T
 
-    def recover_vector(self, independent):
+    def recover_vector(self, independent: typing.Any) -> typing.Any:
         """Recover an HVP output after its input direction has been projected."""
         independent = _finite_array(independent, (len(self.independent), 3))
         with np.errstate(over="raise", invalid="raise"):
@@ -171,7 +172,7 @@ class SecondAtomMap:
     centers: tuple[int, ...]
     center_atoms: tuple[int, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         object.__setattr__(self, "center_atoms", tuple(self.center_atoms))
         HessianLayout(self.centers)
@@ -183,12 +184,12 @@ class SecondAtomMap:
             checked_index(atom, "physical atom")
 
     @property
-    def atom_indices(self):
+    def atom_indices(self) -> typing.Any:
         """Stable compact atom output order, including noncontiguous atom labels."""
         return tuple(sorted(set(self.center_atoms)))
 
     @property
-    def matrix(self):
+    def matrix(self) -> typing.Any:
         """Center-to-atom incidence; its transpose scatters a center response."""
         return np.array(
             [
@@ -198,18 +199,18 @@ class SecondAtomMap:
             dtype=float,
         )
 
-    def expand_direction(self, atom_direction):
+    def expand_direction(self, atom_direction: typing.Any) -> typing.Any:
         """Copy each physical atom displacement to all requested center slots."""
         atom_direction = _finite_array(atom_direction, (len(self.atom_indices), 3))
         return self.matrix @ atom_direction
 
-    def scatter_hvp(self, center_response):
+    def scatter_hvp(self, center_response: typing.Any) -> typing.Any:
         """Sum center responses only after complete translation recovery."""
         center_response = _finite_array(center_response, (len(self.centers), 3))
         with np.errstate(over="raise", invalid="raise"):
             return self.matrix.T @ center_response
 
-    def scatter_hessian(self, center_hessian):
+    def scatter_hessian(self, center_hessian: typing.Any) -> typing.Any:
         """Diagnostic small-block chain rule on both coordinate indices."""
         center_hessian = _finite_array(center_hessian, (3 * len(self.centers),) * 2)
         incidence = np.kron(self.matrix, np.eye(3))
@@ -244,7 +245,13 @@ def second_center_recovery(
     return CenterRecovery(centers, independent, rows)
 
 
-def second_coordinate_tiles(centers, *, packing="dense", hvp=False, tile_size=6):
+def second_coordinate_tiles(
+    centers: typing.Any,
+    *,
+    packing: typing.Any = "dense",
+    hvp: typing.Any = False,
+    tile_size: typing.Any = 6,
+) -> typing.Any:
     """Partition shell-local coordinate outputs without allocating a Hessian.
 
     Native helpers own at most twelve coordinates each. The default six-root
@@ -267,7 +274,7 @@ def second_coordinate_tiles(centers, *, packing="dense", hvp=False, tile_size=6)
     )
 
 
-def _finite_array(value, shape):
+def _finite_array(value: typing.Any, shape: typing.Any) -> typing.Any:
     """Reject complex, nonfinite or mismatched scientific diagnostic buffers."""
     if np.iscomplexobj(value):
         raise ValueError("Hessian buffers must be real")

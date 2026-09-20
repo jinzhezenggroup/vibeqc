@@ -1,6 +1,7 @@
 """D4 EEQ MethodIR and pinned-data identity tests for #493."""
 
 import json
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from vibeqc_compiler.method import (
 )
 
 
-def test_r2scan3c_d4_manifest_is_exact_and_roundtrips():
+def test_r2scan3c_d4_manifest_is_exact_and_roundtrips() -> None:
     spec = r2scan3c_d4_eeq()
     assert D4Spec(**spec.to_payload()) == spec
     assert (spec.s6, spec.s8, spec.s9, spec.a1, spec.a2) == (
@@ -29,7 +30,7 @@ def test_r2scan3c_d4_manifest_is_exact_and_roundtrips():
     assert spec.charge_cn_cutoff == 25.0
 
 
-def test_r2scan3c_manifest_hashes_generated_assets():
+def test_r2scan3c_manifest_hashes_generated_assets() -> None:
     root = Path(__file__).resolve().parents[2]
     manifest = json.loads(
         (root / "src/dft/dispersion/d4_eeq_manifest.json").read_text()
@@ -41,7 +42,7 @@ def test_r2scan3c_manifest_hashes_generated_assets():
     )
 
 
-def test_d4_composes_without_method_specific_scientific_node():
+def test_d4_composes_without_method_specific_scientific_node() -> None:
     correction = r2scan3c_d4_eeq()
     graph = resolve_method(replace(METHOD_CATALOG["PBE"], dispersion=correction))
     assert graph.primitives[-1] == DispersionCorrectionPrimitive(correction)
@@ -61,12 +62,14 @@ def test_d4_composes_without_method_specific_scientific_node():
         ({"table_sha256": "0"}, "SHA-256"),
     ],
 )
-def test_d4_manifest_rejects_semantic_mismatch(changes, match):
+def test_d4_manifest_rejects_semantic_mismatch(
+    changes: typing.Any, match: typing.Any
+) -> None:
     with pytest.raises(ValueError, match=match):
         replace(r2scan3c_d4_eeq(), **changes)
 
 
-def test_d4_and_nonlocal_correlation_survive_shared_method_composition():
+def test_d4_and_nonlocal_correlation_survive_shared_method_composition() -> None:
     from vibeqc_compiler.method import VV10, original_nonlocal_correlation
 
     correction = r2scan3c_d4_eeq()

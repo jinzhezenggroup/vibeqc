@@ -181,7 +181,7 @@ def replay(report_path: Path) -> dict:
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("--output", type=Path)

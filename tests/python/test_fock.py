@@ -2,6 +2,7 @@
 
 import ctypes as ct
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -27,7 +28,7 @@ ATOMS = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
 DEVICE = os.environ.get("VIBEQC_TEST_FOCK_DEVICE", "cpu")
 
 
-def term(choice, coefficient):
+def term(choice: typing.Any, coefficient: typing.Any) -> typing.Any:
     return FockTerm(
         choice != "absent",
         coefficient,
@@ -38,7 +39,9 @@ def term(choice, coefficient):
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
 @pytest.mark.parametrize("j", ["absent", "exact", "density_fitted"])
 @pytest.mark.parametrize("k", ["absent", "exact", "density_fitted"])
-def test_independent_fixed_density_energy_variation_and_response(spin, j, k):
+def test_independent_fixed_density_energy_variation_and_response(
+    spin: typing.Any, j: typing.Any, k: typing.Any
+) -> None:
     spec = FockBuildSpec(spin=spin, coulomb=term(j, -0.7), exchange=term(k, 0.23))
     d = np.array([[0.8, 0.1], [0.1, 0.6]])
     direction = np.array([[0.17, -0.13], [-0.13, 0.11]])
@@ -79,7 +82,7 @@ def test_independent_fixed_density_energy_variation_and_response(spin, j, k):
         np.testing.assert_allclose(plan.evaluate(d).fock, result.fock, atol=1e-11)
 
 
-def test_native_failure_publication_and_preflight():
+def test_native_failure_publication_and_preflight() -> None:
     with NativeAO(ATOMS) as basis, FockPlan(basis, device=DEVICE) as plan:
         d = np.eye(2)
         shared = np.full((2, 2), 79.0)
@@ -113,7 +116,7 @@ def test_native_failure_publication_and_preflight():
         np.testing.assert_array_equal(plan.evaluate(d).fock, before.fock)
 
 
-def test_identity_and_zero_coefficients():
+def test_identity_and_zero_coefficients() -> None:
     with NativeAO(ATOMS) as basis:
         zero = FockBuildSpec(
             coulomb=FockTerm(coefficient=0.0), exchange=FockTerm(coefficient=0.0)
@@ -144,8 +147,8 @@ def test_identity_and_zero_coefficients():
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 def test_semilocal_consumer_uses_common_j_and_independent_xc_fixture(
-    approximation, spin, name
-):
+    approximation: typing.Any, spin: typing.Any, name: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     separate = spin == "unrestricted"
     layout = "spin" if separate else "total"
@@ -191,7 +194,9 @@ def test_semilocal_consumer_uses_common_j_and_independent_xc_fixture(
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
 @pytest.mark.parametrize("j", ["exact", "density_fitted"])
 @pytest.mark.parametrize("k", ["exact", "density_fitted"])
-def test_public_scf_force_variation_replay_and_legacy_equivalence(spin, j, k):
+def test_public_scf_force_variation_replay_and_legacy_equivalence(
+    spin: typing.Any, j: typing.Any, k: typing.Any
+) -> None:
     state = {"charge": 1, "multiplicity": 2} if spin == "unrestricted" else {}
     spec = FockBuildSpec.hf(spin, coulomb=j, exchange=k)
     controls = {"energy_tolerance": 1e-12, "density_tolerance": 1e-10}
@@ -241,7 +246,7 @@ def test_public_scf_force_variation_replay_and_legacy_equivalence(spin, j, k):
         )
 
 
-def test_scf_failures_do_not_publish_or_poison_sources():
+def test_scf_failures_do_not_publish_or_poison_sources() -> None:
     with NativeAO(ATOMS) as basis, FockPlan(basis, device=DEVICE) as plan:
         reference = plan.solve()
         density = np.full((2, 2), 73.0)
@@ -284,7 +289,7 @@ def test_scf_failures_do_not_publish_or_poison_sources():
             )
 
 
-def test_canonical_semantics_and_execution_identity():
+def test_canonical_semantics_and_execution_identity() -> None:
     with NativeAO(ATOMS) as basis:
         empty = FockBuildSpec(coulomb=FockTerm(False), exchange=FockTerm(False))
         alternate = replace(
@@ -313,7 +318,9 @@ def test_canonical_semantics_and_execution_identity():
 
 @pytest.mark.parametrize("scalar", [np.float32, np.float64])
 @pytest.mark.parametrize("approximation", ["exact", "density_fitted"])
-def test_identity_uses_normalized_native_controls(scalar, approximation):
+def test_identity_uses_normalized_native_controls(
+    scalar: typing.Any, approximation: typing.Any
+) -> None:
     """Accepted scalar inputs retain the identity of their native double values."""
     screening, cutoff = scalar(1e-12), scalar(1e-10)
     spec = FockBuildSpec.hf(coulomb=approximation, exchange=approximation)
@@ -347,7 +354,9 @@ def test_identity_uses_normalized_native_controls(scalar, approximation):
 
 
 @pytest.mark.skipif(DEVICE != "cuda", reason="CUDA execution-variant diagnostics")
-def test_one_electron_execution_variant_identity_is_frozen(monkeypatch):
+def test_one_electron_execution_variant_identity_is_frozen(
+    monkeypatch: typing.Any,
+) -> None:
     with NativeAO(ATOMS) as basis:
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread")
         with FockPlan(basis, device="cuda") as original:
@@ -380,7 +389,9 @@ def test_one_electron_execution_variant_identity_is_frozen(monkeypatch):
 
 
 @pytest.mark.skipif(DEVICE != "cuda", reason="retired CUDA value selector diagnostics")
-def test_retired_value_controls_cannot_restore_handwritten_dispatch(monkeypatch):
+def test_retired_value_controls_cannot_restore_handwritten_dispatch(
+    monkeypatch: typing.Any,
+) -> None:
     spec = FockBuildSpec(
         coulomb=term("density_fitted", 1.0), exchange=term("density_fitted", -0.5)
     )

@@ -10,7 +10,7 @@ from dftd3.interface import DispersionModel, RationalDampingParam
 from dftd3.parameters import get_damping_param
 
 
-def main():
+def main() -> None:
     if importlib.metadata.version("dftd3") != "1.4.0":
         raise RuntimeError("fixture generation requires dftd3==1.4.0")
     geometries = {

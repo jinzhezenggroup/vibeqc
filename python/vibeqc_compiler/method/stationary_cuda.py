@@ -6,6 +6,7 @@ Generation is host-only and does not import the public runtime or probe CUDA.
 """
 
 import os
+import typing
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -16,7 +17,9 @@ from vibeqc_compiler.common.source_cache import cache_source
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
 
-def emit_stationary_cuda(primitive_source, *, pbe, iterations=3):
+def emit_stationary_cuda(
+    primitive_source: typing.Any, *, pbe: typing.Any, iterations: typing.Any = 3
+) -> typing.Any:
     """Compose explicit primitive lowering and shared XC geometric lowering.
 
     The integral subsystem supplies a finite device dispatcher. Method lowering
@@ -29,7 +32,14 @@ def emit_stationary_cuda(primitive_source, *, pbe, iterations=3):
     )
 
 
-def compile_stationary_cuda(primitive_source, *, pbe, iterations, compiler, cache):
+def compile_stationary_cuda(
+    primitive_source: typing.Any,
+    *,
+    pbe: typing.Any,
+    iterations: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+) -> typing.Any:
     """Compile a finite strict-FP64 artifact with transitive header identities."""
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("stationary CUDA requires an explicit CUDA compiler adapter")

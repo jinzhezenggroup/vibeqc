@@ -1,12 +1,20 @@
 """Separate XC representation/codegen/runtime/evidence stages without promotion."""
 
+import typing
+
 from vibeqc_compiler.common.evidence import validate_evidence
 from vibeqc_compiler.common.provenance import file_hash
 
 from .cuda_emit import emit_cuda
 
 
-def query_capability(program, *, schedule=None, artifact=None, evidence=None):
+def query_capability(
+    program: typing.Any,
+    *,
+    schedule: typing.Any = None,
+    artifact: typing.Any = None,
+    evidence: typing.Any = None,
+) -> typing.Any:
     """Report exact consumer stages; successful compilation proves no accuracy.
 
     Evidence is a diagnostic report tied to both generated identity and binary.

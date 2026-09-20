@@ -7,6 +7,7 @@ original NativeRHFState small-system admission remains unchanged.
 """
 
 import time
+import typing
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
@@ -40,24 +41,24 @@ class DirectionalRHFResponse:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         return deepcopy(self._diagnostics)
 
 
 def directional_rhf_response(
-    state,
-    direction,
+    state: typing.Any,
+    direction: typing.Any,
     *,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    response_execution="host",
-    response_device_budget_bytes=128 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-):
+    jk_backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    device_budget_bytes: typing.Any = 64 << 20,
+    response_execution: typing.Any = "host",
+    response_device_budget_bytes: typing.Any = 128 << 20,
+    solver_options: typing.Any = None,
+    first_backend: typing.Any = "cpu",
+    first_compiler: typing.Any = None,
+    first_budget_bytes: typing.Any = 64 << 20,
+) -> typing.Any:
     """Build directional H1/S1 and solve one complete canonical RHF response.
 
     ``direction`` is (atom,xyz), is not normalized, and expands to every

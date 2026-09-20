@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import inspect
 import json
+import typing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +20,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.vibeqc_validation.schema import canonical_hash
 
 
-def generate(name):
+def generate(name: typing.Any) -> typing.Any:
     import pyscf
     from pyscf import cc, scf
     from pyscf.grad import ccsd as grad_ccsd
@@ -46,7 +47,7 @@ def generate(name):
     default_gradient = coupled.nuc_grad_method().kernel()
     original = cphf.solve
 
-    def tight(*args, **kwargs):
+    def tight(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         return original(*args, **{**kwargs, "tol": 1e-13, "max_cycle": 100})
 
     with patch.object(cphf, "solve", tight):
@@ -89,7 +90,7 @@ def generate(name):
     return record
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT)
     parser.add_argument("--case", choices=CASES, action="append")

@@ -167,10 +167,13 @@ calculator = Calculator(device="cuda", resource_budget=budget)
 hf = calculator.estimate_resources([h2]).requests[0]
 tensor = tensor_resource_choices(program, compiler.target)
 plan = plan_resources([hf, tensor.request], budget).require_feasible()
-with ResourceSession(plan, {
-    "hf": lambda selected: calculator.prepare_batch([h2], resource_plan=selected),
-    "tensor": tensor.factory(compiler, cache),
-}) as session:
+with ResourceSession(
+    plan,
+    {
+        "hf": lambda selected: calculator.prepare_batch([h2], resource_plan=selected),
+        "tensor": tensor.factory(compiler, cache),
+    },
+) as session:
     session.advance(0)
     hf_result = session.provider("hf").execute(strict=True)
     tensor_result = session.provider("tensor").execute(feeds)

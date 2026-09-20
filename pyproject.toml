@@ -80,6 +80,7 @@ wheel.py-api = "py3"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
 "external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
+"external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
 
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
@@ -108,3 +109,23 @@ repair-wheel-command = "bash {package}/python/ci/repair-wheel.sh {dest_dir} {whe
 branch = true
 relative_files = true
 source = ["python/vibeqc"]
+
+[tool.ruff]
+extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
+
+[tool.ruff.lint]
+extend-select = ["ANN", "TC"]
+ignore = ["ANN401"]
+[tool.ruff.lint.per-file-ignores]
+"tools/generate_xc_integration_references.py" = ["ANN", "TC"]
+"tools/generate_validation_references.py" = ["ANN", "TC"]
+"tools/generate_density_workload_references.py" = ["ANN", "TC"]
+"tools/generate_accuracy_references.py" = ["ANN", "TC"]
+"tools/generate_cc_endpoints.py" = ["ANN", "TC"]
+"tools/generate_cc_triples_references.py" = ["ANN", "TC"]
+"tools/generate_scf_proposal_references.py" = ["ANN", "TC"]
+"tools/vibeqc_numerics/fixtures.py" = ["ANN", "TC"]
+"tools/vibeqc_validation/fixtures.py" = ["ANN", "TC"]
+
+"tools/generate_xc_references.py" = ["ANN", "TC"]
+"tools/generate_external_basis_references.py" = ["ANN", "TC"]

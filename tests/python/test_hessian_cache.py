@@ -1,5 +1,6 @@
 """Second-integral artifacts cannot cross cache, compiler or layout contexts."""
 
+import typing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,12 +10,14 @@ from tools.vibeqc_hessian import analytic
 
 
 @pytest.fixture
-def requests(monkeypatch, tmp_path):
+def requests(monkeypatch: typing.Any, tmp_path: typing.Any) -> typing.Any:
     calls = []
     compiler = object()
     monkeypatch.setattr(analytic, "_COMPILE_CACHE", {})
 
-    def compile_tile(ir, adapter, cache, **kwargs):
+    def compile_tile(
+        ir: typing.Any, adapter: typing.Any, cache: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         cache = Path(cache).resolve()
         cache.mkdir(parents=True, exist_ok=True)
         library = cache / f"tile-{len(calls)}.so"
@@ -30,7 +33,7 @@ def requests(monkeypatch, tmp_path):
 
     monkeypatch.setattr(analytic, "compile_second_derivative", compile_tile)
 
-    def request(**changes):
+    def request(**changes: typing.Any) -> typing.Any:
         options = {
             "adapter": compiler,
             "cache": tmp_path / "first",
@@ -45,7 +48,7 @@ def requests(monkeypatch, tmp_path):
     return request, calls
 
 
-def test_same_context_reuses_live_artifact(requests):
+def test_same_context_reuses_live_artifact(requests: typing.Any) -> None:
     request, calls = requests
     first = request()
     assert request() is first
@@ -54,7 +57,9 @@ def test_same_context_reuses_live_artifact(requests):
 
 
 @pytest.mark.parametrize("changed", ["cache", "adapter", "outputs", "components"])
-def test_distinct_contexts_never_alias(requests, tmp_path, changed):
+def test_distinct_contexts_never_alias(
+    requests: typing.Any, tmp_path: typing.Any, changed: typing.Any
+) -> None:
     request, calls = requests
     first = request()
     changes = {
@@ -73,7 +78,9 @@ def test_distinct_contexts_never_alias(requests, tmp_path, changed):
         assert second.component_indices == (1, 0)
 
 
-def test_removed_binary_is_rebuilt_not_returned_from_memory(requests):
+def test_removed_binary_is_rebuilt_not_returned_from_memory(
+    requests: typing.Any,
+) -> None:
     request, calls = requests
     first = request()
     first.native.library.unlink()

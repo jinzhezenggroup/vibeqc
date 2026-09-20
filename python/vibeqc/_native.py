@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import typing
 from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -897,7 +898,7 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
     return library
 
 
-def check(library: ctypes.CDLL, status: int, *, context=None) -> None:
+def check(library: ctypes.CDLL, status: int, *, context: typing.Any = None) -> None:
     if status != STATUS_SUCCESS:
         message = library.vibeqc_status_message(status).decode("utf-8")
         getter = getattr(library, "vibeqc_context_get_last_detail", None)

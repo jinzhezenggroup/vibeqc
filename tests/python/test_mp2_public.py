@@ -3,6 +3,7 @@
 import ctypes as ct
 import os
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -22,14 +23,16 @@ from tools.vibeqc_posthf.fixtures import load_fixture, source_arguments
 
 
 @pytest.fixture(params=["cpu", "cuda"])
-def device(request):
+def device(request: typing.Any) -> typing.Any:
     if request.param == "cuda" and os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1":
         pytest.skip("requires explicitly allocated CUDA device and native library")
     return request.param
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_public_native_hf_to_mp2_components(name, device):
+def test_public_native_hf_to_mp2_components(
+    name: typing.Any, device: typing.Any
+) -> None:
     meta, arrays = load_fixture(name)
     args = source_arguments(meta)
     started = time.perf_counter()
@@ -79,7 +82,9 @@ def test_public_native_hf_to_mp2_components(name, device):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_public_native_df_hf_to_ri_mp2_components(name, device):
+def test_public_native_df_hf_to_ri_mp2_components(
+    name: typing.Any, device: typing.Any
+) -> None:
     meta, arrays = load_fixture(name)
     args = source_arguments(meta)
     calc = Calculator(
@@ -114,7 +119,7 @@ def test_public_native_df_hf_to_ri_mp2_components(name, device):
     assert result.correlation.numeric_capacity_bytes <= 256 << 20
 
 
-def test_public_mp2_rejects_unimplemented_controls():
+def test_public_mp2_rejects_unimplemented_controls() -> None:
     target = TargetAccuracy(
         (ObservableTarget("energy", "absolute", "Eh", absolute=1e-6),)
     )
@@ -133,7 +138,7 @@ def test_public_mp2_rejects_unimplemented_controls():
     )
 
 
-def test_hf_identity_ignores_mp2_only_controls():
+def test_hf_identity_ignores_mp2_only_controls() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     for method in ("rhf", "uhf"):
         identities = {
@@ -148,14 +153,14 @@ def test_hf_identity_ignores_mp2_only_controls():
 
 
 @pytest.mark.parametrize("mode", ["cpu", "cpu_reference", "cuda", "auto", True])
-def test_mp2_model_resolves_density_fitting(mode):
+def test_mp2_model_resolves_density_fitting(mode: typing.Any) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator(method="mp2", density_fitting=mode).resolved_model(atoms)
     assert model.method == "mp2" and model.approximation == "density_fitting"
     assert model.auxiliary_basis_hash and model.metric_relative_threshold == 1e-10
 
 
-def test_mp2_model_can_be_reconstructed_as_density_fitting():
+def test_mp2_model_can_be_reconstructed_as_density_fitting() -> None:
     from dataclasses import replace
 
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -169,7 +174,7 @@ def test_mp2_model_can_be_reconstructed_as_density_fitting():
     assert fitted.method == "mp2" and fitted.approximation == "density_fitting"
 
 
-def test_public_mp2_identity_includes_correlation_controls():
+def test_public_mp2_identity_includes_correlation_controls() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     # Metadata must distinguish changed execution controls even before native
     # work begins, just as it does for the SCF tolerance and precision policy.
@@ -184,7 +189,7 @@ def test_public_mp2_identity_includes_correlation_controls():
     assert len(identities) == 3
 
 
-def test_ri_mp2_composes_df_reference_capacity_before_allocation():
+def test_ri_mp2_composes_df_reference_capacity_before_allocation() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     auxiliary = tuple(
         Shell(index % 2, 0, (Primitive(0.05 + 0.01 * index, 1.0),))
@@ -212,7 +217,7 @@ def test_ri_mp2_composes_df_reference_capacity_before_allocation():
     assert 19_000 << 10 < accepted.correlation.numeric_capacity_bytes <= 19_240 << 10
 
 
-def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity():
+def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     sto3g = (
         Primitive(3.42525091, 0.1543289673),
@@ -230,7 +235,7 @@ def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity():
     assert np.isfinite(result.energy) and result.correlation is not None
 
 
-def test_cuda_calculator_uses_selected_cpu_df_basis_capability():
+def test_cuda_calculator_uses_selected_cpu_df_basis_capability() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     auxiliary = (
         Shell(0, 0, (Primitive(1.0, 1.0),)),
@@ -254,7 +259,7 @@ def test_cuda_calculator_uses_selected_cpu_df_basis_capability():
             ).resolved_model(atoms)
 
 
-def test_public_unsupported_budget_scf_and_neighbors(device):
+def test_public_unsupported_budget_scf_and_neighbors(device: typing.Any) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device=device)
     assert method_capabilities("mp2").supported_properties == frozenset(
@@ -301,7 +306,7 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
     assert abs(calc.singlepoint(atoms).energy - first.energy) <= 1e-12
 
 
-def test_public_force_reports_response_measurement_without_promoting_endpoint():
+def test_public_force_reports_response_measurement_without_promoting_endpoint() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", basis="sto-3g", device="cpu")
     energy = calc.singlepoint(atoms, properties=("energy",)).correlation
@@ -318,7 +323,7 @@ def test_public_force_reports_response_measurement_without_promoting_endpoint():
     assert force.measured_endpoint_peak_bytes == 0
 
 
-def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
+def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device="cpu")
     result = calc.singlepoint(atoms, properties=("energy", "forces"))
@@ -338,7 +343,9 @@ def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference():
         )
 
 
-def test_public_conventional_mp2_force_accepts_zero_derivative_degenerate_subspace():
+def test_public_conventional_mp2_force_accepts_zero_derivative_degenerate_subspace() -> (
+    None
+):
     meta, _ = load_fixture("lih")
     args = source_arguments(meta)
     result = Calculator(
@@ -355,7 +362,7 @@ def test_public_conventional_mp2_force_accepts_zero_derivative_degenerate_subspa
     os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
     reason="requires explicitly allocated CUDA device and native library",
 )
-def test_public_conventional_mp2_force_cuda_matches_cpu():
+def test_public_conventional_mp2_force_cuda_matches_cpu() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     cpu = Calculator(method="mp2", device="cpu").singlepoint(
         atoms, properties=("energy", "forces")
@@ -372,7 +379,7 @@ def test_public_conventional_mp2_force_cuda_matches_cpu():
     )
 
 
-def test_c_api_conventional_force_is_transactional_across_repeated_execution():
+def test_c_api_conventional_force_is_transactional_across_repeated_execution() -> None:
     calc = Calculator(method="mp2", device="cpu")
     lib = calc._library
     context, system, calculation = ct.c_void_p(), ct.c_void_p(), ct.c_void_p()
@@ -546,7 +553,7 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution():
         lib.vibeqc_context_destroy(context)
 
 
-def test_generated_cpu_and_capacity_sources_are_reproducible():
+def test_generated_cpu_and_capacity_sources_are_reproducible() -> None:
     from tools.generate_mp2_native import cpu_header
     from tools.vibeqc_posthf.plan_spec import native_header
 
@@ -558,13 +565,15 @@ def test_generated_cpu_and_capacity_sources_are_reproducible():
         actual = (root / "src/posthf" / name).read_text()
         import re
 
-        def tokens(value):
+        def tokens(value: typing.Any) -> typing.Any:
             return "".join(re.sub(r"//[^\n]*", "", value).split())
 
         assert tokens(actual) == tokens(expected)
 
 
-def test_native_cuda_generation_keeps_each_architecture_and_tile_distinct(tmp_path):
+def test_native_cuda_generation_keeps_each_architecture_and_tile_distinct(
+    tmp_path: typing.Any,
+) -> None:
     """Exercise the actual generator in CPU CI before the expensive CUDA build."""
     from tools.generate_mp2_native import cuda_sources
 

@@ -5,6 +5,7 @@ the actual recurrence is the existing generator evaluator. Reference tensors
 come from libcint, whose contraction and derivative implementation is separate.
 """
 
+import typing
 from itertools import product
 from math import exp, pi, prod, sqrt
 
@@ -14,7 +15,7 @@ from vibeqc_compiler.integral.rys import boys_values
 from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
 
 
-def _geometry(exponents, centers):
+def _geometry(exponents: typing.Any, centers: typing.Any) -> typing.Any:
     a, b, c, d = exponents
     p, q = a + b, c + d
     mu, nu = a * b / p, c * d / q
@@ -60,7 +61,7 @@ def _geometry(exponents, centers):
     return values
 
 
-def _primitive_weights(shell, component):
+def _primitive_weights(shell: typing.Any, component: typing.Any) -> typing.Any:
     l = shell["angular_momentum"]
     primitives = shell["primitives"]
     contraction_norm = sum(

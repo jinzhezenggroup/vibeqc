@@ -1,6 +1,7 @@
 """Synthetic specialization contracts: no GPU probing or performance claims."""
 
 import json
+import typing
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -17,16 +18,16 @@ from vibeqc_compiler.common.specialization import (
 )
 
 
-def guard(*predicates):
+def guard(*predicates: typing.Any) -> typing.Any:
     return SpecializationGuard(tuple(GuardPredicate(*p) for p in predicates))
 
 
-def with_features(record, **updates):
+def with_features(record: typing.Any, **updates: typing.Any) -> typing.Any:
     return replace(record, features=tuple((dict(record.features) | updates).items()))
 
 
 @pytest.fixture
-def case():
+def case() -> typing.Any:
     identity = CompilationIdentity(
         canonical_hash("science"), canonical_hash("compiler")
     )
@@ -73,7 +74,7 @@ def case():
     }
 
 
-def test_exact_reuse_and_detached_diagnostics(case):
+def test_exact_reuse_and_detached_diagnostics(case: typing.Any) -> None:
     decision = select_specialization(**case)
     assert decision.status == "specialized"
     assert decision.selected is case["profiles"][0]
@@ -90,7 +91,9 @@ def test_exact_reuse_and_detached_diagnostics(case):
 @pytest.mark.parametrize(
     "nbf,nocc", [(256, 64), (384, 80), (416, 87), (768, 160), (1024, 256)]
 )
-def test_nearby_workloads_reuse_one_guarded_artifact(case, nbf, nocc):
+def test_nearby_workloads_reuse_one_guarded_artifact(
+    case: typing.Any, nbf: typing.Any, nocc: typing.Any
+) -> None:
     workload = with_features(case["workload"], nbf=nbf, occupied_fraction=nocc / nbf)
     result = select_specialization(**(case | {"workload": workload}))
     assert result.selected is case["profiles"][0]
@@ -101,7 +104,9 @@ def test_nearby_workloads_reuse_one_guarded_artifact(case, nbf, nocc):
 @pytest.mark.parametrize(
     "updates", [{"nbf": 255}, {"nbf": 1025}, {"occupied_fraction": 0.3}]
 )
-def test_outside_promotion_domain_uses_generic(case, updates):
+def test_outside_promotion_domain_uses_generic(
+    case: typing.Any, updates: typing.Any
+) -> None:
     result = select_specialization(
         **(case | {"workload": with_features(case["workload"], **updates)})
     )
@@ -112,7 +117,7 @@ def test_outside_promotion_domain_uses_generic(case, updates):
     assert result.evaluations[0].promotion_failures
 
 
-def test_correctness_and_promotion_are_independent(case):
+def test_correctness_and_promotion_are_independent(case: typing.Any) -> None:
     result = select_specialization(
         **(case | {"workload": with_features(case["workload"], resident=False)})
     )
@@ -127,7 +132,9 @@ def test_correctness_and_promotion_are_independent(case):
     assert result.evaluations[0].promotion_failures == ("profile is not promoted",)
 
 
-def test_unknown_architecture_falls_back_without_product_name_policy(case):
+def test_unknown_architecture_falls_back_without_product_name_policy(
+    case: typing.Any,
+) -> None:
     target = replace(
         case["target"], target=replace(case["target"].target, architecture="unknown")
     )
@@ -138,7 +145,9 @@ def test_unknown_architecture_falls_back_without_product_name_policy(case):
 
 
 @pytest.mark.parametrize("fp64", [False, 1, "true"])
-def test_missing_correctness_capability_never_uses_even_generic(case, fp64):
+def test_missing_correctness_capability_never_uses_even_generic(
+    case: typing.Any, fp64: typing.Any
+) -> None:
     result = select_specialization(
         **(case | {"target": with_features(case["target"], fp64=fp64)})
     )
@@ -150,7 +159,9 @@ def test_missing_correctness_capability_never_uses_even_generic(case, fp64):
     )
 
 
-def test_absent_facts_are_not_zero_false_or_cuda_defaults(case):
+def test_absent_facts_are_not_zero_false_or_cuda_defaults(
+    case: typing.Any,
+) -> None:
     target = replace(case["target"], features=())
     result = select_specialization(**(case | {"target": target}))
     assert result.selected is None
@@ -179,7 +190,9 @@ def test_absent_facts_are_not_zero_false_or_cuda_defaults(case):
 
 
 @pytest.mark.parametrize("field", ["scientific_hash", "compiler_hash"])
-def test_changed_identity_invalidates_candidates_and_stale_fallback(case, field):
+def test_changed_identity_invalidates_candidates_and_stale_fallback(
+    case: typing.Any, field: typing.Any
+) -> None:
     identity = replace(case["identity"], **{field: canonical_hash("changed")})
     result = select_specialization(**(case | {"identity": identity}))
     assert result.selected is None
@@ -194,7 +207,9 @@ def test_changed_identity_invalidates_candidates_and_stale_fallback(case, field)
 
 
 @pytest.mark.parametrize("field", ["artifact_key", "schedule_hash", "profile_hash"])
-def test_existing_artifact_schedule_profile_hashes_affect_reselection(case, field):
+def test_existing_artifact_schedule_profile_hashes_affect_reselection(
+    case: typing.Any, field: typing.Any
+) -> None:
     original = select_specialization(**case)
     profile = replace(case["profiles"][0], **{field: canonical_hash("changed")})
     result = select_specialization(**(case | {"profiles": (profile,)}))
@@ -203,7 +218,9 @@ def test_existing_artifact_schedule_profile_hashes_affect_reselection(case, fiel
     assert result.selected.artifact_key == profile.artifact_key
 
 
-def test_priority_and_target_resources_participate_in_selection_identity(case):
+def test_priority_and_target_resources_participate_in_selection_identity(
+    case: typing.Any,
+) -> None:
     first = case["profiles"][0]
     second = replace(first, name="other", artifact_key=canonical_hash("other-artifact"))
     a = select_specialization(**(case | {"profiles": (first, second)}))
@@ -225,7 +242,9 @@ def test_priority_and_target_resources_participate_in_selection_identity(case):
         select_specialization(**(case | {"profiles": (case["fallback"],)}))
 
 
-def test_feature_and_conjunction_order_do_not_change_identity(case):
+def test_feature_and_conjunction_order_do_not_change_identity(
+    case: typing.Any,
+) -> None:
     original = select_specialization(**case)
     profile = case["profiles"][0]
     reordered = replace(
@@ -243,7 +262,7 @@ def test_feature_and_conjunction_order_do_not_change_identity(case):
     assert result.selection_key == original.selection_key
 
 
-def test_frozen_records_copy_nested_input_pairs(case):
+def test_frozen_records_copy_nested_input_pairs(case: typing.Any) -> None:
     pairs = [["nbf", 416], ["resident", True]]
     workload = WorkloadSignature("df_exchange", pairs)
     pairs[0][1] = 999
@@ -263,7 +282,9 @@ def test_frozen_records_copy_nested_input_pairs(case):
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), [], {}, None])
-def test_nonportable_or_mutable_feature_values_are_rejected(value):
+def test_nonportable_or_mutable_feature_values_are_rejected(
+    value: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="scalars"):
         WorkloadSignature("example", (("value", value),))
     with pytest.raises(ValueError, match="scalars"):
@@ -273,18 +294,22 @@ def test_nonportable_or_mutable_feature_values_are_rejected(value):
 @pytest.mark.parametrize(
     "features", [(("nbf", 1), ("nbf", 2)), (("kind", "other"),), (("", 1),), ("ab",)]
 )
-def test_duplicate_reserved_or_malformed_features_are_rejected(features):
+def test_duplicate_reserved_or_malformed_features_are_rejected(
+    features: typing.Any,
+) -> None:
     with pytest.raises(ValueError):
         WorkloadSignature("example", features)
 
 
 @pytest.mark.parametrize("operator,value", [("exec", 1), ("ge", True), ("le", "100")])
-def test_invalid_predicate_definitions_are_rejected(operator, value):
+def test_invalid_predicate_definitions_are_rejected(
+    operator: typing.Any, value: typing.Any
+) -> None:
     with pytest.raises(ValueError):
         GuardPredicate("workload", "nbf", operator, value)
 
 
-def test_target_facts_cannot_override_target_info(case):
+def test_target_facts_cannot_override_target_info(case: typing.Any) -> None:
     with pytest.raises(ValueError, match="reserved"):
         replace(case["target"], features=(("backend", "opencl"),))
     with pytest.raises(ValueError, match="scope"):
@@ -295,7 +320,9 @@ def test_target_facts_cannot_override_target_info(case):
         replace(case["profiles"][0], performance=True)
 
 
-def test_other_backends_and_unknown_subgroups_need_no_cuda_assumptions(case):
+def test_other_backends_and_unknown_subgroups_need_no_cuda_assumptions(
+    case: typing.Any,
+) -> None:
     target = TargetCapabilities(
         TargetInfo("opencl", "portable", None, 64, None), (("fp64", True),)
     )
@@ -312,7 +339,9 @@ def test_other_backends_and_unknown_subgroups_need_no_cuda_assumptions(case):
     assert result.status == "specialized"
 
 
-def test_existing_compiled_artifact_key_and_loader_remain_the_authority(case, tmp_path):
+def test_existing_compiled_artifact_key_and_loader_remain_the_authority(
+    case: typing.Any, tmp_path: typing.Any
+) -> None:
     from vibeqc_compiler.integral.artifact_cache import LocalArtifactCache
     from vibeqc_compiler.integral.runtime_backend import CompiledArtifactIdentity
 
@@ -342,7 +371,7 @@ def test_existing_compiled_artifact_key_and_loader_remain_the_authority(case, tm
         artifact.require_compatible(replace(artifact, device="another-device"))
 
 
-def test_record_equality_preserves_scalar_types(case):
+def test_record_equality_preserves_scalar_types(case: typing.Any) -> None:
     assert len({WorkloadSignature("kind", (("x", x),)) for x in (True, 1, 1.0)}) == 3
     assert len({GuardPredicate("workload", "x", "eq", x) for x in (True, 1, 1.0)}) == 3
     assert len({with_features(case["target"], fp64=x) for x in (True, 1, 1.0)}) == 3
@@ -350,12 +379,16 @@ def test_record_equality_preserves_scalar_types(case):
 
 
 @pytest.mark.parametrize("value", [float("inf"), float("nan"), [1]])
-def test_direct_guard_evaluation_rejects_nonfinite_or_mutable_facts(value):
+def test_direct_guard_evaluation_rejects_nonfinite_or_mutable_facts(
+    value: typing.Any,
+) -> None:
     predicate = GuardPredicate("target", "memory_bytes", "ge", 1)
     assert "invalid" in predicate.failure({"target": {"memory_bytes": value}})
 
 
-def test_backend_and_workload_mismatches_never_trigger_an_implicit_fallback(case):
+def test_backend_and_workload_mismatches_never_trigger_an_implicit_fallback(
+    case: typing.Any,
+) -> None:
     workload = replace(case["workload"], kind="unsupported-consumer")
     assert select_specialization(**(case | {"workload": workload})).selected is None
     target = replace(

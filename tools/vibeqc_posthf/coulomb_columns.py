@@ -1,6 +1,7 @@
 """Bounded Coulomb pair columns from the existing values-only raw source."""
 
 import time
+import typing
 from math import sqrt
 
 import numpy as np
@@ -20,7 +21,7 @@ class CoulombColumns:
     even when a later factorization or consumer runs on a GPU.
     """
 
-    def __init__(self, source):
+    def __init__(self, source: typing.Any) -> None:
         if not isinstance(source, NativeSource):
             raise TypeError("the existing native raw integral source is required")
         if "four_center_eri" not in source.supported_operators:
@@ -40,13 +41,13 @@ class CoulombColumns:
         self.numeric_bytes = source.numeric_bytes + CPU_SOURCE_SCRATCH
         self.statistics = {"tiles": 0, "elements": 0, "seconds": 0.0}
 
-    def check(self):
+    def check(self) -> None:
         """Reject stale source lifetime or replaced scientific metadata."""
         self.source._check_open()
         if self.source.identity != self._source_identity:
             raise ValueError("raw source identity changed; rebuild factorization")
 
-    def _range(self, begin, count):
+    def _range(self, begin: typing.Any, count: typing.Any) -> None:
         self.check()
         if (
             type(begin) is not int
@@ -57,7 +58,7 @@ class CoulombColumns:
         ):
             raise ValueError("invalid pair column range")
 
-    def _read(self, begin, count):
+    def _read(self, begin: typing.Any, count: typing.Any) -> typing.Any:
         started = time.perf_counter()
         value = self.source._read("four_center_eri", begin, count)
         self.statistics["seconds"] += time.perf_counter() - started
@@ -65,7 +66,7 @@ class CoulombColumns:
         self.statistics["elements"] += value.size
         return value
 
-    def diagonal(self, begin, count):
+    def diagonal(self, begin: typing.Any, count: typing.Any) -> typing.Any:
         """Return only the requested diagonal, including a final partial tile."""
         self._range(begin, count)
         out = np.empty(count)
@@ -76,7 +77,9 @@ class CoulombColumns:
             ).item()
         return out
 
-    def column(self, pivot, begin, count):
+    def column(
+        self, pivot: typing.Any, begin: typing.Any, count: typing.Any
+    ) -> typing.Any:
         """Read contiguous triangular-row pieces with explicit pair weights."""
         self._range(begin, count)
         rho, sigma = self.space.pair(pivot)

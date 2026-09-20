@@ -1,6 +1,9 @@
 """Opt-in complete public ECP force endpoints on an explicitly allocated GPU."""
 
+from __future__ import annotations
+
 import os
+import typing
 from time import perf_counter
 
 import numpy as np
@@ -18,7 +21,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def calculator(record, method="pbe-rks", **kwargs):
+def calculator(
+    record: typing.Any, method: typing.Any = "pbe-rks", **kwargs: typing.Any
+) -> typing.Any:
     return Calculator(
         basis=record,
         method=method,
@@ -34,8 +39,11 @@ def calculator(record, method="pbe-rks", **kwargs):
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_public_ecp_force_analytic_and_reconverged_fd(
-    method, representation, record_property, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    record_property: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(spin=spin, representation=representation)
     # Exercise serialized spherical ECP data through the real public endpoint.
@@ -111,8 +119,8 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
 @pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
-    method, representation, record_property
-):
+    method: typing.Any, representation: typing.Any, record_property: typing.Any
+) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(spin=spin, representation=representation)
     fragment = [("H", (0, 0, 0))] if spin else [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -176,8 +184,8 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
 
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(
-    monkeypatch, representation
-):
+    monkeypatch: typing.Any, representation: typing.Any
+) -> None:
     from vibeqc import _stationary_cuda
     from vibeqc._ks_snapshot import NativeKsSnapshot
 
@@ -187,14 +195,16 @@ def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(
     sources = []
     original = _stationary_cuda.complete_rks_cuda_gradient_diagnostic
 
-    def rejected(state, basis, **kwargs):
+    def rejected(
+        state: typing.Any, basis: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         sources.append(state._source)
         if state._source.hamiltonian == "scalar-semilocal-ecp":
             # Exercise the real admission path, before the ECP provider runs.
             kwargs["max_ecp_pair_samples"] = 1
         return original(state, basis, **kwargs)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("ECP provider ran after rejected work admission")
 
     with calc.prepare_batch([atoms, fragment]) as batch:

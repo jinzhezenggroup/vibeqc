@@ -1,6 +1,7 @@
 """Opt-in generated FP64 CUDA gates; run only in a finite Slurm GPU job."""
 
 import os
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
@@ -24,7 +25,13 @@ pytestmark = pytest.mark.skipif(
 
 
 @lru_cache(maxsize=64)
-def compiled(name, spin, variant, order=2, outputs=None):
+def compiled(
+    name: typing.Any,
+    spin: typing.Any,
+    variant: typing.Any,
+    order: typing.Any = 2,
+    outputs: typing.Any = None,
+) -> typing.Any:
     program = build_program(functional(name, spin=spin), order=order, outputs=outputs)
     artifact = compile_cuda(
         program,
@@ -38,7 +45,7 @@ def compiled(name, spin, variant, order=2, outputs=None):
     return program, artifact
 
 
-def check(actual, expected, tolerance):
+def check(actual: typing.Any, expected: typing.Any, tolerance: typing.Any) -> None:
     result = block_error(actual, expected, **tolerance)
     assert result["passed"], result
 
@@ -46,7 +53,9 @@ def check(actual, expected, tolerance):
 @pytest.mark.parametrize("name", CATALOG)
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 @pytest.mark.parametrize("variant", ["baseline", "fused", "split"])
-def test_every_kernel_value_derivative_boundary_and_partial_tile(name, spin, variant):
+def test_every_kernel_value_derivative_boundary_and_partial_tile(
+    name: typing.Any, spin: typing.Any, variant: typing.Any
+) -> None:
     program, artifact = compiled(name, spin, variant)
     for capacity in (7, 31):
         with CudaXC(program, artifact, tile_points=capacity) as device:
@@ -76,7 +85,7 @@ def test_every_kernel_value_derivative_boundary_and_partial_tile(name, spin, var
             device.evaluate(x[:, :1])
 
 
-def test_replay_changed_input_capacity_failure_and_independent_threads():
+def test_replay_changed_input_capacity_failure_and_independent_threads() -> None:
     program, artifact = compiled("PBE", "polarized", "split")
     _, x, expected, _ = load_fixture("PBE")
     tolerance = {"atol": 1e-11, "rtol": 1e-10}
@@ -92,7 +101,7 @@ def test_replay_changed_input_capacity_failure_and_independent_threads():
         cap = query_capability(program, schedule=XCSchedule("split"), artifact=artifact)
         assert cap["compiled"] and not cap["validated"] and not cap["promoted"]
 
-    def worker(begin):
+    def worker(begin: typing.Any) -> typing.Any:
         with CudaXC(program, artifact, tile_points=7) as device:
             return device.evaluate(x[:, begin : begin + 7])
 
@@ -101,7 +110,7 @@ def test_replay_changed_input_capacity_failure_and_independent_threads():
     check(np.concatenate(result, axis=1), expected[:, :14], tolerance)
 
 
-def test_vacuum_energy_and_pruned_outputs_and_binary_contract():
+def test_vacuum_energy_and_pruned_outputs_and_binary_contract() -> None:
     program, artifact = compiled("PBE", "polarized", "fused", order=0)
     with CudaXC(program, artifact, tile_points=7) as device:
         check(

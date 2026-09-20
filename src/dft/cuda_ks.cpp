@@ -1,8 +1,11 @@
 #include "dft/cuda_ks.hpp"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -35,6 +38,7 @@ extern "C" void ks_cuda_fail_next_runtime_for_test_v1() { fail_next_ks_runtime =
 namespace vibeqc::dft {
 namespace {
 using namespace scf::cuda_execution;
+constexpr unsigned kCudaKsChunkCapacity = 2;
 void check(cudaError_t status) {
   if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
   if (status != cudaSuccess)
@@ -65,8 +69,9 @@ struct KsStateStorage {
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
   int *solver_info{}, *final_solver_info{}, *jk_error{};
-  std::uint8_t* final_spin_enabled{};
-  cuda_ks_detail::Scalars* scalars{};
+  std::uint8_t *final_spin_enabled{}, *final_enabled{};
+  cuda_ks_detail::Control* control{};
+  cuda_ks_detail::Scalars* scalar_records{};
   /** The dry run and actual partition share one checked, typed layout. All
    * persistent and phase-local numeric buffers are explicitly charged. */
   std::size_t partition(std::size_t n, unsigned spins, unsigned history, void* storage) {
@@ -98,7 +103,9 @@ struct KsStateStorage {
     reserve(final_solver_info, spins);
     reserve(jk_error, 1);
     reserve(final_spin_enabled, spins);
-    reserve(scalars, 1);
+    reserve(final_enabled, 1);
+    reserve(control, 1);
+    reserve(scalar_records, kCudaKsChunkCapacity);
     return bytes;
   }
 };
@@ -138,12 +145,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
   std::unique_ptr<CudaXcPlan> xc;
   scf::ScfResult output;
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
-  bool warm_updates{true};
+  bool warm_updates{true}, device_chunk_mode{};
   bool stabilize_occupations{}, final_closure{};
   unsigned final_corrections{};
   bool pbe{}, final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
+  unsigned pending_iterations{};
+  std::array<std::uint64_t, kCudaKsChunkCapacity> pending_generations{};
 
   void current_device() const {
     // Prepared owners select their bound device on every entry, as the common
@@ -249,7 +258,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(occupied, spin_counts, spins * sizeof(std::int32_t));
       upload(spin_enabled, selected, spins * sizeof(std::uint8_t));
       const std::uint8_t all_spins[]{1, 1};
+      const std::uint8_t one = 1;
       upload(final_spin_enabled, all_spins, spins * sizeof(std::uint8_t));
+      upload(final_enabled, &one, sizeof(one));
       // XC setup drains this same stream, including the small stack inputs.
       xc = std::make_unique<CudaXcPlan>(basis, grid, pbe, spins == 2, tile, xc_arena,
                                         resource.xc_device_bytes, stream);
@@ -309,10 +320,19 @@ struct CudaKsPlan::Impl : KsStateStorage {
     stabilize_occupations = false;
     final_closure = false;
     final_corrections = 0;
+    pending_iterations = 0;
+    // The bounded device-control prototype is qualified only for direct
+    // all-electron RKS. UKS keeps occupation/final-closure host control, and
+    // ECP RKS keeps the strict physical final closure required by #586.
+    device_chunk_mode = spins == 1 && provider.system().ecp_terms.empty() &&
+                        configured_chunk_width() == kCudaKsChunkCapacity;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
-      check(cudaMemsetAsync(enabled, 1, sizeof(*enabled), stream));
+      cuda_ks_detail::reset_control(stream, spins, static_cast<int>(occupations[0]),
+                                    static_cast<int>(occupations[1]), control, enabled,
+                                    spin_enabled);
+      check(cudaGetLastError());
       if (use_warm) {
         check(cudaMemcpyAsync(density, warm, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
@@ -334,7 +354,185 @@ struct CudaKsPlan::Impl : KsStateStorage {
     is_active = true;
   }
 
+  unsigned configured_chunk_width() const noexcept {
+    const char* selection = std::getenv("VIBEQC_CUDA_KS_CHUNK");
+    if (selection != nullptr) {
+      if (std::strcmp(selection, "0") == 0 || std::strcmp(selection, "1") == 0 ||
+          std::strcmp(selection, "off") == 0 || std::strcmp(selection, "none") == 0)
+        return 1;
+      if (std::strcmp(selection, "2") == 0) return kCudaKsChunkCapacity;
+    }
+    // Complete cold/warm/changed-geometry endpoint measurements did not
+    // establish a reproducible benefit for automatic promotion.
+    return 1;
+  }
+
+  unsigned submission_width() const noexcept {
+    unsigned width = configured_chunk_width();
+    if (width == 1 || output.iterations >= options.max_iterations) return 1;
+    width = std::min<unsigned>(width, options.max_iterations - output.iterations);
+    if (!output.dft_diagnostic.history.empty()) {
+      const auto& last = output.dft_diagnostic.history.back();
+      const double residual_gate = std::min(1e-9, options.density_tolerance);
+      if (last.energy_change < 32.0 * options.energy_tolerance ||
+          last.density_change < 32.0 * options.density_tolerance ||
+          last.physical_residual < 32.0 * residual_gate)
+        width = 1;
+    }
+    return std::max(1U, width);
+  }
+
+  void enqueue_one(unsigned slot) {
+    if (slot >= kCudaKsChunkCapacity) throw std::logic_error("CUDA KS chunk slot overflow");
+    if (generation == std::numeric_limits<std::uint64_t>::max())
+      throw std::overflow_error("CUDA KS density generation exhausted");
+    std::string detail;
+    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density, nullptr,
+                                             matrix, j, nullptr, nullptr, jk_error, detail),
+          detail);
+    xc->enqueue(density, elements, ++generation);
+    pending_generations[slot] = generation;
+    ++movement.submitted_iterations;
+    const auto potential = xc->view(generation);
+    cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
+    check(cudaGetLastError());
+    const auto blocks = static_cast<unsigned>((elements + 127) / 128);
+    const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
+                              bool b_spin, const std::uint8_t* mask, double* c) {
+      launch_spin_matrix_product_kernel(blocks, 128, 0, stream, 1, spins, n, a, a_spin, transpose,
+                                        b, b_spin, mask, c);
+      check(cudaGetLastError());
+    };
+    multiply(fock, true, false, density, true, enabled, tmp1);
+    multiply(tmp1, true, false, overlap, false, enabled, residual);
+    multiply(overlap, false, false, density, true, enabled, tmp1);
+    multiply(tmp1, true, false, fock, true, enabled, tmp2);
+    launch_subtract_matrix_batches_kernel(blocks, 128, 0, stream, 1, spins, n, tmp2, enabled,
+                                          residual);
+    check(cudaGetLastError());
+    launch_update_diis_kernel(1, 32, 0, stream, 1, n, spins, history, fock, residual, enabled,
+                              fock_history, residual_history, gram, weights, history_count,
+                              history_head, effective, true);
+    check(cudaGetLastError());
+    multiply(effective, true, false, x, false, enabled, tmp1);
+    multiply(x, false, true, tmp1, true, enabled, tmp2);
+    EigensolverResources solver{};
+    solver.stream_ = stream;
+    const auto family = n <= kSmallEigensolverLimit ? scf::CudaEigensolverFamily::small_native
+                                                    : scf::CudaEigensolverFamily::graph_native;
+    check(launch_solver(solver, family, n, spins, tmp2, effective, eigenvalues, 0, solver_info,
+                        spin_enabled),
+          "CUDA KS eigensolver launch failed");
+    multiply(x, false, false, tmp2, true, enabled, tmp1);
+    launch_build_density_kernel(blocks, 128, 0, stream, 1, n, occupied, tmp1, enabled, proposal);
+    check(cudaGetLastError());
+    auto* record = scalar_records + slot;
+    cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
+                                potential.totals, potential.error, jk_error, solver_info, enabled,
+                                record);
+    check(cudaGetLastError());
+    cuda_ks_detail::advance(stream, n, spins, provider.one_electron().nuclear_repulsion,
+                            static_cast<int>(occupations[0]), static_cast<int>(occupations[1]),
+                            options.energy_tolerance, options.density_tolerance,
+                            options.max_iterations, warm_updates, record, control, proposal,
+                            density, warm, enabled, spin_enabled);
+    check(cudaGetLastError());
+  }
+
+  void enqueue_device() {
+    current_device();
+    if (!is_active || is_pending) throw std::logic_error("CUDA KS iteration state is not ready");
+    is_pending = true;
+    pending_iterations = 0;
+    try {
+      const unsigned width = submission_width();
+      for (unsigned slot = 0; slot < width; ++slot) {
+        enqueue_one(slot);
+        ++pending_iterations;
+      }
+    } catch (...) {
+      cudaStreamSynchronize(stream);
+      ++movement.synchronizations;
+      is_pending = is_active = false;
+      is_failed = true;
+      pending_iterations = 0;
+      throw;
+    }
+  }
+
+  bool finish_device() {
+    current_device();
+    if (!is_pending || pending_iterations == 0)
+      throw std::logic_error("no pending CUDA KS iteration chunk");
+    std::array<cuda_ks_detail::Scalars, kCudaKsChunkCapacity> physical{};
+    cuda_ks_detail::Control device_control{};
+    const unsigned submitted = pending_iterations;
+    try {
+      check(cudaMemcpyAsync(physical.data(), scalar_records, submitted * sizeof(physical[0]),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaMemcpyAsync(&device_control, control, sizeof(device_control),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaStreamSynchronize(stream));
+    } catch (...) {
+      cudaStreamSynchronize(stream);
+      is_pending = is_active = false;
+      is_failed = true;
+      pending_iterations = 0;
+      throw;
+    }
+    movement.scalar_d2h_bytes += submitted * sizeof(physical[0]) + sizeof(device_control);
+    ++movement.synchronizations;
+    ++movement.iteration_synchronizations;
+    ++movement.iteration_chunks;
+    if (device_control.iterations <= output.iterations ||
+        device_control.iterations > output.iterations + submitted) {
+      is_pending = is_active = false;
+      is_failed = true;
+      pending_iterations = 0;
+      throw std::runtime_error("CUDA KS device chunk returned an invalid iteration count");
+    }
+    const unsigned completed = device_control.iterations - output.iterations;
+    movement.iterations += completed;
+    auto& diagnostic = output.dft_diagnostic;
+    for (unsigned slot = 0; slot < completed; ++slot) {
+      const auto& item = physical[slot];
+      ++output.iterations;
+      ++output.fock_builds;
+      diagnostic.components = {provider.one_electron().nuclear_repulsion, item.one_electron,
+                               item.hartree, item.xc};
+      diagnostic.physical_residual = item.residual;
+      diagnostic.electrons = {item.electrons[0], item.electrons[1]};
+      diagnostic.density_change = item.density_change;
+      output.physical_residual_rms = item.residual_rms;
+      output.energy = diagnostic.components.total();
+      output.energy_change = item.energy_change;
+      output.density_rms = item.density_rms;
+      diagnostic.history.push_back({output.iterations, diagnostic.components, item.energy_change,
+                                    item.density_change, item.residual, diagnostic.electrons,
+                                    false});
+    }
+    is_pending = false;
+    pending_iterations = 0;
+    is_failed = device_control.failed != 0;
+    is_active = device_control.active != 0;
+    output.converged = device_control.converged != 0;
+    if (output.converged && warm_updates) warm_ready = true;
+    if (output.converged) {
+      final_state_ready = true;
+      final_generation = pending_generations[completed - 1U];
+    }
+    return is_active;
+  }
+
   void enqueue() {
+    if (device_chunk_mode)
+      enqueue_device();
+    else
+      enqueue_legacy();
+  }
+  bool finish() { return device_chunk_mode ? finish_device() : finish_legacy(); }
+
+  void enqueue_legacy() {
     current_device();
     if (!is_active || is_pending) throw std::logic_error("CUDA KS iteration state is not ready");
     if (generation == std::numeric_limits<std::uint64_t>::max())
@@ -347,8 +545,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                                nullptr, nullptr, jk_error, detail),
             detail);
       xc->enqueue(density, elements, ++generation);
+      pending_generations[0] = generation;
+      ++movement.submitted_iterations;
+      pending_iterations = 1;
       const auto potential = xc->view(generation);
-      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, fock);
+      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
       check(cudaGetLastError());
       const auto blocks = static_cast<unsigned>((elements + 127) / 128);
       const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
@@ -383,7 +584,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
         // physical F/D/residual and the history above remain unmodified.
         multiply(overlap, false, false, density, true, tmp1);
         multiply(tmp1, true, false, overlap, false, tmp2);
-        cuda_ks_detail::stabilize_uks_proposal(stream, n, overlap, tmp2, effective);
+        cuda_ks_detail::stabilize_uks_proposal(stream, n, overlap, tmp2, enabled, effective);
         check(cudaGetLastError());
         ++movement.occupation_stabilized_proposals;
       }
@@ -407,35 +608,41 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                          enabled, proposal);
       check(cudaGetLastError());
       cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
-                                  potential.totals, potential.error, jk_error, solver_info,
-                                  scalars);
+                                  potential.totals, potential.error, jk_error, solver_info, enabled,
+                                  scalar_records);
       check(cudaGetLastError());
     } catch (...) {
       cudaStreamSynchronize(stream);
       ++movement.synchronizations;
       is_pending = is_active = false;
       is_failed = true;
+      pending_iterations = 0;
       throw;
     }
   }
 
-  bool finish() {
+  bool finish_legacy() {
     current_device();
     if (!is_pending) throw std::logic_error("no pending CUDA KS iteration");
     cuda_ks_detail::Scalars physical{};
     try {
-      check(cudaMemcpyAsync(&physical, scalars, sizeof(physical), cudaMemcpyDeviceToHost, stream));
+      check(cudaMemcpyAsync(&physical, scalar_records, sizeof(physical), cudaMemcpyDeviceToHost,
+                            stream));
       check(cudaStreamSynchronize(stream));
     } catch (...) {
       cudaStreamSynchronize(stream);
       is_pending = is_active = false;
       is_failed = true;
+      pending_iterations = 0;
       throw;
     }
     movement.scalar_d2h_bytes += sizeof(physical);
     ++movement.synchronizations;
+    ++movement.iteration_synchronizations;
+    ++movement.iteration_chunks;
     ++movement.iterations;
     is_pending = false;
+    pending_iterations = 0;
     ++output.iterations;
     ++output.fock_builds;
     auto& diagnostic = output.dft_diagnostic;
@@ -554,7 +761,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
                                 bool b_spin, double* c) {
         launch_spin_matrix_product_kernel(blocks, 128, 0, stream, 1, spins, n, a, a_spin, transpose,
-                                          b, b_spin, enabled, c);
+                                          b, b_spin, final_enabled, c);
         check(cudaGetLastError());
       };
       multiply(fock, true, false, x, false, tmp1);

@@ -1,5 +1,6 @@
 """Executable fixed-density VV10/rVV10 potential gates for #491 slice B."""
 
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -17,7 +18,7 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 
 
-def _pbe_nonlocal_spec(variant):
+def _pbe_nonlocal_spec(variant: typing.Any) -> typing.Any:
     return MethodSpec(
         f"PBE+{variant}",
         (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
@@ -31,8 +32,8 @@ def _pbe_nonlocal_spec(variant):
     (("unpolarized", "density_total"), ("polarized", "density_spin")),
 )
 def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
-    spin, density_key, variant
-):
+    spin: typing.Any, density_key: typing.Any, variant: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
     graph = resolve_method(_pbe_nonlocal_spec(variant), spin=spin)
@@ -69,7 +70,7 @@ def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
         )
 
 
-def test_nonlocal_reference_execution_has_explicit_grid_admission_gate():
+def test_nonlocal_reference_execution_has_explicit_grid_admission_gate() -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         executor = FixedDensityNonlocalCorrelation(
@@ -80,7 +81,7 @@ def test_nonlocal_reference_execution_has_explicit_grid_admission_gate():
             executor.integrate(basis, grid, data["density_total"], tile_points=7)
 
 
-def test_compile_rejects_nonlocal_only_graph_for_mean_field_execution():
+def test_compile_rejects_nonlocal_only_graph_for_mean_field_execution() -> None:
     graph = resolve_method(
         MethodSpec(
             "VV10-only",

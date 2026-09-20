@@ -5,6 +5,7 @@ quadrature-weight and density axes are independent sources. Neither electronic
 stationarity nor physical grid motion can be inferred from this scalar alone.
 """
 
+import typing
 from dataclasses import dataclass
 from itertools import combinations_with_replacement
 
@@ -26,7 +27,7 @@ class IngredientContract:
     spin: str = "polarized"
     family: str = "gga"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.spin not in ("polarized", "unpolarized") or self.family not in (
             "lda",
             "gga",
@@ -37,7 +38,7 @@ class IngredientContract:
             )
 
     @property
-    def feature_indices(self):
+    def feature_indices(self) -> typing.Any:
         """Required slots of the audited scalar functional's feature ABI."""
         sizes = (
             {"lda": 2, "gga": 5, "mgga": 7}
@@ -47,10 +48,10 @@ class IngredientContract:
         return tuple(range(sizes[self.family]))
 
     @property
-    def ao_order(self):
+    def ao_order(self) -> typing.Any:
         return 0 if self.family == "lda" else 1
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "spin": self.spin,
             "family": self.family,
@@ -74,12 +75,12 @@ class DerivativeRequest:
 
     observable: str = "potential"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.observable not in ("energy", "potential", "response", "geometry"):
             raise UnsupportedXC("unsupported XC contraction observable/order")
 
     @property
-    def scalar_order(self):
+    def scalar_order(self) -> typing.Any:
         return (
             0
             if self.observable == "energy"
@@ -89,7 +90,7 @@ class DerivativeRequest:
         )
 
     @property
-    def held_fixed(self):
+    def held_fixed(self) -> typing.Any:
         if self.observable == "geometry":
             return (
                 "density",
@@ -115,7 +116,7 @@ class DiscreteEnergyContract:
     functional: FunctionalSpec
     request: DerivativeRequest = DerivativeRequest()
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.functional, FunctionalSpec) or not isinstance(
             self.request, DerivativeRequest
         ):
@@ -138,7 +139,7 @@ class DiscreteEnergyContract:
             )
 
     @property
-    def ingredients(self):
+    def ingredients(self) -> typing.Any:
         family = (
             "mgga"
             if "tau" in self.functional.ingredients
@@ -149,12 +150,12 @@ class DiscreteEnergyContract:
         return IngredientContract(self.functional.spin, family)
 
     @property
-    def ao_order(self):
+    def ao_order(self) -> typing.Any:
         """Geometry needs one extra ordinary spatial AO derivative."""
         return self.ingredients.ao_order + (self.request.observable == "geometry")
 
     @property
-    def scalar_outputs(self):
+    def scalar_outputs(self) -> typing.Any:
         """Request only active functional derivatives; unused tau slots disappear."""
         indices = self.ingredients.feature_indices
         outputs = [()]
@@ -164,7 +165,7 @@ class DiscreteEnergyContract:
             outputs.extend(combinations_with_replacement(indices, 2))
         return tuple(outputs)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "schema": "vibeqc.xc-discrete-energy.v1",
             "functional": self.functional.identity,
@@ -180,5 +181,5 @@ class DiscreteEnergyContract:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())

@@ -13,7 +13,10 @@ unchanged.
 
 ```python
 result = complete_rks_gradient_diagnostic(
-    state, basis, cache=".cache/stationary-cpu", execution="native",
+    state,
+    basis,
+    cache=".cache/stationary-cpu",
+    execution="native",
 )
 print(result.execution)
 # compiled-cpu-consumers/python-numpy-orchestration-v1

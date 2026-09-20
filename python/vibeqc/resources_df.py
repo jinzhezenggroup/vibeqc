@@ -6,6 +6,7 @@ and cross-bucket lifetimes through the common ResourcePlan.
 """
 
 import ctypes
+import typing
 from dataclasses import dataclass
 
 from .resources import checked_bytes
@@ -37,8 +38,15 @@ class DensityFittingResourceTile:
 
 
 def density_fitting_source_bytes(
-    library, *, batch, atoms, shells, cartesian_aos, primitives, transforms
-):
+    library: typing.Any,
+    *,
+    batch: typing.Any,
+    atoms: typing.Any,
+    shells: typing.Any,
+    cartesian_aos: typing.Any,
+    primitives: typing.Any,
+    transforms: typing.Any,
+) -> typing.Any:
     """Query the native source's upload capacity from compact combined counts.
 
     Include one dummy shell/AO/primitive per item, and both orbital and
@@ -62,18 +70,18 @@ def density_fitting_source_bytes(
 
 
 def density_fitting_tile_plan(
-    library,
-    batch,
-    nbf,
-    naux,
-    occupied,
+    library: typing.Any,
+    batch: typing.Any,
+    nbf: typing.Any,
+    naux: typing.Any,
+    occupied: typing.Any,
     *,
-    budget_bytes,
-    fixed_device_bytes,
-    generated_source=False,
-    pair_storage="dense",
-    rhf_occupied=None,
-):
+    budget_bytes: typing.Any,
+    fixed_device_bytes: typing.Any,
+    generated_source: typing.Any = False,
+    pair_storage: typing.Any = "dense",
+    rhf_occupied: typing.Any = None,
+) -> typing.Any:
     """Compose a fixed reservation with the provider's own tiling decisions.
 
     A zero native budget means implementation defaults. The global planner
@@ -177,7 +185,9 @@ def density_fitting_tile_plan(
     )
 
 
-def density_fitting_diis_bytes(library, batch, nbf, history):
+def density_fitting_diis_bytes(
+    library: typing.Any, batch: typing.Any, nbf: typing.Any, history: typing.Any
+) -> typing.Any:
     """Query the native RHF/UHF history reservation without a CUDA context."""
     for value in (batch, nbf, history):
         checked_bytes(value, "DF DIIS shape")

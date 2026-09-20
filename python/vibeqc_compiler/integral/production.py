@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .capabilities import (
     CAPABILITY_LOCAL_PACKED_STREAMING_FOCK,
@@ -39,6 +38,10 @@ from .cuda_target import (
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+    from pathlib import Path
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4", "rys5"))
 

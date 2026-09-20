@@ -11,13 +11,14 @@ from vibeqc import Calculator
 
 result = Calculator(method="pbe-uks").singlepoint(
     [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
-    charge=1, multiplicity=2,
+    charge=1,
+    multiplicity=2,
 )
 diagnostic = result.ks_diagnostic
-print(diagnostic.occupations)           # (1, 0)
-print(diagnostic.components.total)      # the returned physical energy
+print(diagnostic.occupations)  # (1, 0)
+print(diagnostic.components.total)  # the returned physical energy
 print(diagnostic.physical_residual_max)
-print(diagnostic.to_payload())          # all iteration records included
+print(diagnostic.to_payload())  # all iteration records included
 ```
 
 Energies are in Hartree. `KsEnergyComponents` contains nuclear, one-electron,
@@ -100,6 +101,37 @@ explicit handoff from ordinary energy execution. The existing public
 `matrix_d2h_bytes` total still includes snapshot matrices, so legacy transport
 accounting remains conservative without an ABI change.
 
+## CUDA KS iteration residency
+
+Native CUDA LDA/PBE direct all-electron RKS has an explicitly selectable
+ordinary-stream device-control prototype. With \`VIBEQC_CUDA_KS_CHUNK=2\`, an
+eligible owner can submit a bounded two-iteration chunk and synchronize once at
+the chunk boundary rather than unconditionally fencing after every iteration.
+Each completed physical iteration still writes one compact scalar diagnostic
+row, and the device applies the unchanged energy-change, density-change,
+physical-residual, electron-count and maximum-iteration gates before admitting
+the next iteration.
+
+Near a convergence gate the selected path submits one iteration to bound
+speculation. Direct J/XC do not yet have an active-mask seam, so an unexpected
+terminal state in the first slot may enqueue at most one unused J/XC
+evaluation; downstream Fock, DIIS, eigensolver, density, warm-state and history
+updates for that slot are masked. Ragged batch items retain independent state
+and streams.
+
+The production default remains the established one-iteration host-controlled
+route. \`VIBEQC_CUDA_KS_CHUNK=1\` (also \`0\`, \`off\` or \`none\`) selects that
+baseline explicitly. \`VIBEQC_CUDA_KS_CHUNK=2\` is an opt-in qualification
+selector for direct all-electron RKS only. UKS keeps its occupation
+stabilization and bounded final-closure host policy; ECP RKS keeps the strict
+physical final closure required by #586. CUDA Graphs are not required.
+
+RTX 5090 / CUDA 12.9 cold, warm and changed-geometry A/B measurements preserved
+identical energies and iteration counts but found no reproducible endpoint
+benefit; PBE cold was materially slower with two-slot submission. The chunked
+route is therefore not auto-promoted. See the
+[iteration-residency decision](../.agents/notes/implemented/performance/2026-09-20-cuda-ks-iteration-chunks.md).
+
 ## Native CPU stationary-gradient diagnostic
 
 `vibeqc._stationary_cpu.complete_rks_gradient_diagnostic` is an internal,
@@ -134,20 +166,29 @@ from vibeqc_compiler.dft import NativeAO
 
 atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]
 calc = Calculator(
-    method="pbe-rks", basis="sto-3g", device="cpu",
-    ks_options=KsOptions(grid=GridSpec(
-        radial_points=24, angular_polar=8, angular_azimuth=16,
-    )),
-    energy_tolerance=1e-12, density_tolerance=1e-10,
+    method="pbe-rks",
+    basis="sto-3g",
+    device="cpu",
+    ks_options=KsOptions(
+        grid=GridSpec(
+            radial_points=24,
+            angular_polar=8,
+            angular_azimuth=16,
+        )
+    ),
+    energy_tolerance=1e-12,
+    density_tolerance=1e-10,
 )
 with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
     energy = batch.execute(strict=True).items[0].energy
     state = StationaryKsState.from_native(batch, basis)
     diagnostic = complete_rks_gradient_diagnostic(
-        state, basis, cache=".cache/stationary-cpu",
+        state,
+        basis,
+        cache=".cache/stationary-cpu",
     )
-    gradient = diagnostic.gradient       # dE/dR, Hartree/bohr
-    forces = -gradient                   # negate exactly once
+    gradient = diagnostic.gradient  # dE/dR, Hartree/bohr
+    forces = -gradient  # negate exactly once
     print(energy, diagnostic.components, diagnostic.work)
 ```
 

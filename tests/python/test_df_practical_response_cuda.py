@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _practical_model(case_name):
+def _practical_model(case_name: typing.Any) -> typing.Any:
     """Load the retained explicit bases; historical names supply geometry only."""
     case = benchmark_cases()[case_name]
     identity = (
@@ -40,7 +41,7 @@ def _practical_model(case_name):
     scope="module",
     params=["oh-def2-svp-spherical-uhf", "water-tetramer-def2-svp-spherical"],
 )
-def practical_reference(request):
+def practical_reference(request: typing.Any) -> typing.Any:
     """Solve original/moved cc-pVDZ/JKFIT models independently with libcint."""
     from pyscf import gto, scf
 
@@ -87,17 +88,17 @@ def practical_reference(request):
     ],
 )
 def test_practical_full_force_cold_warm_and_changed_geometry(
-    monkeypatch,
-    tmp_path,
-    practical_reference,
-    values,
-    storage,
-    space,
-    algebra,
-    budget,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    practical_reference: typing.Any,
+    values: typing.Any,
+    storage: typing.Any,
+    space: typing.Any,
+    algebra: typing.Any,
+    budget: typing.Any,
     *,
-    density_tolerance=1e-12,
-):
+    density_tolerance: typing.Any = 1e-12,
+) -> None:
     """Check complete forces, including Coulomb/exchange and metric cancellation.
 
     Accuracy is tested at every endpoint, including the first cold solve. All
@@ -209,8 +210,14 @@ def test_practical_full_force_cold_warm_and_changed_geometry(
     ],
 )
 def test_practical_original_density_request(
-    monkeypatch, tmp_path, practical_reference, values, storage, space, algebra
-):
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    practical_reference: typing.Any,
+    values: typing.Any,
+    storage: typing.Any,
+    space: typing.Any,
+    algebra: typing.Any,
+) -> None:
     """Keep the original RHF/UHF request and every failed route's strict gate.
 
     Cold, warm and both changed-geometry endpoints are independently compared
@@ -233,7 +240,9 @@ def test_practical_original_density_request(
 @pytest.mark.parametrize(
     "practical_reference", ["oh-def2-svp-spherical-uhf"], indirect=True
 )
-def test_practical_packed_oh_at_128_mib(monkeypatch, tmp_path, practical_reference):
+def test_practical_packed_oh_at_128_mib(
+    monkeypatch: typing.Any, tmp_path: typing.Any, practical_reference: typing.Any
+) -> None:
     """Keep the admitted small packed case separate from water's rejection."""
     test_practical_full_force_cold_warm_and_changed_geometry(
         monkeypatch,
@@ -250,7 +259,12 @@ def test_practical_packed_oh_at_128_mib(monkeypatch, tmp_path, practical_referen
 @pytest.mark.parametrize(
     "values,budget", [("dense", 80 << 20), ("packed", 128 << 20), ("packed", 160 << 20)]
 )
-def test_practical_water_insufficient_budget(monkeypatch, tmp_path, values, budget):
+def test_practical_water_insufficient_budget(
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    values: typing.Any,
+    budget: typing.Any,
+) -> None:
     """Reject allowances below the value plan's independently checked lower bound.
 
     The force adapter assigns half its allowance to J/K. The native CPU planner
@@ -314,8 +328,11 @@ def test_practical_water_insufficient_budget(monkeypatch, tmp_path, values, budg
 
 @pytest.mark.parametrize("buckets", ("off", "packet"))
 def test_practical_auxiliary_f_rys_is_executed(
-    monkeypatch, tmp_path, practical_reference, buckets
-):
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+    practical_reference: typing.Any,
+    buckets: typing.Any,
+) -> None:
     """Observe the generated f classes, not just agreement of two fallbacks."""
     from benchmarks.df_component_ledger import aggregate, read_trace
 

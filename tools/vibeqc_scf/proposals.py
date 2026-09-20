@@ -7,6 +7,7 @@ simple diagonal occupied-virtual preconditioner below.
 """
 
 import time
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -14,7 +15,7 @@ import numpy as np
 from .state import DensityProposal, metric_root, spin_counts
 
 
-def _columns(value):
+def _columns(value: typing.Any) -> typing.Any:
     raw = np.asarray(value)
     if raw.ndim != 2 or raw.size > 12 * 12:
         raise ValueError("orbital action exceeds the small-system output budget")
@@ -31,10 +32,10 @@ class OccupiedProposal:
     parent_id: str
     columns: tuple
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "columns", tuple(_columns(c) for c in self.columns))
 
-    def materialize(self, state):
+    def materialize(self, state: typing.Any) -> typing.Any:
         started = time.perf_counter()
         if self.parent_id != state.identity:
             raise ValueError("stale_state")
@@ -78,7 +79,7 @@ class RotationProposal:
     rotations: tuple
     kind: str = "occupied_virtual_rotation"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("coefficients", "rotations"):
             object.__setattr__(
                 self, name, tuple(_columns(c) for c in getattr(self, name))
@@ -86,7 +87,7 @@ class RotationProposal:
         if self.kind not in ("occupied_virtual_rotation", "preconditioner_action"):
             raise ValueError("unknown rotation action")
 
-    def materialize(self, state):
+    def materialize(self, state: typing.Any) -> typing.Any:
         started = time.perf_counter()
         if self.parent_id != state.identity:
             raise ValueError("stale_state")
@@ -122,17 +123,17 @@ class RotationProposal:
         )
 
 
-def diis_density(state):
+def diis_density(state: typing.Any) -> typing.Any:
     """Propose the existing native DIIS/Aufbau update with the extra safeguard."""
     return DensityProposal(state.identity, state.baseline, "determinant_density")
 
 
-def mixing(fraction):
+def mixing(fraction: typing.Any) -> typing.Any:
     """Mix current and traditional densities inside the physical ensemble domain."""
     if isinstance(fraction, bool) or not np.isfinite(fraction) or not 0 < fraction <= 1:
         raise ValueError("mixing fraction must lie in (0,1]")
 
-    def propose(state):
+    def propose(state: typing.Any) -> typing.Any:
         return DensityProposal(
             state.identity, (1 - fraction) * state.density + fraction * state.baseline
         )
@@ -140,7 +141,7 @@ def mixing(fraction):
     return propose
 
 
-def project_occupied(columns, overlap):
+def project_occupied(columns: typing.Any, overlap: typing.Any) -> typing.Any:
     """Explicit Löwdin projection into a new overlap; rank loss is an error.
 
     Caller must verify compatible atom/AO topology, record the source/target
@@ -162,7 +163,7 @@ def project_occupied(columns, overlap):
     return _columns(projected), time.perf_counter() - started
 
 
-def diagonal_preconditioner(state):
+def diagonal_preconditioner(state: typing.Any) -> typing.Any:
     """Deterministic OV gradient step in current natural-orbital coordinates.
 
     Near-zero gaps fail explicitly; no denominator clipping or nominal Newton

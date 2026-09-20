@@ -1,6 +1,7 @@
 """Real-device tier; opt in only inside an allocated GPU job."""
 
 import os
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -28,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def artifact():
+def artifact() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm on this host"
     compiler = CudaCompilerAdapter(
         Path(os.environ.get("VIBEQC_NVCC", "/group/software/cuda-12.9.1/bin/nvcc")),
@@ -39,7 +40,9 @@ def artifact():
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 @pytest.mark.parametrize("tile", [1, 2, 4])
-def test_cuda_mo_blocks_mp2_and_owned_memory(artifact, name, tile):
+def test_cuda_mo_blocks_mp2_and_owned_memory(
+    artifact: typing.Any, name: typing.Any, tile: typing.Any
+) -> None:
     meta, a = load_fixture(name)
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -79,7 +82,7 @@ def test_cuda_mo_blocks_mp2_and_owned_memory(artifact, name, tile):
             provider.get(block)
 
 
-def test_independent_cuda_items_and_closed_exports(artifact):
+def test_independent_cuda_items_and_closed_exports(artifact: typing.Any) -> None:
     meta, a = load_fixture("h2")
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -103,7 +106,9 @@ def test_independent_cuda_items_and_closed_exports(artifact):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_generated_df_source_staging_and_same_hamiltonian(name):
+def test_generated_df_source_staging_and_same_hamiltonian(
+    name: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     meta, a = load_fixture(name)
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:

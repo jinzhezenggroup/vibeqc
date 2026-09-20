@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -28,7 +29,7 @@ _GOLDENS = json.loads(
 
 
 @pytest.fixture(scope="module")
-def native(tmp_path_factory):
+def native(tmp_path_factory: typing.Any) -> typing.Any:
     path = os.environ.get("VIBEQC_D3_LIBRARY")
     if path is None:
         path = build_reference(tmp_path_factory.mktemp("d3-native"))
@@ -38,7 +39,7 @@ def native(tmp_path_factory):
 
 
 @pytest.mark.parametrize("case", _GOLDENS, ids=lambda case: case["name"])
-def test_independent_simple_dftd3_golden(native, case):
+def test_independent_simple_dftd3_golden(native: typing.Any, case: typing.Any) -> None:
     spec = make_spec(**case["parameters"])
     energy, gradient = native.evaluate(spec, case["numbers"], case["positions"])
     assert energy == pytest.approx(case["energy"], abs=2e-14, rel=0)
@@ -46,7 +47,9 @@ def test_independent_simple_dftd3_golden(native, case):
 
 
 @pytest.mark.parametrize("step", [2e-4, 7e-5, 2e-5])
-def test_complete_cn_response_finite_differences(native, step):
+def test_complete_cn_response_finite_differences(
+    native: typing.Any, step: typing.Any
+) -> None:
     case = _GOLDENS[1]
     spec = make_spec(**case["parameters"])
     x = np.array(case["positions"])
@@ -62,7 +65,7 @@ def test_complete_cn_response_finite_differences(native, step):
     np.testing.assert_allclose(gradient, numerical, atol=1e-9, rtol=0)
 
 
-def test_invariance_and_atom_pair_transposition(native):
+def test_invariance_and_atom_pair_transposition(native: typing.Any) -> None:
     case = _GOLDENS[1]
     z = np.array(case["numbers"])
     x = np.array(case["positions"])
@@ -78,7 +81,7 @@ def test_invariance_and_atom_pair_transposition(native):
     np.testing.assert_allclose(gradient.sum(axis=0), 0, atol=1e-14)
 
 
-def test_pair_switch_and_energy_force_sign(native):
+def test_pair_switch_and_energy_force_sign(native: typing.Any) -> None:
     spec = gfn1_compatibility()
     z = [6, 8]
     x = np.array([[0.0, 0.0, 0.0], [49.975, 0.0, 0.0]])
@@ -100,7 +103,7 @@ def test_pair_switch_and_energy_force_sign(native):
     assert native.evaluate(unscreened, z, x)[0] < 0
 
 
-def test_scaling_parameters_are_not_gfn1_constants(native):
+def test_scaling_parameters_are_not_gfn1_constants(native: typing.Any) -> None:
     case = _GOLDENS[1]
     spec = make_spec(**case["parameters"])
     e, g = native.evaluate(spec, case["numbers"], case["positions"])
@@ -132,13 +135,13 @@ def test_scaling_parameters_are_not_gfn1_constants(native):
         {"radii_sha256": "a" * 63},
     ],
 )
-def test_unsupported_parameters_fail_closed(change):
+def test_unsupported_parameters_fail_closed(change: typing.Any) -> None:
     spec = make_spec(s6=1.0, s8=1.0, a1=0.4, a2=4.0)
     with pytest.raises((ValueError, TypeError)):
         replace(spec, **change)
 
 
-def test_guardrails_and_unchanged_inputs(native):
+def test_guardrails_and_unchanged_inputs(native: typing.Any) -> None:
     spec = gfn1_compatibility()
     x = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     original = x.copy()
@@ -161,7 +164,7 @@ def test_guardrails_and_unchanged_inputs(native):
     np.testing.assert_array_equal(g, 0.0)
 
 
-def test_canonical_methodir_composition_and_identity():
+def test_canonical_methodir_composition_and_identity() -> None:
     spec = gfn1_compatibility()
     assert D3Spec(**spec.to_payload()) == spec
     plain = resolve_method("PBE")
@@ -189,7 +192,9 @@ def test_canonical_methodir_composition_and_identity():
 @pytest.mark.parametrize(
     "method,spin", [("pbe-rks", "unpolarized"), ("pbe-uks", "polarized")]
 )
-def test_native_ks_cannot_silently_omit_correction(monkeypatch, method, spin):
+def test_native_ks_cannot_silently_omit_correction(
+    monkeypatch: typing.Any, method: typing.Any, spin: typing.Any
+) -> None:
     from vibeqc import ks
 
     graph = resolve_method(

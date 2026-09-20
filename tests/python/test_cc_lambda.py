@@ -1,5 +1,6 @@
 """Generated Lambda RHS/J* actions against independent determinant differences."""
 
+import typing
 from functools import lru_cache
 
 import numpy as np
@@ -14,20 +15,20 @@ from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
 
 
 @lru_cache(maxsize=8)
-def _programs(o, v, form="shared"):
+def _programs(o: typing.Any, v: typing.Any, form: typing.Any = "shared") -> typing.Any:
     return build_lambda_programs(o, v, form=form)
 
 
-def _pack(layouts, arrays):
+def _pack(layouts: typing.Any, arrays: typing.Any) -> typing.Any:
     return np.concatenate([layout.pack(a) for layout, a in zip(layouts, arrays)])
 
 
-def _unpack(layouts, vector):
+def _unpack(layouts: typing.Any, vector: typing.Any) -> typing.Any:
     split = layouts[0].size
     return layouts[0].unpack(vector[:split]), layouts[1].unpack(vector[split:])
 
 
-def _rhs(programs, feeds):
+def _rhs(programs: typing.Any, feeds: typing.Any) -> typing.Any:
     result = execute(
         programs.energy_vjp.program,
         {**feeds, "bar_correlation_energy": np.asarray(-1.0)},
@@ -35,7 +36,9 @@ def _rhs(programs, feeds):
     return result["bar_t1"], result["bar_t2"]
 
 
-def _transpose(programs, feeds, arrays):
+def _transpose(
+    programs: typing.Any, feeds: typing.Any, arrays: typing.Any
+) -> typing.Any:
     result = execute(
         programs.residual_vjp.program,
         {**feeds, "bar_singles_residual": arrays[0], "bar_doubles_residual": arrays[1]},
@@ -44,7 +47,9 @@ def _transpose(programs, feeds, arrays):
 
 
 @pytest.mark.parametrize("o,v", [(1, 1), (1, 2), (2, 2), (2, 3)])
-def test_generated_energy_and_residual_actions_against_determinant_directions(o, v):
+def test_generated_energy_and_residual_actions_against_determinant_directions(
+    o: typing.Any, v: typing.Any
+) -> None:
     programs = _programs(o, v)
     f, g, t1, t2 = random_case(o, v, 152)
     feeds = dense_feeds(f, g, t1, t2)
@@ -84,7 +89,7 @@ def test_generated_energy_and_residual_actions_against_determinant_directions(o,
 
 
 @pytest.fixture(scope="module")
-def numerical_jacobian():
+def numerical_jacobian() -> typing.Any:
     o, v = 2, 2
     f, g, t1, t2 = random_case(o, v, 152)
     layouts = amplitude_layouts(o, v)
@@ -106,7 +111,9 @@ def numerical_jacobian():
     return dense_feeds(f, g, t1, t2), layouts, matrix, energy_derivative, weights
 
 
-def test_numerical_jacobian_transpose_and_orbit_multiplicity(numerical_jacobian):
+def test_numerical_jacobian_transpose_and_orbit_multiplicity(
+    numerical_jacobian: typing.Any,
+) -> None:
     feeds, layouts, matrix, energy_derivative, weights = numerical_jacobian
     programs = _programs(2, 2)
     lam = np.random.default_rng(154).normal(size=len(weights))
@@ -123,7 +130,9 @@ def test_numerical_jacobian_transpose_and_orbit_multiplicity(numerical_jacobian)
     assert np.max(np.abs(actual - matrix.T @ lam)) > 1e-4
 
 
-def test_generated_actions_plug_into_existing_gmres(numerical_jacobian):
+def test_generated_actions_plug_into_existing_gmres(
+    numerical_jacobian: typing.Any,
+) -> None:
     from tools.vibeqc_response.krylov import GMRESOptions, solve
 
     feeds, layouts, matrix, energy_derivative, weights = numerical_jacobian
@@ -133,7 +142,7 @@ def test_generated_actions_plug_into_existing_gmres(numerical_jacobian):
     class Operator:
         dimension = len(weights)
 
-        def apply(self, vector):
+        def apply(self, vector: typing.Any) -> typing.Any:
             dense = _unpack(layouts, vector / sqrt_weights)
             return sqrt_weights * _pack(layouts, _transpose(programs, feeds, dense))
 
@@ -154,7 +163,7 @@ def test_generated_actions_plug_into_existing_gmres(numerical_jacobian):
     # This is an operator/solver interoperability test, not a converged-CC response API.
 
 
-def test_replay_equation_forms_and_provenance():
+def test_replay_equation_forms_and_provenance() -> None:
     arrays = random_case(2, 2, 155)
     feeds = dense_feeds(*arrays)
     expected = None
@@ -185,7 +194,9 @@ def test_replay_equation_forms_and_provenance():
             np.testing.assert_allclose(actual, reference, atol=1e-12, rtol=1e-12)
 
 
-def test_lambda_programs_have_no_amplitude_squared_projection_and_plan_for_cuda():
+def test_lambda_programs_have_no_amplitude_squared_projection_and_plan_for_cuda() -> (
+    None
+):
     target = cuda_target_info("sm_80")
     sizes = []
     for o, v in ((2, 2), (4, 6)):
@@ -208,7 +219,9 @@ def test_lambda_programs_have_no_amplitude_squared_projection_and_plan_for_cuda(
 
 
 @pytest.mark.parametrize("kind", ["shape", "dtype", "symmetry", "nonfinite", "budget"])
-def test_linearization_fails_closed_for_bad_seeds_and_budgets(kind):
+def test_linearization_fails_closed_for_bad_seeds_and_budgets(
+    kind: typing.Any,
+) -> None:
     programs = _programs(2, 2)
     feeds = dense_feeds(*random_case())
     tangent1, tangent2 = np.ones((2, 2)), np.ones((2, 2, 2, 2))

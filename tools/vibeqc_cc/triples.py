@@ -64,6 +64,7 @@ inventory as ``einsum``/``transpose``/``gather``/``reduce_sum``/``divide``/
 (issue steps 3 and 11); it is numerically identical to :func:`triples_energy`.
 """
 
+import typing
 from fractions import Fraction
 from itertools import permutations
 
@@ -201,7 +202,7 @@ _LABELS = ("abc", "acb", "bac", "bca", "cab", "cba")
 VERSION = 1
 
 
-def _inventory():
+def _inventory() -> typing.Any:
     """Canonical record of the audited coefficient/symmetry content."""
     return {
         "method": "RCCSD(T)",
@@ -221,7 +222,7 @@ def _inventory():
 INVENTORY_HASH = canonical_hash(_inventory())
 
 
-def r3(w):
+def r3(w: typing.Any) -> typing.Any:
     """Angular projection r3(w); six signed occupied-axis permutations."""
     return (
         4 * w
@@ -233,7 +234,18 @@ def r3(w):
     )
 
 
-def _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v):
+def _validate(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
+) -> None:
     arrays = {
         "ovvv": ovvv,
         "ovoo": ovoo,
@@ -268,7 +280,14 @@ def _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v):
             raise ValueError(f"{name} shape {arrays[name].shape} != expected {shape}")
 
 
-def _views(ovvv, ovoo, ovov, fov, t1, t2):
+def _views(
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+) -> typing.Any:
     """Slow-code transposed views; mirrors ccsd_t_slow.kernel exactly."""
     t1T = t1.T
     t2T = t2.transpose(2, 3, 0, 1)
@@ -279,25 +298,25 @@ def _views(ovvv, ovoo, ovov, fov, t1, t2):
     return t1T, t2T, eris_vvov, eris_vooo, eris_vvoo, fvo
 
 
-def _w(np_views, a, b, c):
+def _w(np_views: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     _, t2T, vvov, vooo, _, _ = np_views
     w = np.einsum("if,fkj->ijk", vvov[a, b], t2T[c, :])
     w -= np.einsum("ijm,mk->ijk", vooo[a, :], t2T[b, c])
     return w
 
 
-def _v(np_views, a, b, c):
+def _v(np_views: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     t1T, t2T, _, _, vvoo, fvo = np_views
     v = np.einsum("ij,k->ijk", vvoo[a, b], t1T[c])
     v += np.einsum("ij,k->ijk", t2T[a, b], fvo[c])
     return v
 
 
-def _permuted(triple, axes):
+def _permuted(triple: typing.Any, axes: typing.Any) -> typing.Any:
     return (triple[axes[0]], triple[axes[1]], triple[axes[2]])
 
 
-def _degeneracy(a, b, c):
+def _degeneracy(a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     if a == c:  # a == b == c
         return 6
     if a == b or b == c:
@@ -305,7 +324,9 @@ def _degeneracy(a, b, c):
     return 1
 
 
-def _check_denominators(eps_o, eps_v, threshold):
+def _check_denominators(
+    eps_o: typing.Any, eps_v: typing.Any, threshold: typing.Any
+) -> None:
     """Reject noncanonical or near-zero (T) denominators before evaluation.
 
     A canonical RHF reference has occupied energies below virtual energies, so
@@ -343,19 +364,19 @@ def _check_denominators(eps_o, eps_v, threshold):
 
 
 def triples_energy(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: typing.Any,
+    nvir: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
     *,
-    denominator_threshold=1e-10,
-):
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """Non-iterative closed-shell (T) correction in Hartree (triangle + 6/2).
 
     Faithful transcription of ``ccsd_t_slow.kernel`` including the triangular
@@ -384,19 +405,19 @@ def triples_energy(
 
 
 def triples_fullsum(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: typing.Any,
+    nvir: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
     *,
-    denominator_threshold=1e-10,
-):
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """Independent full-sum oracle of (T): all ordered (a,b,c), no 6/2, /6.
 
     The triangular reference sums six virtual permutations of W against six
@@ -421,13 +442,13 @@ def triples_fullsum(
     eijk = eps_o[:, None, None] + eps_o[None, :, None] + eps_o[None, None, :]
     perms = list(permutations((0, 1, 2)))
 
-    def inv(p):
+    def inv(p: typing.Any) -> typing.Any:
         out = [0, 0, 0]
         for i, x in enumerate(p):
             out[x] = i
         return tuple(out)
 
-    def compose(p, q):
+    def compose(p: typing.Any, q: typing.Any) -> typing.Any:
         return tuple(p[i] for i in q)
 
     total = 0.0
@@ -452,7 +473,7 @@ def triples_fullsum(
 # ---------------------------------------------------------------------------
 
 
-def _t_views(nodes):
+def _t_views(nodes: typing.Any) -> typing.Any:
     return {
         "t1T": transpose(nodes["t1"], (1, 0)),
         "t2T": transpose(nodes["t2"], (2, 3, 0, 1)),
@@ -463,7 +484,7 @@ def _t_views(nodes):
     }
 
 
-def _fix(node, *selections):
+def _fix(node: typing.Any, *selections: typing.Any) -> typing.Any:
     """Select single virtual coordinates and reduce the singleton axes away."""
     axes = []
     for axis, pos in selections:
@@ -472,7 +493,7 @@ def _fix(node, *selections):
     return reduce_sum(node, tuple(sorted(axes)))
 
 
-def _w_node(v, a, b, c):
+def _w_node(v: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     ab = _fix(v["vvov"], (0, a), (1, b))  # (i, f)
     cc = _fix(v["t2T"], (0, c))  # (f, k, j)
     w1 = einsum("if,fkj->ijk", ab, cc)
@@ -482,7 +503,7 @@ def _w_node(v, a, b, c):
     return add(w1, w2, coefficients=(1, -1))
 
 
-def _v_node(v, a, b, c):
+def _v_node(v: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     ab = _fix(v["vvoo"], (0, a), (1, b))  # (i, j)
     cc = _fix(v["t1T"], (0, c))  # (k,)
     v1 = einsum("ij,k->ijk", ab, cc)
@@ -492,13 +513,20 @@ def _v_node(v, a, b, c):
     return add(v1, v2, coefficients=(1, 1))
 
 
-def _r3_node(w):
+def _r3_node(w: typing.Any) -> typing.Any:
     return add(
         *(transpose(w, perm) for _, perm in R3), coefficients=tuple(c for c, _ in R3)
     )
 
 
-def _d3_node(nodes, ijk, a, b, c, fac):
+def _d3_node(
+    nodes: typing.Any,
+    ijk: typing.Any,
+    a: typing.Any,
+    b: typing.Any,
+    c: typing.Any,
+    fac: typing.Any,
+) -> typing.Any:
     e0 = broadcast(nodes["eps_o"], ijk, (0,))
     e1 = broadcast(nodes["eps_o"], ijk, (1,))
     e2 = broadcast(nodes["eps_o"], ijk, (2,))
@@ -511,7 +539,7 @@ def _d3_node(nodes, ijk, a, b, c, fac):
     return add(eijk, broadcast(ev, ijk, ()), coefficients=(fac, -fac))
 
 
-def build_triples_program(nocc, nvir):
+def build_triples_program(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     """Lower the (T) inventory to unshared TensorIR; differentiable inputs.
 
     Inputs are declared ``restricted_spatial`` parameters *without* symmetry
@@ -525,10 +553,10 @@ def build_triples_program(nocc, nvir):
     occ = IndexSpace("occupied", "occupied", nocc)
     vir = IndexSpace("virtual", "virtual", nvir)
 
-    def O(name):
+    def O(name: typing.Any) -> typing.Any:
         return Index(name, occ)
 
-    def V(name):
+    def V(name: typing.Any) -> typing.Any:
         return Index(name, vir)
 
     common = {
@@ -598,19 +626,19 @@ def build_triples_program(nocc, nvir):
 
 
 def triples_energy_tensorir(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: typing.Any,
+    nvir: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
     *,
-    denominator_threshold=1e-10,
-):
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """Build and execute the TensorIR lowering; returns the E_T scalar."""
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ PROFILES = sorted(
 ]
 
 
-def test_profile_inventory_is_complete():
+def test_profile_inventory_is_complete() -> None:
     assert len(PROFILES) == 8
     snapshot = json.loads(MANIFEST.read_text())
     compacted = {
@@ -29,7 +30,7 @@ def test_profile_inventory_is_complete():
 
 
 @pytest.mark.parametrize("path", PROFILES, ids=lambda path: str(path.relative_to(ROOT)))
-def test_retained_aggregates_and_recovery_identity(path):
+def test_retained_aggregates_and_recovery_identity(path: typing.Any) -> None:
     # This validates the checkout without fetching any historical Git objects.
     records = {entry["path"]: entry for entry in _records(MANIFEST)}
     relative = path.relative_to(ROOT).as_posix()
@@ -55,7 +56,7 @@ def test_retained_aggregates_and_recovery_identity(path):
     assert hashlib.sha256(canonical).hexdigest() == entry["retained_fields_sha256"]
 
 
-def test_snapshot_moved_totals_and_compacted_savings():
+def test_snapshot_moved_totals_and_compacted_savings() -> None:
     snapshot = json.loads(MANIFEST.read_text())
     records = _records(MANIFEST)
     moved = [entry for entry in records if entry["checkout"] == "git-history"]
