@@ -164,6 +164,24 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
   return result;
 }
 
+/** Partition an already resolved envelope; zero remaining bytes is exhaustion,
+ * never a new automatic request. Preserve the original probe/headroom identity. */
+inline DfResolvedBudget resolve_df_subbudget(DfBudgetWorkload workload,
+                                             const DfResolvedBudget& envelope,
+                                             std::size_t retained_bytes) noexcept {
+  auto result = envelope;
+  result.total_bytes = result.value_bytes = result.response_bytes = 0;
+  result.feasible = false;
+  if (!envelope.feasible || retained_bytes >= envelope.total_bytes) return result;
+  const auto remaining = envelope.total_bytes - retained_bytes;
+  const auto split = resolve_df_budget(workload, {}, remaining);
+  result.total_bytes = split.total_bytes;
+  result.value_bytes = split.value_bytes;
+  result.response_bytes = split.response_bytes;
+  result.feasible = split.feasible;
+  return result;
+}
+
 /** Compatibility helpers for explicit-only callers. Zero no longer means a
  * hidden implementation default; production resolves zero with workload and
  * resource information through resolve_df_budget. */

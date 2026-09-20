@@ -190,10 +190,11 @@ struct PreparedFockPlan::Impl {
       df_workload = {diagnostic.nbf, molecule::ao_count(*auxiliary), system.atoms.size(), 1U, 0U,
                      derivatives};
     }
-    const auto automatic_df =
-        has_df ? resolve_df_budget(df_workload, df_resource, 0U) : DfResolvedBudget{};
+    const auto resolved_df =
+        has_df ? resolve_df_budget(df_workload, df_resource, budget) : DfResolvedBudget{};
     const auto available =
-        budget ? budget : (has_df ? automatic_df.total_bytes : kDefaultDeviceBudget);
+        has_df ? resolved_df.total_bytes : (budget ? budget : kDefaultDeviceBudget);
+    if (has_df && !resolved_df.feasible) throw std::bad_alloc();
     diagnostic.device_budget_bytes = available;
     if (has_exact) {
       const auto direct_budget = has_df ? available / 2 : available;
@@ -207,8 +208,7 @@ struct PreparedFockPlan::Impl {
       diagnostic.device_bytes = diagnostic.direct.device_bytes;
     }
     if (has_df) {
-      const auto remainder = available - diagnostic.device_bytes;
-      const auto resolved = resolve_df_budget(df_workload, df_resource, remainder);
+      const auto resolved = resolve_df_subbudget(df_workload, resolved_df, diagnostic.device_bytes);
       const auto plan_budget = resolved.value_bytes;
       if (!resolved.feasible || !plan_budget || (derivatives && !resolved.response_bytes))
         throw std::bad_alloc();

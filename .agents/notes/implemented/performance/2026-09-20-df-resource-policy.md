@@ -29,3 +29,18 @@ Value and response ownership are proportional to estimated staged work with boun
 ## Evidence
 
 The synthetic policy test covers explicit hard caps, energy/force ownership, small/large workloads, deterministic no-probe fallback, live constrained/roomy envelopes and infeasible tiny force budgets. Native replay tests bind the generated response budget to the prepared owner. `benchmarks/df_policy_endpoint.py` retains resolved policy fields together with DF-plan and process peak-memory evidence; final CPU/CUDA qualification is recorded in the PR and repository checks.
+
+## Subbudget provenance review
+
+Partition the already resolved envelope rather than re-entering automatic
+selection with a remainder. The earlier sequence reset requested_bytes and
+reserved_headroom_bytes: a live automatic envelope reserving 2 GiB became a
+subplan reporting no reservation. The subbudget helper preserves parent request,
+probe and headroom identity, and rejects exhaustion before subtraction. It
+never re-probes CUDA. A compiled host regression covers energy/force, explicit
+and automatic requests, and exhausted or overdrawn remainders.
+These host checks do not supply the still-pending #598 real-device default-policy
+qualification. No new endpoint timing or whole-device memory claim is made.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
