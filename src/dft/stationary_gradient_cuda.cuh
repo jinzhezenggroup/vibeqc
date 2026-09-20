@@ -167,8 +167,8 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
     if (!p || !view || view->version != 1 || view->nao != p->aos || view->nactive != p->aos ||
-        view->npoint > p->points || view->jets < (stationary_pbe ? 10U : 4U) || !view->features ||
-        !work || !view->ao_ids || !view->ao || !view->points)
+        view->npoint > p->points || view->jets < stationary_ao_jets || !view->features || !work ||
+        !view->ao_ids || !view->ao || !view->points)
       throw std::invalid_argument("invalid geometry task lease");
     check(*p);
     auto stream = view->stream;

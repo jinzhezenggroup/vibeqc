@@ -311,6 +311,16 @@ bool get_rhf_cuda_inactive_eigensolver_profile(const CudaRhfBucketPlan* plan,
   return true;
 }
 
+bool get_rhf_cuda_final_state_audit(const CudaRhfBucketPlan* plan,
+                                    CudaDirectFinalStateAudit& audit) noexcept {
+  if (plan == nullptr || !plan->initialized ||
+      plan->last_direct_final_state.route == CudaDirectFinalStateRoute::none) {
+    return false;
+  }
+  audit = plan->last_direct_final_state;
+  return true;
+}
+
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems, const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities, int device_id,

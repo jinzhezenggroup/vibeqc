@@ -456,6 +456,16 @@ The primitive work bound includes each public spherical AO's Cartesian
 components. Compilation caches retain source/header/toolchain/binary checks
 on every load. The existing s/p execution route remains available unchanged.
 
+The d-shell consumer enumerates component and primitive products in a bounded
+native runtime using a compiler-owned dispatch table. It reuses the generated
+derivative kernels and the existing primitive tile, preserves ordered weights,
+and publishes derivatives/work only after successful contraction. The private
+diagnostic selector `component_execution="python"` retains the original bounded
+enumerator for explicit comparisons; numerical failures do not silently retry.
+The host inventory includes immutable label/dispatch arrays and their construction
+copies. This changes execution orchestration, not the mathematical kernel count
+or the first-call compilation cost.
+
 The same nine-source stationary plan supplies force = -gradient. CPU ECP
 derivatives explicitly come from `checked_ecp_integrals`, the generated
 native CPU two-grid provider also used by CPU ECP energies. It checks
@@ -487,10 +497,40 @@ for arbitrary ECP families or a performance promotion.
 The d-shell cases reuse these gates from `test_ecp_spd_cartesian_cpu.py` and
 `test_ecp_spd_spherical_cpu.py`. CI runs all three files in the `ecp-forces`
 shard, with separate representation workers and the same 20-minute job cap.
+Paired endpoint tests compare Python and native enumeration on the same runner,
+including cold prepared batches, warm replay, changed geometry and failure
+recovery at the exact planned budget. Their shared compiler cache is already
+populated; these cold-batch timings do not measure cold compilation.
 
 See [the CPU public-force contract](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cpu-forces.md).
 The [s/p/d scheduling decision](../.agents/notes/implemented/performance/2026-09-20-spd-cpu-derivative-schedule.md)
 records component normalization, work accounting and compilation bounds.
+See also the [native enumeration decision](../.agents/notes/implemented/performance/2026-09-20-cpu-component-streaming.md).
+
+## Stuttgart RLC DFT force qualification
+
+`tests/python/test_ecp_stuttgart_dft.py` applies the complete public force gates
+to the pinned PySCF 2.14.0 `stuttgart-dz` Na/K orbital and scalar-ECP records,
+with STO-3G H. These are nine-AO s/p NaH/KH fixtures: neutral singlets for
+LDA/PBE RKS and +1 doublets for LDA/PBE UKS, in Cartesian and real-spherical
+representations. The local residual is zero; the nonlocal s/p/d projectors and
+effective-charge Coulomb attraction remain active. Parameter data is read from
+the test-only installation and checked against the existing fixture hashes.
+
+CPU and explicitly allocated NVIDIA CUDA runs require independent PySCF
+full-grid-response analytic gradients and two reconverged energy-difference
+steps. The matched discrete XC grid is explicitly 24 x 8 x 16. PBE mixed
+NaH/KH + hydrogen-fragment batches additionally check exact resource budgets,
+warm replay, changed geometry and failed-item recovery. CPU cases run in the
+`ecp-forces` CI shard; CUDA cases require `VIBEQC_ECP_CUDA_TEST=1` on an actual
+allocated GPU. CUDA derivative execution is checked with CPU scientific
+fallback entrypoints disabled.
+
+This qualification adds physical parameter-family coverage to the complete DFT
+force contract. It does not extend angular, method, ECP-format or resource limits,
+and does not establish arbitrary Stuttgart chemistry or basis/grid convergence.
+See the [Stuttgart DFT qualification decision](../.agents/notes/implemented/numerics/2026-09-20-stuttgart-dft-forces.md)
+and [retained endpoint evidence](../benchmarks/results/ecp-stuttgart-dft-171/README.md).
 
 ## Public CUDA semilocal ECP forces
 

@@ -308,10 +308,16 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
     assert Path(rows[1]["result"]).is_file()
 
 
+def test_slurm_runner_is_kept_out_of_repository_root() -> None:
+    root = Path(matrix.ROOT)
+    assert not list(root.glob("*.slurm"))
+    assert (root / "benchmarks" / "run_issue206_df.slurm").is_file()
+
+
 def test_sbatch_spool_copy_uses_submission_checkout(tmp_path: typing.Any) -> None:
     root = Path(matrix.ROOT)
     spool = tmp_path / "slurm_script"
-    spool.write_text((root / "run_issue206_df.slurm").read_text())
+    spool.write_text((root / "benchmarks" / "run_issue206_df.slurm").read_text())
     # A harmless interpreter stub reports argv; even --run never reaches Python.
     interpreter = tmp_path / "python-stub"
     interpreter.write_text('#!/bin/bash\nprintf "%s\\n" "$PWD" "$@"\n')

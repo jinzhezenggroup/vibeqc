@@ -10,6 +10,7 @@ Rationale: .agents/notes/implemented/numerics/2026-09-20-gfn2-geometry-compiler-
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,8 @@ import numpy as np
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
+    Index,
+    IndexSpace,
     Program,
     TensorSpec,
     add,
@@ -25,6 +28,7 @@ from vibeqc_compiler.tensor import (
     exp,
     multiply,
     power,
+    scatter_add,
     sqrt,
     transpose_program,
 )
@@ -228,12 +232,9 @@ def gfn2_geometry(
     )
 
 
-def build_gfn2_pair_topology(
-    geometry: GeometryIR,
-    coordinates: ArrayLike,
-) -> PairTopology:
-    """Build the exact molecular 25-bohr pair set for one geometry snapshot."""
-
+def _validated_gfn2_coordinates(
+    geometry: GeometryIR, coordinates: ArrayLike
+) -> np.ndarray:
     if not isinstance(geometry, GeometryIR):
         raise TypeError("geometry must be GeometryIR")
     coordinates = np.asarray(coordinates)
@@ -244,23 +245,77 @@ def build_gfn2_pair_topology(
         raise ValueError("GFN2 coordinates must have shape (atom_count, 3)")
     if not np.isfinite(coordinates).all():
         raise ValueError("GFN2 coordinates must be finite")
+    return coordinates
 
+
+def _normalized_gfn2_system_atom_offsets(
+    system_atom_offsets: Iterable[int], atom_count: int
+) -> tuple[int, ...]:
+    offsets = tuple(system_atom_offsets)
+    if (
+        len(offsets) < 2
+        or offsets[0] != 0
+        or offsets[-1] != atom_count
+        or any(type(value) is not int for value in offsets)
+        or any(left >= right for left, right in pairwise(offsets))
+    ):
+        raise ValueError(
+            "GFN2 batch atom offsets must be a strictly increasing partition "
+            "from zero through atom_count"
+        )
+    return offsets
+
+
+def _gfn2_pairs_for_ranges(
+    coordinates: np.ndarray, ranges: Iterable[tuple[int, int]]
+) -> tuple[tuple[int, int], ...]:
     cutoff2 = GFN2_CUTOFF_BOHR * GFN2_CUTOFF_BOHR
     pairs = []
-    for first in range(geometry.atom_count):
-        for second in range(first + 1, geometry.atom_count):
-            displacement = coordinates[second] - coordinates[first]
-            distance2 = float(np.dot(displacement, displacement))
-            if distance2 < GFN2_MINIMUM_CN_DISTANCE_SQUARED:
-                raise ValueError(
-                    "GFN2 coordination is undefined for coincident or "
-                    "near-coincident atoms"
-                )
-            if distance2 <= cutoff2:
-                pairs.append((first, second))
+    for begin, end in ranges:
+        for first in range(begin, end):
+            for second in range(first + 1, end):
+                displacement = coordinates[second] - coordinates[first]
+                distance2 = float(np.dot(displacement, displacement))
+                if distance2 < GFN2_MINIMUM_CN_DISTANCE_SQUARED:
+                    raise ValueError(
+                        "GFN2 coordination is undefined for coincident or "
+                        "near-coincident atoms within one system"
+                    )
+                if distance2 <= cutoff2:
+                    pairs.append((first, second))
+    return tuple(pairs)
+
+
+def build_gfn2_pair_topology(
+    geometry: GeometryIR,
+    coordinates: ArrayLike,
+) -> PairTopology:
+    """Build the exact molecular 25-bohr pair set for one geometry snapshot."""
+
+    coordinates = _validated_gfn2_coordinates(geometry, coordinates)
+    pairs = _gfn2_pairs_for_ranges(coordinates, ((0, geometry.atom_count),))
     return PairTopology(
         geometry.atom_count,
-        tuple(pairs),
+        pairs,
+        cutoff=PairCutoff(GFN2_CUTOFF_BOHR),
+    )
+
+
+def build_gfn2_batch_pair_topology(
+    geometry: GeometryIR,
+    system_atom_offsets: Iterable[int],
+    coordinates: ArrayLike,
+) -> PairTopology:
+    """Build one canonical pair topology for a heterogeneous ragged batch."""
+
+    coordinates = _validated_gfn2_coordinates(geometry, coordinates)
+    offsets = _normalized_gfn2_system_atom_offsets(
+        system_atom_offsets, geometry.atom_count
+    )
+    pairs = _gfn2_pairs_for_ranges(coordinates, pairwise(offsets))
+    return PairTopology(
+        geometry.atom_count,
+        pairs,
         cutoff=PairCutoff(GFN2_CUTOFF_BOHR),
     )
 
@@ -274,6 +329,25 @@ def _require_gfn2_topology(geometry: GeometryIR, topology: PairTopology) -> None
         or topology.cutoff.switch_start is not None
     ):
         raise ValueError("GFN2 short-range topology requires the sharp 25-bohr cutoff")
+
+
+def _gfn2_pair_system_owners(
+    topology: PairTopology, system_atom_offsets: tuple[int, ...]
+) -> tuple[int, ...]:
+    owners = []
+    system = 0
+    for first, second in topology.pairs:
+        while first >= system_atom_offsets[system + 1]:
+            system += 1
+        if not (
+            system_atom_offsets[system]
+            <= first
+            < second
+            < system_atom_offsets[system + 1]
+        ):
+            raise ValueError("GFN2 batch topology contains a cross-system pair")
+        owners.append(system)
+    return tuple(owners)
 
 
 def _pair_constant(context: PairTensorContext, values: Iterable[float]) -> Node:
@@ -342,25 +416,9 @@ class Gfn2ShortRangeProgram:
         )
 
 
-def build_gfn2_short_range_program(
-    geometry: GeometryIR,
-    topology: PairTopology,
-) -> Gfn2ShortRangeProgram:
-    """Compile GFN2 CN and nuclear repulsion through PairIR/TensorIR."""
+def _gfn2_pair_terms(context: PairTensorContext) -> tuple[Node, Node]:
+    """Build CN and per-pair repulsion once for scalar and ragged consumers."""
 
-    if not isinstance(geometry, GeometryIR):
-        raise TypeError("geometry must be GeometryIR")
-    if not isinstance(topology, PairTopology):
-        raise TypeError("topology must be PairTopology")
-    if geometry.parameter_identity != GFN2_SHORT_RANGE_PARAMETER_IDENTITY:
-        raise ValueError(
-            "geometry is not bound to the GFN2 short-range parameter identity"
-        )
-    for atomic_number in geometry.elements:
-        gfn2_element_parameters(atomic_number)
-    _require_gfn2_topology(geometry, topology)
-
-    context = lower_geometry(geometry, topology)
     pair_elements = context.pair_elements
     parameters = [
         (
@@ -370,7 +428,7 @@ def build_gfn2_short_range_program(
         for first, second in pair_elements
     ]
 
-    pair_count = len(topology.pairs)
+    pair_count = len(context.topology.pairs)
     one = _pair_constant(context, (1.0,) * pair_count)
     minus_one = _pair_constant(context, (-1.0,) * pair_count)
     inverse_distance = power(context.distance, -1)
@@ -396,17 +454,11 @@ def build_gfn2_short_range_program(
     first_delta = add(first_ratio, one, coefficients=(1, -1))
     second_delta = add(second_ratio, one, coefficients=(1, -1))
     first_argument = multiply(
-        _pair_constant(
-            context,
-            (GFN2_CN_FIRST_STEEPNESS,) * pair_count,
-        ),
+        _pair_constant(context, (GFN2_CN_FIRST_STEEPNESS,) * pair_count),
         first_delta,
     )
     second_argument = multiply(
-        _pair_constant(
-            context,
-            (GFN2_CN_SECOND_STEEPNESS,) * pair_count,
-        ),
+        _pair_constant(context, (GFN2_CN_SECOND_STEEPNESS,) * pair_count),
         second_delta,
     )
     pair_coordination = multiply(
@@ -420,10 +472,7 @@ def build_gfn2_short_range_program(
         for first, second in parameters
     )
     heavy = tuple(1.0 - value for value in light)
-    heavy_distance = multiply(
-        context.distance,
-        sqrt(context.distance),
-    )
+    heavy_distance = multiply(context.distance, sqrt(context.distance))
     distance_power = add(
         multiply(_pair_constant(context, light), context.distance),
         multiply(_pair_constant(context, heavy), heavy_distance),
@@ -436,16 +485,92 @@ def build_gfn2_short_range_program(
         context,
         (first.zeff * second.zeff for first, second in parameters),
     )
-    decay_argument = multiply(
-        minus_one,
-        multiply(pair_alpha, distance_power),
-    )
+    decay_argument = multiply(minus_one, multiply(pair_alpha, distance_power))
     pair_repulsion = multiply(
         multiply(pair_charge, exp(decay_argument)),
         inverse_distance,
     )
-    repulsion_energy = pair_to_system(pair_repulsion, context)
+    return coordination, pair_repulsion
 
+
+@dataclass(frozen=True)
+class Gfn2ShortRangeBatchProgram:
+    """One TensorIR graph for a fixed heterogeneous ragged molecular batch."""
+
+    geometry: GeometryIR
+    system_atom_offsets: tuple[int, ...]
+    topology: PairTopology
+    program: Program
+    parameter_identity: str = GFN2_SHORT_RANGE_PARAMETER_IDENTITY
+    version: str = GFN2_SHORT_RANGE_VERSION
+
+    def __post_init__(self) -> None:
+        if self.geometry.parameter_identity != self.parameter_identity:
+            raise ValueError("GFN2 geometry parameter identity mismatch")
+        offsets = _normalized_gfn2_system_atom_offsets(
+            self.system_atom_offsets, self.geometry.atom_count
+        )
+        object.__setattr__(self, "system_atom_offsets", offsets)
+        _require_gfn2_topology(self.geometry, self.topology)
+        _gfn2_pair_system_owners(self.topology, offsets)
+        if self.version != GFN2_SHORT_RANGE_VERSION:
+            raise ValueError("unsupported GFN2 short-range compiler version")
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(
+            {
+                "version": self.version,
+                "geometry": self.geometry.to_payload(),
+                "system_atom_offsets": list(self.system_atom_offsets),
+                "topology": self.topology.to_payload(),
+                "equation": self.program.logical_hash,
+                "parameter_identity": self.parameter_identity,
+            }
+        )
+
+    def validate_execution_identity(self, identity: str) -> None:
+        if identity != self.identity:
+            raise ValueError("stale GFN2 batch compiler execution state")
+
+    def validate_coordinates(self, coordinates: ArrayLike) -> None:
+        expected = build_gfn2_batch_pair_topology(
+            self.geometry, self.system_atom_offsets, coordinates
+        )
+        if expected.identity != self.topology.identity:
+            raise ValueError("stale GFN2 batch pair topology for changed coordinates")
+
+    def coordinate_vjp(self, output: str) -> VJPProgram:
+        if output not in ("coordination", "repulsion_energy"):
+            raise ValueError("unknown GFN2 short-range derivative output")
+        return transpose_program(
+            self.program,
+            [output],
+            inputs=[self.geometry.coordinate_name],
+        )
+
+
+def build_gfn2_short_range_program(
+    geometry: GeometryIR,
+    topology: PairTopology,
+) -> Gfn2ShortRangeProgram:
+    """Compile one-system GFN2 CN and nuclear repulsion through TensorIR."""
+
+    if not isinstance(geometry, GeometryIR):
+        raise TypeError("geometry must be GeometryIR")
+    if not isinstance(topology, PairTopology):
+        raise TypeError("topology must be PairTopology")
+    if geometry.parameter_identity != GFN2_SHORT_RANGE_PARAMETER_IDENTITY:
+        raise ValueError(
+            "geometry is not bound to the GFN2 short-range parameter identity"
+        )
+    for atomic_number in geometry.elements:
+        gfn2_element_parameters(atomic_number)
+    _require_gfn2_topology(geometry, topology)
+
+    context = lower_geometry(geometry, topology)
+    coordination, pair_repulsion = _gfn2_pair_terms(context)
+    repulsion_energy = pair_to_system(pair_repulsion, context)
     program = Program(
         {
             "coordination": coordination,
@@ -459,9 +584,61 @@ def build_gfn2_short_range_program(
             "topology": topology.to_payload(),
         },
     )
+    return Gfn2ShortRangeProgram(geometry, topology, program)
 
-    return Gfn2ShortRangeProgram(
+
+def build_gfn2_short_range_batch_program(
+    geometry: GeometryIR,
+    system_atom_offsets: Iterable[int],
+    topology: PairTopology,
+) -> Gfn2ShortRangeBatchProgram:
+    """Compile a heterogeneous ragged GFN2 CN/repulsion batch as one graph."""
+
+    if not isinstance(geometry, GeometryIR):
+        raise TypeError("geometry must be GeometryIR")
+    if not isinstance(topology, PairTopology):
+        raise TypeError("topology must be PairTopology")
+    if geometry.parameter_identity != GFN2_SHORT_RANGE_PARAMETER_IDENTITY:
+        raise ValueError(
+            "geometry is not bound to the GFN2 short-range parameter identity"
+        )
+    for atomic_number in geometry.elements:
+        gfn2_element_parameters(atomic_number)
+    offsets = _normalized_gfn2_system_atom_offsets(
+        system_atom_offsets, geometry.atom_count
+    )
+    _require_gfn2_topology(geometry, topology)
+    pair_system_owners = _gfn2_pair_system_owners(topology, offsets)
+
+    context = lower_geometry(geometry, topology)
+    coordination, pair_repulsion = _gfn2_pair_terms(context)
+    system_index = Index(
+        "s",
+        IndexSpace("system", "batch", len(offsets) - 1),
+    )
+    repulsion_energy = scatter_add(
+        pair_repulsion,
+        0,
+        pair_system_owners,
+        system_index,
+    )
+    program = Program(
+        {
+            "coordination": coordination,
+            "repulsion_energy": repulsion_energy,
+        },
+        provenance={
+            "kind": "gfn2-short-range-ragged-batch",
+            "version": GFN2_SHORT_RANGE_VERSION,
+            "parameter_identity": GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
+            "xtbloom_revision": GFN2_XTBLOOM_REVISION,
+            "system_atom_offsets": list(offsets),
+            "topology": topology.to_payload(),
+        },
+    )
+    return Gfn2ShortRangeBatchProgram(
         geometry,
+        offsets,
         topology,
         program,
     )

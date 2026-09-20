@@ -254,7 +254,8 @@ class _CudaSources:
         weights: typing.Any,
         raw: typing.Any,
         *,
-        pbe: typing.Any,
+        functional: typing.Any = None,
+        pbe: typing.Any = None,
     ) -> None:
         view = task.view
         if task._owner.device_id != self.device:
@@ -263,7 +264,17 @@ class _CudaSources:
         owners = _checked(owners, (view.npoint,), np.int64)
         weights = _checked(weights, (view.npoint,))
         raw = _checked(raw, (view.npoint,))
-        work = task.density_jets(4 if pbe else 1)
+        if functional is None:
+            if type(pbe) is not bool:
+                raise TypeError(
+                    "stationary geometry requires functional=0/1/2 or pbe bool"
+                )
+            functional = int(pbe)
+        elif pbe is not None:
+            raise ValueError("specify functional or pbe, not both")
+        if type(functional) is not int or functional not in (0, 1, 2):
+            raise ValueError("unsupported stationary semilocal functional")
+        work = task.density_jets(4 if functional else 1)
         self._call(
             "stationary_geometry",
             self.handle,
@@ -334,7 +345,7 @@ def complete_rks_cuda_gradient_diagnostic(
 ) -> typing.Any:
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
-    Domain: real FP64 direct all-electron s/p LDA/PBE RKS/UKS, native version-three
+    Domain: real FP64 direct all-electron s/p LDA/PBE/r2SCAN RKS/UKS, native version-three
     unpruned grid and distinct noncolliding centers. No CPKS is required.
     Device ordinal comes only from the opaque native snapshot. CUDA source
     accumulators, grid owner and one TensorIR consumer coexist under the stated
@@ -349,10 +360,6 @@ def complete_rks_cuda_gradient_diagnostic(
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
-    if contract.family == "mgga":
-        raise NotImplementedError(
-            "CUDA tau-dependent stationary gradients require generated meta-GGA geometry lowering"
-        )
     if state._source.backend != "cuda":
         raise NotImplementedError("CUDA diagnostic requires a native CUDA KS state")
     if state._source.metadata[0] not in (3, 5) or state._source.grid_spec is None:
@@ -415,12 +422,18 @@ def complete_rks_cuda_gradient_diagnostic(
         raise ValueError(
             "CUDA runtime source coverage differs from StationaryGradientPlan"
         )
-    pbe = contract.family == "gga"
+    functional = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
+    if functional == 2 and ecp:
+        raise NotImplementedError(
+            "r2SCAN CUDA stationary gradients do not inherit ECP support"
+        )
+    needs_first = functional != 0
+    functional_name = ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
     device = int(state._source.metadata[12])
     grid_plan = plan_tiles(
         basis,
         backend="cuda",
-        order=2 if pbe else 1,
+        order=2 if needs_first else 1,
         tile_points=tile_points,
         active_ao_capacity=n,
         budget_bytes=max_device_bytes,
@@ -523,7 +536,7 @@ def complete_rks_cuda_gradient_diagnostic(
     spec = state._source.grid_spec
     artifact = compile_stationary_cuda(
         emit_first_derivative_cuda(requests),
-        pbe=pbe,
+        functional=functional,
         iterations=spec.partition_iterations,
         compiler=compiler,
         cache=cache,
@@ -574,13 +587,14 @@ def complete_rks_cuda_gradient_diagnostic(
             CudaGrid(
                 basis,
                 grid_artifact,
-                order=2 if pbe else 1,
+                order=2 if needs_first else 1,
                 tile_points=tile_points,
                 budget_bytes=grid_plan.peak_bytes,
                 device_id=device,
                 active_ao_capacity=n,
-                # tau requests all four D*jet panels for the PBE AO pullback.
-                ingredients=("rho", "gradient", "tau") if pbe else ("rho",),
+                # GGA/meta-GGA geometry needs all four D*jet panels; r2SCAN
+                # additionally consumes tau from the same current density.
+                ingredients=("rho", "gradient", "tau") if needs_first else ("rho",),
             )
         )
         ao.set_density(density)
@@ -637,14 +651,14 @@ def complete_rks_cuda_gradient_diagnostic(
             with ao.xc_task(
                 grid.points[begin:end],
                 np.arange(n, dtype=np.uintp),
-                "PBE" if pbe else "LDA_XC_PW",
+                functional_name,
             ) as task:
                 sources.geometry(
                     task,
                     np.asarray(grid.owners[begin:end], dtype=np.int64),
                     grid.weights[begin:end],
                     state._source.atomic_weights[begin:end],
-                    pbe=pbe,
+                    functional=functional,
                 )
         components = sources.finish()
         if ecp:
