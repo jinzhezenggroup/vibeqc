@@ -16,7 +16,11 @@ from vibeqc.profiles import canonical_hash
 
 from tools.vibeqc_posthf.reference import immutable
 
-from .analytic import nuclear_hvp, provider_hvp_components
+from .analytic import (
+    _checked_second_hvp_options,
+    nuclear_hvp,
+    provider_hvp_components,
+)
 from .directional import DirectionalRHFResponse, directional_rhf_response
 from .first_order import checked_direction, generated_rhf_relaxation_contraction
 from .native import NativeRHFState
@@ -65,6 +69,9 @@ def rhf_hvp(
     first_backend="cpu",
     first_compiler=None,
     first_budget_bytes=64 << 20,
+    second_backend="cpu",
+    second_compiler=None,
+    second_budget_bytes=64 << 20,
     relaxation_backend="cpu",
     relaxation_compiler=None,
     relaxation_budget_bytes=64 << 20,
@@ -77,17 +84,20 @@ def rhf_hvp(
     output coordinate. No molecular Hessian, all-coordinate H1/S1 tensor, or
     coordinate-by-coordinate ERI derivative tensor is allocated.
 
-    CPU remains the qualified second-integral HVP backend. CUDA may be selected
-    independently for directional H1/S1, direct J/K/response residency and the
-    first-integral relaxation contraction. The CUDA relaxation path uploads the
-    solved D1/W1/P0 AO weights, keeps primitive derivatives and AO-weight
-    products on device, and downloads only the final Cartesian contraction.
-    Second-integral HVPs and final molecular assembly remain host-side.
+    CPU remains the default second-integral HVP backend. CUDA may be selected
+    independently for directional H1/S1, direct J/K/response residency, the
+    #178 second-integral weighted HVP provider and first-integral relaxation.
+    The CUDA second-integral path streams packed shell primitive/weight records
+    and downloads only contracted coordinate HVP tiles; final molecular
+    assembly remains host-side.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("RHF HVP requires NativeRHFState")
     state.validate()
     vector = checked_direction(direction, state.nat)
+    _checked_second_hvp_options(
+        second_backend, second_compiler, device_id, second_budget_bytes
+    )
     if relaxation_backend not in ("cpu", "cuda"):
         raise ValueError("relaxation_backend must be cpu or cuda")
     if relaxation_backend == "cuda":
@@ -155,7 +165,15 @@ def rhf_hvp(
     relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
-    second = provider_hvp_components(state, vector)
+    second, second_provider = provider_hvp_components(
+        state,
+        vector,
+        backend=second_backend,
+        compiler=second_compiler,
+        device_id=device_id,
+        budget_bytes=second_budget_bytes,
+        return_diagnostics=True,
+    )
     second_seconds = time.perf_counter() - second_started
 
     nuclear_started = time.perf_counter()
@@ -180,7 +198,8 @@ def rhf_hvp(
             "reference": state.reference.identity,
             "directional_response": response.identity,
             "direction": sha256(vector.astype("<f8", copy=False).tobytes()).hexdigest(),
-            "second_integrals": "cpu-generated-weighted-hvp",
+            "second_integrals": second_provider["backend"],
+            "second_integral_programs": second_provider["program_identities"],
             "relaxation_first_integrals": relaxation_provider["backend"],
             "relaxation_programs": relaxation_provider.get("program_identities"),
         }
@@ -194,6 +213,7 @@ def rhf_hvp(
         if first_backend == "cuda"
         or jk_backend == "cuda"
         or relaxation_backend == "cuda"
+        or second_backend == "cuda"
         else "host"
     )
     first_transfer = response_diag.get("first_derivative_provider")
@@ -218,7 +238,8 @@ def rhf_hvp(
         "molecular_hvp": True,
         "full_molecular_hessian_allocated": False,
         "all_coordinate_first_integrals_allocated": False,
-        "second_integral_backend": "cpu-generated-weighted-hvp",
+        "second_integral_backend": second_provider["backend"],
+        "second_integral_provider": deepcopy(second_provider),
         "relaxation_first_integral_backend": relaxation_provider["backend"],
         "relaxation_provider": deepcopy(relaxation_provider),
         "response_first_backend": first_backend,
@@ -252,7 +273,7 @@ def rhf_hvp(
             "directional_first": deepcopy(first_transfer),
             "response_jk": deepcopy(jk_transfer),
             "resident_response": deepcopy(resident_transfer),
-            "second_integral_hvp": "host-only; no device transfers",
+            "second_integral_hvp": deepcopy(second_provider),
             "relaxation_first_integrals": deepcopy(relaxation_provider),
             "nuclear": "host-only; no device transfers",
         },
@@ -263,6 +284,7 @@ def rhf_hvp(
         "response_device_budget_bytes": response_diag.get(
             "response_device_budget_bytes", 0
         ),
+        "second_integral_budget_bytes": second_budget_bytes,
         "published_hvp_bytes": int(total.nbytes),
         "memory_scope": (
             "published HVP + directional-provider/solver diagnostics only; "
