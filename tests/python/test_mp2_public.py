@@ -117,6 +117,16 @@ def test_public_native_df_hf_to_ri_mp2_components(
     )
     assert result.correlation.minimum_absolute_denominator > 1e-10
     assert result.correlation.numeric_capacity_bytes <= 256 << 20
+    if device == "cuda":
+        assert result.correlation.mo_host_staging is False
+        assert result.correlation.mo_transfer_bytes > 0
+        assert (
+            result.correlation.correlation_owned_device_bytes
+            > result.correlation.correlation_provider_retained_bytes
+            > 0
+        )
+    else:
+        assert result.correlation.mo_transfer_bytes == 0
 
 
 def test_public_mp2_rejects_unimplemented_controls() -> None:
@@ -276,13 +286,25 @@ def test_public_unsupported_budget_scf_and_neighbors(device: typing.Any) -> None
             density_fitting="cuda" if device == "cuda" else "cpu",
             correlation_memory_budget_bytes=1024,
         ).singlepoint(atoms)
-    with pytest.raises(RuntimeError, match="RI-MP2 reference and correlation"):
-        Calculator(
+    if device == "cpu":
+        with pytest.raises(RuntimeError, match="RI-MP2 reference and correlation"):
+            Calculator(
+                method="mp2",
+                device=device,
+                density_fitting="cpu",
+                correlation_memory_budget_bytes=12 << 20,
+            ).singlepoint(atoms)
+    else:
+        # CUDA RI no longer inherits the CPU complete-three-center admission
+        # bound; its row-generated resident/blocked B planner can use this
+        # smaller budget without changing the Hamiltonian.
+        bounded = Calculator(
             method="mp2",
-            device=device,
-            density_fitting="cuda" if device == "cuda" else "cpu",
+            device="cuda",
+            density_fitting="cuda",
             correlation_memory_budget_bytes=12 << 20,
         ).singlepoint(atoms)
+        assert bounded.converged and np.isfinite(bounded.energy)
     with pytest.raises(RuntimeError, match="converge"):
         Calculator(method="mp2", device=device, max_iterations=1).singlepoint(atoms)
     with pytest.raises(RuntimeError, match="near-zero"):
