@@ -15,7 +15,6 @@
 
 #include "data/parameters/gfn2.hpp"
 #include "dft/dispersion/d4_data.hpp"
-#include "data/parameters/gfn2.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
 namespace xtbloom::detail::gfn2 {
