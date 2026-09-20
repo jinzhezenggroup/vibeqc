@@ -105,7 +105,7 @@ jobs:
               )
               for header in ("vibeqc.h", "generated_method_ids.h"):
                   source = pathlib.Path("include/vibeqc") / header
-                  installed = f"vibeqc/vibeqc_compiler/assets/include/vibeqc/{header}"
+                  installed = f"vibeqc_compiler/assets/include/vibeqc/{header}"
                   assert installed in names, installed
                   assert archive.read(installed) == source.read_bytes()
               cuda_provider_names = (
