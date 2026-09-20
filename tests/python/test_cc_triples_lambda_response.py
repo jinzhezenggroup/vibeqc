@@ -269,3 +269,33 @@ def test_outputs_are_immutable_and_identity_bound() -> None:
     with pytest.raises(ResponseCompatibilityError):
         response.weight("ovov", reference_identity="stale-reference")
     assert corrected.cc_state_identity == bound.cc_state_identity
+
+
+@pytest.mark.parametrize("where", ("field", "provenance", "both"))
+def test_corrected_source_identity_is_recomputed(where: str) -> None:
+    _, _, _, bound, baseline, corrected, _ = _corrected_state()
+    changes = {}
+    if where in ("field", "both"):
+        changes["triples_source_identity"] = "forged-source"
+    if where in ("provenance", "both"):
+        changes["provenance"] = {
+            **corrected.provenance,
+            "triples_source_identity": "forged-source",
+        }
+    with pytest.raises(ResponseCompatibilityError, match="source identity"):
+        BoundCCSDTResponse(
+            bound, baseline, replace(corrected, **changes), vir_chunk_size=1
+        )
+
+
+@pytest.mark.parametrize("field", ("corrected", "vir_chunk_size", "baseline"))
+def test_bound_corrected_response_cannot_be_replaced_after_validation(
+    field: str,
+) -> None:
+    from dataclasses import FrozenInstanceError
+
+    _, _, _, bound, baseline, corrected, _ = _corrected_state()
+    response = BoundCCSDTResponse(bound, baseline, corrected, vir_chunk_size=1)
+    value = 2 if field == "vir_chunk_size" else None
+    with pytest.raises(FrozenInstanceError):
+        setattr(response, field, value)

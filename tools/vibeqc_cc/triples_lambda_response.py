@@ -3,6 +3,8 @@
 The (T) energy remains the audited TensorIR primal.  Its generated amplitude
 cotangents shift the ordinary RCCSD Lambda right-hand side; the Jacobian is
 still the RCCSD residual Jacobian because standard (T) is noniterative.
+
+Rationale: .agents/notes/implemented/numerics/2026-09-20-corrected-triples-lambda-binding.md
 """
 
 from __future__ import annotations
@@ -89,6 +91,24 @@ def _triples_sources(
     return values
 
 
+def _source_identity(
+    bound: BoundCCSDLambda,
+    sources: dict[str, np.ndarray],
+    projected_sources: dict[str, np.ndarray],
+    vir_chunk_size: int | None,
+) -> str:
+    return canonical_hash(
+        {
+            "triples_primal": build_triples_program(
+                bound.reference.nocc, bound.reference.nmo - bound.reference.nocc
+            ).logical_hash,
+            "dense_amplitude_sources": _feed_hash(sources),
+            "projected_amplitude_sources": _feed_hash(projected_sources),
+            "vir_chunk_size": vir_chunk_size,
+        }
+    )
+
+
 def solve_corrected_lambda(
     bound: BoundCCSDLambda,
     baseline: CCSDLambdaResult,
@@ -138,15 +158,8 @@ def solve_corrected_lambda(
     total1, total2 = bound._unpack(solved.solution / bound.sqrt_weights)
     delta1 = total1 - baseline.lambda1
     delta2 = total2 - baseline.lambda2
-    source_identity = canonical_hash(
-        {
-            "triples_primal": build_triples_program(
-                bound.reference.nocc, bound.reference.nmo - bound.reference.nocc
-            ).logical_hash,
-            "dense_amplitude_sources": _feed_hash(sources),
-            "projected_amplitude_sources": _feed_hash(projected_sources),
-            "vir_chunk_size": vir_chunk_size,
-        }
+    source_identity = _source_identity(
+        bound, sources, projected_sources, vir_chunk_size
     )
     bound._assert_current(bound.reference_identity)
     return CorrectedLambdaResult(
@@ -209,8 +222,16 @@ class CCSDTParameterWeight:
         return value
 
 
+@dataclass(frozen=True, init=False, eq=False, repr=False)
 class BoundCCSDTResponse:
     """Combine CCSD response, direct (T), and delta-Lambda contributions."""
+
+    bound: BoundCCSDLambda
+    baseline: BoundCCSDResponse
+    corrected: CorrectedLambdaResult
+    vir_chunk_size: int | None
+    corrected_lambda_identity: str
+    response_identity: str
 
     def __init__(
         self,
@@ -229,8 +250,8 @@ class BoundCCSDTResponse:
                 "RCCSD(T) response requires a bound RCCSD state, baseline Lambda, "
                 "and corrected Lambda result"
             )
-        self.bound = bound
-        self.baseline = BoundCCSDResponse(bound, baseline)
+        object.__setattr__(self, "bound", bound)
+        object.__setattr__(self, "baseline", BoundCCSDResponse(bound, baseline))
         if (
             corrected.reference_identity != bound.reference_identity
             or corrected.cc_state_identity != bound.cc_state_identity
@@ -251,6 +272,16 @@ class BoundCCSDTResponse:
         sources = _triples_sources(bound, ("t1", "t2"), vir_chunk_size=vir_chunk_size)
         t2_layout = bound.layouts[1]
         projected_t2 = t2_layout.unpack(t2_layout.unpack_transpose(sources["t2"]))
+        expected_source = _source_identity(
+            bound, sources, {"t1": sources["t1"], "t2": projected_t2}, vir_chunk_size
+        )
+        if (
+            corrected.triples_source_identity != expected_source
+            or corrected.provenance.get("triples_source_identity") != expected_source
+        ):
+            raise ResponseCompatibilityError(
+                "corrected Lambda source identity mismatch"
+            )
         source = bound.sqrt_weights * bound._pack((sources["t1"], projected_t2))
         total_vector = bound.sqrt_weights * bound._pack(
             (corrected.lambda1, corrected.lambda2)
@@ -287,8 +318,8 @@ class BoundCCSDTResponse:
             )
         bound._assert_current(bound.reference_identity)
 
-        self.corrected = corrected
-        self.vir_chunk_size = vir_chunk_size
+        object.__setattr__(self, "corrected", corrected)
+        object.__setattr__(self, "vir_chunk_size", vir_chunk_size)
         corrected_lambda_identity = canonical_hash(
             {
                 "cc_state": bound.cc_state_identity,
@@ -301,14 +332,16 @@ class BoundCCSDTResponse:
                 ),
             }
         )
-        self.corrected_lambda_identity = corrected_lambda_identity
-        self.response_identity = canonical_hash(
+        object.__setattr__(self, "corrected_lambda_identity", corrected_lambda_identity)
+        response_identity = canonical_hash(
             {
                 "baseline": self.baseline.response_identity,
                 "corrected_lambda": corrected_lambda_identity,
                 "scope": "fixed-orbital RCCSD(T) mathematical-input weights",
             }
         )
+
+        object.__setattr__(self, "response_identity", response_identity)
 
     @property
     def parameters(self) -> tuple[str, ...]:
