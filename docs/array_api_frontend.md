@@ -108,6 +108,21 @@ The resulting object is an ordinary `vibeqc_compiler.tensor.Program`; no
 frontend-only node survives lowering and no Python callback is needed for
 prepared native execution.
 
+## Native SCF adoption
+
+The CPU SCF density and energy-weighted-density production helpers are generated
+at build time from the validated `array_api.scf -> TensorIR` topology. The
+dynamic native lowering preserves the existing AO/orbital storage contract and
+the legacy FP64 product/accumulation order, including the exact density witness
+used by occupied density-fitting exchange. Python tracing is therefore absent
+from the SCF iteration hot path.
+
+This cutover covers CPU density construction and its compact occupied-factor
+consumer. Resident CUDA SCF density kernels retain their existing device
+ownership for now; moving those kernels requires separate stream/layout and
+performance qualification. This is still an internal preview and does not add
+an Array API conformance claim.
+
 ## Ownership
 
 `vibeqc_compiler.array_api` is a separate compiler owner above
