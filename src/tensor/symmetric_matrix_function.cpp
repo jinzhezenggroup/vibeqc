@@ -31,6 +31,30 @@ double divided_difference(double left, double right, bool keep_left, bool keep_r
   return (function_value(left, keep_left, function) - function_value(right, keep_right, function)) /
          gap;
 }
+// Evaluate a seeded product without materializing an unrepresentable coefficient.
+double scaled_response(double seed, double a, double b, double c) {
+  if (seed == 0.0) return seed;
+  int es = 0, ea = 0, eb = 0, ec = 0;
+  const double ms = std::frexp(seed, &es), ma = std::frexp(a, &ea);
+  const double mb = std::frexp(b, &eb), mc = std::frexp(c, &ec);
+  return std::scalbn(((ms / ma) / mb) / mc, es - ea - eb - ec);
+}
+double weighted_difference(double seed, double left, double right, bool kl, bool kr,
+                           SymmetricMatrixFunction function, double resolution) {
+  const double coefficient = divided_difference(left, right, kl, kr, function, resolution);
+  if (seed == 0.0 || (!kl && !kr)) return 0.0;
+  if (std::isnormal(coefficient)) return seed * coefficient;
+  if (kl && kr) {
+    if (function == SymmetricMatrixFunction::pseudoinverse)
+      return scaled_response(-seed, left, right, 1.0);
+    const double sl = std::sqrt(left), sr = std::sqrt(right);
+    return scaled_response(-seed, sl, sr, sl + sr);
+  }
+  const double kept = kl ? left : right;
+  const double denominator =
+      function == SymmetricMatrixFunction::pseudoinverse ? kept : std::sqrt(kept);
+  return scaled_response(kl ? seed : -seed, denominator, left - right, 1.0);
+}
 }  // namespace
 
 std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenvalues,
@@ -68,8 +92,9 @@ std::vector<double> symmetric_matrix_function_vjp(std::span<const double> eigenv
     for (std::size_t j = 0; j < n; ++j) {
       for (std::size_t k = 0; k < n; ++k)
         transformed[index(i, j, n)] += eigenvectors[index(k, i, n)] * temp[index(k, j, n)];
-      transformed[index(i, j, n)] *= divided_difference(
-          eigenvalues[i], eigenvalues[j], retained[i] != 0, retained[j] != 0, function, resolution);
+      transformed[index(i, j, n)] =
+          weighted_difference(transformed[index(i, j, n)], eigenvalues[i], eigenvalues[j],
+                              retained[i] != 0, retained[j] != 0, function, resolution);
     }
 
   std::fill(temp.begin(), temp.end(), 0.0);

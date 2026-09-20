@@ -28,6 +28,14 @@ def emit_symmetric_matrix_function_vjp_cuda() -> str:
 
 namespace vibeqc::tensor {{
 namespace detail {{
+// Evaluate a seeded product without materializing an unrepresentable coefficient.
+static __device__ double scaled_response(double seed, double a, double b, double c) {{
+  if (seed == 0.0) return seed;
+  int es=0, ea=0, eb=0, ec=0;
+  const double ms=frexp(seed,&es), ma=frexp(a,&ea);
+  const double mb=frexp(b,&eb), mc=frexp(c,&ec);
+  return scalbn(((ms/ma)/mb)/mc, es-ea-eb-ec);
+}}
 static __device__ double matrix_function_value(
     double eigenvalue, bool retained, unsigned function) {{
   if (!retained) return 0.0;
@@ -67,7 +75,20 @@ static __global__ void symmetric_matrix_function_vjp_stage(
       const double fj = matrix_function_value(lj, kj, function);
       divided = (fi - fj) / (li - lj);
     }}
-    value *= divided;
+    if (value == 0.0 || (!ki && !kj)) {{
+      value = 0.0;
+    }} else if (isfinite(divided) && fabs(divided) >= 0x1p-1022) {{
+      value *= divided;
+    }} else if (ki && kj) {{
+      if (function == 0) {{
+        const double si=sqrt(li), sj=sqrt(lj);
+        value=scaled_response(-value,si,sj,si+sj);
+      }} else value=scaled_response(-value,li,lj,1.0);
+    }} else {{
+      const double kept=ki?li:lj;
+      const double denominator=function==0?sqrt(kept):kept;
+      value=scaled_response(ki?value:-value,denominator,li-lj,1.0);
+    }}
   }}
   output[ij] = value;
 }}
