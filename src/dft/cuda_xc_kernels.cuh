@@ -1,7 +1,7 @@
 #pragma once
 
 // Included only by the native generated_grid_policy.cu, after cuda_grid.cu.
-// Reuse its AO traversal and the exact generated D/C ingredient bilinears.
+// Reuse compiler-emitted AO traversal and dense XC contractions; this header keeps\n// validation, point-domain adaptation and launch/runtime glue.
 #include "dft/cuda_xc.hpp"
 #include "dft/xc_point.hpp"
 #include "dft/xc_point_response.hpp"
@@ -24,48 +24,6 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
   }
 }
 
-// r2SCAN additionally keeps D*grad(phi) so tau is formed from the same
-// density matrix as rho/gradient; LDA/GGA retain the one-panel fast path.
-__global__ void density_product(const double* density, const double* ao, I n, I count, I spins,
-                                I work_jets, double* work, int* error) {
-  const I panel = count * n;
-  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * work_jets * panel;
-       i += I(blockDim.x) * gridDim.x) {
-    const I spin = i / (work_jets * panel), jet = i / panel % work_jets;
-    const I point = i / n % count, mu = i % n;
-    const double* d = density + spin * n * n;
-    const double* source = ao + jet * panel;
-    double value = 0.0;
-    for (I nu = 0; nu < n; ++nu)
-      value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
-    work[i] = finite(value, error, 1);
-  }
-}
-
-__global__ void density_features(const double* ao, const double* work, I n, I count, I spins,
-                                 I ao_jets, I work_jets, I feature_terms, I functional,
-                                 double* features, int* error) {
-  const I stride = count * n;
-  const unsigned ingredient_mask = functional == 0 ? 1U : (functional == 1 ? 7U : 15U);
-  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * count;
-       i += I(blockDim.x) * gridDim.x) {
-    const I spin = i / count, point = i % count;
-    double accum[5]{};
-    for (I mu = 0; mu < n; ++mu) {
-      const I index = point * n + mu;
-      double derivatives[3]{};
-      double panel[4]{work[(spin * work_jets) * stride + index], 0.0, 0.0, 0.0};
-      if (ao_jets == 4)
-        for (unsigned k = 0; k < 3; ++k) derivatives[k] = ao[(k + 1) * stride + index];
-      if (work_jets == 4)
-        for (unsigned k = 0; k < 3; ++k)
-          panel[k + 1] = work[(spin * work_jets + k + 1) * stride + index];
-      vibeqc_grid_policy::add_features(ao[index], derivatives, panel, accum, ingredient_mask);
-    }
-    for (I k = 0; k < feature_terms; ++k)
-      features[(spin * feature_terms + k) * count + point] = finite(accum[k], error, 1);
-  }
-}
 
 struct DevicePointValue {
   double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};
@@ -184,42 +142,7 @@ __global__ void evaluate_points(const double* features, const double* weights, I
   }
 }
 
-__global__ void assemble_potential(const double* ao, const double* coefficients,
-                                   const double* weights, I n, I count, I spins, I feature_terms,
-                                   double* potential, int* error) {
-  const I stride = count * n;
-  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * n * n;
-       i += I(blockDim.x) * gridDim.x) {
-    const I spin = i / (n * n), mu = i / n % n, nu = i % n;
-    if (mu > nu) continue;
-    double value = 0.0;
-    for (I p = 0; p < count; ++p) {
-      const double a = ao[p * n + mu], b = ao[p * n + nu];
-      double integrand = coefficients[spin * feature_terms * count + p] * a * b;
-      if (feature_terms >= 4)
-        for (I k = 0; k < 3; ++k)
-          integrand +=
-              coefficients[(spin * feature_terms + k + 1) * count + p] *
-              (ao[(k + 1) * stride + p * n + mu] * b + a * ao[(k + 1) * stride + p * n + nu]);
-      if (feature_terms == 5)
-        for (I k = 0; k < 3; ++k)
-          integrand += coefficients[(spin * feature_terms + 4) * count + p] *
-                       ao[(k + 1) * stride + p * n + mu] * ao[(k + 1) * stride + p * n + nu];
-      value += weights[p] * integrand;
-    }
-    value = finite(potential[i] + value, error, 3);
-    potential[i] = value;
-    potential[(spin * n + nu) * n + mu] = value;
-  }
-}
 
-__global__ void accumulate_totals(const double* point_totals, I count, double* totals, int* error) {
-  const I channel = threadIdx.x;
-  if (channel >= 3) return;
-  double value = 0.0;
-  for (I p = 0; p < count; ++p) value += point_totals[channel * count + p];
-  totals[channel] = finite(totals[channel] + value, error, 3);
-}
 }  // namespace
 
 void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, const double* points,
