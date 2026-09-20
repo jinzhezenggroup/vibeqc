@@ -16,7 +16,7 @@ ordinary C++; the closing section tracks the remaining production acceptance as 
 The source baseline is `9f5b625`. The table describes ownership groups, not
 mathematical equivalence or a new replacement implementation. The scientific
 CUDA classifications and exact source anchors remain in the tracked
-`cuda_ownership.json` ledger under #231. The derived current report is generated
+`cuda_ownership/` shard ledger under #231. The derived current report is generated
 on demand by `tools/report_cuda_ownership.py` and retained by CI as an artifact.
 
 | Source / group | Functions and state | Destination / current boundary |

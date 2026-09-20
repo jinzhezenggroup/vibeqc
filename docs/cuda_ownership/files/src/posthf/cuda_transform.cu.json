@@ -1,0 +1,7 @@
+{
+  "path": "src/posthf/cuda_transform.cu",
+  "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

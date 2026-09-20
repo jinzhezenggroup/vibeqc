@@ -45,6 +45,7 @@ from .ir import (
     einsum,
     exp,
     gather,
+    indexed_gather,
     input_tensor,
     log,
     multiply,
@@ -52,6 +53,8 @@ from .ir import (
     reduce_sum,
     reshape,
     scaled_bilinear,
+    scatter_add,
+    segment_sum,
     slice_tensor,
     sqrt,
     transpose,
@@ -337,6 +340,21 @@ def _jvp_graph(node: Node, operand_tangents: typing.Any) -> Node | None:
         return slice_tensor(tangent, node.attrs["ranges"])
     if node.op == "gather":
         return gather(tangent, node.attrs["axis"], node.attrs["positions"])
+    if node.op == "indexed_gather":
+        axis = node.attrs["axis"]
+        return indexed_gather(
+            tangent, axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return scatter_add(
+            tangent, axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        return segment_sum(
+            tangent, axis, node.attrs["offsets"], node.spec.indices[axis]
+        )
     if node.op == "reduce":
         return reduce_sum(tangent, node.attrs["axes"])
     if node.op == "broadcast":
@@ -537,18 +555,35 @@ def _vjp_graph(
         return [transpose(summed, inverse)]
     if node.op == "slice":
         return [_slice_vjp_node(node, bar, max_elements=max_elements)]
-    if node.op == "gather":
+    if node.op in ("gather", "indexed_gather"):
         axis = node.attrs["axis"]
         return [
-            _embed_axis(
+            scatter_add(
                 bar,
                 axis,
-                node.inputs[0].spec.indices[axis],
                 node.attrs["positions"],
-                node.inputs[0].spec.dtype,
-                max_elements=max_elements,
+                node.inputs[0].spec.indices[axis],
             )
         ]
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return [
+            indexed_gather(
+                bar,
+                axis,
+                node.attrs["positions"],
+                node.inputs[0].spec.indices[axis],
+            )
+        ]
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        offsets = node.attrs["offsets"]
+        positions = tuple(
+            segment
+            for segment, (start, stop) in enumerate(pairwise(offsets))
+            for _ in range(start, stop)
+        )
+        return [indexed_gather(bar, axis, positions, node.inputs[0].spec.indices[axis])]
     raise ValueError(f"no demand-driven VJP rule for primitive: {node.op}")
 
 
@@ -684,6 +719,21 @@ def _rebuild_node(node: Node, inputs: typing.Any) -> Node:
         return slice_tensor(inputs[0], node.attrs["ranges"])
     if node.op == "gather":
         return gather(inputs[0], node.attrs["axis"], node.attrs["positions"])
+    if node.op == "indexed_gather":
+        axis = node.attrs["axis"]
+        return indexed_gather(
+            inputs[0], axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "scatter_add":
+        axis = node.attrs["axis"]
+        return scatter_add(
+            inputs[0], axis, node.attrs["positions"], node.spec.indices[axis]
+        )
+    if node.op == "segment_sum":
+        axis = node.attrs["axis"]
+        return segment_sum(
+            inputs[0], axis, node.attrs["offsets"], node.spec.indices[axis]
+        )
     if node.op == "reduce":
         return reduce_sum(inputs[0], node.attrs["axes"])
     if node.op == "broadcast":

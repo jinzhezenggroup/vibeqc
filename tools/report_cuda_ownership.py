@@ -1,6 +1,6 @@
 """Reproduce maintained CUDA ownership separately from generated build output.
 
-The ledger is a reviewed semantic classification, not a keyword classifier for
+The ownership shards form a reviewed semantic classification, not a keyword classifier for
 scientific mathematics. Exact source anchors partition mixed files, while the
 inventory check rejects new or removed CUDA files until the ledger is updated.
 Counts include host launch/ownership code in CUDA translation units. Generated
@@ -18,6 +18,53 @@ ROOT = Path(__file__).resolve().parents[1]
 ROLES = ("runtime", "scientific", "oracle", "fallback", "performance_exception")
 SCIENTIFIC = set(ROLES) - {"runtime"}
 CUDA_HEADER = re.compile(r"__global__|__device__|cuda_runtime(?:_api)?\.h")
+
+
+def load_ledger(path: Path) -> dict[str, typing.Any]:
+    """Load the sharded current ledger or a legacy monolithic JSON ledger."""
+    if path.is_file():
+        return json.loads(path.read_text())
+    if not path.is_dir():
+        raise ValueError(f"CUDA ownership ledger does not exist: {path}")
+
+    meta_path = path / "meta.json"
+    if not meta_path.is_file():
+        raise ValueError(f"CUDA ownership shard directory lacks {meta_path.name}")
+    ledger = json.loads(meta_path.read_text())
+
+    subsystem_dir = path / "subsystems"
+    generated_dir = path / "generated"
+    file_dir = path / "files"
+    for required in (subsystem_dir, generated_dir, file_dir):
+        if not required.is_dir():
+            raise ValueError(f"CUDA ownership shard directory lacks {required.name}/")
+
+    subsystems: dict[str, typing.Any] = {}
+    for shard in sorted(subsystem_dir.glob("*.json")):
+        name = shard.stem
+        if name in subsystems:
+            raise ValueError(f"duplicate CUDA ownership subsystem shard: {name}")
+        subsystems[name] = json.loads(shard.read_text())
+
+    generated_families = []
+    for shard in sorted(generated_dir.glob("*.json")):
+        family = json.loads(shard.read_text())
+        if family.get("name") != shard.stem:
+            raise ValueError(
+                f"generated-family shard name mismatch: {shard.name} "
+                f"declares {family.get('name')!r}"
+            )
+        generated_families.append(family)
+
+    files = [
+        json.loads(shard.read_text()) for shard in sorted(file_dir.rglob("*.json"))
+    ]
+    return {
+        **ledger,
+        "generated_families": generated_families,
+        "subsystems": subsystems,
+        "files": files,
+    }
 
 
 def code_lines(source: typing.Any) -> typing.Any:
@@ -291,15 +338,13 @@ def validate_baseline(baseline: typing.Any) -> None:
 
 def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--ledger", type=Path, default=ROOT / "docs/cuda_ownership.json"
-    )
+    parser.add_argument("--ledger", type=Path, default=ROOT / "docs/cuda_ownership")
     parser.add_argument("--build", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    report = ownership_report(ROOT, json.loads(args.ledger.read_text()), args.build)
+    report = ownership_report(ROOT, load_ledger(args.ledger), args.build)
     if args.baseline:
         baseline = json.loads(args.baseline.read_text())
         validate_baseline(baseline)

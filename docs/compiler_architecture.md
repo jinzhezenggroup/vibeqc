@@ -130,8 +130,10 @@ consumer migration boundaries are recorded in the
 With the existing NumPy dependency available, CMake can run the generator
 scripts directly from an uninstalled checkout. Each script bootstraps the
 explicit `python/` package root; compiler libraries never manipulate `sys.path`.
-CMake recursively tracks compiler leaves as generation dependencies and uses
-the same source inventory as `vibeqc.autotune.source_identity`.
+CMake and `vibeqc.autotune.source_identity` expand the same
+`cmake/VibeQCSourceIdentity.json` inventory. CMake retains `CONFIGURE_DEPENDS`
+for recursive groups so adding or removing a covered source reconfigures the
+build before the compatibility hash is reused.
 
 The wheel includes the integral manifests, required native templates and their
 transitive local headers, plus the audited Libxc source and license provenance

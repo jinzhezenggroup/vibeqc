@@ -67,11 +67,12 @@ def reference(mol: typing.Any, state: typing.Any, method: typing.Any) -> typing.
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
-    method: typing.Any, record_property: typing.Any
+    method: typing.Any, representation: typing.Any, record_property: typing.Any
 ) -> None:
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation="cartesian")
+    atoms, record, mol = fixture(spin=spin, representation=representation)
     calc = Calculator(
         basis=record,
         method=method,
@@ -86,6 +87,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
         NativeAO(
             atoms,
             basis=record,
+            representation=representation,
             charge=spin,
             multiplicity=spin + 1,
         ) as basis,
@@ -103,6 +105,8 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
             execution="native",
         )
         expected_energy, expected = reference(mol, state, method)
+        assert result.work["primitive_records"] == result.work["primitive_record_bound"]
+        assert result.work["ecp_quadrature_pair_samples"] > 0
         assert abs(energy - expected_energy) < 2e-8
         np.testing.assert_allclose(result.gradient, expected, atol=1e-7, rtol=0)
         if method == "pbe-uks":
@@ -215,3 +219,54 @@ def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None
             )
     with pytest.raises(RuntimeError, match="closed"):
         state._source.ecp_derivatives()
+
+
+@pytest.mark.parametrize("execution", ["native", "reference"])
+def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
+    execution: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
+    from vibeqc import _stationary_cpu as module
+    from vibeqc._ks_snapshot import NativeKsSnapshot
+
+    atoms, record, _ = fixture(representation="cartesian")
+    calc = Calculator(basis=record, method="pbe-rks", ks_options=KsOptions(grid=GRID))
+    with calc.prepare_batch([atoms]) as batch, NativeAO(atoms, basis=record) as basis:
+        batch.execute(strict=True)
+        state = StationaryKsState.from_native(batch, basis)
+        kwargs = {
+            "cache": ".cache/ecp-stationary-tests",
+            "execution": execution,
+            "tile_points": 137,
+        }
+        result = complete_rks_gradient_diagnostic(state, basis, **kwargs)
+        limits = {
+            "max_primitive_records": result.work["primitive_records"],
+            "max_grid_points": result.work["xc_points"],
+            "max_grid_pair_visits": result.work["grid_pair_work_bound"],
+            "max_ecp_pair_samples": result.work["ecp_quadrature_pair_samples"],
+        }
+
+        def forbidden(*args: typing.Any, **kw: typing.Any) -> None:
+            pytest.fail("CPU work rejection reached derivative compilation/provider")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(module, "_PrimitiveExecutor", forbidden)
+            patch.setattr(NativeKsSnapshot, "ecp_derivatives", forbidden)
+            for name, bound in limits.items():
+                with pytest.raises(ValueError, match="work budget"):
+                    complete_rks_gradient_diagnostic(
+                        state, basis, **kwargs, **{name: bound - 1}
+                    )
+                for invalid in (0, -1, True, 1.5, (1 << 40) + 1):
+                    with pytest.raises(ValueError, match=name):
+                        complete_rks_gradient_diagnostic(
+                            state, basis, **kwargs, **{name: invalid}
+                        )
+        StationaryDerivativeContract(state.identity).validate(state)
+        boundary = complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)
+        np.testing.assert_array_equal(boundary.gradient, result.gradient)
+        # Rejection did not revoke the energy owner or authorize stale replay.
+        batch.execute(strict=True)
+        with pytest.raises(ValueError, match="stale"):
+            complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)

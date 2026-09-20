@@ -764,9 +764,14 @@ empty so unsupported targets retain generic correctness. The `sm_120` force
 profile contains:
 
 ```text
-dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
+ssss dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
 ppps dpps dsps dspp pppp psps ppss dsss
 ```
+
+The `ssss` force row is a staged endpoint candidate rather than the production
+default. Runtime clears that class from generated force ownership unless
+`VIBEQC_SSSS_FORCE=generated` is set, so the tuned handwritten path remains
+the default until #356's complete RHF/UHF endpoint gate passes.
 
 The generated registry records profile identity, target compute capability,
 class index, consumer mask, block size, and component tile. Every profile uses
