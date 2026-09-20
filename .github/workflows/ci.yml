@@ -427,6 +427,7 @@ jobs:
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
+                tests/python/test_d3_geometry_ir.py
                 tests/python/test_high_angular.py
                 tests/python/test_one_electron_derivatives.py
                 tests/python/test_range_separation.py
