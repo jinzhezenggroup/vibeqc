@@ -39,9 +39,9 @@ __device__ void contract_pair(const OneElectronDeviceView& batch, std::int64_t i
   for (auto a = batch.shell_primitive_offsets[si]; a < batch.shell_primitive_offsets[si + 1]; ++a) {
     for (auto b = batch.shell_primitive_offsets[sj]; b < batch.shell_primitive_offsets[sj + 1];
          ++b) {
-      const auto pair =
-          generated::make_pair(batch.primitive_exponents[a], batch.primitive_exponents[b], A[0],
-                               A[1], A[2], B[0], B[1], B[2]);
+      generated::PairGeometry pair{};
+      generated::make_pair(pair, batch.primitive_exponents[a], batch.primitive_exponents[b], A[0],
+                           A[1], A[2], B[0], B[1], B[2]);
       const double radial = batch.primitive_coefficients[a] * batch.primitive_coefficients[b];
       for (unsigned ti = 0; ti < batch.ao_term_counts[i]; ++ti) {
         const auto term_i = i * kTerms + ti;

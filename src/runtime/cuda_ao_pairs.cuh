@@ -37,17 +37,17 @@ __device__ void store_symmetric(Outputs<Channels> outputs, const double (&values
  * Keeping primitive preparation outside the term loops allows geometry reuse.
  */
 template <class Policy, std::size_t TermCapacity, class View>
-__device__ typename Policy::Accumulator contract(const View& batch, std::int64_t i,
-                                                 std::int64_t j) {
+__device__ void contract(const View& batch, std::int64_t i, std::int64_t j,
+                         typename Policy::Accumulator& result) {
   const auto si = batch.ao_shells[i], sj = batch.ao_shells[j];
   const double* A = batch.positions + 3 * batch.shell_atoms[si];
   const double* B = batch.positions + 3 * batch.shell_atoms[sj];
-  typename Policy::Accumulator result{};
+  result = typename Policy::Accumulator{};
   for (auto a = batch.shell_primitive_offsets[si]; a < batch.shell_primitive_offsets[si + 1]; ++a) {
     for (auto b = batch.shell_primitive_offsets[sj]; b < batch.shell_primitive_offsets[sj + 1];
          ++b) {
-      const auto pair =
-          Policy::prepare(batch.primitive_exponents[a], batch.primitive_exponents[b], A, B);
+      typename Policy::PrimitiveGeometry pair{};
+      Policy::prepare(pair, batch.primitive_exponents[a], batch.primitive_exponents[b], A, B);
       const double primitive_weight =
           batch.primitive_coefficients[a] * batch.primitive_coefficients[b];
       for (unsigned ti = 0; ti < batch.ao_term_counts[i]; ++ti) {
@@ -63,13 +63,13 @@ __device__ typename Policy::Accumulator contract(const View& batch, std::int64_t
       }
     }
   }
-  return result;
 }
 
 template <class Policy, std::size_t TermCapacity, class View>
 __device__ void evaluate_pair(const View& batch, std::int64_t i, std::int64_t j,
                               Outputs<Policy::channels> outputs) {
-  const auto result = contract<Policy, TermCapacity>(batch, i, j);
+  typename Policy::Accumulator result{};
+  contract<Policy, TermCapacity>(batch, i, j, result);
   const std::size_t n = batch.nbf, system = i / n;
   const std::size_t row = i % n, column = j % n, offset = system * n * n;
   double values[Policy::channels];

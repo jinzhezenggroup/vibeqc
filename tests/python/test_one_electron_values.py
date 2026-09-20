@@ -23,9 +23,11 @@ def test_generated_value_header_helpers_have_internal_linkage() -> None:
     """Header-defined noinline device helpers must be reusable by multiple CUDA TUs."""
 
     source = emit_one_electron_values_cuda()
-    assert source.count("static __device__ __noinline__ ST overlap_kinetic_") == 16
+    assert source.count("static __device__ __noinline__ void overlap_kinetic_") == 16
     assert source.count("static __device__ __noinline__ double attraction_") == 16
-    assert "\n__device__ __noinline__ ST overlap_kinetic_" not in source
+    assert "__device__ __forceinline__ PairGeometry make_pair(" not in source
+    assert "static __device__ __noinline__ ST overlap_kinetic_" not in source
+    assert "\n__device__ __noinline__ void overlap_kinetic_" not in source
     assert "\n__device__ __noinline__ double attraction_" not in source
 
 
@@ -173,8 +175,10 @@ extern "C" void evaluate(const double* inputs, double* outputs, unsigned count) 
   namespace one = vibeqc::scf::generated_one_electron;
   for (unsigned i = 0; i < count; ++i) {
     const double* p = inputs + 14 * i;
-    const auto pair = one::make_pair(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-    const auto st = one::overlap_kinetic(pair, p[12], p[13]);
+    one::PairGeometry pair{};
+    one::make_pair(pair, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    one::ST st{};
+    one::overlap_kinetic(pair, p[12], p[13], st);
     outputs[3 * i] = st.overlap;
     outputs[3 * i + 1] = st.kinetic;
     outputs[3 * i + 2] = p[11] * one::attraction(pair, p[12], p[13], p[8], p[9], p[10]);

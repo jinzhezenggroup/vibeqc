@@ -18,8 +18,10 @@ extern "C" __global__ void fixture_values(const Input* inputs, double* values, s
   if (i >= count) return;
   const auto& in = inputs[i];
   const auto* r = in.centers;
-  const auto pair = one::make_pair(in.alpha, in.beta, r[0], r[1], r[2], r[3], r[4], r[5]);
-  const auto st = one::overlap_kinetic(pair, in.first, in.second);
+  one::PairGeometry pair{};
+  one::make_pair(pair, in.alpha, in.beta, r[0], r[1], r[2], r[3], r[4], r[5]);
+  one::ST st{};
+  one::overlap_kinetic(pair, in.first, in.second, st);
   values[3 * i] = st.overlap;
   values[3 * i + 1] = st.kinetic;
   values[3 * i + 2] = in.charge * one::attraction(pair, in.first, in.second, r[6], r[7], r[8]);

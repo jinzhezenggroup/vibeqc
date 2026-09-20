@@ -176,8 +176,9 @@ __global__ void esp_integrals_kernel(const double* basis, std::size_t natom, std
       const std::size_t ia = first_begin + pa;
       for (std::size_t pb = 0; pb < second_count; ++pb) {
         const std::size_t ib = second_begin + pb;
-        const auto pair = one::make_pair(primitives[2 * ia], primitives[2 * ib], a[0], a[1], a[2],
-                                         b[0], b[1], b[2]);
+        one::PairGeometry pair{};
+        one::make_pair(pair, primitives[2 * ia], primitives[2 * ib], a[0], a[1], a[2], b[0], b[1],
+                       b[2]);
         const double primitive_weight = primitives[2 * ia + 1] * primitives[2 * ib + 1];
         for (unsigned ti = 0; ti < first_terms; ++ti) {
           const unsigned first_component = one::component_index(

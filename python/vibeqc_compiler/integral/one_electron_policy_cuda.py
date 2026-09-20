@@ -17,8 +17,9 @@ def one_electron_policy_inventory() -> typing.Any:
     """Version the normalized contraction/output ABI independently of scalars."""
     return {
         "schema": "vibeqc.one_electron_pair_policy",
-        "version": 1,
+        "version": 2,
         "runtime": "cuda_ao_pairs",
+        "device_struct_results": "caller_owned_out_parameters",
         "primitive_families": ["overlap", "kinetic", "nuclear_attraction"],
         "accumulators": ["overlap", "kinetic", "attraction"],
         "outputs": ["overlap", "hcore", "kinetic", "attraction"],
@@ -54,9 +55,10 @@ namespace vibeqc::scf::generated_one_electron {
 /** Scientific policy for the normalized AO-pair runtime contract. */
 struct ValuePolicy {
   static constexpr unsigned channels = 4;
+  using PrimitiveGeometry = PairGeometry;
   struct Accumulator { double overlap{}, kinetic{}, attraction{}; };
-  __device__ static PairGeometry prepare(double a, double b, const double* A, const double* B) {
-    return make_pair(a, b, A[0], A[1], A[2], B[0], B[1], B[2]);
+  __device__ static void prepare(PairGeometry& pair, double a, double b, const double* A, const double* B) {
+    make_pair(pair, a, b, A[0], A[1], A[2], B[0], B[1], B[2]);
   }
   __device__ static unsigned component(const unsigned char* powers) {
     return component_index(powers[0], powers[1], powers[2]);
@@ -64,7 +66,8 @@ struct ValuePolicy {
   template<class View>
   __device__ static void accumulate(Accumulator& result, const PairGeometry& pair,
       unsigned first, unsigned second, double weight, const View& batch, long long system) {
-    const auto st = overlap_kinetic(pair, first, second);
+    ST st{};
+    overlap_kinetic(pair, first, second, st);
     double v = 0.0;
     for (auto atom = batch.atom_offsets[system]; atom < batch.atom_offsets[system + 1]; ++atom) {
       const double* C = batch.positions + 3 * atom;

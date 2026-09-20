@@ -85,25 +85,27 @@ def _emit_pair_geometry() -> typing.Any:
     kernel, fields = _pair_geometry_inventory()
     lines = ["struct PairGeometry {", "  double " + ", ".join(fields) + ";", "};"]
     lines += [
-        "__device__ __forceinline__ PairGeometry make_pair(",
-        "    double alpha, double beta, double a_x, double a_y, double a_z,",
+        "__device__ __forceinline__ void make_pair(",
+        "    PairGeometry& pair, double alpha, double beta, double a_x, double a_y, double a_z,",
         "    double b_x, double b_y, double b_z) {",
-        "  PairGeometry pair{};",
+        "  pair = PairGeometry{};",
     ]
     for field in fields[:8]:
         lines.append(f"  pair.{field} = {field};")
     emitter = CudaEmitter(kernel.graph, {})
     for name, expr in kernel.pair_geometry:
         emitter.emit_assignment(expr, f"pair.{name}")
-    return "\n".join(lines + emitter.lines + ["  return pair;", "}"])
+    return "\n".join(lines + emitter.lines + ["}"])
 
 
 def _emit_operator_helpers(attraction: typing.Any) -> typing.Any:
     name = "attraction" if attraction else "overlap_kinetic"
-    return_type = "double" if attraction else "ST"
+    return_type = "double" if attraction else "void"
     arguments = "const PairGeometry& pair, unsigned component"
     if attraction:
         arguments += ", double c_x, double c_y, double c_z"
+    else:
+        arguments += ", ST& output"
     lines = []
     for angular in product(range(4), repeat=2):
         suffix = f"{angular[0]}{angular[1]}"
@@ -148,30 +150,54 @@ def _emit_operator_helpers(attraction: typing.Any) -> typing.Any:
                 ]
                 emitter.emit((roots[1],))
                 result = emitter.reference(roots[1])
+                lines += emitter.lines + [f"      return {result};", "    }"]
             else:
                 emitter.emit(roots)
-                result = (
-                    "{" + ", ".join(emitter.reference(root) for root in roots) + "}"
-                )
-            lines += emitter.lines + [f"      return {result};", "    }"]
-        invalid = "NAN" if attraction else "ST{NAN, NAN}"
-        lines += ["  }", f"  return {invalid};", "}"]
+                result = ", ".join(emitter.reference(root) for root in roots)
+                lines += emitter.lines + [
+                    f"      output = ST{{{result}}};",
+                    "      return;",
+                    "    }",
+                ]
+        if attraction:
+            lines += ["  }", "  return NAN;", "}"]
+        else:
+            lines += ["  }", "  output = ST{NAN, NAN};", "}"]
+    wrapper_args = "const PairGeometry& pair, unsigned first, unsigned second"
+    if attraction:
+        wrapper_args += ", double c_x, double c_y, double c_z) {"
+    else:
+        wrapper_args += ", ST& output) {"
     lines += [
         f"__device__ __forceinline__ {return_type} {name}(",
-        "    const PairGeometry& pair, unsigned first, unsigned second"
-        + (", double c_x, double c_y, double c_z) {" if attraction else ") {"),
+        "    " + wrapper_args,
         "  const unsigned a = first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : 3;",
         "  const unsigned b = second < 1 ? 0 : second < 4 ? 1 : second < 10 ? 2 : 3;",
         "  const unsigned offsets[] = {0, 1, 4, 10};",
         "  const unsigned counts[] = {1, 3, 6, 10};",
         "  const unsigned component = (first - offsets[a]) * counts[b] + second - offsets[b];",
-        "  if (first >= 20 || second >= 20) return " + invalid + ";",
-        "  switch (a * 4U + b) {",
     ]
+    if attraction:
+        lines.append("  if (first >= 20 || second >= 20) return NAN;")
+    else:
+        lines += [
+            "  if (first >= 20 || second >= 20) {",
+            "    output = ST{NAN, NAN};",
+            "    return;",
+            "  }",
+        ]
+    lines.append("  switch (a * 4U + b) {")
     for a, b in product(range(4), repeat=2):
-        args = "pair, component" + (", c_x, c_y, c_z" if attraction else "")
-        lines.append(f"    case {a * 4 + b}U: return {name}_{a}{b}({args});")
-    lines += ["  }", f"  return {invalid};", "}"]
+        args = "pair, component" + (", c_x, c_y, c_z" if attraction else ", output")
+        if attraction:
+            lines.append(f"    case {a * 4 + b}U: return {name}_{a}{b}({args});")
+        else:
+            lines.append(f"    case {a * 4 + b}U: {name}_{a}{b}({args}); return;")
+    lines.append("  }")
+    if attraction:
+        lines += ["  return NAN;", "}"]
+    else:
+        lines += ["  output = ST{NAN, NAN};", "}"]
     return "\n".join(lines)
 
 
