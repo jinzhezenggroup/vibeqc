@@ -33,11 +33,11 @@ def _random_case(nocc, nvir, seed):
     return ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v
 
 
-@pytest.mark.parametrize("chunk", [1, 2])
-def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(chunk):
+@pytest.mark.parametrize("v,chunk", [(2, 1), (2, 2), (3, 2)])
+def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(v, chunk):
     """The derivative of the disjoint energy partition equals the full VJP."""
 
-    o, v = 2, 2
+    o = 2
     arrays = _random_case(o, v, 15401)
     tiled = accumulate_tile_triples_vjp(
         o,
@@ -48,6 +48,7 @@ def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(chunk):
     full = full_triples_vjp(o, v, *arrays)
     assert set(tiled) == set(full) == set(TRIPLES_RESPONSE_INPUTS)
     for name in TRIPLES_RESPONSE_INPUTS:
+        assert np.linalg.norm(full[name]) > 1e-8
         np.testing.assert_allclose(
             tiled[name],
             full[name],
@@ -64,7 +65,8 @@ def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(chunk):
 def test_generated_response_matches_recomputed_energy_finite_difference(name):
     """Each generated source differentiates the actual audited (T) energy."""
 
-    o, v = 1, 2
+    # nocc=1 makes r3 identically zero and cannot validate derivative equations.
+    o, v = 2, 2
     arrays = [np.array(x, copy=True) for x in _random_case(o, v, 15402)]
     by_name = dict(zip(INPUT_NAMES, arrays, strict=True))
     gradient = accumulate_tile_triples_vjp(
@@ -74,6 +76,7 @@ def test_generated_response_matches_recomputed_energy_finite_difference(name):
         vir_chunk_size=1,
         inputs=(name,),
     )[name]
+    assert np.linalg.norm(gradient) > 1e-8
 
     rng = np.random.default_rng(15403 + INPUT_NAMES.index(name))
     direction = rng.normal(size=by_name[name].shape)
@@ -81,20 +84,21 @@ def test_generated_response_matches_recomputed_energy_finite_difference(name):
         direction = (direction + direction.transpose(1, 0, 3, 2)) / 2
     direction /= max(1.0, float(np.linalg.norm(direction)))
     analytic = float(np.vdot(gradient, direction))
+    assert abs(analytic) > 1e-8
 
-    step = 2e-6
-    samples = []
-    for sign in (-1.0, 1.0):
-        changed = [np.array(x, copy=True) for x in arrays]
-        changed[INPUT_NAMES.index(name)] += sign * step * direction
-        samples.append(triples_energy(o, v, *changed))
-    finite_difference = (samples[1] - samples[0]) / (2 * step)
-    np.testing.assert_allclose(
-        analytic,
-        finite_difference,
-        rtol=2e-6,
-        atol=2e-7,
-    )
+    for step in (2e-5, 2e-6):
+        samples = []
+        for sign in (-1.0, 1.0):
+            changed = [np.array(x, copy=True) for x in arrays]
+            changed[INPUT_NAMES.index(name)] += sign * step * direction
+            samples.append(triples_energy(o, v, *changed))
+        finite_difference = (samples[1] - samples[0]) / (2 * step)
+        np.testing.assert_allclose(
+            analytic,
+            finite_difference,
+            rtol=2e-6,
+            atol=2e-7,
+        )
 
 
 def test_denominator_response_is_present_and_not_frozen():
@@ -116,7 +120,7 @@ def test_denominator_response_is_present_and_not_frozen():
 def test_optimized_reverse_graph_preserves_response_and_never_grows_live_dag():
     """CSE/dead cleanup may share work but cannot change a response source."""
 
-    o, v = 1, 2
+    o, v = 2, 2
     arrays = _random_case(o, v, 15405)
     raw = build_tile_triples_vjp(o, v, vir_chunk=(0, v))
     optimized = optimize(raw.program)
@@ -131,6 +135,7 @@ def test_optimized_reverse_graph_preserves_response_and_never_grows_live_dag():
         optimize_graph=True,
     )
     for name in before:
+        assert np.linalg.norm(before[name]) > 1e-8
         np.testing.assert_allclose(after[name], before[name], rtol=1e-12, atol=1e-12)
 
 
