@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recursive_groups": [
+    {
+      "root": "src",
+      "patterns": [
+        "*"
+      ]
+    },
+    {
+      "root": "include",
+      "patterns": [
+        "*"
+      ]
+    },
+    {
+      "root": "python/vibeqc_compiler",
+      "patterns": [
+        "*.py",
+        "*.json"
+      ]
+    },
+    {
+      "root": "python/vibeqc",
+      "patterns": [
+        "*.py"
+      ]
+    },
+    {
+      "root": "tools/vibeqc_tensor",
+      "patterns": [
+        "*.py"
+      ]
+    },
+    {
+      "root": "tools/vibeqc_mp2",
+      "patterns": [
+        "*.py"
+      ]
+    },
+    {
+      "root": "cmake/3rdparty/implib",
+      "patterns": [
+        "*"
+      ]
+    }
+  ],
+  "files": [
+    "CMakeLists.txt",
+    "cmake/VibeQCCuda.cmake",
+    "cmake/VibeQCCudaImplib.cmake",
+    "cmake/VibeQCGenerated.cmake",
+    "cmake/VibeQCGeneratedSources.cmake",
+    "cmake/VibeQCSources.cmake",
+    "cmake/VibeQCTests.cmake",
+    "cmake/VibeQCSourceIdentity.cmake",
+    "cmake/3rdparty/implib_manifest.json",
+    "tools/generate_cuda_implib.py",
+    "tools/generate_shell_kernels.py",
+    "tools/generate_ecp_kernels.py",
+    "tools/generate_df_kernels.py",
+    "tools/generate_weighted_eri_kernels.py",
+    "tools/generate_one_electron_kernels.py",
+    "tools/generate_grid_kernels.py",
+    "tools/generate_mp2_native.py",
+    "tools/generate_xc_cpu.py",
+    "tools/generate_xc_gradient_cuda.py",
+    "tools/vibeqc_posthf/plan_spec.py"
+  ]
+}
