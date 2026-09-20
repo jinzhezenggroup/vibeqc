@@ -185,7 +185,9 @@ def compile_resident(
         or static_path.stat().st_size != metadata.get("static_data_bytes")
         or file_hash(static_path) != metadata.get("static_data_sha256")
     ):
-        raise ValueError("resident artifact identity, binary, or static-data hash mismatch")
+        raise ValueError(
+            "resident artifact identity, binary, or static-data hash mismatch"
+        )
     return CudaArtifact(library, metadata)
 
 

@@ -110,9 +110,7 @@ def resident_source(
             raise ValueError(
                 "resident inputs must be pinned for the full plan lifetime"
             )
-    base = emit_cuda(
-        plan, symbol_prefix=prefix, embed_static_data=embed_static_data
-    )
+    base = emit_cuda(plan, symbol_prefix=prefix, embed_static_data=embed_static_data)
     validations, _vc = _validation_body(plan)
 
     inputs = [plan.steps[i] for i in plan.inputs]
