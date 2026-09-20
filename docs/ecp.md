@@ -484,6 +484,10 @@ LANL2DZ Na / STO-3G H, also augmented by one Na d shell of exponent 0.35,
 with the 24 x 8 x 16 unpruned XC grid; it is not a claim
 for arbitrary ECP families or a performance promotion.
 
+The d-shell cases reuse these gates from `test_ecp_spd_cartesian_cpu.py` and
+`test_ecp_spd_spherical_cpu.py`. CI runs all three files in the `ecp-forces`
+shard, with separate representation workers and the same 20-minute job cap.
+
 See [the CPU public-force contract](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cpu-forces.md).
 The [s/p/d scheduling decision](../.agents/notes/implemented/performance/2026-09-20-spd-cpu-derivative-schedule.md)
 records component normalization, work accounting and compilation bounds.

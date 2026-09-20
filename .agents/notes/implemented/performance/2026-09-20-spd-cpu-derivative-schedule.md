@@ -59,6 +59,16 @@ both representations against independent PySCF full-grid-response gradients
 work/source counts, exact planned budgets, failure isolation and recovery.
 CI results, rather than generation size alone, determine numerical qualification.
 
+The initial serial public-force module hit the existing 20-minute CI cap after
+all eight d-shell analytic/FD cases and three of four budgeted replays completed.
+Retained evidence measured a 505-second first complete d endpoint (including
+compilation), 12-16-second subsequent singlepoints and 10-15-second batch calls
+on that hosted runner. Maximum analytic force error was 9.11e-11 Eh/bohr.
+The remedy keeps all cases and all gates: Cartesian and spherical d wrappers
+run as separate loadfile workers in a dedicated `ecp-forces` shard alongside
+the s/p tests. No global timeout extension or numerical case removal is used.
+This integration also exercises the generated CPU ECP provider merged in #648.
+
 ## Consequences and revisit conditions
 
 Canonicalization bounds compilation, but execution still visits all ordered

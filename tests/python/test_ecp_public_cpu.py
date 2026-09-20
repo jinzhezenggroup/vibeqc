@@ -54,13 +54,12 @@ def calculator(
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-@pytest.mark.parametrize("d_shell", [False, True])
 def test_public_ecp_force_analytic_and_reconverged_fd(
     method: typing.Any,
     representation: typing.Any,
     record_property: typing.Any,
     tmp_path: typing.Any,
-    d_shell: bool,
+    d_shell: bool = False,
 ) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(
@@ -136,12 +135,11 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
 
 @pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-@pytest.mark.parametrize("d_shell", [False, True])
 def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     method: typing.Any,
     representation: typing.Any,
     record_property: typing.Any,
-    d_shell: bool,
+    d_shell: bool = False,
 ) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(
@@ -290,8 +288,7 @@ def test_cpu_force_budget_rejects_before_snapshot_export(
             batch._public_dft_cpu_force(0, batch._systems[0])
 
 
-@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
+def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
     representation: str,
 ) -> None:
     from vibeqc._stationary_cpu_components import ComponentPrimitiveExecutor
