@@ -1,5 +1,3 @@
-[Reading 430 lines from start (total: 430 lines, 0 remaining)]
-
 #!/usr/bin/env python3
 """Compare VibeQC D3(BJ) against NVIDIA ALCHEMI Toolkit-Ops.
 
@@ -311,6 +309,15 @@ def _error_summary(vibeqc: dict[str, Any], alchemi: dict[str, Any]) -> dict[str,
     rhs_g = np.asarray(alchemi["gradients_hartree_per_bohr"], dtype=np.float64).reshape(
         -1, 3
     )
+    if (
+        lhs_e.shape != rhs_e.shape
+        or lhs_e.ndim != 1
+        or lhs_g.shape != rhs_g.shape
+        or not lhs_e.size
+        or not lhs_g.size
+        or any(not np.isfinite(value).all() for value in (lhs_e, rhs_e, lhs_g, rhs_g))
+    ):
+        raise ValueError("comparison requires finite outputs with matching shapes")
     return {
         "max_abs_energy_hartree": float(np.max(np.abs(lhs_e - rhs_e))),
         "max_abs_gradient_hartree_per_bohr": float(np.max(np.abs(lhs_g - rhs_g))),
@@ -430,5 +437,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-[executed on device: node3 (ba183cf6-7443-4b2e-9886-6f523331b1b2)]

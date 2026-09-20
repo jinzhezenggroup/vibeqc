@@ -1,5 +1,3 @@
-[Reading 138 lines from start (total: 138 lines, 0 remaining)]
-
 # D3(BJ) production correction runtime
 
 VibeQC represents additive geometry-only dispersion with
@@ -138,5 +136,3 @@ For retained performance evidence, pin the exact `nvalchemi-toolkit-ops` wheel,
 PyTorch/CUDA versions, GPU, VibeQC commit/library, cutoff, workload, and timing
 samples. Do not compare published H100 numbers directly with a local RTX 5090 run;
 run both implementations on the same allocated device.
-
-[executed on device: node3 (ba183cf6-7443-4b2e-9886-6f523331b1b2)]

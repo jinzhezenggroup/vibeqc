@@ -1,5 +1,3 @@
-[Reading 41 lines from start (total: 41 lines, 0 remaining)]
-
 # #492 NVIDIA ALCHEMI D3 performance reference
 
 Agent: ChatGPT
@@ -41,5 +39,3 @@ ALCHEMI Toolkit-Ops 0.4.1, Warp 1.16.0 and PyTorch 2.9.1+cu130. The 8-atom x 2
 CUDA smoke completed successfully with separately synchronized neighbor-list,
 D3-only and combined-pipeline measurements. Those two-sample smoke timings are
 API qualification only, not retained performance/promotion evidence.
-
-[executed on device: node3 (ba183cf6-7443-4b2e-9886-6f523331b1b2)]
