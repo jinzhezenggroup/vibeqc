@@ -250,12 +250,13 @@ jobs:
     name: CuMetal performance (CodSpeed / Apple GPU)
     if: github.event_name != 'schedule'
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       CUMETAL_COMMIT: 8a1434ffc1a4f7a17d2f8a41e157afbac22af171
       CUMETAL_SOURCE: /tmp/cuda-metal
       CUMETAL_PREFIX: /tmp/cumetal-install
       CUMETAL_CCACHE_DIR: /tmp/cumetal-ccache
+      VIBEQC_CCACHE_DIR: /tmp/vibeqc-cumetal-benchmark-ccache
       VIBEQC_BENCH_BUILD: ${{ github.workspace }}/build-cumetal-benchmark
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -278,6 +279,7 @@ jobs:
       - name: Prepare benchmark environment
         run: |
           uv venv --python 3.11
+          uv pip install --python .venv/bin/python --editable .
           uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
           brew install llvm z3 ninja ccache
 
@@ -298,6 +300,14 @@ jobs:
           key: ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}
           restore-keys: |
             ccache-cumetal-toolchain-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore VibeQC benchmark ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VIBEQC_CCACHE_DIR }}
+          key: ccache-cumetal-benchmark-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'python/vibeqc_compiler/**', 'src/**', 'tools/**') }}
+          restore-keys: |
+            ccache-cumetal-benchmark-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
 
       - name: Build pinned CuMetal on a cold cache
         if: steps.cache-cumetal.outputs.cache-hit != 'true'
@@ -324,6 +334,54 @@ jobs:
       - name: Verify CuMetal
         run: CUMETAL_ROOT="$CUMETAL_PREFIX" "$CUMETAL_PREFIX/bin/cumetal" doctor
 
+      - name: Generate a CMake CUDA toolkit backed by CuMetal
+        run: |
+          FAKE_CUDA="$CUMETAL_SOURCE/build/cumetal-cuda-toolkit"
+          if [[ ! -x "$FAKE_CUDA/bin/nvcc" ]]; then
+            CUMETAL_BUILD_DIR="$CUMETAL_SOURCE/build" \
+              bash "$CUMETAL_SOURCE/scripts/build_llama_cpp_cumetal.sh" --toolkit-only
+          fi
+          for file in \
+            "$FAKE_CUDA/version.json" \
+            "$FAKE_CUDA/version.txt" \
+            "$FAKE_CUDA/bin/nvcc" \
+            "$FAKE_CUDA/lib/cmake/CUDAToolkit/CUDAToolkitConfig.cmake" \
+            "$FAKE_CUDA/lib/cmake/CUDAToolkit/CUDAToolkitConfigVersion.cmake"; do
+            if [[ -f "$file" ]]; then
+              sed -i '' 's/12\\.2/12.9/g' "$file"
+            fi
+          done
+          for libdir in lib lib64; do
+            mkdir -p "$FAKE_CUDA/$libdir"
+            for lib in cudart cublas cublasLt cusolver; do
+              ln -sf "$CUMETAL_SOURCE/build/libcumetal.dylib" \
+                "$FAKE_CUDA/$libdir/lib${lib}.dylib"
+            done
+          done
+          "$FAKE_CUDA/bin/nvcc" --version
+
+      - name: Build VibeQC CuMetal endpoint library
+        env:
+          CCACHE_DIR: ${{ env.VIBEQC_CCACHE_DIR }}
+        run: |
+          FAKE_CUDA="$CUMETAL_SOURCE/build/cumetal-cuda-toolkit"
+          PATH="$FAKE_CUDA/bin:$PATH" cmake -S . -B "$VIBEQC_BENCH_BUILD/runtime" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER="$(brew --prefix llvm)/bin/clang" \
+            -DCMAKE_CXX_COMPILER="$(brew --prefix llvm)/bin/clang++" \
+            -DCMAKE_CUDA_COMPILER="$FAKE_CUDA/bin/nvcc" \
+            -DCMAKE_CUDA_COMPILER_LIBRARY_ROOT="$FAKE_CUDA" \
+            -DCUDAToolkit_ROOT="$FAKE_CUDA" \
+            -DCMAKE_CUDA_ARCHITECTURES=80 \
+            -DPython3_EXECUTABLE="${GITHUB_WORKSPACE}/.venv/bin/python" \
+            -DVIBEQC_CUDA_ARCHITECTURES=80 \
+            -DVIBEQC_CUDA_COMPILE_ARCHITECTURES=80 \
+            -DVIBEQC_CUDA_PROVIDER=cumetal \
+            -DVIBEQC_BUILD_TESTS=OFF \
+            -DVIBEQC_COMPILER_CACHE=ccache
+          cmake --build "$VIBEQC_BENCH_BUILD/runtime" --target vibeqc --parallel 3
+          ccache --show-stats
+
       - name: Build CuMetal FP32 CodSpeed benchmark
         run: |
           mkdir -p "$VIBEQC_BENCH_BUILD"
@@ -341,6 +399,16 @@ jobs:
         with:
           mode: walltime
           run: .venv/bin/python -m pytest benchmarks/test_cumetal_fp32_codspeed.py --codspeed -q
+
+      - name: Run CodSpeed real VibeQC CuMetal endpoint suite
+        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        env:
+          CUMETAL_ROOT: /tmp/cumetal-install
+          DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
+        with:
+          mode: walltime
+          run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py --codspeed -q
 
   upload-test-results:
     name: Upload CUDA test results
